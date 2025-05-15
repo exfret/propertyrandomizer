@@ -5,14 +5,12 @@ local randomize = randnum.rand
 
 randomizations.equipment_active_defense_cooldown = function(id)
     for _, equipment in pairs(data.raw["active-defense-equipment"]) do
+        -- Rounding will be off but that's okay
         randomize({
             id = id,
             prototoype = equipment,
             tbl = equipment.attack_parameters,
             property = "cooldown",
-            transformer = function(x) return 60 / x end,
-            untransformer = function(x) return 60 / x end,
-            prerounding = "normal",
             rounding = "none"
         })
     end

@@ -116,15 +116,12 @@ randomizations.capsule_cooldown = function(id)
         if capsule.capsule_action.attack_parameters then
             local attack_parameters = capsule.capsule_action.attack_parameters
 
+            -- Rounding will be off but that's okay
             randomize({
                 id = id,
                 prototype = capsule,
                 tbl = attack_parameters,
                 property = "cooldown",
-                -- Transformer so rounding is correct
-                transformer = function(x) return 60 / x end,
-                untransformer = function(x) return 60 / x end,
-                prerounding = "normal",
                 rounding = "none",
                 dir = -1
             })
@@ -143,9 +140,7 @@ randomizations.capsule_healing = function(id)
                 if ammo_type.action then
                     randomizations.trigger({
                         id = id,
-                        prototype = capsule,
-                        transformer = function(x) return -x end,
-                        untransformer = function(x) return -x end,
+                        prototype = capsule
                     }, ammo_type.action, "healing")
 
                     -- Check for stickers
@@ -160,17 +155,17 @@ randomizations.capsule_healing = function(id)
                                     sticker_prot.damage_interval = 1
                                 end
 
-                                -- Multiply for transformer to get rounding right
+                                -- Multiply by negative one to make it positive for randomization
+                                sticker_prot.damage_per_tick = -sticker_prot.damage_per_tick
                                 randomize({
                                     id = id,
                                     prototype = sticker_prot,
                                     tbl = sticker_prot.damage_per_tick,
                                     property = "amount",
-                                    transformer = function(x) return -x / sticker_prot.damage_interval * 60 end,
-                                    untransformer = function(x) return -x * sticker_prot.damage_interval / 60 end,
-                                    prerounding = "normal",
                                     rounding = "none"
                                 })
+                                -- Undo earlier multiplication by -1
+                                sticker_prot.damage_per_tick = -sticker_prot.damage_per_tick
                             end
                         end
                     end
@@ -229,6 +224,8 @@ randomizations.gun_damage_modifier = function(id)
     end
 end
 
+-- TODO: Fix now that transformers aren't a thing
+-- NEW
 randomizations.gun_movement_slowdown_factor = function(id)
     for _, gun in pairs(data.raw.gun) do
         local attack_parameters = gun.attack_parameters
@@ -240,9 +237,6 @@ randomizations.gun_movement_slowdown_factor = function(id)
                 prototype = gun,
                 tbl = attack_parameters,
                 property = "movement_slow_down_factor",
-                -- Movement slowdown of 1 is actually "0 speed"
-                transformer = function(x) return 1 / (1 - x) end,
-                untransformer = function(x) return 1 - (1 / x) end,
                 range = "big",
                 variance = "big"
             })
@@ -270,10 +264,6 @@ randomizations.gun_shooting_speed = function(id)
             prototype = gun,
             tbl = gun.attack_parameters,
             property = "cooldown",
-            -- Transformer so rounding is correct
-            transformer = function(x) return 60 / x end,
-            untransformer = function(x) return 60 / x end,
-            prerounding = "normal",
             rounding = "none",
             dir = -1
         })
@@ -338,44 +328,20 @@ randomizations.module_effects = function(id)
             end
         end
 
-        -- Don't allow consumption to be positive if it's an efficiency, module, otherwise allow it
-        -- Also we can allow more than -100% bonus due to additivity of modules
-        local transformer_to_use = function(x) return x + 1 end
-        local untransformer_to_use = function(x) return x - 1 end
-        local dir = 1
-        if module.category == "efficiency" then
-            transformer_to_use = function(x) return -x end
-            untransformer_to_use = function(x) return -x end
-            dir = -1
-        end
         randomize({
             id = id,
             prototype = module,
             tbl = module.effect,
             property = "consumption",
-            -- CRITICAL TODO: FIX
-            --transformer = transformer_to_use,
-            --untransformer = untransformer_to_use,
             range = "small",
             variance = "small",
-            dir = dir
+            dir = -1
         })
 
-        -- Don't allow speed to be negative if it's a speed module, otherwise allow it
-        local transformer_to_use = function(x) return x + 1 end
-        local untransformer_to_use = function(x) return x - 1 end
-        if module.category == "speed" then
-            transformer_to_use = function(x) return x end
-            untransformer_to_use = function(x) return x end
-        end
         randomize({
             id = id,
             prototype = module,
             tbl = module.effect,
-            -- CRITICAL TODO: FIX
-            -- speed can go down to -1
-            --transformer = transformer_to_use,
-            --untransformer = untransformer_to_use,
             property = "speed",
             range = "small",
             variance = "small"
@@ -394,40 +360,20 @@ randomizations.module_effects = function(id)
             id = id,
             prototype = module,
             tbl = module.effect,
-            -- CRITICAL TODO: FIX
-            -- pollution can go down to -1
-            --transformer = function(x) return x + 1 end,
-            --untransformer = function(x) return x - 1 end,
             property = "pollution",
             range = "small",
             variance = "small",
             dir = -1
         })
 
-        -- Don't randomize quality if it's zero
-        if module.effect.quality ~= 0 then
-            -- Don't allow speed to be negative if it's a quality module, otherwise assume it's a speed module and use negative
-            local transformer_to_use = function(x) return -x end
-            local untransformer_to_use = function(x) return -x end
-            local dir = -1
-            if module.category == "quality" then
-                transformer_to_use = function(x) return x end
-                untransformer_to_use = function(x) return x end
-                dir = 1
-            end
-            randomize({
-                id = id,
-                prototype = module,
-                tbl = module.effect,
-                property = "quality",
-                -- CRITICAL TODO: FIX
-                --transformer = transformer_to_use,
-                --untransformer = untransformer_to_use,
-                range = "very_small",
-                variance = "very_small",
-                dir = dir
-            })
-        end
+        randomize({
+            id = id,
+            prototype = module,
+            tbl = module.effect,
+            property = "quality",
+            range = "very_small",
+            variance = "very_small"
+        })
 
         -- Add to cat_to_modules
         if cat_to_modules[module.category] == nil then

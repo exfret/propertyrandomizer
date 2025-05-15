@@ -192,23 +192,28 @@ randomizations.beam_width = function(id)
     end
 end
 
--- Includes linked randomization based off belt speeds
+-- Includes tiered randomization based off belt speeds
 randomizations.belt_speed = function(id)
     local belts = {}
     for belt_class, _ in pairs(categories.belts) do
         for _, belt in pairs(data.raw[belt_class]) do
             table.insert(belts, belt)
+            -- Multiply belt speed by 256 so that it rounds correctly
+            belt.speed = belt.speed * 256
         end
     end
+
     randomizations.linked({
         id = id,
         prototypes = belts,
         property = "speed",
-        transformer = function(x) return x * 256 end,
-        untransformer = function(x) return x / 256 end,
-        prerounding = "discrete",
-        rounding = "none"
+        rounding = "pure_discrete"
     })
+
+    -- Undo earlier multiplication by 256
+    for _, belt in pairs(belts) do
+        belt.speed = belt.speed / 256
+    end
 end
 
 randomizations.boiler_consumption = function(id)
@@ -1205,14 +1210,12 @@ end
 randomizations.turret_shooting_speed = function(id)
     for turret_class, _ in pairs(categories.turrets) do
         for _, turret in pairs(data.raw[turret_class]) do
+            -- Rounding is technically off but that's fine
             randomize({
                 id = id,
                 prototype = turret,
                 tbl = turret.attack_parameters,
                 property = "cooldown",
-                -- Transformer so rounding is correct
-                transformer = function(x) return 60 / x end,
-                untransformer = function(x) return 60 / x end,
                 prerounding = "normal",
                 rounding = "none",
                 range = "small",
@@ -1241,15 +1244,12 @@ randomizations.unit_attack_speed = function(id)
     for _, unit_class in pairs({"unit", "spider-unit"}) do
         if data.raw[unit_class] ~= nil then
             for _, unit in pairs(data.raw[unit_class]) do
+                -- Rounding is technically off but that's fine
                 randomize({
                     id = id,
                     prototype = unit,
                     tbl = unit.attack_parameters,
                     property = "cooldown",
-                    -- Transformer so rounding is correct
-                    transformer = function(x) return 60 / x end,
-                    untransformer = function(x) return 60 / x end,
-                    prerounding = "normal",
                     rounding = "none",
                     range = "small",
                     variance = "small"

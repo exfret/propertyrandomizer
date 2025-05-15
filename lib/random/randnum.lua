@@ -27,8 +27,6 @@ randnum.fill_in_defaults = function(params)
 
     -- Set defaults for tuning
     local defaults = {
-        transformer = function(x) return x end,
-        untransformer = function(x) return x end,
         abs_min = "none",
         abs_max = "none",
         range = "medium",
@@ -37,7 +35,6 @@ randnum.fill_in_defaults = function(params)
         variance = "medium",
         bias = 0,
         dir = 1,
-        prerounding = "none",
         rounding = "normal"
     }
     for key, default_val in pairs(defaults) do
@@ -86,19 +83,10 @@ randnum.fill_in_defaults = function(params)
         return false
     end
 
-    local t_val = params.transformer(params.val)
-    -- Skip randomization for values that aren't positive post-transformation
-    if t_val <= 0 then
+    -- Skip randomization for values that aren't positive
+    if params.val <= 0 then
         return false
     end
-
-    params.t_val = t_val
-    -- CRITICAL TODO: Don't do transformer, do transformer then figure out mins/maxes from there?
-    -- Maybe just ditch the transformer idea entirely
-    params.soft_min = params.transformer(params.soft_min)
-    params.hard_min = params.transformer(params.hard_min)
-    params.soft_max = params.transformer(params.soft_max)
-    params.hard_max = params.transformer(params.hard_max)
 
     return true
 end
@@ -130,27 +118,18 @@ local function round_discrete(num)
     return rounded_num
 end
 
-randnum.prefixes = function(params, t_val)
-    if params.prerounding == "normal" then
-        t_val = round_normal(t_val)
-    elseif params.prerounding == "discrete" then
-        t_val = round_discrete(t_val)
-    elseif params.prerounding == "none" then
-        -- Don't do anything
-    -- Otherwise, there was a misspelling
-    else
-        error()
-    end
-    
-    return t_val
+local function round_pure_discrete(num)
+    return math.floor(num + 1 / 2)
 end
 
-randnum.fixes = function(params, new_val)
+randnum.fixes = function(params, val)
     -- Rounding first
     if params.rounding == "normal" then -- Default rounding value
-        new_val = round_normal(new_val)
+        val = round_normal(val)
     elseif params.rounding == "discrete" then
-        new_val = round_discrete(new_val)
+        val = round_discrete(val)
+    elseif params.rounding == "pure_discrete" then
+        val = round_pure_discrete(val)
     elseif params.rounding == "none" then
         -- Don't do anything
     -- Otherwise, there was a misspelling
@@ -159,14 +138,14 @@ randnum.fixes = function(params, new_val)
     end
 
     -- Assume abs_min and abs_max are rounded
-    if params.abs_min ~= "none" and new_val < params.abs_min then
-        new_val = params.abs_min
+    if params.abs_min ~= "none" and val < params.abs_min then
+        val = params.abs_min
     end
-    if params.abs_max ~= "none" and new_val > params.abs_max then
-        new_val = params.abs_max
+    if params.abs_max ~= "none" and val > params.abs_max then
+        val = params.abs_max
     end
 
-    return new_val
+    return val
 end
 
 -- (?) id - id of the randomization
@@ -175,8 +154,6 @@ end
 -- (?) tbl - the table whose property should be randomized
 -- (?) property - the property of the table to be randomized
 -- (?) dummy - the dummy value to be randomized, mandatory if prototype and tbl are nil
--- (?) transformer - the value is plugged into this before randomization
--- (?) untransformer - the randomized value is plugged into this to get the new value
 -- (?) abs_min
 -- (?) abs_max
 -- (?) range
@@ -185,7 +162,6 @@ end
 -- (?) variance
 -- (?) bias
 -- (?) dir - whether higher values make things "better" (+1) or "worse" (-1)
--- (?) prerounding
 -- (?) rounding
 randnum.rand = function(params)
     -- Fill in and compute values for params that are needed for randomization
@@ -196,7 +172,7 @@ randnum.rand = function(params)
         return params.val
     end
     
-    local tbl, property, key, real_bias, dir, t_val, soft_min, hard_min, soft_max, hard_max, step_size = params.tbl, params.property, params.key, params.real_bias, params.dir, params.t_val, params.soft_min, params.hard_min, params.soft_max, params.hard_max, params.step_size
+    local tbl, property, key, real_bias, dir, val, soft_min, hard_min, soft_max, hard_max, step_size = params.tbl, params.property, params.key, params.real_bias, params.dir, params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max, params.step_size
 
     -- Perform randomization
     for i = 1, constants.num_rolls do
@@ -208,31 +184,29 @@ randnum.rand = function(params)
         for j = 1, constants.steps_per_roll do
             local force = 0
 
-            if t_val < soft_min then
-                forces = 1 - (t_val - hard_min) / (soft_min - hard_min)
+            if val < soft_min then
+                forces = 1 - (val - hard_min) / (soft_min - hard_min)
             end
-            if t_val > soft_max then
-                forces = -1 + (hard_max - t_val) / (hard_max - hard_min)
+            if val > soft_max then
+                forces = -1 + (hard_max - val) / (hard_max - hard_min)
             end
 
-            t_val = t_val + constants.step_size_modifier * t_val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + force)
+            val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + force)
 
             -- Reset t_val if it passed hard_max or hard_min due to too high forces
-            if t_val > hard_max then
-                t_val = hard_max * 0.95 + hard_min * 0.05
+            if val > hard_max then
+                val = hard_max * 0.95 + hard_min * 0.05
             end
-            if t_val < hard_min then
-                t_val = hard_min * 0.95 + hard_max * 0.05
+            if val < hard_min then
+                val = hard_min * 0.95 + hard_max * 0.05
             end
         end
     end
 
-    t_val = randnum.prefixes(params, t_val)
-    local new_val = params.untransformer(t_val)
-    new_val = randnum.fixes(params, new_val)
+    val = randnum.fixes(params, val)
 
     -- Update with randomized value, and return this value
-    tbl[property] = new_val
+    tbl[property] = val
     return tbl[property]
 end
 

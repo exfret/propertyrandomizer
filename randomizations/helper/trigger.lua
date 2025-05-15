@@ -14,7 +14,11 @@ randomizations.trigger_effect_item = function(params, tbl, target)
     if tbl.type == "damage" and tbl.damage.amount < 0 and target == "healing" then
         params.tbl = tbl.damage
         params.property = "amount"
+        -- Make this positive temporarily so that it randomizes correctly
+        tbl.damage.amount = -tbl.damage.amount
         randomize(params)
+        -- Now revert back to negative
+        tbl.damage.amount = -tbl.damage.amount
     end
     if tbl.type == "damage" and tbl.damage.amount > 0 and target == "gather-damage" then
         table.insert(targets, tbl.damage)

@@ -242,12 +242,13 @@ local spec = {
             val = "more"
         }
     },
-    gun_movement_slowdown_factor = {
+    -- Broken without transformer now
+    --[[gun_movement_slowdown_factor = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     gun_range = {
         setting = {
             name = "propertyrandomizer-military",
