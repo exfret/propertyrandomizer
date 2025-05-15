@@ -12,6 +12,8 @@ WORKING ON:
 16. Work on recipe randomization more?
 17. Roboport input buffer recharge rate
 18. Clamp end result to the hard min/max range in case it escaped outside
+19. Why is supply area for electric poles only working for substations?
+20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
 
 DONE:
 9. Retrieve projectiles to randomize damage on those

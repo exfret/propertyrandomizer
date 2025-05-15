@@ -17,29 +17,12 @@ require("randomizations/master")
 -- Make dependency graph global
 --dep_graph = build_graph.graph
 
--- Make old_data a global
-old_data = table.deepcopy(data)
-
 -- Now randomize
 for id, to_perform in pairs(randomizations_to_perform) do
     if to_perform then
         randomizations[id](id)
     end
 end
-
-
-
-
---randomizations.all_names("all_names")
---randomizations.all_icons("all_icons")
---randomizations.recipe_order("recipe_order")
---randomizations.recipe_subgroup("recipe_subgroup")
---randomizations.all_sprites("all_sprites")
-
-
-
-
-
 
 -- Any fixes needed
 randomizations.fixes()

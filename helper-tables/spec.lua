@@ -321,12 +321,13 @@ local spec = {
             val = "more"
         }
     },
+    --[[ Currently somewhat broken, needs balancing
     module_effects = {
         setting = {
             name = "propertyrandomizer-production",
             val = "default"
         }
-    },
+    },]]
     machine_energy_usage = {
         setting = {
             name = "propertyrandomizer-production",
@@ -411,18 +412,6 @@ local spec = {
             val = "more"
         }
     },
-    rocket_parts_required = {
-        setting = {
-            name = "propertyrandomizer-production",
-            val = "more"
-        }
-    },
-    rocket_silo_launch_time = {
-        setting = {
-            name = "propertyrandomizer-misc",
-            val = "more"
-        }
-    },
     roboport_inventory = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -450,6 +439,18 @@ local spec = {
     roboport_logistic_radius = {
         setting = {
             name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    rocket_parts_required = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    rocket_silo_launch_time = {
+        setting = {
+            name = "propertyrandomizer-misc",
             val = "more"
         }
     },

@@ -1,6 +1,7 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local rng = require("lib/random/rng")
+local locale_utils = require("lib/locale")
 
 local randomize = randnum.rand
 
@@ -41,10 +42,18 @@ randomizations.ammo_damage = function(id)
     -- Randomize within ammo categories
     for _, ammo_category in pairs(data.raw["ammo-category"]) do
         local tbls = {}
+        local ammo_to_old_damage = {}
 
         for _, ammo in pairs(data.raw.ammo) do
             if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
-                get_targets(tbls, ammo.ammo_type.action)
+                ammo_to_old_damage[ammo.name] = 0
+                local new_targets = {}
+                get_targets(new_targets, ammo.ammo_type.action)
+                for _, new_target in pairs(new_targets) do
+                    -- Just add up damage amounts
+                    ammo_to_old_damage[ammo.name] = ammo_to_old_damage[ammo.name] + new_target.amount
+                    table.insert(tbls, new_target)
+                end
             end
         end
 
@@ -55,6 +64,23 @@ randomizations.ammo_damage = function(id)
             range = "small",
             variance = "small"
         })
+
+        for _, ammo in pairs(data.raw.ammo) do
+            if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
+                -- Just get the targets/damage amounts again
+                local new_damage_amount = 0
+                local targets = {}
+                get_targets(targets, ammo.ammo_type.action)
+                for _, target in pairs(targets) do
+                    new_damage_amount = new_damage_amount + target.amount
+                end
+
+                -- Check that this ammo's damage wasn't 0 just in case it's some special action bullet
+                if ammo_to_old_damage[ammo.name] ~= 0 then
+                    ammo.localised_description = locale_utils.create_localised_description(ammo, new_damage_amount / ammo_to_old_damage[ammo.name], id)
+                end
+            end
+        end
     end
 end
 
@@ -62,6 +88,8 @@ randomizations.ammo_magazine_size = function(id)
     for _, ammo in pairs(data.raw.ammo) do
         -- Don't randomize magazine sizes of 1, they probably don't want to be randomized
         if ammo.magazine_size ~= nil and ammo.magazine_size > 1 then
+            local old_magazine_size = ammo.magazine_size
+
             randomize({
                 id = id,
                 prototype = ammo,
@@ -71,16 +99,19 @@ randomizations.ammo_magazine_size = function(id)
                 variance = "small",
                 rounding = "discrete"
             })
+
+            ammo.localised_description = locale_utils.create_localised_description(ammo, ammo.magazine_size / old_magazine_size, id)
         end
     end
 end
 
 randomizations.armor_inventory_bonus = function(id)
     local prototypes = {}
-
+    local armor_to_old_bonus = {}
     for _, armor in pairs(data.raw.armor) do
         if armor.inventory_size_bonus ~= nil and armor.inventory_size_bonus > 0 then
             table.insert(prototypes, armor)
+            armor_to_old_bonus[armor.name] = armor.inventory_size_bonus
         end
     end
 
@@ -89,6 +120,12 @@ randomizations.armor_inventory_bonus = function(id)
         prototypes = prototypes,
         property = "inventory_size_bonus"
     })
+
+    for _, armor in pairs(data.raw.armor) do
+        if armor.inventory_size_bonus ~= nil and armor.inventory_size_bonus > 0 then
+            armor.localised_description = locale_utils.create_localised_description(armor, armor.inventory_size_bonus / armor_to_old_bonus[armor.name], id)
+        end
+    end
 end
 
 -- New
@@ -131,6 +168,7 @@ randomizations.capsule_cooldown = function(id)
     end
 end
 
+-- TODO: Healing amount displayed? Agh
 randomizations.capsule_healing = function(id)
     for _, capsule in pairs(data.raw.capsule) do
         local capsule_action = capsule.capsule_action
@@ -156,7 +194,7 @@ randomizations.capsule_healing = function(id)
                                 end
 
                                 -- Multiply by negative one to make it positive for randomization
-                                sticker_prot.damage_per_tick = -sticker_prot.damage_per_tick
+                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
                                 randomize({
                                     id = id,
                                     prototype = sticker_prot,
@@ -165,7 +203,7 @@ randomizations.capsule_healing = function(id)
                                     rounding = "none"
                                 })
                                 -- Undo earlier multiplication by -1
-                                sticker_prot.damage_per_tick = -sticker_prot.damage_per_tick
+                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
                             end
                         end
                     end
@@ -181,6 +219,8 @@ randomizations.capsule_throw_range = function(id)
         if capsule_action.type == "throw" or capsule_action.type == "destroy-cliffs" then
             local attack_parameters = capsule_action.attack_parameters
 
+            local old_range = attack_parameters.range
+
             -- Note that radius visualization circle should be fixed
             -- If not, then yell at CodeGreen
             randomize({
@@ -189,6 +229,8 @@ randomizations.capsule_throw_range = function(id)
                 tbl = attack_parameters,
                 property = "range"
             })
+
+            capsule.localised_description = locale_utils.create_localised_description(capsule, attack_parameters.range / old_range, id)
         end
     end
 end
@@ -214,6 +256,8 @@ randomizations.gun_damage_modifier = function(id)
             attack_parameters.damage_modifier = 1
         end
 
+        local old_modifier = attack_parameters.damage_modifier
+
         randomize({
             id = id,
             prototype = gun,
@@ -221,6 +265,8 @@ randomizations.gun_damage_modifier = function(id)
             property = "damage_modifier",
             range_min = "small"
         })
+
+        gun.localised_description = locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id)
     end
 end
 
@@ -246,6 +292,8 @@ end
 
 randomizations.gun_range = function(id)
     for _, gun in pairs(data.raw.gun) do
+        local old_range = gun.attack_parameters.range
+
         randomize({
             id = id,
             prototype = gun,
@@ -254,19 +302,28 @@ randomizations.gun_range = function(id)
             range = "small",
             variance = "small"
         })
+
+        gun.localised_description = locale_utils.create_localised_description(gun, gun.attack_parameters.range / old_range, id)
     end
 end
 
 randomizations.gun_shooting_speed = function(id)
     for _, gun in pairs(data.raw.gun) do
+        local old_shooting_speed = 1 / gun.attack_parameters.cooldown
+
         randomize({
             id = id,
             prototype = gun,
             tbl = gun.attack_parameters,
             property = "cooldown",
-            rounding = "none",
-            dir = -1
+            range = "small",
+            variance = "small",
+            dir = -1,
+            rounding = "none"
         })
+
+        local new_shooting_speed = 1 / gun.attack_parameters.cooldown
+        gun.localised_description = locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id)
     end
 end
 
@@ -275,6 +332,8 @@ randomizations.item_fuel_value = function(id)
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if item.fuel_value ~= nil then
+                    local old_fuel_value = util.parse_energy(item.fuel_value)
+
                     randomizations.energy({
                         id = id,
                         prototype = item,
@@ -282,6 +341,8 @@ randomizations.item_fuel_value = function(id)
                         range = "small",
                         variance = "small"
                     })
+
+                    item.localised_description = locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
                 end
             end
         end
@@ -293,6 +354,8 @@ randomizations.item_stack_sizes = function(id)
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if item.stack_size ~= nil and item.stack_size > 1 then
+                    local old_stack_size = item.stack_size
+
                     randomize({
                         id = id,
                         prototype = item,
@@ -303,15 +366,18 @@ randomizations.item_stack_sizes = function(id)
                         bias = 0.1,
                         rounding = "discrete"
                     })
+
+                    item.localised_description = locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
                 end
             end
         end
     end
 end
 
+-- TODO: Make work with negatives!
 randomizations.module_effects = function(id)
     local cat_to_modules = {}
-
+    local module_to_old_effects = {}
     for _, module in pairs(data.raw.module) do
         -- Populate effects
         local effects = {
@@ -327,6 +393,8 @@ randomizations.module_effects = function(id)
                 module.effect[effect] = 0
             end
         end
+
+        module_to_old_effects[module.name] = table.deepcopy(module.effect)
 
         randomize({
             id = id,
@@ -406,17 +474,20 @@ randomizations.module_effects = function(id)
         local sorted_effects = table.deepcopy(module_tbl)
         table.sort(sorted_effects, sort_modules_property)
 
-        for _, module in pairs(sorted_tiers) do
-            log(module.name)
-        end
-        for _, module in pairs(sorted_effects) do
-            log(module.name)
-        end
-        log("")
-
         for ind, module in pairs(sorted_tiers) do
             -- Need to go into data.raw here because sorted_tiers is a deep clone
             data.raw.module[module.name].effect[prop_to_use] = sorted_effects[ind].effect[prop_to_use]
+        end
+    end
+
+    -- Update localised_description
+    for _, module in pairs(data.raw.module) do
+        for effect_name, effect_val in pairs(module.effect) do
+            local flipped = false
+            if effect_name == "consumption" or effect_name == "pollution" then
+                flipped = true
+            end
+            module.localised_description = locale_utils.create_localised_description(module, 1 + effect_val - module_to_old_effects[module.name][effect_name], id, {addons = " " .. effect_name .. " (additive)", flipped = flipped})
         end
     end
 end

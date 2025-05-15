@@ -1,5 +1,6 @@
 local randnum = require("lib/random/randnum")
 local rng = require("lib/random/rng")
+local locale_utils = require("lib/locale")
 local reformat = require("lib/reformat")
 
 local randomize = randnum.rand
@@ -129,6 +130,9 @@ randomizations.unit_sizes = function(id)
             unit.max_health = unit.max_health * math.pow(factor, 1 / 3)
             -- And range
             unit.attack_parameters.range = unit.attack_parameters.range * math.pow(factor, 1 / 3)
+
+            -- Localised description
+            unit.localised_description = locale_utils.create_localised_description(unit, factor, id)
         end
     end
 end

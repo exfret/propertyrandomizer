@@ -1,5 +1,6 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
+local locale_utils = require("lib/locale")
 
 local randomize = randnum.rand
 
@@ -53,6 +54,7 @@ randomizations.equipment_battery_buffer = function(id)
         if equipment.energy_source.buffer_capacity ~= nil then
             table.insert(battery_equipments, equipment)
             equipment.buffer_capacity_as_num = util.parse_energy(equipment.energy_source.buffer_capacity)
+            equipment.old_buffer_capacity_as_num = equipment.buffer_capacity_as_num
         end
     end
 
@@ -66,7 +68,11 @@ randomizations.equipment_battery_buffer = function(id)
 
     for _, equipment in pairs(battery_equipments) do
         equipment.energy_source.buffer_capacity = equipment.buffer_capacity_as_num .. "J"
+
+        equipment.localised_description = locale_utils.create_localised_description(equipment, equipment.buffer_capacity_as_num / equipment.old_buffer_capacity_as_num, id)
+
         equipment.buffer_capacity_as_num = nil
+        equipment.old_buffer_capacity_as_num = nil
     end
 end
 
@@ -130,7 +136,8 @@ randomizations.equipment_energy_usage = function(id)
                 is_power = ind_to_is_power[1],
                 id = id,
                 prototype = equipment,
-                property = energy_properties[1]
+                property = energy_properties[1],
+                dir = -1
             })
 
             local new_first_energy_val = util.parse_energy(equipment[energy_properties[1]])
@@ -146,6 +153,8 @@ randomizations.equipment_energy_usage = function(id)
                 curr_energy_val = curr_energy_val * new_first_energy_val / old_first_energy_val
                 equipment[energy_properties[i]] = curr_energy_val .. suffix
             end
+
+            equipment.localised_description = locale_utils.create_localised_description(equipment, new_first_energy_val / old_first_energy_val, id, {flipped = true})
         end
     end
 
@@ -154,12 +163,16 @@ randomizations.equipment_energy_usage = function(id)
         local attack_parameters = equipment.attack_parameters
         if attack_parameters.ammo_type ~= nil then
             if attack_parameters.ammo_type.energy_consumption ~= nil then
+                local old_energy_consumption = util.parse_energy(equipment.attack_parameters.ammo_type.energy_consumption)
+
                 randomizations.energy({
                     id = id,
                     prototype = equipment,
                     tbl = attack_parameters.ammo_type,
                     property = "energy_consumption"
                 })
+
+                equipment.localised_description = locale_utils.create_localised_description(equipment, util.parse_energy(equipment.attack_parameters.ammo_type.energy_consumption) / old_energy_consumption, id, {flipped = true})
             end
         end
     end
@@ -167,6 +180,8 @@ end
 
 randomizations.equipment_generator_power = function(id)
     for _, equipment in pairs(data.raw["generator-equipment"]) do
+        local old_power = util.parse_energy(equipment.power)
+
         randomizations.energy({
             is_power = true,
             id = id,
@@ -175,11 +190,15 @@ randomizations.equipment_generator_power = function(id)
             range = "small",
             variance = "small"
         })
+
+        equipment.localised_description = locale_utils.create_localised_description(equipment, util.parse_energy(equipment.power) / old_power, id)
     end
 end
 
 randomizations.equipment_movement_bonus = function(id)
     for _, equipment in pairs(data.raw["movement-bonus-equipment"]) do
+        local old_bonus = equipment.movement_bonus
+
         randomize({
             id = id,
             prototype = equipment,
@@ -187,11 +206,15 @@ randomizations.equipment_movement_bonus = function(id)
             range_min = "small",
             range_max = "big"
         })
+
+        equipment.localised_description = locale_utils.create_localised_description(equipment, equipment.movement_bonus / old_bonus, id)
     end
 end
 
 randomizations.equipment_personal_roboport_charging_speed = function(id)
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
+        local old_charging_rate = util.parse_energy(equipment.charging_energy)
+
         randomizations.energy({
             is_power = true,
             id = id,
@@ -200,6 +223,8 @@ randomizations.equipment_personal_roboport_charging_speed = function(id)
             range = "small",
             variance = "small"
         })
+
+        equipment.localised_description = locale_utils.create_localised_description(equipment, util.parse_energy(equipment.charging_energy) / old_charging_rate, id)
     end
 end
 
@@ -214,6 +239,8 @@ randomizations.equipment_personal_roboport_charging_station_count = function(id)
         end
 
         if equipment.charging_station_count ~= 0 then
+            local old_station_count = equipment.charging_station_count
+
             randomize({
                 id = id,
                 prototype = equipment,
@@ -224,14 +251,18 @@ randomizations.equipment_personal_roboport_charging_station_count = function(id)
                 variance = "small",
                 rounding = "discrete"
             })
+
+            equipment.localised_description = locale_utils.create_localised_description(equipment, equipment.charging_station_count / old_station_count, id)
         end
     end
 end
 
 randomizations.equipment_personal_roboport_construction_radius = function(id)
     local roboports = {}
+    local equipment_to_old_radius = {}
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
         table.insert(roboports, equipment)
+        equipment_to_old_radius[equipment.name] = equipment.construction_radius
     end
 
     randomizations.linked({
@@ -242,13 +273,19 @@ randomizations.equipment_personal_roboport_construction_radius = function(id)
         variance = "small",
         rounding = "discrete"
     })
+
+    for _, equipment in pairs(data.raw["roboport-equipment"]) do
+        equipment.localised_description = locale_utils.create_localised_description(equipment, equipment.construction_radius / equipment_to_old_radius[equipment.name], id)
+    end
 end
 
 randomizations.equipment_personal_roboport_max_robots = function(id)
     local roboports = {}
+    local equipment_to_old_max_robots = {}
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
         if equipment.robot_limit ~= nil then
             table.insert(roboports, equipment)
+            equipment_to_old_max_robots[equipment.name] = equipment.robot_limit
         end
     end
 
@@ -260,11 +297,17 @@ randomizations.equipment_personal_roboport_max_robots = function(id)
         variance = "small",
         rounding = "discrete"
     })
+
+    for _, equipment in pairs(data.raw["roboport-equipment"]) do
+        equipment.localised_description = locale_utils.create_localised_description(equipment, equipment.robot_limit / equipment_to_old_max_robots[equipment.name], id)
+    end
 end
 
 randomizations.equipment_solar_panel_production = function(id)
     for _, equipment in pairs(data.raw["solar-panel-equipment"]) do
         if equipment.power ~= nil then
+            local old_power = util.parse_energy(equipment.power)
+
             randomizations.energy({
                 is_power = true,
                 id = id,
@@ -273,6 +316,8 @@ randomizations.equipment_solar_panel_production = function(id)
                 range = "small",
                 variance = "small"
             })
+
+            equipment.localised_description = locale_utils.create_localised_description(equipment, util.parse_energy(equipment.power) / old_power, id)
         end
     end
 end

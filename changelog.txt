@@ -11,10 +11,12 @@ Date: ?
     - Went more in depth with some randomizations, like accounting for projectiles in ammo damage randomization
     - (Still being worked on) Many visual randomizatsion, like icon and locale randomization
     - (Still being worked on) Recipe randomization soon?
+    - Added an image gallery to the mod files with neat pictures of certain randomizations
+    - Information about randomization changes
   Changes:
     - The way mining drill offsets are chosen is changed
     - Removed achievement randomization since I could only get it to work in English and it was a massive pain
-    - Informatron was removed as a dependency
+    - Informatron removed as a dependency
     - Streamlined settings options
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.12

@@ -23,8 +23,8 @@ function locale_utils.find_localised_name(prototype)
         if prototype.localised_name ~= nil then
             return prototype.localised_name
         else
-            local base_class
             -- Find base class
+            local base_class
             for possible_base_class, lookup in pairs(defines.prototypes) do
                 if lookup[prototype.type] then
                     base_class = possible_base_class
@@ -152,6 +152,105 @@ function locale_utils.find_localised_name_technology(technology)
     end
 
     return {"technology-name." .. technology.name}
+end
+
+function locale_utils.find_localised_description(prototype, extra_params)
+    if extra_params == nil then
+        extra_params = {}
+    end
+
+    local with_newline = false
+    if extra_params.with_newline then
+        with_newline = true
+    end
+
+    if prototype.localised_description ~= nil then
+        if with_newline then
+            -- Add the newline
+            if type(prototype.localised_description) == "table" then
+                if prototype.localised_description[1] == "" then
+                    table.insert(prototype.localised_description, "\n")
+                    return prototype.localised_description
+                else
+                    return {"", prototype.localised_description, "\n"}
+                end
+            else
+                return prototype.localised_description .. "\n"
+            end
+        else
+            return prototype.localised_description
+        end
+    end
+
+    -- Find base class
+    local base_class
+    for possible_base_class, lookup in pairs(defines.prototypes) do
+        if lookup[prototype.type] then
+            base_class = possible_base_class
+        end
+    end
+
+    if with_newline then
+        return {"?", {"", {base_class .. "-description." .. prototype.name}, "\n"}, ""}
+    else
+        return {"?", {base_class .. "-description." .. prototype.name}, ""}
+    end
+end
+
+function locale_utils.create_tooltip(factor, extra_params)
+    -- Have percent_change be rounded
+    local percent_change = math.floor(100 * (factor - 1) + 0.5)
+    local color
+    if percent_change >= 100 then
+        if not extra_params.flipped then
+            color = "green"
+        else
+            color = "red"
+        end
+    elseif percent_change >= 30 then
+        if not extra_params.flipped then
+            color = "144,238,144"
+        else
+            color = "yellow"
+        end
+    elseif percent_change >= -30 then
+        color = "gray"
+    elseif percent_change >= -60 then
+        if not extra_params.flipped then
+            color = "yellow"
+        else
+            color = "144,238,144"
+        end
+    else
+        if not extra_params.flipped then
+            color = "red"
+        else
+            color = "green"
+        end
+    end
+    local sign_symbol = ""
+    if percent_change >= 0 then
+        sign_symbol = "+"
+    end
+    return "[color=" .. color .. "]" .. sign_symbol .. percent_change .. "%"
+end
+
+function locale_utils.create_localised_description(prototype, factor, id, extra_params)
+    if extra_params == nil then
+        extra_params = {}
+    end
+
+    local flipped = false
+    if extra_params.flipped then
+        flipped = true
+    end
+
+    local addons = ""
+    if extra_params.addons ~= nil then
+        addons = extra_params.addons
+    end
+
+    return {"", locale_utils.find_localised_description(prototype, {with_newline = true}), locale_utils.create_tooltip(factor, {flipped = flipped}), {"propertyrandomizer-tooltip." .. id}, addons .. "[/color]"}
 end
 
 function locale_utils.capitalize(str)

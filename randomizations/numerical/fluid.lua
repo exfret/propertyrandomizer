@@ -1,4 +1,5 @@
 local randnum = require("lib/random/randnum")
+local locale_utils = require("lib/locale")
 
 local randomize = randnum.rand
 
@@ -8,6 +9,8 @@ randomizations.fluid_emissions_multiplier = function(id)
             fluid.emissions_multiplier = 1
         end
 
+        local old_emissions_multiplier = fluid.emissions_multiplier
+
         randomize({
             id = id,
             prototype = fluid,
@@ -15,17 +18,23 @@ randomizations.fluid_emissions_multiplier = function(id)
             range = "small",
             variance = "small"
         })
+
+        fluid.localised_description = locale_utils.create_localised_description(fluid, fluid.emissions_multiplier / old_emissions_multiplier, id)
     end
 end
 
 randomizations.fluid_fuel_value = function(id)
     for _, fluid in pairs(data.raw.fluid) do
         if fluid.fuel_value ~= nil then
+            local old_fuel_value = util.parse_energy(fluid.fuel_value)
+
             randomizations.energy({
                 id = id,
                 prototype = fluid,
                 property = "fuel_value"
             })
+
+            fluid.localised_description = locale_utils.create_localised_description(fluid, util.parse_energy(fluid.fuel_value) / old_fuel_value, id)
         end
     end
 end
@@ -36,6 +45,8 @@ randomizations.fluid_heat_capacity = function(id)
             fluid.heat_capacity = "1kJ"
         end
 
+        local old_heat_capacity = util.parse_energy(fluid.heat_capacity)
+
         randomizations.energy({
             id = id,
             prototype = fluid,
@@ -43,5 +54,7 @@ randomizations.fluid_heat_capacity = function(id)
             range = "small",
             variance = "small"
         })
+
+        fluid.localised_description = locale_utils.create_localised_description(fluid, util.parse_energy(fluid.heat_capacity) / old_heat_capacity, id)
     end
 end
