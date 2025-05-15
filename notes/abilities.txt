@@ -1,0 +1,67 @@
+Extra "abilities" to randomize outside the classic recipe-tech paradigm
+
+Format:
+I. Ability to _____ (Descriptive name of the new unlock)
+    A. You can't _____ (More detail about what you can't do by default anymore)
+    B. This applies to... (What sorts of items/etc. the ability applies to)
+        1. If there is a list here, each entry is a single separate ability unless otherwise stated
+    C. (Optional) Notes
+
+When you try to do any of these abilities, you get some sort of unlock, like a recipe or another ability.
+For example, you could try putting down a pipe-to-ground and unlock the radar recipe.
+Of course, important things like "ability to place rails" would probably have some dupes.
+I also need to figure out if I want some way to inform players what placing a thing will do, but that's a later issue.
+
+I. Ability to place an entity
+    A. Attempting to place an entity unlocks something, then if you haven't unlocked that entity it either returns to inventory or drops on ground if it can't
+    B. For each of the following class of entities there is an unlock:
+        1. Pipe
+        2. Pipe-to-ground
+        3. Pump
+        4. Roboport
+        5. Concrete/hazard concrete (one unlock)
+        6. Refined concrete/hazard concrete (one unlock)
+        7. Solar panels
+        8. Accumulators
+        9. Steel furnaces
+        10. Electric furnaces
+        11. Assembling machines 3
+        12. Beacons
+        13. Rocket silo
+        14. Walls/gates
+        15. Radars
+        16. Landmines
+        17. Laser turrets
+        18. Flamethrower turrets
+        19. Artillery of any type (including wagon)
+II. Ability to place or rotate an entity in a certain direction
+    A. Attempting to place/rotate/flip an entity to an invalid direction instead rotates it until it is facing a valid direction
+    B. At the start, you don't have...
+        1. Horizontality for belts (must be unlocked per-belt-tier, unlocks are coded so that the first tier/yellows unlocks first, then second/reds, and so on)
+        2. Verticality for inserters (must be unlocked per-inserter, unlocks can be in any order)
+    C. To be less obnoxious, you only have to put the entity down at all to get its unlock, rather than having to rotate it the right direction as well
+III. Ability to place gun turrets near spawners
+    A. Instead, they explode
+    B. This is just one unlock for all turrets
+    C. To get an unlock, you can simply walk close enough to a spawner
+IV. Ability to mine fish
+    A. Mining a fish in water simply puts it back (and triggers an unlock), at least until you unlock the ability to mine them
+    B. Just one unlock for fish
+V. Ability to use certain consumable items
+    A. Using certain items, like grenades, instead does nothing and gives you an unlock
+    B. Applies to (one unlock for each entry)...
+        1. Grenades
+        2. Cluster grenades
+        3. Poison capsules
+        4. Slowdown capsules
+        5. Defender capsules
+        6. Distractor capsules
+        7. Destroyer capsules
+VI. Ability to remove trees/rocks
+    A. Mining a tree or rock still gives the materials, but leaves a dud tree or rock that gives nothing unless you have the ability to mine trees or rocks
+    B. There is a separate unlock for...
+        1. Trees
+        2. Rocks
+
+Planned/thoughts
+1. Integrate an inserter configuration mod so I can do more silly stuff

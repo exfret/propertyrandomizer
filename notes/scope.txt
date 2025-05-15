@@ -1,0 +1,42 @@
+Priorities:
+
+----------------------------------------------------------------------------------------------------
+1. Implement high-priority randomizations
+2. User experience
+	a. Add progression to property randomization (i.e.- later machines being better)
+	b. Include original values in description or factoriopedia entries
+	c. Slight mod compatibility (randomize mods separately for stability)
+	d. Basic customization
+3. Playtesting (round 1)
+	a. Do my own playtesting
+	a. Also ask for playtesting from others
+----------------------------------------------------------------------------------------------------
+4. Duplicates
+5. Medium-priority randomizations
+6. Low-priority randomizations
+7. Playtesting (round 2)
+----------------------------------------------------------------------------------------------------
+
+What will NOT be included in next version:
+
+* Space Age support
+* Overhaul mod compatibility
+* Fancy customization (no spreadsheet)
+* Extra options (like "chaos mode")
+* Ability-based randomization (for now)
+
+High priority randomizations:
+
+1. Recipes
+2. Technology tree
+3. Properties (Stage 1)
+
+Medium priority randomizations:
+
+1. Recipe unlocks
+2. Crafting categories
+3. Properties (Stage 2)
+
+Low priority randomizations:
+
+1. Properties (Stage 3)

@@ -1,0 +1,26 @@
+Stage 1 (High priority)
+
+1. Accumulators
+    a. Input/output rates and buffer amount
+2. Boiler consumption
+3. Steam engine consumption
+4. Reactor consumption
+5. Solar panel production
+6. General machine energy usage
+    a. Include inserters, turrets
+7. General equipment energy usage
+8. Item fuel values
+9. Bot energy usage
+10. Beacon supply area
+11. Beacon distribution effectivity
+12. Belt speeds
+13. Bot speeds
+14. Car turning radius
+15. Crafting machine speed
+    a. Scale other stats at once
+16. Electric pole supply area/reach distance
+TODO
+
+Stage 2 (Medium priority)
+
+1. 

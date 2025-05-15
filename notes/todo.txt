@@ -1,0 +1,25 @@
+WORKING ON:
+ - Testing property randomizations
+
+2. Check that only allowed settings are passed into randnum
+3. Rounding after rescalings
+8. Blacklists?
+10. Beacon profiles?
+11. Whether to randomize radar ranges of roboports/cargo landing pads along with radar range randomization?
+12. Combat robot damage?
+13. Evolution levels?
+15. Worm sticker slowdown and yumako speedup (separate?)
+16. Work on recipe randomization more?
+17. Roboport input buffer recharge rate
+18. Clamp end result to the hard min/max range in case it escaped outside
+
+DONE:
+9. Retrieve projectiles to randomize damage on those
+7. Pollutant types for pollution randomization
+5. Finish linked randomization on certain randomizations that I need to finish it on
+4. Round cooldowns correctly (need to specify rounding none property as well)
+1. Check over balancing params again
+6. Configuration code
+
+NO LONGER APPLICABLE:
+14. Maybe print a note about flib being required now?

@@ -1,0 +1,19 @@
+{
+	"name": "propertyrandomizer",
+	"version": "0.3.0",
+	"title": "exfret's randomizer",
+	"author": "exfret",
+	"factorio_version": "2.0",
+	"description": "Randomizes every aspect of the game, including recipes, technologies, machines, and more. Download for the ultimate randomization experience that will force you to think in different new ways!",
+	"dependencies": [
+		"base >= 2.0.0",
+		"(?) space-age",
+		"(?) all-the-overhaul-modpack",
+		"(?) angelssmelting",
+		"(?) even-distribution",
+		"(?) galdocs-manufacturing",
+		"(?) pypostprocessing",
+		"(?) space-exploration-postprocess",
+		"(?) ZRecipeRandomizer"
+	]
+}

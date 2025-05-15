@@ -1,0 +1,488 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.3.0
+Date: ?
+  Features:
+    - Port to 2.0 with complete rewrite from scratch
+    - New and improved numerical randomization algorithm
+    - Unit size randomization - the biters have learned a thing or too from the cliffs about changing their size
+    - Upgrade line preservation for power poles, assembling machines, transport belts, modules, and more
+    - (Still being worked on) Fluids must flow, and so must the fluid boxes (note: Will be finished in the next update probably)
+    - (Still being worked on) Attempt at reasonably randomizing beacon efficiency profiles (note: Will be finished in the next update probably)
+    - Went more in depth with some randomizations, like accounting for projectiles in ammo damage randomization
+    - (Still being worked on) Many visual randomizatsion, like icon and locale randomization
+    - (Still being worked on) Recipe randomization soon?
+  Changes:
+    - The way mining drill offsets are chosen is changed
+    - Removed achievement randomization since I could only get it to work in English and it was a massive pain
+    - Informatron was removed as a dependency
+    - Streamlined settings options
+---------------------------------------------------------------------------------------------------
+Version: 0.2.12
+Date: 2024.07.01
+  Features:
+    - Finished tech randomization!
+  Bugfixes:
+    - Fixed chaos/bias dropdowns not being implemented yet
+---------------------------------------------------------------------------------------------------
+Version: 0.2.11
+Date: 2024.05.28
+  Features:
+    - Added more information to the luck breakdown (just a little bit)
+    - Randomized armor inventory size bonus (if randomize storage is checked)
+    - Randomized some other misc. small properties
+  Changes:
+    - Some randomization settings are now dropdowns
+    - Upgrade line randomization is off by default now due to incompatibility issues that I have yet to fix
+  Bugfixes:
+    - Possibly fixed bug with crash when a resistance's decrease is nil
+    - Possibly fixed bug causing negative crafting speeds with QOL research installed
+    - Fixed compatibility bug with Shield Projectors
+    - Fixed a missing case for upgrade line randomization causing startup errors with some mods
+    - Fixed informatron entries disappearing on save and load (also should fix a desync)
+---------------------------------------------------------------------------------------------------
+Version: 0.2.10
+Date: 2024.04.30
+  Features:
+    - Added upgrade line preservation option (on by default)
+    - Added a couple informatron entries for how you rolled on select things
+    - Randomized more equipment properties
+    - Randomized some miscellaneous things
+    - Randomized ammo damage again
+  Changes:
+    - Reorganized and removed some settings
+  Bugfixes:
+    - Types randomization was missing a "for" loop and therefore didn't randomize some things
+    - Lots of misc. cleanup to overseen edge cases in randomizations
+---------------------------------------------------------------------------------------------------
+Version: 0.2.9
+Date: 2024.04.22
+  Features:
+    - Custom randomization with override settings; You can now pick and choose from among almost 100 different individual randomizations, with more on the way!
+    - Randomized rocket launch times (a misc. feature)
+    - Randomized a couple equipment properties I hadn't touched yet
+    - Randomized underground pipe length (I hadn't done that yet!)
+    - Randomized achievements (a misc. feature)
+    - Randomized rocket parts required for the rocket (on with the "production" setting)
+    - Note that many randomizations may not yet be ported over to the new refactored code; they will be added back in the next version
+  Changes:
+    - Updated the description
+  Organization:
+    - Refactored a good chunk of the mod to allow for more easily randomizing with a prototype-first method rather than property-first
+    - The refactoring will, if anything, probably end up in more errors in the short term, but in the long term development of the mod should be much better
+  Balancing:
+    - Tile walking speed modifier is less random for tiles that don't normally have a modifier
+    - Random crafting/running speeds are now rolled with a simpler, more balanced formula
+    - Tweaked the lower/upper limits to be larger on several properties to allow more random experiences
+    - Increased the maximum/minimum internal bias
+  Bugfixes:
+    - Fixed that belt sync would still occur even if the option wasn't checked
+    - Beacons were previously lower-bounded by a supply area of radius 3 rather than 1 due to a misunderstanding of what the supply area distance represented
+    - Randomizations were not applied for values exactly at the minimum permissible
+    - Fixed typo that would cause greater than intended swinginess with higher chaos factor
+---------------------------------------------------------------------------------------------------
+Version: 0.2.8
+Date: 2024.03.19
+  Features:
+    - Randomized turret properties
+    - Randomized landmine properties
+    - Randomized tree/rock product amounts
+    - Randomized various "sticker" effects, like the slowing effect of worms
+  Balancing:
+    - Min tile walk speed modifier is now 80% after miserable experiences during testing
+    - Some limits on how crazy equipment-related things can get
+    - Electric pole wire distance must now be at least as large as supply area
+    - Allowed for larger internal bias
+  Bugfixes:
+    - Fixed that some "everything else" properties were on just always
+---------------------------------------------------------------------------------------------------
+Version: 0.2.7
+Date: 2024.03.14
+  Features:
+    - Got important progress on tech tree and unlock randomizations
+    - Ammo reload time is now randomized to be between its old value and half of its old value doubled, thanks sassxolotl! (Sorry, this is an inside joke).
+    - When "the rest" is checked, icon shifts are randomized
+  Changes:
+    - Some bonuses for being a burner energy source will be removed in future versions
+    - Electric poles will no longer be distance-based randomized in a future version
+    - Roboport logistic connection distance will no longer be hard-linked to logistic area in the future
+    - Made rounding mode hidden for now while it's broken
+    - Made all mins/max's "soft" in the sense that they won't change properties that were already smaller/larger
+  Organization:
+    - Started reorganizing code completely with prototype-focused randomization rather than property-focused
+  Balancing:
+    - Added more limits on stack sizes and a lot of other properties
+    - Removed lab research speed penalty
+    - Made split bias modifier based on chaos factor
+    - Capped how biased things can be
+    - Made some walk_params values closer to 0.5
+    - It's now enforced that the inserter and burner inserter can't both be useless
+  Bugfixes:
+    - Fixed labs not having module slots
+    - Fixed bug where points in space randomization applied property fixes to points themselves rather than their coordinates
+    - A lot of properties were randomized in the wrong direction (i.e.- randomized to "good" with a "bad" bias and vice versa
+---------------------------------------------------------------------------------------------------
+Version: 0.2.6
+Date: 2024.03.08
+  Changes:
+    - After recent updates, I no longer recommend updating this mod mid-run, so I added a message not to do so
+    - Made some power properties randomized to be more forgiving
+    - Made the setting bias additive with pre-defined biases
+    - Made autoplace settings for randomized map preset more forgiving
+  Bugfixes:
+    - Clamping from last version was too extreme in some cases, leading to things getting needlessly randomized differently
+---------------------------------------------------------------------------------------------------
+Version: 0.2.5
+Date: 2024.03.04
+  Balancing:
+    - Clamped property changes so they wouldn't be too large at once
+    - Only randomized magazine sizes with a base size of at least 1, also removed negative bias on magazine size
+  Bugfixes:
+    - Tech costs now are randomized in the right direction - they used to be more expensive on higher biases rather than less expensive
+    - Cliff sizes are also in the right direction - they used to be bigger on higher biases rather than smaller
+    - Typo where I tested for the "not_stackable" flag rather than the "not-stackable" flag
+---------------------------------------------------------------------------------------------------
+Version: 0.2.4
+Date: 2024.03.03
+  Changes:
+    - Made min/max setting values for bias and chaos tighter
+    - Made dependencies hidden
+  Balancing:
+    - Repair speeds are less swingy now when enabled
+    - Pump pumping speed never goes below 100 now
+  Bugfixes:
+    - Fixed that inserter extension speed was sometimes randomized to smaller than the minimum factorio distance per tick
+    - Fixed that things could get "rounded" to zero
+    - Added reasonable minimum values to many things
+---------------------------------------------------------------------------------------------------
+Version: 0.2.3
+Date: 2024.03.02
+  Bugfixes:
+    - Fixed some issues with the settings that I didn't do correctly last update
+    - Apparently the entire mod didn't work, so yeah
+---------------------------------------------------------------------------------------------------
+Version: 0.2.2
+Date: 2024.03.02
+  Major Features:
+    - I don't think I will use this in the future; just a note
+  Features:
+    - Put a features category here so I know where it goes in changelog lists
+  Minor Features:
+    - I don't think I will use this in the future; just a note
+  Changes:
+    - You can now disable mining offset randomization as a separate option again
+    - Mining offsets and inserter offsets are turned off by default, so is entity size randomization
+  Organization:
+    - Made a changelog entry with all the different changelog categories I want to use in order so I don't keep forgetting
+    - Started to separate out randomization functions more (changed a lot of code)
+  Balancing:
+    - Put a balancing category here so I know where it goes in changelog lists
+  Bugfixes:
+    - Put a bugfixes category here so I know where it goes in changelog lists
+---------------------------------------------------------------------------------------------------
+Version: 0.2.1
+Date: 2024.01.30
+  Bugfixes:
+    - Fixed a bug that the mod wouldn't work... oops
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+Date: 2024.01.23
+  Features:
+    - Added ability to change the "chaos" factor in settings (how randomized things get)
+    - Brought back the randomized map preset :)
+    - Randomize radar properties (done if "logistics" randomization is checked)
+  Minor Features:
+    - Added electric pole parity checking back in
+  Changes:
+    - Removed dependency on big data string
+    - Removed dependency on informatron
+---------------------------------------------------------------------------------------------------
+Version: 0.1.12
+Date: 2023.11.16
+  Major Features:
+    - Recipe randomization is almost in a state for an alpha release
+  Features:
+    - You can now set "bias" to make your game more/less in your favor
+    - Started work on some informatron entries
+    - Added some compatibility with Space Exploration via blacklisting some randomizations that were causing problems
+  Minor Features:
+    - You can now randomize the map colors
+    - The way running/crafting speed randomization is presented in chat is now rounded
+  Changes:
+    - Removed "beta version" from mod name (it'll always be in beta basically and it doesn't deserve to be in the name)
+    - Reorganized settings
+    - Inserter pickup/dropoff location randomization is now on by default
+    - Cliff/entity size randomization is now on by default
+    - Character values changing midgame is now on by default
+  Balancing:
+    - Made it less likely for properties to be randomized to the same value
+  Bugfixes:
+    - Randomized cliff picture sizes correctly even when they're defined with a different tabular structure than vanilla
+    - Fixed inserter rotation speeds not being randomized last version
+---------------------------------------------------------------------------------------------------
+Version: 0.1.11
+Date: 2023.11.02
+  Features:
+    - Ability to randomize icons
+    - More work on recipe randomization, stay tuned :)
+    - Finally added a setting allowing the randomization of sounds (it was a secret feature before)
+  Bugfixes:
+    - Set minimum boiler temperatures to 110 (may create mod incompatibilities)
+---------------------------------------------------------------------------------------------------
+Version: 0.1.10
+Date: 2023.06.01
+  Features:
+    - Lots of work on recipe randomization, will be released in quite a while though! :)
+  Minor Features:
+    - Cliff sizes are now randomized
+---------------------------------------------------------------------------------------------------
+Version: 0.1.9
+Date: 2023.01.01
+  Features:
+    - Added bullet damage randomization properly
+    - Randomized map feature should now be completed (cliff autoplace and moisture randomization added)
+    - Added crafting machine productivity
+  Minor Features:
+    - Distance-based randomization now uses rounding/property info fixes (so electric pole wire reach is rounded again)
+  Bugfixes:
+    - Fixed evolution parameters on the random map setting
+---------------------------------------------------------------------------------------------------
+Version: 0.1.8
+Date: 2022.12.15
+  Features:
+    - Added "sync belt tiers" option to make all belts from the same tier the same speed
+    - Ability to randomize storage tank capacity and pump speed
+    - Randomized tile walking speeds in a better manner
+  Minor Features:
+    - Electric poles now use the new distance-based randomization
+  Organization:
+    - Started the groundwork for recipe randomization
+---------------------------------------------------------------------------------------------------
+Version: 0.1.7
+Date: 2022.07.14
+  Features:
+    - Separated out some settings so that things can be customized more
+    - Randomized some gun properties
+  Organization:
+    - Started the groundwork for the new distance-based randomization
+  Balancing:
+    - Lab research speeds are now better on average than they were before, and so are offshore pumping speeds
+    - Gates now have their approach distance modified by their opening speed (so that trains don't crash into them if they're too slow, at least not as often)
+---------------------------------------------------------------------------------------------------
+Version: 0.1.6
+Date: 2022.07.03
+  Bugfixes:
+    - Misc. bugfixes for compatibility with some mods
+    - Not really a problem on my end, but fixed compatibility with mods that wrote inventory sizes as strings rather than numbers
+    - Some other bugfixes not even related to mod compatibility that were just results of me being stupid
+---------------------------------------------------------------------------------------------------
+Version: 0.1.5
+Date: 2022.07.03
+  Features:
+    - Mining drill dropoff location for resources is now able to be randomized
+    - Added a thumbnail :)
+    - Randomized technology
+    - Electric poles that are placed in the center of a tile now have odd supply area, and those placed on tile intersections now have even supply area
+  Bugfixes:
+    - Removed some hiding leftover references to random_modifier()
+---------------------------------------------------------------------------------------------------
+Version: 0.1.4
+Date: 2022.06.29
+  Features:
+    - Introduced a separation mechanism for tiers of prototypes that distributes the entities farther apart
+    - Rounding should now be implemented for almost everything
+  Changes:
+    - Replaced some group randomizations with the new separation mechanism
+    - Hardlinked extension speed and rotation speed for inserters (no more inserters that take forever to extend but rotate almost instantly)
+  Balancing:
+    - Made item stack sizes lean more toward larger sizes, and made it so that stack size can't decrease below 2/5ths the original
+    - Gave a boost to burner machine speeds
+  Bugfixes:
+    - Removed rocket_result_inventory_size and furnace inventory size properties since they weren't exactly what I was looking for
+    - group_params now does final_fixes function correctly (before it wasn't passing the property info correctly)
+---------------------------------------------------------------------------------------------------
+Version: 0.1.3
+Date: 2022.06.26
+  Features:
+    - Implemented more rounding rules
+    - Added ability to randomize character crafting and running speeds midgame
+    - Added group armor resistance randomization (and group resistance randomization capabilities in general)
+    - Added group randomization for beacons and other things (too lazy to list all of them)
+  Minor Features:
+    - Added compatibility with abnormal inserter collision boxes (currently I just ignore these inserters)
+  Changes:
+    - Rounding no longer applies automatically to new randomizations
+    - Logistics radius and connection distance are now simultaneously randomized rather than the more contrived process I was using before
+    - Resistances are now only modified with a 1/10th chance
+    - Hid the armor resistance feature (too hard to balance for now)
+    - Electric pole wire reach is now set to be a little bigger than the supply area at a minimum
+  Organization:
+    - Separated out property info tables, prototype tables, inertia functions, and walk_params tables into their own new files
+  Balancing:
+    - Rebalanced electric poles to have lower variance and be slightly more generous toward the player (again)
+    - Bugs and other similar things have less swingy health randomization (before it was possible to just get mobbed by them)
+  Bugfixes:
+    - randomize_numerical_property now interacts with most of its params "by value" (this fixes a lot of bugs introduced by separating out the property tables)
+---------------------------------------------------------------------------------------------------
+Version: 0.1.2
+Date: 2022.06.18
+  Features:
+    - Added simultaneous randomization for assembly machines
+    - Added ability to find which prototypes are of the same "type" using next_upgrade
+    - Randomized mining drill base productivity
+    - Rounding is now present and configurable (though the rounding parameters haven't been fully set yet, so the way some things are rounded might not make sense)
+  Balancing:
+    - Made electric pole randomization more generous to the player
+  Bugfixes:
+    - Fixed issue with rounding not being applied
+---------------------------------------------------------------------------------------------------
+Version: 0.1.1
+Date: 2022.06.15
+  Features:
+    - Started work on Karma system code
+    - randomize_numerical_property now supports simultaneous randomization
+    - Added randomization for belts in groups
+  Organization:
+    - Added version control
+  Bugfixes:
+    - Corrected changelog from claiming the existence of a version 0.0.19
+---------------------------------------------------------------------------------------------------
+Version: 0.1.0
+Date: 2022.06.11
+  Features:
+    - Settings now have localised names/descriptions
+  Balancing:
+    - Made "end products" have swingier crafting time randomization than "intermediate products"
+---------------------------------------------------------------------------------------------------
+Version: 0.0.18
+Date: 2022.06.11
+  Bugfixes:
+    - Various hotfixes
+---------------------------------------------------------------------------------------------------
+Version: 0.0.17
+Date: 2022.06.08
+  Features:
+    - Added new settings for all the rest of the randomization options
+  Changes:
+    - Completely removed the old randomization algorithm
+    - Removed randomize_energy() and randomize_power()
+  Organization:
+    - Completely re-organized all the randomizer files
+    - Organized file system with new folders
+---------------------------------------------------------------------------------------------------
+Version: 0.0.16
+Date: 2022.06.07
+  Features:
+    - Randomized roboports with new randomization function
+    - Properly formatted changelog.txt
+  Changes:
+    - Changed the way parameters are passed to randomize_numerical_property
+  Balancing:
+    - Rebalanced electric pole randomization to be less swingy
+---------------------------------------------------------------------------------------------------
+Version: 0.0.15
+Date: 2022.06.05
+  Major Features:
+    - Different mod configurations won't change prototype randomizations for the most part
+---------------------------------------------------------------------------------------------------
+Version: 0.0.14
+Date: 2022.06.03
+  Features:
+    - Better randomization of various properties, now with customization settings as well
+    - Modules were randomized in a better way
+    - Randomized inventories more carefully
+  Minor Features:
+    - Randomized map preset is a little better and more complete now (still needs work to be playable)
+  Changes:
+    - Switched to a different random number generator than the built-in math.random one
+---------------------------------------------------------------------------------------------------
+Version: 0.0.13
+Date: 2022.06.01
+  Features:
+    - Started adding customization settings
+  Minor Features:
+    - Messed around with randomizing sounds
+  Organization:
+    - Regrouped some randomizations according to new customization settings
+---------------------------------------------------------------------------------------------------
+Version: 0.0.12
+Date: 2022.05.31
+  Changes:
+    - Started changing some entity properties to the new algorithm
+  Organization:
+    - Renamed util.lua to randomization-algorithms.lua (the name conflicted with factorio's core library)
+    - Reorganized functions (in particular, all of energy-randomizer.lua got a huge overhaul)
+---------------------------------------------------------------------------------------------------
+Version: 0.0.11
+Date: 2022.05.23
+  Major Features:
+    - Added new randomization function
+  Features:
+    - Randomized Types/Trigger and related things more
+  Organization:
+    - Refactoring
+---------------------------------------------------------------------------------------------------
+Version: 0.0.10
+Date: 2022.05.23
+  Features:
+    - Continued randomizing equipment
+    - Randomized equipment grids
+    - Started randomizing some inner property tables, like Type/Trigger
+---------------------------------------------------------------------------------------------------
+Version: 0.0.9
+Date: 2022.05.23
+  Features:
+    - Randomized items
+    - Randomized fluids
+---------------------------------------------------------------------------------------------------
+Version: 0.0.8
+Date: 2022.05.23
+  Features:
+    - Randomized even more entity properites (stopped at EnemySpawner)
+    - Randomized character properties (extreme mode only)
+    - Randomized what spawners spawn and when
+    - Randomized equipment
+---------------------------------------------------------------------------------------------------
+Version: 0.0.7
+Date: 2022.05.17
+  Features:
+    - Randomized a lot more entity properties
+---------------------------------------------------------------------------------------------------
+Version: 0.0.6
+Date: 2022.05.13
+  Features:
+    - Made map values randomized
+  Changes:
+    - Changed randomization algorithm to be less swingy
+  Bugfixes:
+    - Fixed energy modification bug
+---------------------------------------------------------------------------------------------------
+Version: 0.0.5
+Date: 2022.05.13
+  Features:
+    - Randomized energy values
+  Minor Features:
+    - Added a startup setting (currently does nothing)
+  Bugfixes:
+    - Misc. fixes
+---------------------------------------------------------------------------------------------------
+Version: 0.0.4
+Date: 2022.05.11
+  Features:
+    - Added randomization for many entity properties
+---------------------------------------------------------------------------------------------------
+Version: 0.0.3
+Date: 2022.05.11
+  Organization:
+    - Some refactoring
+---------------------------------------------------------------------------------------------------
+Version: 0.0.2
+Date: 2022.05.11
+  Minor Features:
+    - Added randomization for normal/expensive recipe variants
+  Organization:
+    - Refactored recipe randomization to its own file
+---------------------------------------------------------------------------------------------------
+Version: 0.0.1
+Date: 2022.05.10
+  Features:
+    - Added crafting time randomization
