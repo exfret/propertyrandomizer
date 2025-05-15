@@ -583,10 +583,6 @@ randomizations.recipe_ingredients = function(id)
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
-    for _, node in pairs(graph_sort) do
-        log(build_graph.key(node.type, node.name))
-    end
-
     log("Finding item/fluid indices")
 
     -- Find index for items/fluids in topological sort, so that we can prioritize later items/fluids in recipes

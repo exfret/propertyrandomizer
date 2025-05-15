@@ -1813,7 +1813,9 @@ for item_class, _ in pairs(defines.prototypes.item) do
             end
             ]]
 
-            add_to_graph("item", item.name, prereqs)
+            add_to_graph("item", item.name, prereqs, {
+                item = item
+            })
         end
     end
 end
@@ -2018,7 +2020,10 @@ for item_class, _ in pairs(defines.prototypes.item) do
                 end
                 ]]
 
-                add_to_graph("item-surface", compound_key({item.name, surface_name}), prereqs)
+                add_to_graph("item-surface", compound_key({item.name, surface_name}), prereqs, {
+                    item = item,
+                    surface = surface
+                })
             end
         end
     end

@@ -96,8 +96,13 @@ function locale_utils.find_localised_name_recipe(recipe)
             end
         end
 
-        return locale_utils.find_localised_name_item(prototype)
-    elseif recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].name == recipe.name then
+        if prototype ~= nil then
+            return locale_utils.find_localised_name_item(prototype)
+        else
+            -- In this case it's probably a fluid
+            return locale_utils.find_localised_name_item(data.raw.fluid[recipe.main_product])
+        end
+    elseif recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].name == recipe.name and recipe.results[1].type == "fluid" then
         local prototype
         
         if recipe.results[1].type == "item" then

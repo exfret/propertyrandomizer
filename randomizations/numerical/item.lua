@@ -361,8 +361,8 @@ randomizations.item_stack_sizes = function(id)
                         prototype = item,
                         property = "stack_size",
                         range_min = "small",
-                        range_max = "very_big",
-                        variance = "very_big",
+                        range_max = "big",
+                        variance = "big",
                         bias = 0.1,
                         rounding = "discrete"
                     })

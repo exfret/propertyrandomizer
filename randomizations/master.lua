@@ -11,6 +11,7 @@ log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
 if randomization_info.options.build_graph then
+    require("graph/item-minable")
     require("graph/item")
     require("graph/recipe")
 end
