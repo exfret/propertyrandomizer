@@ -460,6 +460,7 @@ end
 local prereqs
 
 -- agricultural-tower-surface
+log("Adding: agricultural-tower-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -480,6 +481,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- asteroid-collection-surface
+log("Adding: asteroid-collection-surface")
 -- Only implemented for space surfaces
 
 if data.raw.surface ~= nil then
@@ -506,6 +508,7 @@ if data.raw.surface ~= nil then
 end
 
 -- build-entity
+log("Adding: build-entity")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -525,6 +528,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- build-entity-item
+log("Adding: build-entity-item")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -550,6 +554,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- build-entity-surface
+log("Adding: build-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -598,6 +603,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- build-entity-surface-condition-false
+log("Adding: build-entity-surface-condition-false")
 -- OR
 
 prereqs = {}
@@ -605,6 +611,7 @@ prereqs = {}
 add_to_graph("build-entity-surface-condition-false", "canonical", prereqs)
 
 -- build-entity-surface-condition-true
+log("Adding: build-entity-surface-condition-true")
 -- AND
 
 prereqs = {}
@@ -612,6 +619,7 @@ prereqs = {}
 add_to_graph("build-entity-surface-condition-true", "canonical", prereqs)
 
 -- build-tile
+log("Adding: build-tile")
 
 for _, tile in pairs(data.raw.tile) do
     prereqs = {}
@@ -627,6 +635,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- build-tile-item-surface
+log("Adding: build-tile-item-surface")
 
 -- TODO: Put buildability check here as well
 -- TODO: Modify the spec to account for modification to this
@@ -653,6 +662,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- build-tile-item-surface-buildability
+log("Adding: build-tile-item-surface-buildability")
 
 -- Check actual tile conditions for a tile-item-surface combo
 -- TODO: Add this to the spec
@@ -661,28 +671,31 @@ for _, tile in pairs(data.raw.tile) do
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+                -- Fail early if this item doesn't have a place_as_tile with result equal to the tile
+                if item.place_as_tile ~= nil and item.place_as_tile.result == tile.name then
+                    for surface_name, surface in pairs(surfaces) do
+                        prereqs = {}
 
-                    if item.place_as_tile ~= nil then
-                        if item.place_as_tile.tile_condition ~= nil then
-                            for _, tile_id in pairs(item.place_as_tile.tile_condition) do
+                        if item.place_as_tile ~= nil then
+                            if item.place_as_tile.tile_condition ~= nil then
+                                for _, tile_id in pairs(item.place_as_tile.tile_condition) do
+                                    table.insert(prereqs, {
+                                        type = "spawn-tile-surface",
+                                        name = compound_key({tile_id, surface_name})
+                                    })
+                                end
+                            else
+                                -- If no condition just assume it's placeable for now
+                                -- TODO: Remove this assumption
                                 table.insert(prereqs, {
-                                    type = "spawn-tile-surface",
-                                    name = compound_key({tile_id, surface_name})
+                                    type = "build-entity-surface-condition-true",
+                                    name = "canonical"
                                 })
                             end
-                        else
-                            -- If no condition just assume it's placeable for now
-                            -- TODO: Remove this assumption
-                            table.insert(prereqs, {
-                                type = "build-entity-surface-condition-true",
-                                name = "canonical"
-                            })
                         end
-                    end
 
-                    add_to_graph("build-tile-item-surface-buildability", compound_key({tile.name, item.name, surface_name}), prereqs)
+                        add_to_graph("build-tile-item-surface-buildability", compound_key({tile.name, item.name, surface_name}), prereqs)
+                    end
                 end
             end
         end
@@ -690,25 +703,29 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- build-tile-item-surface-with-item
+log("Adding: build-tile-item-surface-with-item")
 
 -- TODO: Add this to the spec
 for _, tile in pairs(data.raw.tile) do
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+                -- Fail early if this item doesn't have a place_as_tile with result equal to the tile
+                if item.place_as_tile ~= nil and item.place_as_tile.result == tile.name then
+                    for surface_name, surface in pairs(surfaces) do
+                        prereqs = {}
 
-                    table.insert(prereqs, {
-                        type = "build-tile-item-surface-buildability",
-                        name = compound_key({tile.name, item.name, surface_name})
-                    })
-                    table.insert(prereqs, {
-                        type = "item-surface",
-                        name = compound_key({item.name, surface_name})
-                    })
+                        table.insert(prereqs, {
+                            type = "build-tile-item-surface-buildability",
+                            name = compound_key({tile.name, item.name, surface_name})
+                        })
+                        table.insert(prereqs, {
+                            type = "item-surface",
+                            name = compound_key({item.name, surface_name})
+                        })
 
-                    add_to_graph("build-tile-item-surface-with-item", compound_key({tile.name, item.name, surface_name}), prereqs)
+                        add_to_graph("build-tile-item-surface-with-item", compound_key({tile.name, item.name, surface_name}), prereqs)
+                    end
                 end
             end
         end
@@ -716,6 +733,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- build-tile-surface
+log("Adding: build-tile-surface")
 
 for _, tile in pairs(data.raw.tile) do
     for surface_name, surface in pairs(surfaces) do
@@ -741,6 +759,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- burn-item
+log("Adding: burn-item")
 
 -- TODO: Make this instead depend on burn-item-surface
 for item_class, _ in pairs(defines.prototypes.item) do
@@ -765,6 +784,7 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- burn-item-surface
+log("Adding: burn-item-surface")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
@@ -790,6 +810,7 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- capsule-surface
+log("Adding: capsule-surface")
 
 for _, capsule in pairs(data.raw.capsule) do
     for surface_name, surface in pairs(surfaces) do
@@ -811,6 +832,7 @@ for _, capsule in pairs(data.raw.capsule) do
 end
 
 -- capture-robot
+log("Adding: capture-robot")
 
 prereqs = {}
 
@@ -826,6 +848,7 @@ end
 add_to_graph("capture-robot", "canonical", prereqs)
 
 -- capture-spawner-surface
+log("Adding: capture-spawner-surface")
 
 for _, spawner in pairs(data.raw["unit-spawner"]) do
     for surface_name, surface in pairs(surfaces) do
@@ -847,6 +870,7 @@ for _, spawner in pairs(data.raw["unit-spawner"]) do
 end
 
 -- cargo-landing-pad-planet
+log("Adding: cargo-landing-pad-planet")
 
 for _, planet in pairs(data.raw.planet) do
     prereqs = {}
@@ -862,6 +886,7 @@ for _, planet in pairs(data.raw.planet) do
 end
 
 -- character
+log("Adding: character")
 
 for _, character in pairs(data.raw.character) do
     prereqs = {}
@@ -877,6 +902,7 @@ for _, character in pairs(data.raw.character) do
 end
 
 -- craft-material
+log("Adding: craft-material")
 
 for material_name, material in pairs(materials) do
     prereqs = {}
@@ -892,29 +918,36 @@ for material_name, material in pairs(materials) do
 end
 
 -- craft-material-surface
+log("Adding: craft-material-surface")
 
 for material_name, material in pairs(materials) do
+    -- Precompute recipes that result in this material for performance reasons
+    local recipes_resulting_in_this = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        local in_results = false
+
+        if recipe.results ~= nil then
+            for _, result in pairs(recipe.results) do
+                if result.type .. "-" .. result.name == material_name then
+                    in_results = true
+                end
+            end
+        end
+
+        -- Also check that this isn't an auto-generated recycling recipe since we don't want to rely on those for reachability
+        if in_results and not (recipe.category == "recycling" and (recipe.subgroup == nil or recipe.subgroup == "other")) then
+            table.insert(recipes_resulting_in_this, recipe)
+        end
+    end
+
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
 
-        for _, recipe in pairs(data.raw.recipe) do
-            local in_results = false
-
-            if recipe.results ~= nil then
-                for _, result in pairs(recipe.results) do
-                    if result.type .. "-" .. result.name == material_name then
-                        in_results = true
-                    end
-                end
-            end
-
-            -- Also check that this isn't an auto-generated recycling recipe since we don't want to rely on those for reachability
-            if in_results and not (recipe.category == "recycling" and (recipe.subgroup == nil or recipe.subgroup == "other")) then
-                table.insert(prereqs, {
-                    type = "recipe-surface",
-                    name = compound_key({recipe.name, surface_name})
-                })
-            end
+        for _, recipe in pairs(recipes_resulting_in_this) do
+            table.insert(prereqs, {
+                type = "recipe-surface",
+                name = compound_key({recipe.name, surface_name})
+            })
         end
 
         add_to_graph("craft-material-surface", compound_key({material_name, surface_name}), prereqs, {
@@ -924,6 +957,7 @@ for material_name, material in pairs(materials) do
 end
 
 -- create-fluid-offshore-surface
+log("Adding: create-fluid-offshore-surface")
 
 for _, pump in pairs(data.raw["offshore-pump"]) do
     for _, tile in pairs(data.raw.tile) do
@@ -955,6 +989,7 @@ for _, pump in pairs(data.raw["offshore-pump"]) do
 end
 
 -- create-fluid-surface
+log("Adding: create-fluid-surface")
 
 for _, fluid in pairs(data.raw.fluid) do
     for surface_name, surface in pairs(surfaces) do
@@ -1033,6 +1068,7 @@ for _, fluid in pairs(data.raw.fluid) do
 end
 
 -- create-space-platform
+log("Adding: create-space-platform")
 
 prereqs = {}
 
@@ -1048,6 +1084,7 @@ end
 add_to_graph("create-space-platform", "canonical", prereqs)
 
 -- create-space-platform-tech-unlock
+log("Adding: create-space-platform-tech-unlock")
 
 prereqs = {}
 
@@ -1073,6 +1110,7 @@ end
 add_to_graph("create-space-platform-tech-unlock", "canonical", prereqs)
 
 -- gun-ammo-surface
+log("Adding: gun-ammo-surface")
 
 -- TODO: Make this something other than just a source
 -- We're basically assuming here that the player can take down anything
@@ -1087,6 +1125,7 @@ table.insert(prereqs, {
 add_to_graph("gun-ammo-surface", "canonical", prereqs)
 
 -- electricity-distribution-surface
+log("Adding: electricity-distribution-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -1104,6 +1143,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- electricity-production-surface
+log("Adding: electricity-production-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -1155,6 +1195,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- electricity-surface
+log("Adding: electricity-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -1174,6 +1215,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- energy-source-surface
+log("Adding: energy-source-surface")
 
 -- We need a key showing which energy sources are "operation" sources rather than just "generation" sources
 local operation_energy_sources = {
@@ -1280,38 +1322,58 @@ for entity_class, properties in pairs(operation_energy_sources) do
 end
 
 -- entity-buildability-surface
+log("Adding: entity-buildability-surface")
+-- For optimization purposes, this only "checks" entities that appear buildable
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
         for _, entity in pairs(data.raw[entity_class]) do
+            -- Figure out if this is even buildable, if not don't evaluate prereqs
+            local is_buildable = false
+            for item_class, _ in pairs(defines.prototypes.item) do
+                if data.raw[item_class] ~= nil then
+                    for _, item in pairs(data.raw[item_class]) do
+                        if item.place_result == entity.name or item.plant_result == entity.name then
+                            is_buildable = true
+                            break
+                        end
+                    end
+                    if is_buildable then
+                        break
+                    end
+                end
+            end
+            
             for surface_name, surface in pairs(surfaces) do
                 prereqs = {}
 
-                for _, tile in pairs(data.raw.tile) do
-                    if not collision_mask_util.masks_collide(tile.collision_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity_class)) then
-                        local buildable_on_tile = true
+                if is_buildable then
+                    for _, tile in pairs(data.raw.tile) do
+                        if not collision_mask_util.masks_collide(tile.collision_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity_class)) then
+                            local buildable_on_tile = true
 
-                        -- Also check tile restrictions from autoplace, which apply to during the game as well for some reason
-                        if entity.autoplace ~= nil and entity.autoplace.tile_restriction ~= nil then
-                            buildable_on_tile = false
+                            -- Also check tile restrictions from autoplace, which apply to during the game as well for some reason
+                            if entity.autoplace ~= nil and entity.autoplace.tile_restriction ~= nil then
+                                buildable_on_tile = false
 
-                            for _, restriction in pairs(entity.autoplace.tile_restriction) do
-                                -- I'm not sure what exactly the two tile transition entries mean so I'm just going to ignore them
-                                if restriction == tile.name then
-                                    buildable_on_tile = true
+                                for _, restriction in pairs(entity.autoplace.tile_restriction) do
+                                    -- I'm not sure what exactly the two tile transition entries mean so I'm just going to ignore them
+                                    if restriction == tile.name then
+                                        buildable_on_tile = true
+                                    end
                                 end
                             end
-                        end
 
-                        -- TODO: Tile buildability rules?
-                        -- TODO: Manually account for entities with tile buildability rules... they're really intense
-                        -- Right now it's just 4 things (rail ramps, offshore pumps, thrusters, and asteroid collectors)
+                            -- TODO: Tile buildability rules?
+                            -- TODO: Manually account for entities with tile buildability rules... they're really intense
+                            -- Right now it's just 4 things (rail ramps, offshore pumps, thrusters, and asteroid collectors)
 
-                        if buildable_on_tile then
-                            table.insert(prereqs, {
-                                type = "spawn-tile-surface",
-                                name = compound_key({tile.name, surface_name})
-                            })
+                            if buildable_on_tile then
+                                table.insert(prereqs, {
+                                    type = "spawn-tile-surface",
+                                    name = compound_key({tile.name, surface_name})
+                                })
+                            end
                         end
                     end
                 end
@@ -1325,10 +1387,12 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- entity-operation-items
+log("Adding: entity-operation-items")
 
 -- TODO
 
 -- fluid
+log("Adding: fluid")
 
 for _, fluid in pairs(data.raw.fluid) do
     prereqs = {}
@@ -1344,6 +1408,7 @@ for _, fluid in pairs(data.raw.fluid) do
 end
 
 -- fluid-surface
+log("Adding: fluid-surface")
 
 for _, fluid in pairs(data.raw.fluid) do
     for surface_name, surface in pairs(surfaces) do
@@ -1365,6 +1430,7 @@ for _, fluid in pairs(data.raw.fluid) do
 end
 
 -- fuel-category
+log("Adding: fuel-category")
 
 -- TODO: Specialize into per-surface
 for _, fuel_category in pairs(data.raw["fuel-category"]) do
@@ -1387,6 +1453,7 @@ for _, fuel_category in pairs(data.raw["fuel-category"]) do
 end
 
 -- fuel-category-burner
+log("Adding: fuel-category-burner")
 
 -- TODO: Make this depend on fuel-category-burner-surface instead
 for _, fuel_category in pairs(data.raw["fuel-category"]) do
@@ -1422,6 +1489,7 @@ for _, fuel_category in pairs(data.raw["fuel-category"]) do
 end
 
 -- fuel-category-burner-surface
+log("Adding: fuel-category-surface")
 
 for _, fuel_category in pairs(data.raw["fuel-category"]) do
     for surface_name, surface in pairs(surfaces) do
@@ -1458,14 +1526,17 @@ for _, fuel_category in pairs(data.raw["fuel-category"]) do
 end
 
 -- gun-ammo-surface
+log("Adding: gun-ammo-surface")
 
 -- TODO
 
 -- gun-surface
+log("Adding: gun-surface")
 
 -- TODO
 
 -- heat-distribution-surface
+log("Adding: heat-distribution-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -1483,6 +1554,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- heat-production-surface
+log("Adding: heat-production-surface")
 
 local heat_producers = {
     ["reactor"] = true
@@ -1506,6 +1578,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- heat-surface
+log("Adding: heat-surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -1525,6 +1598,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- hold-fluid-surface
+log("Adding: hold-fluid-surface")
 
 for _, fluid in pairs(data.raw.fluid) do
     for surface_name, surface in pairs(surfaces) do
@@ -1549,6 +1623,7 @@ for _, fluid in pairs(data.raw.fluid) do
 end
 
 -- item
+log("Adding: item")
 
 -- TODO: Make depend on surface-specific node instead
 for item_class, _ in pairs(defines.prototypes.item) do
@@ -1732,10 +1807,61 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- item-surface
+log("Adding: item-surface")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
         for _, item in pairs(data.raw[item_class]) do
+            -- Precompute entities that give this when mined/looted for performance reasons
+            local give_when_mined = {}
+            local give_when_looted = {}
+
+            for entity_class, _ in pairs(defines.prototypes.entity) do
+                if data.raw[entity_class] ~= nil then
+                    for _, entity in pairs(data.raw[entity_class]) do
+                        if entity.minable ~= nil then
+                            local results_in_item = false
+
+                            if entity.minable.results ~= nil then
+                                for _, result in pairs(entity.minable.results) do
+                                    if result.type == "item" and result.name == item.name then
+                                        results_in_item = true
+                                    end
+                                end
+                            elseif entity.minable.result ~= nil then
+                                if entity.minable.result == item.name then
+                                    results_in_item = true
+                                end
+                            end
+
+                            if results_in_item then
+                                table.insert(give_when_mined, entity)
+                            end
+                        end
+                    end
+                end
+            end
+
+            for entity_class, _ in pairs(defines.prototypes.entity) do
+                if data.raw[entity_class] ~= nil then
+                    for _, entity in pairs(data.raw[entity_class]) do
+                        if entity.loot ~= nil then
+                            local is_loot_result = false
+
+                            for _, loot in pairs(entity.loot) do
+                                if loot.item == item.name then
+                                    is_loot_result = true
+                                end
+                            end
+
+                            if is_loot_result then
+                                table.insert(give_when_looted, entity)
+                            end
+                        end
+                    end
+                end
+            end
+
             for surface_name, surface in pairs(surfaces) do
                 prereqs = {}
 
@@ -1744,33 +1870,11 @@ for item_class, _ in pairs(defines.prototypes.item) do
                     name = compound_key({"item-" .. item.name, surface_name})
                 })
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.minable ~= nil then
-                                local results_in_item = false
-
-                                if entity.minable.results ~= nil then
-                                    for _, result in pairs(entity.minable.results) do
-                                        if result.type == "item" and result.name == item.name then
-                                            results_in_item = true
-                                        end
-                                    end
-                                elseif entity.minable.result ~= nil then
-                                    if entity.minable.result == item.name then
-                                        results_in_item = true
-                                    end
-                                end
-
-                                if results_in_item then
-                                    table.insert(prereqs, {
-                                        type = "mine-entity-surface",
-                                        name = compound_key({entity.name, surface_name})
-                                    })
-                                end
-                            end
-                        end
-                    end
+                for _, entity in pairs(give_when_mined) do
+                    table.insert(prereqs, {
+                        type = "mine-entity-surface",
+                        name = compound_key({entity.name, surface_name})
+                    })
                 end
 
                 for _, tile in pairs(data.raw.tile) do
@@ -1825,27 +1929,11 @@ for item_class, _ in pairs(defines.prototypes.item) do
                     end
                 end
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.loot ~= nil then
-                                local is_loot_result = false
-
-                                for _, loot in pairs(entity.loot) do
-                                    if loot.item == item.name then
-                                        is_loot_result = true
-                                    end
-                                end
-
-                                if is_loot_result then
-                                    table.insert(prereqs, {
-                                        type = "loot-entity-surface",
-                                        name = compound_key({entity.name, surface_name})
-                                    })
-                                end
-                            end
-                        end
-                    end
+                for _, entity in pairs(give_when_looted) do
+                    table.insert(prereqs, {
+                        type = "loot-entity-surface",
+                        name = compound_key({entity.name, surface_name})
+                    })
                 end
 
                 for item_class_2, _ in pairs(defines.prototypes.item) do
@@ -1925,10 +2013,12 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- item-insertion
+log("Adding: item-insertion")
 
 -- TODO
 
 -- loot-entity
+log("Adding: loot-entity")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -1950,6 +2040,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- loot-entity-surface
+log("Adding: loot-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -1973,6 +2064,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- mine-asteroid-chunk
+log("Adding: mine-asteroid-chunk")
 -- Only implemented for space surfaces
 
 for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
@@ -1991,6 +2083,7 @@ for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
 end
 
 -- mine-asteroid-chunk-surface
+log("Adding: mine-asteroid-chunk-surface")
 -- Only implemented for space surfaces
 
 for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
@@ -2013,6 +2106,7 @@ for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
 end
 
 -- mine-entity
+log("Adding: mine-entity")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2034,6 +2128,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- mine-entity-surface
+log("Adding: mine-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2076,6 +2171,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- mine-tile
+log("Adding: mine-tile")
 
 for _, tile in pairs(data.raw.tile) do
     prereqs = {}
@@ -2091,6 +2187,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- mine-tile-surface
+log("Adding: mine-tile-surface")
 
 for _, tile in pairs(data.raw.tile) do
     for surface_name, surface in pairs(surfaces) do
@@ -2110,6 +2207,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- mining-with-fluid-unlock
+log("Adding: mining-with-fluid-unlock")
 
 prereqs = {}
 
@@ -2135,6 +2233,7 @@ end
 add_to_graph("mining-with-fluid-unlock", "canonical", prereqs)
 
 -- operate-entity
+log("Adding: operate-entity")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2154,6 +2253,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- operate-entity-surface
+log("Adding: operate-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2235,6 +2335,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- operate-entity-surface-fluid
+log("Adding: operate-entity-surface-fluid")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2301,6 +2402,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- planet
+log("Adding: planet")
 
 for _, planet in pairs(data.raw.planet) do
     prereqs = {}
@@ -2320,6 +2422,7 @@ for _, planet in pairs(data.raw.planet) do
 end
 
 -- planet-launch
+log("Adding: planet-launch")
 
 for _, planet in pairs(data.raw.planet) do
     prereqs = {}
@@ -2337,6 +2440,7 @@ for _, planet in pairs(data.raw.planet) do
 end
 
 -- plant-entity-item
+log("Adding: plant-entity-item")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2362,6 +2466,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- plant-entity-surface
+log("Adding: plant-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2409,6 +2514,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- plant-entity-surface-automatability
+log("Adding: plant-entity-surface-automatability")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -2436,18 +2542,21 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- plant-entity-surface-condition-false
+log("Adding: plant-entity-surface-condition-false")
 
 prereqs = {}
 
 add_to_graph("plant-entity-surface-condition-false", "canonical", prereqs)
 
 -- plant-entity-surface-condition-true
+log("Adding: plant-entity-surface-condition-true")
 
 prereqs = {}
 
 add_to_graph("plant-entity-surface-condition-true", "canonical", prereqs)
 
 -- recipe
+log("Adding: recipe")
 
 for _, recipe in pairs(data.raw.recipe) do
     prereqs = {}
@@ -2463,6 +2572,7 @@ for _, recipe in pairs(data.raw.recipe) do
 end
 
 -- recipe-category
+log("Adding: recipe-category")
 
 for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
     prereqs = {}
@@ -2478,6 +2588,7 @@ for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) 
 end
 
 -- recipe-category-surface
+log("Adding: recipe-category-surface")
 
 for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
     for surface_name, surface in pairs(surfaces) do
@@ -2515,6 +2626,7 @@ for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) 
 end
 
 -- recipe-category-surface-automation
+log("Adding: recipe-category-surface-automation")
 
 for spoofed_category_name, spooofed_category in pairs(spoofed_recipe_categories) do
     for surface_name, surface in pairs(surfaces) do
@@ -2538,6 +2650,7 @@ for spoofed_category_name, spooofed_category in pairs(spoofed_recipe_categories)
 end
 
 -- recipe-surface
+log("Adding: recipe-surface")
 
 for _, recipe in pairs(data.raw.recipe) do
     for surface_name, surface in pairs(surfaces) do
@@ -2617,18 +2730,21 @@ for _, recipe in pairs(data.raw.recipe) do
 end
 
 -- recipe-surface-condition-false
+log("Adding: recipe-surface-condition-false")
 
 prereqs = {}
 
 add_to_graph("recipe-surface-condition-false", "canonical", prereqs)
 
 -- recipe-surface-condition-true
+log("Adding: recipe-surface-condition-true")
 
 prereqs = {}
 
 add_to_graph("recipe-surface-condition-true", "canonical", prereqs)
 
 -- recipe-tech-unlock
+log("Adding: recipe-tech-unlock")
 
 for _, recipe in pairs(data.raw.recipe) do
     prereqs = {}
@@ -2650,6 +2766,7 @@ for _, recipe in pairs(data.raw.recipe) do
 end
 
 -- resource-category
+log("Adding: resource-category")
 
 for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
     prereqs = {}
@@ -2665,6 +2782,7 @@ for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories
 end
 
 -- resource-category-surface
+log("Adding: resource-category-surface")
 
 -- TODO: Also split into automated and non-automated version
 for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
@@ -2737,6 +2855,7 @@ for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories
 end
 
 -- rocket-launch-planet
+log("Adding: rocket-launch-planet")
 
 for _, planet in pairs(data.raw.planet) do
     prereqs = {}
@@ -2757,6 +2876,7 @@ for _, planet in pairs(data.raw.planet) do
 end
 
 -- rocket-part-recipe-planet
+log("Adding: rocket-part-recipe-planet")
 
 for _, silo in pairs(data.raw["rocket-silo"]) do
     for _, recipe in pairs(data.raw.recipe) do
@@ -2779,6 +2899,7 @@ for _, silo in pairs(data.raw["rocket-silo"]) do
 end
 
 -- science-pack-set
+log("Adding: science-pack-set")
 
 for science_pack_set_name, science_pack_set in pairs(science_pack_sets) do
     prereqs = {}
@@ -2812,6 +2933,7 @@ for science_pack_set_name, science_pack_set in pairs(science_pack_sets) do
 end
 
 -- send-item-to-orbit
+log("Adding: send-item-to-orbit")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
@@ -2831,6 +2953,7 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- send-item-to-orbit-planet
+log("Adding: send-item-to-orbit-planet")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
@@ -2862,6 +2985,7 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- send-surface-starter-pack
+log("Adding: send-surface-starter-pack")
 
 -- Only for space surfaces
 if data.raw.surface ~= nil then
@@ -2880,6 +3004,7 @@ if data.raw.surface ~= nil then
 end
 
 -- send-surface-starter-pack-planet
+log("Adding: send-surface-starter-pack-planet")
 
 if data.raw.surface ~= nil then
     for _, surface in pairs(data.raw.surface) do
@@ -2901,6 +3026,7 @@ if data.raw.surface ~= nil then
 end
 
 -- space-connection
+log("Adding: space-connection")
 
 if data.raw["space-connection"] ~= nil then
     for _, space_connection in pairs(data.raw["space-connection"]) do
@@ -2924,6 +3050,7 @@ if data.raw["space-connection"] ~= nil then
 end
 
 -- space-location
+log("Adding: space-location")
 
 for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
     for _, space_location in pairs(data.raw[space_location_class]) do
@@ -2951,6 +3078,7 @@ for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
 end
 
 -- space-location-discovery
+log("Adding: space-location-discovery")
 
 for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
     for _, space_location in pairs(data.raw[space_location_class]) do
@@ -2980,6 +3108,7 @@ for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
 end
 
 -- space-surface
+log("Adding: space-surface")
 
 if data.raw.surface ~= nil then
     for _, surface in pairs(data.raw.surface) do
@@ -3000,6 +3129,7 @@ if data.raw.surface ~= nil then
 end
 
 -- spaceship
+log("Adding: spaceship")
 
 prereqs = {}
 
@@ -3015,6 +3145,7 @@ end
 add_to_graph("spaceship", "canonical", prereqs)
 
 -- spaceship-engine-surface
+log("Adding: spaceship-engine-surface")
 
 if data.raw.surface ~= nil then
     for _, surface in pairs(data.raw.surface) do
@@ -3034,6 +3165,7 @@ if data.raw.surface ~= nil then
 end
 
 -- spaceship-surface
+log("Adding: spaceship-surface")
 
 if data.raw.surface ~= nil then
     for _, surface in pairs(data.raw.surface) do
@@ -3053,6 +3185,7 @@ if data.raw.surface ~= nil then
 end
 
 -- spawn-asteroid-chunk
+log("Adding: spawn-asteroid-chunk")
 -- Only implemented for space locations, for whether they have asteroids
 
 for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
@@ -3079,6 +3212,7 @@ for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
 end
 
 -- spawn-entity
+log("Adding: spawn-entity")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -3098,6 +3232,7 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- spawn-entity-surface
+log("Adding: spawn-entity-surface")
 
 for entity_class, _ in pairs(defines.prototypes.entity) do
     if data.raw[entity_class] ~= nil then
@@ -3178,10 +3313,12 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
 end
 
 -- spawn-rail-surface
+log("Adding: spawn-rail-surface")
 
 -- TODO
 
 -- spawn-tile-surface
+log("Adding: spawn-tile-surface")
 
 for _, tile in pairs(data.raw.tile) do
     for surface_name, surface in pairs(surfaces) do
@@ -3234,6 +3371,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- spawner-capturability
+log("Adding: spawner-capturability")
 
 prereqs = {}
 
@@ -3249,22 +3387,26 @@ end
 add_to_graph("spawner-capturability", "canonical", prereqs)
 
 -- splitter
+log("Adding: splitter")
 
 -- TODO
 
 -- starting-character
+log("Adding: starting-character")
 
 prereqs = {}
 
 add_to_graph("starting-character", "canonical", prereqs)
 
 -- starting-planet
+log("Adding: starting-planet")
 
 prereqs = {}
 
 add_to_graph("starting-planet", "canonical", prereqs)
 
 -- surface
+log("Adding: surface")
 
 for surface_name, surface in pairs(surfaces) do
     prereqs = {}
@@ -3278,6 +3420,7 @@ for surface_name, surface in pairs(surfaces) do
 end
 
 -- technology
+log("Adding: technology")
 
 for _, tech in pairs(data.raw.technology) do
     prereqs = {}
@@ -3352,18 +3495,17 @@ for _, tech in pairs(data.raw.technology) do
 end
 
 -- transport-belt
+log("Adding: transport-belt")
 
 -- TODO
 
 -- transport-set
-
--- TODO
-
--- underground-belt
+log("Adding: transport-set")
 
 -- TODO
 
 -- transport-item
+log("Adding: transport-item")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
@@ -3397,6 +3539,7 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 -- transport-item-to-surface
+log("Adding: transport-item-to-surface")
 
 for item_class, _ in pairs(defines.prototypes.item) do
     if data.raw[item_class] ~= nil then
@@ -3425,7 +3568,13 @@ for item_class, _ in pairs(defines.prototypes.item) do
     end
 end
 
+-- underground-belt
+log("Adding: underground-belt")
+
+-- TODO
+
 -- valid-tile-placement-surface
+log("Adding: valid-tile-placement-surface")
 
 for _, tile in pairs(data.raw.tile) do
     for surface_name, surface in pairs(surfaces) do
@@ -3451,6 +3600,7 @@ for _, tile in pairs(data.raw.tile) do
 end
 
 -- void-energy
+log("Adding: void-energy")
 
 prereqs = {}
 
@@ -3576,6 +3726,7 @@ build_graph.ops = {
 -- Dependents
 ----------------------------------------------------------------------
 
+log("Adding dependents")
 for _, node in pairs(graph) do
     node.dependents = {}
 end
@@ -3596,5 +3747,7 @@ for _, node in pairs(graph) do
 end
 
 build_graph.graph = graph
+
+log("Finished building dependency graph")
 
 return build_graph
