@@ -3780,23 +3780,24 @@ build_graph.ops = {
 -- Dependents
 ----------------------------------------------------------------------
 
-log("Adding dependents")
-for _, node in pairs(graph) do
-    node.dependents = {}
-end
-for _, node in pairs(graph) do
-    for _, prereq in pairs(node.prereqs) do
-        -- If the prereq doesn't exist, log it
-        if graph[key(prereq.type, prereq.name)] == nil then
-            log(serpent.block(node))
-            log(serpent.block(prereq))
-            error()
-        end
+function build_graph.add_dependents(dep_graph)
+    for _, node in pairs(dep_graph) do
+        node.dependents = {}
+    end
+    for _, node in pairs(dep_graph) do
+        for _, prereq in pairs(node.prereqs) do
+            -- If the prereq doesn't exist, log it
+            if dep_graph[key(prereq.type, prereq.name)] == nil then
+                log(serpent.block(node))
+                log(serpent.block(prereq))
+                error()
+            end
 
-        table.insert(graph[key(prereq.type, prereq.name)].dependents, {
-            type = node.type,
-            name = node.name
-        })
+            table.insert(dep_graph[key(prereq.type, prereq.name)].dependents, {
+                type = node.type,
+                name = node.name
+            })
+        end
     end
 end
 

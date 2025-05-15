@@ -58,6 +58,9 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
                     table.insert(open, dependent_node)
                     in_open[dependent_key] = true
                 end
+            else
+                -- I misspelled something
+                error()
             end
         end
     end
@@ -101,6 +104,9 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
                         table.insert(open, dependent_node)
                     end
                 end
+            else
+                -- I misspelled something
+                error()
             end
         end
 

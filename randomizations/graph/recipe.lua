@@ -320,6 +320,16 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
     end
 
+    -- Special check for if there's only one item in a recipe
+    if #proposed_ings == 1 then
+        -- Always don't preserve resource costs in this case
+        -- TODO: Think about moving this single-ingredient check outside this function?
+        local optimization_info = optimize_single_ing(old_recipe_costs, material_to_costs, proposed_ings, 1, {dont_preserve_resource_costs = true})
+        
+        proposed_ings[1].amount = optimization_info.best_amount
+        return optimization_info.best_points
+    end
+
     -- First binary search as if this was the only ingredient for each ingredient
     -- Make sure to only allocate 1 / (3 * #proposed_ings) of the recipe cost to this ingredient
     local allocated_amounts = 1 / (3 * #proposed_ings)
@@ -634,7 +644,10 @@ randomizations.recipe_ingredients = function(id)
                             if not dont_randomize_ings[flow_cost.get_prot_id(prereq.ing)] then
                                 table.insert(shuffled_prereqs, prereq)
                                 -- Add in twice for flexibility in the algorithm
-                                table.insert(shuffled_prereqs, prereq)
+                                -- There's a 50% chance for this to happen, so that there's not too much clutter
+                                if rng.value(rng.key({id = id})) < 0.5 then
+                                    table.insert(shuffled_prereqs, prereq)
+                                end
                                 -- Add to blacklist
                                 blacklist[build_graph.conn_key({prereq, dependent_node})] = true
                             end
@@ -979,7 +992,7 @@ randomizations.recipe_ingredients = function(id)
         for _, resource_id in pairs(major_raw_resources) do
             flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         end
-        
+
         log("Next loop")
     end
 

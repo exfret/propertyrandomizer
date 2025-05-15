@@ -24,6 +24,14 @@ if randomization_info.options.build_graph then
     build_graph = require("lib/graph/build-graph")
     -- Make dependency graph global
     dep_graph = build_graph.graph
+
+    -- Add custom nodes
+    log("Adding custom nodes")
+    require("lib/graph/build-graph-compat")
+
+    -- Build dependents
+    log("Adding dependents")
+    build_graph.add_dependents(dep_graph)
 end
 
 log("Gathering randomizations")

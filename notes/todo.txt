@@ -1,6 +1,6 @@
 WORKING ON:
- - Finish README about spec/overrides
- - Work on recipe randomization
+ - DONE Finish README about spec/overrides
+ - DONE Work on recipe randomization
  - Some balancing as detailed in notes
  - Dupes
  - Misc. randomizations that I need to go back to, like modules
@@ -24,6 +24,8 @@ WORKING ON:
 18. Clamp end result to the hard min/max range in case it escaped outside
 19. Why is supply area for electric poles only working for substations?
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
+21. Ore swap randomization
+22. Make rocket turrets an aquilo dependency in build-graph-compat
 
 DONE:
 9. Retrieve projectiles to randomize damage on those
