@@ -3,7 +3,9 @@ randomization_info = {
     warnings = {},
     -- Whether this prototype has been randomized
     -- Useful for references to other prototypes, like projectiles and spider legs
-    touched = {}
+    touched = {},
+    -- Options communicated from config or elsewhere
+    options = {}
 }
 
 -- Find randomizations to perform
@@ -13,9 +15,12 @@ require("config")
 require("randomizations/master")
 
 -- Load in dependency graph
---local build_graph = require("lib/graph/build-graph")
--- Make dependency graph global
---dep_graph = build_graph.graph
+local build_graph
+if randomization_info.options.build_graph then
+    build_graph = require("lib/graph/build-graph")
+    -- Make dependency graph global
+    dep_graph = build_graph.graph
+end
 
 -- Now randomize
 for id, to_perform in pairs(randomizations_to_perform) do

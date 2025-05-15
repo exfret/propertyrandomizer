@@ -68,3 +68,6 @@ for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].v
         table.insert(randomization_info.warnings, "[exfret's Randomizer] [color=red]Error:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
     end
 end
+
+-- Should we build the dependency graph?
+randomization_info.options.build_graph = true

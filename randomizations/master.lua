@@ -8,8 +8,7 @@ require("helper/linked")
 require("helper/trigger")
 
 -- Graph randomizations
--- CRITICAL TODO: Turn back on when releasing/testing recipe rando
-if false then
+if randomization_info.options.build_graph then
     require("graph/item")
     require("graph/recipe")
 end
