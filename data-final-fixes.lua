@@ -1,3 +1,5 @@
+log("Setup")
+
 -- Global information for control stage and other uses for communicating between processes
 randomization_info = {
     warnings = {},
@@ -8,11 +10,13 @@ randomization_info = {
     options = {}
 }
 
+log("Gathering config")
+
 -- Find randomizations to perform
 -- Must be loaded first because it also loads settings
 require("config")
--- Load in randomizations
-require("randomizations/master")
+
+log("Building dependency graph (if applicable)")
 
 -- Load in dependency graph
 local build_graph
@@ -22,6 +26,13 @@ if randomization_info.options.build_graph then
     dep_graph = build_graph.graph
 end
 
+log("Gathering randomizations")
+
+-- Load in randomizations
+require("randomizations/master")
+
+log("Applying basic randomizations")
+
 -- Now randomize
 for id, to_perform in pairs(randomizations_to_perform) do
     if to_perform then
@@ -29,8 +40,23 @@ for id, to_perform in pairs(randomizations_to_perform) do
     end
 end
 
+log("Done applying basic randomizations")
+
+
+
+randomizations.recipe_ingredients("recipe_ingredients")
+
+
+
+
+
+
+log("Applying fixes")
+
 -- Any fixes needed
 randomizations.fixes()
+
+log("Smuggling control info")
 
 -- Add warnings for control stage
 local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
@@ -40,3 +66,5 @@ warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization
 data:extend({
     warnings_selection_tool
 })
+
+log("Done!")

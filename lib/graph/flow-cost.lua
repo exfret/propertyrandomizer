@@ -2,11 +2,35 @@ local constants = require("helper-tables/constants")
 
 local flow_cost = {}
 
+-- Precomputation of materials
+flow_cost.material_list = {}
+flow_cost.material_id_to_material = {}
+flow_cost.update_material_list = function()
+    flow_cost.material_list = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                -- Hotfix: Don't worry about filled barrels
+                -- CRITICAL TODO: Autosense barrels or add this elsewhere?
+                if item.name == "barrel" or string.sub(item.name, -6, -1) ~= "barrel" then
+                    table.insert(flow_cost.material_list, item)
+                end
+            end
+        end
+    end
+    for _, fluid in pairs(data.raw.fluid) do
+        table.insert(flow_cost.material_list, fluid)
+    end
+
+    for _, material in pairs(flow_cost.material_list) do
+        flow_cost.material_id_to_material[flow_cost.get_prot_id(material)] = material
+    end
+end
+
 
 
 -- log
 local num_amount_in_entry_calls = 0
-
 
 
 
@@ -79,28 +103,28 @@ flow_cost.find_amount_in_recipe = function(recipe, material, ing_overrides, use_
     return flow_cost.find_amount_in_ing_or_prod(recipe.results, material) - ing_amount
 end
 
-flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data)
-    log("Considering material list")
+flow_cost.calculate_individual_recipe_map = function(recipe, maps, ing_overrides, use_data)
+    for _, material_property in pairs({"ingredients", "results"}) do
+        if recipe[material_property] ~= nil then
+            for _, ing_or_prod in pairs(recipe[material_property]) do
+                local material_id = flow_cost.get_prot_id(ing_or_prod)
 
-    local material_list = {}
-    for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                -- Hotfix: Don't worry about filled barrels
-                -- CRITICAL TODO: Autosense barrels or add this elsewhere?
-                if item.name == "barrel" or string.sub(item.name, -6, -1) ~= "barrel" then
-                    table.insert(material_list, item)
+                -- This is needed in case this is an excluded material, like barrels
+                if flow_cost.material_id_to_material[material_id] ~= nil then
+                    local amount_in_recipe = flow_cost.find_amount_in_recipe(recipe, flow_cost.material_id_to_material[material_id], ing_overrides, use_data)
+                    if amount_in_recipe ~= 0 then
+                        maps.recipe_to_material[recipe.name][material_id] = amount_in_recipe
+                        maps.material_to_recipe[material_id][recipe.name] = amount_in_recipe
+                    end
                 end
             end
         end
     end
-    for _, fluid in pairs(data.raw.fluid) do
-        table.insert(material_list, fluid)
-    end
+end
 
-    local recipe_to_material = {}
-    local material_to_recipe = {}
-
+flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data)
+    --log("Considering material list")
+    flow_cost.update_material_list()
 
 
 
@@ -109,36 +133,33 @@ flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data)
 
 
 
-
-    local material_id_to_material = {}
+    local recipe_to_material = {}
+    local material_to_recipe = {}
     for _, recipe in pairs(data.raw.recipe) do
         recipe_to_material[recipe.name] = {}
     end
-    for _, material in pairs(material_list) do
+    for _, material in pairs(flow_cost.material_list) do
         material_to_recipe[flow_cost.get_prot_id(material)] = {}
-        material_id_to_material[flow_cost.get_prot_id(material)] = material
     end
 
     for _, recipe in pairs(data.raw.recipe) do
-        for _, material_property in pairs({"ingredients", "results"}) do
-            if recipe[material_property] ~= nil then
-                for _, ing_or_prod in pairs(recipe[material_property]) do
-                    local material_id = flow_cost.get_prot_id(ing_or_prod)
-
-                    -- This is needed in case this is an excluded material, like barrels
-                    if material_id_to_material[material_id] ~= nil then
-                        local amount_in_recipe = flow_cost.find_amount_in_recipe(recipe, material_id_to_material[material_id], ing_overrides, use_data)
-                        if amount_in_recipe ~= 0 then
-                            recipe_to_material[recipe.name][material_id] = amount_in_recipe
-                            material_to_recipe[material_id][recipe.name] = amount_in_recipe
-                        end
-                    end
-                end
-            end
-        end
+        flow_cost.calculate_individual_recipe_map(recipe, {recipe_to_material = recipe_to_material, material_to_recipe = material_to_recipe}, ing_overrides, use_data)
     end
     
     return {recipe_to_material = recipe_to_material, material_to_recipe = material_to_recipe}
+end
+
+flow_cost.update_item_recipe_maps = function(old_maps, updated_recipes, ing_overrides, use_data)
+    for _, recipe in pairs(updated_recipes) do
+        -- Recalculate the mappings for this recipe
+
+        for material_id, amount in pairs(old_maps.recipe_to_material[recipe.name]) do
+            old_maps.recipe_to_material[recipe.name][material_id] = 0
+            old_maps.material_to_recipe[material_id][recipe.name] = 0
+        end
+
+        flow_cost.calculate_individual_recipe_map(recipe, old_maps, ing_overrides, use_data)
+    end
 end
 
 flow_cost.get_default_raw_resource_table = function()
@@ -387,6 +408,7 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
     local recipe_to_material
     local material_to_recipe
     if extra_params.item_recipe_maps ~= nil then
+        item_recipe_maps = extra_params.item_recipe_maps
         recipe_to_material = extra_params.item_recipe_maps.recipe_to_material
         material_to_recipe = extra_params.item_recipe_maps.material_to_recipe
     else
@@ -450,12 +472,13 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
     local ing_overrides = extra_params.ing_overrides
     local use_data = extra_params.use_data
 
-    log("Constructing item recipe maps")
+    --log("Constructing item recipe maps")
 
     local item_recipe_maps
     local recipe_to_material
     local material_to_recipe
     if extra_params.item_recipe_maps ~= nil then
+        item_recipe_maps = extra_params.item_recipe_maps
         recipe_to_material = extra_params.item_recipe_maps.recipe_to_material
         material_to_recipe = extra_params.item_recipe_maps.material_to_recipe
     else
@@ -472,7 +495,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         material_to_cost[resource_id] = cost
     end
 
-    log("Finding new open nodes")
+    --log("Finding new open nodes")
 
     local open_nodes = {}
     for _, recipe_name in pairs(new_recipe_names) do
@@ -506,7 +529,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         recipe_to_cost[recipe_name] = cost_info.cost
     end
 
-    log("Beginning flow cost algorithm")
+    --log("Beginning flow cost algorithm")
 
     local open_index = 1
     while true do

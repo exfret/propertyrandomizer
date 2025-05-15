@@ -26,6 +26,7 @@ local major_raw_resources = {
     "item-stone",
     "fluid-crude-oil"
     -- Space age resources
+    -- Whether to include?
 }
 
 -- Don't randomize water
@@ -116,7 +117,7 @@ local manually_assigned_material_surfaces = {
 
 local used_mats = {}
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.ingredients ~= nil then
+    if recipe.ingredients ~= nil and recipe.category ~= "recycling" then
         for _, ing in pairs(recipe.ingredients) do
             used_mats[flow_cost.get_prot_id(ing)] = true
         end
@@ -487,9 +488,9 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
     if extra_params.dont_preserve_resource_costs ~= nil then
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
     end
-    local reachable
-    if extra_params.reachable ~= nil then
-        reachable = extra_params.reachable
+    local nauvis_reachable
+    if extra_params.nauvis_reachable ~= nil then
+        nauvis_reachable = extra_params.nauvis_reachable
     end
 
     local curr_ing_inds = {}
@@ -553,8 +554,8 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
                     local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs})
 
                     -- Bonus negative points if new ingredient is not from nauvis
-                    if reachable ~= nil and not reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then
-                        log(potential_ings[new_ind_to_use].name)
+                    if nauvis_reachable ~= nil and not nauvis_reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then
+                        --log(potential_ings[new_ind_to_use].name)
                         new_ings_points = new_ings_points - constants.non_starting_planet_bonus
                     end
 
@@ -597,6 +598,8 @@ randomizations.recipe_ingredients = function(id)
     -- Setup
     ----------------------------------------------------------------------
 
+    log("Recipe randomization setup")
+
     local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
     local old_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max"})
     local old_resource_costs = {}
@@ -614,8 +617,13 @@ randomizations.recipe_ingredients = function(id)
         end
     end
 
+    log("Finding nauvis reachable")
+
     -- Find stuff not reachable from nauvis by taking away spaceship and seeing what can be reached
+    -- TODO: This is still finding stuff off-planet, so the spaceship node is probably broken
+    log("Deepcopying dep_graph")
     local dep_graph_copy = table.deepcopy(dep_graph)
+    log("Removing spacheship node")
     local spaceship_node = dep_graph_copy[build_graph.key("spaceship", "canonical")]
     for _, prereq in pairs(spaceship_node.prereqs) do
         local prereq_node = dep_graph_copy[build_graph.key(prereq.type, prereq.name)]
@@ -628,19 +636,29 @@ randomizations.recipe_ingredients = function(id)
         table.remove(prereq_node.dependents, dependent_ind_to_remove)
     end
     spaceship_node.prereqs = {}
+    log("Doing non-Nauvis top sort")
     local nauvis_reachable = top_sort.sort(dep_graph_copy).reachable
+
+    --for _, node in pairs(top_sort.sort(dep_graph_copy).sorted) do
+        --log(build_graph.key(node.type, node.name))
+    --end
+    --for node_name, _ in pairs(nauvis_reachable) do
+        --log(node_name)
+    --end
+
+    log("Finding all reachable")
 
     -- Topological sort
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
-    for _, node in pairs(graph_sort) do
+    --for _, node in pairs(graph_sort) do
         --if node.type == "item-surface" or node.type == "fluid-surface" then
         --    log(node.name)
         --end
-        log(build_graph.key(node.type, node.name))
-    end
-    for item_class, _ in pairs(defines.prototypes.item) do
+        --log(build_graph.key(node.type, node.name))
+    --end
+    --[[for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if sort_info.reachable[build_graph.key("item", item.name)] and not sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item.name, build_graph.compound_key({"planet", "nauvis"})}))] then
@@ -648,7 +666,9 @@ randomizations.recipe_ingredients = function(id)
                 end
             end
         end
-    end
+    end]]
+
+    log("Finding item/fluid indices")
 
     -- Find index for items/fluids in topological sort, so that we can prioritize later items/fluids in recipes
     local node_to_index_in_sort = {}
@@ -712,6 +732,8 @@ randomizations.recipe_ingredients = function(id)
     -- Prereq shuffle
     ----------------------------------------------------------------------
 
+    log("Gathering dependents/prereqs")
+
     local sorted_dependents = {}
     local shuffled_prereqs = {}
     local blacklist = {}
@@ -755,7 +777,7 @@ randomizations.recipe_ingredients = function(id)
         end
     end
 
-    log(serpent.block(recipe_to_surface))
+    --log(serpent.block(recipe_to_surface))
 
     -- Add in some random stuff so everything has a chance to get used
     --[[for item_class, _ in pairs(defines.prototypes.item) do
@@ -798,7 +820,11 @@ randomizations.recipe_ingredients = function(id)
         end
     end]]
 
+    log("Shuffling")
+
     rng.shuffle(rng.key({id = id}), shuffled_prereqs)
+
+    log("Constructing dependent_to_new_ings and dependent_to_old_ings")
 
     -- Table sending recipe to its new ingredients
     -- This needs to be populated with empty arrays first so that costs can be constructed accurately
@@ -822,6 +848,8 @@ randomizations.recipe_ingredients = function(id)
         end
     end
 
+    log("Initial cost calculations")
+
     -- Updated to reflect costs at each stage
     local curr_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings})
     local curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings})
@@ -838,11 +866,20 @@ randomizations.recipe_ingredients = function(id)
         old_resource_costs_staged[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings})
     end
 
+    log("Initial item recipe maps construction")
+
+    -- Keep track of item recipe maps ourselves for optimization purposes
+    local item_recipe_maps = flow_cost.construct_item_recipe_maps()
+
+    log("Starting recipe randomization main loop")
+
     -- Table of indices to prereqs that have been used in a recipe
     local ind_to_used = {}
     -- Initial reachability
     local sort_state = top_sort.sort(dep_graph, blacklist)
     for _, dependent in pairs(sorted_dependents) do
+        log("Starting on dependent: " .. dependent.recipe.name)
+
         local reachable = sort_state.reachable
 
         log("Old cost update")
@@ -855,10 +892,10 @@ randomizations.recipe_ingredients = function(id)
 
         log("Flow cost update")
 
-        flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent.recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true })
-        old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true})
+        flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent.recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         for _, resource_id in pairs(major_raw_resources) do
-            flow_cost.update_recipe_item_costs(old_resource_costs_staged[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true})
+            flow_cost.update_recipe_item_costs(old_resource_costs_staged[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         end
 
         log("Gathering recipe info")
@@ -1003,7 +1040,7 @@ randomizations.recipe_ingredients = function(id)
             end
 
             for _, prereq in pairs(valid_prereq_list) do
-                log(prereq.name)
+                --log(prereq.name)
             end
 
             return {prereq_list = valid_prereq_list, prereq_inds = valid_prereq_inds}
@@ -1067,15 +1104,21 @@ randomizations.recipe_ingredients = function(id)
         end
 
         -- Don't care about preserving resource costs if this is a final product to speed things up
-        --dont_preserve_resource_costs = produces_final_products(dependent.recipe)
+        -- Also don't care if it's post-nauvis
+        dont_preserve_resource_costs = produces_final_products(dependent.recipe)
+        if dont_preserve_resource_costs or not nauvis_reachable[build_graph.key(dependent.type, dependent.name)] then
+            log("Will not preserve resource costs")
+        else
+            log("Will preserve resource costs")
+        end
         -- TODO: Decide whether to turn this back on
-        dont_preserve_resource_costs = false
+        --dont_preserve_resource_costs = false
 
         log("Performing ings search")
 
         -- Finally, search for the best ingredients
         -- Do a while loop so we can restart if there are recipe loops
-        local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, reachable = nauvis_reachable})
+        local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
 
         log("Updating dependencies")
 
@@ -1096,7 +1139,7 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
-        log(serpent.block(ind_to_used))
+        --log(serpent.block(ind_to_used))
 
         log("Updating reachability")
 
@@ -1108,17 +1151,22 @@ randomizations.recipe_ingredients = function(id)
         -- Get rid of the blacklisted property
         table.remove(dependent_to_new_ings[dependent.recipe.name], 1)
 
+        log("Updating item recipe maps")
+
+        -- Update item recipe maps
+        flow_cost.update_item_recipe_maps(item_recipe_maps, {dependent.recipe}, dependent_to_new_ings, true)
+
         log("Updating new costs")
 
         -- Update costs
-        flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent.recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = true})
+        flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent.recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
         -- I was having bugs with update_recipe_item_costs which is why I do it this way
         log("Updating complexity cost")
-        curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = true})
+        curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         log("Finished updating complexity cost")
         for _, resource_id in pairs(major_raw_resources) do
-            flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true})
+            flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         end
         log("Next loop")
 
@@ -1155,3 +1203,5 @@ randomizations.recipe_ingredients = function(id)
         data.raw.recipe[recipe_name].ingredients = new_ings
     end
 end
+
+log("Finished loading recipe.lua")

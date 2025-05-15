@@ -7,11 +7,15 @@ require("helper/energy")
 require("helper/linked")
 require("helper/trigger")
 
+log("Gathering graph randomizations (if applicable)")
+
 -- Graph randomizations
 if randomization_info.options.build_graph then
     require("graph/item")
     require("graph/recipe")
 end
+
+log("Gathering misc randomizations")
 
 -- Misc randomizations
 -- TODO
@@ -25,6 +29,8 @@ require("misc/sizes")
 require("misc/sound")
 require("misc/visual")
 
+log("Gathering numerical randomizations")
+
 -- Require the numerical randomizations
 require("numerical/entity")
 require("numerical/equipment")
@@ -34,10 +40,14 @@ require("numerical/item")
 require("numerical/technology")
 require("numerical/tile")
 
+log("Gathering fixes")
+
 -- Fixes (executed later)
 require("fixes")
 
 -- Validate randomizations
+
+log("Validating randomizations if implemented")
 
 for id, _ in pairs(randomizations) do
     if spec[id] == nil then
