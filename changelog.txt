@@ -9,6 +9,7 @@ Date: ?
     - Went more in depth with some randomizations, like accounting for projectiles in ammo damage randomization
     - Added an image gallery to the mod files with neat pictures of certain randomizations
     - Information about randomization changes
+    - Created another repo on github for the mod that will hopefully be less messy
     - (Still being worked on) Fluids must flow, and so must the fluid boxes (note: Will be finished in the next update probably)
     - (Still being worked on) Attempt at reasonably randomizing beacon efficiency profiles (note: Will be finished in the next update probably)
     - (Still being worked on) Many visual randomizatsion, like icon and locale randomization

@@ -8,6 +8,8 @@ WORKING ON:
  - Space age randomizations
  - Technology/a few other graph-based randomizations now
  - Maybe look over TODO's one last time
+ - Improve dependency graph
+ - Basic tests
 
 2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings

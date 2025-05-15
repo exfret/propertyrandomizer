@@ -3,14 +3,10 @@
 --  * Optimize trinary search to binary as suggested by Hexicube
 --  * Filter out prereqs that are too expensive (should be a good number)
 --  * Use an appearance counting method rather than a list for prereqs
+--  * Make dependency graph skinnier
 -- TODO:
---  * CRITICAL TODO: Figure out why asteroid chunk reprocessing has no ingredients
---  * CRITICAL TODO: Think about what to do with spoilage recipe ingredients
---  * CRITICAL TODO: Figure out why fluids aren't being preserved
 --  * When a recipe can't be reached, still randomize what ingredients can be reached
---  * Figure out why being flexible with final products cost doesn't seem to optimize startup time
---  * CRITICAL TODO: Make thruster stuff self-sustaining
---  * Is iron chest 1 iron ore because of not doing resource costs?
+--  * Figure out why iron chest gets randomized to 1 ore
 
 local constants = require("helper-tables/constants")
 -- build_graph is used for its utility functions, not the graph building (graph is assumed global)
@@ -33,10 +29,15 @@ local major_raw_resources = {
 -- Also put jellynut and yumako here so that their processing recipes don't get randomized
 local dont_randomize_ings = {
     ["fluid-water"] = true,
+}
+local dont_randomize_ings_space_age = {
     ["item-yumako"] = true,
     ["item-jellynut"] = true,
     ["fluid-fluoroketone-cold"] = true
 }
+for ing, bool in pairs(dont_randomize_ings_space_age) do
+    dont_randomize_ings[ing] = bool
+end
 
 local function is_unrandomized_ing(ing, is_result_of_this_recipe)
     -- If this is special in any way, don't randomize
@@ -47,7 +48,7 @@ local function is_unrandomized_ing(ing, is_result_of_this_recipe)
     }
     for key, _ in pairs(ing) do
         if not allowed_ing_keys[key] then
-            -- CRITICAL TODO: Make sure other keys are preserved!
+            -- TODO: Check about key preservation for some of the complex keys, like temperature
             --return true
         end
     end
@@ -75,21 +76,7 @@ local sensitive_recipes = {
     ["plastic-bar"] = true,
     ["uranium-processing"] = true,
     -- Technically redundant due to other checks
-    ["kovarex-enrichment-process"] = true,
-    -- Scrap recycling is captured by recycling recipe checks
-    --["jellynut-processing"] = true,
-    --["yumako-processing"] = true,
-    ["tungsten-plate"] = true,
-    ["iron-bacteria-cultivation"] = true,
-    ["copper-bacteria-cultivation"] = true,
-    ["fluoroketone-cooling"] = true,
-    ["ammoniacal-solution-separation"] = true,
-    ["thruster-fuel"] = true,
-    ["thruster-oxidizer"] = true,
-    ["ice-melting"] = true,
-    ["holmium-solution"] = true,
-    ["holmium-plate"] = true,
-    ["lithium-plate"] = true
+    ["kovarex-enrichment-process"] = true
 }
 -- Also add recycling recipes
 for _, recipe in pairs(data.raw.recipe) do
@@ -107,6 +94,27 @@ end
 for _, recipe in pairs(data.raw.recipe) do
     if recipe.category == "crushing" then
         sensitive_recipes[recipe.name] = true
+    end
+end
+local space_age_sensitive_recipes = {
+    -- Scrap recycling is captured by recycling recipe checks
+    --["jellynut-processing"] = true,
+    --["yumako-processing"] = true,
+    ["tungsten-plate"] = true,
+    ["iron-bacteria-cultivation"] = true,
+    ["copper-bacteria-cultivation"] = true,
+    ["fluoroketone-cooling"] = true,
+    ["ammoniacal-solution-separation"] = true,
+    ["thruster-fuel"] = true,
+    ["thruster-oxidizer"] = true,
+    ["ice-melting"] = true,
+    ["holmium-solution"] = true,
+    ["holmium-plate"] = true,
+    ["lithium-plate"] = true
+}
+if mods["space-age"] then
+    for recipe_name, bool in pairs(space_age_sensitive_recipes) do
+        sensitive_recipes[recipe_name] = bool
     end
 end
 
@@ -620,7 +628,6 @@ randomizations.recipe_ingredients = function(id)
     log("Finding nauvis reachable")
 
     -- Find stuff not reachable from nauvis by taking away spaceship and seeing what can be reached
-    -- TODO: This is still finding stuff off-planet, so the spaceship node is probably broken
     log("Deepcopying dep_graph")
     local dep_graph_copy = table.deepcopy(dep_graph)
     log("Removing spacheship node")
@@ -651,6 +658,11 @@ randomizations.recipe_ingredients = function(id)
     -- Topological sort
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
+
+    for _, node in pairs(graph_sort) do
+        log(build_graph.key(node.type, node.name))
+    end
+
 
     --for _, node in pairs(graph_sort) do
         --if node.type == "item-surface" or node.type == "fluid-surface" then
@@ -924,7 +936,8 @@ randomizations.recipe_ingredients = function(id)
             local function sort_comparator(ind1, ind2)
                 return compare_index_in_sort_reverse(shuffled_prereqs[ind1], shuffled_prereqs[ind2])
             end
-            table.sort(shuffled_indices_of_prereqs, sort_comparator)
+            -- TODO: Later look into other methods, right now just preserve order
+            --table.sort(shuffled_indices_of_prereqs, sort_comparator)
 
             -- List of the actual prereqs, rather than just the indices
             local shuffled_prereqs_to_use = {}
@@ -1188,6 +1201,8 @@ randomizations.recipe_ingredients = function(id)
         for _, ing in pairs(new_ings) do
             -- Check if this is a duped ingredient
             local already_present = false
+            -- Note: This process destroys other keys, but let's hope that's fine
+            -- TODO: Fix this!
             for _, other_ing in pairs(ings) do
                 if other_ing.type == ing.type and other_ing.name == ing.name then
                     other_ing.amount = other_ing.amount + prereq.amount

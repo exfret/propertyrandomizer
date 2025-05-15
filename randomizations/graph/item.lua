@@ -1,4 +1,3 @@
--- CRITICAL TODO: Exclude plants like Jellystem!
 -- Also iron/copper bacteria?
 -- TODO: Think about maybe how to give more things mine results, like spaceship
 -- TODO: Revise algorithm to allow things to appear earlier, like lithium on nauvis even
@@ -13,6 +12,17 @@ local rng = require("lib/random/rng")
 -- TODO:
 --   * Somehow preserve planet stuffs?
 --   * Preserve place_as_tile as well
+
+local blacklisted_minables = {}
+local blacklisted_minables_space_age = {
+    ["jellystem"] = true,
+    ["yumako-tree"] = true
+}
+if mods["space-age"] then
+    for blacklisted_minable, bool in pairs(blacklisted_minables_space_age) do
+        blacklisted_minables[blacklisted_minable] = bool
+    end
+end
 
 -- NEW
 -- Randomizes from where misc. items can be gotten besides from recipes (like mining rocks)
@@ -68,7 +78,7 @@ randomizations.non_recipe_item = function(id)
     local in_conns_sort = {}
     local blacklist = {}
     for _, prereq in pairs(graph_sort) do
-        if prereq.type == "mine-entity" then
+        if prereq.type == "mine-entity" and not blacklisted_minables[prereq.name] then
             local prereq_prot
             for entity_class, _ in pairs(defines.prototypes.entity) do
                 if data.raw[entity_class] ~= nil and data.raw[entity_class][prereq.name] ~= nil then
@@ -100,7 +110,7 @@ randomizations.non_recipe_item = function(id)
                         is_resource = true
                     end
                     local is_asteroid_chunk = false
-                    if data.raw["asteroid-chunk"][prereq.name] ~= nil then
+                    if data.raw["asteroid-chunk"] ~= nil and data.raw["asteroid-chunk"][prereq.name] ~= nil then
                         is_asteroid_chunk = true
                     end
                     -- Check that this isn't the item used to make this entity

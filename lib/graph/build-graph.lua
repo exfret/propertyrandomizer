@@ -275,7 +275,7 @@ end
 
 -- Trigger tables helpers
 
-local function gather_targets_trigger_effect(trigger_effect, target_type)
+function build_graph.gather_targets_trigger_effect(trigger_effect, target_type)
     local targets = {}
 
     if trigger_effect.type == "create-entity" then
@@ -285,7 +285,7 @@ local function gather_targets_trigger_effect(trigger_effect, target_type)
     end
 
     if trigger_effect.type == "nested-result" then
-        for _, target in pairs(gather_targets_trigger(trigger_effect.action)) do
+        for _, target in pairs(build_graph.gather_targets_trigger(trigger_effect.action)) do
             table.insert(targets, target)
         end
     end
@@ -293,7 +293,7 @@ local function gather_targets_trigger_effect(trigger_effect, target_type)
     return targets
 end
 
-local function gather_targets_trigger_delivery(trigger_delivery, target_type)
+function build_graph.gather_targets_trigger_delivery(trigger_delivery, target_type)
     local targets = {}
 
     if trigger_delivery.type == "projectile" then
@@ -306,12 +306,12 @@ local function gather_targets_trigger_delivery(trigger_delivery, target_type)
         if trigger_delivery[key] ~= nil then
             if trigger_delivery[key].type == nil then
                 for _, trigger_effect in pairs(trigger_delivery[key]) do
-                    for _, target in pairs(gather_targets_trigger_effect(trigger_effect, target_type)) do
+                    for _, target in pairs(build_graph.gather_targets_trigger_effect(trigger_effect, target_type)) do
                         table.insert(targets, target)
                     end
                 end
             else
-                for _, target in pairs(gather_targets_trigger_effect(trigger_delivery[key], target_type)) do
+                for _, target in pairs(build_graph.gather_targets_trigger_effect(trigger_delivery[key], target_type)) do
                     table.insert(targets, target)
                 end
             end
@@ -321,18 +321,18 @@ local function gather_targets_trigger_delivery(trigger_delivery, target_type)
     return targets
 end
 
-local function gather_targets_trigger_item(trigger_item, target_type)
+function build_graph.gather_targets_trigger_item(trigger_item, target_type)
     local targets = {}
 
     if trigger_item.action_delivery ~= nil then
         if trigger_item.action_delivery.type == nil then
             for _, trigger_delivery in pairs(trigger_item.action_delivery) do
-                for _, target in pairs(gather_targets_trigger_delivery(trigger_delivery, target_type)) do
+                for _, target in pairs(build_graph.gather_targets_trigger_delivery(trigger_delivery, target_type)) do
                     table.insert(targets, target)
                 end
             end
         else
-            for _, target in pairs(gather_targets_trigger_delivery(trigger_item.action_delivery, target_type)) do
+            for _, target in pairs(build_graph.gather_targets_trigger_delivery(trigger_item.action_delivery, target_type)) do
                 table.insert(targets, target)
             end
         end
@@ -341,17 +341,17 @@ local function gather_targets_trigger_item(trigger_item, target_type)
     return targets
 end
 
-local function gather_targets_trigger(trigger, target_type)
+function build_graph.gather_targets_trigger(trigger, target_type)
     local targets = {}
 
     if trigger.type == nil then
         for _, trigger_effect in pairs(trigger) do
-            for _, target in pairs(gather_targets_trigger_item(trigger_effect, target_type)) do
+            for _, target in pairs(build_graph.gather_targets_trigger_item(trigger_effect, target_type)) do
                 table.insert(targets, target)
             end
         end
     else
-        for _, target in pairs(gather_targets_trigger_item(trigger, target_type)) do
+        for _, target in pairs(build_graph.gather_targets_trigger_item(trigger, target_type)) do
             table.insert(targets, target)
         end
     end
@@ -837,7 +837,7 @@ for _, capsule in pairs(data.raw.capsule) do
             name = surface_name
         })
 
-        add_to_graph("capsule-surface", capsule.name, prereqs, {
+        add_to_graph("capsule-surface", compound_key({capsule.name, surface_name}), prereqs, {
             surface = surface
         })
     end
@@ -2297,10 +2297,10 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
                 })
 
                 local fluid_required_for_operation = {
-                    boiler = true,
+                    ["boiler"] = true,
                     ["fusion-generator"] = true,
                     ["fusion-reactor"] = true,
-                    generator = true
+                    ["generator"] = true
                 }
                 if fluid_required_for_operation[entity_class] then
                     table.insert(prereqs, {
@@ -2311,7 +2311,6 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
                 
                 -- Thruster oxidizer/fuel
                 if entity.type == "thruster" then
-                    -- TODO: Check if fuel/oxidizers are simply given by filters?
                     table.insert(prereqs, {
                         type = "fluid-surface",
                         name = compound_key({entity.fuel_fluid_box.filter, surface_name})
@@ -3285,14 +3284,14 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
                     if capsule.capsule_action.type == "throw" then
                         local ammo_type = capsule.capsule_action.attack_parameters.ammo_type
                         if ammo_type ~= nil and ammo_type.action ~= nil then
-                            for _, target in pairs(gather_targets_trigger(ammo_type.action, "entity")) do
+                            for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
                                 -- See if this entity is a projectile that could then make another entity
                                 -- TODO: Technically, this could keep looping, maybe check arbitrary recursion levels?
-                                if data.raw.projectile[target] then
+                                if data.raw.projectile[target] ~= nil then
                                     local projectile = data.raw.projectile[target]
                                     if projectile.action ~= nil then
                                         -- Assume the create-entity is in the action key
-                                        for _, secondary_target in pairs(gather_targets_trigger(projectile.action)) do
+                                        for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
                                             if secondary_target == entity.name then
                                                 creates_this_entity = true
                                             end
@@ -3314,7 +3313,50 @@ for entity_class, _ in pairs(defines.prototypes.entity) do
                     end
                 end
 
+                -- Creation from ammo item
+                -- Just assume having the ammo is enough for now ugh
+                -- TODO: Actual logic for the bot rocket
+                for _, ammo in pairs(data.raw.ammo) do
+                    local creates_this_entity = false
+
+                    -- TODO: Merge this via a function with the above capsule logic
+                    local ammo_types = table.deepcopy(ammo.ammo_type)
+                    if ammo_types[1] == nil then
+                        ammo_types = {ammo_types}
+                    end
+                    for _, ammo_type in pairs(ammo_types) do
+                        if ammo_type.action ~= nil then
+                            for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
+                                -- Could go deeper with recursion
+                                if data.raw.projectile[target] ~= nil then
+                                    local projectile = data.raw.projectile[target]
+                                    if projectile.action ~= nil then
+                                        -- Assume the create-entity is in the action key
+                                        for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
+                                            if secondary_target == entity.name then
+                                                creates_this_entity = true
+                                            end
+                                        end
+                                    end
+                                -- Maybe this itself was the entity?
+                                elseif target == entity.name then
+                                    creates_this_entity = true
+                                end
+                            end
+                        end
+
+                        if creates_this_entity then
+                            table.insert(prereqs, {
+                                type = "item-surface",
+                                name = compound_key({ammo.name, surface_name})
+                            })
+                        end
+                    end
+                end
+
                 -- Did not code the corpse connections yet
+                -- TODO: Code in corpse connections
+                -- TODO: Preserve pentapod egg mining from gleba enemies with item randomization when I do that!
 
                 add_to_graph("spawn-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
                     surface = surface
@@ -3762,7 +3804,7 @@ build_graph.graph = graph
 
 log("Finished building dependency graph")
 
-local num_nodes_of_each_type = {}
+--[[local num_nodes_of_each_type = {}
 local node_type_to_node_list = {}
 for node_type, _ in pairs(build_graph.ops) do
     num_nodes_of_each_type[node_type] = 0
@@ -3816,6 +3858,6 @@ table.sort(node_type_to_complexity_as_list, sort_by_node_amount)
 for _, amount_info in pairs(node_type_to_complexity_as_list) do
     log(amount_info[1] .. ": " .. amount_info[2])
 end
-log(find_complexity(build_graph.graph))
+log(find_complexity(build_graph.graph))]]
 
 return build_graph

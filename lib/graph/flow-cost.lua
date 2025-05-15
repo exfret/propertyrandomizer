@@ -164,7 +164,7 @@ end
 
 flow_cost.get_default_raw_resource_table = function()
     -- TODO: Resource auto-sensing for mods
-    return table.deepcopy({
+    local normal_resources = {
         ["item-iron-ore"] = 1,
         ["item-copper-ore"] = 1,
         ["item-coal"] = 1,
@@ -175,8 +175,9 @@ flow_cost.get_default_raw_resource_table = function()
         -- TODO: Maybe just require kovarex earlier?
         ["item-uranium-235"] = 100,
         ["fluid-water"] = 0.001,
-        ["fluid-steam"] = 0.05,
-        -- Space age resources
+        ["fluid-steam"] = 0.05
+    }
+    local space_age_resources = {
         ["item-metallic-asteroid-chunk"] = 1,
         ["item-carbonic-asteroid-chunk"] = 1,
         ["item-oxide-asteroid-chunk"] = 1,
@@ -192,8 +193,15 @@ flow_cost.get_default_raw_resource_table = function()
         ["item-tungsten-ore"] = 3,
         ["item-calcite"] = 1,
         ["item-iron-bacteria"] = 5,
-        ["item-copper-bacteria"] = 5
-    })
+        ["item-copper-bacteria"] = 5,
+        ["item-biter-egg"] = 1
+    }
+    if mods["space-age"] ~= nil then
+        for material_id, cost in pairs(space_age_resources) do
+            normal_resources[material_id] = cost
+        end
+    end
+    return normal_resources
 end
 
 flow_cost.get_empty_raw_resource_table = function()
