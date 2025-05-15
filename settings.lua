@@ -105,7 +105,7 @@ data:extend({
       type = "string-setting",
       name = "propertyrandomizer-overrides",
       localised_name = "Custom overrides [See Tooltip]",
-      localised_description = "For extra fancy customization. See override document on the mod page for details: mods.factorio.com/mod/propertyrandomizer",
+      localised_description = "For extra fancy customization. See README for more information. README can be found in the mod folder locally or here online: github.com/exfret/propertyrandomizer",
       default_value = "",
       allow_blank = true,
       order = "z-custom-override"

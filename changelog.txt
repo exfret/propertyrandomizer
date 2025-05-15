@@ -6,13 +6,13 @@ Date: ?
     - New and improved numerical randomization algorithm
     - Unit size randomization - the biters have learned a thing or too from the cliffs about changing their size
     - Upgrade line preservation for power poles, assembling machines, transport belts, modules, and more
-    - (Still being worked on) Fluids must flow, and so must the fluid boxes (note: Will be finished in the next update probably)
-    - (Still being worked on) Attempt at reasonably randomizing beacon efficiency profiles (note: Will be finished in the next update probably)
     - Went more in depth with some randomizations, like accounting for projectiles in ammo damage randomization
-    - (Still being worked on) Many visual randomizatsion, like icon and locale randomization
-    - (Still being worked on) Recipe randomization soon?
     - Added an image gallery to the mod files with neat pictures of certain randomizations
     - Information about randomization changes
+    - (Still being worked on) Fluids must flow, and so must the fluid boxes (note: Will be finished in the next update probably)
+    - (Still being worked on) Attempt at reasonably randomizing beacon efficiency profiles (note: Will be finished in the next update probably)
+    - (Still being worked on) Many visual randomizatsion, like icon and locale randomization
+    - (Still being worked on) Recipe randomization soon?
   Changes:
     - The way mining drill offsets are chosen is changed
     - Removed achievement randomization since I could only get it to work in English and it was a massive pain

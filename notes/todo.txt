@@ -1,5 +1,13 @@
 WORKING ON:
- - Testing property randomizations
+ - Finish README about spec/overrides
+ - Work on recipe randomization
+ - Some balancing as detailed in notes
+ - Dupes
+ - Misc. randomizations that I need to go back to, like modules
+ - New randomizations
+ - Space age randomizations
+ - Technology/a few other graph-based randomizations now
+ - Maybe look over TODO's one last time
 
 2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings
