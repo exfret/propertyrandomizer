@@ -21,15 +21,14 @@ local major_raw_resources = {
     "item-coal",
     "item-stone",
     "fluid-crude-oil"
-    -- Space age resources
-    -- Whether to include?
+    -- Don't include space age resources; those aren't super important to balance
 }
 
 -- Don't randomize water
--- Also put jellynut and yumako here so that their processing recipes don't get randomized
 local dont_randomize_ings = {
     ["fluid-water"] = true,
 }
+-- Also put jellynut and yumako here so that their processing recipes don't get randomized
 local dont_randomize_ings_space_age = {
     ["item-yumako"] = true,
     ["item-jellynut"] = true,
@@ -41,17 +40,6 @@ end
 
 local function is_unrandomized_ing(ing, is_result_of_this_recipe)
     -- If this is special in any way, don't randomize
-    local allowed_ing_keys = {
-        ["type"] = true,
-        ["name"] = true,
-        ["amount"] = true
-    }
-    for key, _ in pairs(ing) do
-        if not allowed_ing_keys[key] then
-            -- TODO: Check about key preservation for some of the complex keys, like temperature
-            --return true
-        end
-    end
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
     end
@@ -98,6 +86,7 @@ for _, recipe in pairs(data.raw.recipe) do
 end
 local space_age_sensitive_recipes = {
     -- Scrap recycling is captured by recycling recipe checks
+    -- I would do jellynut/yumako, but it was throwing weird errors, so I just made them unrandomized as ingredients instead
     --["jellynut-processing"] = true,
     --["yumako-processing"] = true,
     ["tungsten-plate"] = true,
@@ -144,30 +133,7 @@ local function produces_final_products(recipe)
     end
 end
 
-
-
-
--- log
-local calculate_points_calls = 0
-
-
-
-
-
 local function calculate_points(old_recipe_costs, new_recipe_costs, extra_params)
-
-
-
-
-
-    calculate_points_calls = calculate_points_calls + 1
-    --log(calculate_points_calls)
-
-
-
-
-
-
     local dont_preserve_resource_costs = false
     if extra_params.dont_preserve_resource_costs ~= nil then
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
@@ -233,28 +199,8 @@ local function get_costs_from_ings(material_to_costs, ings)
     return costs
 end
 
-
-
-
-
--- log
-local num_single_ing_calls = 0
-local num_recipe_checks_calls = 0
-local optimize_single_ing_loops = 0
-
-
-
-
-
 -- Assumes a convex points function
 local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings, ing_ind, extra_params)
-    -- log
-    num_single_ing_calls = num_single_ing_calls + 1
-
-
-
-
-
     local dont_preserve_resource_costs = false
     if extra_params.dont_preserve_resource_costs ~= nil then
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
@@ -335,16 +281,6 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
 
                 break
             end
-
-
-
-
-            -- log
-            optimize_single_ing_loops = optimize_single_ing_loops + 1
-
-
-
-
 
             local curr_amount_1 = math.floor(lower_bound * 2 / 3 + upper_bound * 1 / 3)
             local curr_amount_2 = math.floor(lower_bound * 1 / 3 + upper_bound * 2 / 3)
@@ -455,26 +391,8 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     return curr_points
 end
 
-
-
-
--- log
-local search_for_ings_calls = 0
-
-
-
-
-
 -- Note: I removed fluid_slots and old_num_fluids from extra_params in favor of is_fluid_index
 local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_costs, material_to_costs, extra_params)
-    -- log
-    search_for_ings_calls = search_for_ings_calls + 1
-
-
-
-
-
-
     -- If there's nothing to randomize, return
     if num_ings_to_find == 0 then
         -- There must be unrandomized_ings in this case
@@ -601,6 +519,9 @@ end
 --   * Furnace recipes don't involve fuels
 --   * Doesn't include the results as ingredients (preventing length one loops)
 --   * When there is a length one loop, preserves them (like in kovarex)
+--   * Uses each thng a similar number of times
+--   * Keeps the same number of fluids in the recipe
+--   * Accounts for spoilage/other things that should restrict a recipe to a specific surface
 randomizations.recipe_ingredients = function(id)
     ----------------------------------------------------------------------
     -- Setup
@@ -646,13 +567,6 @@ randomizations.recipe_ingredients = function(id)
     log("Doing non-Nauvis top sort")
     local nauvis_reachable = top_sort.sort(dep_graph_copy).reachable
 
-    --for _, node in pairs(top_sort.sort(dep_graph_copy).sorted) do
-        --log(build_graph.key(node.type, node.name))
-    --end
-    --for node_name, _ in pairs(nauvis_reachable) do
-        --log(node_name)
-    --end
-
     log("Finding all reachable")
 
     -- Topological sort
@@ -662,23 +576,6 @@ randomizations.recipe_ingredients = function(id)
     for _, node in pairs(graph_sort) do
         log(build_graph.key(node.type, node.name))
     end
-
-
-    --for _, node in pairs(graph_sort) do
-        --if node.type == "item-surface" or node.type == "fluid-surface" then
-        --    log(node.name)
-        --end
-        --log(build_graph.key(node.type, node.name))
-    --end
-    --[[for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                if sort_info.reachable[build_graph.key("item", item.name)] and not sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item.name, build_graph.compound_key({"planet", "nauvis"})}))] then
-                    log(item.name)
-                end
-            end
-        end
-    end]]
 
     log("Finding item/fluid indices")
 
@@ -697,49 +594,6 @@ randomizations.recipe_ingredients = function(id)
         return node_to_index_in_sort[build_graph.key(node2.type, node2.name)] < node_to_index_in_sort[build_graph.key(node1.type, node1.name)]
     end
 
-    -- Find surfaces for each recipe
-    --[==[local recipe_to_surface = {}
-    for _, recipe in pairs(data.raw.recipe) do
-        -- CRITICAL TODO: Remove these ugly comments!
-
-        -- First check surface conditions, then fluids
-        -- Make sure afterward to only allow switchouts with surface-specific ings
-
-        --[[if recipe.surface_conditions ~= nil then
-            for _, surface in pairs(build_graph.surfaces) do
-                if build_graph.check_surface_conditions(recipe.surface_conditions, surface) then
-                    return surface
-                end
-            end
-        end
-
-        -- Now check for surface-specific fluids
-        if recipe.ingredients ~= nil then
-            for _, ingredient in pairs(recipe.ingredients) do
-                if ingredient.type == "fluid" then
-                    if not sort_info.reachable[build_graph.key("fluid-surface", build_graph.compound_key({ingredient.name, }))]
-                end
-            end
-        end]]
-
-        local nauvis_key = build_graph.compound_key({"planet", "nauvis"})
-
-        if not sort_info.reachable[build_graph.key("recipe-surface", build_graph.compound_key({recipe.name, nauvis_key}))] then
-            for surface_name, surface in pairs(build_graph.surfaces) do
-                if sort_info.reachable[build_graph.key("recipe-surface", build_graph.compound_key({recipe.name, surface_name}))] then
-                    recipe_to_surface[recipe.name] = surface
-                end
-            end
-
-            -- If it still doesn't have a key, assign it to nauvis
-            if recipe_to_surface[recipe.name] == nil then
-                recipe_to_surface[recipe.name] = build_graph.surfaces[nauvis_key]
-            end
-        else
-            recipe_to_surface[recipe.name] = build_graph.surfaces[nauvis_key]
-        end
-    end]==]
-
     ----------------------------------------------------------------------
     -- Prereq shuffle
     ----------------------------------------------------------------------
@@ -750,6 +604,8 @@ randomizations.recipe_ingredients = function(id)
     local shuffled_prereqs = {}
     local blacklist = {}
     -- Assign a recipe to the first surface it appears on
+    -- I think this is redundant now?
+    -- TODO: Possibly remove
     local recipe_to_surface = {}
     for _, dependent_node in pairs(graph_sort) do
         if dependent_node.type == "recipe-surface" then
@@ -788,49 +644,6 @@ randomizations.recipe_ingredients = function(id)
             end
         end
     end
-
-    --log(serpent.block(recipe_to_surface))
-
-    -- Add in some random stuff so everything has a chance to get used
-    --[[for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                if not dont_randomize_ings["item-" .. item.name] then
-                    table.insert(shuffled_prereqs, {
-                        type = "item",
-                        name = item.name
-                    })
-
-                    -- Add in space age stuff not made on nauvis more so it has a chance to get chosen more
-                    if not sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item.name, build_graph.compound_key({"planet", "nauvis"})}))] then
-                        for i = 1, 2 do
-                            table.insert(shuffled_prereqs, {
-                                type = "item",
-                                name = item.name
-                            })
-                        end
-                    end
-                end
-            end
-        end
-    end
-    for _, fluid in pairs(data.raw.fluid) do
-        if not dont_randomize_ings["fluid-" .. fluid.name] then
-            table.insert(shuffled_prereqs, {
-                type = "fluid",
-                name = fluid.name
-            })
-
-            if not sort_info.reachable[build_graph.key("fluid-surface", build_graph.compound_key({fluid.name, build_graph.compound_key({"planet", "nauvis"})}))] then
-                for i = 1, 2 do
-                    table.insert(shuffled_prereqs, {
-                        type = "fluid",
-                        name = fluid.name
-                    })
-                end
-            end
-        end
-    end]]
 
     log("Shuffling")
 
@@ -978,13 +791,6 @@ randomizations.recipe_ingredients = function(id)
                 end
 
                 local function do_recipe_checks()
-                    -- log()
-                    num_recipe_checks_calls = num_recipe_checks_calls + 1
-
-
-
-
-
                     -- Test for reachability
                     if not reachable[build_graph.key(prereq.type, prereq.name)] then
                         return false
@@ -1050,10 +856,6 @@ randomizations.recipe_ingredients = function(id)
                     table.insert(valid_prereq_inds, shuffled_indices_of_prereqs[prereq_index_in_shuffled_prereqs_to_use])
                     already_included[build_graph.key(prereq.type, prereq.name)] = true
                 end
-            end
-
-            for _, prereq in pairs(valid_prereq_list) do
-                --log(prereq.name)
             end
 
             return {prereq_list = valid_prereq_list, prereq_inds = valid_prereq_inds}
@@ -1124,8 +926,6 @@ randomizations.recipe_ingredients = function(id)
         else
             log("Will preserve resource costs")
         end
-        -- TODO: Decide whether to turn this back on
-        --dont_preserve_resource_costs = false
 
         log("Performing ings search")
 
@@ -1151,8 +951,6 @@ randomizations.recipe_ingredients = function(id)
                 end
             end
         end
-
-        --log(serpent.block(ind_to_used))
 
         log("Updating reachability")
 
@@ -1181,14 +979,8 @@ randomizations.recipe_ingredients = function(id)
         for _, resource_id in pairs(major_raw_resources) do
             flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent.recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         end
+        
         log("Next loop")
-
-
-
-
-
-        --log(optimize_single_ing_loops)
-        --log(dependent.recipe.name)
     end
 
     ----------------------------------------------------------------------

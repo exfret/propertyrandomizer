@@ -3804,60 +3804,6 @@ build_graph.graph = graph
 
 log("Finished building dependency graph")
 
---[[local num_nodes_of_each_type = {}
-local node_type_to_node_list = {}
-for node_type, _ in pairs(build_graph.ops) do
-    num_nodes_of_each_type[node_type] = 0
-    node_type_to_node_list[node_type] = {}
-end
-for _, node in pairs(build_graph.graph) do
-    table.insert(node_type_to_node_list[node.type], node)
-    num_nodes_of_each_type[node.type] = num_nodes_of_each_type[node.type] + 1
-end
-local num_nodes_of_each_type_as_list = {}
-for node_type, amount in pairs(num_nodes_of_each_type) do
-    table.insert(num_nodes_of_each_type_as_list, {node_type, amount})
-end
-local sort_by_node_amount = function(a, b)
-    return a[2] < b[2]
-end
-table.sort(num_nodes_of_each_type_as_list, sort_by_node_amount)
-local total = 0
-for _, amount_info in pairs(num_nodes_of_each_type_as_list) do
-    log(amount_info[1] .. ": " .. tostring(amount_info[2]))
-    total = total + amount_info[2]
-end
-log(total)
-local function find_complexity(tbl)
-    local complexity = 1
-
-    if type(tbl) ~= "table" then
-        return complexity
-    end
-
-    for k, v in pairs(tbl) do
-        complexity = complexity + 1
-        complexity = complexity + find_complexity(v)
-    end
-
-    return complexity
-end
-local node_type_to_complexity = {}
-for node_type, _ in pairs(build_graph.ops) do
-    local complexity_of_type = 0
-    for _, node in pairs(node_type_to_node_list[node_type]) do
-        complexity_of_type = 1 + complexity_of_type + find_complexity(node)
-    end
-    node_type_to_complexity[node_type] = complexity_of_type
-end
-local node_type_to_complexity_as_list = {}
-for node_type, amount in pairs(node_type_to_complexity) do
-    table.insert(node_type_to_complexity_as_list, {node_type, amount})
-end
-table.sort(node_type_to_complexity_as_list, sort_by_node_amount)
-for _, amount_info in pairs(node_type_to_complexity_as_list) do
-    log(amount_info[1] .. ": " .. amount_info[2])
-end
-log(find_complexity(build_graph.graph))]]
+-- TODO: Function inspired by code that used to be here to determine complexity of graph for future optimization purposes if I go that route
 
 return build_graph

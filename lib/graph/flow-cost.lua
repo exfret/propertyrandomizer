@@ -27,26 +27,7 @@ flow_cost.update_material_list = function()
     end
 end
 
-
-
--- log
-local num_amount_in_entry_calls = 0
-
-
-
-
-
 flow_cost.find_amount_in_entry = function(ing_or_prod)
-
-
-
-
-    num_amount_in_entry_calls = num_amount_in_entry_calls + 1
-    --log(num_amount_in_entry_calls)
-
-
-
-
     local probability = 1
     if ing_or_prod.probability ~= nil then
         probability = ing_or_prod.probability
@@ -125,13 +106,6 @@ end
 flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data)
     --log("Considering material list")
     flow_cost.update_material_list()
-
-
-
-    -- log
-    local loop_its = 0
-
-
 
     local recipe_to_material = {}
     local material_to_recipe = {}
@@ -226,15 +200,6 @@ flow_cost.get_single_resource_table = function(specified_resource_id)
     return resource_table
 end
 
-
-
--- log
-local eval_recipe_cost_calls = 0
-
-
-
-
-
 flow_cost.eval_recipe_cost = function(params)
     local recipe_name = params.recipe_name
     local material_to_cost = params.material_to_cost
@@ -250,7 +215,7 @@ flow_cost.eval_recipe_cost = function(params)
     local recipe = data.raw.recipe[recipe_name]
     -- recipe.ingredients must exist since amount < 0
     local ings_to_use = recipe.ingredients
-    -- if this has an override, use that instead
+    -- If this has an override, use that instead
     if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil then
         if ing_overrides[recipe_name][1] == "blacklisted" then
             ings_to_use = {}
@@ -266,20 +231,6 @@ flow_cost.eval_recipe_cost = function(params)
         end
     end
     for _, ing in pairs(ings_to_use) do
-
-
-
-
-
-
-        eval_recipe_cost_calls = eval_recipe_cost_calls + 1
-        --log(eval_recipe_cost_calls)
-
-
-
-
-
-
         local ing_material_id = ing.type .. "-" .. ing.name
         local ing_amount = flow_cost.find_amount_in_entry(ing)
         
