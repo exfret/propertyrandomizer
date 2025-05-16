@@ -20,6 +20,7 @@ log("Building dependency graph (if applicable)")
 
 -- Load in dependency graph
 local build_graph
+local build_graph_compat
 if randomization_info.options.build_graph then
     build_graph = require("lib/graph/build-graph")
     -- Make dependency graph global
@@ -27,7 +28,7 @@ if randomization_info.options.build_graph then
 
     -- Add custom nodes
     log("Adding custom nodes")
-    require("lib/graph/build-graph-compat")
+    build_graph_compat = require("lib/graph/build-graph-compat")
 
     -- Build dependents
     log("Adding dependents")
@@ -51,10 +52,22 @@ end
 log("Done applying basic randomizations")
 
 
-
-
-
+do_stupid_randomization_chance = 0.01
+-- CRITICAL TODO: Return these to normal
+randomizations.recipe_order("recipe_order")
+randomizations.recipe_subgroup("recipe_subgroup")
+randomizations.subgroup_group("subgroup_group")
+do_stupid_randomization_chance = 0.75
+randomizations.group_order("group_order")
+do_stupid_randomization_chance = 0.01
+randomizations.all_names("all_names")
+randomizations.all_icons("all_icons")
+randomizations.all_sounds("all_sounds")
 randomizations.item("item")
+build_graph.load()
+dep_graph = build_graph.graph
+build_graph_compat.load(dep_graph)
+build_graph.add_dependents(dep_graph)
 
 
 

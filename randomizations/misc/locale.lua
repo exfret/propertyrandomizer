@@ -7,8 +7,10 @@ randomizations.all_names = function(id)
     for _, class in pairs(data.raw) do
         for _, prototype in pairs(class) do
             if locale_utils.find_localised_name(prototype) ~= nil then
-                table.insert(type_names, {type = prototype.type, name = prototype.name})
-                table.insert(localised_names, {"?", locale_utils.find_localised_name(prototype), locale_utils.capitalize(prototype.name)})
+                if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
+                    table.insert(type_names, {type = prototype.type, name = prototype.name})
+                    table.insert(localised_names, {"?", locale_utils.find_localised_name(prototype), locale_utils.capitalize(prototype.name)})
+                end
             end
         end
     end

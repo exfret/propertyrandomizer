@@ -11,7 +11,8 @@ randomizations.cliff_sizes = function(id)
             local factor = randomize({
                 id = id,
                 key = rng.key({id = id, prototype = cliff}),
-                dummy = 1
+                dummy = 1,
+                dir = -1
             })
 
             for _, vector in pairs(orientation.collision_bounding_box) do
@@ -75,7 +76,8 @@ randomizations.unit_sizes = function(id)
         for i = 1, #group do
             table.insert(factors, randomize({
                 key = rng.key({linked = true, id = id, tier = group_name}),
-                dummy = 1
+                dummy = 1,
+                dir = -1
             }))
         end
 

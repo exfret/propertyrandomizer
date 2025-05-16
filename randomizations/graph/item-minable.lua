@@ -26,7 +26,7 @@ end
 
 -- NEW
 -- Randomizes from where misc. items can be gotten besides from recipes (like mining rocks)
-randomizations.non_recipe_item = function(id)
+randomizations.item_minable = function(id)
     ----------------------------------------------------------------------
     -- Setup
     ----------------------------------------------------------------------
