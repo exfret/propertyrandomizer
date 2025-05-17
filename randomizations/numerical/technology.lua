@@ -22,7 +22,7 @@ randomizations.tech_costs = function(id)
                     dir = -1
                 })
 
-                tech.localised_description = locale_utils.create_localised_description(tech, tech.unit.count / old_count, id)
+                tech.localised_description = locale_utils.create_localised_description(tech, tech.unit.count / old_count, id, {flipped = true})
             else
                 -- In this case, we have a count formula
                 local key = rng.key({id = id, prototype = prototype})

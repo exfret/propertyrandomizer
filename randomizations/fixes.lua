@@ -9,7 +9,7 @@ randomizations.fixes = function()
             electric_pole.maximum_wire_distance = 0
         end
 
-        electric_pole.maximum_wire_distance = math.max(electric_pole.maximum_wire_distance, 2 * electric_pole.supply_area_distance)
+        electric_pole.maximum_wire_distance = math.min(64, math.max(electric_pole.maximum_wire_distance, 2 * electric_pole.supply_area_distance))
     end
 
     -- Add the placeable entity/etc.'s localised description to every item so stats show up all at once

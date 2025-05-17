@@ -306,6 +306,7 @@ randomizations.item = function(id)
 
                         if has_result then
                             if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
+                                entity.localised_name = locale_utils.find_localised_name(item_node.item)
                                 entity.stages = {
                                     -- Note: This is technically botched with icons, TODO: Fix
                                     sheets = {

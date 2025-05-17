@@ -14,6 +14,7 @@ if randomization_info.options.build_graph then
     require("graph/item-minable")
     require("graph/item")
     require("graph/recipe")
+    require("graph/technology")
 end
 
 log("Gathering misc randomizations")

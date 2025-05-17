@@ -62,12 +62,21 @@ randomizations.group_order("group_order")
 do_stupid_randomization_chance = 0.01
 randomizations.all_names("all_names")
 randomizations.all_icons("all_icons")
-randomizations.all_sounds("all_sounds")
-randomizations.item("item")
+--randomizations.all_sounds("all_sounds")
+
+randomizations.technology_tree("technology_tree")
+
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
+randomizations.recipe_ingredients("recipe_ingredients")
+
+build_graph.load()
+dep_graph = build_graph.graph
+build_graph_compat.load(dep_graph)
+build_graph.add_dependents(dep_graph)
+randomizations.item("item")
 
 
 

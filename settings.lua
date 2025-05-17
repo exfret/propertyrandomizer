@@ -5,7 +5,7 @@ data:extend({
         name = "propertyrandomizer-seed",
         localised_name = "Random seed",
         localised_description = "Changing this will change how everything is randomized.",
-        default_value = 23,
+        default_value = 777,
         order = "a[seed]"
     },
     {
@@ -21,7 +21,7 @@ data:extend({
             "better",
             "best"
         },
-        default_value = "default",
+        default_value = "worse",
         order = "b[bias]"
     },
     {
@@ -37,7 +37,7 @@ data:extend({
         "more",
         "ultimate"
       },
-      default_value = "default",
+      default_value = "ultimate",
       order = "b[chaos]"
     },
     {
@@ -52,7 +52,7 @@ data:extend({
       },
       localised_name = "Logistics randomization",
       localised_description = "Randomize speeds of belts/inserters, lengths of underground belts, supply area of electric poles, and other logistical things.",
-      default_value = "default",
+      default_value = "more",
       order = "c-a[logistic]"
     },
     {
@@ -67,7 +67,7 @@ data:extend({
       },
       localised_name = "Production randomization",
       localised_description = "Randomize production capabilities of machines, like machine crafting speeds and module slots.",
-      default_value = "default",
+      default_value = "more",
       order = "c-b[production]"
     },
     {
@@ -82,7 +82,7 @@ data:extend({
       },
       localised_name = "Military randomization",
       localised_description = "Randomize gun shooting speeds, bonus damage, etc. Turn this down or off if you're having troubles with biter difficulty.",
-      default_value = "default",
+      default_value = "more",
       order = "c-c[military]"
     },
     {
@@ -97,7 +97,7 @@ data:extend({
       },
       localised_name = "Extra Randomizations",
       localised_description = "Randomizes most other things that don't fit in another category. 'Most' randomizes basically every other property in the game except for those touched by other settings.",
-      default_value = "default",
+      default_value = "more",
       order = "c-z[misc]"
     },
     {

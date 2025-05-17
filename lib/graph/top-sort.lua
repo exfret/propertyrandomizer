@@ -30,17 +30,6 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
             num_needed_satisfiers[node_name] = #node.prereqs
             num_blacklisted_prereqs[node_name] = 0
             if build_graph.ops[node.type] == "AND" and num_needed_satisfiers[node_name] == 0 then
-
-
-
-
-                if node.type == "item" then
-                    log(node.name)
-                end
-
-
-
-
                 reachable[node_name] = true
                 table.insert(sorted, node)
                 in_open[node_name] = true
@@ -61,35 +50,12 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
         if reachable[dependent_key] then
             if build_graph.ops[dependent_node.type] == "AND" then
                 if num_blacklisted_prereqs[dependent_key] == 0 then
-
-
-
-
-                    if dependent_node.type == "item" then
-                        log(dependent_node.name)
-                    end
-
-
-
-
                     table.insert(open, dependent_node)
                     in_open[dependent_key] = true
                 end
             -- For OR's we need to have just un-blacklisted a prereq for the *first* time
             elseif build_graph.ops[dependent_node.type] == "OR" then
                 if not in_open[dependent_key] then
-
-
-
-
-                    if dependent_node.type == "item" then
-                        log(dependent_node.name)
-                    end
-
-
-
-
-
                     table.insert(open, dependent_node)
                     in_open[dependent_key] = true
                 end
@@ -124,18 +90,6 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
                     end
                     -- Check that no connections were blacklisted ones
                     if num_blacklisted_prereqs[dependent_key] == 0 then
-
-
-
-
-                        if dependent_node.type == "item" then
-                            log(dependent_node.name)
-                        end
-
-
-
-
-
                         in_open[dependent_key] = true
                         table.insert(open, dependent_node)
                     end
@@ -147,18 +101,6 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
                     table.insert(sorted, dependent_node)
                     -- Just need to check that this connection was not a blacklisted one in this case
                     if not is_blacklisted then
-
-
-
-
-                        if dependent_node.type == "item" then
-                            log(dependent_node.name)
-                        end
-
-
-
-
-
                         in_open[dependent_key] = true
                         table.insert(open, dependent_node)
                     end
