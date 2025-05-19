@@ -15,8 +15,8 @@ local locale_utils = require("lib/locale")
 
 randomizations.item = function(id)
     local modified_raw_resource_table = flow_cost.get_default_raw_resource_table()
-    modified_raw_resource_table["item-raw-fish"] = 25
-    modified_raw_resource_table["item-wood"] = 10
+    modified_raw_resource_table["item-raw-fish"] = 20
+    modified_raw_resource_table["item-wood"] = 5
     local old_aggregate_cost = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
     local item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
@@ -44,6 +44,8 @@ randomizations.item = function(id)
 
     local old_order = {}
     local shuffled_order = {}
+    -- Used to put ores at the end so they don't become ores as often
+    local post_shuffled_order = {}
     local blacklist = {}
     for _, item_node in pairs(graph_sort) do
         if item_node.type == "item" then
@@ -114,7 +116,11 @@ randomizations.item = function(id)
                                     -- If it's a very commonly used item, include it with a 70% chance, otherwise only do so with 30% chance
                                     if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= constants.item_randomization_probability_high) or rng.value(rng.key({id = id})) <= constants.item_randomization_probability_low then
                                         table.insert(old_order, item_node)
-                                        table.insert(shuffled_order, item_node)
+                                        if is_raw_resource then
+                                            table.insert(post_shuffled_order, item_node)
+                                        else
+                                            table.insert(shuffled_order, item_node)
+                                        end
 
                                         for _, prereq in pairs(item_node.prereqs) do
                                             blacklist[build_graph.conn_key({prereq, item_node})] = true
@@ -150,6 +156,11 @@ randomizations.item = function(id)
     end
 
     rng.shuffle(rng.key({id = id}), shuffled_order)
+    -- Put resource nodes at end
+    rng.shuffle(rng.key({id = id}), post_shuffled_order)
+    for _, node in pairs(post_shuffled_order) do
+        table.insert(shuffled_order, node)
+    end
 
     local new_order = {}
     local ind_to_used = {}
@@ -199,7 +210,7 @@ randomizations.item = function(id)
                         -- Check cost preservation if item_node is significant
                         -- Actually, let's just multiply results later and just make sure the new one has a cost for now
                         -- No wait, do have a cost threshold just for the more ridiculous cases
-                        cost_threshold = 25
+                        cost_threshold = 100
                         if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
                             new_node = shuffled_order[ind]
                             ind_to_used[ind] = true
@@ -314,7 +325,7 @@ randomizations.item = function(id)
                             })
 
                             -- Multiply amounts in products if this is significantly more expensive
-                            if material_property == "results" then
+                            if material_property == "results" and recipe.category ~= "recycling" then
                                 for _, key in pairs({"amount", "amount_min", "amount_max"}) do
                                     if ing_or_prod[key] ~= nil then
                                         ing_or_prod[key] = math.min(65535, ing_or_prod[key] * amount_multiplier)

@@ -52,36 +52,23 @@ end
 log("Done applying basic randomizations")
 
 
--- CRITICAL TODO: Return these to normal
---[[do_stupid_randomization_chance = 0.01
-randomizations.recipe_order("recipe_order")
-randomizations.recipe_subgroup("recipe_subgroup")
-randomizations.subgroup_group("subgroup_group")
-do_stupid_randomization_chance = 0.75
-randomizations.group_order("group_order")
-do_stupid_randomization_chance = 0.01
-randomizations.all_names("all_names")
-randomizations.all_icons("all_icons")]]
---randomizations.all_sounds("all_sounds")
 
-randomizations.technology_tree("technology_tree")
 
+
+
+randomizations.technology_tree_insnipping("technology_tree_insnipping")--[[
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
+
 randomizations.recipe_ingredients("recipe_ingredients")
-
---[[local top_sort = require("lib/graph/top-sort")
-for _, node in pairs(top_sort.sort(dep_graph).sorted) do
-    log(build_graph.key(node.type, node.name))
-end]]
-
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
-randomizations.item("item")
+
+randomizations.item("item")]]
 
 
 

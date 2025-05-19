@@ -26,13 +26,15 @@ local major_raw_resources = {
 
 -- Don't randomize water
 local dont_randomize_ings = {
-    ["fluid-water"] = true,
+    ["fluid-water"] = true
 }
 -- Also put jellynut and yumako here so that their processing recipes don't get randomized
+-- Also make lava still useful by preserving it in spots
 local dont_randomize_ings_space_age = {
     ["item-yumako"] = true,
     ["item-jellynut"] = true,
-    ["fluid-fluoroketone-cold"] = true
+    ["fluid-fluoroketone-cold"] = true,
+    ["fluid-lava"] = true
 }
 for ing, bool in pairs(dont_randomize_ings_space_age) do
     dont_randomize_ings[ing] = bool

@@ -1,18 +1,17 @@
 WORKING ON:
- - DONE Finish README about spec/overrides
- - DONE Work on recipe randomization
- - Checking dependency graph is preserved for item randomization
-   - Commit message: feat(item): extra sanity checks for randomization process
- - Some balancing as detailed in notes
+ - Technology randomization
+ - Teleport button!
+ - Tech unlock randomization
+ - Tech packs required randomization
+ - First release
  - Dupes
  - Misc. randomizations that I need to go back to, like modules
  - New randomizations
  - Space age randomizations
- - Technology/a few other graph-based randomizations now
  - Maybe look over TODO's one last time
  - Improve dependency graph
- - Basic tests
- - More on item rando
+ - Item fluid randomization?
+ - Tech unlock randomization?
 
 2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings
