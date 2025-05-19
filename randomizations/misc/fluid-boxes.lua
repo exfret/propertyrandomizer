@@ -4,6 +4,7 @@ local rng = require("lib/random/rng")
 -- TODO: Account for nil direction?
 -- TODO: Test that normal fluid boxes are still an option (I'm not seeing them I think?)
 
+-- NEW
 randomizations.fluid_box_locations = function(id)
     local function get_pipe_conns(prototype, fluid_box_properties)
         local fluid_box_obj

@@ -14,16 +14,31 @@ local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
 randomizations.item = function(id)
-    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
+    local modified_raw_resource_table = flow_cost.get_default_raw_resource_table()
+    modified_raw_resource_table["item-raw-fish"] = 25
+    modified_raw_resource_table["item-wood"] = 10
+    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
     local item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
+    -- CRITICAL TODO: REMOVE
+    for _, node in pairs(graph_sort) do
+        log(build_graph.key(node.type, node.name))
+    end
+
     type_stays_with_node = {
         ["build-entity-item"] = true,
         ["build-tile-item"] = true,
-        ["plant-entity-item"] = true
+        ["plant-entity-item"] = true,
+        ["repair-pack"] = true,
+        ["rocket-turret"] = true,
+        ["rocket-ammo"] = true
+        -- NOTE: The following are needed but don't work due to being AND nodes
+        -- CRITICAL TODO
+        -- Some technologies as firearm magazines as a prerequisite
+        --["technology"] = true
     }
     local node_to_old_stay_with_dependents = {}
 
@@ -97,7 +112,7 @@ randomizations.item = function(id)
                                     end
 
                                     -- If it's a very commonly used item, include it with a 70% chance, otherwise only do so with 30% chance
-                                    if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= 0.7) or rng.value(rng.key({id = id})) <= 0.3 then
+                                    if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= constants.item_randomization_probability_high) or rng.value(rng.key({id = id})) <= constants.item_randomization_probability_low then
                                         table.insert(old_order, item_node)
                                         table.insert(shuffled_order, item_node)
 
@@ -138,85 +153,134 @@ randomizations.item = function(id)
 
     local new_order = {}
     local ind_to_used = {}
+    local ind_to_used_in_old_order = {}
     -- Initial reachability
     local sort_state = top_sort.sort(dep_graph, blacklist)
-    for _, item_node in pairs(old_order) do
+    for i = 1, #old_order do
         local reachable = sort_state.reachable
 
-
-
-
-        if not reachable[build_graph.key(item_node.type, item_node.name)] then
-            log(item_node.name)
-        end
-
-
-
-
-
-        local new_node
-        for ind = 1, #shuffled_order do
-            -- I think reachability in this case is technically not needed, but it helps keep game progression
-            if not ind_to_used[ind] and reachable[build_graph.key(shuffled_order[ind].type, shuffled_order[ind].name)] then
-                new_node = shuffled_order[ind]
-                ind_to_used[ind] = true
-                table.insert(new_order, shuffled_order[ind])
-                break
-            end
-            if ind == #shuffled_order then
-                -- We couldn't find a new substitute
-                log(serpent.block(reachable))
+        for old_order_ind_2, item_node in pairs(old_order) do
+            if not reachable[build_graph.key(item_node.type, item_node.name)] then
                 log(item_node.name)
+            end
+
+            if not ind_to_used_in_old_order[old_order_ind_2] and reachable[build_graph.key(item_node.type, item_node.name)] then
+                local new_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+
+                local new_node
+                for ind = 1, #shuffled_order do
+                    local proposed_node = shuffled_order[ind]
+
+                    -- I think reachability in this case is technically not needed, but it helps keep game progression
+                    if not ind_to_used[ind] and reachable[build_graph.key(proposed_node.type, proposed_node.name)] then
+                        local old_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(proposed_node.item)]
+                        
+                        -- If cost is assignable and this new item is special in some way, try to preserve that cost
+                        -- Right now special just means it can place something or is not a standard item
+                        local is_significant_item = false
+                        local cost_threshold
+                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item") then
+                            is_significant_item = true
+
+                            -- Cost threshold is higher for more expensive items, since they're probably less common
+                            if old_cost <= 5 then
+                                cost_threshold = 2
+                            elseif old_cost <= 15 then
+                                cost_threshold = 5
+                            elseif old_cost <= 50 then
+                                cost_threshold = 10
+                            else
+                                --cost_threshold = 10
+                                -- If the old version is too expensive, don't worry too much about it
+                                is_significant_item = false
+                            end
+                        end
+                        
+                        -- Check cost preservation if item_node is significant
+                        -- Actually, let's just multiply results later and just make sure the new one has a cost for now
+                        -- No wait, do have a cost threshold just for the more ridiculous cases
+                        cost_threshold = 25
+                        if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
+                            new_node = shuffled_order[ind]
+                            ind_to_used[ind] = true
+                            table.insert(new_order, shuffled_order[ind])
+                            break
+                        end
+                    end
+                    if ind == #shuffled_order then
+                        -- We couldn't find a new substitute
+                        --log(serpent.block(reachable))
+                        log(item_node.name)
+                        log("NEED TO TRY OTHER NODES")
+                        --error()
+                    end
+                end
+
+                if new_node ~= nil then
+
+
+
+
+
+                    log(item_node.name)
+                    log(new_node.name)
+                    -- So we're saying too much is reachable and that's biting us
+                    -- Now wait what's not reachable? We can get to the thruster
+                    -- Not finding utility science pack
+                    -- IDEA: Maybe do a fail-and-come-back mechanism? Check if item_node is reachable each time
+                    -- Ohhhh it didn't find the rocket silo at all?
+                    -- Or chemical science pack? Oh no wait we blacklisted those
+                    -- It's finding the build-entity for rocket silo but not the rocket silo
+
+
+
+
+                    -- Essentially need to unlock some of new node's dependents, but not old_node's
+                    -- Right now what occurs to me for this is entities that are player creations
+                    -- TODO: Proper connection labels here rather than just guessing from node types
+                    --[[for _, dependent in pairs(new_node.dependents) do
+                        if type_stays_with_node[dependent.type] then
+                            blacklist[build_graph.conn_key({new_node, dependent})] = false
+                            sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {new_node, dependent})
+                        end
+                    end]]
+                    -- Add old stay-with-type nodes
+                    for _, dependent in pairs(node_to_old_stay_with_dependents[new_node.name]) do
+                        local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
+                        table.insert(dependent_node.dependents, {
+                            type = item_node.type,
+                            name = item_node.name
+                        })
+                        table.insert(item_node.dependents, dependent)
+                    end
+                    --[[for _, dependent in pairs(item_node.dependents) do
+                        if not type_stays_with_node[dependent.type] then
+                            blacklist[build_graph.conn_key({item_node, dependent})] = false
+                            sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {item_node, dependent})
+                        end
+                    end]]
+
+                    for _, prereq in pairs(item_node.prereqs) do
+                        blacklist[build_graph.conn_key({prereq, item_node})] = false
+                        sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, item_node})
+                    end
+
+                    ind_to_used_in_old_order[old_order_ind_2] = true
+                    break
+                end
+            elseif old_order_ind_2 == #old_order then
+                -- We truly couldn't proceed in old_order!
+                log(serpent.block(old_order[i]))
+                log(i)
                 error()
             end
         end
+    end
 
-
-
-
-
-        log(item_node.name)
-        log(new_node.name)
-        -- So we're saying too much is reachable and that's biting us
-        -- Now wait what's not reachable? We can get to the thruster
-        -- Not finding utility science pack
-        -- IDEA: Maybe do a fail-and-come-back mechanism? Check if item_node is reachable each time
-        -- Ohhhh it didn't find the rocket silo at all?
-        -- Or chemical science pack? Oh no wait we blacklisted those
-        -- It's finding the build-entity for rocket silo but not the rocket silo
-
-
-
-
-        -- Essentially need to unlock some of new node's dependents, but not old_node's
-        -- Right now what occurs to me for this is entities that are player creations
-        -- TODO: Proper connection labels here rather than just guessing from node types
-        --[[for _, dependent in pairs(new_node.dependents) do
-            if type_stays_with_node[dependent.type] then
-                blacklist[build_graph.conn_key({new_node, dependent})] = false
-                sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {new_node, dependent})
-            end
-        end]]
-        -- Add old stay-with-type nodes
-        for _, dependent in pairs(node_to_old_stay_with_dependents[new_node.name]) do
-            local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
-            table.insert(dependent_node.dependents, {
-                type = item_node.type,
-                name = item_node.name
-            })
-            table.insert(item_node.dependents, dependent)
-        end
-        --[[for _, dependent in pairs(item_node.dependents) do
-            if not type_stays_with_node[dependent.type] then
-                blacklist[build_graph.conn_key({item_node, dependent})] = false
-                sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {item_node, dependent})
-            end
-        end]]
-
-        for _, prereq in pairs(item_node.prereqs) do
-            blacklist[build_graph.conn_key({prereq, item_node})] = false
-            sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, item_node})
-        end
+    --local post_sort = top_sort.sort(dep_graph).sorted
+    -- TODO: REMOVE
+    for _, node in pairs(sort_state.sorted) do
+        log(build_graph.key(node.type, node.name))
     end
 
     -- Fix data.raw
@@ -226,6 +290,17 @@ randomizations.item = function(id)
     for ind, item_node in pairs(new_order) do
         -- item_node takes the place of same-indexed node in old_order
         local old_node = old_order[ind]
+
+        local incoming_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+        local outgoing_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(old_node.item)]
+        local amount_multiplier = 1
+        local is_significant = false
+        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" then
+            is_significant = true
+        end
+        if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 then
+            amount_multiplier = math.floor(outgoing_cost / incoming_cost)
+        end
 
         for _, recipe in pairs(data.raw.recipe) do
             for _, material_property in pairs({"ingredients", "results"}) do
@@ -237,6 +312,15 @@ randomizations.item = function(id)
                                 prop = "name",
                                 new_val = item_node.name
                             })
+
+                            -- Multiply amounts in products if this is significantly more expensive
+                            if material_property == "results" then
+                                for _, key in pairs({"amount", "amount_min", "amount_max"}) do
+                                    if ing_or_prod[key] ~= nil then
+                                        ing_or_prod[key] = math.min(65535, ing_or_prod[key] * amount_multiplier)
+                                    end
+                                end
+                            end
                         end
                     end
                 end
@@ -291,6 +375,14 @@ randomizations.item = function(id)
                                             prop = "name",
                                             new_val = item_node.name
                                         })
+
+                                        -- Multiply amounts if this is significantly more expensive
+                                        for _, key in pairs({"amount", "amount_min", "amount_max"}) do
+                                            if result[key] ~= nil then
+                                                result[key] = math.min(65535, result[key] * amount_multiplier)
+                                            end
+                                        end
+
                                         has_result = true
                                     end
                                 end
@@ -300,6 +392,9 @@ randomizations.item = function(id)
                                     prop = "result",
                                     new_val = item_node.name
                                 })
+
+                                entity.minable.count = math.min(65535, (entity.minable.count or 1) * amount_multiplier)
+
                                 has_result = true
                             end
                         end

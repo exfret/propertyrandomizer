@@ -15,7 +15,10 @@ local constants = {
     aggregate_points_weighting = 1,
     complexity_points_weighting = 2,
     resource_points_weighting = 0.1,
-    non_starting_planet_bonus = 3
+    non_starting_planet_bonus = 3,
+    -- Item randomization
+    item_randomization_probability_high = 1,
+    item_randomization_probability_low = 1
 }
 
 return constants

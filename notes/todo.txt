@@ -1,6 +1,8 @@
 WORKING ON:
  - DONE Finish README about spec/overrides
  - DONE Work on recipe randomization
+ - Checking dependency graph is preserved for item randomization
+   - Commit message: feat(item): extra sanity checks for randomization process
  - Some balancing as detailed in notes
  - Dupes
  - Misc. randomizations that I need to go back to, like modules
@@ -10,6 +12,7 @@ WORKING ON:
  - Maybe look over TODO's one last time
  - Improve dependency graph
  - Basic tests
+ - More on item rando
 
 2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings
@@ -26,6 +29,8 @@ WORKING ON:
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
 21. Ore swap randomization
 22. Make rocket turrets an aquilo dependency in build-graph-compat
+23. Automatability nodes
+24. Items keep fuel value in item randomization (add random fuels later mayhaps)
 
 DONE:
 9. Retrieve projectiles to randomize damage on those

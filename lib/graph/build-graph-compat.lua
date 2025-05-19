@@ -1,11 +1,14 @@
 -- This file is mostly for adding extra custom nodes as needed based on mod configuration
 -- It assumes dep_graph is already loaded in
+-- Note that, at the moment, this file makes a ton of assumptions about the structure of the game that will probably be untrue in modded playthrough
 
 -- build_graph is just used for its util functions, it should already be loaded in by now
 local build_graph = require("lib/graph/build-graph")
 
 local build_graph_compat = {}
 
+-- TODO: Think about how to add these to notes?
+-- TODO: Make these operate-entity-surface for nauvis?
 local function load(graph)
     local prereqs
 
@@ -38,21 +41,91 @@ local function load(graph)
         })
     end
 
-    -- Require automation before all other techs with unit
-    -- Note that this is relies heavily on the structure of vanilla
+    -- Require an assembling machine with crafting as a category before all techs with unit other than automation
+
+    prereqs = {}
+
+    for _, machine in pairs(data.raw["assembling-machine"]) do
+        local has_crafting_category = false
+
+        for _, category in pairs(machine.crafting_categories) do
+            if category == "crafting" then
+                has_crafting_category = true
+            end
+        end
+
+        if has_crafting_category then
+            table.insert(prereqs, {
+                type = "operate-entity",
+                name = machine.name
+            })
+        end
+    end
+
+    graph[build_graph.key("assembling-machine", "canonical")] = {
+        type = "assembling-machine",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["assembling-machine"] = "OR"
 
     for _, technology in pairs(data.raw.technology) do
         if technology.name ~= "automation" and technology.unit ~= nil  then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
             table.insert(tech_node.prereqs, {
-                type = "operate-entity",
-                name = "assembling-machine-1"
+                type = "assembling-machine",
+                name = "canonical"
             })
         end
     end
 
     -- Require gun turret and military before all other techs with unit more than 15, or involving more than automation science
+
+    prereqs = {}
+
+    -- Just consider submachine gun and vehicle guns for now
+    table.insert(prereqs, {
+        type = "item",
+        name = "submachine-gun"
+    })
+    table.insert(prereqs, {
+        type = "operate-entity",
+        name = "car"
+    })
+    table.insert(prereqs, {
+        type = "operate-entity",
+        name = "tank"
+    })
+
+    graph[build_graph.key("starter-gun", "canonical")] = {
+        type = "starter-gun",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["starter-gun"] = "OR"
+
+    prereqs = {}
+
+    -- Just consider bullets for now
+    for _, ammo in pairs(data.raw.ammo) do
+        if ammo.ammo_category == "bullet" then
+            table.insert(prereqs, {
+                type = "item",
+                name = ammo.name
+            })
+        end
+    end
+
+    graph[build_graph.key("starter-gun-ammo", "canonical")] = {
+        type = "starter-gun-ammo",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["starter-gun-ammo"] = "OR"
 
     for _, technology in pairs(data.raw.technology) do
         if technology.name ~= "gun-turret" and technology.name ~= "military" and technology.unit ~= nil and (#technology.unit.ingredients > 1 or technology.unit.count > 15) then
@@ -64,13 +137,206 @@ local function load(graph)
             })
 
             table.insert(tech_node.prereqs, {
-                type = "item",
-                name = "submachine-gun"
+                type = "starter-gun",
+                name = "canonical"
             })
 
             table.insert(tech_node.prereqs, {
+                type = "starter-gun-ammo",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Inserter node: inserters available before any non-automation tech
+    
+    prereqs = {}
+
+    for _, inserter in pairs(data.raw.inserter) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = inserter.name
+        })
+    end
+
+    graph[build_graph.key("inserter", "canonical")] = {
+        type = "inserter",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["inserter"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.name ~= "automation" and technology.unit ~= nil then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "inserter",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Belts before any non-trigger tech
+    -- TODO: Make automatable, not just get-able
+
+    prereqs = {}
+
+    for _, belt in pairs(data.raw["transport-belt"]) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = belt.name
+        })
+    end
+
+    graph[build_graph.key("transport-belt", "canonical")] = {
+        type = "transport-belt",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["transport-belt"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.unit ~= nil then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "transport-belt",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Repair pack pre-green science
+
+    prereqs = {}
+
+    for _, tool in pairs(data.raw["repair-tool"]) do
+        table.insert(prereqs, {
+            type = "item",
+            name = tool.name
+        })
+    end
+
+    graph[build_graph.key("repair-pack", "canonical")] = {
+        type = "repair-pack",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["repair-pack"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.unit ~= nil and #technology.unit.ingredients > 1 then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "repair-pack",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Storage before green science
+    -- TODO: If I implement crashed ship spawnability, watch out for that always satisfying this
+
+    prereqs = {}
+
+    for _, container in pairs(data.raw.container) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = container.name
+        })
+    end
+
+    graph[build_graph.key("storage", "canonical")] = {
+        type = "storage",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["storage"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.unit ~= nil and #technology.unit.ingredients > 1 then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "storage",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Rockets and rocket turrets pre-aquilo
+
+    prereqs = {}
+
+    for _, turret in pairs(data.raw["ammo-turret"]) do
+        local has_rocket_category = false
+        if turret.attack_parameters.ammo_category == "rocket" then
+            has_rocket_category = true
+        elseif turret.attack_parameters.ammo_categories ~= nil then
+            for _, category in pairs(turret.attack_parameters.ammo_categories) do
+                if category == "rocket" then
+                    has_rocket_category = true
+                end
+            end
+        end
+
+        if has_rocket_category then
+            table.insert(prereqs, {
+                type = "operate-entity",
+                name = turret.name
+            })
+        end
+    end
+
+    graph[build_graph.key("rocket-turret", "canonical")] = {
+        type = "rocket-turret",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["rocket-turret"] = "OR"
+
+    -- Also rocket ammo
+
+    prereqs = {}
+
+    for _, ammo in pairs(data.raw.ammo) do
+        if ammo.ammo_category == "rocket" then
+            table.insert(prereqs, {
                 type = "item",
-                name = "firearm-magazine"
+                name = ammo.name
+            })
+        end
+    end
+
+    graph[build_graph.key("rocket-ammo", "canonical")] = {
+        type = "rocket-ammo",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["rocket-ammo"] = "OR"
+
+    -- Use space connection because that's an AND node and surface is not
+
+    for _, connection in pairs(data.raw["space-connection"]) do
+        if connection.to == "aquilo" then
+            local conn_node = graph[build_graph.key("space-connection", connection.name)]
+
+            table.insert(conn_node.prereqs, {
+                type = "rocket-turret",
+                name = "canonical"
+            })
+
+            table.insert(conn_node.prereqs, {
+                type = "rocket-ammo",
+                name = "canonical"
             })
         end
     end
