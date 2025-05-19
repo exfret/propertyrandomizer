@@ -65,7 +65,7 @@ for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].v
     if spec[override] ~= nil then
         randomizations_to_perform[override] = new_val
     else
-        table.insert(randomization_info.warnings, "[exfret's Randomizer] [color=red]Error:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
+        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
     end
 end
 

@@ -56,7 +56,7 @@ log("Done applying basic randomizations")
 
 
 
-randomizations.technology_tree_insnipping("technology_tree_insnipping")--[[
+--[[randomizations.technology_tree_insnipping("technology_tree_insnipping")--[[
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
@@ -66,9 +66,9 @@ randomizations.recipe_ingredients("recipe_ingredients")
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
-build_graph.add_dependents(dep_graph)
+build_graph.add_dependents(dep_graph)]]
 
-randomizations.item("item")]]
+randomizations.item("item")
 
 
 
