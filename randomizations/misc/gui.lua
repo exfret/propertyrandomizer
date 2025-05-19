@@ -10,15 +10,13 @@ randomizations.group_order = function(id)
     local order_list = {}
 
     for _, group in pairs(data.raw["item-group"]) do
-        if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
-            local order = ""
-            if group.order ~= nil then
-                order = group.order
-            end
-
-            table.insert(group_list, group)
-            table.insert(order_list, order)
+        local order = ""
+        if group.order ~= nil then
+            order = group.order
         end
+
+        table.insert(group_list, group)
+        table.insert(order_list, order)
     end
 
     local key = rng.key({id = id})
@@ -35,15 +33,13 @@ randomizations.recipe_order = function(id)
     local order_list = {}
 
     for _, recipe in pairs(data.raw.recipe) do
-        if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
-            local order = ""
-            if recipe.order ~= nil then
-                order = recipe.order
-            end
-
-            table.insert(recipe_list, recipe)
-            table.insert(order_list, order)
+        local order = ""
+        if recipe.order ~= nil then
+            order = recipe.order
         end
+
+        table.insert(recipe_list, recipe)
+        table.insert(order_list, order)
     end
 
     local key = rng.key({id = id})
@@ -75,23 +71,21 @@ randomizations.recipe_subgroup = function(id)
     local subgroup_list = {}
 
     for _, recipe in pairs(data.raw.recipe) do
-        if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
-            -- Get the subgroup
-            local subgroup = recipe.subgroup
-            if subgroup == nil then
-                local main_item = find_recipe_main_item(recipe)
-                if main_item ~= nil then
-                    subgroup = main_item.subgroup
-                end
+        -- Get the subgroup
+        local subgroup = recipe.subgroup
+        if subgroup == nil then
+            local main_item = find_recipe_main_item(recipe)
+            if main_item ~= nil then
+                subgroup = main_item.subgroup
             end
-            if subgroup == nil then
-                -- If we still haven't found a subgroup, just assign it to other
-                subgroup = "other"
-            end
-
-            table.insert(recipe_list, recipe)
-            table.insert(subgroup_list, subgroup)
         end
+        if subgroup == nil then
+            -- If we still haven't found a subgroup, just assign it to other
+            subgroup = "other"
+        end
+
+        table.insert(recipe_list, recipe)
+        table.insert(subgroup_list, subgroup)
     end
 
     local key = rng.key({id = id})
@@ -108,10 +102,8 @@ randomizations.subgroup_group = function(id)
     local groups = {}
 
     for _, item_subgroup in pairs(data.raw["item-subgroup"]) do
-        if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
-            table.insert(subgroups, item_subgroup)
-            table.insert(groups, item_subgroup.group)
-        end
+        table.insert(subgroups, item_subgroup)
+        table.insert(groups, item_subgroup.group)
     end
 
     rng.shuffle(rng.key({id = id}), groups)

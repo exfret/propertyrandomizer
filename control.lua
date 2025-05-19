@@ -29,7 +29,6 @@ script.on_nth_tick(1, function(event)
     -- Print warnings on 10th tick
     if event.tick == 10 then
         if settings.startup["propertyrandomizer-seed"].value == 23 then
-            -- CRITICAL TODO: Add back in?
             game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
         end
 

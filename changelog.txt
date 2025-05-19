@@ -11,9 +11,9 @@ Date: ?
     - Recipe ingredients are now randomized
     - Items are now randomized, including ore patches
     - Unit size randomization - the biters have learned a thing or too from the cliffs about changing their size
+    - Options for some awful randomizations, like icon randomization (who would want that? Is there anyone crazy enough?)
     - (Still being worked on) Fluids must flow, and so must the fluid boxes (note: Will be finished in the next update probably)
     - (Still being worked on) Attempt at reasonably randomizing beacon efficiency profiles
-    - (Still being worked on) Many visual randomizatsion, like icon and locale randomization
   Changes:
     - The way mining drill offsets are chosen is changed
     - Removed achievement randomization since I could only get it to work in English and it was a massive pain

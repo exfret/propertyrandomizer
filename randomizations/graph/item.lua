@@ -23,11 +23,6 @@ randomizations.item = function(id)
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
-    -- CRITICAL TODO: REMOVE
-    for _, node in pairs(graph_sort) do
-        log(build_graph.key(node.type, node.name))
-    end
-
     type_stays_with_node = {
         ["build-entity-item"] = true,
         ["build-tile-item"] = true,
@@ -35,10 +30,6 @@ randomizations.item = function(id)
         ["repair-pack"] = true,
         ["rocket-turret"] = true,
         ["rocket-ammo"] = true
-        -- NOTE: The following are needed but don't work due to being AND nodes
-        -- CRITICAL TODO
-        -- Some technologies as firearm magazines as a prerequisite
-        --["technology"] = true
     }
     local node_to_old_stay_with_dependents = {}
 

@@ -1,9 +1,8 @@
 WORKING ON:
- - Technology randomization
- - Teleport button!
+ - Electric pole supply area/distribution effectivity
+ - First release
  - Tech unlock randomization
  - Tech packs required randomization
- - First release
  - Dupes
  - Misc. randomizations that I need to go back to, like modules
  - New randomizations

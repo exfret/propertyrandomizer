@@ -277,10 +277,8 @@ function reformat.all_icon_properties()
                     end
 
                     if prototype[icon_group[3]] ~= nil then
-                        if rng.value(rng.key({id = "WHATEVER"})) <= do_stupid_randomization_chance then
-                            table.insert(icon_tbl_props, {tbl = prototype, property = icon_group[3]})
-                            table.insert(icon_datas, prototype[icon_group[3]])
-                        end
+                        table.insert(icon_tbl_props, {tbl = prototype, property = icon_group[3]})
+                        table.insert(icon_datas, prototype[icon_group[3]])
                     end
                 end
             end
@@ -301,10 +299,8 @@ function reformat.all_icon_properties()
                 end
 
                 if effect.icons ~= nil then
-                    if rng.value(rng.key({id = "WHATEVER"})) <= do_stupid_randomization_chance then
-                        table.insert(icon_tbl_props, {tbl = effect, property = "icons"})
-                        table.insert(icon_datas, effect.icons)
-                    end
+                    table.insert(icon_tbl_props, {tbl = effect, property = "icons"})
+                    table.insert(icon_datas, effect.icons)
                 end
             end
         end

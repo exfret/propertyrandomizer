@@ -40,7 +40,46 @@ log("Gathering randomizations")
 -- Load in randomizations
 require("randomizations/master")
 
-log("Applying basic randomizations")
+-- TODO: Planetary randomizations here
+
+log("Applying graph-based randomizations")
+
+if settings.startup["propertyrandomizer-technology"].value then
+    log("Applying technology tree randomization")
+
+    randomizations.technology_tree_insnipping("technology_tree_insnipping")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
+
+if settings.startup["propertyrandomizer-recipe"].value then
+    log("Applying recipe ingredients randomization")
+
+    randomizations.recipe_ingredients("recipe_ingredients")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
+
+if settings.startup["propertyrandomizer-item"].value then
+    log("Applying item randomization")
+
+    randomizations.item("item")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
+
+log("Done applying graph-based randomizations")
+
+log("Applying numerical/misc randomizations")
 
 -- Now randomize
 for id, to_perform in pairs(randomizations_to_perform) do
@@ -49,31 +88,27 @@ for id, to_perform in pairs(randomizations_to_perform) do
     end
 end
 
-log("Done applying basic randomizations")
+log("Done applying numerical/misc randomizations")
 
+log("Applying extra randomizations")
 
+if settings.startup["propertyrandomizer-icon"].value then
+    randomizations.all_icons("all_icons")
+end
+if settings.startup["propertyrandomizer-sound"].value then
+    randomizations.all_sounds("all_sounds")
+end
+if settings.startup["propertyrandomizer-gui"].value then
+    randomizations.group_order("group_order")
+    randomizations.recipe_order("recipe_order")
+    randomizations.recipe_subgroup("recipe_subgroup")
+    randomizations.subgroup_group("subgroup_group")
+end
+if settings.startup["propertyrandomizer-locale"].value then
+    randomizations.all_names("all_names")
+end
 
-
-
-
---[[randomizations.technology_tree_insnipping("technology_tree_insnipping")--[[
-build_graph.load()
-dep_graph = build_graph.graph
-build_graph_compat.load(dep_graph)
-build_graph.add_dependents(dep_graph)
-
-randomizations.recipe_ingredients("recipe_ingredients")
-build_graph.load()
-dep_graph = build_graph.graph
-build_graph_compat.load(dep_graph)
-build_graph.add_dependents(dep_graph)]]
-
-randomizations.item("item")
-
-
-
-
-
+log("Done applying extra randomizations")
 
 log("Applying fixes")
 

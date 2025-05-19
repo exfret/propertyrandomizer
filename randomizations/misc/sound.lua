@@ -41,19 +41,25 @@ randomizations.all_sounds = function(id)
         local sound_tbl_prop_keys = {}
         local sounds = {}
 
+        -- Blacklist programmable speakers and ambient sounds, as well as different types of surfaces for their ambient sounds
+        local is_blacklisted_sound_type = {
+            ["programmable-speaker"] = true,
+            ["ambient-sound"] = true,
+            ["surface"] = true,
+            ["planet"] = true,
+            ["space-platform-hub"] = true
+        }
+
         if type(tbl) ~= "table" then
             return {sound_tbl_prop_keys = sound_tbl_prop_keys, sounds = sounds}
-        -- Blacklist programmable speakers
-        elseif tbl.type == "programmable-speaker" and tbl.name == "programmable-speaker" then
+        elseif is_blacklisted_sound_type[tbl.type] then
             return {sound_tbl_prop_keys = sound_tbl_prop_keys, sounds = sounds}
         end
 
         for key, val in pairs(tbl) do
             if is_sound_property(val) then
-                if rng.value(rng.key({id = id})) <= do_stupid_randomization_chance then
-                    table.insert(sound_tbl_prop_keys, {tbl = tbl, property = key})
-                    table.insert(sounds, val)
-                end
+                table.insert(sound_tbl_prop_keys, {tbl = tbl, property = key})
+                table.insert(sounds, val)
             else
                 local sound_info = gather_sounds(val)
                 for _, tbl_prop_key in pairs(sound_info.sound_tbl_prop_keys) do

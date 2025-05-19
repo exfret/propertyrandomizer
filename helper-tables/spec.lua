@@ -1,3 +1,11 @@
+-- Randomizations not in the spec:
+--  * Technology randomization
+--  * Recipe randomization
+--  * Item randomization
+--
+-- These need to be done in a certain order, which is why they are separated from the other randomizations
+-- These are all toggleable directly from the settings rather than using overrides
+
 local spec = {
     -- How much power accumulators store
     accumulator_buffer = {
@@ -115,12 +123,13 @@ local spec = {
             val = "less"
         }
     },
-    electric_pole_supply_area = {
+    -- Currently broken for some reason
+    --[[electric_pole_supply_area = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "less"
         }
-    },
+    },]]
     equipment_active_defense_cooldown = {
         setting = {
             name = "propertyrandomizer-military",
