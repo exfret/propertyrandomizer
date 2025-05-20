@@ -97,6 +97,7 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
         -- Fix data.raw
         for _, node in pairs(tech_sort) do
             data.raw.technology[node.name].prerequisites = tech_to_new_prereqs[node.name]
+            data.raw.technology[node.name].upgrade = false
         end
     else
         return tech_to_new_prereqs
@@ -177,7 +178,6 @@ end]]
     local tech_to_new_prereqs = {}
     local ind_to_used = {}
     local sort_state = top_sort.sort(dep_graph, blacklist)
-    -- CRITICAL TODO: Check that this is actually the way to do this
     local reachable_hacky = {}
     for _, node in pairs(sorted_deps) do
         local reachable = sort_state.reachable

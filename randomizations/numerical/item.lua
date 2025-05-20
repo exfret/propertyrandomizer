@@ -163,7 +163,7 @@ randomizations.capsule_cooldown = function(id)
                 dir = -1
             })
 
-            -- TODO: Inverse rounding
+            -- TODO: Inverse rounding?
         end
     end
 end

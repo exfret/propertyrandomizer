@@ -123,13 +123,18 @@ local spec = {
             val = "less"
         }
     },
-    -- Currently broken for some reason
-    --[[electric_pole_supply_area = {
+    electric_pole_wire_distance = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "less"
         }
-    },]]
+    },
+    electric_pole_supply_area = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "less"
+        }
+    },
     equipment_active_defense_cooldown = {
         setting = {
             name = "propertyrandomizer-military",

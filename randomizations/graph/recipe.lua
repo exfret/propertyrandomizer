@@ -520,10 +520,8 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
 end
 
 -- TODO:
---   * Massively optimize/speed up the algorithm so that it runs in <10 seconds ideally
 --   * Handle resource generation loops like coal liquefaction by studying resource costs with respect to "optimal" recipe choices
 --   * Investigate certain loops like kovarex with regards to flow cost (I don't think it would handle them well)
---   * Make assembling machines buildable without other techs, and make burner mining drills not require techs (something to add in build-graph)
 -- FEATURES:
 --   * Balanced cost randomization
 --   * Keeps barreling recipes the same

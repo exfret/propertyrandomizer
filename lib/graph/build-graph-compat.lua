@@ -128,7 +128,7 @@ local function load(graph)
     build_graph.ops["starter-gun-ammo"] = "OR"
 
     for _, technology in pairs(data.raw.technology) do
-        if technology.name ~= "gun-turret" and technology.name ~= "military" and technology.unit ~= nil and (#technology.unit.ingredients > 1 or technology.unit.count > 15) then
+        if technology.name ~= "gun-turret" and technology.name ~= "military" and technology.unit ~= nil and (#technology.unit.ingredients > 1 or technology.unit.count_formula ~= nil or technology.unit.count > 15) then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
             table.insert(tech_node.prereqs, {
@@ -180,6 +180,7 @@ local function load(graph)
 
     -- Belts before any non-trigger tech
     -- TODO: Make automatable, not just get-able
+    -- Note: Automatability is sorta checked with cost checking in item randomization
 
     prereqs = {}
 
@@ -204,6 +205,64 @@ local function load(graph)
 
             table.insert(tech_node.prereqs, {
                 type = "transport-belt",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Underground belts and splitters before any science costing 50 or more
+
+    prereqs = {}
+
+    for _, belt in pairs(data.raw["underground-belt"]) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = belt.name
+        })
+    end
+
+    graph[build_graph.key("underground-belt", "canonical")] = {
+        type = "underground-belt",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["underground-belt"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.unit ~= nil and (technology.unit.count_formula ~= nil or technology.unit.count >= 50) then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "underground-belt",
+                name = "canonical"
+            })
+        end
+    end
+
+    prereqs = {}
+
+    for _, belt in pairs(data.raw["splitter"]) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = belt.name
+        })
+    end
+
+    graph[build_graph.key("splitter", "canonical")] = {
+        type = "splitter",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["splitter"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        if technology.unit ~= nil and (technology.unit.count_formula ~= nil or technology.unit.count >= 50) then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "splitter",
                 name = "canonical"
             })
         end
@@ -271,73 +330,76 @@ local function load(graph)
     end
 
     -- Rockets and rocket turrets pre-aquilo
+    -- Only if space age is enabled
 
-    prereqs = {}
+    if mods["space-age"] then
+        prereqs = {}
 
-    for _, turret in pairs(data.raw["ammo-turret"]) do
-        local has_rocket_category = false
-        if turret.attack_parameters.ammo_category == "rocket" then
-            has_rocket_category = true
-        elseif turret.attack_parameters.ammo_categories ~= nil then
-            for _, category in pairs(turret.attack_parameters.ammo_categories) do
-                if category == "rocket" then
-                    has_rocket_category = true
+        for _, turret in pairs(data.raw["ammo-turret"]) do
+            local has_rocket_category = false
+            if turret.attack_parameters.ammo_category == "rocket" then
+                has_rocket_category = true
+            elseif turret.attack_parameters.ammo_categories ~= nil then
+                for _, category in pairs(turret.attack_parameters.ammo_categories) do
+                    if category == "rocket" then
+                        has_rocket_category = true
+                    end
                 end
+            end
+
+            if has_rocket_category then
+                table.insert(prereqs, {
+                    type = "operate-entity",
+                    name = turret.name
+                })
             end
         end
 
-        if has_rocket_category then
-            table.insert(prereqs, {
-                type = "operate-entity",
-                name = turret.name
-            })
+        graph[build_graph.key("rocket-turret", "canonical")] = {
+            type = "rocket-turret",
+            name = "canonical",
+            prereqs = prereqs
+        }
+
+        build_graph.ops["rocket-turret"] = "OR"
+
+        -- Also rocket ammo
+
+        prereqs = {}
+
+        for _, ammo in pairs(data.raw.ammo) do
+            if ammo.ammo_category == "rocket" then
+                table.insert(prereqs, {
+                    type = "item",
+                    name = ammo.name
+                })
+            end
         end
-    end
 
-    graph[build_graph.key("rocket-turret", "canonical")] = {
-        type = "rocket-turret",
-        name = "canonical",
-        prereqs = prereqs
-    }
+        graph[build_graph.key("rocket-ammo", "canonical")] = {
+            type = "rocket-ammo",
+            name = "canonical",
+            prereqs = prereqs
+        }
 
-    build_graph.ops["rocket-turret"] = "OR"
+        build_graph.ops["rocket-ammo"] = "OR"
 
-    -- Also rocket ammo
+        -- Use space connection because that's an AND node and surface is not
 
-    prereqs = {}
+        for _, connection in pairs(data.raw["space-connection"]) do
+            if connection.to == "aquilo" then
+                local conn_node = graph[build_graph.key("space-connection", connection.name)]
 
-    for _, ammo in pairs(data.raw.ammo) do
-        if ammo.ammo_category == "rocket" then
-            table.insert(prereqs, {
-                type = "item",
-                name = ammo.name
-            })
-        end
-    end
+                table.insert(conn_node.prereqs, {
+                    type = "rocket-turret",
+                    name = "canonical"
+                })
 
-    graph[build_graph.key("rocket-ammo", "canonical")] = {
-        type = "rocket-ammo",
-        name = "canonical",
-        prereqs = prereqs
-    }
-
-    build_graph.ops["rocket-ammo"] = "OR"
-
-    -- Use space connection because that's an AND node and surface is not
-
-    for _, connection in pairs(data.raw["space-connection"]) do
-        if connection.to == "aquilo" then
-            local conn_node = graph[build_graph.key("space-connection", connection.name)]
-
-            table.insert(conn_node.prereqs, {
-                type = "rocket-turret",
-                name = "canonical"
-            })
-
-            table.insert(conn_node.prereqs, {
-                type = "rocket-ammo",
-                name = "canonical"
-            })
+                table.insert(conn_node.prereqs, {
+                    type = "rocket-ammo",
+                    name = "canonical"
+                })
+            end
         end
     end
 end

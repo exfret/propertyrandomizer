@@ -431,6 +431,30 @@ randomizations.crafting_machine_speed = function(id)
     end
 end
 
+-- Includes linked randomization based on distribution distance
+randomizations.electric_pole_wire_distance = function(id)
+    local electric_poles = {}
+    local electric_pole_to_old_wire_dist = {}
+    for _, electric_pole in pairs(data.raw["electric-pole"]) do
+        table.insert(electric_poles, electric_pole)
+        electric_pole_to_old_wire_dist[electric_pole.name] = electric_pole.maximum_wire_distance
+    end
+
+    randomizations.linked({
+        id = id,
+        prototypes = electric_poles,
+        property = "maximum_wire_distance",
+        abs_min = 2,
+        abs_max = 64
+    })
+
+    for _, electric_pole in pairs(electric_poles) do
+        if electric_pole_to_old_wire_dist[electric_pole.name] > 0 then
+            electric_pole.localised_description = locale_utils.create_localised_description(electric_pole, electric_pole.maximum_wire_distance / electric_pole_to_old_wire_dist[electric_pole.name], id)
+        end
+    end
+end
+
 -- Includes linked randomization based on supply area
 randomizations.electric_pole_supply_area = function(id)
     local electric_poles = {}
@@ -444,7 +468,7 @@ randomizations.electric_pole_supply_area = function(id)
         id = id,
         prototypes = electric_poles,
         property = "supply_area_distance",
-        abs_min = 4,
+        abs_min = 2,
         abs_max = 64
     })
 
@@ -467,8 +491,6 @@ randomizations.electric_pole_supply_area = function(id)
         electric_pole.localised_description = locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id)
     end
 end
-
--- TODO: Electric pole distribution range!
 
 randomizations.gate_opening_speed = function(id)
     for _, gate in pairs(data.raw.gate) do
@@ -619,7 +641,9 @@ randomizations.lab_research_speed = function(id)
         randomize({
             id = id,
             prototype = lab,
-            property = "researching_speed"
+            property = "researching_speed",
+            range = "small",
+            variance = "small"
         })
 
         lab.localised_description = locale_utils.create_localised_description(lab, lab.researching_speed / old_speed, id)
@@ -840,7 +864,9 @@ randomizations.mining_speeds = function(id)
         randomize({
             id = id,
             prototype = mining_drill,
-            property = "mining_speed"
+            property = "mining_speed",
+            range = "small",
+            variance = "small"
         })
 
         mining_drill.localised_description = locale_utils.create_localised_description(mining_drill, mining_drill.mining_speed / old_mining_speed, id)
@@ -1201,7 +1227,9 @@ randomizations.solar_panel_production = function(id)
             is_power = true,
             id = id,
             prototype = solar_panel,
-            property = "production"
+            property = "production",
+            -- Small min range because solar is needed for space platforms
+            range_min = "small"
         })
 
         solar_panel.localised_description = locale_utils.create_localised_description(solar_panel, util.parse_energy(solar_panel.production) / old_production, id)
@@ -1369,11 +1397,10 @@ randomizations.turret_shooting_speed = function(id)
                 prototype = turret,
                 tbl = turret.attack_parameters,
                 property = "cooldown",
-                prerounding = "normal",
-                rounding = "none",
                 range = "small",
                 variance = "small",
                 dir = -1,
+                rounding = "none"
             })
 
             local new_shooting_speed = 1 / turret.attack_parameters.cooldown

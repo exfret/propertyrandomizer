@@ -38,7 +38,6 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
         end
     -- Check if there was a new connection
     -- This shouldn't change reachability, but could change blacklistedness
-    -- TODO: It actually does change reachability with the new item algorithm!
     else
         -- New node at end of new_conn
         local dependent = new_conn[2]

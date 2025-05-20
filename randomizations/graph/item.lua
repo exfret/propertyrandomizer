@@ -2,8 +2,7 @@
 -- This should be run BEFORE recipe ingredient randomization
 
 -- Balancing todos
---   * Need some sort of cost preservation for common buildings
---   * Need to blacklist connections in the right way (not doing that now), to prevent softlocks
+--  * None at the moment, but I'm sure some will come up as it's tested
 
 -- Only used for its utility functions
 local constants = require("helper-tables/constants")
@@ -15,9 +14,15 @@ local locale_utils = require("lib/locale")
 
 randomizations.item = function(id)
     local modified_raw_resource_table = flow_cost.get_default_raw_resource_table()
-    modified_raw_resource_table["item-raw-fish"] = 20
-    modified_raw_resource_table["item-wood"] = 5
-    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
+    -- Consider wood expensive as a new ingredient, but not as an old one
+    modified_raw_resource_table["item-raw-fish"] = 1
+    modified_raw_resource_table["item-wood"] = 1
+    modified_raw_resource_table["item-spoilage"] = nil
+    local old_aggregate_cost_for_old = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
+    modified_raw_resource_table["item-raw-fish"] = 25
+    modified_raw_resource_table["item-wood"] = 10
+    modified_raw_resource_table["item-spoilage"] = nil
+    local old_aggregate_cost_for_new = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
     local item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
     local sort_info = top_sort.sort(dep_graph)
@@ -29,9 +34,17 @@ randomizations.item = function(id)
         ["plant-entity-item"] = true,
         ["repair-pack"] = true,
         ["rocket-turret"] = true,
-        ["rocket-ammo"] = true
+        ["rocket-ammo"] = true,
+        ["burn-item"] = true,
+        -- Note: fuel-category-surface is used instead of fuel-category now
+        ["fuel-category"] = true,
+        ["fuel-category-surface"] = true,
+        -- This is an AND node so it needs fixing!
+        --["build-tile-item-surface-with-item"] = true,
+        ["burn-item-surface"] = true,
     }
     local node_to_old_stay_with_dependents = {}
+    local node_to_old_stay_with_dependents_surface = {}
 
     local old_order = {}
     local shuffled_order = {}
@@ -43,7 +56,7 @@ randomizations.item = function(id)
             -- Condition: only do items reachable from nauvis, no weirdness
             if sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item_node.name, build_graph.compound_key({"planet", "nauvis"})}))] then
                 -- Must have flow cost, and the cost must be reasonable
-                local cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+                local cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
                 -- Remove this check for now
                 --if cost ~= nil and 0.5 < cost and cost < 50 then
                     -- Also check stack size, since stack size 1 intermediates would suck
@@ -113,15 +126,39 @@ randomizations.item = function(id)
                                             table.insert(shuffled_order, item_node)
                                         end
 
+                                        -- Get rid of corresponding item-surface thingies
+                                        for surface_name, _ in pairs(build_graph.surfaces) do
+                                            local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+
+                                            for _, dependent in pairs(surface_based_node.dependents) do
+                                                -- Recipes can somehow still get fulfilled idk
+                                                if dependent.type ~= "recipe-surface" then
+                                                    blacklist[build_graph.conn_key({surface_based_node, dependent})] = true
+                                                end
+                                            end
+
+                                            node_to_old_stay_with_dependents_surface[surface_based_node.name] = {}
+                                            for _, dependent in pairs(surface_based_node.dependents) do
+                                                if type_stays_with_node[dependent.type] and not (dependent.type == "fuel-category-surface" and dependent.name == build_graph.compound_key({"chemical", surface_name})) then
+                                                    table.insert(node_to_old_stay_with_dependents_surface[surface_based_node.name], dependent)
+                                                    local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
+                                                    for i, prereq in pairs(dependent_node.prereqs) do
+                                                        if prereq.type == surface_based_node.type and prereq.name == surface_based_node.name then
+                                                            table.remove(dependent_node.prereqs, i)
+                                                            break
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                        -- Now for actual item node
                                         for _, prereq in pairs(item_node.prereqs) do
                                             blacklist[build_graph.conn_key({prereq, item_node})] = true
                                         end
                                         local new_dependents = {}
                                         node_to_old_stay_with_dependents[item_node.name] = {}
                                         for _, dependent in pairs(item_node.dependents) do
-                                            -- TODO: Do I just actually just need to blacklist the recipe results connections
-                                            --blacklist[build_graph.conn_key({item_node, dependent})] = true
-                                            if type_stays_with_node[dependent.type] then
+                                            if type_stays_with_node[dependent.type] and not (dependent.type == "fuel-category" and dependent.name == "chemical") then
                                                 -- Remove the dependent entirely
                                                 table.insert(node_to_old_stay_with_dependents[item_node.name], dependent)
                                                 local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
@@ -167,7 +204,7 @@ randomizations.item = function(id)
             end
 
             if not ind_to_used_in_old_order[old_order_ind_2] and reachable[build_graph.key(item_node.type, item_node.name)] then
-                local new_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+                local new_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
 
                 local new_node
                 for ind = 1, #shuffled_order do
@@ -175,13 +212,13 @@ randomizations.item = function(id)
 
                     -- I think reachability in this case is technically not needed, but it helps keep game progression
                     if not ind_to_used[ind] and reachable[build_graph.key(proposed_node.type, proposed_node.name)] then
-                        local old_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(proposed_node.item)]
+                        local old_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(proposed_node.item)]
                         
                         -- If cost is assignable and this new item is special in some way, try to preserve that cost
                         -- Right now special just means it can place something or is not a standard item
                         local is_significant_item = false
                         local cost_threshold
-                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item") then
+                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item" or proposed_node.item.fuel_value ~= nil or proposed_node.item.place_as_tile ~= nil) then
                             is_significant_item = true
 
                             -- Cost threshold is higher for more expensive items, since they're probably less common
@@ -219,11 +256,6 @@ randomizations.item = function(id)
                 end
 
                 if new_node ~= nil then
-
-
-
-
-
                     log(item_node.name)
                     log(new_node.name)
                     -- So we're saying too much is reachable and that's biting us
@@ -233,9 +265,6 @@ randomizations.item = function(id)
                     -- Ohhhh it didn't find the rocket silo at all?
                     -- Or chemical science pack? Oh no wait we blacklisted those
                     -- It's finding the build-entity for rocket silo but not the rocket silo
-
-
-
 
                     -- Essentially need to unlock some of new node's dependents, but not old_node's
                     -- Right now what occurs to me for this is entities that are player creations
@@ -249,11 +278,23 @@ randomizations.item = function(id)
                     -- Add old stay-with-type nodes
                     for _, dependent in pairs(node_to_old_stay_with_dependents[new_node.name]) do
                         local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
-                        table.insert(dependent_node.dependents, {
+                        table.insert(dependent_node.prereqs, {
                             type = item_node.type,
                             name = item_node.name
                         })
                         table.insert(item_node.dependents, dependent)
+                    end
+                    -- surface-based items
+                    for surface_name, _ in pairs(build_graph.surfaces) do
+                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+                        for _, dependent in pairs(node_to_old_stay_with_dependents_surface[surface_based_node.name]) do
+                            local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
+                            table.insert(dependent_node.prereqs, {
+                                type = surface_based_node.type,
+                                name = surface_based_node.name
+                            })
+                            table.insert(surface_based_node.dependents, dependent)
+                        end
                     end
                     --[[for _, dependent in pairs(item_node.dependents) do
                         if not type_stays_with_node[dependent.type] then
@@ -265,6 +306,16 @@ randomizations.item = function(id)
                     for _, prereq in pairs(item_node.prereqs) do
                         blacklist[build_graph.conn_key({prereq, item_node})] = false
                         sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, item_node})
+                    end
+                    for surface_name, _ in pairs(build_graph.surfaces) do
+                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+                        
+                        for _, dependent in pairs(surface_based_node.dependents) do
+                            if blacklist[build_graph.conn_key({surface_based_node, dependent})] then
+                                blacklist[build_graph.conn_key({surface_based_node, dependent})] = false
+                                sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {surface_based_node, dependent})
+                            end
+                        end
                     end
 
                     ind_to_used_in_old_order[old_order_ind_2] = true
@@ -279,12 +330,6 @@ randomizations.item = function(id)
         end
     end
 
-    --local post_sort = top_sort.sort(dep_graph).sorted
-    -- TODO: REMOVE
-    for _, node in pairs(sort_state.sorted) do
-        log(build_graph.key(node.type, node.name))
-    end
-
     -- Fix data.raw
     local changes = {}
     local post_changes = {}
@@ -293,11 +338,11 @@ randomizations.item = function(id)
         -- item_node takes the place of same-indexed node in old_order
         local old_node = old_order[ind]
 
-        local incoming_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(item_node.item)]
-        local outgoing_cost = old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(old_node.item)]
+        local incoming_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+        local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_node.item)]
         local amount_multiplier = 1
         local is_significant = false
-        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" then
+        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" or item_node.item.fuel_value ~= nil or item_node.item.place_as_tile ~= nil then
             is_significant = true
         end
         if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 then
@@ -352,7 +397,10 @@ randomizations.item = function(id)
         end
 
         -- Replace mine results
-        for entity_class, _ in pairs(defines.prototypes.entity) do
+        local minable_things = table.deepcopy(defines.prototypes.entity)
+        -- Need to account for asteroid chunks as well
+        minable_things["asteroid-chunk"] = true
+        for entity_class, _ in pairs(minable_things) do
             if data.raw[entity_class] ~= nil then
                 for _, entity in pairs(data.raw[entity_class]) do
                     -- Don't replace entities that are player creations, so that you still get the buildings back you place down
@@ -608,19 +656,19 @@ randomizations.item = function(id)
                             new_val = item_node.item.name
                         })
                     end
-                    if item.burnt_result == old_node.item.name then
+                    --[[if item.burnt_result == old_node.item.name then
                         table.insert(changes, {
                             tbl = item,
                             prop = "burnt_result",
                             new_val = item_node.item.name
                         })
-                    end
+                    end]]
                 end
             end
         end
         -- Transfer old node's fuel value here
         -- This must be done after burnt results
-        table.insert(post_changes, {
+        --[[table.insert(post_changes, {
             tbl = item_node.item,
             prop = "fuel_value",
             new_val = old_node.item.fuel_value
@@ -649,7 +697,7 @@ randomizations.item = function(id)
             tbl = item_node.item,
             prop = "fuel_glow_color",
             new_val = old_node.item.fuel_glow_color
-        })
+        })]]
         -- Transfer old node's spoil stats
         -- This must be done after the spoil_results are updated
         table.insert(post_changes, {
@@ -677,7 +725,6 @@ randomizations.item = function(id)
         for _, technology in pairs(data.raw.technology) do
             if technology.research_trigger ~= nil then
                 if technology.research_trigger.type == "craft-item" then
-                    log(serpent.block(technology.research_trigger))
                     if technology.research_trigger.item == old_node.item.name then
                         table.insert(changes, {
                             tbl = technology.research_trigger,
@@ -695,6 +742,18 @@ randomizations.item = function(id)
                 end
             end
         end
+
+        -- TODO: Make this check less ad-hoc
+        -- If this is a coal replacement, give it a fuel value
+        if old_node.item.name == "coal" then
+            -- TODO: Need to do something special if this is the only non-chemical fuel for something...
+            if item_node.item.fuel_category ~= "chemical" then
+                item_node.item.fuel_category = "chemical"
+                item_node.item.fuel_value = "4MJ"
+            elseif util.parse_energy(item_node.item.fuel_value) < 1000000 then
+                item_node.item.fuel_value = "1MJ"
+            end
+        end
     end
     for _, change in pairs(changes) do
         change.tbl[change.prop] = change.new_val
@@ -705,6 +764,7 @@ randomizations.item = function(id)
 
     -- wood needs to have fuel value as the initial fuel of most burner energy sources
     -- TODO: Sense for this and fix it automatically!
-    data.raw.item.wood.fuel_value = "2MJ"
-    data.raw.item.wood.fuel_category = "chemical"
+    --data.raw.item.wood.fuel_value = "2MJ"
+    --data.raw.item.wood.fuel_category = "chemical"
+    -- TODO: Change whatever is now from coal to have a fuel value?
 end

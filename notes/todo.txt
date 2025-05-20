@@ -1,6 +1,8 @@
 WORKING ON:
  - Electric pole supply area/distribution effectivity
+ - Modules
  - First release
+ - Various numerical/space age especially randomizations need adding
  - Tech unlock randomization
  - Tech packs required randomization
  - Dupes
@@ -10,7 +12,6 @@ WORKING ON:
  - Maybe look over TODO's one last time
  - Improve dependency graph
  - Item fluid randomization?
- - Tech unlock randomization?
 
 2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings

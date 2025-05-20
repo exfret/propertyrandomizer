@@ -9,7 +9,7 @@ randomizations.equipment_active_defense_cooldown = function(id)
         -- Rounding will be off but that's okay
         randomize({
             id = id,
-            prototoype = equipment,
+            prototype = equipment,
             tbl = equipment.attack_parameters,
             property = "cooldown",
             rounding = "none"

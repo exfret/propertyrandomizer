@@ -129,6 +129,17 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "double-setting",
+        name = "propertyrandomizer-item-percent",
+        localised_name = "Percent of items randomized",
+        localised_description = "What percentage of non-resource items should be randomized (raw resources are always randomized for increased fun). 100% shuffles every item in the game while still preventing softlocks.",
+        default_value = 30,
+        minimum_value = 0,
+        maximum_value = 100,
+        order = "d-ca[item]"
+    },
+    {
+        setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-icon",
         localised_name = "Randomized icons (not recommended)",
@@ -141,7 +152,7 @@ data:extend({
         type = "bool-setting",
         name = "propertyrandomizer-sound",
         localised_name = "Randomized sound (not recommended)",
-        localised_description = "Every sound in the game is randomized. Who do you think you are?",
+        localised_description = "Every sound in the game is randomized. Who are you?",
         default_value = false,
         order = "e-b[sound]"
     },
@@ -150,7 +161,7 @@ data:extend({
         type = "bool-setting",
         name = "propertyrandomizer-gui",
         localised_name = "Randomized GUI (not recommended)",
-        localised_description = "Positions of recipes in the GUI are randomized. What are you doing?",
+        localised_description = "Positions of recipes in the GUI are randomized. What the heck?",
         default_value = false,
         order = "e-c[gui]"
     },

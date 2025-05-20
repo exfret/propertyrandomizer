@@ -8,12 +8,12 @@ local graph
 --   * create general "can be placed down on tile" function and use that in the offshore function
 --   * deal with hidden recipes/techs, like recipe-unknown
 --   * rocket-part-recipe should respect fixed-recipe (also double check it checks what the silo can do)
---   * code in that burner machines are inoperable in space
+--   * code in that burner machines are inoperable in space (that might already just be part of a surface condition)
 --   * add prototypes to graph information
 --   * figure out why explosions are reachable
 --   * add corpses (like stomper corpses)
 --   * test for planets that are discovered from start, like nauvis, not just ones you start on
---   * check for ice melting
+--   * check for ice melting (wait was that just someone trolling me?)
 --   * check that surface condition checking works well
 --   * minability tech nodes (like researching ability to mine uranium in base game)
 --   * add dependence for solar that solar percent is >5% or so (aquilo has some but it shouldn't be relied on)
@@ -1290,8 +1290,8 @@ local function load()
                                 -- TODO: Also check for burnt fuel results and a valid burnt result inventory
                                 for _, fuel_category in pairs(energy_source.fuel_categories or {"chemical"}) do
                                     table.insert(prereqs, {
-                                        type = "fuel-category",
-                                        name = fuel_category
+                                        type = "fuel-category-surface",
+                                        name = compound_key({fuel_category, surface_name})
                                     })
                                 end
                             elseif energy_source.type == "heat" then
@@ -1542,6 +1542,30 @@ local function load()
         end
     end
 
+    -- fuel-category-surface
+    log("Adding: fuel-category-surface")
+    -- TODO: Add this to obsidian spec
+    for _, fuel_category in pairs(data.raw["fuel-category"]) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
+
+            for item_class, _ in pairs(defines.prototypes.item) do
+                if data.raw[item_class] ~= nil then
+                    for _, item in pairs(data.raw[item_class]) do
+                        if item.fuel_category == fuel_category.name then
+                            table.insert(prereqs, {
+                                type = "item-surface",
+                                name = compound_key({item.name, surface_name})
+                            })
+                        end
+                    end
+                end
+            end
+
+            add_to_graph("fuel-category-surface", compound_key({fuel_category.name, surface_name}), prereqs)
+        end
+    end
+
     -- gun-ammo-surface
     log("Adding: gun-ammo-surface")
 
@@ -1759,10 +1783,13 @@ local function load()
                     if data.raw[item_class_2] ~= nil then
                         for _, item_2 in pairs(data.raw[item_class_2]) do
                             if item_2.spoil_result == item.name then
-                                table.insert(prereqs, {
+                                -- CRITICAL TODO: ADD BACK IN
+                                -- This was removed because going through spoilage to get things for randomization proved too difficult
+                                -- It still works out because spoilage can be found on gleba, so the graph can still be traversed, but this prevents issues at nauvis stage
+                                --[[table.insert(prereqs, {
                                     type = "item",
                                     name = item_2.name
-                                })
+                                })]]
                             end
                         end
                     end
@@ -2036,6 +2063,7 @@ local function load()
 
     -- item-insertion
     log("Adding: item-insertion")
+    -- TODO: Remove in obsidian vault because this is now in the compat file instead
 
     -- TODO
 
@@ -2164,10 +2192,10 @@ local function load()
                             name = compound_key({entity.name, surface_name})
                         })
 
-                        if entity.minable.fluid ~= nil then
+                        if entity.minable.required_fluid ~= nil then
                             table.insert(prereqs, {
                                 type = "fluid-surface",
-                                name = compound_key({fluid.name, surface_name})
+                                name = compound_key({entity.minable.required_fluid, surface_name})
                             })
 
                             table.insert(prereqs, {
@@ -3724,6 +3752,7 @@ build_graph.ops = {
     ["fuel-category"] = "OR",
     ["fuel-category-burner"] = "OR",
     ["fuel-category-burner-surface"] = "OR",
+    ["fuel-category-surface"] = "OR",
     ["gun-ammo-surface"] = "AND",
     ["gun-surface"] = "OR",
     ["heat-distribution-surface"] = "OR",

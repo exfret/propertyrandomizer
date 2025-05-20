@@ -3,6 +3,10 @@ script.on_init(function(event)
     storage.player_ind_to_last_return_attempt_ticks = {}
 end)
 
+script.on_configuration_changed(function(event)
+    game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Mod configuration was changed; keep in mind that updates may break pre-existing runs.\nOlder versions of mods can be found on the factorio mod website (mods.factorio.com) if needed.\nIf you need any help, message exfret on discord or on the mod's website - mods.factorio.com/mod/propertyrandomizer")
+end)
+
 script.on_event("return-to-nauvis", function(event)
     if game.players[event.player_index].get_inventory(defines.inventory.character_main).is_empty() then
         -- 5 seconds to press again
@@ -18,8 +22,8 @@ script.on_event("return-to-nauvis", function(event)
     end
 end)
 
-script.on_event(defines.events.on_player_changed_surface, function(event)
-    if not storage.printed_change_surface_message then
+script.on_event(defines.events.on_cargo_pod_finished_descending, function(event)
+    if event.player_index ~= nil and not storage.printed_change_surface_message then
         storage.printed_change_surface_message = true
         game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] To prevent softlocks, you can use the respawn key sequence (by default, CTRL + SHIFT + R) to return home at any time. You must have an empty inventory.")
     end

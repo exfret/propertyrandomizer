@@ -7,6 +7,45 @@ local randnum = {}
 -- TODO: check for incorrect params
 
 randnum.fill_in_defaults = function(params)
+    -- Check for incorrect params
+    local is_allowed_param = {
+        id = true,
+        prototype = true,
+        key = true,
+        tbl = true,
+        property = true,
+        dummy = true,
+        abs_min = true,
+        abs_max = true,
+        range = true,
+        range_min = true,
+        range_max = true,
+        variance = true,
+        bias = true,
+        dir = true,
+        rounding = true,
+        -- Special keys that this file doesn't care about but we still allow
+        prototypes = true,
+        tbls = true,
+        separated = true,
+        is_power = true,
+        -- Allow val etc. for now, but keep in mind it will allow the same params to be used to randomize multiple times
+        val = true,
+        hard_min = true,
+        soft_min = true,
+        soft_max = true,
+        hard_max = true,
+        step_size = true,
+        real_bias = true
+    }
+    for k, _ in pairs(params) do
+        if not is_allowed_param[k] then
+            -- This param was misspelled!
+            log("Incorrect randomization key: " .. k)
+            error()
+        end
+    end
+
     -- Fill in key first
     if params.key == nil then
         params.key = rng.key({id = params.id, prototype = params.prototype})

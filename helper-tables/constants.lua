@@ -18,7 +18,7 @@ local constants = {
     non_starting_planet_bonus = 3,
     -- Item randomization
     item_randomization_probability_high = 1,
-    item_randomization_probability_low = 1
+    item_randomization_probability_low = settings.startup["propertyrandomizer-item-percent"].value / 100
 }
 
 return constants

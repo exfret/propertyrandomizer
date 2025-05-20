@@ -19,7 +19,6 @@ Stage 1 (High priority)
 15. Crafting machine speed
     a. Scale other stats at once
 16. Electric pole supply area/reach distance
-TODO
 
 Stage 2 (Medium priority)
 
