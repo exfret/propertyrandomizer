@@ -20,7 +20,7 @@ randomizations.item = function(id)
     modified_raw_resource_table["item-spoilage"] = nil
     local old_aggregate_cost_for_old = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
     modified_raw_resource_table["item-raw-fish"] = 25
-    modified_raw_resource_table["item-wood"] = 10
+    modified_raw_resource_table["item-wood"] = 5
     modified_raw_resource_table["item-spoilage"] = nil
     local old_aggregate_cost_for_new = flow_cost.determine_recipe_item_cost(modified_raw_resource_table, constants.cost_params.time, constants.cost_params.complexity)
     local item_recipe_maps = flow_cost.construct_item_recipe_maps()
@@ -42,6 +42,10 @@ randomizations.item = function(id)
         -- This is an AND node so it needs fixing!
         --["build-tile-item-surface-with-item"] = true,
         ["burn-item-surface"] = true,
+    }
+    local is_blacklisted_item = {
+        -- Rocket parts probbly shouldn't be randomized lol
+        ["rocket-part"] = true,
     }
     local node_to_old_stay_with_dependents = {}
     local node_to_old_stay_with_dependents_surface = {}
@@ -100,7 +104,7 @@ randomizations.item = function(id)
                             --if all_valid_prereqs then
                                 -- Also check that it's not a science pack (I hope I don't need many more checks...)
                                 -- Also check burnt results since those were having issues :(
-                                if item_node.item.type ~= "tool" and item_node.item.burnt_result == nil then
+                                if item_node.item.type ~= "tool" and item_node.item.burnt_result == nil and not is_blacklisted_item[item_node.item.name] then
                                     -- Special priority to resources
                                     local is_raw_resource = false
                                     for _, resource in pairs(data.raw.resource) do
@@ -218,7 +222,7 @@ randomizations.item = function(id)
                         -- Right now special just means it can place something or is not a standard item
                         local is_significant_item = false
                         local cost_threshold
-                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item" or proposed_node.item.fuel_value ~= nil or proposed_node.item.place_as_tile ~= nil) then
+                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item" or proposed_node.item.fuel_value ~= nil or proposed_node.item.place_as_tile ~= nil or item_node.item.plant_result ~= nil) then
                             is_significant_item = true
 
                             -- Cost threshold is higher for more expensive items, since they're probably less common
@@ -240,10 +244,13 @@ randomizations.item = function(id)
                         -- No wait, do have a cost threshold just for the more ridiculous cases
                         cost_threshold = 100
                         if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
-                            new_node = shuffled_order[ind]
-                            ind_to_used[ind] = true
-                            table.insert(new_order, shuffled_order[ind])
-                            break
+                            -- Check now that stack sizes match up
+                            --if proposed_node.item.stack_size >= item_node.item.stack_size / 10 then
+                                new_node = shuffled_order[ind]
+                                ind_to_used[ind] = true
+                                table.insert(new_order, shuffled_order[ind])
+                                break
+                            --end
                         end
                     end
                     if ind == #shuffled_order then
@@ -342,10 +349,10 @@ randomizations.item = function(id)
         local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_node.item)]
         local amount_multiplier = 1
         local is_significant = false
-        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" or item_node.item.fuel_value ~= nil or item_node.item.place_as_tile ~= nil then
+        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" or item_node.item.fuel_value ~= nil or item_node.item.place_as_tile ~= nil or item_node.item.plant_result ~= nil then
             is_significant = true
         end
-        if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 then
+        if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 and item_node.item.name ~= old_node.item.name then
             amount_multiplier = math.floor(outgoing_cost / incoming_cost)
         end
 

@@ -402,6 +402,96 @@ local function load(graph)
             end
         end
     end
+
+    -- Construction before any science past blue
+    -- Includes bot and roboport
+    -- TODO: Add equipment nodes so I can do personal roboport too
+
+    prereqs = {}
+
+    for _, bot in pairs(data.raw["construction-robot"]) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = bot.name
+        })
+    end
+
+    graph[build_graph.key("construction-robot", "canonical")] = {
+        type = "construction-robot",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["construction-robot"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        local is_chemical_science_ings = {
+            ["automation-science-pack"] = true,
+            ["logistic-science-pack"] = true,
+            ["chemical-science-pack"] = true,
+        }
+
+        local past_chemical_science = false
+        if technology.unit ~= nil then
+            for _, ing in pairs(technology.unit.ingredients) do
+                if not is_chemical_science_ings[ing[1]] then
+                    past_chemical_science = true
+                end
+            end
+        end
+
+        if past_chemical_science then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "construction-robot",
+                name = "canonical"
+            })
+        end
+    end
+
+    prereqs = {}
+
+    for _, roboport in pairs(data.raw["roboport"]) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = roboport.name
+        })
+    end
+
+    graph[build_graph.key("roboport", "canonical")] = {
+        type = "roboport",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["roboport"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        local is_chemical_science_ings = {
+            ["automation-science-pack"] = true,
+            ["logistic-science-pack"] = true,
+            ["chemical-science-pack"] = true,
+        }
+
+        local past_chemical_science = false
+        if technology.unit ~= nil then
+            for _, ing in pairs(technology.unit.ingredients) do
+                if not is_chemical_science_ings[ing[1]] then
+                    past_chemical_science = true
+                end
+            end
+        end
+
+        if past_chemical_science then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "roboport",
+                name = "canonical"
+            })
+        end
+    end
 end
 -- export
 build_graph_compat.load = load

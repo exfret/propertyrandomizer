@@ -6,6 +6,8 @@ data:extend({
         localised_name = "Random seed",
         localised_description = "Changing this will change how everything is randomized.",
         default_value = 23,
+        minimum_value = -9007199254740992,
+        maximum_value = 9007199254740992,
         order = "a[seed]"
     },
     {

@@ -223,6 +223,7 @@ randomizations.belt_speed = function(id)
         id = id,
         prototypes = belts,
         property = "speed",
+        range_min = "small",
         rounding = "pure_discrete"
     })
 
