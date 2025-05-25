@@ -129,32 +129,35 @@ randomizations.equipment_energy_usage = function(id)
                 end
             end
 
-            -- is_power scaling doesn't matter since we're going to just see proportion scaling
-            local old_first_energy_val = util.parse_energy(equipment[energy_properties[1]])
+            -- Check to see if there was anything with energy worth scaling
+            if equipment[energy_properties[1]] ~= nil then
+                -- is_power scaling doesn't matter since we're going to just see proportion scaling
+                local old_first_energy_val = util.parse_energy(equipment[energy_properties[1]])
 
-            randomizations.energy({
-                is_power = ind_to_is_power[1],
-                id = id,
-                prototype = equipment,
-                property = energy_properties[1],
-                dir = -1
-            })
+                randomizations.energy({
+                    is_power = ind_to_is_power[1],
+                    id = id,
+                    prototype = equipment,
+                    property = energy_properties[1],
+                    dir = -1
+                })
 
-            local new_first_energy_val = util.parse_energy(equipment[energy_properties[1]])
+                local new_first_energy_val = util.parse_energy(equipment[energy_properties[1]])
 
-            -- Scale all energy vals up the same way
-            for i = 2, #energy_properties do
-                local curr_energy_val = util.parse_energy(equipment[energy_properties[i]])
-                local suffix = "J"
-                if ind_to_is_power[i] then
-                    curr_energy_val = 60 * curr_energy_val
-                    suffix = "W"
+                -- Scale all energy vals up the same way
+                for i = 2, #energy_properties do
+                    local curr_energy_val = util.parse_energy(equipment[energy_properties[i]])
+                    local suffix = "J"
+                    if ind_to_is_power[i] then
+                        curr_energy_val = 60 * curr_energy_val
+                        suffix = "W"
+                    end
+                    curr_energy_val = curr_energy_val * new_first_energy_val / old_first_energy_val
+                    equipment[energy_properties[i]] = curr_energy_val .. suffix
                 end
-                curr_energy_val = curr_energy_val * new_first_energy_val / old_first_energy_val
-                equipment[energy_properties[i]] = curr_energy_val .. suffix
-            end
 
-            equipment.localised_description = locale_utils.create_localised_description(equipment, new_first_energy_val / old_first_energy_val, id, {flipped = true})
+                equipment.localised_description = locale_utils.create_localised_description(equipment, new_first_energy_val / old_first_energy_val, id, {flipped = true})
+            end
         end
     end
 

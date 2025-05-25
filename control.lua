@@ -8,7 +8,21 @@ script.on_configuration_changed(function(event)
 end)
 
 script.on_event("return-to-nauvis", function(event)
-    if game.players[event.player_index].get_inventory(defines.inventory.character_main).is_empty() then
+    local inventories_to_be_empty = {
+        defines.inventory.character_main,
+        defines.inventory.character_ammo,
+        defines.inventory.character_guns,
+        defines.inventory.character_trash
+    }
+
+    local all_empty = true
+    for _, inv in pairs(inventories_to_be_empty) do
+        if not game.players[event.player_index].get_inventory(inv).is_empty() then
+            all_empty = false
+        end
+    end
+
+    if all_empty then
         -- 5 seconds to press again
         if storage.player_ind_to_last_return_attempt_ticks[event.player_index] == nil or event.tick - storage.player_ind_to_last_return_attempt_ticks[event.player_index] > 5 * 60 then
             game.players[event.player_index].print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Respawn key sequence entered. Enter again within 5 seconds to confirm.")
