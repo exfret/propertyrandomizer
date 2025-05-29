@@ -69,6 +69,7 @@ local sensitive_recipes = {
     ["kovarex-enrichment-process"] = true
 }
 -- Also add recycling recipes
+-- CRITICAL TODO: WAIT DO WE NOT UPDATE RECYCLING RESULTS???
 for _, recipe in pairs(data.raw.recipe) do
     if recipe.category == "recycling" or recipe.category == "recycling-or-hand-crafting" then
         sensitive_recipes[recipe.name] = true

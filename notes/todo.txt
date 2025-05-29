@@ -1,7 +1,4 @@
 WORKING ON:
- - Electric pole supply area/distribution effectivity
- - Modules
- - First release
  - Various numerical/space age especially randomizations need adding
  - Tech unlock randomization
  - Tech packs required randomization
@@ -10,10 +7,8 @@ WORKING ON:
  - New randomizations
  - Space age randomizations
  - Maybe look over TODO's one last time
- - Improve dependency graph
  - Item fluid randomization?
 
-2. Check that only allowed settings are passed into randnum
 3. Rounding after rescalings
 8. Blacklists?
 10. Beacon profiles?
@@ -26,12 +21,15 @@ WORKING ON:
 18. Clamp end result to the hard min/max range in case it escaped outside
 19. Why is supply area for electric poles only working for substations?
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
-21. Ore swap randomization
-22. Make rocket turrets an aquilo dependency in build-graph-compat
 23. Automatability nodes
-24. Items keep fuel value in item randomization (add random fuels later mayhaps)
+24. Add bulid_graph_compat nodes to Obsidian spec
+25. Check if node-transport-item-to-surface actually needs to also rely on the corresponding planet-launch
 
 DONE:
+21. Ore swap randomization
+22. Make rocket turrets an aquilo dependency in build-graph-compat
+24. Items keep fuel value in item randomization (add random fuels later mayhaps)
+2. Check that only allowed settings are passed into randnum
 9. Retrieve projectiles to randomize damage on those
 7. Pollutant types for pollution randomization
 5. Finish linked randomization on certain randomizations that I need to finish it on

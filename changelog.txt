@@ -1,6 +1,17 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.7
+Date: 2025.05.29
+  Features:
+    - Randomized module effects
+  Bugfixes:
+    - Fixed a few bugs in the dependency graph's construction
+    - Fixed that beacons could be randomized to over 64 supply area, causing a startup error
+    - Fixed a fundamental logic error for the clamping in the numerical randomization algorithm that has slipped under my radar for several weeks (thanks chatGPT for finding it!)
+---------------------------------------------------------------------------------------------------
 Version: 0.3.6
-Date: ?
+Date: 2025.05.29
+  Bugfixes:
+    - Fixed some spoil result logic
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.5
 Date: 2025.05.25
@@ -12,7 +23,7 @@ Version: 0.3.4
 Date: 2025.05.22
   Balancing:
     - Belts don't randomize as badly
-    - Rocket parts aren't randomized
+    - Rocket parts aren't randomized during item randomization
   Bugfixes:
     - Clamped seed value to within the allowed range to prevent hard crashes
 ---------------------------------------------------------------------------------------------------

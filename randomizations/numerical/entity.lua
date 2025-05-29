@@ -162,6 +162,7 @@ randomizations.beacon_supply_area = function(id)
             prototype = beacon,
             property = "supply_area_distance",
             abs_min = 2,
+            abs_max = 64,
             range = "small",
             variance = "small",
             rounding = "discrete"
@@ -189,7 +190,8 @@ randomizations.beam_damage_interval = function(id)
         randomize({
             id = id,
             prototype = beam,
-            property = "damage_interval"
+            property = "damage_interval",
+            dir = -1
         })
         -- TODO: Inverse rounding
     end

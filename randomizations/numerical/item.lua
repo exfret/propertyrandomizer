@@ -396,6 +396,13 @@ randomizations.module_effects = function(id)
 
         module_to_old_effects[module.name] = table.deepcopy(module.effect)
 
+        local sign
+
+        sign = 1
+        if module.effect.consumption < 0 then
+            sign = -1
+            module.effect.consumption = -1 * module.effect.consumption
+        end
         randomize({
             id = id,
             prototype = module,
@@ -403,27 +410,47 @@ randomizations.module_effects = function(id)
             property = "consumption",
             range = "small",
             variance = "small",
-            dir = -1
+            dir = -1 * sign
         })
+        module.effect.consumption = sign * module.effect.consumption
 
+        sign = 1
+        if module.effect.speed < 0 then
+            sign = -1
+            module.effect.speed = -1 * module.effect.speed
+        end
         randomize({
             id = id,
             prototype = module,
             tbl = module.effect,
             property = "speed",
             range = "small",
-            variance = "small"
+            variance = "small",
+            dir = sign
         })
+        module.effect.speed = sign * module.effect.speed
 
+        sign = 1
+        if module.effect.productivity < 0 then
+            sign = -1
+            module.effect.productivity = -1 * module.effect.productivity
+        end
         randomize({
             id = id,
             prototype = module,
             tbl = module.effect,
             property = "productivity",
             range = "very_small",
-            variance = "very_small"
+            variance = "very_small",
+            dir = sign
         })
+        module.effect.productivity = sign * module.effect.productivity
 
+        sign = 1
+        if module.effect.pollution < 0 then
+            sign = -1
+            module.effect.pollution = -1 * module.effect.pollution
+        end
         randomize({
             id = id,
             prototype = module,
@@ -431,17 +458,25 @@ randomizations.module_effects = function(id)
             property = "pollution",
             range = "small",
             variance = "small",
-            dir = -1
+            dir = -1 * sign
         })
+        module.effect.pollution = sign * module.effect.pollution
 
+        sign = 1
+        if module.effect.quality < 0 then
+            sign = -1
+            module.effect.quality = -1 * module.effect.quality
+        end
         randomize({
             id = id,
             prototype = module,
             tbl = module.effect,
             property = "quality",
             range = "very_small",
-            variance = "very_small"
+            variance = "very_small",
+            dir = sign
         })
+        module.effect.quality = sign * module.effect.quality
 
         -- Add to cat_to_modules
         if cat_to_modules[module.category] == nil then
@@ -467,16 +502,20 @@ randomizations.module_effects = function(id)
         elseif module_cat == "quality" then
             prop_to_use = "quality"
         end
-        local sort_modules_property = function(module1, module2) return sign * module1.effect[prop_to_use] < sign * module2.effect[prop_to_use] end
 
-        local sorted_tiers = table.deepcopy(cat_to_modules[module_cat])
-        table.sort(sorted_tiers, sort_modules_tier)
-        local sorted_effects = table.deepcopy(module_tbl)
-        table.sort(sorted_effects, sort_modules_property)
+        -- Don't sort modded module categories for now
+        if prop_to_use ~= nil then
+            local sort_modules_property = function(module1, module2) return sign * module1.effect[prop_to_use] < sign * module2.effect[prop_to_use] end
 
-        for ind, module in pairs(sorted_tiers) do
-            -- Need to go into data.raw here because sorted_tiers is a deep clone
-            data.raw.module[module.name].effect[prop_to_use] = sorted_effects[ind].effect[prop_to_use]
+            local sorted_tiers = table.deepcopy(cat_to_modules[module_cat])
+            table.sort(sorted_tiers, sort_modules_tier)
+            local sorted_effects = table.deepcopy(module_tbl)
+            table.sort(sorted_effects, sort_modules_property)
+
+            for ind, module in pairs(sorted_tiers) do
+                -- Need to go into data.raw here because sorted_tiers is a deep clone
+                data.raw.module[module.name].effect[prop_to_use] = sorted_effects[ind].effect[prop_to_use]
+            end
         end
     end
 
@@ -487,7 +526,12 @@ randomizations.module_effects = function(id)
             if effect_name == "consumption" or effect_name == "pollution" then
                 flipped = true
             end
-            module.localised_description = locale_utils.create_localised_description(module, 1 + effect_val - module_to_old_effects[module.name][effect_name], id, {addons = " " .. effect_name .. " (additive)", flipped = flipped})
+            local normalizing_factor = 1
+            -- The game treats quality effects as actually being divided by 10
+            if effect_name == "quality" then
+                normalizing_factor = 0.1
+            end
+            module.localised_description = locale_utils.create_localised_description(module, (1 + normalizing_factor * (effect_val - module_to_old_effects[module.name][effect_name])), id, {addons = " " .. effect_name .. " (additive)", flipped = flipped, round_more = true})
         end
     end
 end

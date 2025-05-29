@@ -204,7 +204,13 @@ end
 
 function locale_utils.create_tooltip(factor, extra_params)
     -- Have percent_change be rounded
-    local percent_change = math.floor(100 * (factor - 1) + 0.5)
+    local percent_change
+    -- By default we round to whole numbers, but for some things like quality we do tenths
+    if extra_params.round_more then
+        percent_change = math.floor(10 * 100 * (factor - 1) + 0.5) / 10
+    else
+        percent_change = math.floor(100 * (factor - 1) + 0.5)
+    end
     local color
     if percent_change >= 100 then
         if not extra_params.flipped then
@@ -255,7 +261,12 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
         addons = extra_params.addons
     end
 
-    return {"", locale_utils.find_localised_description(prototype, {with_newline = true}), locale_utils.create_tooltip(factor, {flipped = flipped}), {"propertyrandomizer-tooltip." .. id}, addons .. "[/color]"}
+    local round_more = false
+    if extra_params.round_more ~= nil then
+        round_more = extra_params.round_more
+    end
+
+    return {"", locale_utils.find_localised_description(prototype, {with_newline = true}), locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more}), {"propertyrandomizer-tooltip." .. id}, addons .. "[/color]"}
 end
 
 function locale_utils.capitalize(str)

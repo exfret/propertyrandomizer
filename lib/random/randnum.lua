@@ -221,16 +221,16 @@ randnum.rand = function(params)
         end
 
         for j = 1, constants.steps_per_roll do
-            local force = 0
+            local forces = 0
 
             if val < soft_min then
                 forces = 1 - (val - hard_min) / (soft_min - hard_min)
             end
             if val > soft_max then
-                forces = -1 + (hard_max - val) / (hard_max - hard_min)
+                forces = -1 + (hard_max - val) / (hard_max - soft_max)
             end
 
-            val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + force)
+            val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
 
             -- Reset t_val if it passed hard_max or hard_min due to too high forces
             if val > hard_max then

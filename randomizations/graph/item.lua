@@ -340,6 +340,7 @@ randomizations.item = function(id)
     -- Fix data.raw
     local changes = {}
     local post_changes = {}
+    local post_changes_spoil = {}
     local num_times_changed_graphics_of_simple_entity = {}
     for ind, item_node in pairs(new_order) do
         -- item_node takes the place of same-indexed node in old_order
@@ -707,16 +708,17 @@ randomizations.item = function(id)
         })]]
         -- Transfer old node's spoil stats
         -- This must be done after the spoil_results are updated
-        table.insert(post_changes, {
+        table.insert(post_changes_spoil, {
             tbl = item_node.item,
             prop = "spoil_result",
-            new_val = old_node.item.spoil_result
+            old_node_item = old_node.item
         })
         table.insert(post_changes, {
             tbl = item_node.item,
             prop = "spoil_ticks",
             new_val = old_node.item.spoil_ticks
         })
+        -- CRITICAL TODO: Needs fixing for same reasons as post_changes_spoil
         table.insert(post_changes, {
             tbl = item_node.item,
             prop = "spoil_to_trigger_result",
@@ -767,6 +769,9 @@ randomizations.item = function(id)
     end
     for _, change in pairs(post_changes) do
         change.tbl[change.prop] = change.new_val
+    end
+    for _, change in pairs(post_changes_spoil) do
+        change.tbl[change.prop] = change.old_node_item[change.prop]
     end
 
     -- wood needs to have fuel value as the initial fuel of most burner energy sources

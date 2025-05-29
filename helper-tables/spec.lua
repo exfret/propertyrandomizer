@@ -352,13 +352,14 @@ local spec = {
             val = "more"
         }
     },
-    --[[ Currently somewhat broken, needs balancing
+    -- This should actually be fine, I believe it just needs testing right now
+    -- CRITICAL TODO: MAKE SURE THIS IS WROKING
     module_effects = {
         setting = {
             name = "propertyrandomizer-production",
             val = "default"
         }
-    },]]
+    },
     machine_energy_usage = {
         setting = {
             name = "propertyrandomizer-production",

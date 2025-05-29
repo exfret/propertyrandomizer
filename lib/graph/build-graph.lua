@@ -149,8 +149,8 @@ local function recipe_to_num_fluids(recipe)
 end
 local function recipe_to_spoofed_category_name(recipe)
     local fluid_amounts = recipe_to_num_fluids(recipe)
-    num_input_fluids = fluid_amounts.input_fluids
-    num_output_fluids = fluid_amounts.output_fluids
+    local num_input_fluids = fluid_amounts.input_fluids
+    local num_output_fluids = fluid_amounts.output_fluids
 
     return compound_key({recipe.category or "crafting", num_input_fluids, num_output_fluids})
 end
@@ -285,7 +285,7 @@ function build_graph.gather_targets_trigger_effect(trigger_effect, target_type)
     end
 
     if trigger_effect.type == "nested-result" then
-        for _, target in pairs(build_graph.gather_targets_trigger(trigger_effect.action)) do
+        for _, target in pairs(build_graph.gather_targets_trigger(trigger_effect.action, target_type)) do
             table.insert(targets, target)
         end
     end
@@ -1506,7 +1506,7 @@ local function load()
     end
 
     -- fuel-category-burner-surface
-    log("Adding: fuel-category-surface")
+    log("Adding: fuel-category-burner-surface")
 
     for _, fuel_category in pairs(data.raw["fuel-category"]) do
         for surface_name, surface in pairs(surfaces) do
@@ -2061,12 +2061,6 @@ local function load()
         end
     end
 
-    -- item-insertion
-    log("Adding: item-insertion")
-    -- TODO: Remove in obsidian vault because this is now in the compat file instead
-
-    -- TODO
-
     -- loot-entity
     log("Adding: loot-entity")
 
@@ -2224,16 +2218,19 @@ local function load()
     log("Adding: mine-tile")
 
     for _, tile in pairs(data.raw.tile) do
-        prereqs = {}
+        -- Only minable tiles
+        if tile.minable ~= nil then
+            prereqs = {}
 
-        for surface_name, surface in pairs(surfaces) do
-            table.insert(prereqs, {
-                type = "mine-tile",
-                name = tile.name
-            })
+            for surface_name, surface in pairs(surfaces) do
+                table.insert(prereqs, {
+                    type = "mine-tile-surface",
+                    name = compound_key({tile.name, surface_name})
+                })
+            end
+
+            add_to_graph("mine-tile", tile.name, prereqs)
         end
-
-        add_to_graph("mine-tile", tile.name, prereqs)
     end
 
     -- mine-tile-surface
@@ -3478,11 +3475,6 @@ local function load()
 
     add_to_graph("spawner-capturability", "canonical", prereqs)
 
-    -- splitter
-    log("Adding: splitter")
-
-    -- TODO
-
     -- starting-character
     log("Adding: starting-character")
 
@@ -3586,19 +3578,6 @@ local function load()
         add_to_graph("technology", tech.name, prereqs)
     end
 
-    -- transport-belt
-    log("Adding: transport-belt")
-
-    -- TODO
-
-    -- transport-set
-    log("Adding: transport-set")
-
-    -- TODO
-
-    -- transport-item
-    log("Adding: transport-item")
-
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
@@ -3659,11 +3638,6 @@ local function load()
             end
         end
     end
-
-    -- underground-belt
-    log("Adding: underground-belt")
-
-    -- TODO
 
     -- valid-tile-placement-surface
     log("Adding: valid-tile-placement-surface")
@@ -3811,17 +3785,13 @@ build_graph.ops = {
     ["spawn-rail-surface"] = "OR",
     ["spawn-tile-surface"] = "OR",
     ["spawner-capturability"] = "OR",
-    ["splitter"] = "OR",
     ["starting-character"] = "AND",
     ["starting-planet"] = "AND",
     ["surface"] = "OR",
     ["technology"] = "AND",
     ["thruster-surface"] = "AND",
-    ["transport-belt"] = "OR",
-    ["transport-set"] = "AND",
     ["transport-item"] = "OR",
     ["transport-item-to-surface"] = "AND",
-    ["underground-belt"] = "OR",
     ["valid-tile-placement-surface"] = "OR",
     ["void-energy"] = "AND"
 }
