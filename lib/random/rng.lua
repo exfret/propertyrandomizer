@@ -1,4 +1,4 @@
-local hash = require("hash")
+local hash = require("lib/random/hash")
 
 local rng = {}
 

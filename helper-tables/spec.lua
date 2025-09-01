@@ -111,12 +111,13 @@ local spec = {
         }
     },
     -- A classic
-    cliff_sizes = {
+    -- Disabled for now due to bug
+    --[[cliff_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },
+    },]]
     crafting_machine_speed = {
         setting = {
             name = "propertyrandomizer-production",

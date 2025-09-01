@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.3.9
+Date: ?
+---------------------------------------------------------------------------------------------------
+Version: 0.3.8
+Date: 2025.08.03
+  Bugfixes:
+    - Disabled cliff size randomization due to startup crashes
+---------------------------------------------------------------------------------------------------
 Version: 0.3.7
 Date: 2025.05.29
   Features:
@@ -6,7 +14,7 @@ Date: 2025.05.29
   Bugfixes:
     - Fixed a few bugs in the dependency graph's construction
     - Fixed that beacons could be randomized to over 64 supply area, causing a startup error
-    - Fixed a fundamental logic error for the clamping in the numerical randomization algorithm that has slipped under my radar for several weeks (thanks chatGPT for finding it!)
+    - Fixed a fundamental logic error for the clamping in the numerical randomization algorithm that has slipped under my radar for several weeks
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.6
 Date: 2025.05.29

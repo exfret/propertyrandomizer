@@ -1,5 +1,5 @@
 local constants = require("helper-tables/constants")
-local rng = require("rng")
+local rng = require("lib/random/rng")
 
 local randnum = {}
 

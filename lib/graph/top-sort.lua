@@ -1,5 +1,5 @@
 -- We won't be using build_graph's graph, just its ops
-local build_graph = require("build-graph")
+local build_graph = require("lib/graph/build-graph")
 
 local top_sort = {}
 

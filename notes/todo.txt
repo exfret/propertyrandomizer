@@ -1,4 +1,7 @@
 WORKING ON:
+ - Fixing recipe costs
+
+Bigger thins:
  - Various numerical/space age especially randomizations need adding
  - Tech unlock randomization
  - Tech packs required randomization
@@ -7,7 +10,7 @@ WORKING ON:
  - New randomizations
  - Space age randomizations
  - Maybe look over TODO's one last time
- - Item fluid randomization?
+ - Item-fluid randomization?
 
 3. Rounding after rescalings
 8. Blacklists?
@@ -22,8 +25,23 @@ WORKING ON:
 19. Why is supply area for electric poles only working for substations?
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
 23. Automatability nodes
-24. Add bulid_graph_compat nodes to Obsidian spec
+24. Add build_graph_compat nodes to Obsidian spec
 25. Check if node-transport-item-to-surface actually needs to also rely on the corresponding planet-launch
+26. Double check thruster fuel always made on a space surface
+27. Make sure ammo is craftable on space platform
+28. Increase time cost for recipe randomization?
+29. Add more safeguards against bad accesses/nodes from mods in dependency graph
+30. Make sure spitters can't outrange *everything*
+31. Add space platform starter packs to list of not randomized
+32. Bullets blacklist from trees
+33. Rocket launch time bug (seems to get stuck with certain launch times? See mod page)
+34. Biter pathing bad when they're large
+35. Lots of things behind military science - tech randomization
+36. Clarify dropdowns for logistics etc. are number of different randomizations, not amount of randomization
+37. Check fulgorite possible softlock (or maybe it has to do with scrap recycling)
+38. Randomize trigger effects?
+39. Fallback recipes approach? With recycling?
+40. Buildings don't spoil quickly
 
 DONE:
 21. Ore swap randomization

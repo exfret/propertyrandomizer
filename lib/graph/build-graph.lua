@@ -1,4 +1,9 @@
-local collision_mask_util = require("__core__/lualib/collision-mask-util")
+local collision_mask_util
+if not offline then
+    collision_mask_util = require("__core__/lualib/collision-mask-util")
+else
+    collision_mask_util = require("offline/lualib/collision-mask-util")
+end
 
 local build_graph = {}
 
@@ -782,7 +787,7 @@ local function load()
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 -- Need to check that fuel category is also nil due to jank
-                if item.burnt_result ~= nil then
+                if item.fuel_category ~= nil and item.burnt_result ~= nil then
                     prereqs = {}
 
                     table.insert(prereqs, {
@@ -806,7 +811,7 @@ local function load()
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                if item.burnt_result ~= nil then
+                if item.fuel_category ~= nil and item.burnt_result ~= nil then
                     for surface_name, surface in pairs(surfaces) do
                         prereqs = {}
 
@@ -1020,6 +1025,7 @@ local function load()
             for _, tile in pairs(data.raw.tile) do
                 if tile.fluid == fluid.name then
                     for _, pump in pairs(data.raw["offshore-pump"]) do
+                        -- TODO: Also check if pump has filter for this fluid!
                         if not collision_mask_util.masks_collide(tile.collision_mask, pump.collision_mask or collision_mask_util.get_default_mask("offshore-pump")) then
                             table.insert(prereqs, {
                                 type = "create-fluid-offshore-surface",
@@ -1079,6 +1085,7 @@ local function load()
             end
 
             add_to_graph("create-fluid-surface", compound_key({fluid.name, surface_name}), prereqs, {
+                fluid = fluid,
                 surface = surface
             })
         end
@@ -1421,7 +1428,9 @@ local function load()
             })
         end
         
-        add_to_graph("fluid", fluid.name, prereqs)
+        add_to_graph("fluid", fluid.name, prereqs, {
+            fluid = fluid
+        })
     end
 
     -- fluid-surface
@@ -1441,7 +1450,8 @@ local function load()
             })
 
             add_to_graph("fluid-surface", compound_key({fluid.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface,
+                fluid = fluid
             })
         end
     end
@@ -3795,6 +3805,20 @@ build_graph.ops = {
     ["valid-tile-placement-surface"] = "OR",
     ["void-energy"] = "AND"
 }
+
+----------------------------------------------------------------------
+-- Special manipulation methods
+----------------------------------------------------------------------
+
+function build_graph.reverse(graph_param)
+    for _, node in pairs(graph_param) do
+        local old_prereqs = node.prereqs
+        node.prereqs = node.dependents
+        node.dependents = old_prereqs
+    end
+
+    -- Switch node ops?
+end
 
 ----------------------------------------------------------------------
 -- Dependents

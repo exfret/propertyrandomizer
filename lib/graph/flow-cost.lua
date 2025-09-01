@@ -170,7 +170,7 @@ flow_cost.get_default_raw_resource_table = function()
         ["item-copper-bacteria"] = 5,
         ["item-biter-egg"] = 1
     }
-    if mods["space-age"] ~= nil then
+    if mods["space-age"] then
         for material_id, cost in pairs(space_age_resources) do
             normal_resources[material_id] = cost
         end

@@ -3,17 +3,17 @@ local spec = require("helper-tables/spec")
 randomizations = {}
 
 -- These are helpers used by the rest of the numerical randomizations
-require("helper/energy")
-require("helper/linked")
-require("helper/trigger")
+require("randomizations/helper/energy")
+require("randomizations/helper/linked")
+require("randomizations/helper/trigger")
 
 log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
 if randomization_info.options.build_graph then
-    require("graph/item")
-    require("graph/recipe")
-    require("graph/technology")
+    require("randomizations/graph/item")
+    require("randomizations/graph/recipe")
+    require("randomizations/graph/technology")
 end
 
 log("Gathering misc randomizations")
@@ -21,30 +21,30 @@ log("Gathering misc randomizations")
 -- Misc randomizations
 -- TODO
 --require("misc/beacon-profiles")
-require("misc/equipment-shapes")
-require("misc/fluid-boxes")
-require("misc/gui")
-require("misc/locale")
-require("misc/offsets")
-require("misc/sizes")
-require("misc/sound")
-require("misc/visual")
+require("randomizations/misc/equipment-shapes")
+require("randomizations/misc/fluid-boxes")
+require("randomizations/misc/gui")
+require("randomizations/misc/locale")
+require("randomizations/misc/offsets")
+require("randomizations/misc/sizes")
+require("randomizations/misc/sound")
+require("randomizations/misc/visual")
 
 log("Gathering numerical randomizations")
 
 -- Require the numerical randomizations
-require("numerical/entity")
-require("numerical/equipment")
-require("numerical/equipment-grid")
-require("numerical/fluid")
-require("numerical/item")
-require("numerical/technology")
-require("numerical/tile")
+require("randomizations/numerical/entity")
+require("randomizations/numerical/equipment")
+require("randomizations/numerical/equipment-grid")
+require("randomizations/numerical/fluid")
+require("randomizations/numerical/item")
+require("randomizations/numerical/technology")
+require("randomizations/numerical/tile")
 
 log("Gathering fixes")
 
 -- Fixes (executed later)
-require("fixes")
+require("randomizations/fixes")
 
 -- Validate randomizations
 

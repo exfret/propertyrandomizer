@@ -115,15 +115,17 @@ log("Applying fixes")
 -- Any fixes needed
 randomizations.fixes()
 
-log("Smuggling control info")
-
 -- Add warnings for control stage
-local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
-warnings_selection_tool.type = "selection-tool"
-warnings_selection_tool.name = "propertyrandomizer-warnings"
-warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
-data:extend({
-    warnings_selection_tool
-})
+if not offline then
+    log("Smuggling control info")
+
+    local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    warnings_selection_tool.type = "selection-tool"
+    warnings_selection_tool.name = "propertyrandomizer-warnings"
+    warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
+    data:extend({
+        warnings_selection_tool
+    })
+end
 
 log("Done!")
