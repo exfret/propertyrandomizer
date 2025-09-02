@@ -1,0 +1,4242 @@
+2.063353: Setup
+2.063369: Gathering config
+2.063926: Building dependency graph (if applicable)
+2.100771: Adding: agricultural-tower-surface
+2.10082: Adding: asteroid-collection-surface
+2.101665: Adding: build-entity
+2.119017: Adding: build-entity-item
+2.352196: Adding: build-entity-surface
+2.380173: Adding: build-entity-surface-condition-false
+2.380179: Adding: build-entity-surface-condition-true
+2.38018: Adding: build-tile
+2.382951: Adding: build-tile-item-surface
+2.793055: Adding: build-tile-item-surface-buildability
+2.87131: Adding: build-tile-item-surface-with-item
+2.939992: Adding: build-tile-surface
+2.947793: Adding: burn-item
+2.948281: Adding: burn-item-surface
+2.948767: Adding: capsule-surface
+2.949199: Adding: capture-robot
+2.949202: Adding: capture-spawner-surface
+2.94935: Adding: cargo-landing-pad-planet
+2.949383: Adding: character
+2.949385: Adding: craft-material
+2.955455: Adding: craft-material-surface
+3.831909: Adding: create-fluid-offshore-surface
+3.834244: Adding: create-fluid-surface
+3.879343: Adding: create-space-platform
+3.879352: Adding: create-space-platform-tech-unlock
+3.880202: Adding: gun-ammo-surface
+3.880204: Adding: electricity-distribution-surface
+3.880284: Adding: electricity-production-surface
+3.88039: Adding: electricity-surface
+3.880408: Adding: energy-source-surface
+3.882792: Adding: entity-buildability-surface
+4.162273: Adding: entity-buildability-surface-true
+4.162277: Adding: entity-operation-items
+4.162278: Adding: fluid
+4.162872: Adding: fluid-surface
+4.164539: Adding: fuel-category
+4.166783: Adding: fuel-category-burner
+4.173796: Adding: fuel-category-burner-surface
+4.227539: Adding: fuel-category-surface
+4.241498: Adding: gun-ammo-surface
+4.241499: Adding: gun-surface
+4.241501: Adding: heat-distribution-surface
+4.241536: Adding: heat-production-surface
+4.241593: Adding: heat-surface
+4.241613: Adding: hold-fluid-surface
+4.243068: Adding: item
+5.287715: Adding: item-surface
+8.791978: Adding: loot-entity
+8.7928: Adding: loot-entity-surface
+8.813273: Adding: mine-asteroid-chunk
+8.813346: Adding: mine-asteroid-chunk-surface
+8.813544: Adding: mine-entity
+8.818128: Adding: mine-entity-surface
+8.827345: Adding: mine-tile
+8.827892: Adding: mine-tile-surface
+8.82929: Adding: mining-with-fluid-unlock
+8.830137: Adding: operate-entity
+8.838598: Adding: operate-entity-surface
+8.873543: Adding: operate-entity-surface-fluid
+8.886804: Adding: planet
+8.886819: Adding: planet-launch
+8.886842: Adding: plant-entity-item
+9.122572: Adding: plant-entity-surface
+9.164811: Adding: plant-entity-surface-automatability
+9.187766: Adding: plant-entity-surface-condition-false
+9.187774: Adding: plant-entity-surface-condition-true
+9.187776: Adding: recipe
+9.224961: Adding: recipe-category
+9.225912: Adding: recipe-category-surface
+9.22866: Adding: recipe-category-surface-automation
+9.256498: Adding: recipe-surface
+9.409246: Adding: recipe-surface-condition-false
+9.409252: Adding: recipe-surface-condition-true
+9.409253: Adding: recipe-tech-unlock
+10.008353: Adding: resource-category
+10.008479: Adding: resource-category-surface
+10.009099: Adding: rocket-launch-planet
+10.045514: Adding: rocket-part-recipe-planet
+10.079531: Adding: science-pack-set
+10.084111: Adding: send-item-to-orbit
+10.102086: Adding: send-item-to-orbit-planet
+10.116534: Adding: send-surface-starter-pack
+10.116557: Adding: send-surface-starter-pack-planet
+10.11663: Adding: space-connection
+10.116667: Adding: space-location
+10.116748: Adding: space-location-discovery
+10.125451: Adding: space-surface
+10.125461: Adding: spaceship
+10.125466: Adding: spaceship-engine-surface
+10.125476: Adding: spaceship-surface
+10.125481: Adding: spawn-asteroid-chunk
+10.126007: Adding: spawn-entity
+10.136002: Adding: spawn-entity-surface
+13.352194: Adding: spawn-rail-surface
+13.352201: Adding: spawn-tile-surface
+13.377603: Adding: spawner-capturability
+13.377677: Adding: starting-character
+13.377679: Adding: starting-planet
+13.377681: Adding: surface
+13.377691: Adding: technology
+13.386756: Adding: transport-item-to-surface
+13.394187: Adding: valid-tile-placement-surface
+13.895864: Adding: void-energy
+13.895931: Finished building dependency graph
+13.895935: Adding custom nodes
+13.904167: Adding dependents
+14.749353: Gathering randomizations
+14.75039: Gathering graph randomizations (if applicable)
+14.758104: Finished loading recipe.lua
+14.758256: Gathering misc randomizations
+14.759234: Gathering numerical randomizations
+14.760622: Gathering fixes
+14.760701: Validating randomizations if implemented
+14.760883: Applying graph-based randomizations
+14.760885: Applying recipe ingredients randomization
+14.760894: Recipe randomization setup
+15.016304: Finding nauvis reachable
+15.016308: Deepcopying dep_graph
+17.106889: Removing spacheship node
+17.106902: Doing non-Nauvis top sort
+17.439269: Finding all reachable
+18.274545: Finding item/fluid indices
+18.331165: Gathering dependents/prereqs
+18.387356: Shuffling
+18.387638: Constructing dependent_to_new_ings and dependent_to_old_ings
+18.389307: Initial cost calculations
+18.646821: Initial item recipe maps construction
+18.66215: Starting recipe randomization main loop
+18.983536: Starting on dependent: stone-furnace
+18.98354: Old cost update
+18.983543: Flow cost update
+18.989242: Gathering recipe info
+18.989247: Getting recipe costs
+18.989285: Finding valid prereqs
+19.024775: Finding randomized/unrandomized ings
+19.024821: Will preserve resource costs
+19.024822: Performing ings search
+19.025324: Updating dependencies
+19.025329: Updating reachability
+19.02626: Updating item recipe maps
+19.026288: Updating new costs
+19.026375: Updating complexity cost
+19.031487: Finished updating complexity cost
+19.032032: Next loop
+19.032035: Starting on dependent: firearm-magazine
+19.032036: Old cost update
+19.032039: Flow cost update
+19.037428: Gathering recipe info
+19.037433: Getting recipe costs
+19.03746: Finding valid prereqs
+19.069868: Finding randomized/unrandomized ings
+19.069882: Will preserve resource costs
+19.069883: Performing ings search
+19.070206: Updating dependencies
+19.07021: Updating reachability
+19.071326: Updating item recipe maps
+19.071341: Updating new costs
+19.07142: Updating complexity cost
+19.076192: Finished updating complexity cost
+19.076687: Next loop
+19.07669: Starting on dependent: iron-chest
+19.076691: Old cost update
+19.076694: Flow cost update
+19.081799: Gathering recipe info
+19.081804: Getting recipe costs
+19.081826: Finding valid prereqs
+19.111511: Finding randomized/unrandomized ings
+19.111522: Will not preserve resource costs
+19.111522: Performing ings search
+19.111751: Updating dependencies
+19.111755: Updating reachability
+19.111913: Updating item recipe maps
+19.111927: Updating new costs
+19.112032: Updating complexity cost
+19.116753: Finished updating complexity cost
+19.117225: Next loop
+19.117227: Starting on dependent: iron-gear-wheel
+19.117228: Old cost update
+19.11723: Flow cost update
+19.122357: Gathering recipe info
+19.122364: Getting recipe costs
+19.122387: Finding valid prereqs
+19.151398: Finding randomized/unrandomized ings
+19.151407: Will preserve resource costs
+19.151408: Performing ings search
+19.151672: Updating dependencies
+19.151675: Updating reachability
+19.151921: Updating item recipe maps
+19.151933: Updating new costs
+19.151983: Updating complexity cost
+19.156516: Finished updating complexity cost
+19.156899: Next loop
+19.156901: Starting on dependent: light-armor
+19.156902: Old cost update
+19.156904: Flow cost update
+19.161581: Gathering recipe info
+19.161583: Getting recipe costs
+19.161604: Finding valid prereqs
+19.19113: Finding randomized/unrandomized ings
+19.19114: Will not preserve resource costs
+19.191141: Performing ings search
+19.191846: Updating dependencies
+19.191849: Updating reachability
+19.19192: Updating item recipe maps
+19.191932: Updating new costs
+19.192186: Updating complexity cost
+19.196455: Finished updating complexity cost
+19.196895: Next loop
+19.196896: Starting on dependent: burner-inserter
+19.196897: Old cost update
+19.1969: Flow cost update
+19.201994: Gathering recipe info
+19.201997: Getting recipe costs
+19.202021: Finding valid prereqs
+19.232115: Finding randomized/unrandomized ings
+19.232129: Will not preserve resource costs
+19.232169: Performing ings search
+19.236337: Updating dependencies
+19.236341: Updating reachability
+19.237573: Updating item recipe maps
+19.237593: Updating new costs
+19.237663: Updating complexity cost
+19.241894: Finished updating complexity cost
+19.24235: Next loop
+19.242351: Starting on dependent: burner-mining-drill
+19.242353: Old cost update
+19.242357: Flow cost update
+19.247583: Gathering recipe info
+19.247587: Getting recipe costs
+19.247616: Finding valid prereqs
+19.276717: Finding randomized/unrandomized ings
+19.276728: Will not preserve resource costs
+19.276729: Performing ings search
+19.294901: Updating dependencies
+19.29506: Updating reachability
+19.296485: Updating item recipe maps
+19.296511: Updating new costs
+19.296586: Updating complexity cost
+19.300893: Finished updating complexity cost
+19.301375: Next loop
+19.301376: Starting on dependent: transport-belt
+19.301377: Old cost update
+19.30138: Flow cost update
+19.3072: Gathering recipe info
+19.307205: Getting recipe costs
+19.307234: Finding valid prereqs
+19.337282: Finding randomized/unrandomized ings
+19.337294: Will preserve resource costs
+19.337295: Performing ings search
+19.341383: Updating dependencies
+19.341387: Updating reachability
+19.342568: Updating item recipe maps
+19.342589: Updating new costs
+19.342711: Updating complexity cost
+19.347838: Finished updating complexity cost
+19.348562: Next loop
+19.348564: Starting on dependent: copper-cable
+19.348566: Old cost update
+19.348569: Flow cost update
+19.354111: Gathering recipe info
+19.354114: Getting recipe costs
+19.354138: Finding valid prereqs
+19.428037: Finding randomized/unrandomized ings
+19.428055: Will preserve resource costs
+19.428056: Performing ings search
+19.428179: Updating dependencies
+19.428182: Updating reachability
+19.428534: Updating item recipe maps
+19.428554: Updating new costs
+19.4288: Updating complexity cost
+19.434143: Finished updating complexity cost
+19.434545: Next loop
+19.434547: Starting on dependent: pipe
+19.434549: Old cost update
+19.434552: Flow cost update
+19.441449: Gathering recipe info
+19.441453: Getting recipe costs
+19.441478: Finding valid prereqs
+19.471162: Finding randomized/unrandomized ings
+19.471173: Will preserve resource costs
+19.471174: Performing ings search
+19.471272: Updating dependencies
+19.471276: Updating reachability
+19.471793: Updating item recipe maps
+19.471807: Updating new costs
+19.472038: Updating complexity cost
+19.477216: Finished updating complexity cost
+19.478456: Next loop
+19.478459: Starting on dependent: electronic-circuit
+19.478459: Old cost update
+19.478462: Flow cost update
+19.483852: Gathering recipe info
+19.483858: Getting recipe costs
+19.483885: Finding valid prereqs
+19.514932: Finding randomized/unrandomized ings
+19.514947: Will preserve resource costs
+19.514948: Performing ings search
+19.519656: Updating dependencies
+19.519661: Updating reachability
+19.520009: Updating item recipe maps
+19.520031: Updating new costs
+19.520088: Updating complexity cost
+19.525278: Finished updating complexity cost
+19.52568: Next loop
+19.525682: Starting on dependent: boiler
+19.525683: Old cost update
+19.525686: Flow cost update
+19.531112: Gathering recipe info
+19.531115: Getting recipe costs
+19.531141: Finding valid prereqs
+19.560512: Finding randomized/unrandomized ings
+19.560524: Will preserve resource costs
+19.560525: Performing ings search
+19.581077: Updating dependencies
+19.581084: Updating reachability
+19.581307: Updating item recipe maps
+19.58133: Updating new costs
+19.581417: Updating complexity cost
+19.586854: Finished updating complexity cost
+19.58738: Next loop
+19.587382: Starting on dependent: offshore-pump
+19.587385: Old cost update
+19.587388: Flow cost update
+19.592501: Gathering recipe info
+19.592509: Getting recipe costs
+19.592533: Finding valid prereqs
+19.623299: Finding randomized/unrandomized ings
+19.623312: Will not preserve resource costs
+19.623313: Performing ings search
+19.631395: Updating dependencies
+19.6314: Updating reachability
+19.631769: Updating item recipe maps
+19.631789: Updating new costs
+19.6319: Updating complexity cost
+19.636994: Finished updating complexity cost
+19.637481: Next loop
+19.637483: Starting on dependent: pipe-to-ground
+19.637484: Old cost update
+19.637488: Flow cost update
+19.643146: Gathering recipe info
+19.643151: Getting recipe costs
+19.643177: Finding valid prereqs
+19.672678: Finding randomized/unrandomized ings
+19.672689: Will not preserve resource costs
+19.67269: Performing ings search
+19.68339: Updating dependencies
+19.683393: Updating reachability
+19.683546: Updating item recipe maps
+19.683563: Updating new costs
+19.683664: Updating complexity cost
+19.688152: Finished updating complexity cost
+19.688626: Next loop
+19.688629: Starting on dependent: steam-engine
+19.68863: Old cost update
+19.688634: Flow cost update
+19.694096: Gathering recipe info
+19.6941: Getting recipe costs
+19.694129: Finding valid prereqs
+19.72395: Finding randomized/unrandomized ings
+19.723967: Will not preserve resource costs
+19.723968: Performing ings search
+19.823692: Updating dependencies
+19.8237: Updating reachability
+19.824078: Updating item recipe maps
+19.824108: Updating new costs
+19.824191: Updating complexity cost
+19.829298: Finished updating complexity cost
+19.829787: Next loop
+19.82979: Starting on dependent: inserter
+19.829791: Old cost update
+19.829794: Flow cost update
+19.835924: Gathering recipe info
+19.835929: Getting recipe costs
+19.835957: Finding valid prereqs
+19.864922: Finding randomized/unrandomized ings
+19.864934: Will preserve resource costs
+19.864936: Performing ings search
+19.881953: Updating dependencies
+19.881958: Updating reachability
+19.882124: Updating item recipe maps
+19.882148: Updating new costs
+19.882284: Updating complexity cost
+19.88722: Finished updating complexity cost
+19.888006: Next loop
+19.888009: Starting on dependent: lab
+19.88801: Old cost update
+19.888014: Flow cost update
+19.893235: Gathering recipe info
+19.893243: Getting recipe costs
+19.893271: Finding valid prereqs
+19.923862: Finding randomized/unrandomized ings
+19.923875: Will preserve resource costs
+19.923876: Performing ings search
+19.968212: Updating dependencies
+19.96822: Updating reachability
+19.969646: Updating item recipe maps
+19.969672: Updating new costs
+19.969754: Updating complexity cost
+19.974478: Finished updating complexity cost
+19.974997: Next loop
+19.974999: Starting on dependent: automation-science-pack
+19.975: Old cost update
+19.975003: Flow cost update
+19.980331: Gathering recipe info
+19.980334: Getting recipe costs
+19.980358: Finding valid prereqs
+20.009616: Finding randomized/unrandomized ings
+20.009632: Will not preserve resource costs
+20.009633: Performing ings search
+20.016325: Updating dependencies
+20.016331: Updating reachability
+20.017352: Updating item recipe maps
+20.017372: Updating new costs
+20.017442: Updating complexity cost
+20.022497: Finished updating complexity cost
+20.023001: Next loop
+20.023003: Starting on dependent: assembling-machine-1
+20.023005: Old cost update
+20.023009: Flow cost update
+20.02927: Gathering recipe info
+20.029275: Getting recipe costs
+20.029308: Finding valid prereqs
+20.059284: Finding randomized/unrandomized ings
+20.059298: Will preserve resource costs
+20.059299: Performing ings search
+20.102875: Updating dependencies
+20.102884: Updating reachability
+20.104363: Updating item recipe maps
+20.104394: Updating new costs
+20.104485: Updating complexity cost
+20.10958: Finished updating complexity cost
+20.110113: Next loop
+20.110115: Starting on dependent: long-handed-inserter
+20.110116: Old cost update
+20.11012: Flow cost update
+20.158055: Gathering recipe info
+20.158062: Getting recipe costs
+20.158095: Finding valid prereqs
+20.188757: Finding randomized/unrandomized ings
+20.188771: Will not preserve resource costs
+20.188772: Performing ings search
+20.201855: Updating dependencies
+20.20186: Updating reachability
+20.202032: Updating item recipe maps
+20.20206: Updating new costs
+20.202142: Updating complexity cost
+20.207711: Finished updating complexity cost
+20.208186: Next loop
+20.208189: Starting on dependent: gun-turret
+20.20819: Old cost update
+20.208194: Flow cost update
+20.21381: Gathering recipe info
+20.213813: Getting recipe costs
+20.213842: Finding valid prereqs
+20.243543: Finding randomized/unrandomized ings
+20.243557: Will not preserve resource costs
+20.243558: Performing ings search
+20.29365: Updating dependencies
+20.293656: Updating reachability
+20.294764: Updating item recipe maps
+20.294792: Updating new costs
+20.294915: Updating complexity cost
+20.299816: Finished updating complexity cost
+20.300304: Next loop
+20.300306: Starting on dependent: small-lamp
+20.300307: Old cost update
+20.300312: Flow cost update
+20.306122: Gathering recipe info
+20.306126: Getting recipe costs
+20.306155: Finding valid prereqs
+20.336382: Finding randomized/unrandomized ings
+20.336396: Will not preserve resource costs
+20.336397: Performing ings search
+20.344872: Updating dependencies
+20.344876: Updating reachability
+20.345035: Updating item recipe maps
+20.345059: Updating new costs
+20.345132: Updating complexity cost
+20.350254: Finished updating complexity cost
+20.350772: Next loop
+20.350774: Starting on dependent: shotgun-shell
+20.350775: Old cost update
+20.350778: Flow cost update
+20.356134: Gathering recipe info
+20.356136: Getting recipe costs
+20.35616: Finding valid prereqs
+20.385043: Finding randomized/unrandomized ings
+20.385055: Will preserve resource costs
+20.385058: Performing ings search
+20.393098: Updating dependencies
+20.393101: Updating reachability
+20.393187: Updating item recipe maps
+20.393204: Updating new costs
+20.39342: Updating complexity cost
+20.398201: Finished updating complexity cost
+20.398694: Next loop
+20.398695: Starting on dependent: submachine-gun
+20.398696: Old cost update
+20.3987: Flow cost update
+20.404406: Gathering recipe info
+20.404409: Getting recipe costs
+20.404438: Finding valid prereqs
+20.433387: Finding randomized/unrandomized ings
+20.433399: Will not preserve resource costs
+20.433401: Performing ings search
+20.47505: Updating dependencies
+20.475056: Updating reachability
+20.476254: Updating item recipe maps
+20.476283: Updating new costs
+20.476362: Updating complexity cost
+20.526799: Finished updating complexity cost
+20.527315: Next loop
+20.527317: Starting on dependent: stone-wall
+20.527318: Old cost update
+20.527321: Flow cost update
+20.532909: Gathering recipe info
+20.532913: Getting recipe costs
+20.532935: Finding valid prereqs
+20.565788: Finding randomized/unrandomized ings
+20.565803: Will preserve resource costs
+20.565804: Performing ings search
+20.567496: Updating dependencies
+20.567501: Updating reachability
+20.567676: Updating item recipe maps
+20.567692: Updating new costs
+20.567778: Updating complexity cost
+20.573529: Finished updating complexity cost
+20.574042: Next loop
+20.574045: Starting on dependent: electric-mining-drill
+20.574046: Old cost update
+20.57405: Flow cost update
+20.579651: Gathering recipe info
+20.579653: Getting recipe costs
+20.579683: Finding valid prereqs
+20.610669: Finding randomized/unrandomized ings
+20.610684: Will preserve resource costs
+20.610686: Performing ings search
+20.630473: Updating dependencies
+20.630479: Updating reachability
+20.63066: Updating item recipe maps
+20.630688: Updating new costs
+20.631006: Updating complexity cost
+20.636107: Finished updating complexity cost
+20.636645: Next loop
+20.636648: Starting on dependent: fast-inserter
+20.636649: Old cost update
+20.636652: Flow cost update
+20.643217: Gathering recipe info
+20.643225: Getting recipe costs
+20.643256: Finding valid prereqs
+20.674152: Finding randomized/unrandomized ings
+20.674168: Will preserve resource costs
+20.674169: Performing ings search
+20.693546: Updating dependencies
+20.693554: Updating reachability
+20.693769: Updating item recipe maps
+20.693806: Updating new costs
+20.693903: Updating complexity cost
+20.700027: Finished updating complexity cost
+20.700608: Next loop
+20.700611: Starting on dependent: splitter
+20.700613: Old cost update
+20.700617: Flow cost update
+20.707417: Gathering recipe info
+20.707422: Getting recipe costs
+20.707456: Finding valid prereqs
+20.737977: Finding randomized/unrandomized ings
+20.737993: Will preserve resource costs
+20.738148: Performing ings search
+20.76739: Updating dependencies
+20.767395: Updating reachability
+20.768493: Updating item recipe maps
+20.768522: Updating new costs
+20.768609: Updating complexity cost
+20.773899: Finished updating complexity cost
+20.774432: Next loop
+20.774435: Starting on dependent: underground-belt
+20.774436: Old cost update
+20.774439: Flow cost update
+20.780321: Gathering recipe info
+20.780324: Getting recipe costs
+20.78035: Finding valid prereqs
+20.810283: Finding randomized/unrandomized ings
+20.810294: Will preserve resource costs
+20.810295: Performing ings search
+20.832803: Updating dependencies
+20.832813: Updating reachability
+20.834229: Updating item recipe maps
+20.834257: Updating new costs
+20.834356: Updating complexity cost
+20.840619: Finished updating complexity cost
+20.841156: Next loop
+20.841159: Starting on dependent: radar
+20.841159: Old cost update
+20.841163: Flow cost update
+20.847224: Gathering recipe info
+20.847229: Getting recipe costs
+20.847259: Finding valid prereqs
+20.919807: Finding randomized/unrandomized ings
+20.919825: Will preserve resource costs
+20.919826: Performing ings search
+20.928537: Updating dependencies
+20.928546: Updating reachability
+20.928715: Updating item recipe maps
+20.928746: Updating new costs
+20.928847: Updating complexity cost
+20.934643: Finished updating complexity cost
+20.935237: Next loop
+20.93524: Starting on dependent: repair-pack
+20.935242: Old cost update
+20.935246: Flow cost update
+20.941699: Gathering recipe info
+20.941706: Getting recipe costs
+20.941738: Finding valid prereqs
+20.972955: Finding randomized/unrandomized ings
+20.972969: Will not preserve resource costs
+20.97297: Performing ings search
+20.984221: Updating dependencies
+20.984225: Updating reachability
+20.985194: Updating item recipe maps
+20.985214: Updating new costs
+20.985286: Updating complexity cost
+20.991012: Finished updating complexity cost
+20.991482: Next loop
+20.991485: Starting on dependent: logistic-science-pack
+20.991486: Old cost update
+20.991489: Flow cost update
+20.999546: Gathering recipe info
+20.999552: Getting recipe costs
+20.999581: Finding valid prereqs
+21.029831: Finding randomized/unrandomized ings
+21.029842: Will not preserve resource costs
+21.029844: Performing ings search
+21.036751: Updating dependencies
+21.036754: Updating reachability
+21.039426: Updating item recipe maps
+21.039452: Updating new costs
+21.03953: Updating complexity cost
+21.045482: Finished updating complexity cost
+21.045971: Next loop
+21.045973: Starting on dependent: steel-plate
+21.045974: Old cost update
+21.045977: Flow cost update
+21.05249: Gathering recipe info
+21.052498: Getting recipe costs
+21.052523: Finding valid prereqs
+21.082169: Finding randomized/unrandomized ings
+21.082182: Will preserve resource costs
+21.082184: Performing ings search
+21.082594: Updating dependencies
+21.082597: Updating reachability
+21.08305: Updating item recipe maps
+21.083062: Updating new costs
+21.083114: Updating complexity cost
+21.088444: Finished updating complexity cost
+21.088829: Next loop
+21.088831: Starting on dependent: heavy-armor
+21.088832: Old cost update
+21.088835: Flow cost update
+21.094312: Gathering recipe info
+21.094315: Getting recipe costs
+21.094338: Finding valid prereqs
+21.124402: Finding randomized/unrandomized ings
+21.124415: Will not preserve resource costs
+21.124416: Performing ings search
+21.160321: Updating dependencies
+21.160328: Updating reachability
+21.160425: Updating item recipe maps
+21.160447: Updating new costs
+21.16052: Updating complexity cost
+21.166486: Finished updating complexity cost
+21.166974: Next loop
+21.166977: Starting on dependent: steel-chest
+21.166977: Old cost update
+21.16698: Flow cost update
+21.173975: Gathering recipe info
+21.173982: Getting recipe costs
+21.174009: Finding valid prereqs
+21.204924: Finding randomized/unrandomized ings
+21.204939: Will preserve resource costs
+21.20494: Performing ings search
+21.205487: Updating dependencies
+21.20549: Updating reachability
+21.205694: Updating item recipe maps
+21.205708: Updating new costs
+21.205842: Updating complexity cost
+21.211526: Finished updating complexity cost
+21.2123: Next loop
+21.212303: Starting on dependent: steel-furnace
+21.212303: Old cost update
+21.212307: Flow cost update
+21.218139: Gathering recipe info
+21.218142: Getting recipe costs
+21.218168: Finding valid prereqs
+21.247302: Finding randomized/unrandomized ings
+21.247312: Will not preserve resource costs
+21.247313: Performing ings search
+21.32113: Updating dependencies
+21.321136: Updating reachability
+21.321302: Updating item recipe maps
+21.321323: Updating new costs
+21.321408: Updating complexity cost
+21.326717: Finished updating complexity cost
+21.32719: Next loop
+21.327192: Starting on dependent: assembling-machine-2
+21.327193: Old cost update
+21.327197: Flow cost update
+21.333285: Gathering recipe info
+21.33329: Getting recipe costs
+21.333331: Finding valid prereqs
+21.363315: Finding randomized/unrandomized ings
+21.36333: Will preserve resource costs
+21.363331: Performing ings search
+21.38272: Updating dependencies
+21.382727: Updating reachability
+21.383301: Updating item recipe maps
+21.383336: Updating new costs
+21.383426: Updating complexity cost
+21.388806: Finished updating complexity cost
+21.389483: Next loop
+21.389484: Starting on dependent: arithmetic-combinator
+21.389485: Old cost update
+21.389489: Flow cost update
+21.395319: Gathering recipe info
+21.395323: Getting recipe costs
+21.395347: Finding valid prereqs
+21.424549: Finding randomized/unrandomized ings
+21.424563: Will not preserve resource costs
+21.424564: Performing ings search
+21.437986: Updating dependencies
+21.437997: Updating reachability
+21.438176: Updating item recipe maps
+21.4382: Updating new costs
+21.438282: Updating complexity cost
+21.445809: Finished updating complexity cost
+21.446292: Next loop
+21.446294: Starting on dependent: constant-combinator
+21.446295: Old cost update
+21.446299: Flow cost update
+21.452485: Gathering recipe info
+21.452491: Getting recipe costs
+21.452517: Finding valid prereqs
+21.48281: Finding randomized/unrandomized ings
+21.482822: Will not preserve resource costs
+21.482823: Performing ings search
+21.49073: Updating dependencies
+21.490737: Updating reachability
+21.490919: Updating item recipe maps
+21.490942: Updating new costs
+21.491017: Updating complexity cost
+21.497555: Finished updating complexity cost
+21.498066: Next loop
+21.498069: Starting on dependent: decider-combinator
+21.49807: Old cost update
+21.498073: Flow cost update
+21.504966: Gathering recipe info
+21.504969: Getting recipe costs
+21.504997: Finding valid prereqs
+21.536239: Finding randomized/unrandomized ings
+21.536255: Will preserve resource costs
+21.536257: Performing ings search
+21.546714: Updating dependencies
+21.546718: Updating reachability
+21.546887: Updating item recipe maps
+21.546905: Updating new costs
+21.546988: Updating complexity cost
+21.552361: Finished updating complexity cost
+21.552845: Next loop
+21.552847: Starting on dependent: display-panel
+21.552848: Old cost update
+21.552852: Flow cost update
+21.558979: Gathering recipe info
+21.558982: Getting recipe costs
+21.559006: Finding valid prereqs
+21.58847: Finding randomized/unrandomized ings
+21.588483: Will not preserve resource costs
+21.588485: Performing ings search
+21.592635: Updating dependencies
+21.592639: Updating reachability
+21.592816: Updating item recipe maps
+21.592837: Updating new costs
+21.592917: Updating complexity cost
+21.599211: Finished updating complexity cost
+21.599671: Next loop
+21.599673: Starting on dependent: iron-stick
+21.599674: Old cost update
+21.599676: Flow cost update
+21.606468: Gathering recipe info
+21.606472: Getting recipe costs
+21.606496: Finding valid prereqs
+21.636713: Finding randomized/unrandomized ings
+21.636723: Will preserve resource costs
+21.636725: Performing ings search
+21.636827: Updating dependencies
+21.63683: Updating reachability
+21.636947: Updating item recipe maps
+21.636961: Updating new costs
+21.637078: Updating complexity cost
+21.682612: Finished updating complexity cost
+21.683384: Next loop
+21.683388: Starting on dependent: power-switch
+21.683389: Old cost update
+21.683432: Flow cost update
+21.690471: Gathering recipe info
+21.690476: Getting recipe costs
+21.69051: Finding valid prereqs
+21.722096: Finding randomized/unrandomized ings
+21.72211: Will not preserve resource costs
+21.722112: Performing ings search
+21.749137: Updating dependencies
+21.749146: Updating reachability
+21.749333: Updating item recipe maps
+21.749366: Updating new costs
+21.749452: Updating complexity cost
+21.755784: Finished updating complexity cost
+21.756314: Next loop
+21.756316: Starting on dependent: engine-unit
+21.756317: Old cost update
+21.756322: Flow cost update
+21.763548: Gathering recipe info
+21.763551: Getting recipe costs
+21.763583: Finding valid prereqs
+21.793782: Finding randomized/unrandomized ings
+21.793795: Will preserve resource costs
+21.793797: Performing ings search
+21.802177: Updating dependencies
+21.802181: Updating reachability
+21.802319: Updating item recipe maps
+21.802347: Updating new costs
+21.802487: Updating complexity cost
+21.808077: Finished updating complexity cost
+21.809202: Next loop
+21.809205: Starting on dependent: landfill
+21.809206: Old cost update
+21.809209: Flow cost update
+21.81552: Gathering recipe info
+21.815525: Getting recipe costs
+21.81555: Finding valid prereqs
+21.845805: Finding randomized/unrandomized ings
+21.845819: Will preserve resource costs
+21.84582: Performing ings search
+21.846741: Updating dependencies
+21.846745: Updating reachability
+21.847029: Updating item recipe maps
+21.847043: Updating new costs
+21.847147: Updating complexity cost
+21.853431: Finished updating complexity cost
+21.854069: Next loop
+21.854072: Starting on dependent: fast-splitter
+21.854072: Old cost update
+21.854076: Flow cost update
+21.860841: Gathering recipe info
+21.860844: Getting recipe costs
+21.860876: Finding valid prereqs
+21.891122: Finding randomized/unrandomized ings
+21.891137: Will preserve resource costs
+21.891138: Performing ings search
+21.903725: Updating dependencies
+21.90373: Updating reachability
+21.903905: Updating item recipe maps
+21.903931: Updating new costs
+21.904017: Updating complexity cost
+21.909867: Finished updating complexity cost
+21.910418: Next loop
+21.91042: Starting on dependent: fast-transport-belt
+21.910422: Old cost update
+21.910425: Flow cost update
+21.916903: Gathering recipe info
+21.916907: Getting recipe costs
+21.916932: Finding valid prereqs
+21.948136: Finding randomized/unrandomized ings
+21.948155: Will preserve resource costs
+21.948158: Performing ings search
+21.952037: Updating dependencies
+21.952045: Updating reachability
+21.952247: Updating item recipe maps
+21.95227: Updating new costs
+21.952388: Updating complexity cost
+21.958899: Finished updating complexity cost
+21.959558: Next loop
+21.95956: Starting on dependent: fast-underground-belt
+21.959561: Old cost update
+21.959565: Flow cost update
+21.966114: Gathering recipe info
+21.96612: Getting recipe costs
+21.96615: Finding valid prereqs
+21.996979: Finding randomized/unrandomized ings
+21.996993: Will preserve resource costs
+21.996994: Performing ings search
+22.010996: Updating dependencies
+22.011003: Updating reachability
+22.011184: Updating item recipe maps
+22.011208: Updating new costs
+22.011293: Updating complexity cost
+22.017241: Finished updating complexity cost
+22.057375: Next loop
+22.05738: Starting on dependent: grenade
+22.057381: Old cost update
+22.057384: Flow cost update
+22.064902: Gathering recipe info
+22.064906: Getting recipe costs
+22.064935: Finding valid prereqs
+22.097652: Finding randomized/unrandomized ings
+22.097666: Will preserve resource costs
+22.097668: Performing ings search
+22.103562: Updating dependencies
+22.103566: Updating reachability
+22.103697: Updating item recipe maps
+22.103716: Updating new costs
+22.103811: Updating complexity cost
+22.10982: Finished updating complexity cost
+22.110372: Next loop
+22.110374: Starting on dependent: piercing-rounds-magazine
+22.110375: Old cost update
+22.110378: Flow cost update
+22.117036: Gathering recipe info
+22.117039: Getting recipe costs
+22.117069: Finding valid prereqs
+22.147406: Finding randomized/unrandomized ings
+22.14742: Will preserve resource costs
+22.147458: Performing ings search
+22.156033: Updating dependencies
+22.156037: Updating reachability
+22.156142: Updating item recipe maps
+22.156167: Updating new costs
+22.156257: Updating complexity cost
+22.161818: Finished updating complexity cost
+22.162383: Next loop
+22.162386: Starting on dependent: solar-panel
+22.162387: Old cost update
+22.162391: Flow cost update
+22.168762: Gathering recipe info
+22.168767: Getting recipe costs
+22.168798: Finding valid prereqs
+22.199311: Finding randomized/unrandomized ings
+22.199324: Will preserve resource costs
+22.199325: Performing ings search
+22.216039: Updating dependencies
+22.216046: Updating reachability
+22.21624: Updating item recipe maps
+22.21627: Updating new costs
+22.216364: Updating complexity cost
+22.222246: Finished updating complexity cost
+22.222772: Next loop
+22.222774: Starting on dependent: storage-tank
+22.222775: Old cost update
+22.222779: Flow cost update
+22.229254: Gathering recipe info
+22.229257: Getting recipe costs
+22.229282: Finding valid prereqs
+22.260022: Finding randomized/unrandomized ings
+22.260034: Will preserve resource costs
+22.260037: Performing ings search
+22.273841: Updating dependencies
+22.273847: Updating reachability
+22.274037: Updating item recipe maps
+22.274057: Updating new costs
+22.274141: Updating complexity cost
+22.280483: Finished updating complexity cost
+22.281003: Next loop
+22.281005: Starting on dependent: cargo-wagon
+22.281006: Old cost update
+22.28101: Flow cost update
+22.287868: Gathering recipe info
+22.287871: Getting recipe costs
+22.287903: Finding valid prereqs
+22.318259: Finding randomized/unrandomized ings
+22.318273: Will not preserve resource costs
+22.318274: Performing ings search
+22.331473: Updating dependencies
+22.331478: Updating reachability
+22.331637: Updating item recipe maps
+22.331662: Updating new costs
+22.331739: Updating complexity cost
+22.337741: Finished updating complexity cost
+22.338239: Next loop
+22.338242: Starting on dependent: gate
+22.338243: Old cost update
+22.338247: Flow cost update
+22.344824: Gathering recipe info
+22.344829: Getting recipe costs
+22.344859: Finding valid prereqs
+22.374223: Finding randomized/unrandomized ings
+22.374235: Will not preserve resource costs
+22.374236: Performing ings search
+22.382719: Updating dependencies
+22.382726: Updating reachability
+22.382878: Updating item recipe maps
+22.382902: Updating new costs
+22.383013: Updating complexity cost
+22.389063: Finished updating complexity cost
+22.389573: Next loop
+22.389575: Starting on dependent: pumpjack
+22.389576: Old cost update
+22.38958: Flow cost update
+22.436312: Gathering recipe info
+22.436318: Getting recipe costs
+22.436359: Finding valid prereqs
+22.467298: Finding randomized/unrandomized ings
+22.467315: Will not preserve resource costs
+22.467316: Performing ings search
+22.537854: Updating dependencies
+22.537867: Updating reachability
+22.539288: Updating item recipe maps
+22.539331: Updating new costs
+22.539417: Updating complexity cost
+22.546017: Finished updating complexity cost
+22.546533: Next loop
+22.546536: Starting on dependent: rail-chain-signal
+22.546537: Old cost update
+22.54654: Flow cost update
+22.552911: Gathering recipe info
+22.552917: Getting recipe costs
+22.552941: Finding valid prereqs
+22.583105: Finding randomized/unrandomized ings
+22.583122: Will not preserve resource costs
+22.583123: Performing ings search
+22.58572: Updating dependencies
+22.585724: Updating reachability
+22.585886: Updating item recipe maps
+22.585905: Updating new costs
+22.585974: Updating complexity cost
+22.592287: Finished updating complexity cost
+22.592763: Next loop
+22.592766: Starting on dependent: rail-signal
+22.592767: Old cost update
+22.59277: Flow cost update
+22.599778: Gathering recipe info
+22.599786: Getting recipe costs
+22.59982: Finding valid prereqs
+22.631501: Finding randomized/unrandomized ings
+22.631517: Will not preserve resource costs
+22.631518: Performing ings search
+22.644852: Updating dependencies
+22.644861: Updating reachability
+22.645035: Updating item recipe maps
+22.645059: Updating new costs
+22.64516: Updating complexity cost
+22.651986: Finished updating complexity cost
+22.65255: Next loop
+22.652557: Starting on dependent: big-electric-pole
+22.652558: Old cost update
+22.652563: Flow cost update
+22.660428: Gathering recipe info
+22.660435: Getting recipe costs
+22.660467: Finding valid prereqs
+22.692394: Finding randomized/unrandomized ings
+22.692411: Will not preserve resource costs
+22.692412: Performing ings search
+22.701798: Updating dependencies
+22.701807: Updating reachability
+22.701984: Updating item recipe maps
+22.702014: Updating new costs
+22.702099: Updating complexity cost
+22.708919: Finished updating complexity cost
+22.709461: Next loop
+22.709465: Starting on dependent: medium-electric-pole
+22.709466: Old cost update
+22.70947: Flow cost update
+22.71662: Gathering recipe info
+22.716626: Getting recipe costs
+22.716656: Finding valid prereqs
+22.747695: Finding randomized/unrandomized ings
+22.74771: Will not preserve resource costs
+22.747711: Performing ings search
+22.766143: Updating dependencies
+22.76615: Updating reachability
+22.766351: Updating item recipe maps
+22.766385: Updating new costs
+22.766471: Updating complexity cost
+22.773596: Finished updating complexity cost
+22.774146: Next loop
+22.774148: Starting on dependent: programmable-speaker
+22.774149: Old cost update
+22.774155: Flow cost update
+22.828389: Gathering recipe info
+22.828397: Getting recipe costs
+22.828446: Finding valid prereqs
+22.859881: Finding randomized/unrandomized ings
+22.859901: Will not preserve resource costs
+22.859903: Performing ings search
+22.872949: Updating dependencies
+22.872956: Updating reachability
+22.87316: Updating item recipe maps
+22.8732: Updating new costs
+22.873285: Updating complexity cost
+22.881213: Finished updating complexity cost
+22.881751: Next loop
+22.881754: Starting on dependent: rail
+22.881756: Old cost update
+22.88176: Flow cost update
+22.889823: Gathering recipe info
+22.889829: Getting recipe costs
+22.889886: Finding valid prereqs
+22.920223: Finding randomized/unrandomized ings
+22.920246: Will preserve resource costs
+22.920248: Performing ings search
+22.931658: Updating dependencies
+22.931666: Updating reachability
+22.931898: Updating item recipe maps
+22.931937: Updating new costs
+22.932043: Updating complexity cost
+22.939814: Finished updating complexity cost
+22.94044: Next loop
+22.940443: Starting on dependent: train-stop
+22.940444: Old cost update
+22.940449: Flow cost update
+22.948009: Gathering recipe info
+22.948013: Getting recipe costs
+22.948053: Finding valid prereqs
+22.97817: Finding randomized/unrandomized ings
+22.978187: Will not preserve resource costs
+22.978188: Performing ings search
+22.996719: Updating dependencies
+22.996727: Updating reachability
+22.996924: Updating item recipe maps
+22.996963: Updating new costs
+22.997049: Updating complexity cost
+23.003582: Finished updating complexity cost
+23.004111: Next loop
+23.004114: Starting on dependent: car
+23.004115: Old cost update
+23.00412: Flow cost update
+23.011241: Gathering recipe info
+23.011245: Getting recipe costs
+23.011274: Finding valid prereqs
+23.041047: Finding randomized/unrandomized ings
+23.041061: Will not preserve resource costs
+23.041061: Performing ings search
+23.059648: Updating dependencies
+23.059652: Updating reachability
+23.059812: Updating item recipe maps
+23.059836: Updating new costs
+23.059912: Updating complexity cost
+23.066559: Finished updating complexity cost
+23.067062: Next loop
+23.067064: Starting on dependent: locomotive
+23.067065: Old cost update
+23.067068: Flow cost update
+23.073666: Gathering recipe info
+23.073669: Getting recipe costs
+23.073698: Finding valid prereqs
+23.104464: Finding randomized/unrandomized ings
+23.104478: Will not preserve resource costs
+23.104479: Performing ings search
+23.148541: Updating dependencies
+23.148546: Updating reachability
+23.148705: Updating item recipe maps
+23.148731: Updating new costs
+23.148853: Updating complexity cost
+23.155907: Finished updating complexity cost
+23.156427: Next loop
+23.156429: Starting on dependent: pump
+23.15643: Old cost update
+23.156434: Flow cost update
+23.211055: Gathering recipe info
+23.211064: Getting recipe costs
+23.211103: Finding valid prereqs
+23.244492: Finding randomized/unrandomized ings
+23.244516: Will not preserve resource costs
+23.244517: Performing ings search
+23.262363: Updating dependencies
+23.262375: Updating reachability
+23.262581: Updating item recipe maps
+23.262616: Updating new costs
+23.26271: Updating complexity cost
+23.270575: Finished updating complexity cost
+23.271257: Next loop
+23.271282: Starting on dependent: military-science-pack
+23.271286: Old cost update
+23.2713: Flow cost update
+23.281531: Gathering recipe info
+23.281541: Getting recipe costs
+23.281577: Finding valid prereqs
+23.319351: Finding randomized/unrandomized ings
+23.319373: Will not preserve resource costs
+23.319375: Performing ings search
+23.342109: Updating dependencies
+23.342126: Updating reachability
+23.342666: Updating item recipe maps
+23.342711: Updating new costs
+23.342804: Updating complexity cost
+23.351173: Finished updating complexity cost
+23.351715: Next loop
+23.351718: Starting on dependent: fluid-wagon
+23.351719: Old cost update
+23.351725: Flow cost update
+23.36075: Gathering recipe info
+23.360757: Getting recipe costs
+23.360798: Finding valid prereqs
+23.396661: Finding randomized/unrandomized ings
+23.396682: Will not preserve resource costs
+23.396683: Performing ings search
+23.441257: Updating dependencies
+23.441273: Updating reachability
+23.441454: Updating item recipe maps
+23.441495: Updating new costs
+23.441606: Updating complexity cost
+23.447981: Finished updating complexity cost
+23.448538: Next loop
+23.448543: Starting on dependent: concrete
+23.448546: Old cost update
+23.44855: Flow cost update
+23.456161: Gathering recipe info
+23.456165: Getting recipe costs
+23.456199: Finding valid prereqs
+23.487456: Finding randomized/unrandomized ings
+23.48748: Will preserve resource costs
+23.487482: Performing ings search
+23.492142: Updating dependencies
+23.492147: Updating reachability
+23.492477: Updating item recipe maps
+23.492508: Updating new costs
+23.49267: Updating complexity cost
+23.499577: Finished updating complexity cost
+23.500016: Next loop
+23.500018: Starting on dependent: hazard-concrete
+23.500019: Old cost update
+23.500022: Flow cost update
+23.506984: Gathering recipe info
+23.506989: Getting recipe costs
+23.507012: Finding valid prereqs
+23.543399: Finding randomized/unrandomized ings
+23.543415: Will not preserve resource costs
+23.543417: Performing ings search
+23.544052: Updating dependencies
+23.544056: Updating reachability
+23.544388: Updating item recipe maps
+23.54441: Updating new costs
+23.544494: Updating complexity cost
+23.552041: Finished updating complexity cost
+23.552556: Next loop
+23.55256: Starting on dependent: refined-concrete
+23.552561: Old cost update
+23.552567: Flow cost update
+23.560879: Gathering recipe info
+23.560885: Getting recipe costs
+23.560925: Finding valid prereqs
+23.59227: Finding randomized/unrandomized ings
+23.592296: Will preserve resource costs
+23.592297: Performing ings search
+23.661171: Updating dependencies
+23.661182: Updating reachability
+23.661485: Updating item recipe maps
+23.661523: Updating new costs
+23.661683: Updating complexity cost
+23.668941: Finished updating complexity cost
+23.669866: Next loop
+23.669868: Starting on dependent: chemical-plant
+23.669869: Old cost update
+23.669874: Flow cost update
+23.677396: Gathering recipe info
+23.6774: Getting recipe costs
+23.677438: Finding valid prereqs
+23.708943: Finding randomized/unrandomized ings
+23.708963: Will not preserve resource costs
+23.708964: Performing ings search
+23.741647: Updating dependencies
+23.741657: Updating reachability
+23.742043: Updating item recipe maps
+23.742084: Updating new costs
+23.742288: Updating complexity cost
+23.748952: Finished updating complexity cost
+23.749548: Next loop
+23.749551: Starting on dependent: oil-refinery
+23.749552: Old cost update
+23.749559: Flow cost update
+23.75801: Gathering recipe info
+23.758016: Getting recipe costs
+23.758064: Finding valid prereqs
+23.789771: Finding randomized/unrandomized ings
+23.789792: Will not preserve resource costs
+23.789832: Performing ings search
+24.028204: Updating dependencies
+24.028215: Updating reachability
+24.028785: Updating item recipe maps
+24.028838: Updating new costs
+24.028937: Updating complexity cost
+24.036498: Finished updating complexity cost
+24.037099: Next loop
+24.037101: Starting on dependent: refined-hazard-concrete
+24.037102: Old cost update
+24.037105: Flow cost update
+24.045008: Gathering recipe info
+24.045013: Getting recipe costs
+24.045038: Finding valid prereqs
+24.075645: Finding randomized/unrandomized ings
+24.075656: Will not preserve resource costs
+24.075657: Performing ings search
+24.076495: Updating dependencies
+24.076499: Updating reachability
+24.076769: Updating item recipe maps
+24.076784: Updating new costs
+24.076854: Updating complexity cost
+24.083797: Finished updating complexity cost
+24.084263: Next loop
+24.084266: Starting on dependent: sulfur
+24.084266: Old cost update
+24.08427: Flow cost update
+24.091494: Gathering recipe info
+24.0915: Getting recipe costs
+24.091527: Finding valid prereqs
+24.121572: Finding randomized/unrandomized ings
+24.121585: Will preserve resource costs
+24.121587: Performing ings search
+24.146544: Updating dependencies
+24.146555: Updating reachability
+24.146677: Updating item recipe maps
+24.1467: Updating new costs
+24.146759: Updating complexity cost
+24.154578: Finished updating complexity cost
+24.155011: Next loop
+24.155015: Starting on dependent: advanced-circuit
+24.155016: Old cost update
+24.15502: Flow cost update
+24.162588: Gathering recipe info
+24.162591: Getting recipe costs
+24.162624: Finding valid prereqs
+24.19317: Finding randomized/unrandomized ings
+24.193197: Will preserve resource costs
+24.193198: Performing ings search
+24.202002: Updating dependencies
+24.202009: Updating reachability
+24.202264: Updating item recipe maps
+24.202292: Updating new costs
+24.202412: Updating complexity cost
+24.208915: Finished updating complexity cost
+24.209317: Next loop
+24.20932: Starting on dependent: explosives
+24.209321: Old cost update
+24.209325: Flow cost update
+24.216855: Gathering recipe info
+24.216858: Getting recipe costs
+24.216889: Finding valid prereqs
+24.247363: Finding randomized/unrandomized ings
+24.247387: Will preserve resource costs
+24.247389: Performing ings search
+24.262752: Updating dependencies
+24.262759: Updating reachability
+24.262896: Updating item recipe maps
+24.262925: Updating new costs
+24.263102: Updating complexity cost
+24.269889: Finished updating complexity cost
+24.270861: Next loop
+24.270864: Starting on dependent: sulfuric-acid
+24.270866: Old cost update
+24.27087: Flow cost update
+24.278063: Gathering recipe info
+24.278067: Getting recipe costs
+24.278095: Finding valid prereqs
+24.308728: Finding randomized/unrandomized ings
+24.308741: Will preserve resource costs
+24.308742: Performing ings search
+24.334757: Updating dependencies
+24.334766: Updating reachability
+24.334936: Updating item recipe maps
+24.334961: Updating new costs
+24.335079: Updating complexity cost
+24.379718: Finished updating complexity cost
+24.380378: Next loop
+24.380381: Starting on dependent: belt-immunity-equipment
+24.380382: Old cost update
+24.380386: Flow cost update
+24.388433: Gathering recipe info
+24.388437: Getting recipe costs
+24.388465: Finding valid prereqs
+24.419273: Finding randomized/unrandomized ings
+24.419287: Will not preserve resource costs
+24.419288: Performing ings search
+24.448267: Updating dependencies
+24.448273: Updating reachability
+24.448372: Updating item recipe maps
+24.448394: Updating new costs
+24.448473: Updating complexity cost
+24.45568: Finished updating complexity cost
+24.456174: Next loop
+24.456176: Starting on dependent: bulk-inserter
+24.456177: Old cost update
+24.456183: Flow cost update
+24.463743: Gathering recipe info
+24.463746: Getting recipe costs
+24.463783: Finding valid prereqs
+24.4949: Finding randomized/unrandomized ings
+24.494922: Will preserve resource costs
+24.494923: Performing ings search
+24.563166: Updating dependencies
+24.563176: Updating reachability
+24.563347: Updating item recipe maps
+24.563386: Updating new costs
+24.563544: Updating complexity cost
+24.570455: Finished updating complexity cost
+24.571043: Next loop
+24.571045: Starting on dependent: chemical-science-pack
+24.571046: Old cost update
+24.57105: Flow cost update
+24.578176: Gathering recipe info
+24.57818: Getting recipe costs
+24.578209: Finding valid prereqs
+24.615036: Finding randomized/unrandomized ings
+24.615055: Will not preserve resource costs
+24.615057: Performing ings search
+24.653899: Updating dependencies
+24.653909: Updating reachability
+24.656335: Updating item recipe maps
+24.656371: Updating new costs
+24.656455: Updating complexity cost
+24.66447: Finished updating complexity cost
+24.664978: Next loop
+24.664981: Starting on dependent: efficiency-module
+24.664983: Old cost update
+24.664986: Flow cost update
+24.673384: Gathering recipe info
+24.67339: Getting recipe costs
+24.673416: Finding valid prereqs
+24.703566: Finding randomized/unrandomized ings
+24.703579: Will preserve resource costs
+24.70358: Performing ings search
+24.749042: Updating dependencies
+24.74905: Updating reachability
+24.749161: Updating item recipe maps
+24.749185: Updating new costs
+24.749281: Updating complexity cost
+24.756737: Finished updating complexity cost
+24.757296: Next loop
+24.757298: Starting on dependent: modular-armor
+24.757299: Old cost update
+24.757303: Flow cost update
+24.764864: Gathering recipe info
+24.764869: Getting recipe costs
+24.764894: Finding valid prereqs
+24.795706: Finding randomized/unrandomized ings
+24.795718: Will not preserve resource costs
+24.795719: Performing ings search
+24.841801: Updating dependencies
+24.841807: Updating reachability
+24.841901: Updating item recipe maps
+24.841922: Updating new costs
+24.84202: Updating complexity cost
+24.848762: Finished updating complexity cost
+24.849223: Next loop
+24.849225: Starting on dependent: night-vision-equipment
+24.849226: Old cost update
+24.849229: Flow cost update
+24.856221: Gathering recipe info
+24.856225: Getting recipe costs
+24.85625: Finding valid prereqs
+24.888481: Finding randomized/unrandomized ings
+24.888498: Will not preserve resource costs
+24.8885: Performing ings search
+24.916742: Updating dependencies
+24.916754: Updating reachability
+24.916847: Updating item recipe maps
+24.916868: Updating new costs
+24.916949: Updating complexity cost
+24.924686: Finished updating complexity cost
+24.92519: Next loop
+24.925193: Starting on dependent: productivity-module
+24.925194: Old cost update
+24.925198: Flow cost update
+24.933853: Gathering recipe info
+24.933858: Getting recipe costs
+24.933887: Finding valid prereqs
+24.964804: Finding randomized/unrandomized ings
+24.96482: Will preserve resource costs
+24.964822: Performing ings search
+24.973942: Updating dependencies
+24.973951: Updating reachability
+24.974071: Updating item recipe maps
+24.974096: Updating new costs
+24.974189: Updating complexity cost
+24.981866: Finished updating complexity cost
+24.982412: Next loop
+24.982414: Starting on dependent: quality-module
+24.982416: Old cost update
+24.982419: Flow cost update
+24.990404: Gathering recipe info
+24.990407: Getting recipe costs
+24.990435: Finding valid prereqs
+25.020243: Finding randomized/unrandomized ings
+25.020257: Will preserve resource costs
+25.020258: Performing ings search
+25.031205: Updating dependencies
+25.031209: Updating reachability
+25.031306: Updating item recipe maps
+25.031325: Updating new costs
+25.031405: Updating complexity cost
+25.038375: Finished updating complexity cost
+25.038887: Next loop
+25.03889: Starting on dependent: solar-panel-equipment
+25.038891: Old cost update
+25.038895: Flow cost update
+25.088821: Gathering recipe info
+25.088828: Getting recipe costs
+25.088865: Finding valid prereqs
+25.120601: Finding randomized/unrandomized ings
+25.120622: Will not preserve resource costs
+25.120623: Performing ings search
+25.141447: Updating dependencies
+25.141459: Updating reachability
+25.141576: Updating item recipe maps
+25.141609: Updating new costs
+25.141696: Updating complexity cost
+25.149813: Finished updating complexity cost
+25.150341: Next loop
+25.150343: Starting on dependent: speed-module
+25.150385: Old cost update
+25.150391: Flow cost update
+25.159178: Gathering recipe info
+25.159185: Getting recipe costs
+25.159215: Finding valid prereqs
+25.190209: Finding randomized/unrandomized ings
+25.190224: Will preserve resource costs
+25.190227: Performing ings search
+25.216721: Updating dependencies
+25.216726: Updating reachability
+25.216844: Updating item recipe maps
+25.216867: Updating new costs
+25.216971: Updating complexity cost
+25.224459: Finished updating complexity cost
+25.22506: Next loop
+25.225063: Starting on dependent: battery
+25.225064: Old cost update
+25.225069: Flow cost update
+25.232839: Gathering recipe info
+25.232842: Getting recipe costs
+25.232874: Finding valid prereqs
+25.262912: Finding randomized/unrandomized ings
+25.262931: Will preserve resource costs
+25.262932: Performing ings search
+25.273011: Updating dependencies
+25.273017: Updating reachability
+25.273137: Updating item recipe maps
+25.273162: Updating new costs
+25.273282: Updating complexity cost
+25.280252: Finished updating complexity cost
+25.280648: Next loop
+25.28065: Starting on dependent: accumulator
+25.280651: Old cost update
+25.280653: Flow cost update
+25.288104: Gathering recipe info
+25.288108: Getting recipe costs
+25.288132: Finding valid prereqs
+25.317247: Finding randomized/unrandomized ings
+25.317258: Will preserve resource costs
+25.317259: Performing ings search
+25.330056: Updating dependencies
+25.33006: Updating reachability
+25.330216: Updating item recipe maps
+25.330234: Updating new costs
+25.330462: Updating complexity cost
+25.337372: Finished updating complexity cost
+25.337895: Next loop
+25.337896: Starting on dependent: battery-equipment
+25.337897: Old cost update
+25.3379: Flow cost update
+25.34551: Gathering recipe info
+25.345514: Getting recipe costs
+25.345539: Finding valid prereqs
+25.375308: Finding randomized/unrandomized ings
+25.375318: Will preserve resource costs
+25.375319: Performing ings search
+25.387323: Updating dependencies
+25.387328: Updating reachability
+25.387417: Updating item recipe maps
+25.387434: Updating new costs
+25.387525: Updating complexity cost
+25.394222: Finished updating complexity cost
+25.394737: Next loop
+25.394739: Starting on dependent: selector-combinator
+25.39474: Old cost update
+25.394743: Flow cost update
+25.441137: Gathering recipe info
+25.441146: Getting recipe costs
+25.441175: Finding valid prereqs
+25.4721: Finding randomized/unrandomized ings
+25.472114: Will not preserve resource costs
+25.472115: Performing ings search
+25.487556: Updating dependencies
+25.487562: Updating reachability
+25.48774: Updating item recipe maps
+25.487763: Updating new costs
+25.487838: Updating complexity cost
+25.495491: Finished updating complexity cost
+25.495971: Next loop
+25.495974: Starting on dependent: electric-furnace
+25.495975: Old cost update
+25.495979: Flow cost update
+25.504151: Gathering recipe info
+25.504156: Getting recipe costs
+25.504187: Finding valid prereqs
+25.535039: Finding randomized/unrandomized ings
+25.535062: Will preserve resource costs
+25.535063: Performing ings search
+25.6102: Updating dependencies
+25.610207: Updating reachability
+25.610376: Updating item recipe maps
+25.610403: Updating new costs
+25.610507: Updating complexity cost
+25.617638: Finished updating complexity cost
+25.618172: Next loop
+25.618174: Starting on dependent: advanced-oil-processing
+25.618175: Old cost update
+25.618178: Flow cost update
+25.62645: Gathering recipe info
+25.626455: Getting recipe costs
+25.62648: Finding valid prereqs
+25.656286: Finding randomized/unrandomized ings
+25.656303: Will preserve resource costs
+25.656306: Performing ings search
+25.671071: Updating dependencies
+25.671074: Updating reachability
+25.67137: Updating item recipe maps
+25.671402: Updating new costs
+25.67168: Updating complexity cost
+25.679226: Finished updating complexity cost
+25.680155: Next loop
+25.680158: Starting on dependent: substation
+25.680159: Old cost update
+25.680164: Flow cost update
+25.688219: Gathering recipe info
+25.688223: Getting recipe costs
+25.688253: Finding valid prereqs
+25.717925: Finding randomized/unrandomized ings
+25.71797: Will not preserve resource costs
+25.717971: Performing ings search
+25.806822: Updating dependencies
+25.80683: Updating reachability
+25.807056: Updating item recipe maps
+25.807086: Updating new costs
+25.807168: Updating complexity cost
+25.814821: Finished updating complexity cost
+25.815335: Next loop
+25.815338: Starting on dependent: low-density-structure
+25.815339: Old cost update
+25.815343: Flow cost update
+25.823378: Gathering recipe info
+25.823382: Getting recipe costs
+25.823414: Finding valid prereqs
+25.855579: Finding randomized/unrandomized ings
+25.8556: Will preserve resource costs
+25.855602: Performing ings search
+25.880957: Updating dependencies
+25.880969: Updating reachability
+25.881124: Updating item recipe maps
+25.881158: Updating new costs
+25.881224: Updating complexity cost
+25.889316: Finished updating complexity cost
+25.889759: Next loop
+25.889762: Starting on dependent: processing-unit
+25.889763: Old cost update
+25.889769: Flow cost update
+25.897594: Gathering recipe info
+25.897598: Getting recipe costs
+25.897628: Finding valid prereqs
+25.929106: Finding randomized/unrandomized ings
+25.929126: Will preserve resource costs
+25.929128: Performing ings search
+25.944525: Updating dependencies
+25.944533: Updating reachability
+25.944804: Updating item recipe maps
+25.944833: Updating new costs
+25.944911: Updating complexity cost
+25.95252: Finished updating complexity cost
+25.952939: Next loop
+25.952941: Starting on dependent: production-science-pack
+25.952943: Old cost update
+25.952948: Flow cost update
+25.961778: Gathering recipe info
+25.961782: Getting recipe costs
+25.961819: Finding valid prereqs
+25.994412: Finding randomized/unrandomized ings
+25.994429: Will not preserve resource costs
+25.994431: Performing ings search
+26.08209: Updating dependencies
+26.0821: Updating reachability
+26.082388: Updating item recipe maps
+26.082419: Updating new costs
+26.082496: Updating complexity cost
+26.131595: Finished updating complexity cost
+26.132108: Next loop
+26.13211: Starting on dependent: heavy-oil-cracking
+26.132112: Old cost update
+26.132115: Flow cost update
+26.140767: Gathering recipe info
+26.140772: Getting recipe costs
+26.140803: Finding valid prereqs
+26.170994: Finding randomized/unrandomized ings
+26.171008: Will preserve resource costs
+26.17101: Performing ings search
+26.190209: Updating dependencies
+26.190214: Updating reachability
+26.190262: Updating item recipe maps
+26.190283: Updating new costs
+26.190338: Updating complexity cost
+26.197897: Finished updating complexity cost
+26.1983: Next loop
+26.198303: Starting on dependent: lubricant
+26.198304: Old cost update
+26.198306: Flow cost update
+26.206578: Gathering recipe info
+26.206582: Getting recipe costs
+26.206605: Finding valid prereqs
+26.235895: Finding randomized/unrandomized ings
+26.235906: Will preserve resource costs
+26.235907: Performing ings search
+26.236253: Updating dependencies
+26.236256: Updating reachability
+26.236429: Updating item recipe maps
+26.236443: Updating new costs
+26.236552: Updating complexity cost
+26.243795: Finished updating complexity cost
+26.244473: Next loop
+26.244475: Starting on dependent: light-oil-cracking
+26.244476: Old cost update
+26.244479: Flow cost update
+26.252197: Gathering recipe info
+26.2522: Getting recipe costs
+26.252225: Finding valid prereqs
+26.281082: Finding randomized/unrandomized ings
+26.281104: Will preserve resource costs
+26.281105: Performing ings search
+26.291656: Updating dependencies
+26.291661: Updating reachability
+26.291699: Updating item recipe maps
+26.291716: Updating new costs
+26.291767: Updating complexity cost
+26.298928: Finished updating complexity cost
+26.299308: Next loop
+26.29931: Starting on dependent: rocket-fuel
+26.29931: Old cost update
+26.299313: Flow cost update
+26.307181: Gathering recipe info
+26.307184: Getting recipe costs
+26.307209: Finding valid prereqs
+26.33739: Finding randomized/unrandomized ings
+26.3374: Will preserve resource costs
+26.337401: Performing ings search
+26.350704: Updating dependencies
+26.350708: Updating reachability
+26.350809: Updating item recipe maps
+26.35087: Updating new costs
+26.350957: Updating complexity cost
+26.358073: Finished updating complexity cost
+26.358603: Next loop
+26.358606: Starting on dependent: passive-provider-chest
+26.358607: Old cost update
+26.35861: Flow cost update
+26.366297: Gathering recipe info
+26.366304: Getting recipe costs
+26.366333: Finding valid prereqs
+26.395743: Finding randomized/unrandomized ings
+26.395755: Will not preserve resource costs
+26.395756: Performing ings search
+26.404672: Updating dependencies
+26.404676: Updating reachability
+26.40484: Updating item recipe maps
+26.404864: Updating new costs
+26.404939: Updating complexity cost
+26.412079: Finished updating complexity cost
+26.412572: Next loop
+26.412574: Starting on dependent: roboport
+26.412574: Old cost update
+26.412579: Flow cost update
+26.421105: Gathering recipe info
+26.42111: Getting recipe costs
+26.421143: Finding valid prereqs
+26.492876: Finding randomized/unrandomized ings
+26.492896: Will not preserve resource costs
+26.492898: Performing ings search
+26.550589: Updating dependencies
+26.550596: Updating reachability
+26.551343: Updating item recipe maps
+26.551373: Updating new costs
+26.551511: Updating complexity cost
+26.558822: Finished updating complexity cost
+26.559322: Next loop
+26.559324: Starting on dependent: storage-chest
+26.559325: Old cost update
+26.55933: Flow cost update
+26.567442: Gathering recipe info
+26.567447: Getting recipe costs
+26.567475: Finding valid prereqs
+26.597401: Finding randomized/unrandomized ings
+26.597414: Will not preserve resource costs
+26.597415: Performing ings search
+26.61804: Updating dependencies
+26.618044: Updating reachability
+26.618198: Updating item recipe maps
+26.618222: Updating new costs
+26.618308: Updating complexity cost
+26.625557: Finished updating complexity cost
+26.626038: Next loop
+26.62604: Starting on dependent: centrifuge
+26.626041: Old cost update
+26.626046: Flow cost update
+26.633686: Gathering recipe info
+26.633689: Getting recipe costs
+26.633728: Finding valid prereqs
+26.663231: Finding randomized/unrandomized ings
+26.663247: Will not preserve resource costs
+26.663248: Performing ings search
+26.88222: Updating dependencies
+26.882235: Updating reachability
+26.882573: Updating item recipe maps
+26.882611: Updating new costs
+26.882702: Updating complexity cost
+26.890133: Finished updating complexity cost
+26.89065: Next loop
+26.890652: Starting on dependent: personal-roboport-equipment
+26.890653: Old cost update
+26.890657: Flow cost update
+26.898516: Gathering recipe info
+26.898521: Getting recipe costs
+26.898556: Finding valid prereqs
+26.929062: Finding randomized/unrandomized ings
+26.929079: Will preserve resource costs
+26.92908: Performing ings search
+27.088989: Updating dependencies
+27.089002: Updating reachability
+27.089105: Updating item recipe maps
+27.089144: Updating new costs
+27.089241: Updating complexity cost
+27.096563: Finished updating complexity cost
+27.097123: Next loop
+27.097126: Starting on dependent: cargo-landing-pad
+27.097128: Old cost update
+27.097131: Flow cost update
+27.105106: Gathering recipe info
+27.105111: Getting recipe costs
+27.105141: Finding valid prereqs
+27.135302: Finding randomized/unrandomized ings
+27.135315: Will not preserve resource costs
+27.135316: Performing ings search
+27.283435: Updating dependencies
+27.28345: Updating reachability
+27.285042: Updating item recipe maps
+27.285073: Updating new costs
+27.285155: Updating complexity cost
+27.292656: Finished updating complexity cost
+27.293145: Next loop
+27.293146: Starting on dependent: space-platform-foundation
+27.293148: Old cost update
+27.293152: Flow cost update
+27.300974: Gathering recipe info
+27.300977: Getting recipe costs
+27.301002: Finding valid prereqs
+27.330729: Finding randomized/unrandomized ings
+27.330754: Will preserve resource costs
+27.330756: Performing ings search
+27.351386: Updating dependencies
+27.351391: Updating reachability
+27.351637: Updating item recipe maps
+27.351655: Updating new costs
+27.35175: Updating complexity cost
+27.359124: Finished updating complexity cost
+27.359625: Next loop
+27.359627: Starting on dependent: heat-exchanger
+27.359665: Old cost update
+27.359672: Flow cost update
+27.367623: Gathering recipe info
+27.367626: Getting recipe costs
+27.367654: Finding valid prereqs
+27.397862: Finding randomized/unrandomized ings
+27.397875: Will not preserve resource costs
+27.397877: Performing ings search
+27.437462: Updating dependencies
+27.437466: Updating reachability
+27.437625: Updating item recipe maps
+27.437649: Updating new costs
+27.437744: Updating complexity cost
+27.445615: Finished updating complexity cost
+27.446122: Next loop
+27.446125: Starting on dependent: heat-pipe
+27.446125: Old cost update
+27.446129: Flow cost update
+27.454172: Gathering recipe info
+27.45418: Getting recipe costs
+27.454204: Finding valid prereqs
+27.523793: Finding randomized/unrandomized ings
+27.523807: Will preserve resource costs
+27.523808: Performing ings search
+27.534863: Updating dependencies
+27.534876: Updating reachability
+27.535122: Updating item recipe maps
+27.535153: Updating new costs
+27.535288: Updating complexity cost
+27.547736: Finished updating complexity cost
+27.54854: Next loop
+27.548548: Starting on dependent: nuclear-reactor
+27.54855: Old cost update
+27.548558: Flow cost update
+27.561915: Gathering recipe info
+27.561946: Getting recipe costs
+27.562022: Finding valid prereqs
+27.598892: Finding randomized/unrandomized ings
+27.598915: Will not preserve resource costs
+27.598917: Performing ings search
+27.701898: Updating dependencies
+27.701908: Updating reachability
+27.702109: Updating item recipe maps
+27.702149: Updating new costs
+27.702235: Updating complexity cost
+27.710478: Finished updating complexity cost
+27.71101: Next loop
+27.711014: Starting on dependent: steam-turbine
+27.711014: Old cost update
+27.711018: Flow cost update
+27.720588: Gathering recipe info
+27.720599: Getting recipe costs
+27.720632: Finding valid prereqs
+27.752465: Finding randomized/unrandomized ings
+27.752481: Will not preserve resource costs
+27.752483: Performing ings search
+27.770889: Updating dependencies
+27.770902: Updating reachability
+27.771089: Updating item recipe maps
+27.771121: Updating new costs
+27.771226: Updating complexity cost
+27.779381: Finished updating complexity cost
+27.779896: Next loop
+27.7799: Starting on dependent: electric-engine-unit
+27.779901: Old cost update
+27.779905: Flow cost update
+27.788963: Gathering recipe info
+27.788972: Getting recipe costs
+27.789007: Finding valid prereqs
+27.820029: Finding randomized/unrandomized ings
+27.820047: Will preserve resource costs
+27.820049: Performing ings search
+27.908719: Updating dependencies
+27.90873: Updating reachability
+27.908901: Updating item recipe maps
+27.908936: Updating new costs
+27.909116: Updating complexity cost
+27.918236: Finished updating complexity cost
+27.919186: Next loop
+27.919188: Starting on dependent: space-platform-starter-pack
+27.919189: Old cost update
+27.919193: Flow cost update
+27.927694: Gathering recipe info
+27.927698: Getting recipe costs
+27.927729: Finding valid prereqs
+27.959001: Finding randomized/unrandomized ings
+27.959017: Will not preserve resource costs
+27.959018: Performing ings search
+28.053612: Updating dependencies
+28.053624: Updating reachability
+28.053734: Updating item recipe maps
+28.053768: Updating new costs
+28.053859: Updating complexity cost
+28.063408: Finished updating complexity cost
+28.063995: Next loop
+28.064: Starting on dependent: exoskeleton-equipment
+28.064002: Old cost update
+28.064007: Flow cost update
+28.075351: Gathering recipe info
+28.075361: Getting recipe costs
+28.075396: Finding valid prereqs
+28.109568: Finding randomized/unrandomized ings
+28.109591: Will preserve resource costs
+28.109593: Performing ings search
+28.587756: Updating dependencies
+28.587768: Updating reachability
+28.587881: Updating item recipe maps
+28.587916: Updating new costs
+28.588033: Updating complexity cost
+28.596331: Finished updating complexity cost
+28.596902: Next loop
+28.596904: Starting on dependent: flying-robot-frame
+28.596906: Old cost update
+28.59691: Flow cost update
+28.60666: Gathering recipe info
+28.606666: Getting recipe costs
+28.606868: Finding valid prereqs
+28.637087: Finding randomized/unrandomized ings
+28.637106: Will preserve resource costs
+28.637107: Performing ings search
+28.676317: Updating dependencies
+28.676329: Updating reachability
+28.676473: Updating item recipe maps
+28.676519: Updating new costs
+28.676653: Updating complexity cost
+28.685996: Finished updating complexity cost
+28.686727: Next loop
+28.68673: Starting on dependent: power-armor
+28.686731: Old cost update
+28.686735: Flow cost update
+28.696321: Gathering recipe info
+28.696326: Getting recipe costs
+28.696359: Finding valid prereqs
+28.727392: Finding randomized/unrandomized ings
+28.727408: Will not preserve resource costs
+28.727409: Performing ings search
+28.834336: Updating dependencies
+28.834345: Updating reachability
+28.834449: Updating item recipe maps
+28.83448: Updating new costs
+28.834564: Updating complexity cost
+28.842803: Finished updating complexity cost
+28.843324: Next loop
+28.843326: Starting on dependent: rocket-silo
+28.843327: Old cost update
+28.843332: Flow cost update
+28.89762: Gathering recipe info
+28.897629: Getting recipe costs
+28.897674: Finding valid prereqs
+28.928638: Finding randomized/unrandomized ings
+28.928659: Will not preserve resource costs
+28.928659: Performing ings search
+29.323612: Updating dependencies
+29.323624: Updating reachability
+29.327377: Updating item recipe maps
+29.32743: Updating new costs
+29.327528: Updating complexity cost
+29.336225: Finished updating complexity cost
+29.339513: Next loop
+29.339517: Starting on dependent: construction-robot
+29.339518: Old cost update
+29.339521: Flow cost update
+29.348232: Gathering recipe info
+29.348238: Getting recipe costs
+29.348266: Finding valid prereqs
+29.378658: Finding randomized/unrandomized ings
+29.378671: Will not preserve resource costs
+29.378672: Performing ings search
+29.41458: Updating dependencies
+29.414586: Updating reachability
+29.416379: Updating item recipe maps
+29.416399: Updating new costs
+29.41647: Updating complexity cost
+29.424614: Finished updating complexity cost
+29.425089: Next loop
+29.425091: Starting on dependent: logistic-robot
+29.425092: Old cost update
+29.425095: Flow cost update
+29.433381: Gathering recipe info
+29.433386: Getting recipe costs
+29.43341: Finding valid prereqs
+29.463533: Finding randomized/unrandomized ings
+29.463545: Will not preserve resource costs
+29.463546: Performing ings search
+29.477123: Updating dependencies
+29.477127: Updating reachability
+29.477279: Updating item recipe maps
+29.477297: Updating new costs
+29.477388: Updating complexity cost
+29.485977: Finished updating complexity cost
+29.486451: Next loop
+29.486453: Starting on dependent: utility-science-pack
+29.486454: Old cost update
+29.486459: Flow cost update
+29.494927: Gathering recipe info
+29.494931: Getting recipe costs
+29.494961: Finding valid prereqs
+29.525609: Finding randomized/unrandomized ings
+29.525623: Will not preserve resource costs
+29.525625: Performing ings search
+29.545398: Updating dependencies
+29.545406: Updating reachability
+29.546239: Updating item recipe maps
+29.546274: Updating new costs
+29.546358: Updating complexity cost
+29.554783: Finished updating complexity cost
+29.555255: Next loop
+29.555258: Starting on dependent: uranium-fuel-cell
+29.555258: Old cost update
+29.555262: Flow cost update
+29.605942: Gathering recipe info
+29.605948: Getting recipe costs
+29.60598: Finding valid prereqs
+29.637154: Finding randomized/unrandomized ings
+29.637171: Will preserve resource costs
+29.637173: Performing ings search
+29.726663: Updating dependencies
+29.726672: Updating reachability
+29.726904: Updating item recipe maps
+29.726934: Updating new costs
+29.727021: Updating complexity cost
+29.734945: Finished updating complexity cost
+29.735474: Next loop
+29.735477: Starting on dependent: rocket-part
+29.735479: Old cost update
+29.735483: Flow cost update
+29.744033: Gathering recipe info
+29.74404: Getting recipe costs
+29.744069: Finding valid prereqs
+29.775629: Finding randomized/unrandomized ings
+29.775643: Will not preserve resource costs
+29.775644: Performing ings search
+29.786493: Updating dependencies
+29.7865: Updating reachability
+29.804333: Updating item recipe maps
+29.804369: Updating new costs
+29.804455: Updating complexity cost
+29.813701: Finished updating complexity cost
+29.814271: Next loop
+29.814274: Starting on dependent: assembling-machine-3
+29.814275: Old cost update
+29.814278: Flow cost update
+29.823274: Gathering recipe info
+29.823279: Getting recipe costs
+29.823306: Finding valid prereqs
+29.853394: Finding randomized/unrandomized ings
+29.853408: Will not preserve resource costs
+29.853409: Performing ings search
+29.951746: Updating dependencies
+29.951755: Updating reachability
+29.95213: Updating item recipe maps
+29.952156: Updating new costs
+29.952238: Updating complexity cost
+29.961579: Finished updating complexity cost
+29.962085: Next loop
+29.962087: Starting on dependent: battery-mk2-equipment
+29.962089: Old cost update
+29.962094: Flow cost update
+29.972192: Gathering recipe info
+29.9722: Getting recipe costs
+29.972236: Finding valid prereqs
+30.003696: Finding randomized/unrandomized ings
+30.003714: Will preserve resource costs
+30.003715: Performing ings search
+30.081403: Updating dependencies
+30.081413: Updating reachability
+30.08152: Updating item recipe maps
+30.081551: Updating new costs
+30.08164: Updating complexity cost
+30.089882: Finished updating complexity cost
+30.090415: Next loop
+30.090418: Starting on dependent: defender-capsule
+30.09042: Old cost update
+30.090424: Flow cost update
+30.099458: Gathering recipe info
+30.099464: Getting recipe costs
+30.099499: Finding valid prereqs
+30.130975: Finding randomized/unrandomized ings
+30.130992: Will preserve resource costs
+30.130993: Performing ings search
+30.141257: Updating dependencies
+30.141262: Updating reachability
+30.141457: Updating item recipe maps
+30.141488: Updating new costs
+30.14158: Updating complexity cost
+30.150984: Finished updating complexity cost
+30.151537: Next loop
+30.15154: Starting on dependent: beacon
+30.151541: Old cost update
+30.151546: Flow cost update
+30.160777: Gathering recipe info
+30.16078: Getting recipe costs
+30.160819: Finding valid prereqs
+30.191161: Finding randomized/unrandomized ings
+30.191178: Will not preserve resource costs
+30.191178: Performing ings search
+30.321929: Updating dependencies
+30.321941: Updating reachability
+30.322162: Updating item recipe maps
+30.322202: Updating new costs
+30.322293: Updating complexity cost
+30.33031: Finished updating complexity cost
+30.330854: Next loop
+30.330858: Starting on dependent: rail-ramp
+30.330859: Old cost update
+30.330863: Flow cost update
+30.339465: Gathering recipe info
+30.339468: Getting recipe costs
+30.339499: Finding valid prereqs
+30.370643: Finding randomized/unrandomized ings
+30.370658: Will not preserve resource costs
+30.370659: Performing ings search
+30.40986: Updating dependencies
+30.409868: Updating reachability
+30.410055: Updating item recipe maps
+30.410088: Updating new costs
+30.410179: Updating complexity cost
+30.41885: Finished updating complexity cost
+30.419355: Next loop
+30.419357: Starting on dependent: rail-support
+30.41936: Old cost update
+30.419363: Flow cost update
+30.428296: Gathering recipe info
+30.428302: Getting recipe costs
+30.428327: Finding valid prereqs
+30.459021: Finding randomized/unrandomized ings
+30.459035: Will not preserve resource costs
+30.459036: Performing ings search
+30.464504: Updating dependencies
+30.464508: Updating reachability
+30.464718: Updating item recipe maps
+30.464743: Updating new costs
+30.464823: Updating complexity cost
+30.474123: Finished updating complexity cost
+30.474606: Next loop
+30.474608: Starting on dependent: energy-shield-equipment
+30.47461: Old cost update
+30.474613: Flow cost update
+30.483981: Gathering recipe info
+30.483987: Getting recipe costs
+30.484015: Finding valid prereqs
+30.51413: Finding randomized/unrandomized ings
+30.514143: Will preserve resource costs
+30.514144: Performing ings search
+30.518516: Updating dependencies
+30.518523: Updating reachability
+30.518635: Updating item recipe maps
+30.518657: Updating new costs
+30.518742: Updating complexity cost
+30.526957: Finished updating complexity cost
+30.527496: Next loop
+30.527499: Starting on dependent: fission-reactor-equipment
+30.5275: Old cost update
+30.527504: Flow cost update
+30.53725: Gathering recipe info
+30.537255: Getting recipe costs
+30.537287: Finding valid prereqs
+30.567755: Finding randomized/unrandomized ings
+30.567771: Will preserve resource costs
+30.567772: Performing ings search
+30.602194: Updating dependencies
+30.602201: Updating reachability
+30.602317: Updating item recipe maps
+30.602347: Updating new costs
+30.602455: Updating complexity cost
+30.651735: Finished updating complexity cost
+30.652423: Next loop
+30.652426: Starting on dependent: flamethrower
+30.652427: Old cost update
+30.652431: Flow cost update
+30.662755: Gathering recipe info
+30.662761: Getting recipe costs
+30.66279: Finding valid prereqs
+30.69375: Finding randomized/unrandomized ings
+30.693766: Will not preserve resource costs
+30.693768: Performing ings search
+30.705635: Updating dependencies
+30.705643: Updating reachability
+30.705749: Updating item recipe maps
+30.705771: Updating new costs
+30.705848: Updating complexity cost
+30.714221: Finished updating complexity cost
+30.714713: Next loop
+30.714717: Starting on dependent: flamethrower-ammo
+30.714718: Old cost update
+30.714721: Flow cost update
+30.723495: Gathering recipe info
+30.723499: Getting recipe costs
+30.723524: Finding valid prereqs
+30.754351: Finding randomized/unrandomized ings
+30.754366: Will not preserve resource costs
+30.754367: Performing ings search
+30.779914: Updating dependencies
+30.779923: Updating reachability
+30.780044: Updating item recipe maps
+30.78007: Updating new costs
+30.780173: Updating complexity cost
+30.789119: Finished updating complexity cost
+30.789699: Next loop
+30.789703: Starting on dependent: flamethrower-turret
+30.789704: Old cost update
+30.789709: Flow cost update
+30.798731: Gathering recipe info
+30.798736: Getting recipe costs
+30.798774: Finding valid prereqs
+30.829264: Finding randomized/unrandomized ings
+30.829283: Will not preserve resource costs
+30.829284: Performing ings search
+30.889378: Updating dependencies
+30.88939: Updating reachability
+30.889572: Updating item recipe maps
+30.889613: Updating new costs
+30.889704: Updating complexity cost
+30.898609: Finished updating complexity cost
+30.899178: Next loop
+30.89918: Starting on dependent: land-mine
+30.899182: Old cost update
+30.899185: Flow cost update
+30.908757: Gathering recipe info
+30.908762: Getting recipe costs
+30.90879: Finding valid prereqs
+30.939171: Finding randomized/unrandomized ings
+30.939184: Will not preserve resource costs
+30.939185: Performing ings search
+30.946766: Updating dependencies
+30.946771: Updating reachability
+30.94699: Updating item recipe maps
+30.947012: Updating new costs
+30.947085: Updating complexity cost
+30.956214: Finished updating complexity cost
+30.9567: Next loop
+30.956702: Starting on dependent: laser-turret
+30.956703: Old cost update
+30.956706: Flow cost update
+31.007745: Gathering recipe info
+31.007753: Getting recipe costs
+31.007786: Finding valid prereqs
+31.039107: Finding randomized/unrandomized ings
+31.039123: Will preserve resource costs
+31.039124: Performing ings search
+31.078243: Updating dependencies
+31.078253: Updating reachability
+31.078535: Updating item recipe maps
+31.078573: Updating new costs
+31.078679: Updating complexity cost
+31.088375: Finished updating complexity cost
+31.089008: Next loop
+31.089011: Starting on dependent: express-splitter
+31.089013: Old cost update
+31.089018: Flow cost update
+31.099143: Gathering recipe info
+31.099151: Getting recipe costs
+31.09919: Finding valid prereqs
+31.130749: Finding randomized/unrandomized ings
+31.130772: Will preserve resource costs
+31.130773: Performing ings search
+31.185846: Updating dependencies
+31.185858: Updating reachability
+31.1861: Updating item recipe maps
+31.186144: Updating new costs
+31.186242: Updating complexity cost
+31.195023: Finished updating complexity cost
+31.195578: Next loop
+31.19558: Starting on dependent: express-transport-belt
+31.195582: Old cost update
+31.195586: Flow cost update
+31.205131: Gathering recipe info
+31.205137: Getting recipe costs
+31.205167: Finding valid prereqs
+31.236142: Finding randomized/unrandomized ings
+31.23616: Will preserve resource costs
+31.236161: Performing ings search
+31.287846: Updating dependencies
+31.287862: Updating reachability
+31.288137: Updating item recipe maps
+31.28817: Updating new costs
+31.288308: Updating complexity cost
+31.298134: Finished updating complexity cost
+31.298895: Next loop
+31.298899: Starting on dependent: express-underground-belt
+31.2989: Old cost update
+31.298905: Flow cost update
+31.308354: Gathering recipe info
+31.308361: Getting recipe costs
+31.308394: Finding valid prereqs
+31.385178: Finding randomized/unrandomized ings
+31.385196: Will preserve resource costs
+31.385198: Performing ings search
+31.441194: Updating dependencies
+31.441204: Updating reachability
+31.44147: Updating item recipe maps
+31.441503: Updating new costs
+31.441601: Updating complexity cost
+31.450969: Finished updating complexity cost
+31.451537: Next loop
+31.45154: Starting on dependent: poison-capsule
+31.451541: Old cost update
+31.451545: Flow cost update
+31.461227: Gathering recipe info
+31.461231: Getting recipe costs
+31.461263: Finding valid prereqs
+31.491777: Finding randomized/unrandomized ings
+31.491792: Will not preserve resource costs
+31.491793: Performing ings search
+31.500574: Updating dependencies
+31.500579: Updating reachability
+31.500717: Updating item recipe maps
+31.500747: Updating new costs
+31.500861: Updating complexity cost
+31.510711: Finished updating complexity cost
+31.511338: Next loop
+31.511342: Starting on dependent: slowdown-capsule
+31.511345: Old cost update
+31.511349: Flow cost update
+31.52259: Gathering recipe info
+31.5226: Getting recipe costs
+31.522632: Finding valid prereqs
+31.558529: Finding randomized/unrandomized ings
+31.558548: Will not preserve resource costs
+31.55855: Performing ings search
+31.575711: Updating dependencies
+31.575723: Updating reachability
+31.575865: Updating item recipe maps
+31.575897: Updating new costs
+31.575983: Updating complexity cost
+31.588564: Finished updating complexity cost
+31.589112: Next loop
+31.589116: Starting on dependent: rocket
+31.589117: Old cost update
+31.589121: Flow cost update
+31.600216: Gathering recipe info
+31.600225: Getting recipe costs
+31.600257: Finding valid prereqs
+31.632962: Finding randomized/unrandomized ings
+31.632982: Will preserve resource costs
+31.632983: Performing ings search
+31.646648: Updating dependencies
+31.646658: Updating reachability
+31.646785: Updating item recipe maps
+31.64681: Updating new costs
+31.646898: Updating complexity cost
+31.656007: Finished updating complexity cost
+31.656605: Next loop
+31.656608: Starting on dependent: rocket-launcher
+31.656609: Old cost update
+31.656613: Flow cost update
+31.66768: Gathering recipe info
+31.667688: Getting recipe costs
+31.667726: Finding valid prereqs
+31.69993: Finding randomized/unrandomized ings
+31.699948: Will preserve resource costs
+31.69995: Performing ings search
+31.767256: Updating dependencies
+31.767272: Updating reachability
+31.76743: Updating item recipe maps
+31.767475: Updating new costs
+31.767593: Updating complexity cost
+31.779165: Finished updating complexity cost
+31.779753: Next loop
+31.779757: Starting on dependent: cluster-grenade
+31.779758: Old cost update
+31.779762: Flow cost update
+31.790345: Gathering recipe info
+31.790354: Getting recipe costs
+31.790386: Finding valid prereqs
+31.823108: Finding randomized/unrandomized ings
+31.823126: Will not preserve resource costs
+31.823128: Performing ings search
+31.845693: Updating dependencies
+31.845704: Updating reachability
+31.84592: Updating item recipe maps
+31.845957: Updating new costs
+31.846052: Updating complexity cost
+31.855969: Finished updating complexity cost
+31.856502: Next loop
+31.856505: Starting on dependent: piercing-shotgun-shell
+31.856506: Old cost update
+31.856511: Flow cost update
+31.867157: Gathering recipe info
+31.867164: Getting recipe costs
+31.8672: Finding valid prereqs
+31.898794: Finding randomized/unrandomized ings
+31.89881: Will not preserve resource costs
+31.898841: Performing ings search
+31.924173: Updating dependencies
+31.924187: Updating reachability
+31.924314: Updating item recipe maps
+31.924348: Updating new costs
+31.92444: Updating complexity cost
+31.934439: Finished updating complexity cost
+31.934992: Next loop
+31.934994: Starting on dependent: cannon-shell
+31.934997: Old cost update
+31.935001: Flow cost update
+31.94531: Gathering recipe info
+31.945317: Getting recipe costs
+31.94535: Finding valid prereqs
+31.977104: Finding randomized/unrandomized ings
+31.977121: Will preserve resource costs
+31.977122: Performing ings search
+32.03403: Updating dependencies
+32.034043: Updating reachability
+32.034189: Updating item recipe maps
+32.034223: Updating new costs
+32.034338: Updating complexity cost
+32.04313: Finished updating complexity cost
+32.043662: Next loop
+32.043664: Starting on dependent: explosive-cannon-shell
+32.043665: Old cost update
+32.043669: Flow cost update
+32.053224: Gathering recipe info
+32.053228: Getting recipe costs
+32.05326: Finding valid prereqs
+32.125238: Finding randomized/unrandomized ings
+32.125257: Will preserve resource costs
+32.125258: Performing ings search
+32.134606: Updating dependencies
+32.134612: Updating reachability
+32.134734: Updating item recipe maps
+32.134765: Updating new costs
+32.134855: Updating complexity cost
+32.143873: Finished updating complexity cost
+32.144402: Next loop
+32.144404: Starting on dependent: tank
+32.144405: Old cost update
+32.14441: Flow cost update
+32.153994: Gathering recipe info
+32.154: Getting recipe costs
+32.154041: Finding valid prereqs
+32.185489: Finding randomized/unrandomized ings
+32.185505: Will not preserve resource costs
+32.185506: Performing ings search
+32.296822: Updating dependencies
+32.296833: Updating reachability
+32.297055: Updating item recipe maps
+32.297101: Updating new costs
+32.297196: Updating complexity cost
+32.306949: Finished updating complexity cost
+32.307528: Next loop
+32.307531: Starting on dependent: power-armor-mk2
+32.307533: Old cost update
+32.307538: Flow cost update
+32.319561: Gathering recipe info
+32.319568: Getting recipe costs
+32.319615: Finding valid prereqs
+32.352406: Finding randomized/unrandomized ings
+32.352429: Will preserve resource costs
+32.35243: Performing ings search
+33.414605: Updating dependencies
+33.414618: Updating reachability
+33.414748: Updating item recipe maps
+33.4148: Updating new costs
+33.414914: Updating complexity cost
+33.424045: Finished updating complexity cost
+33.427427: Next loop
+33.427434: Starting on dependent: uranium-rounds-magazine
+33.427435: Old cost update
+33.427438: Flow cost update
+33.437414: Gathering recipe info
+33.437425: Getting recipe costs
+33.437454: Finding valid prereqs
+33.468895: Finding randomized/unrandomized ings
+33.46891: Will not preserve resource costs
+33.468912: Performing ings search
+33.498219: Updating dependencies
+33.498226: Updating reachability
+33.498332: Updating item recipe maps
+33.498354: Updating new costs
+33.498431: Updating complexity cost
+33.508001: Finished updating complexity cost
+33.508488: Next loop
+33.508491: Starting on dependent: distractor-capsule
+33.508492: Old cost update
+33.508495: Flow cost update
+33.518343: Gathering recipe info
+33.518348: Getting recipe costs
+33.518375: Finding valid prereqs
+33.548543: Finding randomized/unrandomized ings
+33.548556: Will preserve resource costs
+33.548557: Performing ings search
+33.562366: Updating dependencies
+33.56237: Updating reachability
+33.562528: Updating item recipe maps
+33.562547: Updating new costs
+33.562642: Updating complexity cost
+33.57139: Finished updating complexity cost
+33.571878: Next loop
+33.57188: Starting on dependent: discharge-defense-equipment
+33.571882: Old cost update
+33.571885: Flow cost update
+33.622762: Gathering recipe info
+33.622769: Getting recipe costs
+33.622804: Finding valid prereqs
+33.65371: Finding randomized/unrandomized ings
+33.653728: Will not preserve resource costs
+33.653729: Performing ings search
+33.773318: Updating dependencies
+33.773326: Updating reachability
+33.773426: Updating item recipe maps
+33.773455: Updating new costs
+33.773596: Updating complexity cost
+33.782202: Finished updating complexity cost
+33.782692: Next loop
+33.782695: Starting on dependent: personal-laser-defense-equipment
+33.782696: Old cost update
+33.7827: Flow cost update
+33.792814: Gathering recipe info
+33.792822: Getting recipe costs
+33.792854: Finding valid prereqs
+33.822678: Finding randomized/unrandomized ings
+33.822695: Will not preserve resource costs
+33.822695: Performing ings search
+33.983679: Updating dependencies
+33.983689: Updating reachability
+33.983802: Updating item recipe maps
+33.983833: Updating new costs
+33.983915: Updating complexity cost
+33.994035: Finished updating complexity cost
+33.994567: Next loop
+33.99457: Starting on dependent: explosive-rocket
+33.994572: Old cost update
+33.994575: Flow cost update
+34.004656: Gathering recipe info
+34.00466: Getting recipe costs
+34.004688: Finding valid prereqs
+34.034599: Finding randomized/unrandomized ings
+34.034611: Will not preserve resource costs
+34.034612: Performing ings search
+34.041127: Updating dependencies
+34.041131: Updating reachability
+34.04124: Updating item recipe maps
+34.041261: Updating new costs
+34.041332: Updating complexity cost
+34.050572: Finished updating complexity cost
+34.051055: Next loop
+34.051057: Starting on dependent: uranium-cannon-shell
+34.051057: Old cost update
+34.051061: Flow cost update
+34.060522: Gathering recipe info
+34.060527: Getting recipe costs
+34.060552: Finding valid prereqs
+34.090909: Finding randomized/unrandomized ings
+34.090923: Will not preserve resource costs
+34.090925: Performing ings search
+34.119845: Updating dependencies
+34.119853: Updating reachability
+34.119979: Updating item recipe maps
+34.120004: Updating new costs
+34.120088: Updating complexity cost
+34.130706: Finished updating complexity cost
+34.131228: Next loop
+34.13123: Starting on dependent: explosive-uranium-cannon-shell
+34.131231: Old cost update
+34.131234: Flow cost update
+34.141835: Gathering recipe info
+34.141839: Getting recipe costs
+34.141868: Finding valid prereqs
+34.172815: Finding randomized/unrandomized ings
+34.172826: Will not preserve resource costs
+34.172827: Performing ings search
+34.195246: Updating dependencies
+34.19525: Updating reachability
+34.195357: Updating item recipe maps
+34.195377: Updating new costs
+34.19545: Updating complexity cost
+34.204691: Finished updating complexity cost
+34.205169: Next loop
+34.205171: Starting on dependent: asteroid-collector
+34.205173: Old cost update
+34.205177: Flow cost update
+34.214721: Gathering recipe info
+34.214725: Getting recipe costs
+34.214755: Finding valid prereqs
+34.244338: Finding randomized/unrandomized ings
+34.244351: Will not preserve resource costs
+34.244352: Performing ings search
+34.377826: Updating dependencies
+34.377838: Updating reachability
+34.378324: Updating item recipe maps
+34.378356: Updating new costs
+34.378438: Updating complexity cost
+34.387227: Finished updating complexity cost
+34.387718: Next loop
+34.387721: Starting on dependent: cargo-bay
+34.387722: Old cost update
+34.387726: Flow cost update
+34.396875: Gathering recipe info
+34.396878: Getting recipe costs
+34.396908: Finding valid prereqs
+34.427162: Finding randomized/unrandomized ings
+34.427175: Will not preserve resource costs
+34.427176: Performing ings search
+34.493532: Updating dependencies
+34.493537: Updating reachability
+34.493735: Updating item recipe maps
+34.493761: Updating new costs
+34.493837: Updating complexity cost
+34.502596: Finished updating complexity cost
+34.503084: Next loop
+34.503086: Starting on dependent: crusher
+34.503088: Old cost update
+34.503091: Flow cost update
+34.513395: Gathering recipe info
+34.513398: Getting recipe costs
+34.513428: Finding valid prereqs
+34.543276: Finding randomized/unrandomized ings
+34.543292: Will not preserve resource costs
+34.543293: Performing ings search
+34.614627: Updating dependencies
+34.614636: Updating reachability
+34.616607: Updating item recipe maps
+34.616641: Updating new costs
+34.616728: Updating complexity cost
+34.626598: Finished updating complexity cost
+34.627126: Next loop
+34.627129: Starting on dependent: destroyer-capsule
+34.627166: Old cost update
+34.627173: Flow cost update
+34.637235: Gathering recipe info
+34.637239: Getting recipe costs
+34.637271: Finding valid prereqs
+34.667832: Finding randomized/unrandomized ings
+34.667846: Will not preserve resource costs
+34.667847: Performing ings search
+34.763367: Updating dependencies
+34.763375: Updating reachability
+34.763542: Updating item recipe maps
+34.763572: Updating new costs
+34.763682: Updating complexity cost
+34.772645: Finished updating complexity cost
+34.773143: Next loop
+34.773145: Starting on dependent: space-science-pack
+34.773146: Old cost update
+34.773149: Flow cost update
+34.78251: Gathering recipe info
+34.782515: Getting recipe costs
+34.782545: Finding valid prereqs
+34.813461: Finding randomized/unrandomized ings
+34.813474: Will not preserve resource costs
+34.813475: Performing ings search
+34.823047: Updating dependencies
+34.823052: Updating reachability
+34.824081: Updating item recipe maps
+34.824108: Updating new costs
+34.824179: Updating complexity cost
+34.832821: Finished updating complexity cost
+34.833289: Next loop
+34.833291: Starting on dependent: efficiency-module-2
+34.833292: Old cost update
+34.833296: Flow cost update
+34.842727: Gathering recipe info
+34.842731: Getting recipe costs
+34.84276: Finding valid prereqs
+34.872384: Finding randomized/unrandomized ings
+34.872396: Will preserve resource costs
+34.872398: Performing ings search
+34.881438: Updating dependencies
+34.881444: Updating reachability
+34.881552: Updating item recipe maps
+34.881698: Updating new costs
+34.881809: Updating complexity cost
+34.930957: Finished updating complexity cost
+34.931536: Next loop
+34.931543: Starting on dependent: nuclear-fuel
+34.931544: Old cost update
+34.931548: Flow cost update
+34.941943: Gathering recipe info
+34.941948: Getting recipe costs
+34.941977: Finding valid prereqs
+34.972636: Finding randomized/unrandomized ings
+34.972653: Will not preserve resource costs
+34.972654: Performing ings search
+34.993174: Updating dependencies
+34.993181: Updating reachability
+34.993296: Updating item recipe maps
+34.99332: Updating new costs
+34.993397: Updating complexity cost
+35.003473: Finished updating complexity cost
+35.003974: Next loop
+35.003977: Starting on dependent: active-provider-chest
+35.003978: Old cost update
+35.003983: Flow cost update
+35.014295: Gathering recipe info
+35.014302: Getting recipe costs
+35.014334: Finding valid prereqs
+35.044661: Finding randomized/unrandomized ings
+35.044676: Will not preserve resource costs
+35.044677: Performing ings search
+35.084892: Updating dependencies
+35.0849: Updating reachability
+35.085101: Updating item recipe maps
+35.085131: Updating new costs
+35.085214: Updating complexity cost
+35.09522: Finished updating complexity cost
+35.095731: Next loop
+35.095733: Starting on dependent: buffer-chest
+35.095734: Old cost update
+35.095738: Flow cost update
+35.105881: Gathering recipe info
+35.105885: Getting recipe costs
+35.105917: Finding valid prereqs
+35.136217: Finding randomized/unrandomized ings
+35.136233: Will not preserve resource costs
+35.136234: Performing ings search
+35.154898: Updating dependencies
+35.154904: Updating reachability
+35.155068: Updating item recipe maps
+35.155093: Updating new costs
+35.155167: Updating complexity cost
+35.164129: Finished updating complexity cost
+35.164626: Next loop
+35.164628: Starting on dependent: requester-chest
+35.164629: Old cost update
+35.164632: Flow cost update
+35.174208: Gathering recipe info
+35.174211: Getting recipe costs
+35.174239: Finding valid prereqs
+35.204238: Finding randomized/unrandomized ings
+35.204251: Will not preserve resource costs
+35.204252: Performing ings search
+35.277712: Updating dependencies
+35.277722: Updating reachability
+35.277912: Updating item recipe maps
+35.277943: Updating new costs
+35.278029: Updating complexity cost
+35.2882: Finished updating complexity cost
+35.288721: Next loop
+35.288723: Starting on dependent: productivity-module-2
+35.288725: Old cost update
+35.288729: Flow cost update
+35.299422: Gathering recipe info
+35.299427: Getting recipe costs
+35.299489: Finding valid prereqs
+35.329934: Finding randomized/unrandomized ings
+35.329949: Will preserve resource costs
+35.32995: Performing ings search
+35.36817: Updating dependencies
+35.368176: Updating reachability
+35.368283: Updating item recipe maps
+35.368312: Updating new costs
+35.368399: Updating complexity cost
+35.377623: Finished updating complexity cost
+35.378146: Next loop
+35.378149: Starting on dependent: quality-module-2
+35.37815: Old cost update
+35.378154: Flow cost update
+35.388048: Gathering recipe info
+35.388052: Getting recipe costs
+35.388081: Finding valid prereqs
+35.418289: Finding randomized/unrandomized ings
+35.418303: Will preserve resource costs
+35.418304: Performing ings search
+35.437785: Updating dependencies
+35.437789: Updating reachability
+35.437891: Updating item recipe maps
+35.437917: Updating new costs
+35.437998: Updating complexity cost
+35.447108: Finished updating complexity cost
+35.447638: Next loop
+35.44764: Starting on dependent: thruster
+35.447642: Old cost update
+35.447645: Flow cost update
+35.457248: Gathering recipe info
+35.457254: Getting recipe costs
+35.457283: Finding valid prereqs
+35.487306: Finding randomized/unrandomized ings
+35.487322: Will not preserve resource costs
+35.487323: Performing ings search
+35.517136: Updating dependencies
+35.517146: Updating reachability
+35.696957: Updating item recipe maps
+35.696989: Updating new costs
+35.69707: Updating complexity cost
+35.706247: Finished updating complexity cost
+35.706746: Next loop
+35.706748: Starting on dependent: speed-module-2
+35.706749: Old cost update
+35.706753: Flow cost update
+35.716922: Gathering recipe info
+35.716926: Getting recipe costs
+35.716957: Finding valid prereqs
+35.747012: Finding randomized/unrandomized ings
+35.747026: Will preserve resource costs
+35.747027: Performing ings search
+35.770171: Updating dependencies
+35.77018: Updating reachability
+35.77023: Updating item recipe maps
+35.770255: Updating new costs
+35.770364: Updating complexity cost
+35.779458: Finished updating complexity cost
+35.779979: Next loop
+35.779981: Starting on dependent: atomic-bomb
+35.779982: Old cost update
+35.779985: Flow cost update
+35.827568: Gathering recipe info
+35.827574: Getting recipe costs
+35.827607: Finding valid prereqs
+35.85863: Finding randomized/unrandomized ings
+35.858645: Will not preserve resource costs
+35.858646: Performing ings search
+35.984384: Updating dependencies
+35.984392: Updating reachability
+35.984607: Updating item recipe maps
+35.984636: Updating new costs
+35.984713: Updating complexity cost
+35.993939: Finished updating complexity cost
+35.994423: Next loop
+35.994425: Starting on dependent: lightning-rod
+35.994426: Old cost update
+35.99443: Flow cost update
+36.004207: Gathering recipe info
+36.004214: Getting recipe costs
+36.004243: Finding valid prereqs
+36.034082: Finding randomized/unrandomized ings
+36.034095: Will not preserve resource costs
+36.034097: Performing ings search
+36.074416: Updating dependencies
+36.074423: Updating reachability
+36.075006: Updating item recipe maps
+36.075033: Updating new costs
+36.075263: Updating complexity cost
+36.084216: Finished updating complexity cost
+36.085059: Next loop
+36.085061: Starting on dependent: recycler
+36.085063: Old cost update
+36.085068: Flow cost update
+36.137763: Gathering recipe info
+36.137769: Getting recipe costs
+36.137809: Finding valid prereqs
+36.168132: Finding randomized/unrandomized ings
+36.16815: Will not preserve resource costs
+36.168151: Performing ings search
+36.199766: Updating dependencies
+36.199774: Updating reachability
+36.218029: Updating item recipe maps
+36.21807: Updating new costs
+36.218157: Updating complexity cost
+36.227709: Finished updating complexity cost
+36.228224: Next loop
+36.228227: Starting on dependent: heating-tower
+36.228228: Old cost update
+36.228232: Flow cost update
+36.237981: Gathering recipe info
+36.237984: Getting recipe costs
+36.238013: Finding valid prereqs
+36.268677: Finding randomized/unrandomized ings
+36.26869: Will not preserve resource costs
+36.26869: Performing ings search
+36.28493: Updating dependencies
+36.284979: Updating reachability
+36.285031: Updating item recipe maps
+36.285055: Updating new costs
+36.285239: Updating complexity cost
+36.294079: Finished updating complexity cost
+36.294556: Next loop
+36.294558: Starting on dependent: agricultural-tower
+36.294559: Old cost update
+36.294564: Flow cost update
+36.304343: Gathering recipe info
+36.304345: Getting recipe costs
+36.304381: Finding valid prereqs
+36.334482: Finding randomized/unrandomized ings
+36.334498: Will not preserve resource costs
+36.334499: Performing ings search
+36.381561: Updating dependencies
+36.381567: Updating reachability
+36.381624: Updating item recipe maps
+36.381658: Updating new costs
+36.381752: Updating complexity cost
+36.390804: Finished updating complexity cost
+36.391314: Next loop
+36.391316: Starting on dependent: nutrients-from-spoilage
+36.391317: Old cost update
+36.39132: Flow cost update
+36.401013: Gathering recipe info
+36.401016: Getting recipe costs
+36.401037: Finding valid prereqs
+36.430819: Finding randomized/unrandomized ings
+36.430831: Will not preserve resource costs
+36.430832: Performing ings search
+36.431213: Updating dependencies
+36.431215: Updating reachability
+36.431319: Updating item recipe maps
+36.431331: Updating new costs
+36.431429: Updating complexity cost
+36.480232: Finished updating complexity cost
+36.480939: Next loop
+36.480942: Starting on dependent: carbon
+36.480944: Old cost update
+36.480947: Flow cost update
+36.491675: Gathering recipe info
+36.491682: Getting recipe costs
+36.491711: Finding valid prereqs
+36.522922: Finding randomized/unrandomized ings
+36.522942: Will not preserve resource costs
+36.522943: Performing ings search
+36.534462: Updating dependencies
+36.534472: Updating reachability
+36.534523: Updating item recipe maps
+36.534548: Updating new costs
+36.534611: Updating complexity cost
+36.550808: Finished updating complexity cost
+36.551243: Next loop
+36.551246: Starting on dependent: steam-condensation
+36.551247: Old cost update
+36.55125: Flow cost update
+36.560971: Gathering recipe info
+36.560979: Getting recipe costs
+36.561001: Finding valid prereqs
+36.593063: Finding randomized/unrandomized ings
+36.593081: Will not preserve resource costs
+36.593082: Performing ings search
+36.594032: Updating dependencies
+36.594036: Updating reachability
+36.59408: Updating item recipe maps
+36.594096: Updating new costs
+36.594151: Updating complexity cost
+36.604062: Finished updating complexity cost
+36.604473: Next loop
+36.604476: Starting on dependent: jellynut-processing
+36.604477: Old cost update
+36.60448: Flow cost update
+36.61519: Gathering recipe info
+36.615197: Getting recipe costs
+36.615223: Finding valid prereqs
+36.646531: Finding randomized/unrandomized ings
+36.646545: Will not preserve resource costs
+36.646546: Performing ings search
+36.646728: Updating dependencies
+36.646731: Updating reachability
+36.646762: Updating item recipe maps
+36.646787: Updating new costs
+36.646924: Updating complexity cost
+36.656571: Finished updating complexity cost
+36.657256: Next loop
+36.657258: Starting on dependent: yumako-processing
+36.65726: Old cost update
+36.657263: Flow cost update
+36.668098: Gathering recipe info
+36.668104: Getting recipe costs
+36.668128: Finding valid prereqs
+36.699216: Finding randomized/unrandomized ings
+36.699231: Will not preserve resource costs
+36.699232: Performing ings search
+36.699431: Updating dependencies
+36.699436: Updating reachability
+36.699468: Updating item recipe maps
+36.699493: Updating new costs
+36.69963: Updating complexity cost
+36.710705: Finished updating complexity cost
+36.711472: Next loop
+36.711474: Starting on dependent: tungsten-carbide
+36.711475: Old cost update
+36.71148: Flow cost update
+36.722805: Gathering recipe info
+36.72281: Getting recipe costs
+36.722842: Finding valid prereqs
+36.753583: Finding randomized/unrandomized ings
+36.753599: Will not preserve resource costs
+36.753601: Performing ings search
+36.779088: Updating dependencies
+36.779094: Updating reachability
+36.779142: Updating item recipe maps
+36.779168: Updating new costs
+36.779299: Updating complexity cost
+36.788589: Finished updating complexity cost
+36.789264: Next loop
+36.789266: Starting on dependent: simple-coal-liquefaction
+36.789267: Old cost update
+36.789271: Flow cost update
+36.84259: Gathering recipe info
+36.842597: Getting recipe costs
+36.84263: Finding valid prereqs
+36.872984: Finding randomized/unrandomized ings
+36.873001: Will not preserve resource costs
+36.873002: Performing ings search
+36.92881: Updating dependencies
+36.928818: Updating reachability
+36.928864: Updating item recipe maps
+36.928892: Updating new costs
+36.92952: Updating complexity cost
+36.939084: Finished updating complexity cost
+36.939865: Next loop
+36.939869: Starting on dependent: acid-neutralisation
+36.93987: Old cost update
+36.939873: Flow cost update
+36.949935: Gathering recipe info
+36.949939: Getting recipe costs
+36.949963: Finding valid prereqs
+36.980352: Finding randomized/unrandomized ings
+36.980365: Will not preserve resource costs
+36.980366: Performing ings search
+36.996037: Updating dependencies
+36.996044: Updating reachability
+36.996096: Updating item recipe maps
+36.996113: Updating new costs
+36.996194: Updating complexity cost
+37.006101: Finished updating complexity cost
+37.006497: Next loop
+37.0065: Starting on dependent: iron-bacteria
+37.0065: Old cost update
+37.006504: Flow cost update
+37.016477: Gathering recipe info
+37.01648: Getting recipe costs
+37.016501: Finding valid prereqs
+37.045892: Finding randomized/unrandomized ings
+37.045905: Will not preserve resource costs
+37.045906: Performing ings search
+37.046083: Updating dependencies
+37.046086: Updating reachability
+37.046126: Updating item recipe maps
+37.046145: Updating new costs
+37.04628: Updating complexity cost
+37.05548: Finished updating complexity cost
+37.055868: Next loop
+37.05587: Starting on dependent: copper-bacteria
+37.055872: Old cost update
+37.055874: Flow cost update
+37.065692: Gathering recipe info
+37.065697: Getting recipe costs
+37.065717: Finding valid prereqs
+37.094495: Finding randomized/unrandomized ings
+37.094508: Will not preserve resource costs
+37.094509: Performing ings search
+37.094824: Updating dependencies
+37.094826: Updating reachability
+37.094867: Updating item recipe maps
+37.094884: Updating new costs
+37.095015: Updating complexity cost
+37.104488: Finished updating complexity cost
+37.104881: Next loop
+37.104882: Starting on dependent: artificial-jellynut-soil
+37.104883: Old cost update
+37.104887: Flow cost update
+37.115317: Gathering recipe info
+37.115321: Getting recipe costs
+37.115349: Finding valid prereqs
+37.145005: Finding randomized/unrandomized ings
+37.145018: Will not preserve resource costs
+37.145019: Performing ings search
+37.298915: Updating dependencies
+37.298926: Updating reachability
+37.299362: Updating item recipe maps
+37.299393: Updating new costs
+37.299537: Updating complexity cost
+37.309206: Finished updating complexity cost
+37.309899: Next loop
+37.309901: Starting on dependent: artificial-yumako-soil
+37.309901: Old cost update
+37.309905: Flow cost update
+37.320978: Gathering recipe info
+37.320982: Getting recipe costs
+37.321012: Finding valid prereqs
+37.350963: Finding randomized/unrandomized ings
+37.350977: Will not preserve resource costs
+37.350977: Performing ings search
+38.19274: Updating dependencies
+38.192749: Updating reachability
+38.193307: Updating item recipe maps
+38.193336: Updating new costs
+38.193474: Updating complexity cost
+38.203232: Finished updating complexity cost
+38.203916: Next loop
+38.203919: Starting on dependent: biochamber
+38.203919: Old cost update
+38.203925: Flow cost update
+38.215261: Gathering recipe info
+38.215266: Getting recipe costs
+38.215305: Finding valid prereqs
+38.245117: Finding randomized/unrandomized ings
+38.245134: Will not preserve resource costs
+38.245135: Performing ings search
+38.298769: Updating dependencies
+38.298782: Updating reachability
+38.300998: Updating item recipe maps
+38.301047: Updating new costs
+38.301296: Updating complexity cost
+38.311189: Finished updating complexity cost
+38.313132: Next loop
+38.313134: Starting on dependent: foundry
+38.313136: Old cost update
+38.313172: Flow cost update
+38.323273: Gathering recipe info
+38.323278: Getting recipe costs
+38.323318: Finding valid prereqs
+38.35331: Finding randomized/unrandomized ings
+38.353327: Will not preserve resource costs
+38.353328: Performing ings search
+38.597745: Updating dependencies
+38.597758: Updating reachability
+38.600959: Updating item recipe maps
+38.601008: Updating new costs
+38.601098: Updating complexity cost
+38.610981: Finished updating complexity cost
+38.611519: Next loop
+38.611521: Starting on dependent: electromagnetic-plant
+38.611522: Old cost update
+38.611527: Flow cost update
+38.621616: Gathering recipe info
+38.62162: Getting recipe costs
+38.621655: Finding valid prereqs
+38.650754: Finding randomized/unrandomized ings
+38.650768: Will not preserve resource costs
+38.650769: Performing ings search
+38.688463: Updating dependencies
+38.688468: Updating reachability
+38.690724: Updating item recipe maps
+38.690759: Updating new costs
+38.690844: Updating complexity cost
+38.740726: Finished updating complexity cost
+38.741291: Next loop
+38.741294: Starting on dependent: bioflux
+38.741296: Old cost update
+38.7413: Flow cost update
+38.754066: Gathering recipe info
+38.754073: Getting recipe costs
+38.754102: Finding valid prereqs
+38.784338: Finding randomized/unrandomized ings
+38.784351: Will not preserve resource costs
+38.784352: Performing ings search
+38.794224: Updating dependencies
+38.794229: Updating reachability
+38.794273: Updating item recipe maps
+38.794294: Updating new costs
+38.7952: Updating complexity cost
+38.805031: Finished updating complexity cost
+38.805708: Next loop
+38.80571: Starting on dependent: burnt-spoilage
+38.805711: Old cost update
+38.805713: Flow cost update
+38.816589: Gathering recipe info
+38.816595: Getting recipe costs
+38.816617: Finding valid prereqs
+38.846371: Finding randomized/unrandomized ings
+38.84638: Will not preserve resource costs
+38.846381: Performing ings search
+38.84672: Updating dependencies
+38.846722: Updating reachability
+38.846761: Updating item recipe maps
+38.846774: Updating new costs
+38.846826: Updating complexity cost
+38.856816: Finished updating complexity cost
+38.857223: Next loop
+38.857225: Starting on dependent: nutrients-from-yumako-mash
+38.857226: Old cost update
+38.857229: Flow cost update
+38.867836: Gathering recipe info
+38.86784: Getting recipe costs
+38.86786: Finding valid prereqs
+38.897364: Finding randomized/unrandomized ings
+38.897374: Will not preserve resource costs
+38.897375: Performing ings search
+38.897796: Updating dependencies
+38.897798: Updating reachability
+38.897833: Updating item recipe maps
+38.897847: Updating new costs
+38.898229: Updating complexity cost
+38.908225: Finished updating complexity cost
+38.908606: Next loop
+38.908608: Starting on dependent: pentapod-egg
+38.908608: Old cost update
+38.908612: Flow cost update
+38.918878: Gathering recipe info
+38.918881: Getting recipe costs
+38.91891: Finding valid prereqs
+38.947952: Finding randomized/unrandomized ings
+38.947964: Will not preserve resource costs
+38.947965: Performing ings search
+38.95241: Updating dependencies
+38.952414: Updating reachability
+38.952458: Updating item recipe maps
+38.952481: Updating new costs
+38.952551: Updating complexity cost
+38.962368: Finished updating complexity cost
+38.962761: Next loop
+38.962763: Starting on dependent: molten-copper
+38.962764: Old cost update
+38.962766: Flow cost update
+38.973154: Gathering recipe info
+38.973157: Getting recipe costs
+38.973181: Finding valid prereqs
+39.002965: Finding randomized/unrandomized ings
+39.002975: Will not preserve resource costs
+39.002976: Performing ings search
+39.006912: Updating dependencies
+39.006915: Updating reachability
+39.006984: Updating item recipe maps
+39.007001: Updating new costs
+39.007073: Updating complexity cost
+39.016849: Finished updating complexity cost
+39.017323: Next loop
+39.017326: Starting on dependent: molten-iron
+39.017326: Old cost update
+39.017329: Flow cost update
+39.028599: Gathering recipe info
+39.028602: Getting recipe costs
+39.028625: Finding valid prereqs
+39.094333: Finding randomized/unrandomized ings
+39.094367: Will not preserve resource costs
+39.094369: Performing ings search
+39.104511: Updating dependencies
+39.104515: Updating reachability
+39.10462: Updating item recipe maps
+39.104641: Updating new costs
+39.104892: Updating complexity cost
+39.114853: Finished updating complexity cost
+39.116253: Next loop
+39.116255: Starting on dependent: molten-copper-from-lava
+39.116256: Old cost update
+39.116259: Flow cost update
+39.128368: Gathering recipe info
+39.128372: Getting recipe costs
+39.128397: Finding valid prereqs
+39.157738: Finding randomized/unrandomized ings
+39.157751: Will not preserve resource costs
+39.157752: Performing ings search
+39.159677: Updating dependencies
+39.159681: Updating reachability
+39.159724: Updating item recipe maps
+39.159747: Updating new costs
+39.160076: Updating complexity cost
+39.170103: Finished updating complexity cost
+39.170587: Next loop
+39.17059: Starting on dependent: molten-iron-from-lava
+39.170591: Old cost update
+39.170594: Flow cost update
+39.181158: Gathering recipe info
+39.181161: Getting recipe costs
+39.181184: Finding valid prereqs
+39.21133: Finding randomized/unrandomized ings
+39.211341: Will not preserve resource costs
+39.211342: Performing ings search
+39.213431: Updating dependencies
+39.213434: Updating reachability
+39.213478: Updating item recipe maps
+39.2135: Updating new costs
+39.213729: Updating complexity cost
+39.224344: Finished updating complexity cost
+39.225001: Next loop
+39.225003: Starting on dependent: nutrients-from-bioflux
+39.225004: Old cost update
+39.225006: Flow cost update
+39.235572: Gathering recipe info
+39.235574: Getting recipe costs
+39.235595: Finding valid prereqs
+39.265285: Finding randomized/unrandomized ings
+39.265296: Will not preserve resource costs
+39.265297: Performing ings search
+39.265663: Updating dependencies
+39.265666: Updating reachability
+39.2657: Updating item recipe maps
+39.265711: Updating new costs
+39.266134: Updating complexity cost
+39.27655: Finished updating complexity cost
+39.276952: Next loop
+39.276954: Starting on dependent: biolubricant
+39.276955: Old cost update
+39.276958: Flow cost update
+39.287034: Gathering recipe info
+39.287038: Getting recipe costs
+39.287059: Finding valid prereqs
+39.316784: Finding randomized/unrandomized ings
+39.316793: Will not preserve resource costs
+39.316794: Performing ings search
+39.317421: Updating dependencies
+39.317423: Updating reachability
+39.317458: Updating item recipe maps
+39.317473: Updating new costs
+39.317523: Updating complexity cost
+39.327194: Finished updating complexity cost
+39.327581: Next loop
+39.327583: Starting on dependent: bioplastic
+39.327584: Old cost update
+39.327587: Flow cost update
+39.338146: Gathering recipe info
+39.338148: Getting recipe costs
+39.338173: Finding valid prereqs
+39.367135: Finding randomized/unrandomized ings
+39.367146: Will not preserve resource costs
+39.367147: Performing ings search
+39.369007: Updating dependencies
+39.36901: Updating reachability
+39.369263: Updating item recipe maps
+39.369279: Updating new costs
+39.36942: Updating complexity cost
+39.41477: Finished updating complexity cost
+39.41517: Next loop
+39.415173: Starting on dependent: biosulfur
+39.415174: Old cost update
+39.415177: Flow cost update
+39.425976: Gathering recipe info
+39.42598: Getting recipe costs
+39.426007: Finding valid prereqs
+39.455557: Finding randomized/unrandomized ings
+39.455569: Will not preserve resource costs
+39.455569: Performing ings search
+39.457597: Updating dependencies
+39.457601: Updating reachability
+39.457643: Updating item recipe maps
+39.457663: Updating new costs
+39.457715: Updating complexity cost
+39.46767: Finished updating complexity cost
+39.468049: Next loop
+39.46805: Starting on dependent: rocket-fuel-from-jelly
+39.468052: Old cost update
+39.468056: Flow cost update
+39.478403: Gathering recipe info
+39.478406: Getting recipe costs
+39.478436: Finding valid prereqs
+39.50763: Finding randomized/unrandomized ings
+39.507642: Will not preserve resource costs
+39.507643: Performing ings search
+39.526481: Updating dependencies
+39.526485: Updating reachability
+39.526553: Updating item recipe maps
+39.526578: Updating new costs
+39.526671: Updating complexity cost
+39.536907: Finished updating complexity cost
+39.537362: Next loop
+39.537363: Starting on dependent: casting-copper-cable
+39.537364: Old cost update
+39.537367: Flow cost update
+39.548127: Gathering recipe info
+39.54813: Getting recipe costs
+39.54815: Finding valid prereqs
+39.578953: Finding randomized/unrandomized ings
+39.578968: Will not preserve resource costs
+39.578969: Performing ings search
+39.579498: Updating dependencies
+39.579502: Updating reachability
+39.57955: Updating item recipe maps
+39.579571: Updating new costs
+39.579894: Updating complexity cost
+39.590819: Finished updating complexity cost
+39.591202: Next loop
+39.591204: Starting on dependent: casting-copper
+39.591205: Old cost update
+39.591208: Flow cost update
+39.602953: Gathering recipe info
+39.602961: Getting recipe costs
+39.602983: Finding valid prereqs
+39.63566: Finding randomized/unrandomized ings
+39.635675: Will not preserve resource costs
+39.635677: Performing ings search
+39.636089: Updating dependencies
+39.636093: Updating reachability
+39.636139: Updating item recipe maps
+39.636158: Updating new costs
+39.636217: Updating complexity cost
+39.647203: Finished updating complexity cost
+39.647633: Next loop
+39.647636: Starting on dependent: casting-iron-gear-wheel
+39.647638: Old cost update
+39.647641: Flow cost update
+39.658839: Gathering recipe info
+39.658849: Getting recipe costs
+39.658873: Finding valid prereqs
+39.690195: Finding randomized/unrandomized ings
+39.69021: Will not preserve resource costs
+39.690212: Performing ings search
+39.690598: Updating dependencies
+39.690601: Updating reachability
+39.690641: Updating item recipe maps
+39.690657: Updating new costs
+39.690711: Updating complexity cost
+39.705856: Finished updating complexity cost
+39.70649: Next loop
+39.706496: Starting on dependent: casting-iron-stick
+39.706498: Old cost update
+39.706502: Flow cost update
+39.71919: Gathering recipe info
+39.719199: Getting recipe costs
+39.719223: Finding valid prereqs
+39.750544: Finding randomized/unrandomized ings
+39.75056: Will not preserve resource costs
+39.750561: Performing ings search
+39.751178: Updating dependencies
+39.751183: Updating reachability
+39.751225: Updating item recipe maps
+39.75124: Updating new costs
+39.751295: Updating complexity cost
+39.810944: Finished updating complexity cost
+39.811371: Next loop
+39.811375: Starting on dependent: casting-iron
+39.811378: Old cost update
+39.811381: Flow cost update
+39.823455: Gathering recipe info
+39.823462: Getting recipe costs
+39.823487: Finding valid prereqs
+39.854268: Finding randomized/unrandomized ings
+39.85428: Will not preserve resource costs
+39.854281: Performing ings search
+39.854819: Updating dependencies
+39.854822: Updating reachability
+39.854867: Updating item recipe maps
+39.854884: Updating new costs
+39.854938: Updating complexity cost
+39.865493: Finished updating complexity cost
+39.865893: Next loop
+39.865896: Starting on dependent: casting-low-density-structure
+39.865897: Old cost update
+39.8659: Flow cost update
+39.876843: Gathering recipe info
+39.876847: Getting recipe costs
+39.876879: Finding valid prereqs
+39.907225: Finding randomized/unrandomized ings
+39.907242: Will not preserve resource costs
+39.907243: Performing ings search
+39.980069: Updating dependencies
+39.980079: Updating reachability
+39.980127: Updating item recipe maps
+39.980157: Updating new costs
+39.980217: Updating complexity cost
+39.990501: Finished updating complexity cost
+39.990938: Next loop
+39.99094: Starting on dependent: casting-pipe-to-ground
+39.990942: Old cost update
+39.990946: Flow cost update
+40.002281: Gathering recipe info
+40.002285: Getting recipe costs
+40.002313: Finding valid prereqs
+40.032801: Finding randomized/unrandomized ings
+40.032817: Will not preserve resource costs
+40.032818: Performing ings search
+40.048133: Updating dependencies
+40.048138: Updating reachability
+40.048189: Updating item recipe maps
+40.048211: Updating new costs
+40.048275: Updating complexity cost
+40.058986: Finished updating complexity cost
+40.05946: Next loop
+40.059463: Starting on dependent: casting-pipe
+40.059464: Old cost update
+40.059467: Flow cost update
+40.070393: Gathering recipe info
+40.070397: Getting recipe costs
+40.07042: Finding valid prereqs
+40.100208: Finding randomized/unrandomized ings
+40.10022: Will not preserve resource costs
+40.10022: Performing ings search
+40.100705: Updating dependencies
+40.100709: Updating reachability
+40.100748: Updating item recipe maps
+40.100761: Updating new costs
+40.100821: Updating complexity cost
+40.154169: Finished updating complexity cost
+40.15459: Next loop
+40.154593: Starting on dependent: casting-steel
+40.154594: Old cost update
+40.154597: Flow cost update
+40.168846: Gathering recipe info
+40.168855: Getting recipe costs
+40.16888: Finding valid prereqs
+40.200345: Finding randomized/unrandomized ings
+40.200358: Will not preserve resource costs
+40.200359: Performing ings search
+40.201201: Updating dependencies
+40.201205: Updating reachability
+40.201248: Updating item recipe maps
+40.201264: Updating new costs
+40.203019: Updating complexity cost
+40.213252: Finished updating complexity cost
+40.213637: Next loop
+40.213639: Starting on dependent: concrete-from-molten-iron
+40.21364: Old cost update
+40.213643: Flow cost update
+40.224762: Gathering recipe info
+40.224767: Getting recipe costs
+40.224802: Finding valid prereqs
+40.255644: Finding randomized/unrandomized ings
+40.255659: Will not preserve resource costs
+40.25566: Performing ings search
+40.310213: Updating dependencies
+40.31022: Updating reachability
+40.31027: Updating item recipe maps
+40.3103: Updating new costs
+40.310614: Updating complexity cost
+40.320868: Finished updating complexity cost
+40.32128: Next loop
+40.321283: Starting on dependent: big-mining-drill
+40.321284: Old cost update
+40.321289: Flow cost update
+40.331895: Gathering recipe info
+40.331899: Getting recipe costs
+40.33194: Finding valid prereqs
+40.363346: Finding randomized/unrandomized ings
+40.363365: Will not preserve resource costs
+40.363366: Performing ings search
+40.699582: Updating dependencies
+40.699592: Updating reachability
+40.700727: Updating item recipe maps
+40.700776: Updating new costs
+40.700867: Updating complexity cost
+40.711725: Finished updating complexity cost
+40.71227: Next loop
+40.712273: Starting on dependent: agricultural-science-pack
+40.712275: Old cost update
+40.712278: Flow cost update
+40.72293: Gathering recipe info
+40.722934: Getting recipe costs
+40.722963: Finding valid prereqs
+40.753783: Finding randomized/unrandomized ings
+40.753797: Will not preserve resource costs
+40.753799: Performing ings search
+40.763208: Updating dependencies
+40.763215: Updating reachability
+40.76743: Updating item recipe maps
+40.767451: Updating new costs
+40.76754: Updating complexity cost
+40.777563: Finished updating complexity cost
+40.778016: Next loop
+40.778018: Starting on dependent: superconductor
+40.778019: Old cost update
+40.778024: Flow cost update
+40.790008: Gathering recipe info
+40.790012: Getting recipe costs
+40.79005: Finding valid prereqs
+40.820924: Finding randomized/unrandomized ings
+40.820942: Will not preserve resource costs
+40.820944: Performing ings search
+40.907116: Updating dependencies
+40.907129: Updating reachability
+40.907192: Updating item recipe maps
+40.907236: Updating new costs
+40.907491: Updating complexity cost
+40.919262: Finished updating complexity cost
+40.920518: Next loop
+40.920521: Starting on dependent: electrolyte
+40.920522: Old cost update
+40.920526: Flow cost update
+40.932678: Gathering recipe info
+40.932685: Getting recipe costs
+40.932722: Finding valid prereqs
+40.963001: Finding randomized/unrandomized ings
+40.963014: Will not preserve resource costs
+40.963015: Performing ings search
+40.991915: Updating dependencies
+40.991923: Updating reachability
+40.992026: Updating item recipe maps
+40.992058: Updating new costs
+40.992164: Updating complexity cost
+41.004073: Finished updating complexity cost
+41.004692: Next loop
+41.004696: Starting on dependent: advanced-thruster-fuel
+41.004697: Old cost update
+41.004701: Flow cost update
+41.016554: Gathering recipe info
+41.016562: Getting recipe costs
+41.016594: Finding valid prereqs
+41.046617: Finding randomized/unrandomized ings
+41.046631: Will not preserve resource costs
+41.046632: Performing ings search
+41.056771: Updating dependencies
+41.056777: Updating reachability
+41.05682: Updating item recipe maps
+41.056848: Updating new costs
+41.056935: Updating complexity cost
+41.068079: Finished updating complexity cost
+41.068498: Next loop
+41.068501: Starting on dependent: advanced-thruster-oxidizer
+41.068502: Old cost update
+41.068508: Flow cost update
+41.080628: Gathering recipe info
+41.080634: Getting recipe costs
+41.080667: Finding valid prereqs
+41.11525: Finding randomized/unrandomized ings
+41.115271: Will not preserve resource costs
+41.115273: Performing ings search
+41.121157: Updating dependencies
+41.121163: Updating reachability
+41.121212: Updating item recipe maps
+41.121242: Updating new costs
+41.121314: Updating complexity cost
+41.13259: Finished updating complexity cost
+41.133028: Next loop
+41.13303: Starting on dependent: capture-robot-rocket
+41.133031: Old cost update
+41.133036: Flow cost update
+41.144399: Gathering recipe info
+41.144408: Getting recipe costs
+41.144448: Finding valid prereqs
+41.17564: Finding randomized/unrandomized ings
+41.175658: Will not preserve resource costs
+41.17566: Performing ings search
+41.438629: Updating dependencies
+41.43864: Updating reachability
+41.438707: Updating item recipe maps
+41.438749: Updating new costs
+41.438855: Updating complexity cost
+41.450394: Finished updating complexity cost
+41.451024: Next loop
+41.451028: Starting on dependent: carbon-fiber
+41.451029: Old cost update
+41.451032: Flow cost update
+41.463448: Gathering recipe info
+41.463454: Getting recipe costs
+41.463481: Finding valid prereqs
+41.493947: Finding randomized/unrandomized ings
+41.493962: Will not preserve resource costs
+41.493962: Performing ings search
+41.498661: Updating dependencies
+41.498666: Updating reachability
+41.498711: Updating item recipe maps
+41.498735: Updating new costs
+41.498908: Updating complexity cost
+41.511444: Finished updating complexity cost
+41.512418: Next loop
+41.512423: Starting on dependent: efficiency-module-3
+41.512424: Old cost update
+41.51243: Flow cost update
+41.525629: Gathering recipe info
+41.525638: Getting recipe costs
+41.525682: Finding valid prereqs
+41.558272: Finding randomized/unrandomized ings
+41.558292: Will not preserve resource costs
+41.558294: Performing ings search
+41.810851: Updating dependencies
+41.810864: Updating reachability
+41.810931: Updating item recipe maps
+41.810972: Updating new costs
+41.811061: Updating complexity cost
+41.822547: Finished updating complexity cost
+41.823111: Next loop
+41.823114: Starting on dependent: supercapacitor
+41.823115: Old cost update
+41.823121: Flow cost update
+41.835316: Gathering recipe info
+41.835321: Getting recipe costs
+41.835361: Finding valid prereqs
+41.866429: Finding randomized/unrandomized ings
+41.866451: Will not preserve resource costs
+41.866453: Performing ings search
+41.908397: Updating dependencies
+41.90841: Updating reachability
+41.908485: Updating item recipe maps
+41.908536: Updating new costs
+41.908726: Updating complexity cost
+41.920031: Finished updating complexity cost
+41.92087: Next loop
+41.920873: Starting on dependent: coal-synthesis
+41.920875: Old cost update
+41.920879: Flow cost update
+41.934719: Gathering recipe info
+41.934726: Getting recipe costs
+41.934761: Finding valid prereqs
+41.965059: Finding randomized/unrandomized ings
+41.965074: Will not preserve resource costs
+41.965075: Performing ings search
+41.970641: Updating dependencies
+41.970645: Updating reachability
+41.970693: Updating item recipe maps
+41.970719: Updating new costs
+41.970776: Updating complexity cost
+42.024803: Finished updating complexity cost
+42.025328: Next loop
+42.025331: Starting on dependent: rocket-turret
+42.025332: Old cost update
+42.025339: Flow cost update
+42.038235: Gathering recipe info
+42.03824: Getting recipe costs
+42.038284: Finding valid prereqs
+42.069692: Finding randomized/unrandomized ings
+42.069743: Will not preserve resource costs
+42.069744: Performing ings search
+42.102209: Updating dependencies
+42.10222: Updating reachability
+42.102302: Updating item recipe maps
+42.102356: Updating new costs
+42.102472: Updating complexity cost
+42.114236: Finished updating complexity cost
+42.114842: Next loop
+42.114845: Starting on dependent: stack-inserter
+42.114846: Old cost update
+42.11485: Flow cost update
+42.127012: Gathering recipe info
+42.127018: Getting recipe costs
+42.127063: Finding valid prereqs
+42.157597: Finding randomized/unrandomized ings
+42.157614: Will not preserve resource costs
+42.157615: Performing ings search
+42.189426: Updating dependencies
+42.189438: Updating reachability
+42.189521: Updating item recipe maps
+42.189568: Updating new costs
+42.189662: Updating complexity cost
+42.201411: Finished updating complexity cost
+42.202019: Next loop
+42.202021: Starting on dependent: toolbelt-equipment
+42.202022: Old cost update
+42.202025: Flow cost update
+42.213938: Gathering recipe info
+42.213944: Getting recipe costs
+42.213975: Finding valid prereqs
+42.24535: Finding randomized/unrandomized ings
+42.245363: Will not preserve resource costs
+42.245364: Performing ings search
+42.259794: Updating dependencies
+42.259801: Updating reachability
+42.259868: Updating item recipe maps
+42.259892: Updating new costs
+42.259973: Updating complexity cost
+42.272666: Finished updating complexity cost
+42.273187: Next loop
+42.273189: Starting on dependent: metallurgic-science-pack
+42.273191: Old cost update
+42.273195: Flow cost update
+42.285701: Gathering recipe info
+42.285705: Getting recipe costs
+42.285736: Finding valid prereqs
+42.31661: Finding randomized/unrandomized ings
+42.316624: Will not preserve resource costs
+42.316625: Performing ings search
+42.386249: Updating dependencies
+42.386259: Updating reachability
+42.388632: Updating item recipe maps
+42.388666: Updating new costs
+42.388764: Updating complexity cost
+42.401985: Finished updating complexity cost
+42.40252: Next loop
+42.402523: Starting on dependent: electromagnetic-science-pack
+42.402524: Old cost update
+42.40253: Flow cost update
+42.415932: Gathering recipe info
+42.415938: Getting recipe costs
+42.415979: Finding valid prereqs
+42.446507: Finding randomized/unrandomized ings
+42.446526: Will not preserve resource costs
+42.446526: Performing ings search
+42.499929: Updating dependencies
+42.499937: Updating reachability
+42.531692: Updating item recipe maps
+42.531734: Updating new costs
+42.531815: Updating complexity cost
+42.543719: Finished updating complexity cost
+42.544278: Next loop
+42.54428: Starting on dependent: artillery-shell
+42.544281: Old cost update
+42.544286: Flow cost update
+42.556216: Gathering recipe info
+42.55622: Getting recipe costs
+42.55626: Finding valid prereqs
+42.586558: Finding randomized/unrandomized ings
+42.586575: Will not preserve resource costs
+42.586576: Performing ings search
+42.63562: Updating dependencies
+42.635632: Updating reachability
+42.6357: Updating item recipe maps
+42.635741: Updating new costs
+42.635854: Updating complexity cost
+42.647633: Finished updating complexity cost
+42.648168: Next loop
+42.64817: Starting on dependent: artillery-turret
+42.648172: Old cost update
+42.648177: Flow cost update
+42.701148: Gathering recipe info
+42.701154: Getting recipe costs
+42.701193: Finding valid prereqs
+42.731814: Finding randomized/unrandomized ings
+42.731835: Will not preserve resource costs
+42.731837: Performing ings search
+42.93568: Updating dependencies
+42.935692: Updating reachability
+42.93576: Updating item recipe maps
+42.935802: Updating new costs
+42.935895: Updating complexity cost
+42.947594: Finished updating complexity cost
+42.948155: Next loop
+42.948158: Starting on dependent: artillery-wagon
+42.948159: Old cost update
+42.948166: Flow cost update
+42.960436: Gathering recipe info
+42.96044: Getting recipe costs
+42.960483: Finding valid prereqs
+42.990994: Finding randomized/unrandomized ings
+42.991013: Will not preserve resource costs
+42.991013: Performing ings search
+43.26635: Updating dependencies
+43.266365: Updating reachability
+43.266475: Updating item recipe maps
+43.266525: Updating new costs
+43.266617: Updating complexity cost
+43.278587: Finished updating complexity cost
+43.279176: Next loop
+43.27918: Starting on dependent: cliff-explosives
+43.279181: Old cost update
+43.279186: Flow cost update
+43.291921: Gathering recipe info
+43.29193: Getting recipe costs
+43.291971: Finding valid prereqs
+43.322375: Finding randomized/unrandomized ings
+43.322396: Will not preserve resource costs
+43.322396: Performing ings search
+43.363623: Updating dependencies
+43.363634: Updating reachability
+43.363698: Updating item recipe maps
+43.363738: Updating new costs
+43.363827: Updating complexity cost
+43.37618: Finished updating complexity cost
+43.376763: Next loop
+43.376767: Starting on dependent: coal-liquefaction
+43.376768: Old cost update
+43.376772: Flow cost update
+43.39157: Gathering recipe info
+43.391578: Getting recipe costs
+43.391608: Finding valid prereqs
+43.422195: Finding randomized/unrandomized ings
+43.422212: Will not preserve resource costs
+43.422213: Performing ings search
+43.497787: Updating dependencies
+43.497797: Updating reachability
+43.497859: Updating item recipe maps
+43.497908: Updating new costs
+43.500049: Updating complexity cost
+43.513369: Finished updating complexity cost
+43.513948: Next loop
+43.51395: Starting on dependent: speed-module-3
+43.513951: Old cost update
+43.513956: Flow cost update
+43.526042: Gathering recipe info
+43.526046: Getting recipe costs
+43.526085: Finding valid prereqs
+43.556967: Finding randomized/unrandomized ings
+43.556986: Will not preserve resource costs
+43.556987: Performing ings search
+43.624996: Updating dependencies
+43.62501: Updating reachability
+43.625083: Updating item recipe maps
+43.625125: Updating new costs
+43.625215: Updating complexity cost
+43.637573: Finished updating complexity cost
+43.638131: Next loop
+43.638134: Starting on dependent: turbo-splitter
+43.638135: Old cost update
+43.63814: Flow cost update
+43.650712: Gathering recipe info
+43.65072: Getting recipe costs
+43.650756: Finding valid prereqs
+43.681281: Finding randomized/unrandomized ings
+43.681298: Will not preserve resource costs
+43.681298: Performing ings search
+43.751392: Updating dependencies
+43.751406: Updating reachability
+43.751967: Updating item recipe maps
+43.752009: Updating new costs
+43.752096: Updating complexity cost
+43.764456: Finished updating complexity cost
+43.764998: Next loop
+43.765001: Starting on dependent: turbo-transport-belt
+43.765002: Old cost update
+43.765006: Flow cost update
+43.820145: Gathering recipe info
+43.820156: Getting recipe costs
+43.820187: Finding valid prereqs
+43.851757: Finding randomized/unrandomized ings
+43.851777: Will not preserve resource costs
+43.851778: Performing ings search
+43.959295: Updating dependencies
+43.959304: Updating reachability
+43.959766: Updating item recipe maps
+43.959795: Updating new costs
+43.959898: Updating complexity cost
+43.972039: Finished updating complexity cost
+43.972654: Next loop
+43.972658: Starting on dependent: turbo-underground-belt
+43.972659: Old cost update
+43.972662: Flow cost update
+43.984359: Gathering recipe info
+43.984364: Getting recipe costs
+43.984392: Finding valid prereqs
+44.015806: Finding randomized/unrandomized ings
+44.015825: Will not preserve resource costs
+44.015827: Performing ings search
+44.230352: Updating dependencies
+44.230362: Updating reachability
+44.230895: Updating item recipe maps
+44.230928: Updating new costs
+44.231015: Updating complexity cost
+44.24355: Finished updating complexity cost
+44.244069: Next loop
+44.244072: Starting on dependent: battery-mk3-equipment
+44.244073: Old cost update
+44.244077: Flow cost update
+44.256595: Gathering recipe info
+44.2566: Getting recipe costs
+44.256626: Finding valid prereqs
+44.289041: Finding randomized/unrandomized ings
+44.289058: Will not preserve resource costs
+44.289059: Performing ings search
+44.456194: Updating dependencies
+44.456205: Updating reachability
+44.456268: Updating item recipe maps
+44.456296: Updating new costs
+44.45638: Updating complexity cost
+44.469154: Finished updating complexity cost
+44.469675: Next loop
+44.469678: Starting on dependent: energy-shield-mk2-equipment
+44.469679: Old cost update
+44.469684: Flow cost update
+44.482727: Gathering recipe info
+44.482735: Getting recipe costs
+44.482768: Finding valid prereqs
+44.514722: Finding randomized/unrandomized ings
+44.514739: Will not preserve resource costs
+44.51474: Performing ings search
+44.607104: Updating dependencies
+44.607113: Updating reachability
+44.607169: Updating item recipe maps
+44.607199: Updating new costs
+44.607281: Updating complexity cost
+44.618679: Finished updating complexity cost
+44.619179: Next loop
+44.619182: Starting on dependent: lightning-collector
+44.619184: Old cost update
+44.619189: Flow cost update
+44.631294: Gathering recipe info
+44.631298: Getting recipe costs
+44.631334: Finding valid prereqs
+44.66256: Finding randomized/unrandomized ings
+44.662581: Will not preserve resource costs
+44.662582: Performing ings search
+44.865214: Updating dependencies
+44.865224: Updating reachability
+44.865688: Updating item recipe maps
+44.865729: Updating new costs
+44.865815: Updating complexity cost
+44.877555: Finished updating complexity cost
+44.878081: Next loop
+44.878084: Starting on dependent: mech-armor
+44.878085: Old cost update
+44.878093: Flow cost update
+44.892015: Gathering recipe info
+44.892021: Getting recipe costs
+44.892067: Finding valid prereqs
+44.924118: Finding randomized/unrandomized ings
+44.924141: Will not preserve resource costs
+44.924142: Performing ings search
+45.326493: Updating dependencies
+45.326506: Updating reachability
+45.326581: Updating item recipe maps
+45.326634: Updating new costs
+45.326732: Updating complexity cost
+45.339056: Finished updating complexity cost
+45.339728: Next loop
+45.339731: Starting on dependent: personal-roboport-mk2-equipment
+45.339732: Old cost update
+45.339736: Flow cost update
+45.353381: Gathering recipe info
+45.35339: Getting recipe costs
+45.353427: Finding valid prereqs
+45.3844: Finding randomized/unrandomized ings
+45.384419: Will not preserve resource costs
+45.38442: Performing ings search
+45.554674: Updating dependencies
+45.554685: Updating reachability
+45.554752: Updating item recipe maps
+45.554784: Updating new costs
+45.554868: Updating complexity cost
+45.566772: Finished updating complexity cost
+45.567276: Next loop
+45.567279: Starting on dependent: quality-module-3
+45.56728: Old cost update
+45.567285: Flow cost update
+45.580672: Gathering recipe info
+45.58068: Getting recipe costs
+45.580723: Finding valid prereqs
+45.612345: Finding randomized/unrandomized ings
+45.612364: Will not preserve resource costs
+45.612365: Performing ings search
+45.62438: Updating dependencies
+45.624387: Updating reachability
+45.624449: Updating item recipe maps
+45.624484: Updating new costs
+45.624569: Updating complexity cost
+45.636167: Finished updating complexity cost
+45.636689: Next loop
+45.636691: Starting on dependent: tesla-ammo
+45.636692: Old cost update
+45.636696: Flow cost update
+45.650442: Gathering recipe info
+45.650447: Getting recipe costs
+45.650483: Finding valid prereqs
+45.681286: Finding randomized/unrandomized ings
+45.681299: Will not preserve resource costs
+45.681301: Performing ings search
+45.714335: Updating dependencies
+45.71434: Updating reachability
+45.714397: Updating item recipe maps
+45.714424: Updating new costs
+45.71457: Updating complexity cost
+45.72719: Finished updating complexity cost
+45.727714: Next loop
+45.727718: Starting on dependent: teslagun
+45.727719: Old cost update
+45.727725: Flow cost update
+45.741007: Gathering recipe info
+45.741015: Getting recipe costs
+45.741055: Finding valid prereqs
+45.771274: Finding randomized/unrandomized ings
+45.771291: Will not preserve resource costs
+45.771292: Performing ings search
+45.812881: Updating dependencies
+45.812892: Updating reachability
+45.812962: Updating item recipe maps
+45.813006: Updating new costs
+45.813109: Updating complexity cost
+45.825908: Finished updating complexity cost
+45.826516: Next loop
+45.826519: Starting on dependent: biolab
+45.826521: Old cost update
+45.826526: Flow cost update
+45.881174: Gathering recipe info
+45.881215: Getting recipe costs
+45.881263: Finding valid prereqs
+45.912396: Finding randomized/unrandomized ings
+45.912419: Will not preserve resource costs
+45.91242: Performing ings search
+46.063624: Updating dependencies
+46.063638: Updating reachability
+46.06421: Updating item recipe maps
+46.064261: Updating new costs
+46.064348: Updating complexity cost
+46.077007: Finished updating complexity cost
+46.077577: Next loop
+46.07758: Starting on dependent: nutrients-from-biter-egg
+46.077581: Old cost update
+46.077585: Flow cost update
+46.091227: Gathering recipe info
+46.091234: Getting recipe costs
+46.091256: Finding valid prereqs
+46.121758: Finding randomized/unrandomized ings
+46.121772: Will not preserve resource costs
+46.121773: Performing ings search
+46.122068: Updating dependencies
+46.122072: Updating reachability
+46.12212: Updating item recipe maps
+46.122136: Updating new costs
+46.122603: Updating complexity cost
+46.134076: Finished updating complexity cost
+46.134455: Next loop
+46.134457: Starting on dependent: productivity-module-3
+46.134459: Old cost update
+46.134463: Flow cost update
+46.147062: Gathering recipe info
+46.147067: Getting recipe costs
+46.147104: Finding valid prereqs
+46.177878: Finding randomized/unrandomized ings
+46.177896: Will not preserve resource costs
+46.177898: Performing ings search
+46.461304: Updating dependencies
+46.461314: Updating reachability
+46.461558: Updating item recipe maps
+46.461598: Updating new costs
+46.461689: Updating complexity cost
+46.473862: Finished updating complexity cost
+46.474409: Next loop
+46.474411: Starting on dependent: tesla-turret
+46.474412: Old cost update
+46.474419: Flow cost update
+46.486969: Gathering recipe info
+46.486975: Getting recipe costs
+46.487016: Finding valid prereqs
+46.517237: Finding randomized/unrandomized ings
+46.517257: Will not preserve resource costs
+46.517258: Performing ings search
+47.408806: Updating dependencies
+47.408822: Updating reachability
+47.408902: Updating item recipe maps
+47.408959: Updating new costs
+47.409065: Updating complexity cost
+47.422028: Finished updating complexity cost
+47.422592: Next loop
+47.425672: Adding: agricultural-tower-surface
+47.425712: Adding: asteroid-collection-surface
+47.426591: Adding: build-entity
+47.437333: Adding: build-entity-item
+47.685924: Adding: build-entity-surface
+47.715973: Adding: build-entity-surface-condition-false
+47.715982: Adding: build-entity-surface-condition-true
+47.715985: Adding: build-tile
+47.719145: Adding: build-tile-item-surface
+48.147798: Adding: build-tile-item-surface-buildability
+48.219204: Adding: build-tile-item-surface-with-item
+48.29008: Adding: build-tile-surface
+48.29866: Adding: burn-item
+48.299163: Adding: burn-item-surface
+48.299679: Adding: capsule-surface
+48.300225: Adding: capture-robot
+48.300229: Adding: capture-spawner-surface
+48.30041: Adding: cargo-landing-pad-planet
+48.300451: Adding: character
+48.300456: Adding: craft-material
+48.30774: Adding: craft-material-surface
+49.256861: Adding: create-fluid-offshore-surface
+49.259409: Adding: create-fluid-surface
+49.363308: Adding: create-space-platform
+49.363319: Adding: create-space-platform-tech-unlock
+49.364345: Adding: gun-ammo-surface
+49.364348: Adding: electricity-distribution-surface
+49.364455: Adding: electricity-production-surface
+49.364607: Adding: electricity-surface
+49.364634: Adding: energy-source-surface
+49.36787: Adding: entity-buildability-surface
+49.652672: Adding: entity-buildability-surface-true
+49.652678: Adding: entity-operation-items
+49.65268: Adding: fluid
+49.653544: Adding: fluid-surface
+49.655484: Adding: fuel-category
+49.657815: Adding: fuel-category-burner
+49.665532: Adding: fuel-category-burner-surface
+49.71066: Adding: fuel-category-surface
+49.725042: Adding: gun-ammo-surface
+49.725046: Adding: gun-surface
+49.725047: Adding: heat-distribution-surface
+49.725091: Adding: heat-production-surface
+49.725157: Adding: heat-surface
+49.725181: Adding: hold-fluid-surface
+49.726925: Adding: item
+50.821414: Adding: item-surface
+54.397721: Adding: loot-entity
+54.398499: Adding: loot-entity-surface
+54.42045: Adding: mine-asteroid-chunk
+54.420654: Adding: mine-asteroid-chunk-surface
+54.420718: Adding: mine-entity
+54.425363: Adding: mine-entity-surface
+54.434902: Adding: mine-tile
+54.435639: Adding: mine-tile-surface
+54.43707: Adding: mining-with-fluid-unlock
+54.437942: Adding: operate-entity
+54.446961: Adding: operate-entity-surface
+54.469325: Adding: operate-entity-surface-fluid
+54.48323: Adding: planet
+54.483241: Adding: planet-launch
+54.483263: Adding: plant-entity-item
+54.716183: Adding: plant-entity-surface
+54.783016: Adding: plant-entity-surface-automatability
+54.80598: Adding: plant-entity-surface-condition-false
+54.805987: Adding: plant-entity-surface-condition-true
+54.805988: Adding: recipe
+54.820941: Adding: recipe-category
+54.821933: Adding: recipe-category-surface
+54.824647: Adding: recipe-category-surface-automation
+54.850264: Adding: recipe-surface
+54.922155: Adding: recipe-surface-condition-false
+54.92216: Adding: recipe-surface-condition-true
+54.922162: Adding: recipe-tech-unlock
+55.624618: Adding: resource-category
+55.624762: Adding: resource-category-surface
+55.625453: Adding: rocket-launch-planet
+55.65683: Adding: rocket-part-recipe-planet
+55.693578: Adding: science-pack-set
+55.698253: Adding: send-item-to-orbit
+55.704001: Adding: send-item-to-orbit-planet
+55.717566: Adding: send-surface-starter-pack
+55.717586: Adding: send-surface-starter-pack-planet
+55.717619: Adding: space-connection
+55.71764: Adding: space-location
+55.717711: Adding: space-location-discovery
+55.724297: Adding: space-surface
+55.724302: Adding: spaceship
+55.724305: Adding: spaceship-engine-surface
+55.724313: Adding: spaceship-surface
+55.724316: Adding: spawn-asteroid-chunk
+55.724806: Adding: spawn-entity
+55.73415: Adding: spawn-entity-surface
+59.238201: Adding: spawn-rail-surface
+59.238207: Adding: spawn-tile-surface
+59.26408: Adding: spawner-capturability
+59.264162: Adding: starting-character
+59.264165: Adding: starting-planet
+59.264167: Adding: surface
+59.264178: Adding: technology
+59.27393: Adding: transport-item-to-surface
+59.282046: Adding: valid-tile-placement-surface
+59.842481: Adding: void-energy
+59.842488: Finished building dependency graph
+60.601715: Done applying graph-based randomizations
+60.601723: Applying numerical/misc randomizations
+61.522384: Done applying numerical/misc randomizations
+61.522388: Applying extra randomizations
+61.52239: Done applying extra randomizations
+61.522391: Applying fixes
+61.523467: Done!

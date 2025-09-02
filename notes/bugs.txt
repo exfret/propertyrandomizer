@@ -1,3 +1,4 @@
 1. Shotgun shells show -100% damage
 2. Assembling machines don't follow upgrade line randomization due to having different crafting categories, so need to be manually linked together
 3. Cliff sizes aren't randomized due to a startup crash
+4. Potential softlock reported by Malus
