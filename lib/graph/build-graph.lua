@@ -471,6 +471,28 @@ for item_class, _ in pairs(defines.prototypes.item) do
 end
 
 ----------------------------------------------------------------------
+-- Restrictions
+----------------------------------------------------------------------
+
+-- Restrict which nodes we focus on; we don't care about explosions for example
+
+build_graph.prototypes = {}
+
+build_graph.prototypes.entities = {}
+for entity_class, _ in pairs(defines.prototypes.entity) do
+    if entity_class ~= "explosion" and entity_class ~= "smoke-with-trigger" then
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                -- Check only minable corpses
+                if entity_class ~= "corpse" or entity.minable ~= nil then
+                    table.insert(build_graph.prototypes.entities, entity)
+                end
+            end
+        end
+    end
+end
+
+----------------------------------------------------------------------
 -- Nodes
 ----------------------------------------------------------------------
 
@@ -497,7 +519,7 @@ local function load()
         end
 
         add_to_graph("agricultural-tower-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -509,21 +531,17 @@ local function load()
         for _, surface in pairs(data.raw.surface) do
             prereqs = {}
 
-            for entity_class, _ in pairs(defines.prototypes.entity) do
-                if data.raw[entity_class] ~= nil then
-                    for _, entity in pairs(data.raw[entity_class]) do
-                        if entity.type == "asteroid-collector" then
-                            table.insert(prereqs, {
-                                type = "operate-entity-surface",
-                                name = compound_key({entity.name, compound_key({"space-surface", surface.name})})
-                            })
-                        end
-                    end
+            for _, entity in pairs(build_graph.prototypes.entities) do
+                if entity.type == "asteroid-collector" then
+                    table.insert(prereqs, {
+                        type = "operate-entity-surface",
+                        name = compound_key({entity.name, compound_key({"space-surface", surface.name})})
+                    })
                 end
             end
 
             add_to_graph("asteroid-collection-surface", surface.name, prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -531,95 +549,83 @@ local function load()
     -- build-entity
     log("Adding: build-entity")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                prereqs = {}    
-                
-                for surface_name, surface in pairs(surfaces) do
-                    table.insert(prereqs, {
-                        type = "build-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                end
-
-                add_to_graph("build-entity", entity.name, prereqs)
-            end
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        prereqs = {}    
+        
+        for surface_name, surface in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "build-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
         end
+
+        add_to_graph("build-entity", entity.name, prereqs)
     end
 
     -- build-entity-item
     log("Adding: build-entity-item")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        prereqs = {}
 
-                for item_class, _ in pairs(defines.prototypes.item) do
-                    if data.raw[item_class] ~= nil then
-                        for _, item in pairs(data.raw[item_class]) do
-                            if item.place_result == entity.name then
-                                table.insert(prereqs, {
-                                    type = "item",
-                                    name = item.name
-                                })
-                            end
-                        end
+        for item_class, _ in pairs(defines.prototypes.item) do
+            if data.raw[item_class] ~= nil then
+                for _, item in pairs(data.raw[item_class]) do
+                    if item.place_result == entity.name then
+                        table.insert(prereqs, {
+                            type = "item",
+                            name = item.name
+                        })
                     end
                 end
-
-                add_to_graph("build-entity-item", entity.name, prereqs)
             end
         end
+
+        add_to_graph("build-entity-item", entity.name, prereqs)
     end
 
     -- build-entity-surface
     log("Adding: build-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
-                    table.insert(prereqs, {
-                        type = "entity-buildability-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                    table.insert(prereqs, {
-                        type = "build-entity-item",
-                        name = entity.name
-                    })
-                    table.insert(prereqs, {
-                        type = "surface",
-                        name = surface_name
-                    })
+            table.insert(prereqs, {
+                type = "entity-buildability-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+            table.insert(prereqs, {
+                type = "build-entity-item",
+                name = entity.name
+            })
+            table.insert(prereqs, {
+                type = "surface",
+                name = surface_name
+            })
 
-                    -- Check buildability conditions
-                    local surface_conditions_satisfied = true
-                    if entity.surface_conditions ~= nil then
-                        surface_conditions_satisfied = check_surface_conditions(entity.surface_conditions, surface)
-                    end
-                    if surface_conditions_satisfied then
-                        table.insert(prereqs, {
-                            type = "build-entity-surface-condition-true",
-                            name = "canonical"
-                        })
-                    else
-                        table.insert(prereqs, {
-                            type = "build-entity-surface-condition-false",
-                            name = "canonical"
-                        })
-                    end
-
-                    -- TODO: If it needs a rail
-
-                    add_to_graph("build-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
-                end
+            -- Check buildability conditions
+            local surface_conditions_satisfied = true
+            if entity.surface_conditions ~= nil then
+                surface_conditions_satisfied = check_surface_conditions(entity.surface_conditions, surface)
             end
+            if surface_conditions_satisfied then
+                table.insert(prereqs, {
+                    type = "build-entity-surface-condition-true",
+                    name = "canonical"
+                })
+            else
+                table.insert(prereqs, {
+                    type = "build-entity-surface-condition-false",
+                    name = "canonical"
+                })
+            end
+
+            -- TODO: If it needs a rail
+
+            add_to_graph("build-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
@@ -774,7 +780,7 @@ local function load()
             })
 
             add_to_graph("build-tile-surface", compound_key({tile.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -848,7 +854,7 @@ local function load()
             })
 
             add_to_graph("capsule-surface", compound_key({capsule.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -886,7 +892,7 @@ local function load()
             })
 
             add_to_graph("capture-spawner-surface", compound_key({spawner.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -973,7 +979,7 @@ local function load()
             end
 
             add_to_graph("craft-material-surface", compound_key({material_name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -1003,7 +1009,7 @@ local function load()
                     })
 
                     add_to_graph("create-fluid-offshore-surface", compound_key({pump.name, tile.name, surface_name}), prereqs, {
-                        surface = surface
+                        surface = surface_name
                     })
                 end
             end
@@ -1086,7 +1092,7 @@ local function load()
 
             add_to_graph("create-fluid-surface", compound_key({fluid.name, surface_name}), prereqs, {
                 fluid = fluid,
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -1162,7 +1168,7 @@ local function load()
         end
 
         add_to_graph("electricity-distribution-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1214,7 +1220,7 @@ local function load()
         end
 
         add_to_graph("electricity-production-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1234,7 +1240,7 @@ local function load()
         })
 
         add_to_graph("electricity-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1337,7 +1343,7 @@ local function load()
                         end
 
                         add_to_graph("energy-source-surface", compound_key({entity.name, property, surface_name}), prereqs, {
-                            surface = surface
+                            surface = surface_name
                         })
                     end
                 end
@@ -1349,66 +1355,77 @@ local function load()
     log("Adding: entity-buildability-surface")
     -- For optimization purposes, this only "checks" entities that appear buildable
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                -- Figure out if this is even buildable, if not don't evaluate prereqs
-                local is_buildable = false
-                for item_class, _ in pairs(defines.prototypes.item) do
-                    if data.raw[item_class] ~= nil then
-                        for _, item in pairs(data.raw[item_class]) do
-                            if item.place_result == entity.name or item.plant_result == entity.name then
-                                is_buildable = true
-                                break
-                            end
-                        end
-                        if is_buildable then
-                            break
-                        end
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        -- Figure out if this is even buildable, if not don't evaluate prereqs
+        local is_buildable = false
+        for item_class, _ in pairs(defines.prototypes.item) do
+            if data.raw[item_class] ~= nil then
+                for _, item in pairs(data.raw[item_class]) do
+                    if item.place_result == entity.name or item.plant_result == entity.name then
+                        is_buildable = true
+                        break
                     end
                 end
-                
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
-
-                    if is_buildable then
-                        for _, tile in pairs(data.raw.tile) do
-                            if not collision_mask_util.masks_collide(tile.collision_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity_class)) then
-                                local buildable_on_tile = true
-
-                                -- Also check tile restrictions from autoplace, which apply to during the game as well for some reason
-                                if entity.autoplace ~= nil and entity.autoplace.tile_restriction ~= nil then
-                                    buildable_on_tile = false
-
-                                    for _, restriction in pairs(entity.autoplace.tile_restriction) do
-                                        -- I'm not sure what exactly the two tile transition entries mean so I'm just going to ignore them
-                                        if restriction == tile.name then
-                                            buildable_on_tile = true
-                                        end
-                                    end
-                                end
-
-                                -- TODO: Tile buildability rules?
-                                -- TODO: Manually account for entities with tile buildability rules... they're really intense
-                                -- Right now it's just 4 things (rail ramps, offshore pumps, thrusters, and asteroid collectors)
-
-                                if buildable_on_tile then
-                                    table.insert(prereqs, {
-                                        type = "spawn-tile-surface",
-                                        name = compound_key({tile.name, surface_name})
-                                    })
-                                end
-                            end
-                        end
-                    end
-
-                    add_to_graph("entity-buildability-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
+                if is_buildable then
+                    break
                 end
             end
         end
+        
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
+
+            if is_buildable then
+                -- Assume default collision mask means it can be placed
+                if entity.collision_mask == nil then
+                    table.insert(prereqs, {
+                        type = "entity-buildability-surface-true",
+                        name = "canonical"
+                    })
+                else
+                    for _, tile in pairs(data.raw.tile) do
+                        if not collision_mask_util.masks_collide(tile.collision_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity.type)) then
+                            local buildable_on_tile = true
+
+                            -- Also check tile restrictions from autoplace, which apply to during the game as well for some reason
+                            if entity.autoplace ~= nil and entity.autoplace.tile_restriction ~= nil then
+                                buildable_on_tile = false
+
+                                for _, restriction in pairs(entity.autoplace.tile_restriction) do
+                                    -- I'm not sure what exactly the two tile transition entries mean so I'm just going to ignore them
+                                    if restriction == tile.name then
+                                        buildable_on_tile = true
+                                    end
+                                end
+                            end
+
+                            -- TODO: Tile buildability rules?
+                            -- TODO: Manually account for entities with tile buildability rules... they're really intense
+                            -- Right now it's just 4 things (rail ramps, offshore pumps, thrusters, and asteroid collectors)
+
+                            if buildable_on_tile then
+                                table.insert(prereqs, {
+                                    type = "spawn-tile-surface",
+                                    name = compound_key({tile.name, surface_name})
+                                })
+                            end
+                        end
+                    end
+                end
+            end
+
+            add_to_graph("entity-buildability-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
+        end
     end
+
+    -- entity-buildability-surface-true
+    log("Adding: entity-buildability-surface-true")
+
+    prereqs = {}
+
+    add_to_graph("entity-buildability-surface-true", "canonical", prereqs)
 
     -- entity-operation-items
     log("Adding: entity-operation-items")
@@ -1450,7 +1467,7 @@ local function load()
             })
 
             add_to_graph("fluid-surface", compound_key({fluid.name, surface_name}), prereqs, {
-                surface = surface,
+                surface = surface_name,
                 fluid = fluid
             })
         end
@@ -1488,23 +1505,19 @@ local function load()
 
         -- We don't care about the type of energy source here, so we can just search over all of them
         -- Valid energy source keys are exactly "energy_source" and "burner"
-        for entity_class, _ in pairs(defines.prototypes.entity) do
-            if data.raw[entity_class] ~= nil then
-                for _, entity in pairs  (data.raw[entity_class]) do
-                    for _, property in pairs({"burner", "energy_source"}) do
-                        if entity[property] ~= nil then
-                            local energy_source = entity[property]
+        for _, entity in pairs(build_graph.prototypes.entities) do
+            for _, property in pairs({"burner", "energy_source"}) do
+                if entity[property] ~= nil then
+                    local energy_source = entity[property]
 
-                            if energy_source.type == "burner" then
-                                -- Check that it accepts this fuel category
-                                for _, fuel_category_id in pairs(energy_source.fuel_categories or {"chemical"}) do
-                                    if fuel_category_id == fuel_category.name then
-                                        table.insert(prereqs, {
-                                            type = "operate-entity",
-                                            name = entity.name
-                                        })
-                                    end
-                                end
+                    if energy_source.type == "burner" then
+                        -- Check that it accepts this fuel category
+                        for _, fuel_category_id in pairs(energy_source.fuel_categories or {"chemical"}) do
+                            if fuel_category_id == fuel_category.name then
+                                table.insert(prereqs, {
+                                    type = "operate-entity",
+                                    name = entity.name
+                                })
                             end
                         end
                     end
@@ -1524,23 +1537,19 @@ local function load()
 
             -- We don't care about the type of energy source here, so we can just search over all of them
             -- Valid energy source keys are exactly "energy_source" and "burner"
-            for entity_class, _ in pairs(defines.prototypes.entity) do
-                if data.raw[entity_class] ~= nil then
-                    for _, entity in pairs  (data.raw[entity_class]) do
-                        for _, property in pairs({"burner", "energy_source"}) do
-                            if entity[property] ~= nil then
-                                local energy_source = entity[property]
+            for _, entity in pairs(build_graph.prototypes.entities) do
+                for _, property in pairs({"burner", "energy_source"}) do
+                    if entity[property] ~= nil then
+                        local energy_source = entity[property]
 
-                                if energy_source.type == "burner" then
-                                    -- Check that it accepts this fuel category
-                                    for _, fuel_category_id in pairs(energy_source.fuel_categories or {"chemical"}) do
-                                        if fuel_category_id == fuel_category.name then
-                                            table.insert(prereqs, {
-                                                type = "operate-entity-surface",
-                                                name = compound_key({entity.name, surface_name})
-                                            })
-                                        end
-                                    end
+                        if energy_source.type == "burner" then
+                            -- Check that it accepts this fuel category
+                            for _, fuel_category_id in pairs(energy_source.fuel_categories or {"chemical"}) do
+                                if fuel_category_id == fuel_category.name then
+                                    table.insert(prereqs, {
+                                        type = "operate-entity-surface",
+                                        name = compound_key({entity.name, surface_name})
+                                    })
                                 end
                             end
                         end
@@ -1600,7 +1609,7 @@ local function load()
         end
 
         add_to_graph("heat-distribution-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1624,7 +1633,7 @@ local function load()
         end
 
         add_to_graph("heat-production-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1644,7 +1653,7 @@ local function load()
         })
 
         add_to_graph("heat-surface", surface_name, prereqs, {
-            surface = surface
+            surface = surface_name
         })
     end
 
@@ -1668,7 +1677,7 @@ local function load()
             end
 
             add_to_graph("hold-fluid-surface", compound_key({fluid.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -1687,31 +1696,27 @@ local function load()
                     name = "item-" .. item.name
                 })
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.minable ~= nil then
-                                local results_in_item = false
+                for _, entity in pairs(build_graph.prototypes.entities) do
+                    if entity.minable ~= nil then
+                        local results_in_item = false
 
-                                if entity.minable.results ~= nil then
-                                    for _, result in pairs(entity.minable.results) do
-                                        if result.type == "item" and result.name == item.name then
-                                            results_in_item = true
-                                        end
-                                    end
-                                elseif entity.minable.result ~= nil then
-                                    if entity.minable.result == item.name then
-                                        results_in_item = true
-                                    end
-                                end
-
-                                if results_in_item then
-                                    table.insert(prereqs, {
-                                        type = "mine-entity",
-                                        name = entity.name
-                                    })
+                        if entity.minable.results ~= nil then
+                            for _, result in pairs(entity.minable.results) do
+                                if result.type == "item" and result.name == item.name then
+                                    results_in_item = true
                                 end
                             end
+                        elseif entity.minable.result ~= nil then
+                            if entity.minable.result == item.name then
+                                results_in_item = true
+                            end
+                        end
+
+                        if results_in_item then
+                            table.insert(prereqs, {
+                                type = "mine-entity",
+                                name = entity.name
+                            })
                         end
                     end
                 end
@@ -1766,25 +1771,21 @@ local function load()
                     end
                 end
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.loot ~= nil then
-                                local is_loot_result = false
+                for _, entity in pairs(build_graph.prototypes.entities) do
+                    if entity.loot ~= nil then
+                        local is_loot_result = false
 
-                                for _, loot in pairs(entity.loot) do
-                                    if loot.item == item.name then
-                                        is_loot_result = true
-                                    end
-                                end
-
-                                if is_loot_result then
-                                    table.insert(prereqs, {
-                                        type = "loot-entity",
-                                        name = entity.name
-                                    })
-                                end
+                        for _, loot in pairs(entity.loot) do
+                            if loot.item == item.name then
+                                is_loot_result = true
                             end
+                        end
+
+                        if is_loot_result then
+                            table.insert(prereqs, {
+                                type = "loot-entity",
+                                name = entity.name
+                            })
                         end
                     end
                 end
@@ -1872,48 +1873,40 @@ local function load()
                 local give_when_mined = {}
                 local give_when_looted = {}
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.minable ~= nil then
-                                local results_in_item = false
+                for _, entity in pairs(build_graph.prototypes.entities) do
+                    if entity.minable ~= nil then
+                        local results_in_item = false
 
-                                if entity.minable.results ~= nil then
-                                    for _, result in pairs(entity.minable.results) do
-                                        if result.type == "item" and result.name == item.name then
-                                            results_in_item = true
-                                        end
-                                    end
-                                elseif entity.minable.result ~= nil then
-                                    if entity.minable.result == item.name then
-                                        results_in_item = true
-                                    end
-                                end
-
-                                if results_in_item then
-                                    table.insert(give_when_mined, entity)
+                        if entity.minable.results ~= nil then
+                            for _, result in pairs(entity.minable.results) do
+                                if result.type == "item" and result.name == item.name then
+                                    results_in_item = true
                                 end
                             end
+                        elseif entity.minable.result ~= nil then
+                            if entity.minable.result == item.name then
+                                results_in_item = true
+                            end
+                        end
+
+                        if results_in_item then
+                            table.insert(give_when_mined, entity)
                         end
                     end
                 end
 
-                for entity_class, _ in pairs(defines.prototypes.entity) do
-                    if data.raw[entity_class] ~= nil then
-                        for _, entity in pairs(data.raw[entity_class]) do
-                            if entity.loot ~= nil then
-                                local is_loot_result = false
+                for _, entity in pairs(build_graph.prototypes.entities) do
+                    if entity.loot ~= nil then
+                        local is_loot_result = false
 
-                                for _, loot in pairs(entity.loot) do
-                                    if loot.item == item.name then
-                                        is_loot_result = true
-                                    end
-                                end
-
-                                if is_loot_result then
-                                    table.insert(give_when_looted, entity)
-                                end
+                        for _, loot in pairs(entity.loot) do
+                            if loot.item == item.name then
+                                is_loot_result = true
                             end
+                        end
+
+                        if is_loot_result then
+                            table.insert(give_when_looted, entity)
                         end
                     end
                 end
@@ -2064,7 +2057,7 @@ local function load()
 
                     add_to_graph("item-surface", compound_key({item.name, surface_name}), prereqs, {
                         item = item,
-                        surface = surface
+                        surface = surface_name
                     })
                 end
             end
@@ -2074,46 +2067,38 @@ local function load()
     -- loot-entity
     log("Adding: loot-entity")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                if entity.loot ~= nil then
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        if entity.loot ~= nil then
+            prereqs = {}
 
-                    for surface_name, surface in pairs(surfaces) do
-                        table.insert(prereqs, {
-                            type = "loot-entity-surface",
-                            name = compound_key({entity.name, surface_name})
-                        })
-                    end
-
-                    add_to_graph("loot-entity", entity.name, prereqs)
-                end
+            for surface_name, surface in pairs(surfaces) do
+                table.insert(prereqs, {
+                    type = "loot-entity-surface",
+                    name = compound_key({entity.name, surface_name})
+                })
             end
+
+            add_to_graph("loot-entity", entity.name, prereqs)
         end
     end
 
     -- loot-entity-surface
     log("Adding: loot-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
-                    table.insert(prereqs, {
-                        type = "spawn-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                    -- TODO: damage-type-amount-surface
-                    -- Assuming you can damage things for now
+            table.insert(prereqs, {
+                type = "spawn-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+            -- TODO: damage-type-amount-surface
+            -- Assuming you can damage things for now
 
-                    add_to_graph("loot-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
-                end
-            end
+            add_to_graph("loot-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
@@ -2162,64 +2147,56 @@ local function load()
     -- mine-entity
     log("Adding: mine-entity")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                if entity.minable ~= nil then
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        if entity.minable ~= nil then
+            prereqs = {}
 
-                    for surface_name, surface in pairs(surfaces) do
-                        table.insert(prereqs, {
-                            type = "mine-entity-surface",
-                            name = compound_key({entity.name, surface_name})
-                        })
-                    end
-
-                    add_to_graph("mine-entity", entity.name, prereqs)
-                end
+            for surface_name, surface in pairs(surfaces) do
+                table.insert(prereqs, {
+                    type = "mine-entity-surface",
+                    name = compound_key({entity.name, surface_name})
+                })
             end
+
+            add_to_graph("mine-entity", entity.name, prereqs)
         end
     end
 
     -- mine-entity-surface
     log("Adding: mine-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                if entity.minable ~= nil then
-                    for surface_name, surface in pairs(surfaces) do
-                        prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        if entity.minable ~= nil then
+            for surface_name, surface in pairs(surfaces) do
+                prereqs = {}
 
-                        table.insert(prereqs, {
-                            type = "spawn-entity-surface",
-                            name = compound_key({entity.name, surface_name})
-                        })
+                table.insert(prereqs, {
+                    type = "spawn-entity-surface",
+                    name = compound_key({entity.name, surface_name})
+                })
 
-                        if entity.minable.required_fluid ~= nil then
-                            table.insert(prereqs, {
-                                type = "fluid-surface",
-                                name = compound_key({entity.minable.required_fluid, surface_name})
-                            })
+                if entity.minable.required_fluid ~= nil then
+                    table.insert(prereqs, {
+                        type = "fluid-surface",
+                        name = compound_key({entity.minable.required_fluid, surface_name})
+                    })
 
-                            table.insert(prereqs, {
-                                type = "mining-with-fluid-unlock",
-                                name = "canonical"
-                            })
-                        end
-
-                        if entity.type == "resource" then
-                            table.insert(prereqs, {
-                                type = "resource-category-surface",
-                                name = compound_key({resource_to_spoofed_category_name(entity), surface_name})
-                            })
-                        end
-
-                        add_to_graph("mine-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                            surface = surface
-                        })
-                    end
+                    table.insert(prereqs, {
+                        type = "mining-with-fluid-unlock",
+                        name = "canonical"
+                    })
                 end
+
+                if entity.type == "resource" then
+                    table.insert(prereqs, {
+                        type = "resource-category-surface",
+                        name = compound_key({resource_to_spoofed_category_name(entity), surface_name})
+                    })
+                end
+
+                add_to_graph("mine-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                    surface = surface_name
+                })
             end
         end
     end
@@ -2257,7 +2234,7 @@ local function load()
                 })
 
                 add_to_graph("mine-tile-surface", compound_key({tile.name, surface_name}), prereqs, {
-                    surface = surface
+                    surface = surface_name
                 })
             end
         end
@@ -2292,168 +2269,156 @@ local function load()
     -- operate-entity
     log("Adding: operate-entity")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        prereqs = {}
 
-                for surface_name, surface in pairs(surfaces) do
-                    table.insert(prereqs, {
-                        type = "operate-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                end
-
-                add_to_graph("operate-entity", entity.name, prereqs)
-            end
+        for surface_name, surface in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "operate-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
         end
+
+        add_to_graph("operate-entity", entity.name, prereqs)
     end
 
     -- operate-entity-surface
     log("Adding: operate-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
-                    -- This is used later for the aquilo heating prerequisite
-                    local doesnt_freeze = false
-                    local property_list = operation_energy_sources[entity_class]
-                    if type(property_list) ~= "table" then
-                        property_list = {property_list}
-                    end
-                    for _, property in pairs(property_list) do
-                        table.insert(prereqs, {
-                            type = "energy-source-surface",
-                            name = compound_key({entity.name, property, surface_name})
-                        })
+            -- This is used later for the aquilo heating prerequisite
+            local doesnt_freeze = false
+            local property_list = operation_energy_sources[entity_class]
+            if type(property_list) ~= "table" then
+                property_list = {property_list}
+            end
+            for _, property in pairs(property_list) do
+                table.insert(prereqs, {
+                    type = "energy-source-surface",
+                    name = compound_key({entity.name, property, surface_name})
+                })
 
-                        -- I would check that the heat energy source is a production source, not a powered source, but being heat powered leads to the same requirements anyways
-                        if entity[property] ~= nil and (entity[property].type == "burner" or entity[property].type == "heat") then
-                            doesnt_freeze = true
-                        end
-                    end
+                -- I would check that the heat energy source is a production source, not a powered source, but being heat powered leads to the same requirements anyways
+                if entity[property] ~= nil and (entity[property].type == "burner" or entity[property].type == "heat") then
+                    doesnt_freeze = true
+                end
+            end
 
+            table.insert(prereqs, {
+                type = "spawn-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+
+            local fluid_required_for_operation = {
+                ["boiler"] = true,
+                ["fusion-generator"] = true,
+                ["fusion-reactor"] = true,
+                ["generator"] = true
+            }
+            if fluid_required_for_operation[entity_class] then
+                table.insert(prereqs, {
+                    type = "operate-entity-surface-fluid",
+                    name = compound_key({entity.name, surface_name})
+                })
+            end
+            
+            -- Thruster oxidizer/fuel
+            if entity.type == "thruster" then
+                table.insert(prereqs, {
+                    type = "fluid-surface",
+                    name = compound_key({entity.fuel_fluid_box.filter, surface_name})
+                })
+                table.insert(prereqs, {
+                    type = "fluid-surface",
+                    name = compound_key({entity.oxidizer_fluid_box.filter, surface_name})
+                })
+            end
+
+            if surface.type == "planet" and surface.prototype.entities_require_heating then
+                -- Do last doesnt_freeze checks
+                if entity.type == "heat-pipe" then
+                    doesnt_freeze = true
+                end
+                
+                if not doesnt_freeze then
                     table.insert(prereqs, {
-                        type = "spawn-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-
-                    local fluid_required_for_operation = {
-                        ["boiler"] = true,
-                        ["fusion-generator"] = true,
-                        ["fusion-reactor"] = true,
-                        ["generator"] = true
-                    }
-                    if fluid_required_for_operation[entity_class] then
-                        table.insert(prereqs, {
-                            type = "operate-entity-surface-fluid",
-                            name = compound_key({entity.name, surface_name})
-                        })
-                    end
-                    
-                    -- Thruster oxidizer/fuel
-                    if entity.type == "thruster" then
-                        table.insert(prereqs, {
-                            type = "fluid-surface",
-                            name = compound_key({entity.fuel_fluid_box.filter, surface_name})
-                        })
-                        table.insert(prereqs, {
-                            type = "fluid-surface",
-                            name = compound_key({entity.oxidizer_fluid_box.filter, surface_name})
-                        })
-                    end
-
-                    if surface.type == "planet" and surface.prototype.entities_require_heating then
-                        -- Do last doesnt_freeze checks
-                        if entity.type == "heat-pipe" then
-                            doesnt_freeze = true
-                        end
-                        
-                        if not doesnt_freeze then
-                            table.insert(prereqs, {
-                                type = "heat-surface",
-                                name = surface_name
-                            })
-                        end
-                    end
-
-                    -- TODO: entity-operation-items, like PyAL modules
-
-                    add_to_graph("operate-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
+                        type = "heat-surface",
+                        name = surface_name
                     })
                 end
             end
+
+            -- TODO: entity-operation-items, like PyAL modules
+
+            add_to_graph("operate-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
     -- operate-entity-surface-fluid
     log("Adding: operate-entity-surface-fluid")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
-                    --[[ entities with fluid requirements:
-                        boiler = true,
-                        ["fusion-generator"] = true,
-                        ["fusion-reactor"] = true,
-                        generator = true
-                    ]]
-                    
-                    if entity.type == "boiler" then
-                        -- Assume it has a filter set
-                        -- TODO: Get rid of this assumption!
-                        table.insert(prereqs, {
-                            type = "fluid-surface",
-                            name = compound_key({entity.fluid_box.filter, surface_name})
-                        })
-                    end
-                    if entity.type == "fusion-generator" then
-                        table.insert(prereqs, {
-                            type = "fluid-surface",
-                            name = compound_key({entity.input_fluid_box.filter, surface_name})
-                        })
-                    end
-                    if entity.type == "fusion-reactor" then
-                        table.insert(prereqs, {
-                            type = "fluid-surface",
-                            name = compound_key({entity.input_fluid_box.filter, surface_name})
-                        })
-                    end
-                    if entity.type == "generator" then
-                        if entity.fluid_box.filter ~= nil then
-                            table.insert(prereqs, {
-                                type = "fluid-surface",
-                                name = compound_key({entity.fluid_box.filter, surface_name})
-                            })
-                        else
-                            if not burns_fluid then
-                                -- TODO: Requires access to certain temperatures
-                                -- TODO: Implement temperatures
-                            else
-                                for _, fluid in pairs(data.raw.fluid) do
-                                    if fluid.fuel_value ~= nil then
-                                        table.insert(prereqs, {
-                                            type = "fluid-surface",
-                                            name = compound_key({fluid.name, surface_name})
-                                        })
-                                    end
-                                end
+            --[[ entities with fluid requirements:
+                boiler = true,
+                ["fusion-generator"] = true,
+                ["fusion-reactor"] = true,
+                generator = true
+            ]]
+            
+            if entity.type == "boiler" then
+                -- Assume it has a filter set
+                -- TODO: Get rid of this assumption!
+                table.insert(prereqs, {
+                    type = "fluid-surface",
+                    name = compound_key({entity.fluid_box.filter, surface_name})
+                })
+            end
+            if entity.type == "fusion-generator" then
+                table.insert(prereqs, {
+                    type = "fluid-surface",
+                    name = compound_key({entity.input_fluid_box.filter, surface_name})
+                })
+            end
+            if entity.type == "fusion-reactor" then
+                table.insert(prereqs, {
+                    type = "fluid-surface",
+                    name = compound_key({entity.input_fluid_box.filter, surface_name})
+                })
+            end
+            if entity.type == "generator" then
+                if entity.fluid_box.filter ~= nil then
+                    table.insert(prereqs, {
+                        type = "fluid-surface",
+                        name = compound_key({entity.fluid_box.filter, surface_name})
+                    })
+                else
+                    if not burns_fluid then
+                        -- TODO: Requires access to certain temperatures
+                        -- TODO: Implement temperatures
+                    else
+                        for _, fluid in pairs(data.raw.fluid) do
+                            if fluid.fuel_value ~= nil then
+                                table.insert(prereqs, {
+                                    type = "fluid-surface",
+                                    name = compound_key({fluid.name, surface_name})
+                                })
                             end
                         end
                     end
-
-                    add_to_graph("operate-entity-surface-fluid", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
                 end
             end
+
+            add_to_graph("operate-entity-surface-fluid", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
@@ -2498,102 +2463,90 @@ local function load()
     -- plant-entity-item
     log("Adding: plant-entity-item")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        prereqs = {}
 
-                for item_class, _ in pairs(defines.prototypes.item) do
-                    if data.raw[item_class] ~= nil then
-                        for _, item in pairs(data.raw[item_class]) do
-                            if item.plant_result == entity.name then
-                                table.insert(prereqs, {
-                                    type = "item",
-                                    name = item.name
-                                })
-                            end
-                        end
+        for item_class, _ in pairs(defines.prototypes.item) do
+            if data.raw[item_class] ~= nil then
+                for _, item in pairs(data.raw[item_class]) do
+                    if item.plant_result == entity.name then
+                        table.insert(prereqs, {
+                            type = "item",
+                            name = item.name
+                        })
                     end
                 end
-
-                add_to_graph("plant-entity-item", entity.name, prereqs)
             end
         end
+
+        add_to_graph("plant-entity-item", entity.name, prereqs)
     end
 
     -- plant-entity-surface
     log("Adding: plant-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
-                    table.insert(prereqs, {
-                        type = "entity-buildability-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                    table.insert(prereqs, {
-                        type = "plant-entity-item",
-                        name = entity.name
-                    })
-                    table.insert(prereqs, {
-                        type = "surface",
-                        name = surface_name
-                    })
+            table.insert(prereqs, {
+                type = "entity-buildability-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+            table.insert(prereqs, {
+                type = "plant-entity-item",
+                name = entity.name
+            })
+            table.insert(prereqs, {
+                type = "surface",
+                name = surface_name
+            })
 
-                    -- Check buildability conditions
-                    -- TODO: Should this just be in entity-buildability-surface?...
-                    local surface_conditions_satisfied = true
-                    if entity.surface_conditions ~= nil then
-                        surface_conditions_satisfied = check_surface_conditions(entity.surface_conditions, surface)
-                    end
-                    if surface_conditions_satisfied then
-                        table.insert(prereqs, {
-                            type = "plant-entity-surface-condition-true",
-                            name = "canonical"
-                        })
-                    else
-                        table.insert(prereqs, {
-                            type = "plant-entity-surface-condition-false",
-                            name = "canonical"
-                        })
-                    end
-
-                    add_to_graph("plant-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
-                end
+            -- Check buildability conditions
+            -- TODO: Should this just be in entity-buildability-surface?...
+            local surface_conditions_satisfied = true
+            if entity.surface_conditions ~= nil then
+                surface_conditions_satisfied = check_surface_conditions(entity.surface_conditions, surface)
             end
+            if surface_conditions_satisfied then
+                table.insert(prereqs, {
+                    type = "plant-entity-surface-condition-true",
+                    name = "canonical"
+                })
+            else
+                table.insert(prereqs, {
+                    type = "plant-entity-surface-condition-false",
+                    name = "canonical"
+                })
+            end
+
+            add_to_graph("plant-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
     -- plant-entity-surface-automatability
     log("Adding: plant-entity-surface-automatability")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    -- Technically the machine that harvests the plants may be only placeable in a different location from where the plants can be made
-                    -- This is probably never an issue, though, and would be nearly impossible to solve anyways
-                    prereqs = {}
-                    
-                    table.insert(prereqs, {
-                        type = "plant-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                    table.insert(prereqs, {
-                        type = "agricultural-tower-surface",
-                        name = surface_name
-                    })
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            -- Technically the machine that harvests the plants may be only placeable in a different location from where the plants can be made
+            -- This is probably never an issue, though, and would be nearly impossible to solve anyways
+            prereqs = {}
+            
+            table.insert(prereqs, {
+                type = "plant-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+            table.insert(prereqs, {
+                type = "agricultural-tower-surface",
+                name = surface_name
+            })
 
-                    add_to_graph("plant-entity-surface-automatability", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
-                    })
-                end
-            end
+            add_to_graph("plant-entity-surface-automatability", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
@@ -2676,7 +2629,7 @@ local function load()
             end
 
             add_to_graph("recipe-category-surface", compound_key({spoofed_category_name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -2700,7 +2653,7 @@ local function load()
             end
 
             add_to_graph("recipe-category-surface-automation", compound_key({spoofed_category_name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -2780,7 +2733,7 @@ local function load()
 
             add_to_graph("recipe-surface", compound_key({recipe.name, surface_name}), prereqs, {
                 recipe = recipe,
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -2905,7 +2858,7 @@ local function load()
             end
 
             add_to_graph("resource-category-surface", compound_key({spoofed_category_name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -3270,144 +3223,136 @@ local function load()
     -- spawn-entity
     log("Adding: spawn-entity")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        prereqs = {}
 
-                for surface_name, surface in pairs(surfaces) do
-                    table.insert(prereqs, {
-                        type = "spawn-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                end
-
-                add_to_graph("spawn-entity", entity.name, prereqs)
-            end
+        for surface_name, surface in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "spawn-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
         end
+
+        add_to_graph("spawn-entity", entity.name, prereqs)
     end
 
     -- spawn-entity-surface
     log("Adding: spawn-entity-surface")
 
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                for surface_name, surface in pairs(surfaces) do
-                    prereqs = {}
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        for surface_name, surface in pairs(surfaces) do
+            prereqs = {}
 
+            table.insert(prereqs, {
+                type = "build-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+            table.insert(prereqs, {
+                type = "plant-entity-surface",
+                name = compound_key({entity.name, surface_name})
+            })
+
+            if check_prototype_on_surface(surface, entity) then
+                table.insert(prereqs, {
+                    type = "surface",
+                    name = surface_name
+                })
+            end
+
+            for _, enemy_spawner in pairs(data.raw["unit-spawner"]) do
+                if enemy_spawner.captured_spawner_entity == entity.name then
                     table.insert(prereqs, {
-                        type = "build-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-                    table.insert(prereqs, {
-                        type = "plant-entity-surface",
-                        name = compound_key({entity.name, surface_name})
-                    })
-
-                    if check_prototype_on_surface(surface, entity) then
-                        table.insert(prereqs, {
-                            type = "surface",
-                            name = surface_name
-                        })
-                    end
-
-                    for _, enemy_spawner in pairs(data.raw["unit-spawner"]) do
-                        if enemy_spawner.captured_spawner_entity == entity.name then
-                            table.insert(prereqs, {
-                                type = "capture-spawner-surface",
-                                name = compound_key({enemy_spawner.name, surface_name})
-                            })
-                        end
-                    end
-
-                    for _, capsule in pairs(data.raw.capsule) do
-                        local creates_this_entity = false
-
-                        -- Right now, we have a few basic expectations, like entities only being made with a throw
-                        -- TODO: Check or generalize these assumptions
-                        if capsule.capsule_action.type == "throw" then
-                            local ammo_type = capsule.capsule_action.attack_parameters.ammo_type
-                            if ammo_type ~= nil and ammo_type.action ~= nil then
-                                for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
-                                    -- See if this entity is a projectile that could then make another entity
-                                    -- TODO: Technically, this could keep looping, maybe check arbitrary recursion levels?
-                                    if data.raw.projectile[target] ~= nil then
-                                        local projectile = data.raw.projectile[target]
-                                        if projectile.action ~= nil then
-                                            -- Assume the create-entity is in the action key
-                                            for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
-                                                if secondary_target == entity.name then
-                                                    creates_this_entity = true
-                                                end
-                                            end
-                                        end
-                                    -- Maybe this itself was the entity?
-                                    elseif target == entity.name then
-                                        creates_this_entity = true
-                                    end
-                                end
-                            end
-                        end
-
-                        if creates_this_entity then
-                            table.insert(prereqs, {
-                                type = "capsule-surface",
-                                name = compound_key({capsule.name, surface_name})
-                            })
-                        end
-                    end
-
-                    -- Creation from ammo item
-                    -- Just assume having the ammo is enough for now ugh
-                    -- TODO: Actual logic for the bot rocket
-                    for _, ammo in pairs(data.raw.ammo) do
-                        local creates_this_entity = false
-
-                        -- TODO: Merge this via a function with the above capsule logic
-                        local ammo_types = table.deepcopy(ammo.ammo_type)
-                        if ammo_types[1] == nil then
-                            ammo_types = {ammo_types}
-                        end
-                        for _, ammo_type in pairs(ammo_types) do
-                            if ammo_type.action ~= nil then
-                                for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
-                                    -- Could go deeper with recursion
-                                    if data.raw.projectile[target] ~= nil then
-                                        local projectile = data.raw.projectile[target]
-                                        if projectile.action ~= nil then
-                                            -- Assume the create-entity is in the action key
-                                            for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
-                                                if secondary_target == entity.name then
-                                                    creates_this_entity = true
-                                                end
-                                            end
-                                        end
-                                    -- Maybe this itself was the entity?
-                                    elseif target == entity.name then
-                                        creates_this_entity = true
-                                    end
-                                end
-                            end
-
-                            if creates_this_entity then
-                                table.insert(prereqs, {
-                                    type = "item-surface",
-                                    name = compound_key({ammo.name, surface_name})
-                                })
-                            end
-                        end
-                    end
-
-                    -- Did not code the corpse connections yet
-                    -- TODO: Code in corpse connections
-                    -- TODO: Preserve pentapod egg mining from gleba enemies with item randomization when I do that!
-
-                    add_to_graph("spawn-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
-                        surface = surface
+                        type = "capture-spawner-surface",
+                        name = compound_key({enemy_spawner.name, surface_name})
                     })
                 end
             end
+
+            for _, capsule in pairs(data.raw.capsule) do
+                local creates_this_entity = false
+
+                -- Right now, we have a few basic expectations, like entities only being made with a throw
+                -- TODO: Check or generalize these assumptions
+                if capsule.capsule_action.type == "throw" then
+                    local ammo_type = capsule.capsule_action.attack_parameters.ammo_type
+                    if ammo_type ~= nil and ammo_type.action ~= nil then
+                        for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
+                            -- See if this entity is a projectile that could then make another entity
+                            -- TODO: Technically, this could keep looping, maybe check arbitrary recursion levels?
+                            if data.raw.projectile[target] ~= nil then
+                                local projectile = data.raw.projectile[target]
+                                if projectile.action ~= nil then
+                                    -- Assume the create-entity is in the action key
+                                    for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
+                                        if secondary_target == entity.name then
+                                            creates_this_entity = true
+                                        end
+                                    end
+                                end
+                            -- Maybe this itself was the entity?
+                            elseif target == entity.name then
+                                creates_this_entity = true
+                            end
+                        end
+                    end
+                end
+
+                if creates_this_entity then
+                    table.insert(prereqs, {
+                        type = "capsule-surface",
+                        name = compound_key({capsule.name, surface_name})
+                    })
+                end
+            end
+
+            -- Creation from ammo item
+            -- Just assume having the ammo is enough for now ugh
+            -- TODO: Actual logic for the bot rocket
+            for _, ammo in pairs(data.raw.ammo) do
+                local creates_this_entity = false
+
+                -- TODO: Merge this via a function with the above capsule logic
+                local ammo_types = table.deepcopy(ammo.ammo_type)
+                if ammo_types[1] == nil then
+                    ammo_types = {ammo_types}
+                end
+                for _, ammo_type in pairs(ammo_types) do
+                    if ammo_type.action ~= nil then
+                        for _, target in pairs(build_graph.gather_targets_trigger(ammo_type.action, "entity")) do
+                            -- Could go deeper with recursion
+                            if data.raw.projectile[target] ~= nil then
+                                local projectile = data.raw.projectile[target]
+                                if projectile.action ~= nil then
+                                    -- Assume the create-entity is in the action key
+                                    for _, secondary_target in pairs(build_graph.gather_targets_trigger(projectile.action, "entity")) do
+                                        if secondary_target == entity.name then
+                                            creates_this_entity = true
+                                        end
+                                    end
+                                end
+                            -- Maybe this itself was the entity?
+                            elseif target == entity.name then
+                                creates_this_entity = true
+                            end
+                        end
+                    end
+
+                    if creates_this_entity then
+                        table.insert(prereqs, {
+                            type = "item-surface",
+                            name = compound_key({ammo.name, surface_name})
+                        })
+                    end
+                end
+            end
+
+            -- Did not code the corpse connections yet
+            -- TODO: Code in corpse connections
+            -- TODO: Preserve pentapod egg mining from gleba enemies with item randomization when I do that!
+
+            add_to_graph("spawn-entity-surface", compound_key({entity.name, surface_name}), prereqs, {
+                surface = surface_name
+            })
         end
     end
 
@@ -3464,7 +3409,7 @@ local function load()
             })
 
             add_to_graph("spawn-tile-surface", compound_key({tile.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -3670,7 +3615,7 @@ local function load()
             end
 
             add_to_graph("valid-tile-placement-surface", compound_key({tile.name, surface_name}), prereqs, {
-                surface = surface
+                surface = surface_name
             })
         end
     end
@@ -3730,6 +3675,7 @@ build_graph.ops = {
     ["electricity-surface"] = "AND",
     ["energy-source-surface"] = "OR",
     ["entity-buildability-surface"] = "OR",
+    ["entity-buildability-surface-true"] = "AND",
     ["entity-operation-items"] = "OR",
     ["fluid"] = "OR",
     ["fluid-surface"] = "AND",

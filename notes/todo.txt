@@ -1,5 +1,6 @@
 WORKING ON:
- - Fixing recipe costs
+ - Fixing recipe costs (they are too high and relying on one resource too much)
+    * They seem to be unbalanced in space age
 
 Bigger thins:
  - Various numerical/space age especially randomizations need adding

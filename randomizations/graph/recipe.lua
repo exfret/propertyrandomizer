@@ -367,7 +367,7 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
         end
 
         for i = 1, 2 * (#proposed_ings) do
-            local ing_ind = math.random(num_ings_to_find)
+            local ing_ind = rng.int("recipe-ingredients-calculate-optimal-amounts", num_ings_to_find)
             local optimization_info = optimize_single_ing(recipe_costs_to_use, material_to_costs, proposed_ings, ing_ind, {dont_preserve_resource_costs = dont_preserve_resource_costs})
             local this_proposal_ings = table.deepcopy(proposed_ings)
             this_proposal_ings[ing_ind].amount = optimization_info.best_amount
@@ -452,7 +452,7 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
 
     local function choose_unused_ind(index_in_ings)
         while true do
-            local ind = math.random(#potential_ings)
+            local ind = rng.int("recipe-ingredients-search-for-ings", #potential_ings)
 
             if check_unused(ind) then
                 -- Also check fluid indices
@@ -618,7 +618,7 @@ randomizations.recipe_ingredients = function(id)
         if dependent_node.type == "recipe-surface" then
             if recipe_to_surface[dependent_node.recipe.name] == nil then
                 -- This is the first surface encountered, so assign it to this recipe
-                recipe_to_surface[dependent_node.recipe.name] = dependent_node.surface
+                recipe_to_surface[dependent_node.recipe.name] = build_graph.surfaces[dependent_node.surface]
 
                 -- Don't randomize if we couldn't calculate a cost for an ingredient of this
                 local cost_calculable = true
@@ -842,18 +842,18 @@ randomizations.recipe_ingredients = function(id)
                     end
 
                     -- If this is a fluid, make sure it's available on the relevant surface
-                    if prereq.ing.type == "fluid" and not reachable[build_graph.key("fluid-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({dependent.surface.type, dependent.surface.name})}))] then
+                    if prereq.ing.type == "fluid" and not reachable[build_graph.key("fluid-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
                         return false
                     end
 
                     -- If this is an item, make sure it's available on the relevant surface (this in particular rules out certain spoilables)
-                    if prereq.ing.type == "item" and not reachable[build_graph.key("item-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({dependent.surface.type, dependent.surface.name})}))] then
+                    if prereq.ing.type == "item" and not reachable[build_graph.key("item-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
                         return false
                     end
 
                     -- If this material has a manually assigned surface, make sure this is that surface
                     --log(serpent.block(prereq.ing))
-                    if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({dependent.surface.type, dependent.surface.name}) then
+                    if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name}) then
                         return false
                     end
 

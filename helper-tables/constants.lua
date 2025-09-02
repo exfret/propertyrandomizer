@@ -8,7 +8,7 @@ local constants = {
     -- Recipe randomization
     max_flow_iterations = 10000,
     cost_params = {
-        time = 0.02,
+        time = 0.07,
         complexity = 0.01
     },
     target_cost_threshold = 1.5,

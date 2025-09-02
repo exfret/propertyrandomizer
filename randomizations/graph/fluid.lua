@@ -58,9 +58,9 @@ randomizations.fluid_in_conns = function(id)
                 local function add_fluid_prereq(prereq, conn_to_blacklist)
                     local prereq_node = dep_graph[build_graph.key(prereq.type, prereq.name)]
 
-                    if fluid_to_surface[prereq_node.fluid.name] == nil or fluid_to_surface[prereq_node.fluid.name] = prereq_node.surface.name then
+                    if fluid_to_surface[prereq_node.fluid.name] == nil or fluid_to_surface[prereq_node.fluid.name] = build_graph.surfaces[prereq_node.surface].name then
                         if fluid_to_surface[prereq_node.fluid.name] == nil then
-                            fluid_to_surface[prereq_node.fluid.name] = prereq_node.surface.name
+                            fluid_to_surface[prereq_node.fluid.name] = build_graph.surfaces[prereq_node.surface].name
 
                             if data.raw.item[prereq_node.fluid.name .. "-barrel"] ~= nil then
                                 fluid_to_surface[prereq_node.fluid.name] = "any"
@@ -153,7 +153,7 @@ randomizations.fluid_in_conns = function(id)
     --[[
     for _, fluid_node in pairs(graph_sort) do
         if fluid_node.type == "create-fluid-surface" and fluid_to_surface[fluid_node.fluid.name] == nil then
-            fluid_to_surface[fluid_node.fluid.name] = fluid_node.surface
+            fluid_to_surface[fluid_node.fluid.name] = build_graph.surfaces[fluid_node.surface]
             -- If it can be barreled, it's any surface
             if data.raw.item[fluid_node.fluid.name .. "-barrel"] ~= nil then
                 fluid_to_surface[fluid_node.fluid.name] = "any"
