@@ -109,7 +109,7 @@ print("\n")
 local new_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), cost_params.time, cost_params.complexity).material_to_cost
 
 -- Only do sciences
-local science_names = {
+--[[local science_names = {
     ["item-automation-science-pack"] = true,
     ["item-logistic-science-pack"] = true,
     ["item-military-science-pack"] = true,
@@ -124,7 +124,7 @@ for _, tbl in pairs({old_costs, old_recipe_costs, old_iron_costs, old_copper_cos
             tbl[material_name] = nil
         end
     end
-end
+end]]
 
 -- Find biggest additive/multiplicative difference
 local largest_cost_diff
