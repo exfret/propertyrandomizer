@@ -44,7 +44,7 @@ randomizations.item = function(id)
         ["burn-item-surface"] = true,
     }
     local is_blacklisted_item = {
-        -- Rocket parts probbly shouldn't be randomized lol
+        -- Rocket parts shouldn't be randomized
         ["rocket-part"] = true,
     }
     local node_to_old_stay_with_dependents = {}
@@ -121,7 +121,7 @@ randomizations.item = function(id)
                                         end
                                     end
 
-                                    -- If it's a very commonly used item, include it with a 70% chance, otherwise only do so with 30% chance
+                                    -- If it's a very commonly used item, include it with a 100% chance, otherwise only do so with 30% chance
                                     if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= constants.item_randomization_probability_high) or rng.value(rng.key({id = id})) <= constants.item_randomization_probability_low then
                                         table.insert(old_order, item_node)
                                         if is_raw_resource then
@@ -195,6 +195,9 @@ randomizations.item = function(id)
     end
 
     local new_order = {}
+    -- Since we might actually visit the old_order nodes out of order due to a fix I made for higher probabilities of randomization success chance,
+    -- we need to keep track of how we actually visit the old_order nodes
+    local visited_old_order = {}
     local ind_to_used = {}
     local ind_to_used_in_old_order = {}
     -- Initial reachability
@@ -248,7 +251,8 @@ randomizations.item = function(id)
                             --if proposed_node.item.stack_size >= item_node.item.stack_size / 10 then
                                 new_node = shuffled_order[ind]
                                 ind_to_used[ind] = true
-                                table.insert(new_order, shuffled_order[ind])
+                                table.insert(visited_old_order, item_node)
+                                table.insert(new_order, new_node)
                                 break
                             --end
                         end
@@ -328,6 +332,7 @@ randomizations.item = function(id)
                     ind_to_used_in_old_order[old_order_ind_2] = true
                     break
                 end
+            -- URGENT TODO: I wonder if this is indented too much; it doesn't seem to error if the last thing was where we couldn't find anything, but that just excludes coal so maybe it's fine?
             elseif old_order_ind_2 == #old_order then
                 -- We truly couldn't proceed in old_order!
                 log(serpent.block(old_order[i]))
@@ -344,7 +349,7 @@ randomizations.item = function(id)
     local num_times_changed_graphics_of_simple_entity = {}
     for ind, item_node in pairs(new_order) do
         -- item_node takes the place of same-indexed node in old_order
-        local old_node = old_order[ind]
+        local old_node = visited_old_order[ind]
 
         local incoming_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
         local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_node.item)]

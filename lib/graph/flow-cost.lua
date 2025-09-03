@@ -139,12 +139,14 @@ end
 flow_cost.get_default_raw_resource_table = function()
     -- TODO: Resource auto-sensing for mods
     local normal_resources = {
-        ["item-iron-ore"] = 1,
+        -- Higher cost for iron so it doesn't appear as often
+        ["item-iron-ore"] = 1.25,
         ["item-copper-ore"] = 1,
         ["item-coal"] = 1,
-        ["item-stone"] = 1,
-        ["fluid-crude-oil"] = 0.2,
-        ["item-uranium-ore"] = 2,
+        -- Lower cost for stone so that it's more common
+        ["item-stone"] = 0.85,
+        ["fluid-crude-oil"] = 0.15,
+        ["item-uranium-ore"] = 1.5,
         -- Include this so that uranium-235 isn't too expensive
         -- TODO: Maybe just require kovarex earlier?
         ["item-uranium-235"] = 100,
@@ -152,13 +154,18 @@ flow_cost.get_default_raw_resource_table = function()
         ["fluid-steam"] = 0.05
     }
     local space_age_resources = {
-        ["item-metallic-asteroid-chunk"] = 1,
-        ["item-carbonic-asteroid-chunk"] = 1,
-        ["item-oxide-asteroid-chunk"] = 1,
+        -- Adding the asteroid chunks actually tricks the randomizer into thinking iron is cheap and putting it everywhere
+        -- NOTE: Actually the issue seems to be elsewhere... not sure what it is though
+        --["item-metallic-asteroid-chunk"] = 1,
+        --["item-carbonic-asteroid-chunk"] = 1,
+        --["item-oxide-asteroid-chunk"] = 1,
+        ["item-carbon"] = 1, -- Add this instead of the asteroid chunks
         ["fluid-ammoniacal-solution"] = 0.6,
         ["fluid-fluorine"] = 0.6,
         ["item-lithium"] = 2,
-        ["item-scrap"] = 1,
+        -- Set scrap cost high to prevent it from interfering with cost assignments of iron and the like
+        -- This makes it unlikely to appear elsewhere besides scrap recycling but whatever
+        ["item-scrap"] = 10,
         ["item-pentapod-egg"] = 2,
         ["item-jellynut"] = 1,
         ["item-yumako"] = 1,
@@ -288,41 +295,45 @@ flow_cost.local_cost_update = function(params)
         local curr_node_material = {type = material_type, name = material_name}
 
         for recipe_name, _ in pairs(material_to_recipe[curr_node.name]) do
-            -- Only check recipes for which this is an ingredient
-            -- We can't use amount here because it takes results into account, which we don't want
-            local recipe_ingredients = data.raw.recipe[recipe_name].ingredients
-            if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted" then
-                -- Make sure we aren't forced to use data.raw
-                if not use_data then
-                    recipe_ingredients = {}
-                    for _, ing_override in pairs(ing_overrides[recipe_name]) do
-                        table.insert(recipe_ingredients, ing_override)
+            -- Don't use blacklisted recipes for item costs
+            -- Note: This doesn't seem to do anything, probably safe to delete
+            if ing_overrides == nil or ing_overrides[recipe_name] == nil or ing_overrides[recipe_name][1] ~= "blacklisted" then
+                -- Only check recipes for which this is an ingredient
+                -- We can't use amount here because it takes results into account, which we don't want
+                local recipe_ingredients = data.raw.recipe[recipe_name].ingredients
+                if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted" then
+                    -- Make sure we aren't forced to use data.raw
+                    if not use_data then
+                        recipe_ingredients = {}
+                        for _, ing_override in pairs(ing_overrides[recipe_name]) do
+                            table.insert(recipe_ingredients, ing_override)
+                        end
+                    end
+                end
+
+                if recipe_ingredients ~= nil and flow_cost.find_amount_in_ing_or_prod(recipe_ingredients, curr_node_material) > 0 then
+                    -- Evaluate if the recipe is cheaper now
+                    local cost_info = flow_cost.eval_recipe_cost({
+                        recipe_name = recipe_name,
+                        material_to_cost = material_to_cost,
+                        recipe_time_modifier = recipe_time_modifier,
+                        recipe_complexity_modifier = recipe_complexity_modifier,
+                        mode = mode,
+                        ing_overrides = ing_overrides,
+                        use_data = use_data
+                    })
+
+                    if cost_info.reachable and (recipe_to_cost[recipe_name] == nil or cost_info.cost < recipe_to_cost[recipe_name]) then
+                        recipe_to_cost[recipe_name] = cost_info.cost
+                        table.insert(open_nodes, {
+                            type = "recipe",
+                            name = recipe_name
+                        })
                     end
                 end
             end
-
-            if recipe_ingredients ~= nil and flow_cost.find_amount_in_ing_or_prod(recipe_ingredients, curr_node_material) > 0 then
-                -- Evaluate if the recipe is cheaper now
-                local cost_info = flow_cost.eval_recipe_cost({
-                    recipe_name = recipe_name,
-                    material_to_cost = material_to_cost,
-                    recipe_time_modifier = recipe_time_modifier,
-                    recipe_complexity_modifier = recipe_complexity_modifier,
-                    mode = mode,
-                    ing_overrides = ing_overrides,
-                    use_data = use_data
-                })
-
-                if cost_info.reachable and (recipe_to_cost[recipe_name] == nil or cost_info.cost < recipe_to_cost[recipe_name]) then
-                    recipe_to_cost[recipe_name] = cost_info.cost
-                    table.insert(open_nodes, {
-                        type = "recipe",
-                        name = recipe_name
-                    })
-                end
-            end
         end
-    elseif curr_node.type == "recipe" then
+    elseif curr_node.type == "recipe" and (ing_overrides == nil or ing_overrides[curr_node.name] == nil or ing_overrides[curr_node.name][1] ~= "blacklisted") then
         -- Distribute cost evenly over results
         local num_results = 0
         for _, amount in pairs(recipe_to_material[curr_node.name]) do
@@ -510,7 +521,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
             recipe_complexity_modifier = recipe_complexity_modifier,
             mode = mode,
             ing_overrides = ing_overrides,
-            use_data
+            use_data = use_data
         })
 
         if open_index >= num_its then

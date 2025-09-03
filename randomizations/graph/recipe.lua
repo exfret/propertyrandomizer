@@ -34,7 +34,10 @@ local dont_randomize_ings_space_age = {
     ["item-yumako"] = true,
     ["item-jellynut"] = true,
     ["fluid-fluoroketone-cold"] = true,
-    ["fluid-lava"] = true
+    ["fluid-lava"] = true,
+    ["item-metallic-asteroid-chunk"] = true,
+    ["item-carbonic-asteroid-chunk"] = true,
+    ["item-oxide-asteroid-chunk"] = true,
 }
 for ing, bool in pairs(dont_randomize_ings_space_age) do
     dont_randomize_ings[ing] = bool
@@ -178,8 +181,7 @@ local function get_costs_from_ings(material_to_costs, ings)
     -- aggregate cost
     costs.aggregate_cost = 0
     for _, ing in pairs(ings) do
-        costs.aggregate_cost = costs.aggregate_cost +
-        ing.amount * material_to_costs.aggregate_cost[ing.type .. "-" .. ing.name]
+        costs.aggregate_cost = costs.aggregate_cost + ing.amount * material_to_costs.aggregate_cost[ing.type .. "-" .. ing.name]
     end
 
     -- complexity cost
@@ -194,8 +196,7 @@ local function get_costs_from_ings(material_to_costs, ings)
     for _, resource_id in pairs(major_raw_resources) do
         costs.resource_costs[resource_id] = 0
         for _, ing in pairs(ings) do
-            costs.resource_costs[resource_id] = costs.resource_costs[resource_id] +
-            ing.amount * material_to_costs.resource_costs[resource_id][ing.type .. "-" .. ing.name]
+            costs.resource_costs[resource_id] = costs.resource_costs[resource_id] + ing.amount * material_to_costs.resource_costs[resource_id][ing.type .. "-" .. ing.name]
         end
     end
 
@@ -923,7 +924,7 @@ randomizations.recipe_ingredients = function(id)
             end
         end
         for ing_ind, ing in pairs(reordered_ings_unrandomized) do
-            if ing.ind == "fluid" then
+            if ing.type == "fluid" then
                 is_fluid_index[#reordered_ings_randomized + ing_ind] = true
             end
         end
@@ -942,6 +943,8 @@ randomizations.recipe_ingredients = function(id)
         -- Finally, search for the best ingredients
         -- Do a while loop so we can restart if there are recipe loops
         local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
+        
+        log("Found ings with total points " .. best_search_info.points)
 
         log("Updating dependencies")
 
@@ -1007,7 +1010,7 @@ randomizations.recipe_ingredients = function(id)
             -- TODO: Fix this!
             for _, other_ing in pairs(ings) do
                 if other_ing.type == ing.type and other_ing.name == ing.name then
-                    other_ing.amount = other_ing.amount + prereq.amount
+                    other_ing.amount = other_ing.amount + ing.amount
                     already_present = true
                     break
                 end
@@ -1017,7 +1020,7 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
-        data.raw.recipe[recipe_name].ingredients = new_ings
+        data.raw.recipe[recipe_name].ingredients = ings
     end
 end
 
