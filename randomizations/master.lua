@@ -21,6 +21,7 @@ log("Gathering misc randomizations")
 -- Misc randomizations
 -- TODO
 --require("misc/beacon-profiles")
+require("randomizations/misc/capsule-actions")
 require("randomizations/misc/equipment-shapes")
 require("randomizations/misc/fluid-boxes")
 require("randomizations/misc/gui")

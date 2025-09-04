@@ -223,18 +223,24 @@ flow_cost.eval_recipe_cost = function(params)
     -- recipe.ingredients must exist since amount < 0
     local ings_to_use = recipe.ingredients
     -- If this has an override, use that instead
-    if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil then
-        if ing_overrides[recipe_name][1] == "blacklisted" then
-            ings_to_use = {}
-    
-            reachable = false
-        -- Check that use_data isn't set for whether we use the overrides
-        elseif not use_data then
-            ings_to_use = {}
-    
-            for _, ing in pairs(ing_overrides[recipe_name]) do
-                table.insert(ings_to_use, ing)
+    if ing_overrides ~= nil then
+        if ing_overrides[recipe_name] ~= nil then
+            if ing_overrides[recipe_name][1] == "blacklisted" then
+                ings_to_use = {}
+        
+                reachable = false
+            -- Check that use_data isn't set for whether we use the overrides
+            elseif not use_data then
+                ings_to_use = {}
+        
+                for _, ing in pairs(ing_overrides[recipe_name]) do
+                    table.insert(ings_to_use, ing)
+                end
             end
+        else
+            ings_to_use = {}
+
+            reachable = false
         end
     end
     for _, ing in pairs(ings_to_use) do
@@ -297,7 +303,7 @@ flow_cost.local_cost_update = function(params)
         for recipe_name, _ in pairs(material_to_recipe[curr_node.name]) do
             -- Don't use blacklisted recipes for item costs
             -- Note: This doesn't seem to do anything, probably safe to delete
-            if ing_overrides == nil or ing_overrides[recipe_name] == nil or ing_overrides[recipe_name][1] ~= "blacklisted" then
+            if ing_overrides == nil or (ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted") then
                 -- Only check recipes for which this is an ingredient
                 -- We can't use amount here because it takes results into account, which we don't want
                 local recipe_ingredients = data.raw.recipe[recipe_name].ingredients
@@ -333,7 +339,7 @@ flow_cost.local_cost_update = function(params)
                 end
             end
         end
-    elseif curr_node.type == "recipe" and (ing_overrides == nil or ing_overrides[curr_node.name] == nil or ing_overrides[curr_node.name][1] ~= "blacklisted") then
+    elseif curr_node.type == "recipe" and (ing_overrides == nil or (ing_overrides[curr_node.name] ~= nil and ing_overrides[curr_node.name][1] ~= "blacklisted")) then
         -- Distribute cost evenly over results
         local num_results = 0
         for _, amount in pairs(recipe_to_material[curr_node.name]) do

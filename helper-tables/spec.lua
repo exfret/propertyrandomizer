@@ -110,6 +110,12 @@ local spec = {
             val = "default"
         }
     },
+    capsule_actions = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- A classic
     -- Disabled for now due to bug
     --[[cliff_sizes = {

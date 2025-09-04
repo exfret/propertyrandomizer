@@ -43,6 +43,15 @@ script.on_event(defines.events.on_cargo_pod_finished_descending, function(event)
     end
 end)
 
+script.on_event(defines.events.on_script_trigger_effect, function(event)
+    if event.effect_id == "teleport-player" then
+        local position_to_teleport_to = game.surfaces[event.surface_index].find_non_colliding_position(event.source_entity.name, event.target_position, 5, 0.1)
+        if position_to_teleport_to ~= nil then
+            event.source_entity.teleport(position_to_teleport_to)
+        end
+    end
+end)
+
 script.on_nth_tick(1, function(event)
     -- Print warnings on 10th tick
     if event.tick == 10 then
