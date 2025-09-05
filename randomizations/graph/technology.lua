@@ -1,3 +1,5 @@
+local constants = require("helper-tables/constants")
+
 local build_graph = require("lib/graph/build-graph")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
@@ -29,9 +31,36 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
         end
     end
 
+    -- A reachability graph for each of the three starter planets
+    -- If something is in the reachability graph for one planet, it can't rely on things outside it
+    -- CRITICAL TODO: Test for base game/don't hardcode planets here
+    local planet_names = {"fulgora", "gleba", "vulcanus"}
+    local planet_sort_info = {}
+    for _, planet_name in pairs(planet_names) do
+        local planet_specific_blacklist = {}
+        for _, other_planet_name in pairs(planet_names) do
+            if other_planet_name ~= planet_name then
+                local other_planet_node = dep_graph[build_graph.key("space-location-discovery", other_planet_name)]
+                for _, prereq in pairs(other_planet_node.prereqs) do
+                    planet_specific_blacklist[build_graph.conn_key({prereq, other_planet_node})] = true
+                end
+            end
+        end
+        -- Also blacklist planet science packs so that things after them can require other planets
+        for _, science_pack_name in pairs({"electromagnetic-science-pack", "agricultural-science-pack", "metallurgic-science-pack"}) do
+            local science_pack_node = dep_graph[build_graph.key("item", science_pack_name)]
+            for _, prereq in pairs(science_pack_node.prereqs) do
+                planet_specific_blacklist[build_graph.conn_key({prereq, science_pack_node})] = true
+            end
+        end
+        planet_sort_info[planet_name] = top_sort.sort(dep_graph, planet_specific_blacklist)
+    end
+
     -- Last resort shuffle
     local tech_shuffle = table.deepcopy(tech_sort)
     rng.shuffle(rng.key({id = id}), tech_shuffle)
+
+    -- "First" resort shuffle
 
     local color_to_tech = {}
     for _, node in pairs(tech_sort) do
@@ -43,7 +72,6 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
         table.insert(color_to_tech[ing_hash], node)
     end
 
-    -- "First" resort shuffle
     local color_to_tech_shuffled = table.deepcopy(color_to_tech)
     for _, tech_list in pairs(color_to_tech_shuffled) do
         rng.shuffle(rng.key({id = id}), tech_list)
@@ -53,9 +81,32 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
     local stripped_techs = {}
     local sort_state = top_sort.sort(dep_graph, blacklist)
     for ind, node in pairs(tech_sort) do
-        local reachable = sort_state.reachable
+        local reachable = table.deepcopy(sort_state.reachable)
+        -- Refine reachable to exclude techs not reachable from a single planet if applicable
+        local to_remove_from_reachable = {}
+        local is_nauvis_tech = true
+        for _, planet_name in pairs(planet_names) do
+            if planet_sort_info[planet_name].reachable[build_graph.key(node.type, node.name)] then
+                for reachable_node_name, _ in pairs(reachable) do
+                    if not planet_sort_info[planet_name].reachable[reachable_node_name] then
+                        to_remove_from_reachable[reachable_node_name] = true
+                    end
+                end
+            else
+                -- Don't allow science packs to take the spot of earlier packs, which leads to too few spots at that level
+                for reachable_node_name, _ in pairs(reachable) do
+                    if planet_sort_info[planet_name].reachable[reachable_node_name] then
+                        to_remove_from_reachable[reachable_node_name] = true
+                    end
+                end
 
-        local found_correct_color = false
+                is_nauvis_tech = false
+            end
+        end
+        for reachable_node_name, _ in pairs(to_remove_from_reachable) do
+            reachable[reachable_node_name] = nil
+        end
+
         local correct_color_techs = color_to_tech_shuffled[hash_tech(data.raw.technology[node.name])]
 
         local function search_over_list(node_list)
@@ -79,14 +130,15 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
             return false
         end
         
-        if not search_over_list(correct_color_techs) then
+        -- Only try color preservation for nauvis techs
+        if (not is_nauvis_tech) or not search_over_list(correct_color_techs) then
             if not search_over_list(tech_shuffle) then
                 -- Couldn't find a prerequisite
                 error()
             end
         end
 
-        -- Update reachable
+        -- Update blacklist
         for _, prereq in pairs(node.prereqs) do
             blacklist[build_graph.conn_key({prereq, node})] = false
             sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, node})
