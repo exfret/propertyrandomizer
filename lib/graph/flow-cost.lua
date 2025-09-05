@@ -160,6 +160,7 @@ flow_cost.get_default_raw_resource_table = function()
         --["item-carbonic-asteroid-chunk"] = 1,
         --["item-oxide-asteroid-chunk"] = 1,
         ["item-carbon"] = 1, -- Add this instead of the asteroid chunks
+        ["item-ice"] = 1,
         ["fluid-ammoniacal-solution"] = 0.6,
         ["fluid-fluorine"] = 0.6,
         ["item-lithium"] = 2,

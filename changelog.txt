@@ -3,8 +3,11 @@ Version: 0.3.10
 Date: ?
   Features:
     - Capsule action randomization
+    - Planets are now more self-contained, requiring less "hopping around"
+    - Recipes have lower ingredient counts, instead preferring low numbers of high cost ingredients over thousands of copper wire
   Bugfixes:
     - Fixed recipe costs with recipe randomization being unbalanced in space age
+    - Randomized techs were actually being made more expensive on average rather than less expensive
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.9
 Date: 2025.09.02

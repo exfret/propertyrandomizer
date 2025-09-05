@@ -646,6 +646,12 @@ randomizations.recipe_ingredients = function(id)
                                 if rng.value(rng.key({id = id})) < 0.5 then
                                     table.insert(shuffled_prereqs, prereq)
                                 end
+                                -- Also, if it's expensive, add more for the algorithm since those things are hard to come by
+                                if old_aggregate_cost.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] >= 50 then
+                                    table.insert(shuffled_prereqs, prereq)
+                                    table.insert(shuffled_prereqs, prereq)
+                                    table.insert(shuffled_prereqs, prereq)
+                                end
                                 -- Add to blacklist
                                 blacklist[build_graph.conn_key({prereq, dependent_node})] = true
                             end
@@ -654,6 +660,32 @@ randomizations.recipe_ingredients = function(id)
                 end
             end
         end
+    end
+
+    -- Copied and pasted from technology.lua
+    -- A reachability graph for each of the three starter planets
+    -- If something is in the reachability graph for one planet, it can't rely on things outside it
+    -- CRITICAL TODO: Test for base game/don't hardcode planets here
+    local planet_names = {"fulgora", "gleba", "vulcanus"}
+    local planet_sort_info = {}
+    for _, planet_name in pairs(planet_names) do
+        local planet_specific_blacklist = {}
+        for _, other_planet_name in pairs(planet_names) do
+            if other_planet_name ~= planet_name then
+                local other_planet_node = dep_graph[build_graph.key("space-location-discovery", other_planet_name)]
+                for _, prereq in pairs(other_planet_node.prereqs) do
+                    planet_specific_blacklist[build_graph.conn_key({prereq, other_planet_node})] = true
+                end
+            end
+        end
+        -- Also blacklist planet science packs so that things after them can require other planets
+        for _, science_pack_name in pairs({"electromagnetic-science-pack", "agricultural-science-pack", "metallurgic-science-pack"}) do
+            local science_pack_node = dep_graph[build_graph.key("item", science_pack_name)]
+            for _, prereq in pairs(science_pack_node.prereqs) do
+                planet_specific_blacklist[build_graph.conn_key({prereq, science_pack_node})] = true
+            end
+        end
+        planet_sort_info[planet_name] = top_sort.sort(dep_graph, planet_specific_blacklist)
     end
 
     log("Shuffling")
@@ -716,7 +748,33 @@ randomizations.recipe_ingredients = function(id)
     for _, dependent in pairs(sorted_dependents) do
         log("Starting on dependent: " .. dependent.recipe.name)
 
-        local reachable = sort_state.reachable
+        local reachable = table.deepcopy(sort_state.reachable)
+        -- Refine reachable to exclude techs not reachable from a single planet if applicable
+        local to_remove_from_reachable = {}
+        local is_nauvis_tech = true
+        for _, planet_name in pairs(planet_names) do
+            if planet_sort_info[planet_name].reachable[build_graph.key(dependent.type, dependent.name)] then
+                for reachable_node_name, _ in pairs(reachable) do
+                    if not planet_sort_info[planet_name].reachable[reachable_node_name] then
+                        to_remove_from_reachable[reachable_node_name] = true
+                    end
+                end
+            else
+                -- This is done in tech randomization but not as necessary here since we have the extra item pool
+                -- Also it leads to randomization failure here sometimes anyways
+                -- Don't allow science packs to take the spot of earlier packs, which leads to too few spots at that level
+                --[[for reachable_node_name, _ in pairs(reachable) do
+                    if planet_sort_info[planet_name].reachable[reachable_node_name] then
+                        to_remove_from_reachable[reachable_node_name] = true
+                    end
+                end]]
+
+                is_nauvis_tech = false
+            end
+        end
+        for reachable_node_name, _ in pairs(to_remove_from_reachable) do
+            reachable[reachable_node_name] = nil
+        end
 
         log("Old cost update")
 
@@ -855,6 +913,15 @@ randomizations.recipe_ingredients = function(id)
                     -- If this material has a manually assigned surface, make sure this is that surface
                     --log(serpent.block(prereq.ing))
                     if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name}) then
+                        return false
+                    end
+
+                    -- Make sure the ingredient isn't too cheap
+                    local largeness_okay_multiplier = 1
+                    if prereq.ing.type == "fluid" then
+                        largeness_okay_multiplier = 0.1
+                    end
+                    if old_aggregate_cost_staged.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] < largeness_okay_multiplier * 0.002 * old_aggregate_cost_staged.recipe_to_cost[dependent.recipe.name] then
                         return false
                     end
 
@@ -1007,7 +1074,8 @@ randomizations.recipe_ingredients = function(id)
             -- Check if this is a duped ingredient
             local already_present = false
             -- Note: This process destroys other keys, but let's hope that's fine
-            -- TODO: Fix this!
+            -- We're destroying ingredient information anyways with a complete replacement of the ingredients
+            -- A more careful approach would require integrating min/max temperature mechanics into the dependency graph, which would not be fun
             for _, other_ing in pairs(ings) do
                 if other_ing.type == ing.type and other_ing.name == ing.name then
                     other_ing.amount = other_ing.amount + ing.amount

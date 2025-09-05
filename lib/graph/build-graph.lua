@@ -2291,7 +2291,7 @@ local function load()
 
             -- This is used later for the aquilo heating prerequisite
             local doesnt_freeze = false
-            local property_list = operation_energy_sources[entity_class]
+            local property_list = operation_energy_sources[entity.type]
             if type(property_list) ~= "table" then
                 property_list = {property_list}
             end
@@ -2318,7 +2318,7 @@ local function load()
                 ["fusion-reactor"] = true,
                 ["generator"] = true
             }
-            if fluid_required_for_operation[entity_class] then
+            if fluid_required_for_operation[entity.type] then
                 table.insert(prereqs, {
                     type = "operate-entity-surface-fluid",
                     name = compound_key({entity.name, surface_name})
@@ -3764,6 +3764,13 @@ function build_graph.reverse(graph_param)
     end
 
     -- Switch node ops?
+    for key, op in pairs(build_graph.ops) do
+        if op == "AND" then
+            build_graph.ops[key] = "OR"
+        elseif op == "OR" then
+            build_graph.ops[key] = "AND"
+        end
+    end
 end
 
 ----------------------------------------------------------------------

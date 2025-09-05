@@ -3,7 +3,7 @@
 --  * Study specific prereqs for fluid node randomization and add each in, checking if the node is of that type
 
 
-local build_graph = require("lib/grpah/build-graph")
+local build_graph = require("lib/graph/build-graph")
 local flow_cost = require("lib/graph/flow-cost")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
@@ -30,7 +30,7 @@ local rng = require("lib/random/rng")
 -- Randomize how you make fluids, whether via offshore pump, recipe, etc.
 -- Need to pay attention to surface constraints, so that a fluid is still makeable on the same surface it was orginally for
 randomizations.fluid_in_conns = function(id)
-    build_graph.reverse_graph(dep_graph)
+    build_graph.reverse(dep_graph)
 
     local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
     
@@ -58,7 +58,7 @@ randomizations.fluid_in_conns = function(id)
                 local function add_fluid_prereq(prereq, conn_to_blacklist)
                     local prereq_node = dep_graph[build_graph.key(prereq.type, prereq.name)]
 
-                    if fluid_to_surface[prereq_node.fluid.name] == nil or fluid_to_surface[prereq_node.fluid.name] = build_graph.surfaces[prereq_node.surface].name then
+                    if fluid_to_surface[prereq_node.fluid.name] == nil or fluid_to_surface[prereq_node.fluid.name] == build_graph.surfaces[prereq_node.surface].name then
                         if fluid_to_surface[prereq_node.fluid.name] == nil then
                             fluid_to_surface[prereq_node.fluid.name] = build_graph.surfaces[prereq_node.surface].name
 
@@ -67,10 +67,10 @@ randomizations.fluid_in_conns = function(id)
                             end
                         end
                         
-                        if old_aggregate_cost.material_to_cost["fluid-" .. prereq_node.fluid.name] != nil then
+                        if old_aggregate_cost.material_to_cost["fluid-" .. prereq_node.fluid.name] ~= nil then
                             has_fluid_prereq = true
                             table.insert(shuffled_fluid_prereqs, prereq)
-                            table.insert(blacklist, build_graph.conn_key(conn_to_blacklist))
+                            blacklist[build_graph.conn_key(conn_to_blacklist)] = true
                         end
                     end
                 end
@@ -95,11 +95,11 @@ randomizations.fluid_in_conns = function(id)
         end
     end
 
-    rng.shuffle(rng.key({id = id}), shuffled_prereqs)
+    rng.shuffle(rng.key({id = id}), shuffled_fluid_prereqs)
 
     -- CRITICAL TODO: USE THIS?
     local fluid_to_surface_satisfied = {}
-    for _, prereq in pairs(shuffled_prereqs) do
+    for _, prereq in pairs(shuffled_fluid_prereqs) do
         fluid_to_surface_satisfied[build_graph.key(prereq.type, prereq.name)] = true
     end
 
@@ -115,7 +115,7 @@ randomizations.fluid_in_conns = function(id)
 
         -- Find matching prereqs
         for i = 1, #dependent.prereqs do
-            for prereq_ind, prereq in pairs(shuffled_prereqs) do
+            for prereq_ind, prereq in pairs(shuffled_fluid_prereqs) do
                 if not ind_to_used[prereq_ind] and reachable[build_graph.key(prereq.type, prereq.name)] then
                     -- CRITICAL TODO: How to preserve surface requirements? We'd need at least one dependent to be from this surface
                     -- Probably make sure the last dependent at least has the right surface?
@@ -161,7 +161,7 @@ randomizations.fluid_in_conns = function(id)
 
             local cost_calculable = true
             if old_aggregate_cost.material_to_cost["fluid-" .. fluid_node.fluid.name] == nil then
-                cost_calculable = flase
+                cost_calculable = false
             end
 
             if cost_calculable then
@@ -169,14 +169,14 @@ randomizations.fluid_in_conns = function(id)
 
                 -- TODO: Study specific prereqs
                 for _, prereq in pairs(fluid_node.prereqs) do
-                    table.insert(shuffled_prereqs, prereq)
+                    table.insert(shuffled_fluid_prereqs, prereq)
                     blacklist[build_graph.conn_key({prereq, dependent_node})] = true
                 end
             end
         end
     end
 
-    rng.shuffle(rng.key({id = id}), shuffled_prereqs)
+    rng.shuffle(rng.key({id = id}), shuffled_fluid_prereqs)
 
     -- Don't worry about progressive cost preservation, just modify numbers in post
     for _, ]]

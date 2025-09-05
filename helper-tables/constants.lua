@@ -5,6 +5,7 @@ local constants = {
     split_bias = 0.06,
     step_size_modifier = 0.4, -- Things were getting a little too random, thus this
     steps_per_roll = 20,
+    -- Technology randomization (no special constants yet)
     -- Recipe randomization
     max_flow_iterations = 10000,
     cost_params = {
