@@ -650,7 +650,6 @@ randomizations.recipe_ingredients = function(id)
                                 if old_aggregate_cost.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] >= 50 then
                                     table.insert(shuffled_prereqs, prereq)
                                     table.insert(shuffled_prereqs, prereq)
-                                    table.insert(shuffled_prereqs, prereq)
                                 end
                                 -- Add to blacklist
                                 blacklist[build_graph.conn_key({prereq, dependent_node})] = true
