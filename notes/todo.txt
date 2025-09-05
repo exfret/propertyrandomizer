@@ -1,12 +1,10 @@
 WORKING ON:
- - Prevent big numbers of ingredients (like, >100 at once)
- - Make not every recipe randomize (same thing as with item randomization)
- - Item randomization on technologies to get science packs different
+ - Mechanics randomization
+   * Check if game is possible after mechanics randomization and print to console
 
- - Check softlocks from discord person and just submitted
  - Look into rocket launch time bug
 
-Bigger thins:
+Bigger things:
  - Various numerical/space age especially randomizations need adding
  - Tech unlock randomization
  - Tech packs required randomization

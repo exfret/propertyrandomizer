@@ -301,5 +301,6 @@ randomizations.map_colors = function(id)
     end
 end
 
+-- TODO
 randomizations.tile_visuals = function(id)
 end
