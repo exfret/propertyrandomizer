@@ -5,6 +5,21 @@ local planetary_mechanics_spec = {
 }
 
 randomizations.planetary_tiles = function(id)
+
+
+
+
+
+    log(serpent.block(data.raw["unit-spawner"]["gleba-spawner"].autoplace))
+    log(serpent.block(data.raw.planet.gleba.map_gen_settings.autoplace_controls.gleba_enemy_base))
+    log(serpent.block(data.raw["noise-expression"].gleba_spawner))
+
+
+
+
+
+
+
     local planets_list = {
         "aquilo",
         "fulgora",
@@ -102,6 +117,10 @@ randomizations.planetary_tiles = function(id)
     -- Account for special water controls
     --data.raw.planet.nauvis.map_gen_settings.autoplace_controls.water = nil
     data.raw.planet.gleba.map_gen_settings.autoplace_controls.gleba_water = nil
+    -- Also remove gleba enemies
+    data.raw.planet.gleba.map_gen_settings.autoplace_controls.gleba_enemy_base = nil
+    data.raw.planet.gleba.map_gen_settings.property_expression_names.enemy_base_radius = nil
+    data.raw.planet.gleba.map_gen_settings.property_expression_names.enemy_base_frequency = nil
 
     local mechanics_to_planet = {}
     local old_fluid_mechanics_list = {}
@@ -123,9 +142,9 @@ randomizations.planetary_tiles = function(id)
     end]=]
 
     -- Custom "shuffle" for testing
-    mechanics_to_planet["ammonia-ocean"] = "fulgora"
-    mechanics_to_planet["oilsands"] = "aquilo"
-    mechanics_to_planet["shallow-water"] = "gleba"
+    mechanics_to_planet["ammonia-ocean"] = "aquilo"
+    mechanics_to_planet["oilsands"] = "gleba"
+    mechanics_to_planet["shallow-water"] = "fulgora"
     mechanics_to_planet["lava"] = "vulcanus"
 
 
@@ -141,6 +160,16 @@ randomizations.planetary_tiles = function(id)
     local noise_layer_to_use = 12345
     for mechanic_id, tile_spec in pairs(fluid_mechanic_to_tiles) do
         local new_planet = mechanics_to_planet[mechanic_id]
+
+        local new_mechanic_id = planet_to_fluid_mechanic[new_planet]
+        if new_mechanic_id == "shallow-water" then
+            data.raw.planet[new_planet].map_gen_settings.autoplace_controls.gleba_enemy_base = {}
+            data.raw.planet[new_planet].map_gen_settings.property_expression_names.enemy_base_radius = "gleba_enemy_base_radius"
+            data.raw.planet[new_planet].map_gen_settings.property_expression_names.enemy_base_frequency = "gleba_enemy_base_frequency"
+            for _, gleba_base in pairs({"gleba-spawner", "gleba-spawner-small"}) do
+                data.raw["unit-spawner"][gleba_base].autoplace.probability_expression = "basis_noise{x = x, y = y, seed0 = map_seed, seed1 = " .. noise_layer_to_use .. ", input_scale = 1 / 5, output_scale = 1 / 50} + (" .. data.raw["unit-spawner"][gleba_base].autoplace.probability_expression .. ")"
+            end
+        end
 
         for tile_type, tile_list in pairs(tile_spec) do
             -- Transfer so this tile's autoplace is same as the new planet for its old mechanic
@@ -223,20 +252,24 @@ randomizations.planetary_tiles = function(id)
     data.raw.recipe["ammonia-rocket-fuel"].localised_name = "Ammonia unpacking"
     -- Change recipe unlocks
     patching.remove_recipe_unlock(data.raw.technology["planet-discovery-aquilo"], "ammoniacal-solution-separation")
-    table.insert(data.raw.technology["planet-discovery-fulgora"], {
+    table.insert(data.raw.technology["planet-discovery-fulgora"].effects, {
         type = "unlock-recipe",
         recipe = "ammoniacal-solution-separation"
     })
     patching.remove_recipe_unlock(data.raw.technology["planet-discovery-aquilo"], "solid-fuel-from-ammonia")
-    table.insert(data.raw.technology["planet-discovery-fulgora"], {
+    table.insert(data.raw.technology["planet-discovery-fulgora"].effects, {
         type = "unlock-recipe",
         recipe = "solid-fuel-from-ammonia"
     })
     patching.remove_recipe_unlock(data.raw.technology["planet-discovery-aquilo"], "ice-platform")
-    table.insert(data.raw.technology["planet-discovery-fulgora"], {
+    table.insert(data.raw.technology["planet-discovery-fulgora"].effects, {
         type = "unlock-recipe",
         recipe = "ice-platform"
     })
+    -- Make it so you can walk on brash ice
+    data.raw.tile["brash-ice"].collision_mask = table.deepcopy(data.raw.tile["oil-ocean-shallow"].collision_mask)
+
+    -- Fulgora - Shallow water
 
 
 

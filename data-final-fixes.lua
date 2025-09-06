@@ -16,6 +16,16 @@ log("Gathering config")
 -- Must be loaded first because it also loads settings
 require("config")
 
+-- Duplicates (if applicable)
+
+if settings.startup["propertyrandomizer-dupes"].value then
+    log("Adding duplicates")
+
+    local dupe = require("lib/dupe")
+
+    dupe.execute()
+end
+
 log("Building dependency graph (if applicable)")
 
 -- Load in dependency graph
@@ -47,6 +57,32 @@ log("Applying graph-based randomizations")
 if settings.startup["propertyrandomizer-technology"].value then
     log("Applying technology tree randomization")
 
+    randomizations.technology_tree_insnipping("technology_tree_insnipping")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+
+
+    randomizations.technology_tree_insnipping("technology_tree_insnipping")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+    randomizations.technology_tree_insnipping("technology_tree_insnipping")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+    randomizations.technology_tree_insnipping("technology_tree_insnipping")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
     -- Rebuild graph
     build_graph.load()
@@ -135,5 +171,23 @@ log("Done!")
 
 
 
-
---randomizations.planetary_tiles("planetary_tiles")
+if settings.startup["propertyrandomizer-dupes"].value then
+    -- CRITICAL TODO: REMOVE
+    --[[for _, recipe in pairs(data.raw.recipe) do
+        if recipe.results ~= nil then
+            if #recipe.results == 1 then
+                local result_prot
+                if recipe.results[1].type == "fluid" then
+                    result_prot = data.raw.fluid[recipe.results[1].name]
+                else
+                    for item_class, _ in pairs(defines.prototypes.item) do
+                        if data.raw[item_class] ~= nil and data.raw[item_class][recipe.results[1].name] ~= nil then
+                            result_prot = data.raw[item_class][recipe.results[1].name]
+                        end
+                    end
+                end
+                recipe.localised_name = result_prot.name
+            end
+        end
+    end]]
+end

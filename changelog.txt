@@ -1,6 +1,16 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.3.10
+Version: 0.3.12
 Date: ?
+---------------------------------------------------------------------------------------------------
+Version: 0.3.11
+Date: 2025.09.06
+  Features:
+    - Option to duplicate important prototypes
+  Bugfixes:
+    - Fixed that I accidentally made the mod require space age
+---------------------------------------------------------------------------------------------------
+Version: 0.3.10
+Date: 2025.09.05
   Features:
     - Capsule action randomization
     - Planets are now more self-contained, requiring less "hopping around"
