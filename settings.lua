@@ -24,7 +24,7 @@ data:extend({
             "best"
         },
         default_value = "default",
-        order = "b[bias]"
+        order = "b-a[bias]"
     },
     {
         setting_type = "startup",
@@ -40,7 +40,16 @@ data:extend({
             "ultimate"
         },
         default_value = "default",
-        order = "b[chaos]"
+        order = "b-a[chaos]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-dupes",
+        localised_name = "Duplicates (beta/not recommended)",
+        localised_description = "Whether to include duplicates of important recipes/entities/etc.",
+        default_value = false,
+        order = "b-z[dupes]"
     },
     {
         setting_type = "startup",

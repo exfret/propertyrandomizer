@@ -3,3 +3,8 @@ Name: "Watch the world burn"
 Description for setting?
 
 Sets seed to 666, bias to worst, chaos to ultimate, and turns on every randomization. Also includes a couple... "tweaks". Overrides every other setting. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.
+
+
+Everything is duped, not just important stuff
+Everything has extra ingredients and results
+Some other things

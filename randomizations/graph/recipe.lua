@@ -665,7 +665,10 @@ randomizations.recipe_ingredients = function(id)
     -- A reachability graph for each of the three starter planets
     -- If something is in the reachability graph for one planet, it can't rely on things outside it
     -- CRITICAL TODO: Test for base game/don't hardcode planets here
-    local planet_names = {"fulgora", "gleba", "vulcanus"}
+    local planet_names = {}
+    if mods["space-age"] then
+        planet_names = {"fulgora", "gleba", "vulcanus"}
+    end
     local planet_sort_info = {}
     for _, planet_name in pairs(planet_names) do
         local planet_specific_blacklist = {}

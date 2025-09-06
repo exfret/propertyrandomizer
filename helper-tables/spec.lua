@@ -90,6 +90,12 @@ local spec = {
             val = "less"
         }
     },
+    capsule_actions = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- Applies to fish and the fruits in space age
     capsule_healing = {
         setting = {
@@ -108,12 +114,6 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
-        }
-    },
-    capsule_actions = {
-        setting = {
-            name = "propertyrandomizer-misc",
-            val = "more"
         }
     },
     -- A classic

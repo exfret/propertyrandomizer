@@ -1,6 +1,8 @@
 WORKING ON:
  - Mechanics randomization
    * Check if game is possible after mechanics randomization and print to console
+   * Recipe tech unlock rando
+   * Fix localisation with dupe and item randomization
 
  - Look into rocket launch time bug
 
@@ -46,6 +48,7 @@ Bigger things:
 39. Fallback recipes approach? With recycling?
 40. Buildings don't spoil quickly
 41. Value-aware coproduct split... use already-determined costs for things to distribute value among recipe results when there's more than one result
+42. Fix localised keys for technologies with -number format
 
 DONE:
 21. Ore swap randomization

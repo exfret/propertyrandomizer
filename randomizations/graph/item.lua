@@ -405,6 +405,15 @@ randomizations.item = function(id)
                 fix_localised = true
             end
             if fix_localised then
+                -- Find original recipe prototype from dupes if applicable
+                local orig_recipe = recipe
+                while true do
+                    if orig_recipe.orig_name ~= nil then
+                        orig_recipe = data.raw.recipe[orig_recipe.orig_name]
+                    else
+                        break
+                    end
+                end
                 recipe.localised_name = {"?", locale_utils.find_localised_name(recipe), locale_utils.find_localised_name(item_node.item)}
             end
         end
