@@ -3,11 +3,11 @@ local spec = require("helper-tables/spec")
 global_seed = settings.startup["propertyrandomizer-seed"].value
 
 local bias_string_to_num = {
-    ["worst"] = -0.06,
-    ["worse"] = -0.03,
+    ["worst"] = -0.05,
+    ["worse"] = -0.025,
     ["default"] = 0,
-    ["better"] = 0.03,
-    ["best"] = 0.06
+    ["better"] = 0.025,
+    ["best"] = 0.05
 }
 
 global_bias = bias_string_to_num[settings.startup["propertyrandomizer-bias"].value]

@@ -1,6 +1,10 @@
 local locale_utils = require("lib/locale")
 local patching = require("lib/patching")
 
+-- TODO: Fuel duplication (would require duplicating coal ore patch and fixing solid fuel recipes sensibly)
+
+-- Note: Duplicating the both the item and recipe for the same thing may cause issues with icons and possibly worse right now
+
 local dupe = {}
 
 -- To dupe:
@@ -28,6 +32,7 @@ dupe.prototype = function(prototype, dupe_number)
     new_prototype.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(prototype), tostring(dupe_number)}
     -- For help in localisation later
     new_prototype.orig_name = prototype.name
+    new_prototype.dupe_number = dupe_number
 
     data:extend({
         new_prototype
@@ -122,23 +127,28 @@ dupe.item = function(item, dupe_number)
         })
     end
 
-    local item_icons
-    if new_item.icons == nil then
-        item_icons = {
-            {
-                icon = new_item.icon,
-                icon_size = new_item.icon_size or 64
-            }
-        }
-    else
-        item_icons = new_item.icons
+    for _, icon_prefix_type in pairs({"", "dark_background_"}) do
+        if new_item[icon_prefix_type .. "icon"] ~= nil or new_item[icon_prefix_type .. "icons"] ~= nil then
+            local item_icons
+            if new_item[icon_prefix_type .. "icons"] == nil then
+                item_icons = {
+                    {
+                        icon = new_item[icon_prefix_type .. "icon"],
+                        icon_size = new_item[icon_prefix_type .. "icon_size"] or 64
+                    }
+                }
+            else
+                item_icons = new_item[icon_prefix_type .. "icons"]
+            end
+            table.insert(item_icons, {
+                [icon_prefix_type .. "icon"] = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                [icon_prefix_type .. "icon_size"] = 120,
+                scale = 1 / 6,
+                shift = {-7, -7}
+            })
+            new_item[icon_prefix_type .. "icons"] = item_icons
+        end
     end
-    table.insert(item_icons, {
-        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-        icon_size = 120,
-        scale = 1 / 6,
-        shift = {-7, -7}
-    })
 
     return new_item
 end
@@ -192,10 +202,90 @@ dupe.technology = function(tech, dupe_number)
     return new_tech
 end
 
+dupe.entity = function(entity, dupe_number)
+    local new_entity = dupe.prototype(entity, dupe_number)
+
+    -- If this entity is placeable duplicate its item
+    local associated_item
+    if new_entity.placeable_by ~= nil then
+        if new_entity.placeable_by.item ~= nil then
+            new_entity.placeable_by = {new_entity.placeable_by}
+        end
+        if #new_entity.placeable_by == 1 then
+            associated_item = new_entity.placeable_by[1].item
+        end
+    end
+    if associated_item == nil then
+        for item_class, _ in pairs(defines.prototypes.item) do
+            if data.raw[item_class] ~= nil then
+                for _, item in pairs(data.raw[item_class]) do
+                    if item.place_result == entity.name then
+                        -- This technically doesn't work if multiple things can place the same thing, but that's uncommon
+                        associated_item = item
+                    end
+                end
+            end
+        end
+    end
+    if associated_item ~= nil then
+        local new_entity_item = dupe.item(associated_item, dupe_number)
+        new_entity_item.place_result = new_entity.name
+        if new_entity.minable ~= nil then
+            if new_entity.minable.result == associated_item.name then
+                new_entity.minable.result = new_entity_item.name
+            elseif new_entity.minable.results ~= nil and #new_entity.minable.results == 1 and new_entity.minable.results[1].type == "item" and new_entity.minable.results[1].name == associated_item.name then
+                new_entity.minable.results[1].name = new_entity_item.name
+            end
+        end
+    end
+
+    -- TODO: Upgrades, pasteable entities, icons, items with this as their plant result
+
+    return new_entity
+end
+
+dupe.rolling_stock = function(rolling_stock, dupe_number)
+    local new_rolling_stock = dupe.entity(rolling_stock, dupe_number)
+
+    -- Change graphics
+    if new_rolling_stock.pictures ~= nil then
+        local direction_count
+        local layer = new_rolling_stock.pictures.rotated
+        while true do
+            if layer.direction_count then
+                direction_count = layer.direction_count
+                break
+            else
+                layer = layer.layers[1]
+            end
+        end
+        local frames = {}
+        for i = 1, direction_count do
+            table.insert(frames, {
+                x = -(i - 1) * 120
+            })
+        end
+        new_rolling_stock.pictures.rotated = {
+            layers = {
+                new_rolling_stock.pictures.rotated,
+                {
+                    filename = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                    size = 120,
+                    direction_count = direction_count,
+                    frames = frames,
+                    scale = 0.6
+                }
+            }
+        }
+    end
+
+    return new_rolling_stock
+end
+
 -- Create the duplicates
 dupe.execute = function()
     -- Tech tree
-    local techs_to_dupe = {}
+    --[[local techs_to_dupe = {}
     for _, tech in pairs(data.raw.technology) do
         table.insert(techs_to_dupe, tech)
     end
@@ -203,7 +293,7 @@ dupe.execute = function()
         for i = 2, 3 do
             dupe.technology(tech, i)
         end
-    end
+    end]]
 
     -- Duplicate science pack recipes
     for _, science_pack in pairs(data.raw.tool) do
@@ -211,28 +301,26 @@ dupe.execute = function()
             dupe.recipe(data.raw.recipe[science_pack.name], 2)
         end
     end
+    dupe.recipe(data.raw.recipe["rocket-part"], 2)
 
-    -- Special items
     local items_to_dupe = {}
     for _, ammo in pairs(data.raw.ammo) do
         table.insert(items_to_dupe, ammo)
     end
-    for _, capsule in pairs(data.raw.capsule) do
-        table.insert(items_to_dupe, capsule)
-    end
-    for _, gun in pairs(data.raw.gun) do
-        table.insert(items_to_dupe, gun)
-    end
-    for _, module in pairs(data.raw.module) do
-        table.insert(items_to_dupe, module)
-    end
-    for _, armor in pairs(data.raw.armor) do
-        table.insert(items_to_dupe, armor)
-    end
     for _, item in pairs(items_to_dupe) do
         dupe.item(item, 2)
     end
+    dupe.rolling_stock(data.raw.locomotive.locomotive, 2)
 
+    -- TODO:
+    --   * Turrets
+    --   * All bot stuffs
+    --   * All power gen stuffs
+    --   * Agricultural tower (maybe "unique" crafting machines too)
+    --   * Beacon
+    --   * Fuels
+    --   * Personal equipment
+    --   * Mining drills
 
     --log(serpent.block(data.raw.technology))
     

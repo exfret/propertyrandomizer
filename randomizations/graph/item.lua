@@ -407,14 +407,26 @@ randomizations.item = function(id)
             if fix_localised then
                 -- Find original recipe prototype from dupes if applicable
                 local orig_recipe = recipe
-                while true do
-                    if orig_recipe.orig_name ~= nil then
-                        orig_recipe = data.raw.recipe[orig_recipe.orig_name]
+                if orig_recipe.orig_name ~= nil then
+                    orig_recipe = data.raw.recipe[orig_recipe.orig_name]
+                end
+                if orig_recipe.localised_name == nil then
+                    recipe.localised_name = {"?", {"recipe-name." .. orig_recipe.name}, locale_utils.find_localised_name(item_node.item)}
+                end
+                -- If the original recipe had no icon, recreate the icon as the new item's
+                if orig_recipe.icons == nil and orig_recipe.icon == nil then
+                    local recipe_icons
+                    if item_node.item.icons ~= nil then
+                        recipe.icons = item_node.item.icons
                     else
-                        break
+                        recipe.icons = {
+                            {
+                                icon = item_node.item.icon,
+                                icon_size = item_node.item.icon_size or 64
+                            }
+                        }
                     end
                 end
-                recipe.localised_name = {"?", locale_utils.find_localised_name(recipe), locale_utils.find_localised_name(item_node.item)}
             end
         end
 
