@@ -923,7 +923,7 @@ randomizations.recipe_ingredients = function(id)
                     if prereq.ing.type == "fluid" then
                         largeness_okay_multiplier = 0.1
                     end
-                    if old_aggregate_cost_staged.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] < largeness_okay_multiplier * 0.002 * old_aggregate_cost_staged.recipe_to_cost[dependent.recipe.name] then
+                    if old_aggregate_cost_staged.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] < largeness_okay_multiplier * 0.001 * old_aggregate_cost_staged.recipe_to_cost[dependent.recipe.name] then
                         return false
                     end
 

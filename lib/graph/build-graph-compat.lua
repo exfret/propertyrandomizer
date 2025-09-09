@@ -406,6 +406,7 @@ local function load(graph)
     -- Construction before any science past blue
     -- Includes bot and roboport
     -- TODO: Add equipment nodes so I can do personal roboport too
+    -- TODO: Include passive provider chest/storage chest node too
 
     prereqs = {}
 
@@ -488,6 +489,50 @@ local function load(graph)
 
             table.insert(tech_node.prereqs, {
                 type = "roboport",
+                name = "canonical"
+            })
+        end
+    end
+
+    -- Pumps before anything with blue science
+
+    prereqs = {}
+
+    for _, pump in pairs(data.raw.pump) do
+        table.insert(prereqs, {
+            type = "operate-entity",
+            name = pump.name
+        })
+    end
+
+    graph[build_graph.key("pump", "canonical")] = {
+        type = "pump",
+        name = "canonical",
+        prereqs = prereqs
+    }
+
+    build_graph.ops["pump"] = "OR"
+
+    for _, technology in pairs(data.raw.technology) do
+        local is_logistic_science_ings = {
+            ["automation-science-pack"] = true,
+            ["logistic-science-pack"] = true,
+        }
+
+        local past_logistic_science = false
+        if technology.unit ~= nil then
+            for _, ing in pairs(technology.unit.ingredients) do
+                if not is_logistic_science_ings[ing[1]] then
+                    past_logistic_science = true
+                end
+            end
+        end
+
+        if past_logistic_science then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
+
+            table.insert(tech_node.prereqs, {
+                type = "pump",
                 name = "canonical"
             })
         end
