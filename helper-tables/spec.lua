@@ -1,6 +1,7 @@
 -- Randomizations not in the spec:
 --  * Technology randomization
 --  * Recipe randomization
+--  * Recipe tech unlock randomization
 --  * Item randomization
 --
 -- The above need to be done in a certain order, which is why they are separated from the other randomizations

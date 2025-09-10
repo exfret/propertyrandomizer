@@ -28,6 +28,10 @@ local dupe_number_to_filename = {
     "number_nine.png",
 }
 
+-- Keep track of things that were already duplicated if needed
+-- Also counts duplicates as having been duplicated
+dupe.has_been_duplicated = {}
+
 dupe.prototype = function(prototype, dupe_number)
     local new_prototype = table.deepcopy(prototype)
 
@@ -41,6 +45,9 @@ dupe.prototype = function(prototype, dupe_number)
     data:extend({
         new_prototype
     })
+
+    dupe.has_been_duplicated[rng.key({prototype = prototype})] = true
+    dupe.has_been_duplicated[rng.key({prototype = new_prototype})] = true
 
     return new_prototype
 end
@@ -145,8 +152,8 @@ dupe.item = function(item, dupe_number)
                 item_icons = new_item[icon_prefix_type .. "icons"]
             end
             table.insert(item_icons, {
-                [icon_prefix_type .. "icon"] = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-                [icon_prefix_type .. "icon_size"] = 120,
+                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                icon_size = 120,
                 scale = 1 / 6,
                 shift = {-7, -7}
             })
@@ -296,7 +303,32 @@ dupe.entity = function(entity, dupe_number)
         end
     end
 
-    -- TODO: Upgrades, pasteable entities, icons, items with this as their plant result
+    if new_entity.icons ~= nil then
+        new_entity.icons = {
+            new_entity.icons,
+            {
+                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                icon_size = 120,
+                scale = 1 / 4,
+                shift = {-10, -10}
+            }
+        }
+    elseif new_entity.icon ~= nil then
+        new_entity.icons = {
+            {
+                icon = new_entity.icon,
+                icon_size = new_entity.icon_size or 64
+            },
+            {
+                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                icon_size = 120,
+                scale = 1 / 4,
+                shift = {-10, -10}
+            }
+        }
+    end
+
+    -- TODO: Upgrades, pasteable entities, items with this as their plant result
 
     return new_entity
 end
@@ -554,8 +586,6 @@ dupe.mining_drill = function(mining_drill, dupe_number)
                     for _, working_vis in pairs(new_mining_drill[graphics_set_key].working_visualisations) do
                         if working_vis[anim_key] ~= nil then
                             working_vis[anim_key] = add_icon_to_anim(working_vis[anim_key], dupe_number)
-                            -- Only add to one working visualization
-                            --break
                         end
                     end
                 end
@@ -587,21 +617,135 @@ dupe.resource = function(resource, dupe_number)
                 recursively_invert_colors(new_layer)
             end
         else
-            layer.invert_colors = treu
+            layer.invert_colors = true
         end
     end
 
     if new_resource.stages ~= nil then
         if new_resource.stages.sheet ~= nil then
+            recursively_invert_colors(new_resource.stages.sheet)
         elseif new_resource.stages.sheets ~= nil then
             for _, anim in pairs(new_resource.stages.sheets) do
                 recursively_invert_colors(anim)
             end
         elseif new_resource.stages.layers ~= nil or new_resource.stages.filename ~= nil or new_resource.stages.filenames ~= nil then
-            recursively_invert_colors(anim)
+            recursively_invert_colors(new_resource.stages)
         else
             for _, anim in pairs(new_resource.stages) do
                 recursively_invert_colors(anim)
+            end
+        end
+    end
+
+    -- If there is a single minable result, duplicate that
+    local associated_item_name
+    if new_resource.minable ~= nil then
+        if new_resource.minable.results ~= nil and #new_resource.minable.results == 1 and new_resource.minable.results[1].type == "item" then
+            associated_item_name = new_resource.minable.results[1].name
+        elseif new_resource.minable.result ~= nil then
+            associated_item_name = new_resource.minable.result
+        end
+    end
+    -- Find associated item from name
+    local associated_item
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil and data.raw[item_class][associated_item_name] then
+            associated_item = data.raw[item_class][associated_item_name]
+        end
+    end
+    if associated_item ~= nil then
+        local new_associated_item = dupe.item(associated_item, dupe_number)
+
+        new_associated_item.place_result = new_resource.name
+        if new_resource.minable ~= nil then
+            if new_resource.minable.result == associated_item.name then
+                new_resource.minable.result = new_associated_item.name
+            elseif new_resource.minable.results ~= nil and #new_resource.minable.results == 1 and new_resource.minable.results[1].type == "item" and new_resource.minable.results[1].name == associated_item.name then
+                new_resource.minable.results[1].name = new_associated_item.name
+            end
+        end
+
+        -- Assume that a recipe with just the old associated item as an ingredient and in the smelting category is the processing/plate recipe for this item
+        -- If there's multiple, the choice is just whatever we come across first
+        local new_smelted_item
+        local smelted_item
+        for _, recipe in pairs(data.raw.recipe) do
+            if recipe.category == "smelting" and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" and recipe.ingredients[1].name == associated_item.name then
+                -- Also check that this recipe is named after its result
+                if recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].type == "item" and recipe.results[1].name == recipe.name then
+                    -- Find the corresponding item
+                    for item_class, _ in pairs(defines.prototypes.item) do
+                        if data.raw[item_class] ~= nil and data.raw[item_class][recipe.name] ~= nil then
+                            smelted_item = data.raw[item_class][recipe.name]
+                            break
+                        end
+                    end
+                    new_smelted_item = dupe.item(smelted_item, dupe_number)
+                    data.raw.recipe[recipe.name .. "-exfret-" .. dupe_number .. "-copy"].ingredients[1].name = new_associated_item.name
+                    break
+                end
+            end
+        end
+        -- Make sure this smelted item is in some new recipes
+        if new_smelted_item ~= nil then
+            for _, recipe in pairs(data.raw.recipe) do
+                if not dupe.has_been_duplicated[rng.key({prototype = recipe})] then
+                    if recipe.ingredients ~= nil then
+                        for ing_ind, ing in pairs(recipe.ingredients) do
+                            if ing.type == "item" and ing.name == smelted_item.name then
+                                local new_recipe = dupe.recipe(recipe, dupe_number)
+                                new_recipe.ingredients[ing_ind].name = new_smelted_item.name
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        -- Make sure the original ore is used in some new recipes if the old one was
+        for _, recipe in pairs(data.raw.recipe) do
+            if not dupe.has_been_duplicated[rng.key({prototype = recipe})] then
+                if recipe.ingredients ~= nil then
+                    for ing_ind, ing in pairs(recipe.ingredients) do
+                        if ing.type == "item" and ing.name == associated_item.name then
+                            local new_recipe = dupe.recipe(recipe, dupe_number)
+                            new_recipe.ingredients[ing_ind].name = new_associated_item.name
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Finally, autoplace
+    log(new_resource.autoplace.probability_expression)
+    new_resource.autoplace = resource_autoplace.resource_autoplace_settings({
+        name = new_resource.name,
+        base_density = 100,
+        has_starting_area_placement = true
+    })
+    -- Idk if autoplace controls actually do much, they probably need to be coded into the actual probability expression
+    if data.raw["autoplace-control"][resource.name] ~= nil then
+        local new_autoplace_control = dupe.prototype(data.raw["autoplace-control"][resource.name], dupe_number)
+        for _, planet in pairs(data.raw.planet) do
+            if planet.map_gen_settings ~= nil then
+                if planet.autoplace_controls ~= nil then
+                    if planet.autoplace_controls[resource.name] ~= nil then
+                        planet.autoplace_controls[new_autoplace_control.name] = table.deepcopy(planet.autoplace_controls[resource.name])
+                    end
+                end
+            end
+        end
+    end
+    for _, planet in pairs(data.raw.planet) do
+        if planet.map_gen_settings ~= nil then
+            if planet.map_gen_settings.autoplace_settings ~= nil then
+                if planet.map_gen_settings.autoplace_settings.entity.settings ~= nil then
+                    if planet.map_gen_settings.autoplace_settings.entity.settings[resource.name] then
+                        planet.map_gen_settings.autoplace_settings.entity.settings[new_resource.name] = table.deepcopy(planet.map_gen_settings.autoplace_settings.entity.settings[resource.name])
+                    end
+                end
             end
         end
     end
@@ -802,7 +946,14 @@ dupe.execute = function()
     end
 
     if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
-        for _, resource in pairs(data.raw.resource) do
+        local resources_to_dupe = {}
+        for _, resource_name in pairs({"coal", "stone", "iron-ore", "copper-ore", "uranium-ore", "tungsten-ore"}) do
+            if data.raw.resource[resource_name] ~= nil then
+                local resource = data.raw.resource[resource_name]
+                table.insert(resources_to_dupe, resource)
+            end
+        end
+        for _, resource in pairs(resources_to_dupe) do
             dupe.resource(resource, 2)
         end
     end

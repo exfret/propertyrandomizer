@@ -17,6 +17,7 @@ log("Gathering graph randomizations (if applicable)")
 -- Graph randomizations
 require("randomizations/graph/item")
 require("randomizations/graph/recipe")
+require("randomizations/graph/recipe-tech-unlock")
 require("randomizations/graph/technology")
 
 log("Gathering misc randomizations")
