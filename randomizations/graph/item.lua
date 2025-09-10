@@ -247,14 +247,14 @@ randomizations.item = function(id)
                         -- No wait, do have a cost threshold just for the more ridiculous cases
                         cost_threshold = 100
                         if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
-                            -- Check now that stack sizes match up
-                            --if proposed_node.item.stack_size >= item_node.item.stack_size / 10 then
+                            -- Check now that stack sizes match up / no more light armor ore
+                            if proposed_node.item.stack_size >= item_node.item.stack_size / 10 then
                                 new_node = shuffled_order[ind]
                                 ind_to_used[ind] = true
                                 table.insert(visited_old_order, item_node)
                                 table.insert(new_order, new_node)
                                 break
-                            --end
+                            end
                         end
                     end
                     if ind == #shuffled_order then
@@ -788,6 +788,7 @@ randomizations.item = function(id)
             elseif util.parse_energy(item_node.item.fuel_value) < 1000000 then
                 item_node.item.fuel_value = "1MJ"
             end
+            item_node.item.localised_name = {"", locale_utils.find_localised_description(item_node.item), "\n[color=red](Burnable)[/color]"}
         end
     end
     for _, change in pairs(changes) do

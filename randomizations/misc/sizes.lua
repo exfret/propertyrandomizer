@@ -7,24 +7,26 @@ local randomize = randnum.rand
 
 randomizations.cliff_sizes = function(id)
     for _, cliff in pairs(data.raw.cliff) do
-        for _, orientation in pairs(cliff.orientations) do
-            local factor = randomize({
-                id = id,
-                key = rng.key({id = id, prototype = cliff}),
-                dummy = 1,
-                dir = -1
-            })
+        for orientation_type, orientation in pairs(cliff.orientations) do
+            -- The "none" orientations were causing troubles
+            if not string.find(orientation_type, "none") then
+                local factor = randomize({
+                    id = id,
+                    key = rng.key({id = id, prototype = cliff}),
+                    dummy = 1,
+                    dir = -1
+                })
 
-            for _, vector in pairs(orientation.collision_bounding_box) do
-                -- Just ignore the orientation number, api docs say it's unused
-                if type(vector) ~= "number" then
-                    vector[1] = vector[1] * factor
-                    vector[2] = vector[2] * factor
+                for _, vector in pairs(orientation.collision_bounding_box) do
+                    if type(vector) ~= "number" then
+                        vector[1] = vector[1] * factor
+                        vector[2] = vector[2] * factor
+                    end
                 end
+                
+                reformat.change_image_variations_size(orientation.pictures, factor)
+                reformat.change_image_variations_size(orientation.pictures_lower, factor)
             end
-            
-            reformat.change_image_variations_size(orientation.pictures, factor)
-            reformat.change_image_variations_size(orientation.pictures_lower, factor)
         end
     end
 end

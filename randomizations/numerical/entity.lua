@@ -480,6 +480,7 @@ randomizations.electric_pole_supply_area = function(id)
         local odd_placement
         if electric_pole.collision_box ~= nil then
             -- Just consider width parity
+            -- CRITICAL TODO: I don't think this actually works? See fluid-box randomization
             local collision_box_width_parity = math.floor(electric_pole.collision_box[2][1] - electric_pole.collision_box[1][1] + 0.5) % 2
             if collision_box_width_parity == 0 then
                 odd_placement = true

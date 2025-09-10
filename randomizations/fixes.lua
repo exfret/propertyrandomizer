@@ -52,4 +52,26 @@ randomizations.fixes = function()
             end
         end
     end
+
+    -- Remove duplicate ingredients (needed for watch the world burn mode)
+
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.ingredients ~= nil then
+            local item_ing_seen = {}
+            local new_ings = {}
+            for _, ing in pairs(recipe.ingredients) do
+                if ing.type ~= "item" or not item_ing_seen[ing.name] then
+                    item_ing_seen[ing.name] = true
+                    table.insert(new_ings, ing)
+                else
+                    for _, new_ing in pairs(new_ings) do
+                        if new_ing.type == "item" and new_ing.name == ing.name then
+                            new_ing.amount = new_ing.amount + ing.amount
+                        end
+                    end
+                end
+            end
+            recipe.ingredients = new_ings
+        end
+    end
 end

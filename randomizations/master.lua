@@ -15,11 +15,9 @@ require("randomizations/planetary/tile")
 log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
-if randomization_info.options.build_graph then
-    require("randomizations/graph/item")
-    require("randomizations/graph/recipe")
-    require("randomizations/graph/technology")
-end
+require("randomizations/graph/item")
+require("randomizations/graph/recipe")
+require("randomizations/graph/technology")
 
 log("Gathering misc randomizations")
 
@@ -30,6 +28,7 @@ require("randomizations/misc/capsule-actions")
 require("randomizations/misc/equipment-shapes")
 require("randomizations/misc/fluid-boxes")
 require("randomizations/misc/gui")
+require("randomizations/misc/item-fuels")
 require("randomizations/misc/locale")
 require("randomizations/misc/offsets")
 require("randomizations/misc/sizes")
