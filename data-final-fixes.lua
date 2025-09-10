@@ -106,6 +106,17 @@ if settings.startup["propertyrandomizer-recipe"].value then
     build_graph.add_dependents(dep_graph)
 end
 
+if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
+    log("Applying recipe tech unlock randomization")
+
+    randomizations.recipe_ingredients("recipe_tech_unlock")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
+
 if settings.startup["propertyrandomizer-item"].value then
     log("Applying item randomization")
 

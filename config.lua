@@ -13,6 +13,7 @@ if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
     settings.startup["propertyrandomizer-misc"].value = "more"
     settings.startup["propertyrandomizer-technology"].value = true
     settings.startup["propertyrandomizer-recipe"].value = true
+    settings.startup["propertyrandomizer-recipe-tech-unlock"].value = true
     settings.startup["propertyrandomizer-item"].value = true
     settings.startup["propertyrandomizer-item-percent"].value = 100
 end
@@ -83,3 +84,7 @@ for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].v
         table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
     end
 end
+
+-- Valid levels are "none", "minimal", "default", and "verbose"
+-- Currently not implemented yet
+randomization_info.options.logging = "default"

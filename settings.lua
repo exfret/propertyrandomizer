@@ -18,8 +18,8 @@ data:extend({
         localised_description = "Sets bias to worst, chaos to ultimate, adds tons of duplicates for a longer game, and turns on every randomization. Also includes a couple... \"tweaks\". Takes precedence over all below settings. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.",
         default_value = false,
         order = "az[burn]",
-        -- Hide while still a WIP
-        hidden = true
+        -- Make sure to hide while still a WIP
+        --hidden = true
     },
     {
         setting_type = "startup",
@@ -143,11 +143,20 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-recipe-tech-unlock",
+        localised_name = "Recipe unlocks",
+        localised_description = "Randomizes which tech a recipe is unlocked by.",
+        default_value = false,
+        order = "d-c[recipe]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-item",
         localised_name = "Items",
         localised_description = "Randomizes where items are in the game. For example, instead of mining coal you might mine fish, or furnaces could replace circuits as one of the most common intermediates.",
         default_value = false,
-        order = "d-c[item]"
+        order = "d-d[item]"
     },
     {
         setting_type = "startup",
