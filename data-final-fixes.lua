@@ -16,6 +16,11 @@ log("Gathering config")
 -- Must be loaded first because it also loads settings
 require("config")
 
+-- Special changes for watch the world burn mode
+if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    require("watch-the-world-burn")
+end
+
 -- Duplicates (if applicable)
 
 if settings.startup["propertyrandomizer-dupes"].value then
@@ -26,24 +31,24 @@ if settings.startup["propertyrandomizer-dupes"].value then
     dupe.execute()
 end
 
+-- NOTE: When adding a dependency graph randomization, add it to constants.lua!
+
 log("Building dependency graph (if applicable)")
 
 -- Load in dependency graph
 local build_graph
 local build_graph_compat
-if randomization_info.options.build_graph then
-    build_graph = require("lib/graph/build-graph")
-    -- Make dependency graph global
-    dep_graph = build_graph.graph
+build_graph = require("lib/graph/build-graph")
+-- Make dependency graph global
+dep_graph = build_graph.graph
 
-    -- Add custom nodes
-    log("Adding custom nodes")
-    build_graph_compat = require("lib/graph/build-graph-compat")
+-- Add custom nodes
+log("Adding custom nodes")
+build_graph_compat = require("lib/graph/build-graph-compat")
 
-    -- Build dependents
-    log("Adding dependents")
-    build_graph.add_dependents(dep_graph)
-end
+-- Build dependents
+log("Adding dependents")
+build_graph.add_dependents(dep_graph)
 
 log("Gathering randomizations")
 
@@ -63,7 +68,6 @@ if settings.startup["propertyrandomizer-technology"].value then
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
-
 
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
     -- Rebuild graph
@@ -165,29 +169,3 @@ if not offline then
 end
 
 log("Done!")
-
-
-
-
-
-
-if settings.startup["propertyrandomizer-dupes"].value then
-    -- CRITICAL TODO: REMOVE
-    --[[for _, recipe in pairs(data.raw.recipe) do
-        if recipe.results ~= nil then
-            if #recipe.results == 1 then
-                local result_prot
-                if recipe.results[1].type == "fluid" then
-                    result_prot = data.raw.fluid[recipe.results[1].name]
-                else
-                    for item_class, _ in pairs(defines.prototypes.item) do
-                        if data.raw[item_class] ~= nil and data.raw[item_class][recipe.results[1].name] ~= nil then
-                            result_prot = data.raw[item_class][recipe.results[1].name]
-                        end
-                    end
-                end
-                recipe.localised_name = result_prot.name
-            end
-        end
-    end]]
-end

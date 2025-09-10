@@ -12,6 +12,17 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-watch-the-world-burn",
+        localised_name = "Watch the world burn",
+        localised_description = "Sets bias to worst, chaos to ultimate, adds tons of duplicates for a longer game, and turns on every randomization. Also includes a couple... \"tweaks\". Takes precedence over all below settings. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.",
+        default_value = false,
+        order = "az[burn]",
+        -- Hide while still a WIP
+        hidden = true
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-bias",
         localised_name = "Bias",
@@ -46,7 +57,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-dupes",
-        localised_name = "Duplicates (beta/not recommended)",
+        localised_name = "Duplicates (beta)",
         localised_description = "Whether to include duplicates of important recipes/entities/etc.",
         default_value = false,
         order = "b-z[dupes]"
@@ -61,7 +72,7 @@ data:extend({
             "default",
             "more"
         },
-        localised_name = "Logistics randomization",
+        localised_name = "Logistics",
         localised_description = "Randomize speeds of belts/inserters, lengths of underground belts, supply area of electric poles, and other logistical things.",
         default_value = "default",
         order = "c-a[logistic]"
@@ -76,7 +87,7 @@ data:extend({
             "default",
             "more"
         },
-        localised_name = "Production randomization",
+        localised_name = "Production",
         localised_description = "Randomize production capabilities of machines, like machine crafting speeds and module slots.",
         default_value = "default",
         order = "c-b[production]"
@@ -91,7 +102,7 @@ data:extend({
             "default",
             "more"
         },
-        localised_name = "Military randomization",
+        localised_name = "Military",
         localised_description = "Randomize gun shooting speeds, bonus damage, etc. Turn this down or off if you're having troubles with biter difficulty.",
         default_value = "default",
         order = "c-c[military]"
@@ -106,7 +117,7 @@ data:extend({
             "default",
             "more"
         },
-        localised_name = "Extra Randomizations",
+        localised_name = "Extras",
         localised_description = "Randomizes most other things that don't fit in another category. 'Most' randomizes basically every other property in the game except for those touched by other settings.",
         default_value = "default",
         order = "c-z[misc]"
@@ -115,27 +126,27 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-technology",
-        localised_name = "Randomized tech tree",
+        localised_name = "Technologies",
         localised_description = "Randomizes the technology tree (which techs are prerequisites to which other ones).",
-        default_value = true,
+        default_value = false,
         order = "d-a[technology]"
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe",
-        localised_name = "Randomized recipes",
+        localised_name = "Recipes",
         localised_description = "Randomizes all recipe ingredients (not just the amounts).",
-        default_value = true,
+        default_value = false,
         order = "d-b[recipe]"
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-item",
-        localised_name = "Randomized items",
+        localised_name = "Items",
         localised_description = "Randomizes where items are in the game. For example, instead of mining coal you might mine fish, or furnaces could replace circuits as one of the most common intermediates.",
-        default_value = true,
+        default_value = false,
         order = "d-c[item]"
     },
     {
@@ -153,7 +164,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-icon",
-        localised_name = "Randomized icons (not recommended)",
+        localised_name = "Icons",
         localised_description = "Every icon in the game is randomized. Are you crazy?",
         default_value = false,
         order = "e-a[icon]"
@@ -162,7 +173,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-sound",
-        localised_name = "Randomized sound (not recommended)",
+        localised_name = "Sounds",
         localised_description = "Every sound in the game is randomized. Who are you?",
         default_value = false,
         order = "e-b[sound]"
@@ -171,7 +182,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-gui",
-        localised_name = "Randomized GUI (not recommended)",
+        localised_name = "GUI",
         localised_description = "Positions of recipes in the GUI are randomized. What the heck?",
         default_value = false,
         order = "e-c[gui]"
@@ -180,7 +191,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-locale",
-        localised_name = "Randomized names (not recommended)",
+        localised_name = "Names",
         localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
         order = "e-d[locale]"
@@ -190,7 +201,7 @@ data:extend({
         type = "string-setting",
         name = "propertyrandomizer-overrides",
         localised_name = "Custom overrides [See Tooltip]",
-        localised_description = "For extra fancy customization. See README for more information. README can be found in the mod folder locally or here online: github.com/exfret/propertyrandomizer",
+        localised_description = "For extra fancy customization. See README for more information. README can be found in the mod folder locally or online here: github.com/exfret/propertyrandomizer",
         default_value = "",
         allow_blank = true,
         order = "z-custom-override"

@@ -1,6 +1,21 @@
+local constants = require("helper-tables/constants")
 local spec = require("helper-tables/spec")
 
 global_seed = settings.startup["propertyrandomizer-seed"].value
+
+if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    settings.startup["propertyrandomizer-bias"].value = "worst"
+    settings.startup["propertyrandomizer-chaos"].value = "ultimate"
+    settings.startup["propertyrandomizer-dupes"].value = true
+    settings.startup["propertyrandomizer-logistic"].value = "more"
+    settings.startup["propertyrandomizer-production"].value = "more"
+    settings.startup["propertyrandomizer-military"].value = "more"
+    settings.startup["propertyrandomizer-misc"].value = "more"
+    settings.startup["propertyrandomizer-technology"].value = true
+    settings.startup["propertyrandomizer-recipe"].value = true
+    settings.startup["propertyrandomizer-item"].value = true
+    settings.startup["propertyrandomizer-item-percent"].value = 100
+end
 
 local bias_string_to_num = {
     ["worst"] = -0.05,
@@ -68,6 +83,3 @@ for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].v
         table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
     end
 end
-
--- Should we build the dependency graph?
-randomization_info.options.build_graph = true

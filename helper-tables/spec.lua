@@ -3,8 +3,8 @@
 --  * Recipe randomization
 --  * Item randomization
 --
--- These need to be done in a certain order, which is why they are separated from the other randomizations
--- These are all toggleable directly from the settings rather than using overrides
+-- The above need to be done in a certain order, which is why they are separated from the other randomizations
+-- They are all toggleable directly from the settings rather than using overrides
 
 local spec = {
     -- How much power accumulators store
@@ -117,13 +117,12 @@ local spec = {
         }
     },
     -- A classic
-    -- Disabled for now due to bug
-    --[[cliff_sizes = {
+    cliff_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },]]
+    },
     crafting_machine_speed = {
         setting = {
             name = "propertyrandomizer-production",
@@ -237,6 +236,12 @@ local spec = {
             val = "default"
         }
     },
+    fluid_box_locations = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- Doesn't change anything in vanilla
     fluid_emissions_multiplier = {
         setting = {
@@ -320,6 +325,12 @@ local spec = {
     item_fuel_value = {
         setting = {
             name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    item_fuels = {
+        setting = {
+            name = "propertyrandomizer-misc",
             val = "more"
         }
     },
@@ -494,12 +505,12 @@ local spec = {
         }
     },
     -- How long it takes to launch a rocket
-    rocket_silo_launch_time = {
+    --[[rocket_silo_launch_time = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     solar_panel_production = {
         setting = {
             name = "propertyrandomizer-production",

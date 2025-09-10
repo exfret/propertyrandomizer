@@ -4,7 +4,6 @@ local rng = require("lib/random/rng")
 
 -- Recipe groups and subgroups shuffle (separate functions)
 
--- NEW
 randomizations.group_order = function(id)
     local group_list = {}
     local order_list = {}
@@ -27,7 +26,6 @@ randomizations.group_order = function(id)
     end
 end
 
--- New
 randomizations.recipe_order = function(id)
     local recipe_list = {}
     local order_list = {}
@@ -50,7 +48,6 @@ randomizations.recipe_order = function(id)
     end
 end
 
--- New
 randomizations.recipe_subgroup = function(id)
     local function find_recipe_main_item(recipe)
         -- Find the item
@@ -96,7 +93,6 @@ randomizations.recipe_subgroup = function(id)
     end
 end
 
--- NEW
 randomizations.subgroup_group = function(id)
     local subgroups = {}
     local groups = {}

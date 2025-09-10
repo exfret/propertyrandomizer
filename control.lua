@@ -1,3 +1,5 @@
+local constants = require("helper-tables/constants")
+
 script.on_init(function(event)
     storage.printed_change_surface_message = false
     storage.player_ind_to_last_return_attempt_ticks = {}
@@ -56,7 +58,16 @@ script.on_nth_tick(1, function(event)
     -- Print warnings on 10th tick
     if event.tick == 10 then
         if settings.startup["propertyrandomizer-seed"].value == 23 then
-            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
+            --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
+        end
+        local has_no_graph_randomizations = true
+        for setting_name, _ in pairs(constants.dep_graph_randomizations) do
+            if settings.startup[setting_name].value then
+                has_no_graph_randomizations = false
+            end
+        end
+        if has_no_graph_randomizations then
+            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Due to slow load times, recipe and other randomizations are off by default, but highly recommended. See mod settings to turn them on. Also consider turning on prototype caching for faster load times in the future (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
         end
 
         local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)

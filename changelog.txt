@@ -1,6 +1,15 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.13
 Date: ?
+  Features:
+    - Randomized fluidbox locations
+    - Item fuel randomization
+    - Finished duplicates feature
+  Changes:
+    - Long randomizations are off by default so that mod loads quickly the first time
+    - Rocket silo launch time randomization is disabled for now due to issues
+  Bugfixes:
+    - Cliff randomization now works again
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.12
 Date: 2025.09.07
