@@ -1,5 +1,4 @@
 -- Randomize "usage" of items; for example, bullets may take the place of iron gears as the common iron intermediate
--- This should be run BEFORE recipe ingredient randomization
 
 -- Balancing todos
 --  * None at the moment, but I'm sure some will come up as it's tested
@@ -28,6 +27,7 @@ randomizations.item = function(id)
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
+    -- TODO: Need gun-turret node I think?
     type_stays_with_node = {
         ["build-entity-item"] = true,
         ["build-tile-item"] = true,
@@ -338,6 +338,7 @@ randomizations.item = function(id)
                 log(serpent.block(old_order[i]))
                 log(i)
                 error()
+                --return false
             end
         end
     end
@@ -387,7 +388,7 @@ randomizations.item = function(id)
             end
 
             local fix_localised = false
-            if recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].name == old_node.name then
+            if recipe.results ~= nil and #recipe.results >= 1 and --[[#recipe.results == 1 and]] recipe.results[1].name == old_node.name then
                 -- Fix main product for localisations
                 table.insert(changes, {
                     tbl = recipe,
@@ -612,8 +613,8 @@ randomizations.item = function(id)
                                         shifts[i][1] = shifts[i][1] + 0.2 * (1 - 2 * rng.value(rng.key({id = id, prototype = entity})))
                                         shifts[i][2] = shifts[i][2] + 0.2 * (1 - 2 * rng.value(rng.key({id = id, prototype = entity})))
                                     end
-                                    selection_box_x_size = entity.selection_box[2][1] - entity.selection_box[1][1]
-                                    selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
+                                    local selection_box_x_size = entity.selection_box[2][1] - entity.selection_box[1][1]
+                                    local selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                     for i = 1, #shifts do
                                         table.insert(entity.lower_pictures[j].layers, {
                                             filename = item_node.item.icon or item_node.item.icons[1].icon,
@@ -788,7 +789,7 @@ randomizations.item = function(id)
             elseif util.parse_energy(item_node.item.fuel_value) < 1000000 then
                 item_node.item.fuel_value = "1MJ"
             end
-            item_node.item.localised_name = {"", locale_utils.find_localised_description(item_node.item), "\n[color=red](Burnable)[/color]"}
+            item_node.item.localised_name = {"", locale_utils.find_localised_name(item_node.item), "\n[color=red](Burnable)[/color]"}
         end
     end
     for _, change in pairs(changes) do
@@ -801,9 +802,6 @@ randomizations.item = function(id)
         change.tbl[change.prop] = change.old_node_item[change.prop]
     end
 
-    -- wood needs to have fuel value as the initial fuel of most burner energy sources
-    -- TODO: Sense for this and fix it automatically!
-    --data.raw.item.wood.fuel_value = "2MJ"
-    --data.raw.item.wood.fuel_category = "chemical"
-    -- TODO: Change whatever is now from coal to have a fuel value?
+    -- return that we've succeeded
+    return true
 end

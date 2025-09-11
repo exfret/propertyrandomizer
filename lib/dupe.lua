@@ -202,7 +202,10 @@ dupe.technology = function(tech, dupe_number)
         for _, prereq in pairs(new_tech.prerequisites) do
             local prereq_prefix, prereq_suffix = prereq:match("^(.*)%-(%d+)$")
             if prereq_suffix ~= nil and tonumber(prereq_suffix) ~= nil then
-                table.insert(new_prerequisites, prereq_prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. prereq_suffix)
+                -- Ignore leveled techs for now
+                -- CRITICAL TODO: just fix the issues
+                --table.insert(new_prerequisites, prereq_prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. prereq_suffix)
+                table.insert(new_prerequisites, prereq)
             else
                 table.insert(new_prerequisites, prereq .. "-exfret-" .. tostring(dupe_number) .. "-copy")
             end
@@ -609,7 +612,7 @@ dupe.mining_drill = function(mining_drill, dupe_number)
 end
 
 dupe.resource = function(resource, dupe_number)
-    new_resource = dupe.entity(resource, dupe_number)
+    local new_resource = dupe.entity(resource, dupe_number)
 
     local function recursively_invert_colors(layer)
         if layer.layers ~= nil then
@@ -656,7 +659,6 @@ dupe.resource = function(resource, dupe_number)
     if associated_item ~= nil then
         local new_associated_item = dupe.item(associated_item, dupe_number)
 
-        new_associated_item.place_result = new_resource.name
         if new_resource.minable ~= nil then
             if new_resource.minable.result == associated_item.name then
                 new_resource.minable.result = new_associated_item.name
@@ -789,29 +791,45 @@ dupe.execute = function()
         -- Tech tree
         local techs_to_dupe = {}
         for _, tech in pairs(data.raw.technology) do
-            table.insert(techs_to_dupe, tech)
+            -- Don't dupe techs with levels since those were having issues that I don't want to deal with right now
+            local prefix, suffix = tech.name:match("^(.*)%-(%d+)$")
+            if suffix == nil or tonumber(suffix) == nil then
+                table.insert(techs_to_dupe, tech)
+            end
         end
         for _, tech in pairs(techs_to_dupe) do
-            for i = 2, 3 do
+            for i = 2, 4 do
                 dupe.technology(tech, i)
             end
         end
     end
 
+    local num_dupes = 2
+    -- Dupe some things extra times in watch the world burn mode
+    if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+        num_dupes = 3
+    end
+
     -- Duplicate science pack recipes
     for _, science_pack in pairs(data.raw.tool) do
         if data.raw.recipe[science_pack.name] ~= nil then
-            dupe.recipe(data.raw.recipe[science_pack.name], 2)
+            for i = 2, num_dupes do
+                dupe.recipe(data.raw.recipe[science_pack.name], i)
+            end
         end
     end
-    dupe.recipe(data.raw.recipe["rocket-part"], 2)
+    for i = 2, num_dupes do
+        dupe.recipe(data.raw.recipe["rocket-part"], i)
+    end
 
     local items_to_dupe = {}
     for _, ammo in pairs(data.raw.ammo) do
         table.insert(items_to_dupe, ammo)
     end
     for _, item in pairs(items_to_dupe) do
-        dupe.item(item, 2)
+        for i = 2, num_dupes do
+            dupe.item(item, i)
+        end
     end
 
     local rolling_stock_to_dupe = {}
@@ -829,7 +847,9 @@ dupe.execute = function()
         end
     end
     for _, turret in pairs(turrets_to_dupe) do
-        dupe.turret(turret, 2)
+        for i = 2, num_dupes do
+            dupe.turret(turret, i)
+        end
     end
 
     local robots_to_dupe = {}
@@ -839,7 +859,9 @@ dupe.execute = function()
         end
     end
     for _, robot in pairs(robots_to_dupe) do
-        dupe.robot(robot, 2)
+        for i = 2, num_dupes do
+            dupe.robot(robot, i)
+        end
     end
 
     local roboports_to_dupe = {}
@@ -847,7 +869,9 @@ dupe.execute = function()
         table.insert(roboports_to_dupe, roboport)
     end
     for _, roboport in pairs(roboports_to_dupe) do
-        dupe.roboport(roboport, 2)
+        for i = 2, num_dupes do
+            dupe.roboport(roboport, i)
+        end
     end
 
     -- Add logistic chests, mainly for recipe rando or other graph randos
@@ -864,7 +888,9 @@ dupe.execute = function()
         table.insert(boilers_to_dupe, boiler)
     end
     for _, boiler in pairs(boilers_to_dupe) do
-        dupe.boiler(boiler, 2)
+        for i = 2, num_dupes do
+            dupe.boiler(boiler, i)
+        end
     end
 
     local generators_to_dupe = {}
@@ -872,7 +898,9 @@ dupe.execute = function()
         table.insert(generators_to_dupe, generator)
     end
     for _, generator in pairs(generators_to_dupe) do
-        dupe.generator(generator, 2)
+        for i = 2, num_dupes do
+            dupe.generator(generator, i)
+        end
     end
 
     local solar_panels_to_dupe = {}
@@ -880,7 +908,9 @@ dupe.execute = function()
         table.insert(solar_panels_to_dupe, solar_panel)
     end
     for _, solar_panel in pairs(solar_panels_to_dupe) do
-        dupe.solar_panel(solar_panel, 2)
+        for i = 2, num_dupes do
+            dupe.solar_panel(solar_panel, i)
+        end
     end
 
     local reactors_to_dupe = {}
@@ -912,7 +942,9 @@ dupe.execute = function()
         end
     end
     for _, crafting_machine in pairs(crafting_machines_to_dupe) do
-        dupe.crafting_machine(crafting_machine, 2)
+        for i = 2, num_dupes do
+            dupe.crafting_machine(crafting_machine, i)
+        end
     end
 
     local beacons_to_dupe = {}
@@ -920,7 +952,9 @@ dupe.execute = function()
         table.insert(beacons_to_dupe, beacon)
     end
     for _, beacon in pairs(beacons_to_dupe) do
-        dupe.beacon(beacon, 2)
+        for i = 2, num_dupes do
+            dupe.beacon(beacon, i)
+        end
     end
 
     local mining_drills_to_dupe = {}
@@ -928,7 +962,9 @@ dupe.execute = function()
         table.insert(mining_drills_to_dupe, mining_drill)
     end
     for _, mining_drill in pairs(mining_drills_to_dupe) do
-        dupe.mining_drill(mining_drill, 2)
+        for i = 2, num_dupes do
+            dupe.mining_drill(mining_drill, i)
+        end
     end
 
     local equipment_to_dupe = {}
@@ -942,7 +978,9 @@ dupe.execute = function()
         end
     end
     for _, equipment in pairs(equipment_to_dupe) do
-        dupe.equipment(equipment, 2)
+        for i = 2, num_dupes do
+            dupe.equipment(equipment, i)
+        end
     end
 
     if settings.startup["propertyrandomizer-watch-the-world-burn"].value then

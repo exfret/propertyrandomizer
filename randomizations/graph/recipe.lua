@@ -646,6 +646,10 @@ randomizations.recipe_ingredients = function(id)
                                 if rng.value(rng.key({id = id})) < 0.5 then
                                     table.insert(shuffled_prereqs, prereq)
                                 end
+                                -- With watch the world burn mode, we add more; this helps the algorithm out and makes things more chaotic
+                                if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+                                    table.insert(shuffled_prereqs, prereq)
+                                end
                                 -- Also, if it's expensive, add more for the algorithm since those things are hard to come by
                                 if old_aggregate_cost.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] >= 50 then
                                     table.insert(shuffled_prereqs, prereq)
