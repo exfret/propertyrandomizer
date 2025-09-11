@@ -5,6 +5,8 @@ Date: ?
     - Randomized fluidbox locations
     - Item fuel randomization
     - Finished duplicates feature
+    - Recipe tech unlock randomization
+    - Ultimate chaos mode with many duplicates rough draft complete
   Changes:
     - Long randomizations are off by default so that mod loads quickly the first time
     - Rocket silo launch time randomization is disabled for now due to issues

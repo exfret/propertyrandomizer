@@ -7,15 +7,15 @@ randomizations.inserter_offsets = function(id)
         {0, 0.8}, -- Near
         {0, 2.2}, -- Far
         {0, 4.2}, -- Very far
-        {-1, 0}, -- To the side
-        {1, 1}, -- Diagonal
+        {-0.98, 0}, -- To the side
+        {0.98, 0.98}, -- Diagonal
     }
     local pickup_positions = {
-        {0, -1}, -- Standard
-        {0, -2}, -- Long-handed
-        {0, -4}, -- Very long-handed
-        {1, 0}, -- To the side
-        {-1, -1}, -- Diagonal
+        {0, -0.98}, -- Standard
+        {0, -1.98}, -- Long-handed
+        {0, -3.98}, -- Very long-handed
+        {0.98, 0}, -- To the side
+        {-0.98, -0.98}, -- Diagonal
         {-1.2, -0.2}, -- Diagonal, sorta?
         {-2.2, 7.2} -- Huh?
     }

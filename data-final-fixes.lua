@@ -109,7 +109,7 @@ end
 if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
     log("Applying recipe tech unlock randomization")
 
-    randomizations.recipe_ingredients("recipe_tech_unlock")
+    randomizations.recipe_tech_unlock("recipe_tech_unlock")
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -120,12 +120,24 @@ end
 if settings.startup["propertyrandomizer-item"].value then
     log("Applying item randomization")
 
-    randomizations.item("item")
+    local should_break = randomizations.item("item")
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
+
+    --[[while true do
+        local should_break = randomizations.item("item")
+        -- Rebuild graph
+        build_graph.load()
+        dep_graph = build_graph.graph
+        build_graph_compat.load(dep_graph)
+        build_graph.add_dependents(dep_graph)
+        if should_break then
+            break
+        end
+    end]]
 end
 
 log("Done applying graph-based randomizations")
