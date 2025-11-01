@@ -1,5 +1,6 @@
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
+local fleish = require("lib/random/fleishman")
 
 local randnum = {}
 
@@ -36,7 +37,9 @@ randnum.fill_in_defaults = function(params)
         soft_max = true,
         hard_max = true,
         step_size = true,
-        real_bias = true
+        real_bias = true,
+        -- For non-normal randomization implementation
+        mul_std = true,
     }
     for k, _ in pairs(params) do
         if not is_allowed_param[k] then
@@ -112,6 +115,15 @@ randnum.fill_in_defaults = function(params)
         very_big = 20
     }
     params.step_size = str_to_step_size[params.variance or "medium"]
+
+    local str_to_mul_std = {
+        very_small = 1.1,
+        small = 1.2,
+        medium = 1.5,
+        big = 2.0,
+        very_big = 3.5
+    }
+    params.mul_std = str_to_mul_std[params.variance or "medium"]
 
     -- Returns either negative or positive the split bias
     local real_split_bias = constants.split_bias * (2 * rng.range(params.key, 0, 1) - 1)
@@ -210,9 +222,12 @@ randnum.rand = function(params)
     if not valid then
         return params.val
     end
+    local tbl, property, key = params.tbl, params.property, params.key
+    local real_bias, dir, step_size = params.real_bias, params.dir, params.step_size
+    local val, soft_min, hard_min, soft_max, hard_max = params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max
+    local mul_std, bias_idx, chaos_val = params.mul_std, global_bias_idx, global_chaos
     
-    local tbl, property, key, real_bias, dir, val, soft_min, hard_min, soft_max, hard_max, step_size = params.tbl, params.property, params.key, params.real_bias, params.dir, params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max, params.step_size
-
+    --[[ What is this, a homebrewed random walk algorithm?
     -- Perform randomization
     for i = 1, constants.num_rolls do
         local sign = dir
@@ -241,6 +256,23 @@ randnum.rand = function(params)
             end
         end
     end
+    ]]
+
+    if dir < 0 then
+        -- assuming 5 bias options: 0 (strong negative) to 4 (strong positive) with 2 as no bias
+        bias_idx = (5 - 1) - bias_idx
+    end
+
+    val = fleish.randomize_multiplicatively(key, val, mul_std, bias_idx, chaos_val)
+
+    --[[ Nah, no mercy
+    if val > hard_max then
+        val = hard_max
+    end
+    if val < hard_min then
+        val = hard_min
+    end
+    ]]
 
     val = randnum.fixes(params, val)
 
