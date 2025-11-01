@@ -26,7 +26,16 @@ local bias_string_to_num = {
     ["best"] = 0.05
 }
 
+local bias_string_to_idx = {
+    ["worst"] = 0,
+    ["worse"] = 1,
+    ["default"] = 2,
+    ["better"] = 3,
+    ["best"] = 4,
+}
+
 global_bias = bias_string_to_num[settings.startup["propertyrandomizer-bias"].value]
+global_bias_idx = bias_string_to_idx[settings.startup["propertyrandomizer-bias"].value]
 
 local chaos_string_to_num = {
     ["light"] = 0.3,
