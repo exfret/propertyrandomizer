@@ -29,6 +29,12 @@ local spec = {
             val = "more"
         }
     },
+    agricultural_tower_radius = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     ammo_damage = {
         setting = {
             name = "propertyrandomizer-military",
@@ -44,6 +50,18 @@ local spec = {
     armor_inventory_bonus = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    asteroid_collector_radius = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_mass = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -615,6 +633,12 @@ local spec = {
     },
     -- How much damage crashing into things with a given vehicle does
     vehicle_crash_damage = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    vehicle_effectivity = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
