@@ -51,7 +51,7 @@ randomizations.recipe_results_numerical = function(id)
                         dummy = old_production,
                         abs_min = 1,
                         rounding = "discrete",
-                        dir = -1
+                        dir = 1
                     })
                     result.amount = new_production + ignored_by_stats
                 end
