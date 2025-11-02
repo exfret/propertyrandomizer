@@ -115,7 +115,7 @@ randnum.fill_in_defaults = function(params)
         very_big = 20
     }
     params.step_size = str_to_step_size[params.variance or "medium"]
-
+    
     local str_to_mul_std = {
         very_small = 1.1,
         small = 1.2,
@@ -155,13 +155,47 @@ end
 
 local function round_discrete(num)
     local modulus = 1
-    if 20 < num then
+
+    -- Expert programmer level algorithm here
+    if num < 10 then
+        modulus = 1
+    elseif num < 30 then
         modulus = 5
-    elseif 100 < num then
+    elseif num < 100 then
         modulus = 10
+    elseif num < 300 then
+        modulus = 50
+    elseif num < 1000 then
+        modulus = 100
+    elseif num < 3000 then
+        modulus = 500
+    elseif num < 10000 then
+        modulus = 1000
+    elseif num < 30000 then
+        modulus = 5000
+    elseif num < 100000 then
+        modulus = 10000
+    elseif num < 300000 then
+        modulus = 50000
+    elseif num < 1000000 then
+        modulus = 100000
+    elseif num < 3000000 then
+        modulus = 500000
+    elseif num < 10000000 then
+        modulus = 1000000
+    elseif num < 30000000 then
+        modulus = 5000000
+    elseif num < 100000000 then
+        modulus = 10000000
+    elseif num < 300000000 then
+        modulus = 50000000
+    elseif num < 1000000000 then
+        modulus = 100000000
+    else
+        modulus = 500000000
     end
 
-    rounded_num = math.floor((num + modulus / 2) / modulus) * modulus
+    local rounded_num = math.floor(num / modulus + 0.5) * modulus
     if rounded_num == 0 then
         rounded_num = math.ceil(num / modulus) * modulus
     end
@@ -173,6 +207,47 @@ local function round_pure_discrete(num)
     return math.floor(num + 1 / 2)
 end
 
+local function round_discrete_float(num)
+    if num == 0 then
+        return 0
+    end
+    if num > 3 then
+        return round_discrete(num)
+    end
+    local modulus = 1
+    if num > 1 then
+        modulus = 0.5
+    elseif num > 0.3 then
+        modulus = 0.1
+    elseif num > 0.1 then
+        modulus = 0.05
+    elseif num > 0.03 then
+        modulus = 0.01
+    elseif num > 0.01 then
+        modulus = 0.005
+    elseif num > 0.003 then
+        modulus = 0.001
+    elseif num > 0.001 then
+        modulus = 0.0005
+    elseif num > 0.0003 then
+        modulus = 0.0001
+    elseif num > 0.0001 then
+        modulus = 0.00005
+    elseif num > 0.00003 then
+        modulus = 0.00001
+    elseif num > 0.00001 then
+        modulus = 0.000005
+    elseif num > 0.000003 then
+        modulus = 0.000001
+    elseif num > 0.000001 then
+        modulus = 0.000001
+    else
+        return num -- There surely aren't numbers smaller than this, right?
+    end
+
+    return math.floor(num / modulus + 0.5) * modulus
+end
+
 randnum.fixes = function(params, val)
     -- Rounding first
     if params.rounding == "normal" then -- Default rounding value
@@ -181,6 +256,8 @@ randnum.fixes = function(params, val)
         val = round_discrete(val)
     elseif params.rounding == "pure_discrete" then
         val = round_pure_discrete(val)
+    elseif params.rounding == "discrete_float" then
+        val = round_discrete_float(val)
     elseif params.rounding == "none" then
         -- Don't do anything
     -- Otherwise, there was a misspelling
@@ -226,7 +303,7 @@ randnum.rand = function(params)
     local real_bias, dir, step_size = params.real_bias, params.dir, params.step_size
     local val, soft_min, hard_min, soft_max, hard_max = params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max
     local mul_std, bias_idx, chaos_val = params.mul_std, global_bias_idx, global_chaos
-    
+
     --[[ What is this, a homebrewed random walk algorithm?
     -- Perform randomization
     for i = 1, constants.num_rolls do
