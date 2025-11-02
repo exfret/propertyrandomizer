@@ -153,99 +153,63 @@ local function round_normal(num)
     return rounded_num
 end
 
-local function round_discrete(num)
-    local modulus = 1
-
-    -- Expert programmer level algorithm here
-    if num < 10 then
-        modulus = 1
-    elseif num < 30 then
-        modulus = 5
-    elseif num < 100 then
-        modulus = 10
-    elseif num < 300 then
-        modulus = 50
-    elseif num < 1000 then
-        modulus = 100
-    elseif num < 3000 then
-        modulus = 500
-    elseif num < 10000 then
-        modulus = 1000
-    elseif num < 30000 then
-        modulus = 5000
-    elseif num < 100000 then
-        modulus = 10000
-    elseif num < 300000 then
-        modulus = 50000
-    elseif num < 1000000 then
-        modulus = 100000
-    elseif num < 3000000 then
-        modulus = 500000
-    elseif num < 10000000 then
-        modulus = 1000000
-    elseif num < 30000000 then
-        modulus = 5000000
-    elseif num < 100000000 then
-        modulus = 10000000
-    elseif num < 300000000 then
-        modulus = 50000000
-    elseif num < 1000000000 then
-        modulus = 100000000
-    else
-        modulus = 500000000
-    end
-
-    local rounded_num = math.floor(num / modulus + 0.5) * modulus
-    if rounded_num == 0 then
-        rounded_num = math.ceil(num / modulus) * modulus
-    end
-
-    return rounded_num
+local function round(num, increment)
+    return math.floor(num / increment + 0.5) * increment
 end
 
-local function round_pure_discrete(num)
-    return math.floor(num + 1 / 2)
-end
+-- Let's go for a 20% to 33% gap between each coefficient
+-- Rounding implementation below requires that adjacent numbers here are multiples of their difference
+local nice_rounding_coefficients = { 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 }
+local nice_low_integers = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 15 }
+-- take 10, 12 -> difference is 2 -> both 10 and 12 are multiples of 2 -> good
+-- take 10, 13 -> difference is 3 -> neither 10 nor 13 are multiples of 3 -> bad -> bug
 
 local function round_discrete_float(num)
     if num == 0 then
-        return 0
+        return num;
     end
-    if num > 3 then
-        return round_discrete(num)
+    local abs = math.abs(num)
+    local magnitude = 10^math.floor(math.log(abs, 10))
+    local coefficient = abs / magnitude
+    local rounded_coefficient = 0
+    for i = 2, #nice_rounding_coefficients do
+        if nice_rounding_coefficients[i] > coefficient then
+            rounded_coefficient = round(coefficient, nice_rounding_coefficients[i] - nice_rounding_coefficients[i - 1])
+            break
+        end
     end
-    local modulus = 1
-    if num > 1 then
-        modulus = 0.5
-    elseif num > 0.3 then
-        modulus = 0.1
-    elseif num > 0.1 then
-        modulus = 0.05
-    elseif num > 0.03 then
-        modulus = 0.01
-    elseif num > 0.01 then
-        modulus = 0.005
-    elseif num > 0.003 then
-        modulus = 0.001
-    elseif num > 0.001 then
-        modulus = 0.0005
-    elseif num > 0.0003 then
-        modulus = 0.0001
-    elseif num > 0.0001 then
-        modulus = 0.00005
-    elseif num > 0.00003 then
-        modulus = 0.00001
-    elseif num > 0.00001 then
-        modulus = 0.000005
-    elseif num > 0.000003 then
-        modulus = 0.000001
-    elseif num > 0.000001 then
-        modulus = 0.000001
-    else
-        return num -- There surely aren't numbers smaller than this, right?
+    local rounded_abs = rounded_coefficient * magnitude
+    if num < 0 then
+        return 0 - rounded_abs
     end
+    return rounded_abs
+end
 
-    return math.floor(num / modulus + 0.5) * modulus
+local function round_discrete(num)
+    if num == 0 then
+        return num;
+    end
+    local abs = math.abs(num)
+    if abs >= nice_low_integers[#nice_low_integers] then
+        return round_discrete_float(num)
+    end
+    local rounded_abs = 1
+    if abs > 1 then
+        for i = 2, #nice_low_integers do
+            if nice_low_integers[i] > abs then
+                rounded_abs = round(abs, nice_low_integers[i] - nice_low_integers[i - 1])
+                break
+            end
+        end
+    end
+    if num < 0 then
+        return 0 - rounded_abs
+    end
+    return rounded_abs
+end
+
+local function round_pure_discrete(num)
+    return round(num, 1)
 end
 
 randnum.fixes = function(params, val)
