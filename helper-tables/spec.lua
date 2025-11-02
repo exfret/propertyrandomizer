@@ -484,6 +484,18 @@ local spec = {
             val = "more"
         }
     },
+    recipe_ingredients_numerical = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    recipe_results_numerical = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     -- The slots in roboports for bots and repair packs
     roboport_inventory = {
         setting = {
