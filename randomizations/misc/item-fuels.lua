@@ -30,7 +30,7 @@ randomizations.item_fuels = function(id)
                             item.fuel_acceleration_multiplier = nil
                             item.fuel_top_speed_multiplier = nil
                             item.fuel_glow_color = nil
-                            item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Nonreactive)[/color]"}
+                            -- item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Nonreactive)[/color]"}
                         end
                     else
                         if rng.value(rng.key({id = id})) < 0.02 then
@@ -80,7 +80,7 @@ randomizations.item_fuels = function(id)
                             item.fuel_top_speed_multiplier = possible_top_speed_multipliers[rng.int(rng.key({id = id}), #possible_top_speed_multipliers)]
 
                             item.fuel_category = "chemical"
-                            item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Burnable)[/color]"}
+                            -- item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Burnable)[/color]"}
                         end
                     end
                 end

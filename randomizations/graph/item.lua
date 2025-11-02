@@ -789,7 +789,7 @@ randomizations.item = function(id)
             elseif util.parse_energy(item_node.item.fuel_value) < 1000000 then
                 item_node.item.fuel_value = "1MJ"
             end
-            item_node.item.localised_name = {"", locale_utils.find_localised_name(item_node.item), "\n[color=red](Burnable)[/color]"}
+            -- item_node.item.localised_name = {"", locale_utils.find_localised_name(item_node.item), "\n[color=red](Burnable)[/color]"}
         end
     end
     for _, change in pairs(changes) do
