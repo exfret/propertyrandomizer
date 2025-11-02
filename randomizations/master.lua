@@ -44,6 +44,7 @@ require("randomizations/numerical/equipment")
 require("randomizations/numerical/equipment-grid")
 require("randomizations/numerical/fluid")
 require("randomizations/numerical/item")
+require("randomizations/numerical/recipe")
 require("randomizations/numerical/technology")
 require("randomizations/numerical/tile")
 
