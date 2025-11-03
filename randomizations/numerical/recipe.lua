@@ -32,6 +32,17 @@ randomizations.recipe_ingredients_numerical = function(id)
     end
 end
 
+local non_stackable_items = {}
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            if item.stack_size <= 1 then
+                non_stackable_items[item.name] = true
+            end
+        end
+    end
+end
+
 -- New
 randomizations.recipe_results_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
@@ -39,21 +50,23 @@ randomizations.recipe_results_numerical = function(id)
             -- RECYCLING??
         elseif recipe.results ~= nil then
             for _, result in pairs(recipe.results) do
-                local old_amount = result.amount
-                local ignored_by_stats = 0
-                if result.ignored_by_stats ~= nil and result.ignored_by_stats <= old_amount then
-                    ignored_by_stats = result.ignored_by_stats
-                end
-                local old_production = old_amount - ignored_by_stats
-                if old_production > 0 then
-                    local new_production = randomize({
-                        id = id,
-                        dummy = old_production,
-                        abs_min = 1,
-                        rounding = "discrete",
-                        dir = 1
-                    })
-                    result.amount = new_production + ignored_by_stats
+                if non_stackable_items[result.name] == nil then
+                    local old_amount = result.amount
+                    local ignored_by_stats = 0
+                    if result.ignored_by_stats ~= nil and result.ignored_by_stats <= old_amount then
+                        ignored_by_stats = result.ignored_by_stats
+                    end
+                    local old_production = old_amount - ignored_by_stats
+                    if old_production > 0 then
+                        local new_production = randomize({
+                            id = id,
+                            dummy = old_production,
+                            abs_min = 1,
+                            rounding = "discrete",
+                            dir = 1
+                        })
+                        result.amount = new_production + ignored_by_stats
+                    end
                 end
             end
         end
