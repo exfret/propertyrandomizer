@@ -374,164 +374,212 @@ randomizations.item_stack_sizes = function(id)
     end
 end
 
--- TODO: Make work with negatives!
 randomizations.module_effects = function(id)
-    local cat_to_modules = {}
-    local module_to_old_effects = {}
-    for _, module in pairs(data.raw.module) do
-        -- Populate effects
-        local effects = {
-            consumption = true,
-            speed = true,
-            productivity = true,
-            pollution = true,
-            quality = true
+    local effect_names = {
+        "consumption",
+        "speed",
+        "productivity",
+        "pollution",
+        "quality"
+    }
+    -- You have no idea the lengths i went to in order to develop this point system and calculate these stats
+    local tier_points = {
+        {
+            negative_per_cat = -16,
+            target_sum = 25
+        },
+        {
+            negative_per_cat = -24,
+            target_sum = 40
+        },
+        {
+            negative_per_cat = -32,
+            target_sum = 70
         }
+    }
+    local negative_effect_stats = {
+        consumption = {
+            name = "consumption",
+            value = 0.1,
+            points = -10,
+            frequency = 6
+        },
+        speed = {
+            name = "speed",
+            value = -0.05,
+            points = -5,
+            frequency = 2
+        },
+        productivity = {
+            name = "productivity",
+            value = -0.02,
+            points = -22,
+            frequency = 4
+        },
+        pollution = {
+            name = "pollution",
+            value = 0.01,
+            points = -1,
+            frequency = 7
+        },
+        quality = {
+            name = "quality",
+            value = -0.05,
+            points = -8,
+            frequency = 3
+        }
+    }
+    local positive_effect_stats = {
+        consumption = {
+            name = "consumption",
+            value = -0.1,
+            points = 10,
+            frequency = 4
+        },
+        speed = {
+            name = "speed",
+            value = 0.1,
+            points = 40,
+            frequency = 3
+        },
+        productivity = {
+            name = "productivity",
+            value = 0.02,
+            points = 36,
+            frequency = 3
+        },
+        pollution = {
+            name = "pollution",
+            value = -0.01,
+            points = 2,
+            frequency = 5
+        },
+        quality = {
+            name = "quality",
+            value = 0.05,
+            points = 14,
+            frequency = 4
+        }
+    }
 
-        for effect, _ in pairs(effects) do
-            if module.effect[effect] == nil then
-                module.effect[effect] = 0
+    local random_effect = function (key, effects)
+        local total_weight = 0
+        for _, effect in pairs(effects) do
+            total_weight = total_weight + effect.frequency
+        end
+        local r = rng.range(key, 0, total_weight - 1)
+        for _, effect in pairs(effects) do
+            if (effect.frequency > r) then
+                return effect
             end
+            r = r - effect.frequency
         end
-
-        module_to_old_effects[module.name] = table.deepcopy(module.effect)
-
-        local sign
-
-        sign = 1
-        if module.effect.consumption < 0 then
-            sign = -1
-            module.effect.consumption = -1 * module.effect.consumption
-        end
-        randomize({
-            id = id,
-            prototype = module,
-            tbl = module.effect,
-            property = "consumption",
-            range = "small",
-            variance = "small",
-            dir = -1 * sign
-        })
-        module.effect.consumption = sign * module.effect.consumption
-
-        sign = 1
-        if module.effect.speed < 0 then
-            sign = -1
-            module.effect.speed = -1 * module.effect.speed
-        end
-        randomize({
-            id = id,
-            prototype = module,
-            tbl = module.effect,
-            property = "speed",
-            range = "small",
-            variance = "small",
-            dir = sign
-        })
-        module.effect.speed = sign * module.effect.speed
-
-        sign = 1
-        if module.effect.productivity < 0 then
-            sign = -1
-            module.effect.productivity = -1 * module.effect.productivity
-        end
-        randomize({
-            id = id,
-            prototype = module,
-            tbl = module.effect,
-            property = "productivity",
-            range = "very_small",
-            variance = "very_small",
-            dir = sign
-        })
-        module.effect.productivity = sign * module.effect.productivity
-
-        sign = 1
-        if module.effect.pollution < 0 then
-            sign = -1
-            module.effect.pollution = -1 * module.effect.pollution
-        end
-        randomize({
-            id = id,
-            prototype = module,
-            tbl = module.effect,
-            property = "pollution",
-            range = "small",
-            variance = "small",
-            dir = -1 * sign
-        })
-        module.effect.pollution = sign * module.effect.pollution
-
-        sign = 1
-        if module.effect.quality < 0 then
-            sign = -1
-            module.effect.quality = -1 * module.effect.quality
-        end
-        randomize({
-            id = id,
-            prototype = module,
-            tbl = module.effect,
-            property = "quality",
-            range = "very_small",
-            variance = "very_small",
-            dir = sign
-        })
-        module.effect.quality = sign * module.effect.quality
-
-        -- Add to cat_to_modules
-        if cat_to_modules[module.category] == nil then
-            cat_to_modules[module.category] = {}
-        end
-        table.insert(cat_to_modules[module.category], module)
+        error("Implementation error")
     end
 
-    local function sort_modules_tier(module1, module2)
-        return module1.tier < module2.tier
-    end
-
-    for module_cat, module_tbl in pairs(cat_to_modules) do
-        local prop_to_use
-        local sign = 1
-        if module_cat == "efficiency" then
-            sign = -1
-            prop_to_use = "consumption"
-        elseif module_cat == "speed" then
-            prop_to_use = "speed"
-        elseif module_cat == "productivity" then
-            prop_to_use = "productivity"
-        elseif module_cat == "quality" then
-            prop_to_use = "quality"
-        end
-
-        -- Don't sort modded module categories for now
-        if prop_to_use ~= nil then
-            local sort_modules_property = function(module1, module2) return sign * module1.effect[prop_to_use] < sign * module2.effect[prop_to_use] end
-
-            local sorted_tiers = table.deepcopy(cat_to_modules[module_cat])
-            table.sort(sorted_tiers, sort_modules_tier)
-            local sorted_effects = table.deepcopy(module_tbl)
-            table.sort(sorted_effects, sort_modules_property)
-
-            for ind, module in pairs(sorted_tiers) do
-                -- Need to go into data.raw here because sorted_tiers is a deep clone
-                data.raw.module[module.name].effect[prop_to_use] = sorted_effects[ind].effect[prop_to_use]
-            end
-        end
-    end
-
-    -- Update localised_description
+    local module_categories = {}
     for _, module in pairs(data.raw.module) do
-        for effect_name, effect_val in pairs(module.effect) do
-            local flipped = false
-            if effect_name == "consumption" or effect_name == "pollution" then
-                flipped = true
+        -- Completely disregard which effects the module previously had
+        for _, effect_name in pairs(effect_names) do
+            module.effect[effect_name] = 0
+        end
+        if module_categories[module.category] == nil then
+            module_categories[module.category] = {}
+        end
+
+        -- Assuming at most 1 module per tier in each category
+        module_categories[module.category][module.tier] = module
+
+        -- 
+        module.localised_description = {"", locale_utils.find_localised_description(module), "\n[color=red](Reconfigured)[/color]"}
+    end
+    
+    for _, module_category in pairs(module_categories) do
+        for tier, module in pairs(module_category) do
+            local key = rng.key({id = id, prototype = module})
+            local shuffled_effect_names = table.deepcopy(effect_names)
+            rng.shuffle(key, shuffled_effect_names)
+
+            -- It's always 1 normally, but not anymore!!
+            local positive_effect_count = 1
+            positive_effect_count = randomize({
+                id = id,
+                dummy = positive_effect_count,
+                rounding = "discrete",
+                dir = -1,
+                abs_min = 1,
+                abs_max = 5
+            })
+            local max_negative_effect_count = #effect_names - positive_effect_count
+
+            -- Uniform 0 to 3 negative effect count because that just so happens to be the distribution from space age
+            local negative_effect_count = math.min(rng.range(key, 0, 3), max_negative_effect_count)
+
+            -- No coordination between different categories when picking which effects they have
+            -- That is to say, modules may have overlapping effects
+            -- Also, there may be effects no modules grant
+            local target_positive_effects = {}
+            local target_negative_effects = {}
+            for i = 1, positive_effect_count do
+                target_positive_effects[i] = positive_effect_stats[shuffled_effect_names[i]]
             end
-            local normalizing_factor = 1
-            -- The game treats quality effects as actually being divided by 10
-            if effect_name == "quality" then
-                normalizing_factor = 0.1
+            for i = positive_effect_count + 1, positive_effect_count + negative_effect_count do
+                target_negative_effects[i - positive_effect_count] = negative_effect_stats[shuffled_effect_names[i]]
             end
-            module.localised_description = locale_utils.create_localised_description(module, (1 + normalizing_factor * (effect_val - module_to_old_effects[module.name][effect_name])), id, {addons = " " .. effect_name .. " (additive)", flipped = flipped, round_more = true})
+
+            -- Move all of the code above to outside of the module loop to have different tiers of the same module categories to have the same effects
+
+            local negative_target_sum = tier_points[tier].negative_per_cat * negative_effect_count
+            local positive_target_sum = tier_points[tier].target_sum - negative_target_sum
+            local positive_sum = 0
+            while positive_sum < positive_target_sum do
+                local effect = random_effect(key, target_positive_effects)
+                positive_sum = positive_sum + effect.points
+                module.effect[effect.name] = module.effect[effect.name] + effect.value
+            end
+            local negative_sum = 0
+            while negative_sum > negative_target_sum do
+                local effect = random_effect(key, target_negative_effects)
+                negative_sum = negative_sum + effect.points
+                module.effect[effect.name] = module.effect[effect.name] + effect.value
+            end
+
+            -- Some somewhat balanced effects should now be set for the module. Let's ruin it :)
+
+            for _, effect in pairs(target_positive_effects) do
+                local effect_strength = math.abs(module.effect[effect.name])
+                if effect_strength > 0 then
+                    effect_strength = randomize({
+                        id = id,
+                        dummy = effect_strength,
+                        rounding = "discrete_float",
+                        abs_min = 0.01,
+                        abs_max = 327.67
+                    })
+                    if module.effect[effect.name] < 0 then
+                        effect_strength = 0 - effect_strength
+                    end
+                    module.effect[effect.name] = effect_strength
+                end
+            end
+
+            for _, effect in pairs(target_negative_effects) do
+                local effect_strength = math.abs(module.effect[effect.name])
+                if effect_strength > 0 then
+                    effect_strength = randomize({
+                        id = id,
+                        dummy = effect_strength,
+                        rounding = "discrete_float",
+                        dir = -1,
+                        abs_min = 0.01,
+                        abs_max = 327.67
+                    })
+                    if module.effect[effect.name] < 0 then
+                        effect_strength = 0 - effect_strength
+                    end
+                    module.effect[effect.name] = effect_strength
+                end
+            end
         end
     end
 end
