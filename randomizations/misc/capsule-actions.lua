@@ -132,7 +132,7 @@ randomizations.capsule_actions = function(id)
                     data.raw.capsule[next_prototype.name] = nil
                     data.raw.item[next_prototype.name] = next_prototype
                     -- next_prototype.localised_name = {"", "Broken ", locale_utils.find_localised_name(next_prototype)}
-                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=red](Lost capsule powers)[/color]"}
+                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=red](Dysfunctional)[/color]"}
                 end
             else
                 next_prototype.capsule_action = action
@@ -142,7 +142,7 @@ randomizations.capsule_actions = function(id)
                     data.raw.item[next_prototype.name] = nil
                     data.raw.capsule[next_prototype.name] = next_prototype
                     -- next_prototype.localised_name = {"", locale_utils.find_localised_name(next_prototype), " (Capsule)"}
-                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Gained capsule powers)[/color]"}
+                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Multifunctional)[/color]"}
                 end
             end
         end
