@@ -19,7 +19,7 @@ randomizations.accumulator_buffer = function(id)
             })
 
             local factor = util.parse_energy(accumulator.energy_source.buffer_capacity) / old_buffer_capacity
-            accumulator.localised_description = locale_utils.create_localised_description(accumulator, factor, id)
+            locale_utils.create_localised_description(accumulator, factor, id)
         end
     end
 end
@@ -27,6 +27,7 @@ end
 randomizations.accumulator_input_flow = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
         if accumulator.energy_source.input_flow_limit ~= nil then
+            local old_value = util.parse_energy(accumulator.energy_source.input_flow_limit)
             randomizations.energy({
                 is_power = true,
                 id = id,
@@ -35,6 +36,8 @@ randomizations.accumulator_input_flow = function(id)
                 property = "input_flow_limit",
                 rounding = "discrete_float"
             })
+            local factor = util.parse_energy(accumulator.energy_source.input_flow_limit) / old_value
+            locale_utils.create_localised_description(accumulator, factor, id)
         end
     end
 end
@@ -42,6 +45,7 @@ end
 randomizations.accumulator_output_flow = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
         if accumulator.energy_source.output_flow_limit ~= nil then
+            local old_value = util.parse_energy(accumulator.energy_source.output_flow_limit)
             randomizations.energy({
                 is_power = true,
                 id = id,
@@ -50,6 +54,8 @@ randomizations.accumulator_output_flow = function(id)
                 property = "output_flow_limit",
                 rounding = "discrete_float"
             })
+            local factor = util.parse_energy(accumulator.energy_source.output_flow_limit) / old_value
+            locale_utils.create_localised_description(accumulator, factor, id)
         end
     end
 end
@@ -57,6 +63,7 @@ end
 -- New
 randomizations.agricultural_tower_radius = function(id)
     for _, ag_tower in pairs(data.raw["agricultural-tower"]) do
+        local old_value = ag_tower.radius
         randomize({
             id = id,
             prototype = ag_tower,
@@ -65,6 +72,8 @@ randomizations.agricultural_tower_radius = function(id)
             range = "small",
             rounding = "discrete"
         })
+        local factor = ag_tower.radius / old_value
+        locale_utils.create_localised_description(ag_tower, factor, id)
     end
 end
 
@@ -84,6 +93,7 @@ end
 -- New
 randomizations.asteroid_collector_radius = function(id)
     for _, collector in pairs(data.raw["asteroid-collector"]) do
+        local old_value = collector.collection_radius
         randomize({
             id = id,
             prototype = collector,
@@ -92,6 +102,8 @@ randomizations.asteroid_collector_radius = function(id)
             variance = "small",
             rounding = "discrete"
         })
+        local factor = collector.collection_radius / old_value
+        locale_utils.create_localised_description(collector, factor, id)
     end
 end
 
@@ -112,6 +124,8 @@ randomizations.asteroid_collector_speed = function(id)
             if collector.arm_speed_quality_scaling ~= nil then
                 collector.arm_speed_quality_scaling = collector.arm_speed_quality_scaling * collector.arm_speed_base / old_arm_speed
             end
+            local factor = collector.arm_speed_base / old_arm_speed
+            locale_utils.create_localised_description(collector, factor, id)
         end
     end
 end
@@ -121,6 +135,7 @@ randomizations.asteroid_mass = function(id)
         if asteroid.mass == nil then
             asteroid.mass = 1
         end
+        local old_value = asteroid.mass
 
         randomize({
             id = id,
@@ -130,6 +145,9 @@ randomizations.asteroid_mass = function(id)
             rounding = "discrete_float",
             dir = -1
         })
+
+        local factor = asteroid.mass / old_value
+        locale_utils.create_localised_description(asteroid, factor, id, {flipped = true})
     end
 end
 
@@ -147,7 +165,7 @@ randomizations.beacon_distribution_effectivity = function(id)
 
         local factor = beacon.distribution_effectivity / old_distribution_effectivity
         beacon.distribution_effectivity_bonus_per_quality_level = beacon.distribution_effectivity_bonus_per_quality_level * factor
-        beacon.localised_description = locale_utils.create_localised_description(beacon, factor, id)
+        locale_utils.create_localised_description(beacon, factor, id)
     end
 end
 
@@ -166,7 +184,7 @@ randomizations.beacon_supply_area = function(id)
             rounding = "discrete"
         })
 
-        beacon.localised_description = locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id)
+        locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id)
     end
 end
 
@@ -234,7 +252,7 @@ randomizations.belt_speed = function(id)
     for ind, belt in pairs(belts) do
         belt.speed = belt.speed / 480
 
-        belt.localised_description = locale_utils.create_localised_description(belt, belt.speed / old_speeds[ind], id)
+        locale_utils.create_localised_description(belt, belt.speed / old_speeds[ind], id)
     end
 end
 
@@ -251,7 +269,7 @@ randomizations.boiler_consumption = function(id)
             rounding = "discrete_float"
         })
 
-        boiler.localised_description = locale_utils.create_localised_description(boiler, util.parse_energy(boiler.energy_consumption) / old_consumption, id)
+        locale_utils.create_localised_description(boiler, util.parse_energy(boiler.energy_consumption) / old_consumption, id)
     end
 end
 
@@ -287,7 +305,7 @@ randomizations.bot_energy = function(id)
                     bot.max_energy = max_energy_as_num .. "J"
                 end
 
-                bot.localised_description = locale_utils.create_localised_description(bot, new_energy_per_move / old_energy_per_move, id, {flipped = true})
+                locale_utils.create_localised_description(bot, new_energy_per_move / old_energy_per_move, id, {flipped = true})
             end
         end
     end
@@ -315,7 +333,7 @@ randomizations.bot_speed = function(id)
                         bot.max_speed = bot.max_speed * bot.speed / old_speed
                     end
 
-                    bot.localised_description = locale_utils.create_localised_description(bot, bot.speed / old_speed, id)
+                    locale_utils.create_localised_description(bot, bot.speed / old_speed, id)
                 end
             end
         end
@@ -335,7 +353,7 @@ randomizations.burner_generator_output = function(id)
             rounding = "discrete_float"
         })
 
-        burner_generator.localised_description = locale_utils.create_localised_description(burner_generator, util.parse_energy(burner_generator.max_power_output) / old_output, id)
+        locale_utils.create_localised_description(burner_generator, util.parse_energy(burner_generator.max_power_output) / old_output, id)
     end
 end
 
@@ -382,7 +400,7 @@ randomizations.car_rotation_speed = function(id)
                 property = "rotation_speed"
             })
 
-            car.localised_description = locale_utils.create_localised_description(car, car.rotation_speed / old_rotation_speed, id)
+            locale_utils.create_localised_description(car, car.rotation_speed / old_rotation_speed, id)
         end
     end
 end
@@ -434,7 +452,7 @@ randomizations.crafting_machine_speed = function(id)
                 end
             end
 
-            machine.localised_description = locale_utils.create_localised_description(machine, machine.crafting_speed / machine_to_old_speed[machine.name], id)
+            locale_utils.create_localised_description(machine, machine.crafting_speed / machine_to_old_speed[machine.name], id)
         end
     end
 end
@@ -459,7 +477,7 @@ randomizations.electric_pole_wire_distance = function(id)
 
     for _, electric_pole in pairs(electric_poles) do
         if electric_pole_to_old_wire_dist[electric_pole.name] > 0 then
-            electric_pole.localised_description = locale_utils.create_localised_description(electric_pole, electric_pole.maximum_wire_distance / electric_pole_to_old_wire_dist[electric_pole.name], id)
+            locale_utils.create_localised_description(electric_pole, electric_pole.maximum_wire_distance / electric_pole_to_old_wire_dist[electric_pole.name], id)
         end
     end
 end
@@ -500,7 +518,7 @@ randomizations.electric_pole_supply_area = function(id)
             electric_pole.supply_area_distance = math.min(64, math.floor(electric_pole.supply_area_distance + 0.5))
         end
 
-        electric_pole.localised_description = locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id)
+        locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id)
     end
 end
 
@@ -518,7 +536,7 @@ randomizations.gate_opening_speed = function(id)
             -- Also modifies activation distance to compensate
             gate.activation_distance = gate.activation_distance * old_opening_speed / gate.opening_speed
 
-            gate.localised_description = locale_utils.create_localised_description(gate, gate.opening_speed / old_opening_speed, id)
+            locale_utils.create_localised_description(gate, gate.opening_speed / old_opening_speed, id)
         end
     end
 end
@@ -534,7 +552,7 @@ randomizations.generator_fluid_usage = function(id)
             rounding = "discrete_float"
         })
 
-        generator.localised_description = locale_utils.create_localised_description(generator, generator.fluid_usage_per_tick / old_fluid_usage, id)
+        locale_utils.create_localised_description(generator, generator.fluid_usage_per_tick / old_fluid_usage, id)
     end
 end
 
@@ -573,7 +591,7 @@ randomizations.inserter_speed = function(id)
     for _, inserter in pairs(data.raw.inserter) do
         inserter.extension_speed = inserter.extension_speed * inserter.rotation_speed / old_rotation_speeds[inserter.name]
         
-        inserter.localised_description = locale_utils.create_localised_description(inserter, inserter.rotation_speed / old_rotation_speeds[inserter.name], id)
+        locale_utils.create_localised_description(inserter, inserter.rotation_speed / old_rotation_speeds[inserter.name], id)
     end
 end
 
@@ -598,7 +616,7 @@ randomizations.inventory_sizes = function(id)
         rounding = "discrete"
     })
     for _, container in pairs(container_list) do
-        container.localised_description = locale_utils.create_localised_description(container, container.inventory_size / container_to_old_size[container.name], id)
+        locale_utils.create_localised_description(container, container.inventory_size / container_to_old_size[container.name], id)
     end
     
     -- Tier preservation for cargo wagons
@@ -618,7 +636,7 @@ randomizations.inventory_sizes = function(id)
         rounding = "discrete"
     })
     for _, cargo_wagon in pairs(wagon_list) do
-        cargo_wagon.localised_description = locale_utils.create_localised_description(cargo_wagon, cargo_wagon.inventory_size / wagon_to_old_size[cargo_wagon.name], id)
+        locale_utils.create_localised_description(cargo_wagon, cargo_wagon.inventory_size / wagon_to_old_size[cargo_wagon.name], id)
     end
 
     -- Now everything else is randomized separately
@@ -635,7 +653,7 @@ randomizations.inventory_sizes = function(id)
                     rounding = "discrete"
                 })
 
-                entity.localised_description = locale_utils.create_localised_description(entity, entity.inventory_size / old_inventory_size, id)
+                locale_utils.create_localised_description(entity, entity.inventory_size / old_inventory_size, id)
             end
         end
     end
@@ -658,7 +676,7 @@ randomizations.lab_research_speed = function(id)
             rounding = "discrete_float"
         })
 
-        lab.localised_description = locale_utils.create_localised_description(lab, lab.researching_speed / old_speed, id)
+        locale_utils.create_localised_description(lab, lab.researching_speed / old_speed, id)
     end
 end
 
@@ -691,6 +709,8 @@ randomizations.landmine_timeout = function(id)
             landmine.timeout = 120
         end
 
+        local old_value = landmine.timeout
+
         randomize({
             id = id,
             prototype = landmine,
@@ -698,17 +718,25 @@ randomizations.landmine_timeout = function(id)
             range = "big",
             dir = -1,
         })
+
+        local factor = landmine.timeout / old_value
+        locale_utils.create_localised_description(landmine, factor, id, {flipped = true})
     end
 end
 
 randomizations.landmine_trigger_radius = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
+        local old_value = landmine.trigger_radius
+
         randomize({
             id = id,
             prototype = landmine,
             property = "trigger_radius",
             range = "big"
         })
+
+        local factor = landmine.trigger_radius / old_value
+        locale_utils.create_localised_description(landmine, factor, id)
     end
 end
 
@@ -760,7 +788,7 @@ randomizations.machine_energy_usage = function(id)
                     end
 
                     -- Update description
-                    entity.localised_description = locale_utils.create_localised_description(entity, new_first_energy_val / old_first_energy_val, id, {flipped = true})
+                    locale_utils.create_localised_description(entity, new_first_energy_val / old_first_energy_val, id, {flipped = true})
                 end
             end
         end
@@ -785,7 +813,7 @@ randomizations.machine_energy_usage = function(id)
                 electric_turret.energy_source.buffer_capacity = util.parse_energy(electric_turret.energy_source.buffer_capacity) * factor .. "J"
             end
 
-            electric_turret.localised_description = locale_utils.create_localised_description(electric_turret, factor, id, {flipped = true})
+            locale_utils.create_localised_description(electric_turret, factor, id, {flipped = true})
         end
     end
 end
@@ -813,7 +841,7 @@ randomizations.machine_pollution = function(id)
                                     rounding = "discrete_float"
                                 })
 
-                                entity.localised_description = locale_utils.create_localised_description(entity, energy_source.emissions_per_minute[pollutant_id] / old_pollution, id, {addons = " (" .. pollutant_id .. ")", flipped = true})
+                                locale_utils.create_localised_description(entity, energy_source.emissions_per_minute[pollutant_id] / old_pollution, id, {addons = " (" .. pollutant_id .. ")", flipped = true})
                             end
                         end
                     end
@@ -861,7 +889,7 @@ randomizations.max_health = function(id)
                         dir = dir
                     })
                     
-                    entity.localised_description = locale_utils.create_localised_description(entity, entity.max_health / old_max_health, id, {flipped = dir == -1})
+                    locale_utils.create_localised_description(entity, entity.max_health / old_max_health, id, {flipped = dir == -1})
                 end
             end
         end
@@ -874,6 +902,7 @@ randomizations.mining_fluid_amount_needed = function(id)
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.minable ~= nil and entity.minable.required_fluid ~= nil then
+                    local old_value = entity.minable.fluid_amount
                     randomize({
                         id = id,
                         prototype = entity,
@@ -882,6 +911,9 @@ randomizations.mining_fluid_amount_needed = function(id)
                         dir = -1,
                         rounding = "discrete"
                     })
+
+                    local factor = entity.minable.fluid_amount / old_value
+                    locale_utils.create_localised_description(entity, factor, id, {flipped = true})
                 end
             end
         end
@@ -901,7 +933,7 @@ randomizations.mining_speeds = function(id)
             rounding = "discrete_float"
         })
 
-        mining_drill.localised_description = locale_utils.create_localised_description(mining_drill, mining_drill.mining_speed / old_mining_speed, id)
+        locale_utils.create_localised_description(mining_drill, mining_drill.mining_speed / old_mining_speed, id)
     end
 end
 
@@ -911,6 +943,8 @@ randomizations.mining_times = function(id)
         if entity_class ~= "resource" and data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.minable ~= nil then
+                    local old_value = entity.minable.mining_time
+
                     randomize({
                         id = id,
                         prototype = entity,
@@ -918,7 +952,11 @@ randomizations.mining_times = function(id)
                         property = "mining_time",
                         range = "small",
                         rounding = "discrete_float",
+                        dir = -1
                     })
+                    
+                    local factor = entity.minable.mining_time / old_value
+                    locale_utils.create_localised_description(entity, factor, id, {flipped = true})
                 end
             end
         end
@@ -929,6 +967,8 @@ end
 randomizations.mining_times_resource = function(id)
     for _, resource in pairs(data.raw.resource) do
         if resource.minable ~= nil then
+            local old_value = resource.minable.mining_time
+
             randomize({
                 id = id,
                 prototype = resource,
@@ -936,7 +976,11 @@ randomizations.mining_times_resource = function(id)
                 property = "mining_time",
                 range = "small",
                 rounding = "discrete_float",
+                dir = -1
             })
+
+            local factor = resource.minable.mining_time / old_value
+            locale_utils.create_localised_description(resource, factor, id, {flipped = true})
         end
     end
 end
@@ -956,7 +1000,7 @@ randomizations.module_slots = function(id)
                         abs_min = 1
                     })
 
-                    entity.localised_description = locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id)
+                    locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id)
                 end
             end
         end
@@ -976,7 +1020,7 @@ randomizations.offshore_pump_speed = function(id)
             bias = -0.05
         })
 
-        offshore_pump.localised_description = locale_utils.create_localised_description(offshore_pump, offshore_pump.pumping_speed / old_pumping_speed, id)
+        locale_utils.create_localised_description(offshore_pump, offshore_pump.pumping_speed / old_pumping_speed, id)
     end
 end
 
@@ -1006,7 +1050,7 @@ randomizations.pipe_to_ground_distance = function(id)
     for _, pipe in pairs(data.raw["pipe-to-ground"]) do
         for ind, pipe_connection in pairs(pipe.fluid_box.pipe_connections) do
             if pipe_connection.max_underground_distance ~= nil and pipe_connection.max_underground_distance > 0 then
-                pipe.localised_description = locale_utils.create_localised_description(pipe, pipe_connection.max_underground_distance / pipe_to_old_underground_distances[pipe.name][ind], id, {addons = " (Pipe connection " .. ind .. ")"})
+                locale_utils.create_localised_description(pipe, pipe_connection.max_underground_distance / pipe_to_old_underground_distances[pipe.name][ind], id)
             end
         end
     end
@@ -1023,7 +1067,7 @@ randomizations.pump_pumping_speed = function(id)
             rounding = "discrete_float",
         })
 
-        pump.localised_description = locale_utils.create_localised_description(pump, pump.pumping_speed / old_pumping_speed, id)
+        locale_utils.create_localised_description(pump, pump.pumping_speed / old_pumping_speed, id)
     end
 end
 
@@ -1041,7 +1085,7 @@ randomizations.radar_reveal_area = function(id)
             rounding = "discrete"
         })
 
-        radar.localised_description = locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id)
+        locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id)
     end
 end
 
@@ -1057,7 +1101,7 @@ randomizations.radar_search_area = function(id)
             variance = "small",
         })
 
-        radar.localised_description = locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id)
+        locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id)
     end
 end
 
@@ -1073,7 +1117,7 @@ randomizations.reactor_consumption = function(id)
             rounding = "discrete_float"
         })
 
-        reactor.localised_description = locale_utils.create_localised_description(reactor, util.parse_energy(reactor.consumption) / old_consumption, id)
+        locale_utils.create_localised_description(reactor, util.parse_energy(reactor.consumption) / old_consumption, id)
     end
 end
 
@@ -1092,27 +1136,7 @@ randomizations.reactor_neighbour_bonus = function(id)
             rounding = "discrete_float",
         })
 
-        reactor.localised_description = locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id)
-    end
-end
-
-randomizations.roboport_inventory = function(id)
-    for _, roboport in pairs(data.raw.roboport) do
-        randomize({
-            id = id,
-            prototype = roboport,
-            property = "material_slots_count",
-            range = "small",
-            rounding = "discrete"
-        })
-
-        randomize({
-            id = id,
-            prototype = roboport,
-            property = "robot_slots_count",
-            range = "small",
-            rounding = "discrete"
-        })
+        locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id)
     end
 end
 
@@ -1129,7 +1153,7 @@ randomizations.roboport_charging_energy = function(id)
             rounding = "discrete_float"
         })
 
-        roboport.localised_description = locale_utils.create_localised_description(roboport, util.parse_energy(roboport.charging_energy) / old_charging_rate, id)
+        locale_utils.create_localised_description(roboport, util.parse_energy(roboport.charging_energy) / old_charging_rate, id)
     end
 end
 
@@ -1155,7 +1179,7 @@ randomizations.roboport_charging_station_count = function(id)
                 rounding = "discrete"
             })
 
-            roboport.localised_description = locale_utils.create_localised_description(roboport, roboport.charging_station_count / old_station_count, id)
+            locale_utils.create_localised_description(roboport, roboport.charging_station_count / old_station_count, id)
         end
     end
 end
@@ -1180,8 +1204,33 @@ randomizations.roboport_construction_radius = function(id)
                 roboport.construction_radius = roboport.logistics_radius
             end
 
-            roboport.localised_description = locale_utils.create_localised_description(roboport, roboport.construction_radius / old_construction_radius, id)
+            locale_utils.create_localised_description(roboport, roboport.construction_radius / old_construction_radius, id)
         end
+    end
+end
+
+randomizations.roboport_inventory = function(id)
+    for _, roboport in pairs(data.raw.roboport) do
+        local old_value = roboport.material_slots_count + roboport.robot_slots_count
+
+        randomize({
+            id = id,
+            prototype = roboport,
+            property = "material_slots_count",
+            range = "small",
+            rounding = "discrete"
+        })
+
+        randomize({
+            id = id,
+            prototype = roboport,
+            property = "robot_slots_count",
+            range = "small",
+            rounding = "discrete"
+        })
+
+        local factor = (roboport.material_slots_count + roboport.robot_slots_count) / old_value
+        locale_utils.create_localised_description(roboport, factor, id)
     end
 end
 
@@ -1211,7 +1260,7 @@ randomizations.roboport_logistic_radius = function(id)
             end
         end
 
-        roboport.localised_description = locale_utils.create_localised_description(roboport, roboport.logistics_radius / old_logistics_radius, id)
+        locale_utils.create_localised_description(roboport, roboport.logistics_radius / old_logistics_radius, id)
     end
 end
 
@@ -1228,10 +1277,11 @@ randomizations.rocket_parts_required = function(id)
             rounding = "discrete"
         })
 
-        rocket_silo.localised_description = locale_utils.create_localised_description(rocket_silo, rocket_silo.rocket_parts_required / old_rocket_parts_required, id)
+        locale_utils.create_localised_description(rocket_silo, rocket_silo.rocket_parts_required / old_rocket_parts_required, id, {flipped = true})
     end
 end
 
+-- Removed from spec
 randomizations.rocket_silo_launch_time = function(id)
     for _, rocket_silo in pairs(data.raw["rocket-silo"]) do
         local time_factor = randomize({
@@ -1257,7 +1307,7 @@ randomizations.rocket_silo_launch_time = function(id)
         end
         rocket_silo.launch_wait_time = math.min(255, time_factor * rocket_silo.launch_wait_time)
 
-        rocket_silo.localised_description = locale_utils.create_localised_description(rocket_silo, time_factor, id, {flipped = true})
+        locale_utils.create_localised_description(rocket_silo, time_factor, id, {flipped = true})
     end
 end
 
@@ -1275,7 +1325,7 @@ randomizations.solar_panel_production = function(id)
             rounding = "discrete_float"
         })
 
-        solar_panel.localised_description = locale_utils.create_localised_description(solar_panel, util.parse_energy(solar_panel.production) / old_production, id)
+        locale_utils.create_localised_description(solar_panel, util.parse_energy(solar_panel.production) / old_production, id)
     end
 end
 
@@ -1292,7 +1342,7 @@ randomizations.storage_tank_capacity = function(id)
             rounding = "discrete_float"
         })
 
-        storage_tank.localised_description = locale_utils.create_localised_description(storage_tank, storage_tank.fluid_box.volume / old_capacity, id)
+        locale_utils.create_localised_description(storage_tank, storage_tank.fluid_box.volume / old_capacity, id)
     end
 end
 
@@ -1315,7 +1365,7 @@ randomizations.turret_damage_modifier = function(id)
                 rounding = "discrete_float"
             })
 
-            turret.localised_description = locale_utils.create_localised_description(turret, attack_parameters.damage_modifier / old_damage_modifier, id)
+            locale_utils.create_localised_description(turret, attack_parameters.damage_modifier / old_damage_modifier, id)
         end
     end
 end
@@ -1352,7 +1402,7 @@ randomizations.turret_min_range = function(id)
                     attack_parameters.min_attack_distance = attack_parameters.min_attack_distance + delta
                 end
 
-                turret.localised_description = locale_utils.create_localised_description(turret, attack_parameters.min_range / old_min_range, id, {flipped = true})
+                locale_utils.create_localised_description(turret, attack_parameters.min_range / old_min_range, id)
             end
         end
     end
@@ -1386,7 +1436,7 @@ randomizations.turret_range = function(id)
                 turret.prepare_range = turret.prepare_range * factor
             end
 
-            turret.localised_description = locale_utils.create_localised_description(turret, factor, id)
+            locale_utils.create_localised_description(turret, factor, id)
         end
     end
 end
@@ -1406,7 +1456,7 @@ randomizations.turret_rotation_speed = function(id)
                 property = "rotation_speed"
             })
 
-            turret.localised_description = locale_utils.create_localised_description(turret, turret.rotation_speed / old_rotation_speed, id)
+            locale_utils.create_localised_description(turret, turret.rotation_speed / old_rotation_speed, id)
         end
     end
 
@@ -1421,7 +1471,7 @@ randomizations.turret_rotation_speed = function(id)
                 property = "turret_rotation_speed"
             })
 
-            turret.localised_description = locale_utils.create_localised_description(turret, turret.turret_rotation_speed / old_rotation_speed, id)
+            locale_utils.create_localised_description(turret, turret.turret_rotation_speed / old_rotation_speed, id)
         end
     end
 
@@ -1440,7 +1490,7 @@ randomizations.turret_rotation_speed = function(id)
             property = "turret_rotation_speed"
         })
 
-        car.localised_description = locale_utils.create_localised_description(car, car.turret_rotation_speed / old_rotation_speed, id)
+        locale_utils.create_localised_description(car, car.turret_rotation_speed / old_rotation_speed, id)
     end
 end
 
@@ -1461,7 +1511,7 @@ randomizations.turret_shooting_speed = function(id)
             })
 
             local new_shooting_speed = 1 / turret.attack_parameters.cooldown
-            turret.localised_description = locale_utils.create_localised_description(turret, new_shooting_speed / old_shooting_speed, id)
+            locale_utils.create_localised_description(turret, new_shooting_speed / old_shooting_speed, id)
         end
     end
 end
@@ -1480,7 +1530,7 @@ randomizations.underground_belt_distance = function(id)
             rounding = "discrete"
         })
 
-        belt.localised_description = locale_utils.create_localised_description(belt, belt.max_distance / old_distance, id)
+        locale_utils.create_localised_description(belt, belt.max_distance / old_distance, id)
     end
 end
 
@@ -1488,7 +1538,7 @@ randomizations.unit_attack_speed = function(id)
     for _, unit_class in pairs({"unit", "spider-unit"}) do
         if data.raw[unit_class] ~= nil then
             for _, unit in pairs(data.raw[unit_class]) do
-                local old_attack_speed = unit.attack_parameters.cooldown
+                local old_attack_speed = 1 / unit.attack_parameters.cooldown
 
                 -- Rounding is technically off but that's fine
                 randomize({
@@ -1500,8 +1550,8 @@ randomizations.unit_attack_speed = function(id)
                     range = "small"
                 })
 
-                local new_attack_speed = unit.attack_parameters.cooldown
-                unit.localised_description = locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
+                local new_attack_speed = 1 / unit.attack_parameters.cooldown
+                locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
             end
         end
     end
@@ -1529,7 +1579,7 @@ randomizations.unit_melee_damage = function(id)
                     rounding = "discrete_float"
                 })
 
-                unit.localised_description = locale_utils.create_localised_description(unit, attack_parameters.damage_modifier / old_damage, id, {flipped = true})
+                locale_utils.create_localised_description(unit, attack_parameters.damage_modifier / old_damage, id, {flipped = true})
             end
         end
     end
@@ -1551,7 +1601,7 @@ randomizations.unit_movement_speed = function(id)
 
             unit.distance_per_frame = unit.distance_per_frame * unit.movement_speed / old_movement_speed
 
-            unit.localised_description = locale_utils.create_localised_description(unit, unit.movement_speed / old_movement_speed, id, {flipped = true})
+            locale_utils.create_localised_description(unit, unit.movement_speed / old_movement_speed, id, {flipped = true})
         end
     end
 end
@@ -1571,7 +1621,7 @@ randomizations.unit_pollution_to_join_attack = function(id)
                             rounding = "discrete_float"
                         })
 
-                        unit.localised_description = locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                        locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
                     end
                 end
             end
@@ -1613,7 +1663,7 @@ randomizations.vehicle_crash_damage = function(id)
                 end
             end
 
-            vehicle.localised_description = locale_utils.create_localised_description(vehicle, vehicle.energy_per_hit_point / old_energy_per_hit_point, id)
+            locale_utils.create_localised_description(vehicle, vehicle.energy_per_hit_point / old_energy_per_hit_point, id)
         end
     end
 end
@@ -1622,6 +1672,7 @@ end
 randomizations.vehicle_effectivity = function(id)
     -- Effectivity for cars and locomotives are in separate spots
     for _, car in pairs(data.raw.car) do
+        local old_value = car.effectivity
         randomize({
             id = id,
             prototype = car,
@@ -1629,6 +1680,8 @@ randomizations.vehicle_effectivity = function(id)
             range = "big",
             rounding = "discrete_float"
         })
+        local factor = car.effectivity / old_value
+        locale_utils.create_localised_description(car, factor, id)
     end
 
     for _, vehicle_class in pairs({"locomotive", "spider-vehicle"}) do
@@ -1639,6 +1692,8 @@ randomizations.vehicle_effectivity = function(id)
                 if energy_source.effectivity == nil then
                     energy_source.effectivity = 1
                 end
+                
+                local old_value = energy_source.effectivity
 
                 randomize({
                     id = id,
@@ -1648,6 +1703,9 @@ randomizations.vehicle_effectivity = function(id)
                     range = "big",
                     rounding = "discrete_float"
                 })
+                
+                local factor = energy_source.effectivity / old_value
+                locale_utils.create_localised_description(vehicle, factor, id)
             end
         end
     end
@@ -1678,7 +1736,7 @@ randomizations.vehicle_power = function(id)
                     vehicle.braking_force = vehicle.braking_force * new_power / old_power
                 end
 
-                vehicle.localised_description = locale_utils.create_localised_description(vehicle, new_power / old_power, id)
+                locale_utils.create_localised_description(vehicle, new_power / old_power, id)
             end
         end
     end

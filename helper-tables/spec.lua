@@ -59,6 +59,12 @@ local spec = {
             val = "more"
         }
     },
+    asteroid_collector_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     asteroid_mass = {
         setting = {
             name = "propertyrandomizer-military",
@@ -415,7 +421,7 @@ local spec = {
             val = "more"
         }
     },
-    -- Doesn't randomize certain sensitive things, like enemy HP
+    -- Affects everything, including enemy HP
     max_health = {
         setting = {
             name = "propertyrandomizer-military",
@@ -429,11 +435,29 @@ local spec = {
             val = "more"
         }
     },
+    mining_fluid_amount_needed = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     -- Mining drill speeds
     mining_speeds = {
         setting = {
             name = "propertyrandomizer-production",
             val = "less"
+        }
+    },
+    mining_times = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    mining_times_resource = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
         }
     },
     module_slots = {
@@ -496,13 +520,6 @@ local spec = {
             val = "more"
         }
     },
-    -- The slots in roboports for bots and repair packs
-    roboport_inventory = {
-        setting = {
-            name = "propertyrandomizer-logistic",
-            val = "more"
-        }
-    },
     -- How fast a roboport uses energy to charge bots
     roboport_charging_energy = {
         setting = {
@@ -518,6 +535,13 @@ local spec = {
         }
     },
     roboport_construction_radius = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    -- The slots in roboports for bots and repair packs
+    roboport_inventory = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"

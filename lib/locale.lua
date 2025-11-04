@@ -202,6 +202,35 @@ function locale_utils.find_localised_description(prototype, extra_params)
     end
 end
 
+local lerp = function(v1, v2, t)
+    return math.floor(v1 * (1 - t) + v2 * t)
+end
+
+local colors = {
+    magenta =       { 255, 0, 255 },
+    red =           { 255, 0, 0 },
+    orange =        { 255, 128, 0 },
+    gray =          { 64, 64, 64 },
+    light_green =   { 128, 255, 0 },
+    green =         { 0, 255, 0 },
+    cyan =          { 0, 255, 255 }
+}
+
+local rgb_to_string = function(r, g, b)
+    return string.format("%d,%d,%d", r, g, b)
+end
+
+local color_to_string = function(color)
+    return rgb_to_string(color[1], color[2], color[3])
+end
+
+local lerp_color = function (color1, color2, t)
+    local r = lerp(color1[1], color2[1], t)
+    local g = lerp(color1[2], color2[2], t)
+    local b = lerp(color1[3], color2[3], t)
+    return rgb_to_string(r, g, b)
+end
+
 function locale_utils.create_tooltip(factor, extra_params)
     -- Have percent_change be rounded
     local percent_change
@@ -212,32 +241,32 @@ function locale_utils.create_tooltip(factor, extra_params)
         percent_change = math.floor(100 * (factor - 1) + 0.5)
     end
     local color
-    if percent_change >= 100 then
-        if not extra_params.flipped then
-            color = "green"
-        else
-            color = "red"
-        end
-    elseif percent_change >= 30 then
-        if not extra_params.flipped then
-            color = "144,238,144"
-        else
-            color = "yellow"
-        end
-    elseif percent_change >= -30 then
-        color = "gray"
-    elseif percent_change >= -60 then
-        if not extra_params.flipped then
-            color = "yellow"
-        else
-            color = "144,238,144"
-        end
+    local exponent = math.log(factor, 2)
+    if extra_params.flipped then
+        exponent = 0 - exponent
+    end
+    if exponent < -2 then
+        color = color_to_string(colors.magenta)
+    elseif exponent < -1 then
+        local t = (exponent + 2) * 1
+        color = lerp_color(colors.magenta, colors.red, t)
+    elseif exponent < -0.5 then
+        local t = (exponent + 1) * 2
+        color = lerp_color(colors.red, colors.orange, t)
+    elseif exponent < 0 then
+        local t = (exponent + 0.5) * 2
+        color = lerp_color(colors.orange, colors.gray, t)
+    elseif exponent < 0.5 then
+        local t = (exponent + 0) * 2
+        color = lerp_color(colors.gray, colors.light_green, t)
+    elseif exponent < 1 then
+        local t = (exponent - 0.5) * 2
+        color = lerp_color(colors.light_green, colors.green, t)
+    elseif exponent < 2 then
+        local t = (exponent - 1) * 1
+        color = lerp_color(colors.green, colors.cyan, t)
     else
-        if not extra_params.flipped then
-            color = "red"
-        else
-            color = "green"
-        end
+        color = color_to_string(colors.cyan)
     end
     local sign_symbol = ""
     if percent_change >= 0 then
@@ -266,7 +295,14 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
         round_more = extra_params.round_more
     end
 
-    return {"", locale_utils.find_localised_description(prototype, {with_newline = true}), locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more}), {"propertyrandomizer-tooltip." .. id}, addons .. "[/color]"}
+    prototype.localised_description = {
+        "",
+        locale_utils.find_localised_description(prototype, {with_newline = true}),
+        locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more}),
+        {"propertyrandomizer-tooltip." .. id},
+        addons .. "[/color]"
+    }
+    return prototype.localised_description
 end
 
 function locale_utils.capitalize(str)
