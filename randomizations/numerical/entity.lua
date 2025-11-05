@@ -898,7 +898,7 @@ end
 
 -- New
 randomizations.mining_fluid_amount_needed = function(id)
-    for entity_class, _ in pairs(data.raw.entity) do
+    for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.minable ~= nil and entity.minable.required_fluid ~= nil then
@@ -939,7 +939,7 @@ end
 
 -- New
 randomizations.mining_times = function(id)
-    for entity_class, _ in pairs(data.raw.entity) do
+    for entity_class, _ in pairs(defines.prototypes.entity) do
         if entity_class ~= "resource" and data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.minable ~= nil then
