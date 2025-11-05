@@ -142,7 +142,7 @@ randomizations.capsule_actions = function(id)
                     data.raw.item[next_prototype.name] = nil
                     data.raw.capsule[next_prototype.name] = next_prototype
                     -- next_prototype.localised_name = {"", locale_utils.find_localised_name(next_prototype), " (Capsule)"}
-                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Multifunctional)[/color]"}
+                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Single-use)[/color]"}
                 end
             end
         end

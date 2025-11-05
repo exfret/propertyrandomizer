@@ -213,7 +213,8 @@ local colors = {
     gray =          { 64, 64, 64 },
     light_green =   { 128, 255, 0 },
     green =         { 0, 255, 0 },
-    cyan =          { 0, 255, 255 }
+    cyan =          { 0, 255, 255 },
+    white =         { 255, 255, 255 }
 }
 
 local rgb_to_string = function(r, g, b)
@@ -245,28 +246,34 @@ function locale_utils.create_tooltip(factor, extra_params)
     if extra_params.flipped then
         exponent = 0 - exponent
     end
-    if exponent < -2 then
-        color = color_to_string(colors.magenta)
+    if exponent < -4 then
+        color = color_to_string(colors.white)
+    elseif exponent < -2 then
+        local t = (exponent + 4) / 2
+        color = lerp_color(colors.white, colors.magenta, t)
     elseif exponent < -1 then
-        local t = (exponent + 2) * 1
+        local t = (exponent + 2) / 1
         color = lerp_color(colors.magenta, colors.red, t)
     elseif exponent < -0.5 then
-        local t = (exponent + 1) * 2
+        local t = (exponent + 1) / 0.5
         color = lerp_color(colors.red, colors.orange, t)
     elseif exponent < 0 then
-        local t = (exponent + 0.5) * 2
+        local t = (exponent + 0.5) / 0.5
         color = lerp_color(colors.orange, colors.gray, t)
     elseif exponent < 0.5 then
-        local t = (exponent + 0) * 2
+        local t = (exponent + 0) / 0.5
         color = lerp_color(colors.gray, colors.light_green, t)
     elseif exponent < 1 then
-        local t = (exponent - 0.5) * 2
+        local t = (exponent - 0.5) / 0.5
         color = lerp_color(colors.light_green, colors.green, t)
     elseif exponent < 2 then
-        local t = (exponent - 1) * 1
+        local t = (exponent - 1) / 1
         color = lerp_color(colors.green, colors.cyan, t)
+    elseif exponent < 4 then
+        local t = (exponent - 2) / 2
+        color = lerp_color(colors.cyan, colors.white, t)
     else
-        color = color_to_string(colors.cyan)
+        color = color_to_string(colors.white)
     end
     local sign_symbol = ""
     if percent_change >= 0 then
