@@ -486,9 +486,20 @@ end
 randomizations.electric_pole_supply_area = function(id)
     local electric_poles = {}
     local electric_pole_to_old_supply_area = {}
+
+    local get_collision_radius = function(electric_pole)
+        return math.ceil(electric_pole.collision_box[2][1] - electric_pole.collision_box[1][1]) / 2
+    end
+
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
         table.insert(electric_poles, electric_pole)
         electric_pole_to_old_supply_area[electric_pole.name] = electric_pole.supply_area_distance
+        -- Let's just randomize the part of the radius that extends past its own tiles
+        if electric_pole.collision_box == nil then
+            electric_pole.collision_box = { { 0, 0 }, { 0, 0 } }
+            -- Two owls staring at you    ^^^^^^^^^^^^^^^^^^^^^^
+        end
+        electric_pole.supply_area_distance = electric_pole.supply_area_distance - get_collision_radius(electric_pole)
     end
 
     randomizations.linked({
@@ -501,22 +512,15 @@ randomizations.electric_pole_supply_area = function(id)
         rounding = "discrete"
     })
 
-    -- Fix even/odd placement on center of pole
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
-        local odd_placement
-        if electric_pole.collision_box ~= nil then
-            -- Just consider width parity
-            -- CRITICAL TODO: I don't think this actually works? See fluid-box randomization
-            local collision_box_width_parity = math.floor(electric_pole.collision_box[2][1] - electric_pole.collision_box[1][1] + 0.5) % 2
-            if collision_box_width_parity == 0 then
-                odd_placement = true
-            end
+        local collision_radius = get_collision_radius(electric_pole)
+        local odd_size = (collision_radius * 2) % 2 == 1
+        local max_value = 64
+        if odd_size then
+            max_value = 63.5
         end
-        if odd_placement then
-            electric_pole.supply_area_distance = math.min(63.5, math.floor(electric_pole.supply_area_distance + 1) - 0.5)
-        else
-            electric_pole.supply_area_distance = math.min(64, math.floor(electric_pole.supply_area_distance + 0.5))
-        end
+        -- Revert the previous adjustment
+        electric_pole.supply_area_distance = math.min(max_value, electric_pole.supply_area_distance + collision_radius)
 
         locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id)
     end
