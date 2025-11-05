@@ -70,10 +70,11 @@ randomizations.agricultural_tower_radius = function(id)
             property = "radius",
             abs_min = 1,
             range = "small",
-            rounding = "discrete"
+            rounding = "discrete",
+            variance = "small"
         })
         local factor = ag_tower.radius / old_value
-        locale_utils.create_localised_description(ag_tower, factor, id)
+        locale_utils.create_localised_description(ag_tower, factor, id, { variance = "small" })
     end
 end
 
@@ -103,7 +104,7 @@ randomizations.asteroid_collector_radius = function(id)
             rounding = "discrete"
         })
         local factor = collector.collection_radius / old_value
-        locale_utils.create_localised_description(collector, factor, id)
+        locale_utils.create_localised_description(collector, factor, id, { variance = "small" })
     end
 end
 
@@ -184,7 +185,7 @@ randomizations.beacon_supply_area = function(id)
             rounding = "discrete"
         })
 
-        locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id)
+        locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id, { variance = "small" })
     end
 end
 
@@ -522,7 +523,7 @@ randomizations.electric_pole_supply_area = function(id)
         -- Revert the previous adjustment
         electric_pole.supply_area_distance = math.min(max_value, electric_pole.supply_area_distance + collision_radius)
 
-        locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id)
+        locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id, { variance = "small" })
     end
 end
 
@@ -736,11 +737,12 @@ randomizations.landmine_trigger_radius = function(id)
             id = id,
             prototype = landmine,
             property = "trigger_radius",
-            range = "big"
+            range = "big",
+            variance = "small"
         })
 
         local factor = landmine.trigger_radius / old_value
-        locale_utils.create_localised_description(landmine, factor, id)
+        locale_utils.create_localised_description(landmine, factor, id, { variance = "small" })
     end
 end
 
@@ -813,7 +815,7 @@ randomizations.machine_energy_usage = function(id)
             })
 
             local factor = util.parse_energy(electric_turret.attack_parameters.ammo_type.energy_consumption) / old_energy_consumption
-            if electric_turret.energy_source and electric_turret.energy_source.buffer_capacity then
+            if electric_turret.energy_source ~= nil and electric_turret.energy_source.buffer_capacity ~= nil then
                 electric_turret.energy_source.buffer_capacity = util.parse_energy(electric_turret.energy_source.buffer_capacity) * factor .. "J"
             end
 
@@ -1089,7 +1091,7 @@ randomizations.radar_reveal_area = function(id)
             rounding = "discrete"
         })
 
-        locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id)
+        locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id, { variance = "small" })
     end
 end
 
@@ -1105,7 +1107,7 @@ randomizations.radar_search_area = function(id)
             variance = "small",
         })
 
-        locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id)
+        locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id, { variance = "small" })
     end
 end
 
@@ -1208,7 +1210,7 @@ randomizations.roboport_construction_radius = function(id)
                 roboport.construction_radius = roboport.logistics_radius
             end
 
-            locale_utils.create_localised_description(roboport, roboport.construction_radius / old_construction_radius, id)
+            locale_utils.create_localised_description(roboport, roboport.construction_radius / old_construction_radius, id, { variance = "small" })
         end
     end
 end
@@ -1264,7 +1266,7 @@ randomizations.roboport_logistic_radius = function(id)
             end
         end
 
-        locale_utils.create_localised_description(roboport, roboport.logistics_radius / old_logistics_radius, id)
+        locale_utils.create_localised_description(roboport, roboport.logistics_radius / old_logistics_radius, id, { variance = "small" })
     end
 end
 
@@ -1406,7 +1408,7 @@ randomizations.turret_min_range = function(id)
                     attack_parameters.min_attack_distance = attack_parameters.min_attack_distance + delta
                 end
 
-                locale_utils.create_localised_description(turret, attack_parameters.min_range / old_min_range, id)
+                locale_utils.create_localised_description(turret, attack_parameters.min_range / old_min_range, id, { variance = "small" })
             end
         end
     end
@@ -1440,7 +1442,7 @@ randomizations.turret_range = function(id)
                 turret.prepare_range = turret.prepare_range * factor
             end
 
-            locale_utils.create_localised_description(turret, factor, id)
+            locale_utils.create_localised_description(turret, factor, id, { variance = "small" })
         end
     end
 end

@@ -242,35 +242,39 @@ function locale_utils.create_tooltip(factor, extra_params)
         percent_change = math.floor(100 * (factor - 1) + 0.5)
     end
     local color
-    local exponent = math.log(factor, 2)
+    local mul_std = 1.5
+    if extra_params.mul_std ~= nil then
+        mul_std = extra_params.mul_std
+    end
+    local exponent = math.log(factor, mul_std)
     if extra_params.flipped then
         exponent = 0 - exponent
     end
-    if exponent < -4 then
+    if exponent < -8 then
         color = color_to_string(colors.white)
+    elseif exponent < -4 then
+        local t = (exponent + 8) / 4
+        color = lerp_color(colors.white, colors.magenta, t)
     elseif exponent < -2 then
         local t = (exponent + 4) / 2
-        color = lerp_color(colors.white, colors.magenta, t)
+        color = lerp_color(colors.magenta, colors.red, t)
     elseif exponent < -1 then
         local t = (exponent + 2) / 1
-        color = lerp_color(colors.magenta, colors.red, t)
-    elseif exponent < -0.5 then
-        local t = (exponent + 1) / 0.5
         color = lerp_color(colors.red, colors.orange, t)
     elseif exponent < 0 then
-        local t = (exponent + 0.5) / 0.5
+        local t = (exponent + 1) / 1
         color = lerp_color(colors.orange, colors.gray, t)
-    elseif exponent < 0.5 then
-        local t = (exponent + 0) / 0.5
-        color = lerp_color(colors.gray, colors.light_green, t)
     elseif exponent < 1 then
-        local t = (exponent - 0.5) / 0.5
-        color = lerp_color(colors.light_green, colors.green, t)
+        local t = (exponent + 0) / 1
+        color = lerp_color(colors.gray, colors.light_green, t)
     elseif exponent < 2 then
         local t = (exponent - 1) / 1
-        color = lerp_color(colors.green, colors.cyan, t)
+        color = lerp_color(colors.light_green, colors.green, t)
     elseif exponent < 4 then
         local t = (exponent - 2) / 2
+        color = lerp_color(colors.green, colors.cyan, t)
+    elseif exponent < 8 then
+        local t = (exponent - 4) / 4
         color = lerp_color(colors.cyan, colors.white, t)
     else
         color = color_to_string(colors.white)
@@ -281,6 +285,14 @@ function locale_utils.create_tooltip(factor, extra_params)
     end
     return "[color=" .. color .. "]" .. sign_symbol .. percent_change .. "%"
 end
+
+local str_to_mul_std = {
+    very_small = 1.1,
+    small = 1.2,
+    medium = 1.5,
+    big = 2.0,
+    very_big = 3.5
+}
 
 function locale_utils.create_localised_description(prototype, factor, id, extra_params)
     if extra_params == nil then
@@ -302,10 +314,15 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
         round_more = extra_params.round_more
     end
 
+    local mul_std = 1.5
+    if extra_params.variance ~= nil then
+        mul_std = str_to_mul_std[extra_params.variance]
+    end
+
     prototype.localised_description = {
         "",
         locale_utils.find_localised_description(prototype, {with_newline = true}),
-        locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more}),
+        locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more, mul_std = mul_std}),
         {"propertyrandomizer-tooltip." .. id},
         addons .. "[/color]"
     }
