@@ -4,6 +4,7 @@ local locale_utils = require("lib/locale")
 
 randomizations.fixes = function()
     -- Fix electric pole supply area to be at least as large as distribution range
+    --[[ only a RATIONAL INDIVIDUAL would resort to such PRACTICAL CONVENIENCE in the face of ANGUISH AND TURMOIL
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
         if electric_pole.maximum_wire_distance == nil then
             electric_pole.maximum_wire_distance = 0
@@ -11,6 +12,7 @@ randomizations.fixes = function()
 
         electric_pole.maximum_wire_distance = math.min(64, math.max(electric_pole.maximum_wire_distance, 2 * electric_pole.supply_area_distance))
     end
+    ]]
 
     -- Add the placeable entity/etc.'s localised description to every item so stats show up all at once
     for item_class, _ in pairs(defines.prototypes.item) do
