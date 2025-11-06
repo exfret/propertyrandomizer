@@ -72,7 +72,7 @@ randomizations.inserter_offsets = function(id)
             local new_insert_x = round(old_insert_x * arm_length_factor * stretch_factor)
             local new_insert_y = round(old_insert_y * arm_length_factor * stretch_factor)
 
-            -- positive bias because this may slow down the inserter
+            -- positive bias because this may speed up the inserter
             local randomize_rotation = randbool.rand_bias(key, 0.5, 1)
             if randomize_rotation then
                 -- rotating the pickup position more than 45 degrees is pointless
@@ -85,14 +85,16 @@ randomizations.inserter_offsets = function(id)
                     local rotated_insert_vector = rotate_vector({ old_insert_x * arm_length_factor * stretch_factor, old_insert_y * arm_length_factor * stretch_factor }, inserter_rotation_rad)
                     new_insert_x, new_insert_y = round(rotated_insert_vector[1]), round(rotated_insert_vector[2])
                 end
-                inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n[color=red](Offset)[/color]"}
+                if new_pickup_x ~= 0 or new_insert_x ~= -new_pickup_x or new_insert_y ~= -new_pickup_y then
+                    inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n[color=red](Offset)[/color]"}
+                end
             end
 
             local pickup_distance = math.sqrt(new_pickup_x^2 + new_pickup_y^2)
             local insert_distance = math.sqrt(new_insert_x^2 + new_insert_y^2)
             new_arm_length = math.max(pickup_distance, insert_distance)
             
-            if math.abs(pickup_distance - insert_distance) > 1 then
+            if randomize_stretch and math.abs(pickup_distance - insert_distance) > 0.5 then
                 inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n[color=red](Stretchy)[/color]"}
             end
             locale_utils.create_localised_description(inserter, new_arm_length / old_arm_length, id)
@@ -112,6 +114,14 @@ randomizations.inserter_offsets = function(id)
     end
 end
 
+local round_half = function (x)
+    return math.floor(x) + 0.5
+end
+
+local modify_coords = function(v, func)
+    return { func(v[1]), func(v[2]) }
+end
+
 randomizations.mining_drill_offsets = function(id)
     for _, mining_drill in pairs(data.raw["mining-drill"]) do
         -- Don't randomize fluid output positions
@@ -120,8 +130,54 @@ randomizations.mining_drill_offsets = function(id)
 
             -- Just make it a random amount farther away up to the collision box size
             if mining_drill.collision_box ~= nil then
-                collision_box_size = math.ceil(mining_drill.collision_box[2][1] - mining_drill.collision_box[1][1])
-                mining_drill.vector_to_place_result[2] = mining_drill.vector_to_place_result[2] - rng.float_range(key, 0, collision_box_size)
+                -- Assuming square collision box
+                local collision_box_size = math.ceil(mining_drill.collision_box[2][1] - mining_drill.collision_box[1][1])
+                local collision_box_radius = collision_box_size / 2
+                local even_sized = (collision_box_size % 2) == 0
+                local round_function = round
+                if even_sized then
+                    round_function = round_half
+                end
+                local old_place_vector = modify_coords(mining_drill.vector_to_place_result, round_function)
+                local old_place_distance = math.sqrt(old_place_vector[1]^2 + old_place_vector[2]^2)
+                local place_rotation_rad = 0
+
+                local randomize_rotation = randbool.rand_chaos(key, 0.5)
+                if randomize_rotation then
+                    place_rotation_rad = rng.float_range(key, -math.pi/4, math.pi/4)
+                end
+                local rotated_place_vector = rotate_vector(old_place_vector, place_rotation_rad)
+
+                -- Find out the minimum place_distance to not overlap with collision box
+                local min_place_distance = collision_box_radius / math.cos(place_rotation_rad)
+
+                -- Randomize only the extension beyond the collision box so that randomization gets the right variance
+                local min_extension = min_place_distance - collision_box_radius + 0.01
+                local old_extension = old_place_distance - collision_box_radius
+
+                local new_extension = randnum.rand({
+                    key = key,
+                    dummy = old_extension,
+                    rounding = "none",
+                    dir = 0
+                })
+                if new_extension < min_extension then
+                    new_extension = min_extension
+                end
+
+                local new_place_distance = collision_box_radius + new_extension
+                local scale_factor = new_place_distance / old_place_distance
+
+                local scaled_place_vector = modify_coords(rotated_place_vector, function(x) return x * scale_factor end)
+                local new_place_vector = modify_coords(scaled_place_vector, round_function)
+
+                if new_place_vector[1] ~= old_place_vector[1] or new_place_vector[2] ~= old_place_vector[2] then
+                    mining_drill.localised_description = {"", locale_utils.find_localised_description(mining_drill), "\n[color=red](Misaligned)[/color]"}
+                end
+
+                -- place stuff on the adjacent side of a belt
+                new_place_vector[2] = new_place_vector[2] + 0.2
+                mining_drill.vector_to_place_result = new_place_vector
             end
         end
     end
