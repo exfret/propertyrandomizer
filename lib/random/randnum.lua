@@ -302,6 +302,8 @@ randnum.rand = function(params)
     if dir < 0 then
         -- assuming 5 bias options: 0 (strong negative) to 4 (strong positive) with 2 as no bias
         bias_idx = (5 - 1) - bias_idx
+    elseif dir == 0 then
+        bias_idx = 2
     end
 
     val = fleish.randomize_multiplicatively(key, val, mul_std, bias_idx, chaos_val)
