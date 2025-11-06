@@ -31,7 +31,8 @@ randomizations.item_fuels = function(id)
                 if not is_resource_item[item.name] then
                     if item.fuel_category == "chemical" then
                         chemical_fuel_count = chemical_fuel_count + 1
-                        if randbool.rand_chaos(id, 0.5) then
+                        local key = rng.key({id = id, prototype = item})
+                        if randbool.rand_chaos(key, 0.5) then
                             item.fuel_value = nil
                             item.fuel_acceleration_multiplier = nil
                             item.fuel_top_speed_multiplier = nil
@@ -53,7 +54,8 @@ randomizations.item_fuels = function(id)
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
-                    if item.fuel_category == nil and randbool.rand_bias(id, fuel_p, 1) and randbool.rand_chaos(id, 0.5) then
+                    local key = rng.key({id = id, prototype = item})
+                    if item.fuel_category == nil and randbool.rand_bias_chaos(key, fuel_p / 2, 1) then
                         -- actual space age fuel statistics
                         local possible_fuel_values = {
                             "100kJ",
@@ -73,7 +75,7 @@ randomizations.item_fuels = function(id)
                             "100MJ",
                             "1.21GJ"
                         }
-                        item.fuel_value = possible_fuel_values[rng.int(rng.key({id = id}), #possible_fuel_values)]
+                        item.fuel_value = possible_fuel_values[rng.int(key, #possible_fuel_values)]
                         randomizations.energy({
                             id = id,
                             prototype = item,
@@ -88,7 +90,7 @@ randomizations.item_fuels = function(id)
                             1.8,
                             2.5,
                         }
-                        item.fuel_acceleration_multiplier = possible_acceleration_multipliers[rng.int(rng.key({id = id}), #possible_acceleration_multipliers)]
+                        item.fuel_acceleration_multiplier = possible_acceleration_multipliers[rng.int(key, #possible_acceleration_multipliers)]
                         randnum.rand({
                             id = id,
                             prototype = item,
@@ -104,7 +106,7 @@ randomizations.item_fuels = function(id)
                             1.15,
                             1.15,
                         }
-                        item.fuel_top_speed_multiplier = possible_top_speed_multipliers[rng.int(rng.key({id = id}), #possible_top_speed_multipliers)]
+                        item.fuel_top_speed_multiplier = possible_top_speed_multipliers[rng.int(key, #possible_top_speed_multipliers)]
                         randnum.rand({
                             id = id,
                             prototype = item,

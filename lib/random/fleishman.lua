@@ -9,7 +9,7 @@ Fleishman.__index = Fleishman
 --- Generate a standard normal random variable using Box-Muller transform.
 -- @param key string The key used for random number generation
 -- @return number Standard normal random variable
-local function rand_normal(key)
+function Fleishman.rand_normal(key)
     local u1 = rng.value(key)
     local u2 = rng.value(key)
     if u1 < 1e-12 then
@@ -145,7 +145,7 @@ end
 -- @param key string The key used for random number generation
 -- @return number Random number from the configured distribution
 function Fleishman:generate(key)
-    local X = rand_normal(key)
+    local X = Fleishman.rand_normal(key)
     return (-1 * self._c + X * (self._b + X * (self._c + X * self._d))) * self._std + self._mean
 end
 
@@ -190,7 +190,7 @@ function Fleishman.clear_cache()
     instance_cache = {}
 end
 
---- Generalized random number generator using Fleishman method.
+--- Generalized multiplicative random number generator using Fleishman method.
 -- @param key string The key used for random number generation
 -- @param old_val number The original value to be randomized
 -- @param mul_std number Multiplicative standard deviation factor
@@ -200,6 +200,18 @@ end
 function Fleishman.randomize_multiplicatively(key, old_val, mul_std, bias_idx, chaos_val)
     local rng_inst = get_fleishman_instance(bias_idx, chaos_val)
     return old_val * mul_std^rng_inst:generate(key) -- Use generated number as exponent to cause multiplicative effect
+end
+
+--- Generalized random number generator using Fleishman method.
+-- @param key string The key used for random number generation
+-- @param old_val number The original value to be randomized
+-- @param std number Standard deviation factor
+-- @param bias_idx number Index representing bias level (0 to BIAS_OPTION_COUNT-1)
+-- @param chaos_val number Chaos factor affecting standard deviation
+-- @return number A non-normally distributed random number based on the inputs
+function Fleishman.randomize(key, old_val, std, bias_idx, chaos_val)
+    local rng_inst = get_fleishman_instance(bias_idx, chaos_val)
+    return old_val + std*rng_inst:generate(key)
 end
 
 return Fleishman

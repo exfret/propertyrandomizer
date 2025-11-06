@@ -9,29 +9,35 @@ local probability_multiplication = function(p, factor)
     return scaled_p / (scaled_p + not_p)
 end
 
-local converge = function(id, p)
-    return rng.value(rng.key({id = id})) < p
+randbool.converge = function(key, p)
+    return rng.value(key) < p
 end
 
 --- randomly returns true or false, high global_chaos increases likelyhood of true
-randbool.rand_chaos = function(id, base_probability)
+randbool.rand_chaos = function(key, base_probability)
     local p = probability_multiplication(base_probability, global_chaos)
-    return converge(id, p)
+    return randbool.converge(key, p)
 end
 
 local bias_idx_to_factor = { 0.8, 0.9, 1, 1.1, 1.2 }
 
 --- randomly returns true or false, affected by global_bias
-randbool.rand_bias = function (id, base_probability, dir)
+randbool.rand_bias = function (key, base_probability, dir)
     if dir == 0 then
-        return converge(id, base_probability)
+        return randbool.converge(key, base_probability)
     end
     local factor = bias_idx_to_factor[global_bias_idx + 1]
     if dir < 0 then
         factor = 1 / factor
     end
     local p = probability_multiplication(base_probability, factor)
-    return converge(id, p)
+    return randbool.converge(key, p)
+end
+
+--- randomly returns true or false, affected by both global_chaos and global_bias
+randbool.rand_bias_chaos = function (key, base_probability, dir)
+    local half = math.sqrt(base_probability)
+    return randbool.rand_bias(key, half, dir) and randbool.rand_chaos(key, half)
 end
 
 return randbool
