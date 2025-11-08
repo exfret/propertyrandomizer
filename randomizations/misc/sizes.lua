@@ -14,7 +14,8 @@ randomizations.cliff_sizes = function(id)
                     id = id,
                     key = rng.key({id = id, prototype = cliff}),
                     dummy = 1,
-                    dir = -1
+                    dir = -1,
+                    variance = "small"
                 })
 
                 for _, vector in pairs(orientation.collision_bounding_box) do
@@ -79,7 +80,8 @@ randomizations.unit_sizes = function(id)
             table.insert(factors, randomize({
                 key = rng.key({linked = true, id = id, tier = group_name}),
                 dummy = 1,
-                dir = -1
+                dir = -1,
+                variance = "very_small"
             }))
         end
 
@@ -103,8 +105,8 @@ randomizations.unit_sizes = function(id)
                 reformat.change_entity_corpse_size(unit, factor)
 
                 -- For big units, make them a bit faster and also the animation a bit slower
-                unit.movement_speed = unit.movement_speed * math.pow(factor, 1 / 3)
-                unit.distance_per_frame = unit.distance_per_frame / math.pow(factor, 2 / 3)
+                unit.movement_speed = unit.movement_speed * factor
+                unit.distance_per_frame = unit.distance_per_frame * factor
             elseif unit.type == "spider-unit" then
                 -- Change actual size
                 reformat.change_box_sizes(unit, factor)
@@ -131,12 +133,35 @@ randomizations.unit_sizes = function(id)
             if unit.max_health == nil then
                 unit.max_health = 10
             end
-            unit.max_health = unit.max_health * math.pow(factor, 1 / 3)
+            unit.max_health = unit.max_health * factor^3
+
             -- And range
-            unit.attack_parameters.range = unit.attack_parameters.range * math.pow(factor, 1 / 3)
+            local ap = unit.attack_parameters
+            ap.range = ap.range * factor
+            if ap.min_range ~= nil then
+                ap.min_range = ap.min_range * factor
+            end
+            if ap.min_attack_distance ~= nil then
+                ap.min_attack_distance = ap.min_attack_distance * factor
+            end
+            unit.vision_distance = math.min(unit.vision_distance * factor, 100)
+            if unit.max_pursue_distance == nil then
+                unit.max_pursue_distance = 50
+            end
+            unit.max_pursue_distance = unit.max_pursue_distance * factor
+
+            -- And attack
+            if ap.damage_modifier == nil then
+                ap.damage_modifier = 1
+            end
+            ap.damage_modifier = ap.damage_modifier * factor^3
+
+            -- Realistically, if factor directly affects height, width and depth measurements of a unit, then its mass should scale with factor^3
+            -- Speed and range scale with lengths of limbs and such, so scale with factor^1
+            -- Max health and damage scale with mass, so scale with factor^3
 
             -- Localised description
-            unit.localised_description = locale_utils.create_localised_description(unit, factor, id)
+            unit.localised_description = locale_utils.create_localised_description(unit, factor, id, { variance = "very_small" })
         end
     end
 end

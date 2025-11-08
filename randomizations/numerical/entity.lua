@@ -1605,8 +1605,6 @@ randomizations.unit_movement_speed = function(id)
                 dir = -1
             })
 
-            unit.distance_per_frame = unit.distance_per_frame * unit.movement_speed / old_movement_speed
-
             locale_utils.create_localised_description(unit, unit.movement_speed / old_movement_speed, id, {flipped = true})
         end
     end
