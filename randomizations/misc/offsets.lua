@@ -31,15 +31,16 @@ local function extend_vector(v, amount)
     return { x * scale, y * scale }
 end
 
--- Probability of randomizing the pickup and insert distances separately
-local randomize_stretch_p = 0.5
--- Probability of randomizing the rotation of the pickup and insert vectors
-local randomize_rotation_p = 0.5
--- Probability of putting the insert position on the close side of a belt
-local close_side_p = 0.5
-
 -- Inserter offsets are NO LONGER randomized by just choosing from a list
 randomizations.inserter_offsets = function(id)
+
+    -- Probability of randomizing the pickup and insert distances separately
+    local randomize_stretch_p = 0.5
+    -- Probability of randomizing the rotation of the pickup and insert vectors
+    local randomize_rotation_p = 0.5
+    -- Probability of putting the insert position on the close side of a belt
+    local close_side_p = 0.5
+
     for _, inserter in pairs(data.raw.inserter) do
         if inserter.collision_box ~= nil and inserter.collision_box[1][1] == -0.15 and inserter.collision_box[1][2] == -0.15
         and inserter.collision_box[2][1] == 0.15 and inserter.collision_box[2][2] == 0.15 then
@@ -129,10 +130,12 @@ local modify_coords = function(v, func)
     return { func(v[1]), func(v[2]) }
 end
 
--- Probability of randomizing the rotation of vector_to_place_result
-local randomize_rotation_p = 0.5
-
 randomizations.mining_drill_offsets = function(id)
+    
+    -- Probability of randomizing the rotation of vector_to_place_result
+    local randomize_place_rotation_p = 0.5
+    -- 
+
     for _, mining_drill in pairs(data.raw["mining-drill"]) do
         -- Don't randomize fluid output positions
         if mining_drill.output_fluid_box == nil then
@@ -151,7 +154,7 @@ randomizations.mining_drill_offsets = function(id)
                 local old_place_distance = math.sqrt(old_place_vector[1]^2 + old_place_vector[2]^2)
                 local place_rotation_rad = 0
 
-                local randomize_rotation = randbool.rand_chaos(key, randomize_rotation_p)
+                local randomize_rotation = randbool.rand_chaos(key, randomize_place_rotation_p)
                 if randomize_rotation then
                     place_rotation_rad = rng.float_range(key, -math.pi/4, math.pi/4)
                 end
