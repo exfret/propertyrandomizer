@@ -780,6 +780,7 @@ randomizations.machine_energy_usage = function(id)
                     })
 
                     local new_first_energy_val = util.parse_energy(entity[energy_properties[1]])
+                    local factor = new_first_energy_val / old_first_energy_val
 
                     -- Scale all energy vals up the same way
                     for i = 2, #energy_properties do
@@ -789,12 +790,17 @@ randomizations.machine_energy_usage = function(id)
                             curr_energy_val = 60 * curr_energy_val
                             suffix = "W"
                         end
-                        curr_energy_val = curr_energy_val * new_first_energy_val / old_first_energy_val
+                        curr_energy_val = curr_energy_val * factor
                         entity[energy_properties[i]] = curr_energy_val .. suffix
                     end
 
+                    -- Things like turrets may break if their energy capacity isn't scaled too
+                    if entity.energy_source ~= nil and entity.energy_source.buffer_capacity ~= nil then
+                        entity.energy_source.buffer_capacity = util.parse_energy(entity.energy_source.buffer_capacity) * factor .. "J"
+                    end
+
                     -- Update description
-                    locale_utils.create_localised_description(entity, new_first_energy_val / old_first_energy_val, id, {flipped = true})
+                    locale_utils.create_localised_description(entity, factor, id, {flipped = true})
                 end
             end
         end
