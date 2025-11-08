@@ -3,6 +3,11 @@ local rng = require("lib/random/rng")
 local randbool = require("lib/random/randbool")
 local randnum = require("lib/random/randnum")
 
+-- Probability of removing existing fuel properties from an item
+local remove_fuel_p = 0.5
+-- Probability of adding fuel properties to a non-fuel item. This gets multiplied by current fuel ratio.
+local add_fuel_p = 0.5
+
 randomizations.item_fuels = function(id)
     local is_resource_item = {}
     for _, resource in pairs(data.raw.resource) do
@@ -32,7 +37,7 @@ randomizations.item_fuels = function(id)
                     if item.fuel_category == "chemical" then
                         chemical_fuel_count = chemical_fuel_count + 1
                         local key = rng.key({id = id, prototype = item})
-                        if randbool.rand_chaos(key, 0.5) then
+                        if randbool.rand_bias_chaos(key, remove_fuel_p, -1) then
                             item.fuel_value = nil
                             item.fuel_acceleration_multiplier = nil
                             item.fuel_top_speed_multiplier = nil
@@ -55,7 +60,7 @@ randomizations.item_fuels = function(id)
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
                     local key = rng.key({id = id, prototype = item})
-                    if item.fuel_category == nil and randbool.rand_bias_chaos(key, fuel_p / 2, 1) then
+                    if item.fuel_category == nil and randbool.rand_bias_chaos(key, fuel_p * add_fuel_p, 1) then
                         -- actual space age fuel statistics
                         local possible_fuel_values = {
                             "100kJ",
@@ -80,7 +85,8 @@ randomizations.item_fuels = function(id)
                             id = id,
                             prototype = item,
                             property = "fuel_value",
-                            rounding = "discrete_float"
+                            rounding = "discrete_float",
+                            variance = "small"
                         })
 
                         local possible_acceleration_multipliers = {
@@ -96,7 +102,7 @@ randomizations.item_fuels = function(id)
                             prototype = item,
                             property = "fuel_acceleration_multiplier",
                             rounding = "discrete_float",
-                            variance = "small"
+                            variance = "very_small"
                         })
 
                         local possible_top_speed_multipliers = {
@@ -111,7 +117,8 @@ randomizations.item_fuels = function(id)
                             id = id,
                             prototype = item,
                             property = "fuel_top_speed_multiplier",
-                            rounding = "discrete_float"
+                            rounding = "discrete_float",
+                            variance = "small"
                         })
 
                         item.fuel_category = "chemical"
