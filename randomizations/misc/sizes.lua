@@ -161,7 +161,7 @@ randomizations.unit_sizes = function(id)
             -- Max health and damage scale with mass, so scale with factor^3
 
             -- Localised description
-            unit.localised_description = locale_utils.create_localised_description(unit, factor, id, { variance = "very_small" })
+            unit.localised_description = locale_utils.create_localised_description(unit, factor, id, { variance = "very_small", flipped = true })
         end
     end
 end
