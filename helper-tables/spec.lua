@@ -217,13 +217,12 @@ local spec = {
             val = "default"
         }
     },
-    -- TODO: Test!
-    --[[equipment_grid_sizes = {
+    equipment_grid_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },]]
+    },
     equipment_movement_bonus = {
         setting = {
             name = "propertyrandomizer-misc",
