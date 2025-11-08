@@ -45,7 +45,7 @@ randomizations.equipment_grid_sizes = function(id)
 
                 -- Calculate new width and height based on new size and aspect ratio
                 local new_height = math.max(round(math.sqrt(new_grid_size / new_aspect_ratio)), 1)
-                local new_width = math.max(round(new_aspect_ratio * new_height), 1)
+                local new_width = math.max(round(new_aspect_ratio * math.sqrt(new_grid_size / new_aspect_ratio)), 1)
                 grid.height = new_height
                 grid.width = new_width
 
