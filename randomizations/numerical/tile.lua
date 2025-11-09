@@ -17,12 +17,14 @@ randomizations.tile_walking_speed_modifier = function(id)
     randomizations.linked({
         id = id,
         prototypes = prototypes,
-        property = "walking_speed_modifier"
+        property = "walking_speed_modifier",
+        rounding = "discrete_float"
     })
 
     for _, tile in pairs(data.raw.tile) do
         if tile.walking_speed_modifier ~= nil then
-            tile.localised_description = locale_utils.create_localised_description(tile, 1 + tile.walking_speed_modifier - tile_to_old_modifier[tile.name], id)
+            local factor = tile.walking_speed_modifier / tile_to_old_modifier[tile.name]
+            tile.localised_description = locale_utils.create_localised_description(tile, factor, id)
         end
     end
 end
