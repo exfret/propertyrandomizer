@@ -376,6 +376,13 @@ local spec = {
             val = "more"
         }
     },
+    -- Affects rocket capacity
+    item_weights = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     lab_research_speed = {
         setting = {
             name = "propertyrandomizer-production",
