@@ -49,6 +49,9 @@ randomizations.capsule_actions = function(id)
         end
     end
 
+    --[[ Custom capsule actions are cool, but let's leave custom content to base game and other mods.
+    -- Also that atomic capsule is ridiculous.
+    
     -- Create new capsule actions
 
     local atomic_capsule_action = table.deepcopy(data.raw.capsule.grenade.capsule_action)
@@ -116,7 +119,7 @@ randomizations.capsule_actions = function(id)
     }
     table.insert(capsule_prototype_list, "dummy-teleport")
     table.insert(capsule_action_list, teleport_capsule_action)
-
+]]
     -- Now shuffle capsule actions and reassign
     
     rng.shuffle(rng.key({id = id}), capsule_action_list)
