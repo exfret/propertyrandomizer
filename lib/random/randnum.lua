@@ -40,6 +40,8 @@ randnum.fill_in_defaults = function(params)
         real_bias = true,
         -- For non-normal randomization implementation
         mul_std = true,
+        -- For percentage randomization implementation
+        percent_limit = true,
     }
     for k, _ in pairs(params) do
         if not is_allowed_param[k] then

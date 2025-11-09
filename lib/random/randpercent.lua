@@ -11,6 +11,9 @@ end
 randpercent.rand = function(params)
     randnum.fill_in_defaults(params)
     local p = params.val
+    if params.percent_limit ~= nil then
+        p = p / params.percent_limit
+    end
     local rounding = params.rounding
     params.val = nil
     params.rounding = "none"
@@ -30,6 +33,9 @@ randpercent.rand = function(params)
     fixed_p = randnum.fixes(params, fixed_p)
     if is_high then
         fixed_p = 1 - fixed_p
+    end
+    if params.percent_limit ~= nil then
+        fixed_p = fixed_p * params.percent_limit
     end
     return fixed_p
 end

@@ -163,13 +163,14 @@ randomizations.armor_resistances = function(id)
                 end
                 if resistance.percent ~= nil and resistance.percent > 0 then
                     old_p_resistance_sum = old_p_resistance_sum + resistance.percent
-                    randpercent.rand({
+                    resistance.percent = randpercent.rand({
                         key = key,
                         prototype = armor,
                         tbl = resistance,
-                        property = "decrease",
+                        property = "percent",
                         rounding = "discrete_float",
                         variance = "big",
+                        percent_limit = 100,
                     })
                 end
             end
