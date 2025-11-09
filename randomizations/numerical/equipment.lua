@@ -7,15 +7,17 @@ local randomize = randnum.rand
 randomizations.equipment_active_defense_cooldown = function(id)
     for _, equipment in pairs(data.raw["active-defense-equipment"]) do
         local old_value = equipment.attack_parameters.cooldown
-        -- Rounding will be off but that's okay
+        -- To attacks per second
+        equipment.attack_parameters.cooldown = 60 / equipment.attack_parameters.cooldown
         randomize({
             id = id,
             prototype = equipment,
             tbl = equipment.attack_parameters,
             property = "cooldown",
-            rounding = "discrete_float",
-            dir = -1
+            rounding = "discrete_float"
         })
+        -- Back to ticks per attack
+        equipment.attack_parameters.cooldown = 60 / equipment.attack_parameters.cooldown
 
         local factor = equipment.attack_parameters.cooldown / old_value
         locale_utils.create_localised_description(equipment, factor, id, {flipped = true})

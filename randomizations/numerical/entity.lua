@@ -112,22 +112,29 @@ end
 randomizations.asteroid_collector_speed = function(id)
     for _, collector in pairs(data.raw["asteroid-collector"]) do
         if collector.arm_speed_base ~= nil then
-            local old_arm_speed = collector.arm_speed_base
-
-            randomize({
-                id = id,
-                prototype = collector,
-                property = "arm_speed_base",
-                range = "small"
-            })
-
-            -- Increase quality scaling by same amount
-            if collector.arm_speed_quality_scaling ~= nil then
-                collector.arm_speed_quality_scaling = collector.arm_speed_quality_scaling * collector.arm_speed_base / old_arm_speed
-            end
-            local factor = collector.arm_speed_base / old_arm_speed
-            locale_utils.create_localised_description(collector, factor, id)
+            collector.arm_speed_base = 0.1
         end
+
+        local old_arm_speed = collector.arm_speed_base
+
+        -- To km/h
+        collector.arm_speed_base = collector.arm_speed_base * 216
+        randomize({
+            id = id,
+            prototype = collector,
+            property = "arm_speed_base",
+            range = "small",
+            rounding = "discrete_float"
+        })
+        -- Back to tiles per tick
+        collector.arm_speed_base = collector.arm_speed_base / 216
+
+        local factor = collector.arm_speed_base / old_arm_speed
+        -- Increase quality scaling by same amount
+        if collector.arm_speed_quality_scaling ~= nil then
+            collector.arm_speed_quality_scaling = collector.arm_speed_quality_scaling * factor
+        end
+        locale_utils.create_localised_description(collector, factor, id)
     end
 end
 
@@ -319,6 +326,8 @@ randomizations.bot_speed = function(id)
                 if bot.speed > 0 then
                     local old_speed = bot.speed
 
+                    -- To km/h
+                    bot.speed = bot.speed * 216
                     -- No more bias toward faster bots
                     -- Fate alone determines your suffering now :D
                     randomize({
@@ -328,7 +337,10 @@ randomizations.bot_speed = function(id)
                         range_min = "small",
                         range_max = "big",
                         bias = 0.03,
+                        rounding = "discrete_float"
                     })
+                    -- Back to tiles per tick
+                    bot.speed = bot.speed / 216
 
                     if bot.max_speed ~= nil then
                         bot.max_speed = bot.max_speed * bot.speed / old_speed
@@ -398,7 +410,8 @@ randomizations.car_rotation_speed = function(id)
             randomize({
                 id = id,
                 prototype = car,
-                property = "rotation_speed"
+                property = "rotation_speed",
+                rounding = "discrete_float"
             })
 
             locale_utils.create_localised_description(car, car.rotation_speed / old_rotation_speed, id)
@@ -580,6 +593,8 @@ randomizations.inserter_speed = function(id)
             table.insert(inserter_lists.normal, inserter)
         end
         old_rotation_speeds[inserter.name] = inserter.rotation_speed
+        -- To degrees per second
+        inserter.rotation_speed = inserter.rotation_speed * 21600
     end
 
     for _, list in pairs(inserter_lists) do
@@ -588,12 +603,15 @@ randomizations.inserter_speed = function(id)
             prototypes = list,
             property = "rotation_speed",
             range_min = "small",
-            range_max = "very_big"
+            range_max = "very_big",
+            rounding = "discrete_float",
         })
     end
 
     -- Fix extension speed
     for _, inserter in pairs(data.raw.inserter) do
+        -- Back to cycles per tick
+        inserter.rotation_speed = inserter.rotation_speed / 21600
         inserter.extension_speed = inserter.extension_speed * inserter.rotation_speed / old_rotation_speeds[inserter.name]
         
         locale_utils.create_localised_description(inserter, inserter.rotation_speed / old_rotation_speeds[inserter.name], id)
@@ -722,6 +740,7 @@ randomizations.landmine_timeout = function(id)
             property = "timeout",
             range = "big",
             dir = -1,
+            rounding = "discrete_float"
         })
 
         local factor = landmine.timeout / old_value
@@ -738,7 +757,8 @@ randomizations.landmine_trigger_radius = function(id)
             prototype = landmine,
             property = "trigger_radius",
             range = "big",
-            variance = "small"
+            variance = "small",
+            rounding = "discrete_float"
         })
 
         local factor = landmine.trigger_radius / old_value
@@ -1139,16 +1159,18 @@ randomizations.reactor_neighbour_bonus = function(id)
             reactor.neighbour_bonus = 1
         end
 
-        local old_neighbour_bonus = reactor.neighbour_bonus
-
-        randomize({
-            id = id,
-            prototype = reactor,
-            property = "neighbour_bonus",
-            rounding = "discrete_float",
-        })
-
-        locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id)
+        if reactor.neighbour_bonus > 0 then
+            local old_neighbour_bonus = reactor.neighbour_bonus
+    
+            randomize({
+                id = id,
+                prototype = reactor,
+                property = "neighbour_bonus",
+                rounding = "discrete_float",
+            })
+    
+            locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id)
+        end
     end
 end
 
@@ -1465,7 +1487,8 @@ randomizations.turret_rotation_speed = function(id)
             randomize({
                 id = id,
                 prototype = turret,
-                property = "rotation_speed"
+                property = "rotation_speed",
+                rounding = "discrete_float"
             })
 
             locale_utils.create_localised_description(turret, turret.rotation_speed / old_rotation_speed, id)
@@ -1480,7 +1503,8 @@ randomizations.turret_rotation_speed = function(id)
             randomize({
                 id = id,
                 prototype = turret,
-                property = "turret_rotation_speed"
+                property = "turret_rotation_speed",
+                rounding = "discrete_float"
             })
 
             locale_utils.create_localised_description(turret, turret.turret_rotation_speed / old_rotation_speed, id)
@@ -1499,7 +1523,8 @@ randomizations.turret_rotation_speed = function(id)
         randomize({
             id = id,
             prototype = car,
-            property = "turret_rotation_speed"
+            property = "turret_rotation_speed",
+            rounding = "discrete_float"
         })
 
         locale_utils.create_localised_description(car, car.turret_rotation_speed / old_rotation_speed, id)
@@ -1510,17 +1535,19 @@ randomizations.turret_shooting_speed = function(id)
     for turret_class, _ in pairs(categories.turrets) do
         for _, turret in pairs(data.raw[turret_class]) do
             local old_shooting_speed = 1 / turret.attack_parameters.cooldown
-
-            -- Rounding is technically off but that's fine
+            
+            -- To attacks per second
+            turret.attack_parameters.cooldown = 60 / turret.attack_parameters.cooldown
             randomize({
                 id = id,
                 prototype = turret,
                 tbl = turret.attack_parameters,
                 property = "cooldown",
                 range = "small",
-                dir = -1,
-                rounding = "none"
+                rounding = "discrete_float"
             })
+            -- Back to ticks per attack
+            turret.attack_parameters.cooldown = 60 / turret.attack_parameters.cooldown
 
             local new_shooting_speed = 1 / turret.attack_parameters.cooldown
             locale_utils.create_localised_description(turret, new_shooting_speed / old_shooting_speed, id)
@@ -1552,15 +1579,19 @@ randomizations.unit_attack_speed = function(id)
             for _, unit in pairs(data.raw[unit_class]) do
                 local old_attack_speed = 1 / unit.attack_parameters.cooldown
 
-                -- Rounding is technically off but that's fine
+                -- To attacks per second
+                unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
                 randomize({
                     id = id,
                     prototype = unit,
                     tbl = unit.attack_parameters,
                     property = "cooldown",
-                    rounding = "none",
-                    range = "small"
+                    rounding = "discrete_float",
+                    range = "small",
+                    dir = -1
                 })
+                -- Back to ticks per attack
+                unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
 
                 local new_attack_speed = 1 / unit.attack_parameters.cooldown
                 locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
@@ -1603,13 +1634,18 @@ randomizations.unit_movement_speed = function(id)
         if unit.movement_speed > 0 then
             local old_movement_speed = unit.movement_speed
 
+            -- To km/h
+            unit.movement_speed = unit.movement_speed * 216
             randomize({
                 id = id,
                 prototype = unit,
                 property = "movement_speed",
                 range = "small",
-                dir = -1
+                dir = -1,
+                rounding = "discrete_float"
             })
+            -- Back to tiles per tick
+            unit.movement_speed = unit.movement_speed / 216
 
             locale_utils.create_localised_description(unit, unit.movement_speed / old_movement_speed, id, {flipped = true})
         end
@@ -1659,7 +1695,8 @@ randomizations.vehicle_crash_damage = function(id)
             randomize({
                 id = id,
                 prototype = vehicle,
-                property = "energy_per_hit_point"
+                property = "energy_per_hit_point",
+                rounding = "discrete_float"
             })
 
             -- Increase flat impact resistance for higher crash damages so that this isn't just a glass cannon
@@ -1733,6 +1770,7 @@ randomizations.vehicle_power = function(id)
                     prototype = vehicle,
                     property = power_key,
                     range = "big",
+                    rounding = "discrete_float"
                 })
                 local new_power = 60 * util.parse_energy(vehicle[power_key])
 

@@ -275,10 +275,10 @@ randnum.fixes = function(params, val)
     end
 
     -- Assume abs_min and abs_max are rounded
-    if params.abs_min ~= "none" and val < params.abs_min then
+    if params.abs_min ~= nil and params.abs_min ~= "none" and val < params.abs_min then
         val = params.abs_min
     end
-    if params.abs_max ~= "none" and val > params.abs_max then
+    if params.abs_max ~= nil and params.abs_max ~= "none" and val > params.abs_max then
         val = params.abs_max
     end
 

@@ -184,15 +184,17 @@ randomizations.capsule_cooldown = function(id)
             local attack_parameters = capsule.capsule_action.attack_parameters
             local old_value = attack_parameters.cooldown
 
-            -- Rounding will be off but that's okay
+            -- To attacks per second
+            attack_parameters.cooldown = 60 / attack_parameters.cooldown
             randomize({
                 id = id,
                 prototype = capsule,
                 tbl = attack_parameters,
                 property = "cooldown",
                 rounding = "discrete_float",
-                dir = -1
             })
+            -- Back to ticks per attack
+            attack_parameters.cooldown = 60 / attack_parameters.cooldown
 
             local factor = attack_parameters.cooldown / old_value
             locale_utils.create_localised_description(capsule, factor, id, { flipped = true })
@@ -354,15 +356,18 @@ randomizations.gun_shooting_speed = function(id)
     for _, gun in pairs(data.raw.gun) do
         local old_shooting_speed = 1 / gun.attack_parameters.cooldown
 
+        -- To attacks per second
+        gun.attack_parameters.cooldown = 60 / gun.attack_parameters.cooldown
         randomize({
             id = id,
             prototype = gun,
             tbl = gun.attack_parameters,
             property = "cooldown",
             range = "small",
-            dir = -1,
             rounding = "discrete_float"
         })
+        -- Back to ticks per attack
+        gun.attack_parameters.cooldown = 60 / gun.attack_parameters.cooldown
 
         local new_shooting_speed = 1 / gun.attack_parameters.cooldown
         locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id)
