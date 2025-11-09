@@ -26,7 +26,7 @@ randpercent.rand = function(params)
     if is_high then
         fixed_p = 1 - fixed_p
     end
-    params.rounding = "discrete_float"
+    params.rounding = rounding
     fixed_p = randnum.fixes(params, fixed_p)
     if is_high then
         fixed_p = 1 - fixed_p
