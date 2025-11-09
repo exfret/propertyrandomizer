@@ -15,11 +15,12 @@ randomizations.accumulator_buffer = function(id)
                 prototype = accumulator,
                 tbl = accumulator.energy_source,
                 property = "buffer_capacity",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
 
             local factor = util.parse_energy(accumulator.energy_source.buffer_capacity) / old_buffer_capacity
-            locale_utils.create_localised_description(accumulator, factor, id)
+            locale_utils.create_localised_description(accumulator, factor, id, { variance = "big" })
         end
     end
 end
@@ -34,10 +35,11 @@ randomizations.accumulator_input_flow = function(id)
                 prototype = accumulator,
                 tbl = accumulator.energy_source,
                 property = "input_flow_limit",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
             local factor = util.parse_energy(accumulator.energy_source.input_flow_limit) / old_value
-            locale_utils.create_localised_description(accumulator, factor, id)
+            locale_utils.create_localised_description(accumulator, factor, id, { variance = "big" })
         end
     end
 end
@@ -52,10 +54,11 @@ randomizations.accumulator_output_flow = function(id)
                 prototype = accumulator,
                 tbl = accumulator.energy_source,
                 property = "output_flow_limit",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
             local factor = util.parse_energy(accumulator.energy_source.output_flow_limit) / old_value
-            locale_utils.create_localised_description(accumulator, factor, id)
+            locale_utils.create_localised_description(accumulator, factor, id, { variance = "big" })
         end
     end
 end
@@ -168,12 +171,13 @@ randomizations.beacon_distribution_effectivity = function(id)
             prototype = beacon,
             property = "distribution_effectivity",
             rounding = "discrete_float",
-            range = "small"
+            range = "small",
+            variance = "big",
         })
 
         local factor = beacon.distribution_effectivity / old_distribution_effectivity
         beacon.distribution_effectivity_bonus_per_quality_level = beacon.distribution_effectivity_bonus_per_quality_level * factor
-        locale_utils.create_localised_description(beacon, factor, id)
+        locale_utils.create_localised_description(beacon, factor, id, { variance = "big" })
     end
 end
 
@@ -188,11 +192,11 @@ randomizations.beacon_supply_area = function(id)
             abs_min = 1,
             abs_max = 64,
             range = "small",
-            variance = "small",
+            variance = "medium",
             rounding = "discrete"
         })
 
-        locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id, { variance = "small" })
+        locale_utils.create_localised_description(beacon, beacon.supply_area_distance / old_supply_distance, id, { variance = "medium" })
     end
 end
 
@@ -363,10 +367,11 @@ randomizations.burner_generator_output = function(id)
             prototype = burner_generator,
             property = "max_power_output",
             range = "small",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big",
         })
 
-        locale_utils.create_localised_description(burner_generator, util.parse_energy(burner_generator.max_power_output) / old_output, id)
+        locale_utils.create_localised_description(burner_generator, util.parse_energy(burner_generator.max_power_output) / old_output, id, { variance = "big" })
     end
 end
 
@@ -411,10 +416,11 @@ randomizations.car_rotation_speed = function(id)
                 id = id,
                 prototype = car,
                 property = "rotation_speed",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
 
-            locale_utils.create_localised_description(car, car.rotation_speed / old_rotation_speed, id)
+            locale_utils.create_localised_description(car, car.rotation_speed / old_rotation_speed, id, { variance = "big" })
         end
     end
 end
@@ -548,13 +554,14 @@ randomizations.gate_opening_speed = function(id)
             randomize({
                 id = id,
                 prototype = gate,
-                property = "opening_speed"
+                property = "opening_speed",
+                variance = "big"
             })
 
             -- Also modifies activation distance to compensate
             gate.activation_distance = gate.activation_distance * old_opening_speed / gate.opening_speed
 
-            locale_utils.create_localised_description(gate, gate.opening_speed / old_opening_speed, id)
+            locale_utils.create_localised_description(gate, gate.opening_speed / old_opening_speed, id, { variance = "big" })
         end
     end
 end
@@ -708,7 +715,8 @@ randomizations.landmine_damage = function(id)
         if landmine.action ~= nil then
             randomizations.trigger({
                 id = id,
-                prototype = landmine
+                prototype = landmine,
+                variance = "big"
             }, landmine.action, "damage")
         end
     end
@@ -720,7 +728,7 @@ randomizations.landmine_effect_radius = function(id)
             randomizations.trigger({
                 id = id,
                 prototype = landmine,
-                variance = "small"
+                variance = "medium"
             }, landmine.action, "effect-radius")
         end
     end
@@ -740,11 +748,12 @@ randomizations.landmine_timeout = function(id)
             property = "timeout",
             range = "big",
             dir = -1,
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big",
         })
 
         local factor = landmine.timeout / old_value
-        locale_utils.create_localised_description(landmine, factor, id, {flipped = true})
+        locale_utils.create_localised_description(landmine, factor, id, {flipped = true, variance = "big"})
     end
 end
 
@@ -757,12 +766,12 @@ randomizations.landmine_trigger_radius = function(id)
             prototype = landmine,
             property = "trigger_radius",
             range = "big",
-            variance = "small",
+            variance = "medium",
             rounding = "discrete_float"
         })
 
         local factor = landmine.trigger_radius / old_value
-        locale_utils.create_localised_description(landmine, factor, id, { variance = "small" })
+        locale_utils.create_localised_description(landmine, factor, id, { variance = "medium" })
     end
 end
 
@@ -1029,10 +1038,11 @@ randomizations.module_slots = function(id)
                         prototype = entity,
                         property = "module_slots",
                         rounding = "discrete",
-                        abs_min = 1
+                        abs_min = 1,
+                        variance = "big"
                     })
 
-                    locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id)
+                    locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
                 end
             end
         end
@@ -1097,9 +1107,10 @@ randomizations.pump_pumping_speed = function(id)
             prototype = pump,
             property = "pumping_speed",
             rounding = "discrete_float",
+            variance = "big",
         })
 
-        locale_utils.create_localised_description(pump, pump.pumping_speed / old_pumping_speed, id)
+        locale_utils.create_localised_description(pump, pump.pumping_speed / old_pumping_speed, id, { variance = "big" })
     end
 end
 
@@ -1113,11 +1124,11 @@ randomizations.radar_reveal_area = function(id)
             property = "max_distance_of_nearby_sector_revealed",
             abs_min = 1,
             range = "small",
-            variance = "small",
+            variance = "medium",
             rounding = "discrete"
         })
 
-        locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id, { variance = "small" })
+        locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id, { variance = "medium" })
     end
 end
 
@@ -1130,10 +1141,10 @@ randomizations.radar_search_area = function(id)
             prototype = radar,
             property = "max_distance_of_sector_revealed",
             rounding = "discrete",
-            variance = "small",
+            variance = "medium",
         })
 
-        locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id, { variance = "small" })
+        locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id, { variance = "medium" })
     end
 end
 
@@ -1146,7 +1157,7 @@ randomizations.reactor_consumption = function(id)
             id = id,
             prototype = reactor,
             property = "consumption",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
         })
 
         locale_utils.create_localised_description(reactor, util.parse_energy(reactor.consumption) / old_consumption, id)
@@ -1167,9 +1178,10 @@ randomizations.reactor_neighbour_bonus = function(id)
                 prototype = reactor,
                 property = "neighbour_bonus",
                 rounding = "discrete_float",
+                variance = "big"
             })
     
-            locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id)
+            locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id, { variance = "big" })
         end
     end
 end
@@ -1373,10 +1385,11 @@ randomizations.storage_tank_capacity = function(id)
             tbl = storage_tank.fluid_box,
             property = "volume",
             range = "big",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big"
         })
 
-        locale_utils.create_localised_description(storage_tank, storage_tank.fluid_box.volume / old_capacity, id)
+        locale_utils.create_localised_description(storage_tank, storage_tank.fluid_box.volume / old_capacity, id, { variance = "big" })
     end
 end
 
@@ -1504,10 +1517,11 @@ randomizations.turret_rotation_speed = function(id)
                 id = id,
                 prototype = turret,
                 property = "turret_rotation_speed",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
 
-            locale_utils.create_localised_description(turret, turret.turret_rotation_speed / old_rotation_speed, id)
+            locale_utils.create_localised_description(turret, turret.turret_rotation_speed / old_rotation_speed, id, { variance = "big" })
         end
     end
 
@@ -1524,10 +1538,11 @@ randomizations.turret_rotation_speed = function(id)
             id = id,
             prototype = car,
             property = "turret_rotation_speed",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big"
         })
 
-        locale_utils.create_localised_description(car, car.turret_rotation_speed / old_rotation_speed, id)
+        locale_utils.create_localised_description(car, car.turret_rotation_speed / old_rotation_speed, id, { variance = "big" })
     end
 end
 
@@ -1696,7 +1711,8 @@ randomizations.vehicle_crash_damage = function(id)
                 id = id,
                 prototype = vehicle,
                 property = "energy_per_hit_point",
-                rounding = "discrete_float"
+                rounding = "discrete_float",
+                variance = "big",
             })
 
             -- Increase flat impact resistance for higher crash damages so that this isn't just a glass cannon
@@ -1710,7 +1726,7 @@ randomizations.vehicle_crash_damage = function(id)
                 end
             end
 
-            locale_utils.create_localised_description(vehicle, vehicle.energy_per_hit_point / old_energy_per_hit_point, id)
+            locale_utils.create_localised_description(vehicle, vehicle.energy_per_hit_point / old_energy_per_hit_point, id, { variance = "big" })
         end
     end
 end
@@ -1725,10 +1741,11 @@ randomizations.vehicle_effectivity = function(id)
             prototype = car,
             property = "effectivity",
             range = "big",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big",
         })
         local factor = car.effectivity / old_value
-        locale_utils.create_localised_description(car, factor, id)
+        locale_utils.create_localised_description(car, factor, id, { variance = "big" })
     end
 
     for _, vehicle_class in pairs({"locomotive", "spider-vehicle"}) do
@@ -1748,11 +1765,12 @@ randomizations.vehicle_effectivity = function(id)
                     tbl = energy_source,
                     property = "effectivity",
                     range = "big",
-                    rounding = "discrete_float"
+                    rounding = "discrete_float",
+                    variance = "big",
                 })
                 
                 local factor = energy_source.effectivity / old_value
-                locale_utils.create_localised_description(vehicle, factor, id)
+                locale_utils.create_localised_description(vehicle, factor, id, { variance = "big" })
             end
         end
     end
@@ -1770,7 +1788,8 @@ randomizations.vehicle_power = function(id)
                     prototype = vehicle,
                     property = power_key,
                     range = "big",
-                    rounding = "discrete_float"
+                    rounding = "discrete_float",
+                    variance = "big",
                 })
                 local new_power = 60 * util.parse_energy(vehicle[power_key])
 
@@ -1784,7 +1803,7 @@ randomizations.vehicle_power = function(id)
                     vehicle.braking_force = vehicle.braking_force * new_power / old_power
                 end
 
-                locale_utils.create_localised_description(vehicle, new_power / old_power, id)
+                locale_utils.create_localised_description(vehicle, new_power / old_power, id, { variance = "big" })
             end
         end
     end
