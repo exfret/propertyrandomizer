@@ -524,6 +524,12 @@ local spec = {
             val = "more"
         }
     },
+    recipe_crafting_times = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     recipe_ingredients_numerical = {
         setting = {
             name = "propertyrandomizer-production",
