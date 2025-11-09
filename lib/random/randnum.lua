@@ -157,24 +157,66 @@ local function round(num, increment)
     return math.floor(num / increment + 0.5) * increment
 end
 
--- Let's go for a 20% to 33% gap between each coefficient
--- Rounding implementation below requires that adjacent numbers here are multiples of their difference
-local nice_rounding_coefficients = { 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 }
-local nice_low_integers = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 15 }
--- take 10, 12 -> difference is 2 -> both 10 and 12 are multiples of 2 -> good
--- take 10, 13 -> difference is 3 -> neither 10 nor 13 are multiples of 3 -> bad -> bug
+-- How about rounding to some nice composite numbers?
+-- How about randomizing the rounding itself?
+local nice_rounding_coefficients = {
+    {
+        { 1, 2, 5, 10 }, -- 1 digits, divisors of 2
+        { 1, 2, 3, 5, 6, 10 }, -- 1 digits, divisors of 6
+        { 1, 2, 4, 5, 10 }, -- 1 digits, divisors of 4
+        { 1, 2, 4, 5, 8, 10 }, -- 1 digits, divisors of 8
+        { 1, 3, 10 }, -- 1 digits, divisors of 3
+        { 1, 3, 9, 10 }, -- 1 digits, divisors of 9
+        { 1, 2, 5, 10 }, -- 1 digits, divisors 5
+        { 1, 7, 10 }, -- 1 digits, divisors of 7
+    },
+    {
+        { 1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 10 }, -- 2 digits, divisors of 60
+        { 1, 2, 5, 10 }, -- 2 digits, divisors of 2
+        { 1, 1.2, 1.8, 2, 2.4, 2.5, 3, 3.6, 4, 5, 6, 7.2, 8, 9, 10 }, -- 2 digits, divisors of 72
+        { 1, 1.2, 1.4, 2, 2.1, 2.5, 2.8, 3, 4, 4.2, 5, 6, 7, 8.4, 10 }, -- 2 digits, divisors of 84
+        { 1, 1.5, 1.8, 2, 3, 4.5, 5, 6, 9, 10 }, -- 2 digits, divisors of 90
+        { 1, 1.2, 1.6, 2, 2.4, 2.5, 3, 3.2, 4, 4.8, 5, 6, 8, 9.6, 10 }, -- 2 digits, divisors of 96
+        { 1, 1.2, 1.6, 2, 2.4, 2.5, 3, 4, 4.8, 5, 6, 8, 10 }, -- 2 digits, divisors of 48
+        { 1, 1.2, 2, 2.4, 2.5, 3, 4, 5, 6, 8, 10 }, -- 2 digits, divisors of 24
+    },
+    {
+        { 1, 1.05, 1.2, 1.25, 1.4, 1.5, 1.68, 2, 2.1, 2.4, 2.5, 2.8, 3, 3.5, 4, 4.2, 5, 5.6, 6, 7, 8, 8.4, 10 }, -- 3 digits, divisors of 840
+        { 1, 1.2, 1.25, 1.44, 1.5, 1.6, 1.8, 2, 2.4, 2.5, 3, 3.6, 4, 4.5, 4.8, 5, 6, 7.2, 8, 9, 10 }, -- 3 digits, divisors of 720
+        { 1, 1.2, 1.25, 1.5, 1.6, 1.92, 2, 2.4, 2.5, 3, 3.2, 4, 4.8, 5, 6, 6.4, 8, 9.6, 10 }, -- 3 digits, divisors of 960
+        { 1, 1.2, 1.25, 1.5, 1.8, 2, 2.4, 2.5, 3, 3.6, 4, 4.5, 5, 6, 7.2, 8, 9, 10 }, -- 3 digits, divisors of 360
+        { 1, 1.05, 1.2, 1.4, 1.5, 2, 2.1, 2.5, 2.8, 3, 3.5, 4, 4.2, 5, 6, 7, 8.4, 10 }, -- 3 digits, divisors of 420
+        { 1, 1.2, 1.5, 1.8, 2, 2.25, 2.5, 3, 3.6, 4, 4.5, 5, 6, 7.5, 9, 10 }, -- 3 digits, divisors of 900
+        { 1, 1.2, 1.25, 1.5, 1.6, 2, 2.4, 2.5, 3, 3.2, 4, 4.8, 5, 6, 8, 9.6, 10 }, -- 3 digits, divisors of 480
+        { 1, 1.2, 1.25, 1.26, 1.4, 1.68, 1.8, 2, 2.1, 2.4, 2.5, 2.52, 2.8, 3, 3.6, 4, 4.2, 5, 5.04, 5.6, 6, 6.3, 7, 7.2, 8, 8.4, 9, 10 }, -- 3 digits, divisors of 504
+    }
+}
+local nice_low_integers = {
+    { 1, 2, 5, 10, 12, 15, 20, 25, 30, 40, 50, 60, 100 },
+    { 1, 2, 3, 5, 6, 10, 20, 50, 100 },
+    { 1, 2, 4, 5, 10, 12, 18, 20, 24, 25, 30, 36, 40, 50, 60, 72, 80, 90, 100 },
+    { 1, 2, 4, 5, 8, 10, 12, 14, 20, 21, 25, 28, 30, 40, 42, 50, 60, 70, 84, 100 },
+    { 1, 3, 10, 15, 18, 20, 30, 45, 50, 60, 90, 100 },
+    { 1, 3, 9, 10, 12, 16, 20, 24, 25, 30, 32, 40, 48, 50, 60, 80, 96, 100 },
+    { 1, 2, 5, 10, 12, 16, 20, 24, 25, 30, 40, 48, 50, 60, 80, 100 },
+    { 1, 7, 10, 12, 20, 24, 25, 30, 40, 50, 60, 80, 100 }
+}
 
-local function round_discrete_float(num)
+local function round_discrete_float(num, key)
     if num == 0 then
         return num;
     end
     local abs = math.abs(num)
     local magnitude = 10^math.floor(math.log(abs, 10))
     local coefficient = abs / magnitude
+    local digits = rng.int(key, #nice_rounding_coefficients)
+    local gap_idx = rng.int(key, #nice_rounding_coefficients[digits])
+    local target_coefficients = nice_rounding_coefficients[digits][gap_idx]
     local rounded_coefficient = 0
-    for i = 2, #nice_rounding_coefficients do
-        if nice_rounding_coefficients[i] > coefficient then
-            rounded_coefficient = round(coefficient, nice_rounding_coefficients[i] - nice_rounding_coefficients[i - 1])
+    for i = 2, #target_coefficients do
+        if target_coefficients[i] > coefficient then
+            local low = target_coefficients[i - 1]
+            rounded_coefficient = round(coefficient - low, target_coefficients[i] - low) + low
             break
         end
     end
@@ -185,19 +227,22 @@ local function round_discrete_float(num)
     return rounded_abs
 end
 
-local function round_discrete(num)
+local function round_discrete(num, key)
     if num == 0 then
         return num;
     end
+    local gap_idx = rng.int(key, #nice_low_integers)
+    local target_coefficients = nice_low_integers[gap_idx]
     local abs = math.abs(num)
-    if abs >= nice_low_integers[#nice_low_integers] then
-        return round_discrete_float(num)
+    if abs >= target_coefficients[#target_coefficients] then
+        return round_discrete_float(num, key)
     end
     local rounded_abs = 1
     if abs > 1 then
-        for i = 2, #nice_low_integers do
-            if nice_low_integers[i] > abs then
-                rounded_abs = round(abs, nice_low_integers[i] - nice_low_integers[i - 1])
+        for i = 2, #target_coefficients do
+            if target_coefficients[i] > abs then
+                local low = target_coefficients[i - 1]
+                rounded_abs = round(abs - low, target_coefficients[i] - low) + low
                 break
             end
         end
@@ -217,11 +262,11 @@ randnum.fixes = function(params, val)
     if params.rounding == "normal" then -- Default rounding value
         val = round_normal(val)
     elseif params.rounding == "discrete" then
-        val = round_discrete(val)
+        val = round_discrete(val, params.key)
     elseif params.rounding == "pure_discrete" then
         val = round_pure_discrete(val)
     elseif params.rounding == "discrete_float" then
-        val = round_discrete_float(val)
+        val = round_discrete_float(val, params.key)
     elseif params.rounding == "none" then
         -- Don't do anything
     -- Otherwise, there was a misspelling
