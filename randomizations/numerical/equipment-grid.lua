@@ -33,14 +33,16 @@ randomizations.equipment_grid_sizes = function(id)
                     key = key,
                     dummy = old_grid_size,
                     rounding = "none",
-                    abs_min = 1
+                    abs_min = 1,
+                    variance = "big",
                 })
 
                 local new_aspect_ratio = randomize({
                     key = key,
                     dummy = old_aspect_ratio,
                     rounding = "none",
-                    dir = 0
+                    dir = 0,
+                    variance = "big"
                 })
 
                 -- Calculate new width and height based on new size and aspect ratio
@@ -54,7 +56,7 @@ randomizations.equipment_grid_sizes = function(id)
                 new_grid_size = new_height * new_width
                 local factor = new_grid_size / old_grid_size
 
-                locale_utils.create_localised_description(grid_owner, factor, id)
+                locale_utils.create_localised_description(grid_owner, factor, id, { variance = "big" })
             end
         end
     end

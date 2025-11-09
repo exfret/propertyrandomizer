@@ -119,12 +119,13 @@ randomizations.armor_inventory_bonus = function(id)
         id = id,
         prototypes = prototypes,
         property = "inventory_size_bonus",
-        rounding = "discrete"
+        rounding = "discrete",
+        variance = "big",
     })
 
     for _, armor in pairs(data.raw.armor) do
         if armor.inventory_size_bonus ~= nil and armor.inventory_size_bonus > 0 then
-            locale_utils.create_localised_description(armor, armor.inventory_size_bonus / armor_to_old_bonus[armor.name], id)
+            locale_utils.create_localised_description(armor, armor.inventory_size_bonus / armor_to_old_bonus[armor.name], id, { variance = "big" })
         end
     end
 end
@@ -157,6 +158,7 @@ randomizations.armor_resistances = function(id)
                         tbl = resistance,
                         property = "decrease",
                         rounding = "discrete_float",
+                        variance = "big",
                     })
                 end
                 if resistance.percent ~= nil and resistance.percent > 0 then
@@ -167,6 +169,7 @@ randomizations.armor_resistances = function(id)
                         tbl = resistance,
                         property = "decrease",
                         rounding = "discrete_float",
+                        variance = "big",
                     })
                 end
             end
@@ -192,12 +195,13 @@ randomizations.capsule_cooldown = function(id)
                 tbl = attack_parameters,
                 property = "cooldown",
                 rounding = "discrete_float",
+                variance = "big",
             })
             -- Back to ticks per attack
             attack_parameters.cooldown = 60 / attack_parameters.cooldown
 
             local factor = attack_parameters.cooldown / old_value
-            locale_utils.create_localised_description(capsule, factor, id, { flipped = true })
+            locale_utils.create_localised_description(capsule, factor, id, { flipped = true, variance = "big" })
         end
     end
 end
@@ -262,11 +266,11 @@ randomizations.capsule_throw_range = function(id)
                 prototype = capsule,
                 tbl = attack_parameters,
                 property = "range",
-                variance = "small",
+                variance = "medium",
                 rounding = "discrete_float"
             })
 
-            locale_utils.create_localised_description(capsule, attack_parameters.range / old_range, id, { variance = "small" })
+            locale_utils.create_localised_description(capsule, attack_parameters.range / old_range, id, { variance = "medium" })
         end
     end
 end
@@ -300,10 +304,11 @@ randomizations.gun_damage_modifier = function(id)
             tbl = attack_parameters,
             property = "damage_modifier",
             range_min = "small",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big",
         })
 
-        locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id)
+        locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id, { variance = "big" })
     end
 end
 
@@ -343,12 +348,12 @@ randomizations.gun_range = function(id)
             key = rng.key({id = id, prototype = gun}),
             dummy = old_range,
             range = "small",
-            variance = "small",
+            variance = "medium",
             rounding = "discrete_float"
         })
         gun.attack_parameters.range = new_range + min_range
         local factor = gun.attack_parameters.range / (old_range + min_range)
-        locale_utils.create_localised_description(gun, factor, id, { variance = "small" })
+        locale_utils.create_localised_description(gun, factor, id, { variance = "medium" })
     end
 end
 
@@ -364,13 +369,14 @@ randomizations.gun_shooting_speed = function(id)
             tbl = gun.attack_parameters,
             property = "cooldown",
             range = "small",
-            rounding = "discrete_float"
+            rounding = "discrete_float",
+            variance = "big",
         })
         -- Back to ticks per attack
         gun.attack_parameters.cooldown = 60 / gun.attack_parameters.cooldown
 
         local new_shooting_speed = 1 / gun.attack_parameters.cooldown
-        locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id)
+        locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id, { variance = "big" })
     end
 end
 
@@ -554,7 +560,8 @@ randomizations.module_effects = function(id)
                 rounding = "discrete",
                 dir = -1,
                 abs_min = 1,
-                abs_max = 5
+                abs_max = 5,
+                variance = "big",
             })
             local max_negative_effect_count = #effect_names - positive_effect_count
 
@@ -600,7 +607,8 @@ randomizations.module_effects = function(id)
                         dummy = effect_strength,
                         rounding = "discrete_float",
                         abs_min = 0.01,
-                        abs_max = 327.67
+                        abs_max = 327.67,
+                        variance = "big",
                     })
                     if module.effect[effect.name] < 0 then
                         effect_strength = 0 - effect_strength
@@ -618,7 +626,8 @@ randomizations.module_effects = function(id)
                         rounding = "discrete_float",
                         dir = -1,
                         abs_min = 0.01,
-                        abs_max = 327.67
+                        abs_max = 327.67,
+                        variance = "big",
                     })
                     if module.effect[effect.name] < 0 then
                         effect_strength = 0 - effect_strength
