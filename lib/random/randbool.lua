@@ -1,13 +1,8 @@
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
+local randpercent = require("lib/random/randpercent")
 
 local randbool = {}
-
-local probability_multiplication = function(p, factor)
-    local not_p = 1 - p
-    local scaled_p = p * factor
-    return scaled_p / (scaled_p + not_p)
-end
 
 randbool.converge = function(key, p)
     return rng.value(key) < p
@@ -15,7 +10,7 @@ end
 
 --- randomly returns true or false, high global_chaos increases likelyhood of true
 randbool.rand_chaos = function(key, base_probability)
-    local p = probability_multiplication(base_probability, global_chaos)
+    local p = randpercent.probability_multiplication(base_probability, global_chaos)
     return randbool.converge(key, p)
 end
 
@@ -30,7 +25,7 @@ randbool.rand_bias = function (key, base_probability, dir)
     if dir < 0 then
         factor = 1 / factor
     end
-    local p = probability_multiplication(base_probability, factor)
+    local p = randpercent.probability_multiplication(base_probability, factor)
     return randbool.converge(key, p)
 end
 

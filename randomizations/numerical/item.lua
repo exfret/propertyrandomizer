@@ -1,5 +1,6 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
+local randpercent = require("lib/random/randpercent")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
@@ -62,7 +63,7 @@ randomizations.ammo_damage = function(id)
             tbls = tbls,
             property = "amount",
             range = "small",
-            variance = "small"
+            rounding = "discrete_float"
         })
 
         for _, ammo in pairs(data.raw.ammo) do
@@ -77,7 +78,7 @@ randomizations.ammo_damage = function(id)
 
                 -- Check that this ammo's damage wasn't 0 just in case it's some special action bullet
                 if ammo_to_old_damage[ammo.name] ~= 0 then
-                    ammo.localised_description = locale_utils.create_localised_description(ammo, new_damage_amount / ammo_to_old_damage[ammo.name], id)
+                    locale_utils.create_localised_description(ammo, new_damage_amount / ammo_to_old_damage[ammo.name], id)
                 end
             end
         end
@@ -96,11 +97,10 @@ randomizations.ammo_magazine_size = function(id)
                 property = "magazine_size",
                 abs_min = 2,
                 range = "small",
-                variance = "small",
                 rounding = "discrete"
             })
 
-            ammo.localised_description = locale_utils.create_localised_description(ammo, ammo.magazine_size / old_magazine_size, id)
+            locale_utils.create_localised_description(ammo, ammo.magazine_size / old_magazine_size, id)
         end
     end
 end
@@ -118,30 +118,60 @@ randomizations.armor_inventory_bonus = function(id)
     randomizations.linked({
         id = id,
         prototypes = prototypes,
-        property = "inventory_size_bonus"
+        property = "inventory_size_bonus",
+        rounding = "discrete"
     })
 
     for _, armor in pairs(data.raw.armor) do
         if armor.inventory_size_bonus ~= nil and armor.inventory_size_bonus > 0 then
-            armor.localised_description = locale_utils.create_localised_description(armor, armor.inventory_size_bonus / armor_to_old_bonus[armor.name], id)
+            locale_utils.create_localised_description(armor, armor.inventory_size_bonus / armor_to_old_bonus[armor.name], id)
         end
     end
 end
 
 -- New
 -- TODO: Make group randomized with armor
-randomizations.armor_resistances_decrease = function(id)
+randomizations.armor_resistances = function(id)
+
+    local damage_type_names = {}
+    for name, _ in pairs(data.raw["damage-type"]) do
+        table.insert(damage_type_names, name)
+    end
+
     for _, armor in pairs(data.raw.armor) do
         if armor.resistances ~= nil then
+            local shuffled_damage_type_names = table.deepcopy(damage_type_names)
+            local key = rng.key({id = id, prototype = armor})
+            rng.shuffle(key, shuffled_damage_type_names)
+            local i = 1
+            local old_flat_resistance_sum = 0
+            local old_p_resistance_sum = 0
             for _, resistance in pairs(armor.resistances) do
-                randomize({
-                    id = id,
-                    prototype = armor,
-                    tbl = resistance,
-                    property = "decrease",
-                    range = "very_small",
-                    variance = "small"
-                })
+                resistance.type = shuffled_damage_type_names[i]
+                i = i + 1
+                if resistance.decrease ~= nil and resistance.decrease > 0 then
+                    old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
+                    randomize({
+                        key = key,
+                        prototype = armor,
+                        tbl = resistance,
+                        property = "decrease",
+                        rounding = "discrete_float",
+                    })
+                end
+                if resistance.percent ~= nil and resistance.percent > 0 then
+                    old_p_resistance_sum = old_p_resistance_sum + resistance.percent
+                    randpercent.rand({
+                        key = key,
+                        prototype = armor,
+                        tbl = resistance,
+                        property = "decrease",
+                        rounding = "discrete_float",
+                    })
+                end
+            end
+            if old_flat_resistance_sum + old_p_resistance_sum > 0 then
+                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Specialized resistance)[/color]"}
             end
         end
     end
@@ -152,6 +182,7 @@ randomizations.capsule_cooldown = function(id)
     for _, capsule in pairs(data.raw.capsule) do
         if capsule.capsule_action.attack_parameters then
             local attack_parameters = capsule.capsule_action.attack_parameters
+            local old_value = attack_parameters.cooldown
 
             -- Rounding will be off but that's okay
             randomize({
@@ -159,11 +190,12 @@ randomizations.capsule_cooldown = function(id)
                 prototype = capsule,
                 tbl = attack_parameters,
                 property = "cooldown",
-                rounding = "none",
+                rounding = "discrete_float",
                 dir = -1
             })
 
-            -- TODO: Inverse rounding?
+            local factor = attack_parameters.cooldown / old_value
+            locale_utils.create_localised_description(capsule, factor, id, { flipped = true })
         end
     end
 end
@@ -227,10 +259,12 @@ randomizations.capsule_throw_range = function(id)
                 id = id,
                 prototype = capsule,
                 tbl = attack_parameters,
-                property = "range"
+                property = "range",
+                variance = "small",
+                rounding = "discrete_float"
             })
 
-            capsule.localised_description = locale_utils.create_localised_description(capsule, attack_parameters.range / old_range, id)
+            locale_utils.create_localised_description(capsule, attack_parameters.range / old_range, id, { variance = "small" })
         end
     end
 end
@@ -263,10 +297,11 @@ randomizations.gun_damage_modifier = function(id)
             prototype = gun,
             tbl = attack_parameters,
             property = "damage_modifier",
-            range_min = "small"
+            range_min = "small",
+            rounding = "discrete_float"
         })
 
-        gun.localised_description = locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id)
+        locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id)
     end
 end
 
@@ -278,32 +313,40 @@ randomizations.gun_movement_slowdown_factor = function(id)
 
         -- This can cause guns to speed you up but that's funny
         if attack_parameters.movement_slow_down_factor ~= nil then
+            local old_value = attack_parameters.movement_slow_down_factor
             randomize({
                 id = id,
                 prototype = gun,
                 tbl = attack_parameters,
                 property = "movement_slow_down_factor",
                 range = "big",
-                variance = "big"
+                rounding = "discrete_float"
             })
+            local factor = attack_parameters.movement_slow_down_factor / old_value
+            locale_utils.create_localised_description(gun, factor, id)
         end
     end
 end
 
 randomizations.gun_range = function(id)
     for _, gun in pairs(data.raw.gun) do
-        local old_range = gun.attack_parameters.range
+        local min_range = 0
+        if gun.attack_parameters.min_range ~= nil then
+            min_range = gun.attack_parameters.min_range
+        end
 
-        randomize({
-            id = id,
-            prototype = gun,
-            tbl = gun.attack_parameters,
-            property = "range",
+        local old_range = gun.attack_parameters.range - min_range
+
+        local new_range = randomize({
+            key = rng.key({id = id, prototype = gun}),
+            dummy = old_range,
             range = "small",
-            variance = "small"
+            variance = "small",
+            rounding = "discrete_float"
         })
-
-        gun.localised_description = locale_utils.create_localised_description(gun, gun.attack_parameters.range / old_range, id)
+        gun.attack_parameters.range = new_range + min_range
+        local factor = gun.attack_parameters.range / (old_range + min_range)
+        locale_utils.create_localised_description(gun, factor, id, { variance = "small" })
     end
 end
 
@@ -317,13 +360,12 @@ randomizations.gun_shooting_speed = function(id)
             tbl = gun.attack_parameters,
             property = "cooldown",
             range = "small",
-            variance = "small",
             dir = -1,
-            rounding = "none"
+            rounding = "discrete_float"
         })
 
         local new_shooting_speed = 1 / gun.attack_parameters.cooldown
-        gun.localised_description = locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id)
+        locale_utils.create_localised_description(gun, new_shooting_speed / old_shooting_speed, id)
     end
 end
 
@@ -339,10 +381,10 @@ randomizations.item_fuel_value = function(id)
                         prototype = item,
                         property = "fuel_value",
                         range = "small",
-                        variance = "small"
+                        rounding = "discrete_float"
                     })
 
-                    item.localised_description = locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
+                    locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
                 end
             end
         end
@@ -362,12 +404,11 @@ randomizations.item_stack_sizes = function(id)
                         property = "stack_size",
                         range_min = "small",
                         range_max = "big",
-                        variance = "big",
                         bias = 0.1,
                         rounding = "discrete"
                     })
 
-                    item.localised_description = locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
+                    locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
                 end
             end
         end
