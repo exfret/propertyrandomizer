@@ -542,6 +542,12 @@ local spec = {
             val = "more"
         }
     },
+    resistances = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- How fast a roboport uses energy to charge bots
     roboport_charging_energy = {
         setting = {

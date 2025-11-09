@@ -1,5 +1,6 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
+local randpercent = require("lib/random/randpercent")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
@@ -892,22 +893,22 @@ randomizations.machine_pollution = function(id)
     end
 end
 
+local enemy_health_classes = {
+    ["asteroid"] = true,
+    ["segment"] = true,
+    ["segmented-unit"] = true,
+    ["simple-entity"] = true,
+    ["spider-unit"] = true,
+    ["tree"] = true, -- They're standing in the way of my factory!
+    ["turret"] = true,
+    ["unit"] = true,
+    ["unit-spawner"] = true
+}
+
 randomizations.max_health = function(id)
     -- Entities with health where it's sensitive enough not to randomize, or where randomization doesn't make sense
     -- Allow turrets and other military items to be randomized, we'll just dupe those
     -- These things are much harder to dupe on the other hand
-
-    local enemy_health_classes = {
-        ["asteroid"] = true,
-        ["segment"] = true,
-        ["segmented-unit"] = true,
-        ["simple-entity"] = true,
-        ["spider-unit"] = true,
-        ["tree"] = true, -- They're standing in the way of my factory!
-        ["turret"] = true,
-        ["unit"] = true,
-        ["unit-spawner"] = true
-    }
 
     -- Just check whether the max_health key is non-nil
     -- Some entities can have health but have this be nil since it's optional, let's just not worry about those
@@ -1182,6 +1183,82 @@ randomizations.reactor_neighbour_bonus = function(id)
             })
     
             locale_utils.create_localised_description(reactor, reactor.neighbour_bonus / old_neighbour_bonus, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.resistances = function(id)
+    local damage_type_names = {}
+    for name, _ in pairs(data.raw["damage-type"]) do
+        table.insert(damage_type_names, name)
+    end
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.resistances ~= nil then
+                    local shuffled_damage_type_names = table.deepcopy(damage_type_names)
+                    local key = rng.key({id = id, prototype = entity})
+                    rng.shuffle(key, shuffled_damage_type_names)
+                    local dir = 1
+                    if enemy_health_classes[entity_class] then
+                        dir = -1
+                    end
+                    local i = 1
+                    local old_flat_resistance_sum = 0
+                    local old_p_resistance_sum = 0
+                    for _, resistance in pairs(entity.resistances) do
+                        resistance.type = shuffled_damage_type_names[i]
+                        i = i + 1
+                        if resistance.decrease ~= nil and resistance.decrease > 0 then
+                            old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
+                            randomize({
+                                key = key,
+                                prototype = entity,
+                                tbl = resistance,
+                                property = "decrease",
+                                rounding = "discrete_float",
+                                variance = "medium",
+                                dir = dir,
+                            })
+                        end
+                        if resistance.percent ~= nil and resistance.percent > 0 then
+                            old_p_resistance_sum = old_p_resistance_sum + resistance.percent
+                            resistance.percent = randpercent.rand({
+                                key = key,
+                                prototype = entity,
+                                tbl = resistance,
+                                property = "percent",
+                                rounding = "discrete_float",
+                                variance = "medium",
+                                dir = dir,
+                                percent_limit = 100,
+                            })
+                        end
+                    end
+                    if old_flat_resistance_sum + old_p_resistance_sum > 0 then
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Specialized resistance)[/color]"}
+                    end
+                end
+            end
+        end
+    end
+
+    -- Perhaps asteroids of equal size should have the same resistances.
+    for name, asteroid in pairs(data.raw["asteroid"]) do
+        local source = nil
+        if name:match("^small") then
+            source = data.raw["asteroid"]["small-metallic-asteroid"]
+        elseif name:match("^medium") then
+            source = data.raw["asteroid"]["medium-metallic-asteroid"]
+        elseif name:match("^big") then
+            source = data.raw["asteroid"]["big-metallic-asteroid"]
+        elseif name:match("^huge") then
+            source = data.raw["asteroid"]["huge-metallic-asteroid"]
+        end
+
+        if source ~= nil then
+            asteroid.resistances = table.deepcopy(source.resistances)
         end
     end
 end
