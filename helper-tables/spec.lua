@@ -53,6 +53,12 @@ local spec = {
             val = "more"
         }
     },
+    armor_resistances = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     asteroid_collector_radius = {
         setting = {
             name = "propertyrandomizer-production",
@@ -116,6 +122,12 @@ local spec = {
         }
     },
     capsule_actions = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    capsule_cooldown = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
@@ -394,8 +406,6 @@ local spec = {
             val = "more"
         }
     },
-    -- This should actually be fine, I believe it just needs testing right now
-    -- CRITICAL TODO: MAKE SURE THIS IS WROKING
     module_effects = {
         setting = {
             name = "propertyrandomizer-production",
