@@ -72,3 +72,18 @@ randomizations.recipe_results_numerical = function(id)
         end
     end
 end
+
+-- New
+randomizations.recipe_crafting_times = function(id)
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.energy_required == nil then
+            recipe.energy_required = 0.5
+        end
+        randomize({
+            id = id,
+            prototype = recipe,
+            property = "energy_required",
+            rounding = "discrete_float",
+        })
+    end
+end
