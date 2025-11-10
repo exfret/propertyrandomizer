@@ -431,28 +431,30 @@ local rocket_lift_weight = 1000000
 
 -- New
 randomizations.item_weights = function(id)
-    for item_class, _ in pairs(defines.prototypes.item) do
+    for item_class, _ in pairs(categories.normal_item_classes) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                local key = rng.key({ id = id, property = item })
+                if item.subgroup == nil or categories.special_item_subgroups[item.subgroup] == nil then
+                    local key = rng.key({ id = id, property = item })
 
-                local weight_factor = randomize{
-                    key = key,
-                    dummy = 1,
-                    rounding = "discrete_float",
-                    dir = -1,
-                }
-                if item.ingredient_to_weight_coefficient == nil then
-                    item.ingredient_to_weight_coefficient = 0.5
+                    local weight_factor = randomize{
+                        key = key,
+                        dummy = 1,
+                        rounding = "discrete_float",
+                        dir = -1,
+                    }
+                    if item.ingredient_to_weight_coefficient == nil then
+                        item.ingredient_to_weight_coefficient = 0.5
+                    end
+                    item.ingredient_to_weight_coefficient = item.ingredient_to_weight_coefficient * weight_factor
+
+                    -- Let's try not to make stuff too heavy for rockets
+                    if item.weight ~= nil and item.weight <= rocket_lift_weight then
+                        item.weight = math.min(item.weight * weight_factor, rocket_lift_weight)
+                    end
+
+                    locale_utils.create_localised_description(item, weight_factor, id, { flipped = true })
                 end
-                item.ingredient_to_weight_coefficient = item.ingredient_to_weight_coefficient * weight_factor
-
-                -- Let's try not to make stuff too heavy for rockets
-                if item.weight ~= nil and item.weight <= rocket_lift_weight then
-                    item.weight = math.min(item.weight * weight_factor, rocket_lift_weight)
-                end
-
-                locale_utils.create_localised_description(item, weight_factor, id, { flipped = true })
             end
         end
     end

@@ -984,7 +984,7 @@ randomizations.mining_times = function(id)
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if entity_class ~= "resource" and data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                if entity.minable ~= nil then
+                if entity.minable ~= nil and entity.minable.mining_time > 0 then
                     local old_value = entity.minable.mining_time
 
                     randomize({
