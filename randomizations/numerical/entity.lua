@@ -582,6 +582,27 @@ randomizations.generator_fluid_usage = function(id)
     end
 end
 
+randomizations.inserter_base_hand_size = function(id)
+    for _, inserter in pairs(data.raw.inserter) do
+        if inserter.stack_size_bonus == nil then
+            inserter.stack_size_bonus = 0
+        end
+        local old_value = inserter.stack_size_bonus + 1
+
+        local new_value = randomize({
+            key = rng.key({id = id, prototype = inserter}),
+            dummy = old_value,
+            rounding = "discrete",
+            abs_min = 1,
+            variance = "big"
+        })
+
+        inserter.stack_size_bonus = new_value - 1
+        local factor = new_value / old_value
+        locale_utils.create_localised_description(inserter, factor, id, { variance = "big" })
+    end
+end
+
 -- Tier preservation
 -- Separate out fast/bulk/stack inserters into separate tier lists
 randomizations.inserter_speed = function(id)

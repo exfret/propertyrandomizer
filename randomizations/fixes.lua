@@ -76,4 +76,13 @@ randomizations.fixes = function()
             recipe.ingredients = new_ings
         end
     end
+
+    -- Delimit belt stack size so that the upgrade research can take it past 4
+    local uint8_max = 255
+    for _, inserter in pairs(data.raw.inserter) do
+        if inserter.max_belt_stack_size ~= nil and inserter.max_belt_stack_size > 1 then
+            inserter.max_belt_stack_size = uint8_max
+        end
+    end
+    data.raw["utility-constants"].default.max_belt_stack_size = uint8_max
 end

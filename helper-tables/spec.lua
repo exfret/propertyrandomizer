@@ -345,6 +345,12 @@ local spec = {
             val = "more"
         }
     },
+    inserter_base_hand_size = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     inserter_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
