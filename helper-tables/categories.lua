@@ -72,6 +72,28 @@ categories.machine_energy_usage_keys = {
     ["spidertron"] = {["movement_energy_consumption"] = "power"}
 }
 
+-- This doesn't include stuff like blueprint books and selection tool
+-- Still includes stuff like red wire since those are classified as items
+categories.normal_item_classes = {
+    ["ammo"] = true,
+    ["armor"] = true,
+    ["capsule"] = true,
+    ["gun"] = true,
+    ["item"] = true,
+    ["item-with-entity-data"] = true,
+    ["item-with-inventory"] = true,
+    ["item-with-label"] = true,
+    ["item-with-tags"] = true,
+    ["module"] = true,
+    ["repair-tool"] = true,
+    ["space-platform-starter-pack"] = true,
+    ["tool"] = true,
+}
+
+categories.special_item_subgroups = {
+    ["spawnables"] = true
+}
+
 -- Note: Artillery turrets not included
 -- Also note that normal turrets aren't included since they correspond to worms
 categories.turrets = {

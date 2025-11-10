@@ -2,6 +2,7 @@ local locale_utils = require("lib/locale")
 local rng = require("lib/random/rng")
 local randbool = require("lib/random/randbool")
 local randnum = require("lib/random/randnum")
+local categories = require("helper-tables/categories")
 
 -- Probability of removing existing fuel properties from an item
 local remove_fuel_p = 0.5
@@ -30,7 +31,7 @@ randomizations.item_fuels = function(id)
     local chemical_fuel_count = 0
     local non_fuel_count = 0
     
-    for item_class, _ in pairs(defines.prototypes.item) do
+    for item_class, _ in pairs(categories.normal_item_classes) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
@@ -55,7 +56,7 @@ randomizations.item_fuels = function(id)
 
     local fuel_p = chemical_fuel_count / (chemical_fuel_count + non_fuel_count)
 
-    for item_class, _ in pairs(defines.prototypes.item) do
+    for item_class, _ in pairs(categories.normal_item_classes) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
