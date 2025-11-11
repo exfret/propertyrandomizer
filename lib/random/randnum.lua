@@ -202,14 +202,14 @@ local nice_rounding_coefficients = {
     }
 }
 local nice_low_integers = {
-    { 1, 2, 5, 10, 12, 15, 20, 25, 30, 40, 50, 60, 100 },
+    { 1, 2, 5, 10, 12, 15, 20, 24, 25, 30, 40, 50, 60, 75, 80, 100 },
     { 1, 2, 3, 5, 6, 10, 20, 50, 100 },
-    { 1, 2, 4, 5, 10, 12, 18, 20, 24, 25, 30, 36, 40, 50, 60, 72, 80, 90, 100 },
-    { 1, 2, 4, 5, 8, 10, 12, 14, 20, 21, 25, 28, 30, 40, 42, 50, 60, 70, 84, 100 },
-    { 1, 3, 10, 15, 18, 20, 30, 45, 50, 60, 90, 100 },
-    { 1, 3, 9, 10, 12, 16, 20, 24, 25, 30, 32, 40, 48, 50, 60, 80, 96, 100 },
-    { 1, 2, 5, 10, 12, 16, 20, 24, 25, 30, 40, 48, 50, 60, 80, 100 },
-    { 1, 7, 10, 12, 20, 24, 25, 30, 40, 50, 60, 80, 100 }
+    { 1, 2, 4, 5, 10, 12, 15, 18, 20, 24, 25, 30, 36, 40, 45, 50, 60, 72, 75, 80, 90, 100 },
+    { 1, 2, 4, 5, 8, 10, 12, 14, 15, 20, 21, 25, 28, 30, 35, 40, 42, 50, 60, 70, 75, 84, 100 },
+    { 1, 3, 10, 12, 15, 18, 20, 25, 30, 36, 40, 45, 50, 60, 75, 90, 100 },
+    { 1, 3, 9, 10, 12, 15, 16, 20, 24, 25, 30, 32, 40, 48, 50, 60, 75, 80, 96, 100 },
+    { 1, 2, 5, 10, 12, 15, 16, 20, 24, 25, 30, 40, 48, 50, 60, 75, 80, 100 },
+    { 1, 7, 10, 12, 15, 20, 24, 25, 30, 40, 50, 60, 75, 80, 100 },
 }
 
 local function round_discrete_float(num, key)
@@ -220,8 +220,8 @@ local function round_discrete_float(num, key)
     local magnitude = 10^math.floor(math.log(abs, 10))
     local coefficient = abs / magnitude
     local digits = rng.int(key, #nice_rounding_coefficients)
-    local gap_idx = rng.int(key, #nice_rounding_coefficients[digits])
-    local target_coefficients = nice_rounding_coefficients[digits][gap_idx]
+    local set_idx = rng.int(key, #nice_rounding_coefficients[digits])
+    local target_coefficients = nice_rounding_coefficients[digits][set_idx]
     local rounded_coefficient = 0
     for i = 2, #target_coefficients do
         if target_coefficients[i] > coefficient then
@@ -241,8 +241,8 @@ local function round_discrete(num, key)
     if num == 0 then
         return num;
     end
-    local gap_idx = rng.int(key, #nice_low_integers)
-    local target_coefficients = nice_low_integers[gap_idx]
+    local set_idx = rng.int(key, #nice_low_integers)
+    local target_coefficients = nice_low_integers[set_idx]
     local abs = math.abs(num)
     if abs >= target_coefficients[#target_coefficients] then
         return round_discrete_float(num, key)
