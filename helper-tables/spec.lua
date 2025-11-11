@@ -624,6 +624,12 @@ local spec = {
             val = "default"
         }
     },
+    tech_upgrades = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     tile_walking_speed_modifier = {
         setting = {
             name = "propertyrandomizer-misc",
