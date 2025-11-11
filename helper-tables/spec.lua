@@ -542,6 +542,12 @@ local spec = {
             val = "more"
         }
     },
+    recipe_maximum_productivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     recipe_results_numerical = {
         setting = {
             name = "propertyrandomizer-production",
