@@ -542,6 +542,7 @@ local spec = {
             val = "more"
         }
     },
+    -- Also inversely affects recycling yields
     recipe_maximum_productivity = {
         setting = {
             name = "propertyrandomizer-production",

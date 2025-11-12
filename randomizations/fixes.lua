@@ -213,7 +213,7 @@ randomizations.fixes = function()
                     -- Adjust in case of increased maximum_productivity
                     local max_productivity_factor = 4
                     if recipe.maximum_productivity ~= nil then
-                        max_productivity_factor = math.max(recipe.maximum_productivity, 1 + recipe.maximum_productivity)
+                        max_productivity_factor = 1 + recipe.maximum_productivity
                     end
                     local max_products = amount_expected_value(product) * max_productivity_factor
                     local recycling_yield_factor = 1 / max_products
@@ -223,26 +223,25 @@ randomizations.fixes = function()
                         local recycle_product_yield = amount_expected_value(ingredient) * recycling_yield_factor
                         local consistent_amount = math.floor(recycle_product_yield)
                         local extra_count_fraction = recycle_product_yield - consistent_amount
+                        local new_recycling_result = {
+                            type = type_item,
+                            name = ingredient.name,
+                        }
                         -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
                         if consistent_amount < 1 then
-                            new_recycling_results[#new_recycling_results+1] = {
-                                type = type_item,
-                                name = ingredient.name,
-                                amount = 1,
-                                probability = extra_count_fraction,
-                            }
+                            new_recycling_result.amount = 1
+                            new_recycling_result.probability = extra_count_fraction
                         else
-                            new_recycling_results[#new_recycling_results+1] = {
-                                type = type_item,
-                                name = ingredient.name,
-                                amount = consistent_amount,
-                                extra_count_fraction = extra_count_fraction,
-                            }
+                            new_recycling_result.amount = consistent_amount
+                            new_recycling_result.extra_count_fraction = extra_count_fraction
                         end
+                        new_recycling_results[#new_recycling_results+1] = new_recycling_result
                     end
                     recycling_recipe.results = new_recycling_results
                     -- Also remove main product, because that sometimes needs to be fixed for some reason
                     recycling_recipe.main_product = nil
+                    -- Remove number from recycling recipe name
+                    recycling_recipe.show_amount_in_title = false
                     -- Keep track of what items we have fixed the recycling recipes for
                     reversed_items[product.name] = true
                 end
@@ -269,6 +268,8 @@ randomizations.fixes = function()
                         }
                         -- Also remove main product, because that sometimes needs to be fixed for some reason
                         recycling_recipe.main_product = nil
+                        -- Remove number from recycling recipe name
+                        recycling_recipe.show_amount_in_title = false
                     end
                 end
             end
