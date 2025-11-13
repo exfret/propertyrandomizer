@@ -504,6 +504,7 @@ local function load()
 
     -- agricultural-tower-surface
     log("Adding: agricultural-tower-surface")
+    -- Can we use any agricultural tower on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -526,6 +527,7 @@ local function load()
     -- asteroid-collection-surface
     log("Adding: asteroid-collection-surface")
     -- Only implemented for space surfaces
+    -- Can we use any asteroid collector on this surface?
 
     if data.raw.surface ~= nil then
         for _, surface in pairs(data.raw.surface) do
@@ -548,6 +550,7 @@ local function load()
 
     -- build-entity
     log("Adding: build-entity")
+    -- Can we build this entity somewhere?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         prereqs = {}    
@@ -564,6 +567,7 @@ local function load()
 
     -- build-entity-item
     log("Adding: build-entity-item")
+    -- May an item we have allow us to build this entity?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         prereqs = {}
@@ -586,6 +590,7 @@ local function load()
 
     -- build-entity-surface
     log("Adding: build-entity-surface")
+    -- Do we have all we need to build this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -632,6 +637,7 @@ local function load()
     -- build-entity-surface-condition-false
     log("Adding: build-entity-surface-condition-false")
     -- OR
+    -- Does an entity's surface conditions allow us to build the entity on a surface that doesn't satisfy them?
 
     prereqs = {}
 
@@ -640,6 +646,7 @@ local function load()
     -- build-entity-surface-condition-true
     log("Adding: build-entity-surface-condition-true")
     -- AND
+    -- Does an entity's surface conditions allow us to build the entity on a surface that satisfies them?
 
     prereqs = {}
 
@@ -647,6 +654,7 @@ local function load()
 
     -- build-tile
     log("Adding: build-tile")
+    -- Can we build this tile somewhere?
 
     for _, tile in pairs(data.raw.tile) do
         prereqs = {}
@@ -663,6 +671,7 @@ local function load()
 
     -- build-tile-item-surface
     log("Adding: build-tile-item-surface")
+    -- Does an item we have allow us to build this tile on this surface?
 
     -- TODO: Put buildability check here as well
     -- TODO: Modify the spec to account for modification to this
@@ -690,6 +699,7 @@ local function load()
 
     -- build-tile-item-surface-buildability
     log("Adding: build-tile-item-surface-buildability")
+    -- Would this item allow us to build this tile on this surface?
 
     -- Check actual tile conditions for a tile-item-surface combo
     -- TODO: Add this to the spec
@@ -731,6 +741,7 @@ local function load()
 
     -- build-tile-item-surface-with-item
     log("Adding: build-tile-item-surface-with-item")
+    -- Do we have all we need to build this tile on this surface using this item?
 
     -- TODO: Add this to the spec
     for _, tile in pairs(data.raw.tile) do
@@ -761,6 +772,7 @@ local function load()
 
     -- build-tile-surface
     log("Adding: build-tile-surface")
+    -- Do we have all we need to build this tile on this surface?
 
     for _, tile in pairs(data.raw.tile) do
         for surface_name, surface in pairs(surfaces) do
@@ -787,6 +799,7 @@ local function load()
 
     -- burn-item
     log("Adding: burn-item")
+    -- Do we have all we need to use this item as fuel somewhere?
 
     -- TODO: Make this instead depend on burn-item-surface
     for item_class, _ in pairs(defines.prototypes.item) do
@@ -813,6 +826,7 @@ local function load()
 
     -- burn-item-surface
     log("Adding: burn-item-surface")
+    -- Do we have all we need to use this item as fuel on this surface?
 
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
@@ -839,6 +853,7 @@ local function load()
 
     -- capsule-surface
     log("Adding: capsule-surface")
+    -- Do we have all we need to use this capsule on this surface?
 
     for _, capsule in pairs(data.raw.capsule) do
         for surface_name, surface in pairs(surfaces) do
@@ -861,6 +876,7 @@ local function load()
 
     -- capture-robot
     log("Adding: capture-robot")
+    -- Do we have all we need to spawn a capture robot somewhere?
 
     prereqs = {}
 
@@ -877,6 +893,7 @@ local function load()
 
     -- capture-spawner-surface
     log("Adding: capture-spawner-surface")
+    -- Do we have all we need to capture a unit-spawner on this surface?
 
     for _, spawner in pairs(data.raw["unit-spawner"]) do
         for surface_name, surface in pairs(surfaces) do
@@ -899,6 +916,7 @@ local function load()
 
     -- cargo-landing-pad-planet
     log("Adding: cargo-landing-pad-planet")
+    -- Do we have all we need to use a cargo landing pad on this planet?
 
     for _, planet in pairs(data.raw.planet) do
         prereqs = {}
@@ -915,6 +933,7 @@ local function load()
 
     -- character
     log("Adding: character")
+    -- Do we have all we need to use a character somewhere?
 
     for _, character in pairs(data.raw.character) do
         prereqs = {}
@@ -931,6 +950,7 @@ local function load()
 
     -- craft-material
     log("Adding: craft-material")
+    -- Do we have all we need to craft this material somewhere?
 
     for material_name, material in pairs(materials) do
         prereqs = {}
@@ -947,6 +967,7 @@ local function load()
 
     -- craft-material-surface
     log("Adding: craft-material-surface")
+    -- Do we have all we need to craft this material on this surface?
 
     for material_name, material in pairs(materials) do
         -- Precompute recipes that result in this material for performance reasons
@@ -986,6 +1007,7 @@ local function load()
 
     -- create-fluid-offshore-surface
     log("Adding: create-fluid-offshore-surface")
+    -- Do we have all we need to use this offshore pump on this tile on this surface?
 
     for _, pump in pairs(data.raw["offshore-pump"]) do
         for _, tile in pairs(data.raw.tile) do
@@ -1018,6 +1040,7 @@ local function load()
 
     -- create-fluid-surface
     log("Adding: create-fluid-surface")
+    -- Do we have all we need to obtain this fluid on this surface?
 
     for _, fluid in pairs(data.raw.fluid) do
         for surface_name, surface in pairs(surfaces) do
@@ -1099,6 +1122,7 @@ local function load()
 
     -- create-space-platform
     log("Adding: create-space-platform")
+    -- Do we have all we need to create a space platform?
 
     prereqs = {}
 
@@ -1115,6 +1139,7 @@ local function load()
 
     -- create-space-platform-tech-unlock
     log("Adding: create-space-platform-tech-unlock")
+    -- Are space platforms unlocked?
 
     prereqs = {}
 
@@ -1141,6 +1166,7 @@ local function load()
 
     -- gun-ammo-surface
     log("Adding: gun-ammo-surface")
+    -- Can we deal damage to stuff on this surface?
 
     -- TODO: Make this something other than just a source
     -- We're basically assuming here that the player can take down anything
@@ -1156,6 +1182,7 @@ local function load()
 
     -- electricity-distribution-surface
     log("Adding: electricity-distribution-surface")
+    -- Do we have all we need to use electricity distribution entities on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -1174,6 +1201,7 @@ local function load()
 
     -- electricity-production-surface
     log("Adding: electricity-production-surface")
+    -- Do we have all we need to produce electricity on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -1226,6 +1254,7 @@ local function load()
 
     -- electricity-surface
     log("Adding: electricity-surface")
+    -- Do we have all we need to distribute electricity on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -1246,6 +1275,7 @@ local function load()
 
     -- energy-source-surface
     log("Adding: energy-source-surface")
+    -- Do we have all we need to supply this entity with this type of fuel on this surface?
 
     -- We need a key showing which energy sources are "operation" sources rather than just "generation" sources
     local operation_energy_sources = {
@@ -1354,6 +1384,7 @@ local function load()
     -- entity-buildability-surface
     log("Adding: entity-buildability-surface")
     -- For optimization purposes, this only "checks" entities that appear buildable
+    -- Would this entity be allowed to be built on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         -- Figure out if this is even buildable, if not don't evaluate prereqs
@@ -1422,6 +1453,7 @@ local function load()
 
     -- entity-buildability-surface-true
     log("Adding: entity-buildability-surface-true")
+    -- Does an entity's absence of buildability constraints allow it to be built?
 
     prereqs = {}
 
@@ -1434,6 +1466,7 @@ local function load()
 
     -- fluid
     log("Adding: fluid")
+    -- Is there a surface where we can supply this fluid?
 
     for _, fluid in pairs(data.raw.fluid) do
         prereqs = {}
@@ -1452,6 +1485,7 @@ local function load()
 
     -- fluid-surface
     log("Adding: fluid-surface")
+    -- Do we have all we need to supply this fluid on this surface?
 
     for _, fluid in pairs(data.raw.fluid) do
         for surface_name, surface in pairs(surfaces) do
@@ -1475,6 +1509,7 @@ local function load()
 
     -- fuel-category
     log("Adding: fuel-category")
+    -- Do we have access to this type of fuel somewhere?
 
     -- TODO: Specialize into per-surface
     for _, fuel_category in pairs(data.raw["fuel-category"]) do
@@ -1498,6 +1533,7 @@ local function load()
 
     -- fuel-category-burner
     log("Adding: fuel-category-burner")
+    -- Do we have something that can use this type of fuel somewhere?
 
     -- TODO: Make this depend on fuel-category-burner-surface instead
     for _, fuel_category in pairs(data.raw["fuel-category"]) do
@@ -1530,6 +1566,7 @@ local function load()
 
     -- fuel-category-burner-surface
     log("Adding: fuel-category-burner-surface")
+    -- Do we have all we need to use this type of fuel somewhere?
 
     for _, fuel_category in pairs(data.raw["fuel-category"]) do
         for surface_name, surface in pairs(surfaces) do
@@ -1564,6 +1601,8 @@ local function load()
     -- fuel-category-surface
     log("Adding: fuel-category-surface")
     -- TODO: Add this to obsidian spec
+    -- Do we have access to any items with this fuel category on this surface?
+
     for _, fuel_category in pairs(data.raw["fuel-category"]) do
         for surface_name, surface in pairs(surfaces) do
             prereqs = {}
@@ -1597,6 +1636,7 @@ local function load()
 
     -- heat-distribution-surface
     log("Adding: heat-distribution-surface")
+    -- Do we have all we need to use heat distribution entities on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -1615,6 +1655,7 @@ local function load()
 
     -- heat-production-surface
     log("Adding: heat-production-surface")
+    -- Do we have all we need to produce heat on this surface?
 
     local heat_producers = {
         ["reactor"] = true
@@ -1639,6 +1680,7 @@ local function load()
 
     -- heat-surface
     log("Adding: heat-surface")
+    -- Do we have all we need to distribute heat on this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -1659,6 +1701,7 @@ local function load()
 
     -- hold-fluid-surface
     log("Adding: hold-fluid-surface")
+    -- Do we have all we need to transport fluid on this surface?
 
     for _, fluid in pairs(data.raw.fluid) do
         for surface_name, surface in pairs(surfaces) do
@@ -1684,6 +1727,7 @@ local function load()
 
     -- item
     log("Adding: item")
+    -- Do we have access to this item somewhere?
 
     -- TODO: Make depend on surface-specific node instead
     for item_class, _ in pairs(defines.prototypes.item) do
@@ -1865,6 +1909,7 @@ local function load()
 
     -- item-surface
     log("Adding: item-surface")
+    -- Do we have access to this item on this surface?
 
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
@@ -2066,6 +2111,7 @@ local function load()
 
     -- loot-entity
     log("Adding: loot-entity")
+    -- Do we have all we need to get loot from this entity somewhere?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         if entity.loot ~= nil then
@@ -2084,6 +2130,7 @@ local function load()
 
     -- loot-entity-surface
     log("Adding: loot-entity-surface")
+    -- Do we have all we need to get loot from this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -2105,6 +2152,7 @@ local function load()
     -- mine-asteroid-chunk
     log("Adding: mine-asteroid-chunk")
     -- Only implemented for space surfaces
+    -- Do we have all we need to collect asteroids somewhere?
 
     for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
         prereqs = {}
@@ -2124,6 +2172,7 @@ local function load()
     -- mine-asteroid-chunk-surface
     log("Adding: mine-asteroid-chunk-surface")
     -- Only implemented for space surfaces
+    -- Do we have all we need to collect asteroids on this surface?
 
     for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
         if data.raw.surface ~= nil then
@@ -2146,6 +2195,7 @@ local function load()
 
     -- mine-entity
     log("Adding: mine-entity")
+    -- Do we have all we need to mine this entity somewhere?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         if entity.minable ~= nil then
@@ -2164,6 +2214,7 @@ local function load()
 
     -- mine-entity-surface
     log("Adding: mine-entity-surface")
+    -- Do we have all we need to mine this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         if entity.minable ~= nil then
@@ -2203,6 +2254,7 @@ local function load()
 
     -- mine-tile
     log("Adding: mine-tile")
+    -- Do we have all we need to mine this tile somewhere?
 
     for _, tile in pairs(data.raw.tile) do
         -- Only minable tiles
@@ -2222,6 +2274,7 @@ local function load()
 
     -- mine-tile-surface
     log("Adding: mine-tile-surface")
+    -- Do we have all we need to mine this tile on this surface?
 
     for _, tile in pairs(data.raw.tile) do
         for surface_name, surface in pairs(surfaces) do
@@ -2242,6 +2295,7 @@ local function load()
 
     -- mining-with-fluid-unlock
     log("Adding: mining-with-fluid-unlock")
+    -- Have we unlocked mining with fluids?
 
     prereqs = {}
 
@@ -2268,6 +2322,7 @@ local function load()
 
     -- operate-entity
     log("Adding: operate-entity")
+    -- Do we have all we need to operate this entity somewhere?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         prereqs = {}
@@ -2284,6 +2339,7 @@ local function load()
 
     -- operate-entity-surface
     log("Adding: operate-entity-surface")
+    -- Do we have all we need to operate this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -2361,6 +2417,7 @@ local function load()
 
     -- operate-entity-surface-fluid
     log("Adding: operate-entity-surface-fluid")
+    -- Do we have all we need to supply this entity with its required fluid on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -2424,6 +2481,7 @@ local function load()
 
     -- planet
     log("Adding: planet")
+    -- Do we have access to the surface of this planet?
 
     for _, planet in pairs(data.raw.planet) do
         prereqs = {}
@@ -2444,6 +2502,7 @@ local function load()
 
     -- planet-launch
     log("Adding: planet-launch")
+    -- Can we send stuff into orbit from this planet?
 
     for _, planet in pairs(data.raw.planet) do
         prereqs = {}
@@ -2462,6 +2521,7 @@ local function load()
 
     -- plant-entity-item
     log("Adding: plant-entity-item")
+    -- Does an item we have somewhere plant into this entity?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         prereqs = {}
@@ -2484,6 +2544,7 @@ local function load()
 
     -- plant-entity-surface
     log("Adding: plant-entity-surface")
+    -- Do we have all we need to plant this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -2528,6 +2589,7 @@ local function load()
 
     -- plant-entity-surface-automatability
     log("Adding: plant-entity-surface-automatability")
+    -- Do we have all we need to automate planting this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -2552,6 +2614,7 @@ local function load()
 
     -- plant-entity-surface-condition-false
     log("Adding: plant-entity-surface-condition-false")
+    -- Does an entity's surface conditions allow it to be planted on a surface that does not satisfy them?
 
     prereqs = {}
 
@@ -2559,6 +2622,7 @@ local function load()
 
     -- plant-entity-surface-condition-true
     log("Adding: plant-entity-surface-condition-true")
+    -- Does an entity's surface conditions allow it to be planted on a surface that satisfies them?
 
     prereqs = {}
 
@@ -2566,6 +2630,7 @@ local function load()
 
     -- recipe
     log("Adding: recipe")
+    -- Do we have all we need to use this recipe somewhere?
 
     for _, recipe in pairs(data.raw.recipe) do
         prereqs = {}
@@ -2582,6 +2647,7 @@ local function load()
 
     -- recipe-category
     log("Adding: recipe-category")
+    -- Would we be able to use recipes of this category somewhere?
 
     for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
         prereqs = {}
@@ -2598,6 +2664,7 @@ local function load()
 
     -- recipe-category-surface
     log("Adding: recipe-category-surface")
+    -- Would we be able to use recipes of this category on this surface?
 
     for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
         for surface_name, surface in pairs(surfaces) do
@@ -2636,6 +2703,7 @@ local function load()
 
     -- recipe-category-surface-automation
     log("Adding: recipe-category-surface-automation")
+    -- Would we be able to automate recipes of this category on this surface?
 
     for spoofed_category_name, spooofed_category in pairs(spoofed_recipe_categories) do
         for surface_name, surface in pairs(surfaces) do
@@ -2660,6 +2728,7 @@ local function load()
 
     -- recipe-surface
     log("Adding: recipe-surface")
+    -- Do we have all we need to use this recipe on this surface?
 
     for _, recipe in pairs(data.raw.recipe) do
         for surface_name, surface in pairs(surfaces) do
@@ -2740,6 +2809,7 @@ local function load()
 
     -- recipe-surface-condition-false
     log("Adding: recipe-surface-condition-false")
+    -- Does an recipe's surface conditions allow it to be used on a surface that does not satisfy them?
 
     prereqs = {}
 
@@ -2747,6 +2817,7 @@ local function load()
 
     -- recipe-surface-condition-true
     log("Adding: recipe-surface-condition-true")
+    -- Does an recipe's surface conditions allow it to be used on a surface that satisfies them?
 
     prereqs = {}
 
@@ -2754,6 +2825,7 @@ local function load()
 
     -- recipe-tech-unlock
     log("Adding: recipe-tech-unlock")
+    -- Have we unlocked this recipe?
 
     for _, recipe in pairs(data.raw.recipe) do
         prereqs = {}
@@ -2776,6 +2848,7 @@ local function load()
 
     -- resource-category
     log("Adding: resource-category")
+    -- Would we be able to mine resources of this category somewhere?
 
     for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
         prereqs = {}
@@ -2792,6 +2865,7 @@ local function load()
 
     -- resource-category-surface
     log("Adding: resource-category-surface")
+    -- Would we be able to mine resources of this category on this surface?
 
     -- TODO: Also split into automated and non-automated version
     for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
@@ -2865,6 +2939,7 @@ local function load()
 
     -- rocket-launch-planet
     log("Adding: rocket-launch-planet")
+    -- Do we have all we need to craft anything with a rocket silo on this planet?
 
     for _, planet in pairs(data.raw.planet) do
         prereqs = {}
@@ -2886,6 +2961,7 @@ local function load()
 
     -- rocket-part-recipe-planet
     log("Adding: rocket-part-recipe-planet")
+    -- Do we have all we need to use this recipe in this rocket silo on this planet?
 
     for _, silo in pairs(data.raw["rocket-silo"]) do
         for _, recipe in pairs(data.raw.recipe) do
@@ -2909,6 +2985,7 @@ local function load()
 
     -- science-pack-set
     log("Adding: science-pack-set")
+    -- Would we be able to research with this set of science packs?
 
     for science_pack_set_name, science_pack_set in pairs(science_pack_sets) do
         prereqs = {}
@@ -2943,6 +3020,7 @@ local function load()
 
     -- send-item-to-orbit
     log("Adding: send-item-to-orbit")
+    -- Do we have all we need to set up a planet somewhere for exchange of this item with space platforms?
 
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
@@ -2963,6 +3041,7 @@ local function load()
 
     -- send-item-to-orbit-planet
     log("Adding: send-item-to-orbit-planet")
+    -- Do we have all we need to set up this planet for exchange of this item with space platforms?
 
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
@@ -2995,6 +3074,7 @@ local function load()
 
     -- send-surface-starter-pack
     log("Adding: send-surface-starter-pack")
+    -- Do we have all we need to send a space platform starter pack to this surface?
 
     -- Only for space surfaces
     if data.raw.surface ~= nil then
@@ -3014,6 +3094,7 @@ local function load()
 
     -- send-surface-starter-pack-planet
     log("Adding: send-surface-starter-pack-planet")
+    -- Do we have all we need to send a space platform starter pack from this planet to this surface?
 
     if data.raw.surface ~= nil then
         for _, surface in pairs(data.raw.surface) do
@@ -3036,6 +3117,7 @@ local function load()
 
     -- space-connection
     log("Adding: space-connection")
+    -- Do we have all we need to traverse this space connection?
 
     if data.raw["space-connection"] ~= nil then
         for _, space_connection in pairs(data.raw["space-connection"]) do
@@ -3060,6 +3142,7 @@ local function load()
 
     -- space-location
     log("Adding: space-location")
+    -- Do we have all we need to access this space location?
 
     for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
         for _, space_location in pairs(data.raw[space_location_class]) do
@@ -3088,6 +3171,7 @@ local function load()
 
     -- space-location-discovery
     log("Adding: space-location-discovery")
+    -- Have we unlocked this space location?
 
     for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
         for _, space_location in pairs(data.raw[space_location_class]) do
@@ -3118,6 +3202,7 @@ local function load()
 
     -- space-surface
     log("Adding: space-surface")
+    -- Do we have all we need to access this space surface?
 
     if data.raw.surface ~= nil then
         for _, surface in pairs(data.raw.surface) do
@@ -3139,6 +3224,7 @@ local function load()
 
     -- spaceship
     log("Adding: spaceship")
+    -- Do we have all we need to make space platform somewhere that can move?
 
     prereqs = {}
 
@@ -3155,6 +3241,7 @@ local function load()
 
     -- spaceship-engine-surface
     log("Adding: spaceship-engine-surface")
+    -- Do we have all we need to use a thruster on this surface?
 
     if data.raw.surface ~= nil then
         for _, surface in pairs(data.raw.surface) do
@@ -3175,6 +3262,7 @@ local function load()
 
     -- spaceship-surface
     log("Adding: spaceship-surface")
+    -- Do we have all we need to make a space platform on this surface that can move?
 
     if data.raw.surface ~= nil then
         for _, surface in pairs(data.raw.surface) do
@@ -3196,6 +3284,7 @@ local function load()
     -- spawn-asteroid-chunk
     log("Adding: spawn-asteroid-chunk")
     -- Only implemented for space locations, for whether they have asteroids
+    -- Do we have all we need to get to some place where this asteroid chunk spawns?
 
     for _, asteroid_chunk in pairs(data.raw["asteroid-chunk"]) do
         prereqs = {}
@@ -3222,6 +3311,7 @@ local function load()
 
     -- spawn-entity
     log("Adding: spawn-entity")
+    -- Do we have all we need to spawn this entity somewhere?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         prereqs = {}
@@ -3238,6 +3328,7 @@ local function load()
 
     -- spawn-entity-surface
     log("Adding: spawn-entity-surface")
+    -- Do we have all we need to spawn this entity on this surface?
 
     for _, entity in pairs(build_graph.prototypes.entities) do
         for surface_name, surface in pairs(surfaces) do
@@ -3363,6 +3454,7 @@ local function load()
 
     -- spawn-tile-surface
     log("Adding: spawn-tile-surface")
+    -- Do we have all we need to access this tile on this surface?
 
     for _, tile in pairs(data.raw.tile) do
         for surface_name, surface in pairs(surfaces) do
@@ -3416,6 +3508,7 @@ local function load()
 
     -- spawner-capturability
     log("Adding: spawner-capturability")
+    -- Do we have all we need to capture a unit spawner somewhere?
 
     prereqs = {}
 
@@ -3432,6 +3525,7 @@ local function load()
 
     -- starting-character
     log("Adding: starting-character")
+    -- Does starting as character allow us to use it?
 
     prereqs = {}
 
@@ -3439,6 +3533,7 @@ local function load()
 
     -- starting-planet
     log("Adding: starting-planet")
+    -- Does starting on a planet allow us access to it?
 
     prereqs = {}
 
@@ -3446,6 +3541,7 @@ local function load()
 
     -- surface
     log("Adding: surface")
+    -- Do we have all we need to access this surface?
 
     for surface_name, surface in pairs(surfaces) do
         prereqs = {}
@@ -3460,6 +3556,7 @@ local function load()
 
     -- technology
     log("Adding: technology")
+    -- Do we have all we need to unlock this technology?
 
     for _, tech in pairs(data.raw.technology) do
         prereqs = {}
@@ -3533,6 +3630,10 @@ local function load()
         add_to_graph("technology", tech.name, prereqs)
     end
 
+    -- transport-item
+    log("Adding: transport-item")
+    -- Do we have access to this item somewhere, and can it be painlessly transported across space?
+
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
@@ -3566,6 +3667,7 @@ local function load()
 
     -- transport-item-to-surface
     log("Adding: transport-item-to-surface")
+    -- Do we have what we need to painlessly transport this item to this surface across space?
 
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
@@ -3596,6 +3698,7 @@ local function load()
 
     -- valid-tile-placement-surface
     log("Adding: valid-tile-placement-surface")
+    -- Do we have all we need to have a valid old tile where we can build this new tile on this surface?
 
     for _, tile in pairs(data.raw.tile) do
         for surface_name, surface in pairs(surfaces) do
@@ -3622,6 +3725,7 @@ local function load()
 
     -- void-energy
     log("Adding: void-energy")
+    -- Does an entity' absence of a need for energy allow us to use it?
 
     prereqs = {}
 
