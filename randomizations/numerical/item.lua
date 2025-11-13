@@ -1,6 +1,6 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
-local randpercent = require("lib/random/randpercent")
+local randprob = require("lib/random/randprob")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
@@ -163,14 +163,14 @@ randomizations.armor_resistances = function(id)
                 end
                 if resistance.percent ~= nil and resistance.percent > 0 then
                     old_p_resistance_sum = old_p_resistance_sum + resistance.percent
-                    resistance.percent = randpercent.rand({
+                    resistance.percent = randprob.rand({
                         key = key,
                         prototype = armor,
                         tbl = resistance,
                         property = "percent",
                         rounding = "discrete_float",
                         variance = "big",
-                        percent_limit = 100,
+                        probability_scale = 100,
                     })
                 end
             end
