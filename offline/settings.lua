@@ -15,5 +15,8 @@ settings.startup = {
     ["propertyrandomizer-sound"] = {value = false},
     ["propertyrandomizer-gui"] = {value = false},
     ["propertyrandomizer-locale"] = {value = false},
-    ["propertyrandomizer-overrides"] = {value = ""}
+    ["propertyrandomizer-overrides"] = {value = ""},
+    ["propertyrandomizer-watch-the-world-burn"] = {value = false},
+    ["propertyrandomizer-dupes"] = {value = false},
+    ["propertyrandomizer-recipe-tech-unlock"] = {value = false},
 }

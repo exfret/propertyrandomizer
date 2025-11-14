@@ -8,3 +8,6 @@
 
 # Scripts
 scripts/
+
+# Offline testing output
+offline/output/
