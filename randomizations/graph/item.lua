@@ -30,8 +30,9 @@ randomizations.item = function(id)
     -- TODO: Need gun-turret node I think?
     type_stays_with_node = {
         ["build-entity-item"] = true,
-        ["build-tile-item"] = true,
-        ["plant-entity-item"] = true,
+        ["build-entity-item-surface"] = true,
+        ["build-tile-item-surface"] = true,
+        ["plant-entity-item-surface"] = true,
         ["repair-pack"] = true,
         ["rocket-turret"] = true,
         ["rocket-ammo"] = true,
