@@ -80,8 +80,45 @@ for class, amount in pairs(per_entity_class) do
     end
 end]]
 
---[[build_graph = require("lib/graph/build-graph")
-dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
+global_seed = 767614037
+
+local build_graph = require("lib/graph/build-graph")
+local min_rec_req = require("lib/graph/min-rec-req")
+local set_utils = require("lib/graph/set-utils")
+local graph = build_graph.graph
+
+-- adjust graph to make rocket building on certain planets never rely on import
+
+local independent_planets = { "nauvis", "vulcanus", "gleba", "fulgora" }
+
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            for _, planet_name in pairs(independent_planets) do
+                local import_node = graph[build_graph.key("transport-item-to-planet", build_graph.compound_key({item.name, planet_name}))]
+                local export_node = graph[build_graph.key("rocket-launch-planet", planet_name)]
+
+                table.insert(import_node.prereqs, {
+                    type = export_node.type,
+                    name = export_node.name
+                })
+            end
+        end
+    end
+end
+
+build_graph.add_dependents(graph)
+
+min_rec_req.init(graph)
+local end_game_node = graph[build_graph.key("technology", "promethium-science-pack")]
+local end_game_min_rec_req = min_rec_req.minimum_recursive_requirements(end_game_node, "technology")
+local planet_node = graph[build_graph.key("planet", "vulcanus")]
+local planet_min_rec_req = min_rec_req.minimum_recursive_requirements(planet_node, "technology").nodes
+local rocket_node = graph[build_graph.key("rocket-launch-planet", "vulcanus")]
+local rocket_min_rec_req = min_rec_req.minimum_recursive_requirements(rocket_node, "technology").nodes
+local from_planet_to_rocket = table.deepcopy(rocket_min_rec_req)
+set_utils.merge_difference(from_planet_to_rocket, planet_min_rec_req)
+--[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]
 
 local cost_params = constants.cost_params
