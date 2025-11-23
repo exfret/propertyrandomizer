@@ -16,6 +16,7 @@ randomizations.recipe_crafting_times = function(id)
             prototype = recipe,
             property = "energy_required",
             rounding = "discrete_float",
+            abs_min = 0.01
         })
     end
 end
