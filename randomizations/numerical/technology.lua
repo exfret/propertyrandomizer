@@ -137,8 +137,10 @@ randomizations.tech_upgrades = function(id)
         if tech.effects ~= nil then
             for _, modifier in pairs(tech.effects) do
                 local target_property = "modifier"
+                local abs_max = nil
                 if change_property[modifier.type] then
                     target_property = "change"
+                    abs_max = 327.66
                 end
                 if ignore_modifiers[modifier.type] == nil and modifier[target_property] > 0 then
                     local old_value = modifier[target_property]
@@ -154,7 +156,8 @@ randomizations.tech_upgrades = function(id)
                         tbl = modifier,
                         property = target_property,
                         rounding = rounding,
-                        variance = "big"
+                        variance = "big",
+                        abs_max = abs_max,
                     })
 
                     local name = modifier_names[modifier.type]
