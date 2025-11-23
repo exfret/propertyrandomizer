@@ -130,10 +130,11 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
             local swap_idx = rng.range(key, curr_ind, #open)
             swap(open, curr_ind, swap_idx)
         end
-        if depth_first then
-            swap(open, curr_ind, #open)
-        end
         local curr_node = open[curr_ind]
+        if depth_first then
+            curr_node = open[#open]
+            open[#open] = nil
+        end
         local curr_key = build_graph.key(curr_node.type, curr_node.name)
 
         if not reachable[curr_key] then
@@ -143,7 +144,9 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
             process_dependents(curr_node)
         end
 
-        curr_ind = curr_ind + 1
+        if not depth_first then
+            curr_ind = curr_ind + 1
+        end
     end
 
     return {in_open = in_open, open = open, reachable = reachable, sorted = sorted, num_satisfiers = num_satisfiers, num_needed_satisfiers = num_needed_satisfiers, num_blacklisted_prereqs = num_blacklisted_prereqs, curr_ind = curr_ind}
