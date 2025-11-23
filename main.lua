@@ -85,6 +85,7 @@ global_seed = 767614037
 local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
 local set_utils = require("lib/graph/set-utils")
+local critical_req = require("lib/graph/critical-req")
 local graph = build_graph.graph
 
 -- adjust graph to make rocket building on certain planets never rely on import
@@ -109,15 +110,9 @@ end
 
 build_graph.add_dependents(graph)
 
-min_rec_req.init(graph)
 local end_game_node = graph[build_graph.key("technology", "promethium-science-pack")]
-local end_game_min_rec_req = min_rec_req.minimum_recursive_requirements(end_game_node, "technology")
-local planet_node = graph[build_graph.key("planet", "vulcanus")]
-local planet_min_rec_req = min_rec_req.minimum_recursive_requirements(planet_node, "technology").nodes
-local rocket_node = graph[build_graph.key("rocket-launch-planet", "vulcanus")]
-local rocket_min_rec_req = min_rec_req.minimum_recursive_requirements(rocket_node, "technology").nodes
-local from_planet_to_rocket = table.deepcopy(rocket_min_rec_req)
-set_utils.merge_difference(from_planet_to_rocket, planet_min_rec_req)
+local spaceship_node = graph[build_graph.key("spaceship", "canonical")]
+local critical_recipes = critical_req.critical_requirement(spaceship_node, { ["recipe-surface"] = true, ["technology"] = true }, graph)
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]
 
