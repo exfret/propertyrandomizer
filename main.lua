@@ -86,6 +86,11 @@ local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
 local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
+
+randomizations = {}
+require("randomizations.graph.core")
+randomizations.graph("graph")
+
 local graph = build_graph.graph
 
 -- adjust graph to make rocket building on certain planets never rely on import
@@ -110,9 +115,7 @@ end
 
 build_graph.add_dependents(graph)
 
-local end_game_node = graph[build_graph.key("technology", "promethium-science-pack")]
-local spaceship_node = graph[build_graph.key("spaceship", "canonical")]
-local critical_recipes = critical_req.critical_requirement(spaceship_node, { ["recipe-surface"] = true, ["technology"] = true }, graph)
+
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]
 
