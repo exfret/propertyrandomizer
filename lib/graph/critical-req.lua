@@ -4,8 +4,8 @@ local graph_utils = require("lib/graph/graph-utils")
 
 local critical_req = {}
 
--- O(edges). If the target_node is reachable, this returns a critical_requirement subset of node_set such that:
--- if all nodes in the critical_requirement set are reachable, and prereqs of nodes outside of node_set stay the same,
+-- O(edges). If the target_node is reachable, this returns a critical_requirement subset of edge_set such that:
+-- if all edges in the critical_requirement set are reachable, and prereqs of nodes outside of edge_set stay the same,
 -- then the target_node must be reachable.
 critical_req.critical_edges = function (target_node, edge_set, graph)
     local sort_state = top_sort.sort(graph, nil, nil, nil, { randomized = true, key = rng.key{ id = "critical_requirement" } })
