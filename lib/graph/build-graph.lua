@@ -1268,7 +1268,8 @@ local function load()
             end
 
             add_to_graph("craft-material-surface", compound_key({material_name, surface_key}), prereqs, {
-                surface = surface_key
+                surface = surface_key,
+                material = material_name,
             })
         end
     end
@@ -1376,7 +1377,7 @@ local function load()
             end
 
             add_to_graph("create-fluid-surface", compound_key({fluid.name, surface_key}), prereqs, {
-                fluid = fluid,
+                fluid = fluid.name,
                 surface = surface_key
             })
         end
@@ -1736,7 +1737,7 @@ local function load()
         end
         
         add_to_graph("fluid", fluid.name, prereqs, {
-            fluid = fluid
+            fluid = fluid.name
         })
     end
 
@@ -1759,7 +1760,7 @@ local function load()
 
             add_to_graph("fluid-surface", compound_key({fluid.name, surface_key}), prereqs, {
                 surface = surface_key,
-                fluid = fluid
+                fluid = fluid.name
             })
         end
     end
@@ -1955,7 +1956,7 @@ local function load()
         end
 
         add_to_graph("item", item.name, prereqs, {
-            item = item
+            item = item.name
         })
     end
 
@@ -1976,7 +1977,7 @@ local function load()
         end
 
         add_to_graph("item-space-surface", item.name, prereqs, {
-            item = item
+            item = item.name
         })
     end
 
@@ -2089,7 +2090,7 @@ local function load()
             ]]
 
             add_to_graph("item-surface", compound_key({item.name, surface_key}), prereqs, {
-                item = item,
+                item = item.name,
                 surface = surface_key
             })
         end
@@ -2841,7 +2842,7 @@ local function load()
             })
 
             add_to_graph("recipe-surface", compound_key({recipe.name, surface_key}), prereqs, {
-                recipe = recipe,
+                recipe = recipe.name,
                 surface = surface_key
             })
         end
