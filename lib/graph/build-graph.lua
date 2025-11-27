@@ -3817,6 +3817,13 @@ build_graph.isolatable_nodes = {
 
 -- Make caveats edge-level
 
+--[[build_graph.caveats = {
+    
+}
+for _, surface in pairs(surfaces) do
+
+end]]
+
 ----------------------------------------------------------------------
 -- Special manipulation methods
 ----------------------------------------------------------------------
