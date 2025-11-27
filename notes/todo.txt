@@ -1,6 +1,8 @@
 WORKING ON:
- - Mechanics randomization
-   * Check if game is possible after mechanics randomization and print to console
+ - Try to implement top sort with caveats for confidence destruction
+ - Also maybe "bundled" randomization where some things get randomized together for a consistent "story"
+ - Planetary randomization
+   * Check if game is possible after planetary randomization and print to console
    * Fix localisation with dupe and item randomization
 
  - Look into rocket launch time bug
@@ -21,7 +23,6 @@ Bigger things:
 
 3. Rounding after rescalings
 8. Blacklists?
-10. Beacon profiles?
 12. Combat robot damage?
 13. Evolution levels?
 15. Worm sticker slowdown and yumako speedup (separate?)
@@ -60,10 +61,14 @@ Bigger things:
 51. Electric mining drill fluid softlock (need to check that there is a mining drill that *can* mine with fluid)
 52. Allow different sort of topological sort orders? Right now it's just arbitrary right?
 53. Rename +pollution tooltip to "emissions"
-55. Make the topological sort random
 56. Less scattered unlocks (so you don't have to hunt a hundred different places for the components of something that you've already unlocked)
+57. Think of ways to do non-rectangular buildings
+58. Allow for nonlinear sorts (limits randomization, but also prevents progression blocking)
+59. Figure out a way to randomize past "required" nodes
 
 DONE:
+55. Make the topological sort random
+10. Beacon profiles
 54. No infinite load times with recipe randomization
 16. Work on recipe randomization more
 21. Ore swap randomization

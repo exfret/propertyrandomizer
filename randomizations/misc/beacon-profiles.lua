@@ -1,3 +1,5 @@
+local rng = require("lib/random/rng")
+
 -- This is not in numerical/entity because we are doing randomization from a fixed table rather than actually randomizing the individual numbers
 
 local beacon_profiles = {
@@ -35,6 +37,16 @@ local beacon_profiles = {
 
 -- New
 randomizations.beacon_profiles = function(id)
-    -- TODO: Implement
-    -- TODO: Also check that beacon profiles are balanced based off max multipliers!
+    -- TODO: Check that beacon profiles are balanced based off max multipliers!
+
+    for _, beacon in pairs(data.raw.beacon) do
+        local profile_fnc = beacon_profiles[rng.int(rng.key({id = id, prototype = beacon}), #beacon_profiles)]
+        
+        local profile = {}
+        for i = 1, 100 do
+            table.insert(profile, profile_fnc(i))
+        end
+
+        beacon.profile = profile
+    end
 end

@@ -3,6 +3,9 @@ Version: 0.3.14
 Date: ?
   Features:
     - Implemented randomized topological sort
+    - Beacon profile randomization
+    - Equipment shape randomization
+    - Chaos setting now changes range of possible values as well
   Bugfixes:
     - Removed occasional infinite loop in recipe randomization
 ---------------------------------------------------------------------------------------------------

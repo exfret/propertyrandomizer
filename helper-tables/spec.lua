@@ -53,6 +53,12 @@ local spec = {
             val = "default"
         }
     },
+    beacon_profiles = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     beacon_supply_area = {
         setting = {
             name = "propertyrandomizer-production",
@@ -121,7 +127,7 @@ local spec = {
     cliff_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
-            val = "default"
+            val = "more"
         }
     },
     crafting_machine_speed = {
@@ -226,6 +232,12 @@ local spec = {
         }
     },
     equipment_personal_roboport_max_robots = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    equipment_shapes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
