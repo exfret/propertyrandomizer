@@ -34,7 +34,7 @@ graph_randomizations.create_empty_randomizer = function (key)
 end
 
 graph_randomizations.add = function (randomizer)
-    graph_randomizations[randomizer.key] = randomizer
+    graph_randomizations.randomizers[randomizer.key] = randomizer
 end
 
 graph_randomizations.randomizers = {}
@@ -193,9 +193,9 @@ randomizations.graph = function(id)
         return edges
     end
     tech_tree_randomizer.execute_randomization = function (params)
-        rng.shuffle(state.rng_key, params.available_edges)
+        rng.shuffle(state.rng_key, params.suitable_edges)
         for i = 1, params.first_edge_count do
-            params.new_edges[i] = params.available_edges[i]
+            params.new_edges[i] = params.suitable_edges[i]
         end
     end
     graph_randomizations.add(tech_tree_randomizer)
@@ -214,9 +214,9 @@ randomizations.graph = function(id)
         return edges
     end
     recipe_randomizer.execute_randomization = function (params)
-        rng.shuffle(state.rng_key, params.available_edges)
+        rng.shuffle(state.rng_key, params.suitable_edges)
         for i = 1, params.first_edge_count do
-            params.new_edges[i] = params.available_edges[i]
+            params.new_edges[i] = params.suitable_edges[i]
         end
     end
     graph_randomizations.add(recipe_randomizer)
