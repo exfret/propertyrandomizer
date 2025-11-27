@@ -1,19 +1,12 @@
 WORKING ON:
- - Dupes (hard mode version)
-   * First, work on items, like resources
-   * Then, uplicate techs a lot
-   * Tech unlocks
  - Mechanics randomization
    * Check if game is possible after mechanics randomization and print to console
-   * Recipe tech unlock rando
    * Fix localisation with dupe and item randomization
 
  - Look into rocket launch time bug
- - Look into cliff size bug?
 
 Bigger things:
  - Various numerical/space age especially randomizations need adding
- - Tech unlock randomization
  - Tech packs required randomization
  - Dupes
  - Misc. randomizations that I need to go back to, like cliffs
@@ -21,6 +14,10 @@ Bigger things:
  - Space age randomizations
  - Maybe look over TODO's one last time
  - Item-fluid randomization?
+ - Make sure one of each "category" is good
+ - Make default behavior less unhinged (and high chaos more unhinged)
+ - Randomize things in groups: all ores lower stack size for example, one master roll, not just random for each
+ - Topological sort with caveats
 
 3. Rounding after rescalings
 8. Blacklists?
@@ -54,10 +51,20 @@ Bigger things:
 42. Fix localised keys for technologies with -number format
 43. Fix rocket capacity propagating and making everything hard to fill a rocket
 44. Look up "broken new capsule" bug
-45. Require planetary science pack recipes to use space resource
+45. Require planetary science pack recipes to use space resources
 46. Critical TODO
+47. Prevent wood on trees, or at least make less likely since it's boring
+48. More limits by default
+49. Things unlocked in groups? Like, things for bots unlocked all at once
+50. Icon bugs (seems to just be with dupes mode)
+51. Electric mining drill fluid softlock (need to check that there is a mining drill that *can* mine with fluid)
+52. Allow different sort of topological sort orders? Right now it's just arbitrary right?
+53. Rename +pollution tooltip to "emissions"
+55. Make the topological sort random
+56. Less scattered unlocks (so you don't have to hunt a hundred different places for the components of something that you've already unlocked)
 
 DONE:
+54. No infinite load times with recipe randomization
 16. Work on recipe randomization more
 21. Ore swap randomization
 22. Make rocket turrets an aquilo dependency in build-graph-compat

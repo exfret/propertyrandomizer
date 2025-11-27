@@ -574,7 +574,10 @@ local function load()
                     if item.place_result == entity.name then
                         table.insert(prereqs, {
                             type = "item",
-                            name = item.name
+                            name = item.name,
+                            remove_caveat = {
+                                ["transported"] = true
+                            }
                         })
                     end
                 end
@@ -593,11 +596,17 @@ local function load()
 
             table.insert(prereqs, {
                 type = "entity-buildability-surface",
-                name = compound_key({entity.name, surface_name})
+                name = compound_key({entity.name, surface_name}),
+                remove_caveat = {
+                    ["transported"] = true
+                }
             })
             table.insert(prereqs, {
                 type = "build-entity-item",
-                name = entity.name
+                name = entity.name,
+                remove_caveat = {
+                    ["transported"] = true
+                }
             })
             table.insert(prereqs, {
                 type = "surface",
@@ -748,7 +757,10 @@ local function load()
                             })
                             table.insert(prereqs, {
                                 type = "item-surface",
-                                name = compound_key({item.name, surface_name})
+                                name = compound_key({item.name, surface_name}),
+                                remove_caveat = {
+                                    ["transported"] = true
+                                }
                             })
 
                             add_to_graph("build-tile-item-surface-with-item", compound_key({tile.name, item.name, surface_name}), prereqs)
@@ -768,15 +780,24 @@ local function load()
 
             table.insert(prereqs, {
                 type = "build-tile-item-surface",
-                name = compound_key({tile.name, surface_name})
+                name = compound_key({tile.name, surface_name}),
+                remove_caveat = {
+                    ["transported"] = true
+                }
             })
             table.insert(prereqs, {
                 type = "valid-tile-placement-surface",
-                name = compound_key({tile.name, surface_name})
+                name = compound_key({tile.name, surface_name}),
+                remove_caveat = {
+                    ["transported"] = true
+                }
             })
             table.insert(prereqs, {
                 type = "surface",
-                name = surface_name
+                name = surface_name,
+                remove_caveat = {
+                    ["transported"] = true
+                }
             })
 
             add_to_graph("build-tile-surface", compound_key({tile.name, surface_name}), prereqs, {
@@ -2038,7 +2059,10 @@ local function load()
 
                     table.insert(prereqs, {
                         type = "transport-item-to-surface",
-                        name = compound_key({item.name, surface_name})
+                        name = compound_key({item.name, surface_name}),
+                        add_caveat = {
+                            ["transported"] = true
+                        }
                     })
 
                     -- TODO: Save until we make equipment nodes
@@ -2472,7 +2496,10 @@ local function load()
                     if item.plant_result == entity.name then
                         table.insert(prereqs, {
                             type = "item",
-                            name = item.name
+                            name = item.name,
+                            remove_caveat = {
+                                ["transported"] = true
+                            }
                         })
                     end
                 end
@@ -2980,7 +3007,10 @@ local function load()
                     })
                     table.insert(prereqs, {
                         type = "item-surface",
-                        name = compound_key({item.name, compound_key({"planet", planet.name})})
+                        name = compound_key({item.name, compound_key({"planet", planet.name})}),
+                        add_caveat = {
+                            ["transported"] = true
+                        }
                     })
                     table.insert(prereqs, {
                         type = "planet",
@@ -3004,7 +3034,7 @@ local function load()
             for _, planet in pairs(data.raw.planet) do
                 table.insert(prereqs, {
                     type = "send-surface-starter-pack-planet",
-                    name = compound_key({surface.name, planet.name})
+                    name = compound_key({surface.name, planet.name}),
                 })
             end
 
@@ -3024,7 +3054,10 @@ local function load()
                     if starter_pack.surface == surface.name then
                         table.insert(prereqs, {
                             type = "send-item-to-orbit-planet",
-                            name = compound_key({starter_pack.name, planet.name})
+                            name = compound_key({starter_pack.name, planet.name}),
+                            remove_caveat = {
+                                ["transported"] = true
+                            }
                         })
                     end
                 end
@@ -3452,7 +3485,10 @@ local function load()
 
         table.insert(prereqs, {
             type = surface.type,
-            name = surface.prototype.name
+            name = surface.prototype.name,
+            remove_caveat = {
+                ["transported"] = true
+            }
         })
 
         add_to_graph("surface", surface_name, prereqs)
@@ -3533,6 +3569,9 @@ local function load()
         add_to_graph("technology", tech.name, prereqs)
     end
 
+    -- transport-item
+    log("Adding: transport-item")
+
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
@@ -3554,7 +3593,10 @@ local function load()
                     for surface_name, surface in pairs(surfaces) do
                         table.insert(prereqs, {
                             type = "item-surface",
-                            name = compound_key({item.name, surface_name})
+                            name = compound_key({item.name, surface_name}),
+                            add_caveat = {
+                                ["transported"] = true
+                            }
                         })
                     end
                 end
@@ -3753,6 +3795,29 @@ build_graph.ops = {
 }
 
 ----------------------------------------------------------------------
+-- Node metadata
+----------------------------------------------------------------------
+
+-- If checking if something is creatable "from just that surface", we really mean "can it be created from reachable non-isolatable nodes, and via non-transport connections across isolatable nodes"
+-- This should represent "is this something that would need regular shipments to satisfy this ability if it was missing otherwise"
+-- I think I may have been messing up the logic actually, this may not be necessary
+-- CRITICAL TODO: REMOVE THIS?
+build_graph.isolatable_nodes = {
+    ["burn-item-surface"] = true,
+    ["craft-material-surface"] = true,
+    ["create-fluid-surface"] = true,
+    ["fluid-surface"] = true,
+    ["item-surface"] = true,
+    ["planet-launch"] = true,
+    ["recipe-surface"] = true,
+    ["rocket-launch-planet"] = true,
+    ["rocket-part-recipe-planet"] = true,
+    ["send-item-to-orbit-planet"] = true,
+}
+
+-- Make caveats edge-level
+
+----------------------------------------------------------------------
 -- Special manipulation methods
 ----------------------------------------------------------------------
 
@@ -3795,7 +3860,9 @@ function build_graph.add_dependents(graph_param)
 
             table.insert(graph_param[key(prereq.type, prereq.name)].dependents, {
                 type = node.type,
-                name = node.name
+                name = node.name,
+                add_caveat = prereq.add_caveat,
+                remove_caveat = prereq.remove_caveat
             })
         end
     end

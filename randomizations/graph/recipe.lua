@@ -355,6 +355,7 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     -- Optimize each ing individually until we can't improve
     local curr_costs = get_costs_from_ings(material_to_costs, proposed_ings)
     local curr_points = calculate_points(old_recipe_costs, curr_costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+    local num_failed_attempts = 0
     while true do
         local new_proposals = {}
 
@@ -395,11 +396,12 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
         end
 
         -- If we've optimized to within a very small point difference I think that's good enough
-        if math.abs(new_points - curr_points) <= 0.0001 and allocated_amounts == 1 then
+        if math.abs(new_points - curr_points) <= 0.0001 and allocated_amounts == 1 or num_failed_attempts >= constants.max_num_failed_attempts_ing_search then
             break
         end
 
         curr_points = new_points
+        num_failed_attempts = num_failed_attempts + 1
     end
 
     return curr_points
@@ -780,6 +782,83 @@ randomizations.recipe_ingredients = function(id)
         end
         for reachable_node_name, _ in pairs(to_remove_from_reachable) do
             reachable[reachable_node_name] = nil
+        end
+        -- (Vanilla Space Age only) Refine reachable to only include space materials if this is a firearm magazine, rocket, or railgun ammo
+        -- TODO: What does it mean to be automatable in space anyways??
+        -- Wait idea: Cross product nodes
+        if mods["space-age"] then
+            if dependent.recipe.name == "firearm-magazine" or dependent.recipe.name == "rocket" or dependent.recipe.name == "railgun-ammo" then
+                -- Just do another topological sort, but restrict to this space surface
+                --[[local new_blacklist = table.deepcopy(blacklist)
+                for surface_name, surface in pairs(build_graph.surfaces) do
+                    if not (surface.type == "space-surface" and surface.name == "space-platform") then
+                        local surface_node = build_graph[build_graph.key("surface", surface_name)]
+                        for _, surface_node_dependent in pairs(surface_node.dependents) do
+                            new_blacklist[build_graph.conn_key({surface_node, surface_node_dependent})] = true
+                        end
+                    end
+                end
+                ammo_sort_info = top_sort.sort(dep_graph, new_blacklist)]]
+
+                -- Find automatable things in space - remove non-reachable things and transport connections and blacklist only isolatable nodes
+                -- Actually, don't remove non-reachable things, assume here that everything is reachable, so just that it's eventually automatable
+                local dep_graph_ammo_reachability = table.deepcopy(dep_graph)
+                --[[for _, node in pairs(dep_graph_ammo_reachability) do
+                    local new_prereqs = {}
+                    for _, prereq in pairs(node.prereqs) do
+                        if not prereq.involves_transport then
+                            table.insert(new_prereqs, prereq)
+                        end
+                    end
+                    node.prereqs = new_prereqs
+                end]]
+                --[[for reachable_node_name, _ in pairs(reachable) do
+                    dep_graph_ammo_reachability[reachable_node_name] = table.deepcopy(dep_graph[reachable_node_name])
+                    local prereqs_with_transport_removed = {}
+                    for _, prereq in pairs(dep_graph_ammo_reachability[reachable_node_name].prereqs) do
+                        if not prereq.involves_transport then
+                            table.insert(prereqs_with_transport_removed, prereq)
+                        end
+                    end
+                    local dependents_with_transport_removed = {}
+                    for _, dependent in pairs(dep_graph_ammo_reachability[reachable_node_name].dependents) do
+                        if reachable[build_graph.key(dependent.type, dependent.name)] then
+                            table.insert(dependents_with_transport_removed, dependent)
+                        end
+                    end
+                    dep_graph_ammo_reachability[reachable_node_name].prereqs = prereqs_with_transport_removed
+                    dep_graph_ammo_reachability[reachable_node_name].dependents = dependents_with_transport_removed
+                end]]
+
+                --[[local blacklist_ammo_reachability = {}
+                for _, node in pairs(dep_graph_ammo_reachability) do
+                    if build_graph.isolatable_nodes[node.type] then
+                        for _, prereq in pairs(node.prereqs) do
+                            blacklist_ammo_reachability[build_graph.conn_key({prereq, node})] = true
+                        end
+                    end
+                end]]
+
+                local state_info_ammo_reachability = top_sort.sort(dep_graph_ammo_reachability, nil, nil, nil, "transported")
+
+                log(serpent.block(state_info_ammo_reachability.has_caveat))
+                
+                for node_name, _ in pairs(reachable) do
+                    local node = dep_graph_ammo_reachability[node_name]
+                    -- I don't know why I need this non-nil check but it's needed for some reason
+                    if node ~= nil and (node.type == "item" or node.type == "fluid") then
+                        -- Check reachability from space platform in isolation
+                        if state_info_ammo_reachability.has_caveat[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, build_graph.compound_key({"space-surface", "space-platform"})}))] then
+                            log("FILTERED " .. node_name)
+                            
+                            reachable[node_name] = false
+                            for surface_name, surface in pairs(build_graph.surfaces) do
+                                reachable[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, surface_name}))] = false
+                            end
+                        end
+                    end
+                end
+            end
         end
 
         log("Old cost update")
