@@ -56,6 +56,7 @@ log("Gathering randomizations")
 require("randomizations/master")
 
 -- TODO: Planetary randomizations here
+--randomizations.planetary_tiles("planetary-tiles")
 
 log("Applying graph-based randomizations")
 

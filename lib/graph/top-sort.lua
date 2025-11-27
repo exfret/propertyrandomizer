@@ -1,10 +1,14 @@
 -- We won't be using build_graph's graph, just its ops
 local build_graph = require("lib/graph/build-graph")
+local rng = require("lib/random/rng")
+
+local USE_DFS = false
+local USE_RANDOM = true
 
 local top_sort = {}
 
 -- blacklist is a table sending pairs of node names representing connections to true/false
-top_sort.sort = function(graph, blacklist, state, new_conn)
+top_sort.sort = function(graph, blacklist, state, new_conn, caveat)
     if blacklist == nil then
         blacklist = {}
     end
@@ -16,10 +20,11 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
     local open = state.open or {}
     local reachable = state.reachable or {}
     local sorted = state.sorted or {}
+    -- Caveats are added/removed with reachable
+    local has_caveat = state.has_caveat or {}
 
     local num_satisfiers = state.num_satisfiers or {}
     local num_needed_satisfiers = state.num_needed_satisfiers or {}
-
     local num_blacklisted_prereqs = state.num_blacklisted_prereqs or {}
     local curr_ind = state.curr_ind or 1
 
@@ -39,6 +44,8 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
     -- Check if there was a new connection
     -- This shouldn't change reachability, but could change blacklistedness
     else
+        local prereq = new_conn[1]
+        local prereq_key = build_graph.key(prereq.type, prereq.name)
         -- New node at end of new_conn
         local dependent = new_conn[2]
         local dependent_key = build_graph.key(dependent.type, dependent.name)
@@ -49,13 +56,34 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
         if reachable[dependent_key] then
             if build_graph.ops[dependent_node.type] == "AND" then
                 if num_blacklisted_prereqs[dependent_key] == 0 then
-                    table.insert(open, dependent_node)
+                    if USE_DFS then
+                        table.insert(open, curr_ind, dependent_node)
+                    elseif USE_RANDOM then
+                        -- For things that use top sort, key doesn't matter anyways so don't bother passing it in here
+                        if rng.value("top-sort") < 0.5 then
+                            table.insert(open, curr_ind, dependent_node)
+                        else
+                            table.insert(open, dependent_node)
+                        end
+                    else
+                        table.insert(open, dependent_node)
+                    end
                     in_open[dependent_key] = true
                 end
             -- For OR's we need to have just un-blacklisted a prereq for the *first* time
             elseif build_graph.ops[dependent_node.type] == "OR" then
                 if not in_open[dependent_key] then
-                    table.insert(open, dependent_node)
+                    if USE_DFS then
+                        table.insert(open, curr_ind, dependent_node)
+                    elseif USE_RANDOM then
+                        if rng.value("top-sort") < 0.5 then
+                            table.insert(open, curr_ind, dependent_node)
+                        else
+                            table.insert(open, dependent_node)
+                        end
+                    else
+                        table.insert(open, dependent_node)
+                    end
                     in_open[dependent_key] = true
                 end
             else
@@ -82,26 +110,96 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
             end
 
             if build_graph.ops[dependent_node.type] == "AND" then
+                -- If curr_node has a caveat, then make sure it propagates if there is no remove_caveat
+                if caveat ~= nil and (has_caveat[curr_key] or (dependent.add_caveat ~= nil and dependent.add_caveat[caveat])) and not (dependent.remove_caveat ~= nil and dependent.remove_caveat[caveat]) then
+                    has_caveat[dependent_key] = true
+                end
+                -- Check if we've removed a caveat (only relevant if it's reachable)
+                -- The "only relevant if it's reachable" claim may be wrong, so I'm removing that assumption
+                if caveat ~= nil --[[and reachable[dependent_key]] and (not has_caveat[curr_key] or (dependent.remove_caveat ~= nil and dependent.remove_caveat[caveat])) and has_caveat[dependent_key] and not (dependent.add_caveat ~= nil and dependent.add_caveat[caveat]) then
+                    local no_longer_has_caveat = true
+                    for _, dependent_prereq in pairs(dependent_node.prereqs) do
+                        if (has_caveat[curr_key] or (dependent.add_caveat ~= nil and dependent.add_caveat[caveat])) and not (dependent.remove_caveat ~= nil and dependent.remove_caveat[caveat]) then
+                            no_longer_has_caveat = false
+                        end
+                    end
+                    if no_longer_has_caveat then
+                        has_caveat[curr_key] = false
+                    end
+                end
+
                 if num_satisfiers[dependent_key] == num_needed_satisfiers[dependent_key] then
                     if not reachable[dependent_key] then
                         reachable[dependent_key] = true
-                        table.insert(sorted, dependent_node)
+                        if USE_DFS then
+                            table.insert(open, curr_ind + 1, dependent_node)
+                        elseif USE_RANDOM then
+                            if rng.value("top-sort") < 0.5 then
+                                table.insert(open, curr_ind + 1, dependent_node)
+                            else
+                                table.insert(open, dependent_node)
+                            end
+                        else
+                            table.insert(open, dependent_node)
+                        end
                     end
                     -- Check that no connections were blacklisted ones
                     if num_blacklisted_prereqs[dependent_key] == 0 then
                         in_open[dependent_key] = true
-                        table.insert(open, dependent_node)
+                        if USE_DFS then
+                            table.insert(open, curr_ind + 1, dependent_node)
+                        elseif USE_RANDOM then
+                            if rng.value("top-sort") < 0.5 then
+                                table.insert(open, curr_ind + 1, dependent_node)
+                            else
+                                table.insert(open, dependent_node)
+                            end
+                        else
+                            table.insert(open, dependent_node)
+                        end
                     end
                 end
             elseif build_graph.ops[dependent_node.type] == "OR" then
+                -- Check if we've removed a caveat
+                if caveat ~= nil and (not has_caveat[curr_key] or (dependent.remove_caveat ~= nil and dependent.remove_caveat[caveat])) and has_caveat[dependent_key] and not (dependent.add_caveat ~= nil and dependent.add_caveat[caveat]) then
+                    has_caveat[dependent_key] = false
+                    if not is_blacklisted then
+                        in_open[dependent_key] = true
+                        if USE_DFS then
+                            table.insert(open, curr_ind + 1, dependent_node)
+                        elseif USE_RANDOM then
+                            if rng.value("top-sort") < 0.5 then
+                                table.insert(open, curr_ind + 1, dependent_node)
+                            else
+                                table.insert(open, dependent_node)
+                            end
+                        else
+                            table.insert(open, dependent_node)
+                        end
+                    end
+                end
+
                 -- Check if it's already been added
                 if not reachable[dependent_key] then
+                    if caveat ~= nil and (has_caveat[curr_key] or (dependent.add_caveat ~= nil and dependent.add_caveat[caveat])) and not (dependent.remove_caveat ~= nil and dependent.remove_caveat[caveat]) then
+                        has_caveat[dependent_key] = true
+                    end
                     reachable[dependent_key] = true
                     table.insert(sorted, dependent_node)
                     -- Just need to check that this connection was not a blacklisted one in this case
                     if not is_blacklisted then
                         in_open[dependent_key] = true
-                        table.insert(open, dependent_node)
+                        if USE_DFS then
+                            table.insert(open, curr_ind + 1, dependent_node)
+                        elseif USE_RANDOM then
+                            if rng.value("top-sort") < 0.5 then
+                                table.insert(open, curr_ind + 1, dependent_node)
+                            else
+                                table.insert(open, dependent_node)
+                            end
+                        else
+                            table.insert(open, dependent_node)
+                        end
                     end
                 end
             else
@@ -113,7 +211,7 @@ top_sort.sort = function(graph, blacklist, state, new_conn)
         curr_ind = curr_ind + 1
     end
 
-    return {in_open = in_open, open = open, reachable = reachable, sorted = sorted, num_satisfiers = num_satisfiers, num_needed_satisfiers = num_needed_satisfiers, num_blacklisted_prereqs = num_blacklisted_prereqs, curr_ind = curr_ind}
+    return {in_open = in_open, open = open, reachable = reachable, sorted = sorted, has_caveat = has_caveat, num_satisfiers = num_satisfiers, num_needed_satisfiers = num_needed_satisfiers, num_blacklisted_prereqs = num_blacklisted_prereqs, curr_ind = curr_ind}
 end
 
 return top_sort

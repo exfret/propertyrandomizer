@@ -17,6 +17,7 @@ local constants = {
     complexity_points_weighting = 2,
     resource_points_weighting = 0.1,
     non_starting_planet_bonus = 3,
+    max_num_failed_attempts_ing_search = 10000,
     -- Item randomization
     item_randomization_probability_high = 1,
     item_randomization_probability_low = settings.startup["propertyrandomizer-item-percent"].value / 100,

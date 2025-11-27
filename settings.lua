@@ -167,7 +167,7 @@ data:extend({
         default_value = 30,
         minimum_value = 0,
         maximum_value = 100,
-        order = "d-ca[item]"
+        order = "d-da[item]"
     },
     {
         setting_type = "startup",

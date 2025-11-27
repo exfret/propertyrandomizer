@@ -149,7 +149,7 @@ local function round_discrete(num)
         modulus = 10
     end
 
-    rounded_num = math.floor((num + modulus / 2) / modulus) * modulus
+    local rounded_num = math.floor((num + modulus / 2) / modulus) * modulus
     if rounded_num == 0 then
         rounded_num = math.ceil(num / modulus) * modulus
     end

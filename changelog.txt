@@ -1,6 +1,13 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.3.13
+Version: 0.3.14
 Date: ?
+  Features:
+    - Implemented randomized topological sort
+  Bugfixes:
+    - Removed occasional infinite loop in recipe randomization
+---------------------------------------------------------------------------------------------------
+Version: 0.3.13
+Date: 2025.09.10
   Features:
     - Randomized fluidbox locations
     - Item fuel randomization
@@ -8,7 +15,7 @@ Date: ?
     - Recipe tech unlock randomization
     - Ultimate chaos mode with many duplicates rough draft complete
   Changes:
-    - Long randomizations are off by default so that mod loads quickly the first time
+    - Long randomizations are off by default so that the mod loads quickly the first time
     - Rocket silo launch time randomization is disabled for now due to issues
   Bugfixes:
     - Cliff randomization now works again
