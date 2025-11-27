@@ -1,31 +1,17 @@
 local graph_utils = require("lib/graph/graph-utils")
 local set_utils = require("lib/graph/set-utils")
 local top_sort = require("lib/graph/top-sort")
+local path_utils = require("lib/graph/path")
 
 local min_rec_req = {}
 
 local graph = {}
 local source_nodes = {}
 local breadth_first_ordinals = {}
-local depth_first_ordinals = {}
 
 local operator_literal = "l"
 local operator_reference = "r"
 local operator_union = "u"
-
-local min_rec_req_cache = {}
-
-local save_set = function (key, set)
-    min_rec_req_cache[key] = set
-end
-
-local saved_set_exists = function (key)
-    return min_rec_req_cache[key] ~= nil
-end
-
-local get_saved_set = function (key)
-    return min_rec_req_cache[key]
-end
 
 local get_ordinal = function (key, ordinals)
     if ordinals[key] == nil then
@@ -272,7 +258,6 @@ min_rec_req.init = function (input_graph)
 end
 
 min_rec_req.restart = function (input_graph)
-    min_rec_req_cache = {}
     graph = {}
     source_nodes = {}
     local breadth_first_top_sort = top_sort.sort(input_graph)
@@ -331,8 +316,8 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_types)
 
     local master_stats = get_empty_stats()
     local master_path_reachability_cache = {}
-    local master_path_expr = check_reachable_top_down(target_node, nil, {}, required_nodes, 0, master_path_reachability_cache, master_stats).path_expr
-    local master_path = evaluate_expr(master_path_expr, master_path_reachability_cache, {})
+    local master_path_expr = path_utils.check_reachable_top_down(graph, target_node, nil, {}, required_nodes, 0, master_path_reachability_cache, master_stats).path_expr
+    local master_path = path_utils.find_path(graph, target_node)
 
     local add_potential_prereqs_to_stack = function (dependent_node)
         local dependent_key = graph_utils.get_node_key(dependent_node)
@@ -414,7 +399,7 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_types)
             if master_path[remove_key] then
                 top_down_checks = top_down_checks + 1
                 local stats = get_empty_stats()
-                result = check_reachable_top_down(target_node, remove_key, {}, required_nodes, 0, reachablility_cache, stats)
+                result = path_utils.check_reachable_top_down(graph, target_node, remove_key, {}, required_nodes, 0, reachablility_cache, stats)
                 if result.undetermined then
                     bottom_up_checks = bottom_up_checks + 1
                     result.reachable = check_reachable_bottom_up(master_key, remove_key)

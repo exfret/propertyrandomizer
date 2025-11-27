@@ -3,6 +3,7 @@ local rng = require("lib/random/rng")
 local graph_utils = require("lib/graph/graph-utils")
 local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
+local path_utils = require("lib/graph/path")
 local critical_req = require("lib/graph/critical-req")
 local set_utils = require("lib/graph/set-utils")
 local queue = require("lib/graph/queue")
@@ -143,6 +144,25 @@ randomizations.graph = function(id)
         end
     end
 
+    -- Sort all prereqs in this randomized topological order
+    -- Needed for path calculation
+    state.top_sort_ordinals.MAX = #state.vanilla_top_sort.sorted + 1
+    local get_ordinal = function (key, ordinals)
+        if ordinals[key] == nil then
+            return ordinals.MAX
+        end
+        return ordinals[key]
+    end
+    local sort_prereqs = function (prereqs, ordinals)
+        table.sort(prereqs, function(a, b)
+            return get_ordinal(graph_utils.get_node_key(a), ordinals)
+                < get_ordinal(graph_utils.get_node_key(b), ordinals)
+        end)
+    end
+    for _, node in pairs(state.vanilla_top_sort.sorted) do
+        sort_prereqs(node.prereqs, state.top_sort_ordinals)
+    end
+
     state.surface_specific = function (node_type)
         return state.surface_specific_node_types[node_type] ~= nil
     end
@@ -194,7 +214,7 @@ randomizations.graph = function(id)
     end
     tech_tree_randomizer.execute_randomization = function (params)
         rng.shuffle(state.rng_key, params.suitable_edges)
-        for i = 1, params.first_edge_count do
+        for i = 1, math.min(params.first_edge_count, #params.suitable_edges) do
             params.new_edges[i] = params.suitable_edges[i]
         end
     end
@@ -215,7 +235,7 @@ randomizations.graph = function(id)
     end
     recipe_randomizer.execute_randomization = function (params)
         rng.shuffle(state.rng_key, params.suitable_edges)
-        for i = 1, params.first_edge_count do
+        for i = 1, math.min(params.first_edge_count, #params.suitable_edges) do
             params.new_edges[i] = params.suitable_edges[i]
         end
     end
@@ -294,7 +314,7 @@ randomizations.graph = function(id)
     end
 
     -- Initialize min_rec_req
-    min_rec_req.init(state.vanilla_graph)
+    --min_rec_req.init(state.vanilla_graph)
 
     -- Set up scenarios to figure out critical edges for getting un-stuck
     state.scenario_to_critical_edges = {}
@@ -307,8 +327,9 @@ randomizations.graph = function(id)
         -- Scenario starts with the unlocks needed to get to the planet
         local planet_access_node_key = build_graph.key(planet_access_node_type, planet_name)
         local vanilla_planet_access_node = state.vanilla_graph[planet_access_node_key]
-        local minimum_recursive_requirement = min_rec_req.minimum_recursive_requirements(vanilla_planet_access_node, state.permanent_unlock_node_types)
-        for node_key, _ in pairs(minimum_recursive_requirement) do
+        --local minimum_recursive_requirement = min_rec_req.minimum_recursive_requirements(vanilla_planet_access_node, state.permanent_unlock_node_types)
+        local path = path_utils.find_path(state.vanilla_graph, vanilla_planet_access_node, state.permanent_unlock_node_types)
+        for node_key, _ in pairs(path) do
             state.force_reachable(scenario_graph[node_key], scenario_graph)
         end
 
@@ -658,6 +679,13 @@ randomizations.graph = function(id)
                                 -- Scenarios get deleted once they complete
                                 if scenario ~= nil then
                                     local prereq_info = scenario.prereq_info[edge_type_key]
+
+                                    if prereq_info == nil then
+                                        -- There were no prereqs of this type discovered in this scenario.
+                                        -- Failure
+                                        filter = {}
+                                        break
+                                    end
                                     if state.prereq_is_surface_specific and state.dependent_is_surface_specific then
                                         for surface_key, _ in pairs(surfaces) do
                                             set_utils.merge_intersection(filter, prereq_info.surface_keys[surface_key].surface_ambiguous_keys)
@@ -935,7 +963,7 @@ randomizations.graph = function(id)
     state.new_edges = nil
 
     -- Did we complete all our scenarios?
-    assert(#state.scenarios == 0)
+    assert(set_utils.set_empty(state.scenarios))
 
     -- Is the game completable?
     local random_graph_top_sort = top_sort.sort(state.random_graph)
