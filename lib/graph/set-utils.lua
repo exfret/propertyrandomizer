@@ -17,7 +17,7 @@ set_utils.merge_union = function (to, from)
     end
 end
 
--- O(to_n) Modifies 1st argument to only include elements in 2nd argument
+-- O(to_n) Modifies 1st argument to only include elements also in 2nd argument
 set_utils.merge_intersection = function (to, from)
     if from[set_utils.universal_set_key] then
         return
@@ -79,6 +79,10 @@ end
 -- O(1) Symbolizes the set containing all elements
 set_utils.create_universal_set = function ()
     return { [set_utils.universal_set_key] = true }
+end
+
+set_utils.is_universal_set = function (set)
+    return set[set_utils.universal_set_key] ~= nil
 end
 
 -- O(1) Returns true if the set contains no elements

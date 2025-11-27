@@ -43,7 +43,6 @@ end
 
 local potential_requirement = function (dependent_key, prereq_key)
     return get_ordinal(prereq_key, breadth_first_ordinals) < get_ordinal(dependent_key, breadth_first_ordinals)
-        and get_ordinal(prereq_key, depth_first_ordinals) < get_ordinal(dependent_key, depth_first_ordinals)
 end
 
 local dereference_expr = function (key, reachablility_cache)
@@ -284,11 +283,8 @@ min_rec_req.restart = function (input_graph)
         graph[key2] = input_graph[key2]
     end
     breadth_first_ordinals.MAX = breadth_first_top_sort.curr_ind
-    local depth_first_top_sort = top_sort.sort(graph, nil, nil, nil, { depth_first = true })
-    depth_first_ordinals = {}
-    for ordinal, node2 in pairs(depth_first_top_sort.sorted) do
+    for _, node2 in pairs(breadth_first_top_sort.sorted) do
         local key2 = graph_utils.get_node_key(node2)
-        depth_first_ordinals[key2] = ordinal
         local old_prereq_count = #node2.prereqs
         local new_prereq_count = 0
         for i = 1, old_prereq_count do
@@ -314,28 +310,17 @@ min_rec_req.restart = function (input_graph)
             source_nodes[#source_nodes+1] = key2
         end
     end
-    depth_first_ordinals.MAX = depth_first_top_sort.curr_ind
 end
 
 -- O(nodes*edges). If the node is reachable, this returns the set of unavoidable nodes this node needs in order to be reachable.
--- Runtime scales linearly with the amount of nodes of type node_type. Set node_type to nil for all node types (slow).
+-- Runtime scales linearly with the amount of nodes with type in node_types. Set node_types to nil for all node types (slow).
 -- Runtime is slower the farther into the endgame target_node is located.
-min_rec_req.minimum_recursive_requirements = function (target_node, node_type)
+min_rec_req.minimum_recursive_requirements = function (target_node, node_types)
     if set_utils.set_empty(graph) then
         error("gotta call init first to initialize, lad.")
     end
     local master_key = graph_utils.get_node_key(target_node)
-    local save_key = master_key
-    if node_type ~= nil then
-        save_key = master_key .. ":" .. node_type
-    end
-    if saved_set_exists(save_key) then
-        return { reachable = true, nodes = get_saved_set(save_key) }
-    end
-
-    if not graph[master_key] then
-        return { reachable = false }
-    end
+    assert(graph[master_key])
 
     local start_time = os.clock()
 
@@ -422,7 +407,7 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_type)
         potential_stack[#potential_stack] = nil
         local remove_key = graph_utils.get_node_key(remove_node)
         add_potential_prereqs_to_stack(remove_node)
-        local node_type_match = remove_node.type == node_type or node_type == nil
+        local node_type_match = node_types == nil or node_types[remove_node.type]
         if required_nodes[remove_key] == nil and not_required_nodes[remove_key] == nil and node_type_match then
             local result = reachable_result(nil)
             local reachablility_cache = {}
@@ -444,18 +429,18 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_type)
     end
 
     required_nodes[master_key] = nil
-    if node_type ~= nil then
+    if node_types ~= nil then
         for key, _ in pairs(required_nodes) do
-            if graph[key].type ~= node_type then
+            if node_types[graph[key].type] == nil then
                 required_nodes[key] = nil
             end
         end
     end
-    save_set(save_key, required_nodes)
-    local node_count = set_utils.count(get_saved_set(save_key))
+
+    local node_count = set_utils.count(required_nodes)
     local elapsed_time = os.clock() - start_time
 
-    return { reachable = true, nodes = table.deepcopy(get_saved_set(save_key)) }
+    return required_nodes
 end
 
 return min_rec_req
