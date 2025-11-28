@@ -327,19 +327,38 @@ randomizations.bot_energy = function(id)
 
                 local new_energy_per_move = util.parse_energy(bot.energy_per_move)
 
-                -- Scale energy_per_tick and max_energy accordingly
+                -- Scale energy_per_tick accordingly
+                local factor = new_energy_per_move / old_energy_per_move
                 if bot.energy_per_tick ~= nil then
                     local energy_per_tick_as_num = util.parse_energy(bot.energy_per_tick)
-                    energy_per_tick_as_num = energy_per_tick_as_num * new_energy_per_move / old_energy_per_move
+                    local rounding_params = {key = rng.key({id=id, property = bot}), rounding = "discrete_float"}
+                    energy_per_tick_as_num = randnum.fixes(rounding_params, energy_per_tick_as_num * factor)
                     bot.energy_per_tick = energy_per_tick_as_num .. "J"
                 end
-                if bot.max_energy ~= nil then
-                    local max_energy_as_num = util.parse_energy(bot.max_energy)
-                    max_energy_as_num = max_energy_as_num * new_energy_per_move / old_energy_per_move
-                    bot.max_energy = max_energy_as_num .. "J"
-                end
 
-                locale_utils.create_localised_description(bot, new_energy_per_move / old_energy_per_move, id, {flipped = true})
+                locale_utils.create_localised_description(bot, factor, id, {flipped = true})
+            end
+        end
+    end
+end
+
+randomizations.bot_energy_capacity = function(id)
+    for _, bot_class in pairs({"construction-robot", "logistic-robot"}) do
+        for _, bot in pairs(data.raw[bot_class]) do
+            if bot.max_energy ~= nil and util.parse_energy(bot.max_energy) > 0 then
+                local old_value = util.parse_energy(bot.max_energy)
+
+                randomizations.energy({
+                    id = id,
+                    prototype = bot,
+                    property = "max_energy",
+                    range = "small",
+                    rounding = "discrete_float"
+                })
+
+                local factor = util.parse_energy(bot.max_energy) / old_value
+
+                locale_utils.create_localised_description(bot, factor, id)
             end
         end
     end
