@@ -1,6 +1,7 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
+local randbool = require("lib/random/randbool")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
@@ -600,6 +601,41 @@ randomizations.inserter_base_hand_size = function(id)
         inserter.stack_size_bonus = new_value - 1
         local factor = new_value / old_value
         locale_utils.create_localised_description(inserter, factor, id, { variance = "big" })
+    end
+end
+
+randomizations.inserter_filter = function(id)
+
+    -- Base probability of toggling whether an inserter has a filter
+    local flip_p = 0.5
+
+    for _, inserter in pairs(data.raw.inserter) do
+
+        if inserter.filter_count == nil then
+            inserter.filter_count = 0
+        end
+        local has_filter = inserter.filter_count > 0
+
+        local dir = 1
+        if has_filter then
+            dir = -1
+        end
+
+        local flip = randbool.rand_bias_chaos(rng.key({id = id, prototype = inserter, property = "filter_count"}), flip_p, dir)
+        if flip then
+            has_filter = has_filter ~= flip
+            local description = "[color=red](Broken filter)[/color]"
+            if has_filter then
+                description = "[color=green](Filter installed)[/color]"
+            end
+            inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n" .. description}
+        end
+
+        if has_filter then
+            inserter.filter_count = 5
+        else
+            inserter.filter_count = 0
+        end
     end
 end
 

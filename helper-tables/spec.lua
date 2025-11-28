@@ -351,6 +351,12 @@ local spec = {
             val = "more"
         }
     },
+    inserter_filter = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     inserter_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
