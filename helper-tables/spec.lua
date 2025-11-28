@@ -65,6 +65,25 @@ local spec = {
             val = "default"
         }
     },
+    beam_damage = {
+        setting = {
+            -- It's in "more" since the damage bonuses on the weapons themselves are already randomized, so this is essentially a double randomization
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    beam_damage_interval = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    beam_width = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     belt_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -115,6 +134,19 @@ local spec = {
         setting = {
             name = "propertyrandomizer-military",
             val = "default"
+        }
+    },
+
+    capture_robot_capture_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    capture_robot_search_radius = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
         }
     },
     car_rotation_speed = {

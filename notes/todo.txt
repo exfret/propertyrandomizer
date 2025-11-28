@@ -1,5 +1,8 @@
 WORKING ON:
- - Try to implement top sort with caveats for confidence destruction
+ - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
+ - Back to ammo preservation
+ - Fix topological sort
+ - Then, maybe recipe rando changes based on chaos
  - Also maybe "bundled" randomization where some things get randomized together for a consistent "story"
  - Planetary randomization
    * Check if game is possible after planetary randomization and print to console
@@ -65,6 +68,8 @@ Bigger things:
 57. Think of ways to do non-rectangular buildings
 58. Allow for nonlinear sorts (limits randomization, but also prevents progression blocking)
 59. Figure out a way to randomize past "required" nodes
+60. Forward fill could put solar panels first, so use that perhaps for item randomization
+61. Surface condition randomization
 
 DONE:
 55. Make the topological sort random
