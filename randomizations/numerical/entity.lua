@@ -870,6 +870,7 @@ randomizations.machine_energy_usage = function(id)
                     local factor = new_first_energy_val / old_first_energy_val
 
                     -- Scale all energy vals up the same way
+                    local key = rng.key({ id = id, prototype = entity })
                     for i = 2, #energy_properties do
                         local curr_energy_val = util.parse_energy(entity[energy_properties[i]])
                         local suffix = "J"
@@ -877,13 +878,20 @@ randomizations.machine_energy_usage = function(id)
                             curr_energy_val = 60 * curr_energy_val
                             suffix = "W"
                         end
-                        curr_energy_val = curr_energy_val * factor
+                        curr_energy_val = randnum.fixes({ key = key, rounding = "discrete_float" }, curr_energy_val * factor)
                         entity[energy_properties[i]] = curr_energy_val .. suffix
                     end
 
                     -- Things like turrets may break if their energy capacity isn't scaled too
                     if entity.energy_source ~= nil and entity.energy_source.buffer_capacity ~= nil then
                         entity.energy_source.buffer_capacity = util.parse_energy(entity.energy_source.buffer_capacity) * factor .. "J"
+                    end
+
+                    -- Randomize power drain too
+                    if entity.energy_source ~= nil and entity.energy_source.type == "electric" and entity.energy_source.drain ~= nil then
+                        local curr_energy_val = 60 * util.parse_energy(entity.energy_source.drain)
+                        curr_energy_val = randnum.fixes({ key = key, rounding = "discrete_float" }, curr_energy_val * factor)
+                        entity.energy_source.drain = curr_energy_val .. "W"
                     end
 
                     -- Update description
