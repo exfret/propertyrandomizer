@@ -625,6 +625,12 @@ local spec = {
             val = "more"
         }
     },
+    roboport_radar_range = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     rocket_parts_required = {
         setting = {
             name = "propertyrandomizer-production",

@@ -1533,6 +1533,30 @@ randomizations.roboport_logistic_radius = function(id)
     end
 end
 
+randomizations.roboport_radar_range = function(id)
+    for _, roboport in pairs(data.raw.roboport) do
+        if roboport.radar_range == nil then
+            roboport.radar_range = math.ceil(roboport.construction_radius / 32)
+        end
+
+        if roboport.radar_range > 0 then
+            local old_value = roboport.radar_range
+
+            randomize({
+                id = id,
+                prototype = roboport,
+                property = "radar_range",
+                variance = "small",
+                rounding = "discrete"
+            })
+
+            local factor = roboport.radar_range / old_value
+
+            locale_utils.create_localised_description(roboport, factor, id, { variance = "small" })
+        end
+    end
+end
+
 randomizations.rocket_parts_required = function(id)
     for _, rocket_silo in pairs(data.raw["rocket-silo"]) do
         local old_rocket_parts_required = rocket_silo.rocket_parts_required
