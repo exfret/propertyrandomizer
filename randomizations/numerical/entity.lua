@@ -833,6 +833,48 @@ randomizations.landmine_trigger_radius = function(id)
     end
 end
 
+-- New
+randomizations.locomotive_max_speed = function(id)
+
+    local max_value = 0
+    for _, locomotive in pairs(data.raw["locomotive"]) do
+
+        local old_value = locomotive.max_speed
+
+        -- To km/h
+        locomotive.max_speed = locomotive.max_speed * 216
+        randomize({
+            id = id,
+            prototype = locomotive,
+            property = "max_speed",
+            range = "big",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+        -- Back to tiles per tick
+        locomotive.max_speed = locomotive.max_speed / 216
+        max_value = math.max(max_value, locomotive.max_speed)
+
+        local factor = locomotive.max_speed / old_value
+        locale_utils.create_localised_description(locomotive, factor, id, { variance = "big" })
+    end
+
+    -- The other rolling stock also have max speeds
+    -- Actual max speed of a train is capped to lowest of its rolling stock
+    -- Thus we need to modify these so they don't interfere with the max speed
+    local other_rolling_stock_classes = {
+        "artillery-wagon",
+        "cargo-wagon",
+        "infinity-cargo-wagon",
+        "fluid-wagon",
+    }
+    for _, class in pairs(other_rolling_stock_classes) do
+        for _, rolling_stock in pairs(data.raw[class]) do
+            rolling_stock.max_speed = max_value
+        end
+    end
+end
+
 randomizations.machine_energy_usage = function(id)
     for entity_class, energy_keys in pairs(categories.machine_energy_usage_keys) do
         if data.raw[entity_class] ~= nil then

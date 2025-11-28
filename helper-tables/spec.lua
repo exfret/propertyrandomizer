@@ -425,6 +425,12 @@ local spec = {
             val = "more"
         }
     },
+    locomotive_max_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     module_effects = {
         setting = {
             name = "propertyrandomizer-production",
@@ -733,7 +739,7 @@ local spec = {
             val = "more"
         }
     },
-    -- How fast vehicles are
+    -- How fast vehicles accelerate
     vehicle_power = {
         setting = {
             name = "propertyrandomizer-misc",
