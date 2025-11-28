@@ -68,6 +68,8 @@ categories.machine_energy_usage_keys = {
     ["radar"] = {["energy_usage"] = "power"},
     ["roboport"] = {["energy_usage"] = "power"},
     ["rocket-silo"] = {["active_energy_usage"] = "power", ["lamp_energy_usage"] = "power", ["energy_usage"] = "power"},
+    ["arithmetic-combinator"] = {["active_energy_usage"] = "power"},
+    ["decider-combinator"] = {["active_energy_usage"] = "power"},
     ["selector-combinator"] = {["active_energy_usage"] = "power"},
     ["spidertron"] = {["movement_energy_consumption"] = "power"}
 }
