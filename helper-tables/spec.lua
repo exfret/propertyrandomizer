@@ -121,6 +121,13 @@ local spec = {
             val = "default"
         }
     },
+    -- THIS is how much energy they can hold
+    bot_energy_capacity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     bot_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
