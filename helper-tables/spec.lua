@@ -745,7 +745,13 @@ local spec = {
             name = "propertyrandomizer-misc",
             val = "less"
         }
-    }
+    },
+    vehicle_weight = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
 }
 
 return spec

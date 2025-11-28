@@ -1992,3 +1992,24 @@ randomizations.vehicle_power = function(id)
         end
     end
 end
+
+randomizations.vehicle_weight = function(id)
+    for vehicle_class, _ in pairs(categories.vehicles) do
+        for _, vehicle in pairs(data.raw[vehicle_class]) do
+            local old_value = vehicle.weight
+
+            randomize({
+                id = id,
+                prototype = vehicle,
+                property = "weight",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = -1,
+            })
+
+            local factor = vehicle.weight / old_value
+
+            locale_utils.create_localised_description(vehicle, factor, id, { variance = "big", flipped = true })
+        end
+    end
+end
