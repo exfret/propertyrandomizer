@@ -127,6 +127,8 @@ end
 for _, fluid in pairs(data.raw.fluid) do
     materials["fluid-" .. fluid.name] = fluid
 end
+-- export
+build_graph.materials = materials
 
 -- Get recipe categories
 
@@ -983,6 +985,7 @@ local function load()
                 end
             end
 
+            -- NOTE: I needed to comment this out to get isolated planetary randomization to work
             -- Also check that this isn't an auto-generated recycling recipe since we don't want to rely on those for reachability
             if in_results and not (recipe.category == "recycling" and (recipe.subgroup == nil or recipe.subgroup == "other")) then
                 table.insert(recipes_resulting_in_this, recipe)
@@ -3814,15 +3817,6 @@ build_graph.isolatable_nodes = {
     ["rocket-part-recipe-planet"] = true,
     ["send-item-to-orbit-planet"] = true,
 }
-
--- Make caveats edge-level
-
---[[build_graph.caveats = {
-    
-}
-for _, surface in pairs(surfaces) do
-
-end]]
 
 ----------------------------------------------------------------------
 -- Special manipulation methods

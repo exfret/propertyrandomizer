@@ -84,11 +84,11 @@ randnum.fill_in_defaults = function(params)
 
     -- Fill in for min/max factors
     local str_to_cap = {
-        very_small = {1.2, 1.6},
-        small = {1.5, 2.25},
-        medium = {2, 3},
-        big = {3, 7},
-        very_big = {5, 15},
+        very_small = {1.2, 1.5},
+        small = {1.4, 2},
+        medium = {1.75, 2.5},
+        big = {2.25, 4},
+        very_big = {3, 10},
         none = {0, constants.reasonably_large_number}
     }
     local min_key = "range_min"

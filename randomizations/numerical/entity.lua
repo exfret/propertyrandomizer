@@ -203,7 +203,8 @@ randomizations.beam_width = function(id)
         randomize({
             id = id,
             prototype = beam,
-            property = "width"
+            property = "width",
+            range = "very_big"
         })
     end
 end
@@ -364,6 +365,13 @@ randomizations.capture_robot_search_radius = function(id)
             prototype = bot,
             property = "search_radius"
         })
+    end
+end
+
+-- NEW
+randomizations.car_effectivity = function(id)
+    for _, car in pairs(data.raw.car) do
+        -- CRITICAL TODO
     end
 end
 
