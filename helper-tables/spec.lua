@@ -108,6 +108,12 @@ local spec = {
             val = "default"
         }
     },
+    bot_cargo_capacity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     -- This is energy USAGE, not how much they can hold
     bot_energy = {
         setting = {

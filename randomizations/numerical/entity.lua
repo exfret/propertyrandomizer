@@ -287,6 +287,26 @@ randomizations.boiler_consumption = function(id)
     end
 end
 
+randomizations.bot_cargo_capacity = function(id)
+    for _, bot_class in pairs({"construction-robot", "logistic-robot"}) do
+        for _, bot in pairs(data.raw[bot_class]) do
+            local old_value = bot.max_payload_size
+
+            randomize({
+                id = id,
+                prototype = bot,
+                property = "max_payload_size",
+                rounding = "discrete",
+                abs_min = 1,
+            })
+
+            local factor = bot.max_payload_size / old_value
+
+            locale_utils.create_localised_description(bot, factor, id)
+        end
+    end
+end
+
 randomizations.bot_energy = function(id)
     -- Only include construction and logistic bots
     -- Other bots don't use energy keys anyways
