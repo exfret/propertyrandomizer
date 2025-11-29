@@ -612,6 +612,8 @@ local spec = {
             val = "more"
         }
     },
+    -- exfret Note: I specifically didn't touch the next few recipe randomizations due to exponential cascading issues, but let's see how they go
+    -- If someone enables "More" on a randomization, they deserve pain anyways
     recipe_ingredients_numerical = {
         setting = {
             name = "propertyrandomizer-production",

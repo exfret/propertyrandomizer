@@ -16,7 +16,8 @@ randomizations.recipe_crafting_times = function(id)
             prototype = recipe,
             property = "energy_required",
             rounding = "discrete_float",
-            abs_min = 0.01
+            abs_min = 0.01,
+            dir = -1
         })
     end
 end
@@ -40,8 +41,10 @@ randomizations.recipe_ingredients_numerical = function(id)
                         key = key,
                         dummy = old_production,
                         abs_min = 1,
-                        rounding = "discrete",
-                        dir = -1
+                        range = "small",
+                        variance = "small",
+                        dir = -1,
+                        rounding = "discrete"
                     })
                     ing.amount = new_production + ignored_by_stats
                 end
@@ -98,8 +101,10 @@ randomizations.recipe_results_numerical = function(id)
                             key = key,
                             dummy = old_production,
                             abs_min = 1,
-                            rounding = "discrete",
-                            dir = 1
+                            range = "small",
+                            variance = "small",
+                            dir = 1,
+                            rounding = "discrete"
                         })
                         result.amount = new_production + ignored_by_stats
                     end
