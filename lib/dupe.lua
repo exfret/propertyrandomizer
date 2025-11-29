@@ -724,7 +724,7 @@ dupe.resource = function(resource, dupe_number)
     log(new_resource.autoplace.probability_expression)
     new_resource.autoplace = resource_autoplace.resource_autoplace_settings({
         name = new_resource.name,
-        base_density = 100,
+        base_density = 30,
         has_starting_area_placement = true
     })
     -- Idk if autoplace controls actually do much, they probably need to be coded into the actual probability expression
@@ -992,7 +992,10 @@ dupe.execute = function()
             end
         end
         for _, resource in pairs(resources_to_dupe) do
-            dupe.resource(resource, 2)
+            -- CRITICAL TODO: Set back to 2
+            for i = 2, 4 do
+                dupe.resource(resource, i)
+            end
         end
     end
 end

@@ -89,25 +89,25 @@ randnum.fill_in_defaults = function(params)
 
     -- Fill in for min/max factors
     local str_to_cap = {
-        very_small = {1.3, 1.75},
-        small = {1.5, 2.5},
-        medium = {2, 4},
-        big = {5, 10},
-        very_big = {15, 25},
+        very_small = {1.2, 1.5},
+        small = {1.4, 2},
+        medium = {1.75, 2.5},
+        big = {2.25, 4},
+        very_big = {3, 10},
         none = {0, constants.reasonably_large_number}
     }
     local min_key = "range_min"
     if params.range_min == "same" then
         min_key = "range"
     end
-    params.soft_min = 1 / str_to_cap[params[min_key]][1] * params.val
-    params.hard_min = 1 / str_to_cap[params[min_key]][2] * params.val
+    params.soft_min = 1 / (str_to_cap[params[min_key]][1] * global_chaos_range) * params.val
+    params.hard_min = 1 / (str_to_cap[params[min_key]][2] * global_chaos_range) * params.val
     local max_key = "range_max"
     if params.range_max == "same" then
         max_key = "range"
     end
-    params.soft_max = str_to_cap[params[max_key]][1] * params.val
-    params.hard_max = str_to_cap[params[max_key]][2] * params.val
+    params.soft_max = (str_to_cap[params[max_key]][1] * global_chaos_range) * params.val
+    params.hard_max = (str_to_cap[params[max_key]][2] * global_chaos_range) * params.val
 
     local str_to_step_size = {
         very_small = 1.5,

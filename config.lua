@@ -47,6 +47,16 @@ local chaos_string_to_num = {
 
 global_chaos = chaos_string_to_num[settings.startup["propertyrandomizer-chaos"].value]
 
+local chaos_string_to_range_num = {
+    ["light"] = 0.75,
+    ["less"] = 0.875,
+    ["default"] = 1,
+    ["more"] = 1.3,
+    ["ultimate"] = 1.7
+}
+
+global_chaos_range = chaos_string_to_range_num[settings.startup["propertyrandomizer-chaos"].value]
+
 local setting_values = {
     none = 0,
     less = 1,
