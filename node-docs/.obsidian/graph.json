@@ -1,0 +1,44 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": true,
+  "colorGroups": [
+    {
+      "query": "[\"type\":\"AND\"]",
+      "color": {
+        "a": 1,
+        "rgb": 14701138
+      }
+    },
+    {
+      "query": "[\"type\":\"OR\"]",
+      "color": {
+        "a": 1,
+        "rgb": 14725458
+      }
+    },
+    {
+      "query": "[\"type\":\"SOURCE\"]",
+      "color": {
+        "a": 1,
+        "rgb": 5420768
+      }
+    }
+  ],
+  "collapse-display": true,
+  "showArrow": true,
+  "textFadeMultiplier": -0.8,
+  "nodeSizeMultiplier": 1.7879638671875,
+  "lineSizeMultiplier": 5,
+  "collapse-forces": false,
+  "centerStrength": 0.518713248970312,
+  "repelStrength": 9.92024739583333,
+  "linkStrength": 0,
+  "linkDistance": 30,
+  "scale": 0.5244709194178289,
+  "close": true
+}

@@ -67,7 +67,7 @@ script.on_nth_tick(1, function(event)
             end
         end
         if has_no_graph_randomizations then
-            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Due to slow load times, recipe and other randomizations are off by default, but highly recommended. See mod settings to turn them on. Also consider turning on prototype caching for faster load times in the future (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
+            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Due to slow load times, recipe and other randomizations are off by default, but highly recommended. See mod settings to turn them on. Also consider turning on prototype caching for faster load times for future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
         end
 
         local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)

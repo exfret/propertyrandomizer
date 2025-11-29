@@ -89,10 +89,35 @@ local spec = {
             val = "default"
         }
     },
+    beacon_profiles = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     beacon_supply_area = {
         setting = {
             name = "propertyrandomizer-production",
             val = "default"
+        }
+    },
+    beam_damage = {
+        setting = {
+            -- It's in "more" since the damage bonuses on the weapons themselves are already randomized, so this is essentially a double randomization
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    beam_damage_interval = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    beam_width = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
         }
     },
     belt_speed = {
@@ -166,6 +191,19 @@ local spec = {
             val = "default"
         }
     },
+
+    capture_robot_capture_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    capture_robot_search_radius = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     car_rotation_speed = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -176,7 +214,7 @@ local spec = {
     cliff_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
-            val = "default"
+            val = "more"
         }
     },
     crafting_machine_speed = {
@@ -280,6 +318,12 @@ local spec = {
         }
     },
     equipment_personal_roboport_max_robots = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    equipment_shapes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
