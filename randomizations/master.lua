@@ -24,6 +24,7 @@ log("Gathering misc randomizations")
 
 -- Misc randomizations
 require("misc/beacon-profiles")
+require("randomizations/misc/ammo-categories")
 require("randomizations/misc/capsule-actions")
 -- TODO
 require("randomizations/misc/equipment-shapes")
@@ -44,6 +45,7 @@ require("randomizations/numerical/equipment")
 require("randomizations/numerical/equipment-grid")
 require("randomizations/numerical/fluid")
 require("randomizations/numerical/item")
+require("randomizations/numerical/recipe")
 require("randomizations/numerical/technology")
 require("randomizations/numerical/tile")
 

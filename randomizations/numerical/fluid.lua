@@ -16,10 +16,11 @@ randomizations.fluid_emissions_multiplier = function(id)
             prototype = fluid,
             property = "emissions_multiplier",
             range = "small",
-            variance = "small"
+            rounding = "discrete_float",
+            dir = -1
         })
 
-        fluid.localised_description = locale_utils.create_localised_description(fluid, fluid.emissions_multiplier / old_emissions_multiplier, id)
+        fluid.localised_description = locale_utils.create_localised_description(fluid, fluid.emissions_multiplier / old_emissions_multiplier, id, { flipped = true })
     end
 end
 
@@ -31,7 +32,8 @@ randomizations.fluid_fuel_value = function(id)
             randomizations.energy({
                 id = id,
                 prototype = fluid,
-                property = "fuel_value"
+                property = "fuel_value",
+                rounding = "discrete_float"
             })
 
             fluid.localised_description = locale_utils.create_localised_description(fluid, util.parse_energy(fluid.fuel_value) / old_fuel_value, id)
@@ -52,7 +54,7 @@ randomizations.fluid_heat_capacity = function(id)
             prototype = fluid,
             property = "heat_capacity",
             range = "small",
-            variance = "small"
+            rounding = "discrete_float"
         })
 
         fluid.localised_description = locale_utils.create_localised_description(fluid, util.parse_energy(fluid.heat_capacity) / old_heat_capacity, id)

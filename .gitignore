@@ -1,2 +1,14 @@
 # Mac directory file
 .DS_Store
+
+# .vscode settings
+.vscode/
+
+# Python virtual environment
+.venv/
+
+# Scripts
+scripts/
+
+# Offline testing output
+offline/output/

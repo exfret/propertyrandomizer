@@ -11,6 +11,16 @@ local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
+-- item lookup
+local items = {}
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            items[item.name] = item
+        end
+    end
+end
+
 randomizations.item = function(id)
     local modified_raw_resource_table = flow_cost.get_default_raw_resource_table()
     -- Consider wood expensive as a new ingredient, but not as an old one
@@ -30,8 +40,9 @@ randomizations.item = function(id)
     -- TODO: Need gun-turret node I think?
     type_stays_with_node = {
         ["build-entity-item"] = true,
-        ["build-tile-item"] = true,
-        ["plant-entity-item"] = true,
+        ["build-entity-item-surface"] = true,
+        ["build-tile-item-surface"] = true,
+        ["plant-entity-item-surface"] = true,
         ["repair-pack"] = true,
         ["rocket-turret"] = true,
         ["rocket-ammo"] = true,
@@ -57,28 +68,29 @@ randomizations.item = function(id)
     local blacklist = {}
     for _, item_node in pairs(graph_sort) do
         if item_node.type == "item" then
+            local item_prototype = items[item_node.item]
             -- Condition: only do items reachable from nauvis, no weirdness
             if sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item_node.name, build_graph.compound_key({"planet", "nauvis"})}))] then
                 -- Must have flow cost, and the cost must be reasonable
-                local cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+                local cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_prototype)]
                 -- Remove this check for now
                 --if cost ~= nil and 0.5 < cost and cost < 50 then
                     -- Also check stack size, since stack size 1 intermediates would suck
                     -- Disable check for now
-                    --if item_node.item.stack_size >= 10 then
+                    --if item_prototype.stack_size >= 10 then
                     -- Instead just check for not stackable
                     local stackable = true
-                    if item_node.item.flags ~= nil then
-                        for _, flag in pairs(item_node.item.flags) do
+                    if item_prototype.flags ~= nil then
+                        for _, flag in pairs(item_prototype.flags) do
                             if flag == "not-stackable" then
                                 stackable = false
                             end
                         end
                     end
-                    if stackable and item_node.item.equipment_grid == nil then
+                    if stackable and item_prototype.equipment_grid == nil then
                         local num_corresponding_recipes = 0
-                        if item_recipe_maps.material_to_recipe[flow_cost.get_prot_id(item_node.item)] ~= nil then
-                            for _, _ in pairs(item_recipe_maps.material_to_recipe[flow_cost.get_prot_id(item_node.item)]) do
+                        if item_recipe_maps.material_to_recipe[flow_cost.get_prot_id(item_prototype)] ~= nil then
+                            for _, _ in pairs(item_recipe_maps.material_to_recipe[flow_cost.get_prot_id(item_prototype)]) do
                                 num_corresponding_recipes = num_corresponding_recipes + 1
                             end
                         end
@@ -104,18 +116,18 @@ randomizations.item = function(id)
                             --if all_valid_prereqs then
                                 -- Also check that it's not a science pack (I hope I don't need many more checks...)
                                 -- Also check burnt results since those were having issues :(
-                                if item_node.item.type ~= "tool" and item_node.item.burnt_result == nil and not is_blacklisted_item[item_node.item.name] then
+                                if item_prototype.type ~= "tool" and item_prototype.burnt_result == nil and not is_blacklisted_item[item_prototype.name] then
                                     -- Special priority to resources
                                     local is_raw_resource = false
                                     for _, resource in pairs(data.raw.resource) do
                                         if resource.minable ~= nil then
                                             if resource.minable.results ~= nil then
                                                 for _, result in pairs(resource.minable.results) do
-                                                    if result.name == item_node.item.name then
+                                                    if result.name == item_prototype.name then
                                                         is_raw_resource = true
                                                     end
                                                 end
-                                            elseif resource.minable.result == item_node.item.name then
+                                            elseif resource.minable.result == item_prototype.name then
                                                 is_raw_resource = true
                                             end
                                         end
@@ -132,7 +144,7 @@ randomizations.item = function(id)
 
                                         -- Get rid of corresponding item-surface thingies
                                         for surface_name, _ in pairs(build_graph.surfaces) do
-                                            local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+                                            local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_prototype.name, surface_name}))]
 
                                             for _, dependent in pairs(surface_based_node.dependents) do
                                                 -- Recipes can somehow still get fulfilled idk
@@ -210,22 +222,24 @@ randomizations.item = function(id)
                 log(item_node.name)
             end
 
+            local item_prototype = items[item_node.item]
             if not ind_to_used_in_old_order[old_order_ind_2] and reachable[build_graph.key(item_node.type, item_node.name)] then
-                local new_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
+                local new_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_prototype)]
 
                 local new_node
                 for ind = 1, #shuffled_order do
                     local proposed_node = shuffled_order[ind]
+                    local proposed_item = items[proposed_node.item]
 
                     -- I think reachability in this case is technically not needed, but it helps keep game progression
                     if not ind_to_used[ind] and reachable[build_graph.key(proposed_node.type, proposed_node.name)] then
-                        local old_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(proposed_node.item)]
+                        local old_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(proposed_item)]
                         
                         -- If cost is assignable and this new item is special in some way, try to preserve that cost
                         -- Right now special just means it can place something or is not a standard item
                         local is_significant_item = false
                         local cost_threshold
-                        if old_cost ~= nil and (proposed_node.item.place_result ~= nil or proposed_node.item.type ~= "item" or proposed_node.item.fuel_value ~= nil or proposed_node.item.place_as_tile ~= nil or item_node.item.plant_result ~= nil) then
+                        if old_cost ~= nil and (proposed_item.place_result ~= nil or proposed_item.type ~= "item" or proposed_item.fuel_value ~= nil or proposed_item.place_as_tile ~= nil or item_prototype.plant_result ~= nil) then
                             is_significant_item = true
 
                             -- Cost threshold is higher for more expensive items, since they're probably less common
@@ -248,7 +262,7 @@ randomizations.item = function(id)
                         cost_threshold = 100
                         if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
                             -- Check now that stack sizes match up / no more light armor ore
-                            if proposed_node.item.stack_size >= item_node.item.stack_size / 10 then
+                            if proposed_item.stack_size >= item_prototype.stack_size / 10 then
                                 new_node = shuffled_order[ind]
                                 ind_to_used[ind] = true
                                 table.insert(visited_old_order, item_node)
@@ -297,7 +311,7 @@ randomizations.item = function(id)
                     end
                     -- surface-based items
                     for surface_name, _ in pairs(build_graph.surfaces) do
-                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_prototype.name, surface_name}))]
                         for _, dependent in pairs(node_to_old_stay_with_dependents_surface[surface_based_node.name]) do
                             local dependent_node = dep_graph[build_graph.key(dependent.type, dependent.name)]
                             table.insert(dependent_node.prereqs, {
@@ -319,7 +333,7 @@ randomizations.item = function(id)
                         sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, item_node})
                     end
                     for surface_name, _ in pairs(build_graph.surfaces) do
-                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.item.name, surface_name}))]
+                        local surface_based_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_prototype.name, surface_name}))]
                         
                         for _, dependent in pairs(surface_based_node.dependents) do
                             if blacklist[build_graph.conn_key({surface_based_node, dependent})] then
@@ -351,15 +365,17 @@ randomizations.item = function(id)
     for ind, item_node in pairs(new_order) do
         -- item_node takes the place of same-indexed node in old_order
         local old_node = visited_old_order[ind]
+        local old_item = items[old_node.item]
 
-        local incoming_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_node.item)]
-        local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_node.item)]
+        local item_prototype = items[item_node.item]
+        local incoming_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_prototype)]
+        local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_item)]
         local amount_multiplier = 1
         local is_significant = false
-        if item_node.item.place_result ~= nil or item_node.item.type ~= "item" or item_node.item.fuel_value ~= nil or item_node.item.place_as_tile ~= nil or item_node.item.plant_result ~= nil then
+        if item_prototype.place_result ~= nil or item_prototype.type ~= "item" or item_prototype.fuel_value ~= nil or item_prototype.place_as_tile ~= nil or item_prototype.plant_result ~= nil then
             is_significant = true
         end
-        if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 and item_node.item.name ~= old_node.item.name then
+        if is_significant and incoming_cost ~= nil and outgoing_cost ~= nil and outgoing_cost / incoming_cost >= 2 and item_prototype.name ~= old_item.name then
             amount_multiplier = math.floor(outgoing_cost / incoming_cost)
         end
 
@@ -412,18 +428,18 @@ randomizations.item = function(id)
                     orig_recipe = data.raw.recipe[orig_recipe.orig_name]
                 end
                 if orig_recipe.localised_name == nil then
-                    recipe.localised_name = {"?", {"recipe-name." .. orig_recipe.name}, locale_utils.find_localised_name(item_node.item)}
+                    recipe.localised_name = {"?", {"recipe-name." .. orig_recipe.name}, locale_utils.find_localised_name(item_prototype)}
                 end
                 -- If the original recipe had no icon, recreate the icon as the new item's
                 if orig_recipe.icons == nil and orig_recipe.icon == nil then
                     local recipe_icons
-                    if item_node.item.icons ~= nil then
-                        recipe.icons = item_node.item.icons
+                    if item_prototype.icons ~= nil then
+                        recipe.icons = item_prototype.icons
                     else
                         recipe.icons = {
                             {
-                                icon = item_node.item.icon,
-                                icon_size = item_node.item.icon_size or 64
+                                icon = item_prototype.icon,
+                                icon_size = item_prototype.icon_size or 64
                             }
                         }
                     end
@@ -486,35 +502,35 @@ randomizations.item = function(id)
 
                         if has_result then
                             if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
-                                entity.localised_name = locale_utils.find_localised_name(item_node.item)
+                                entity.localised_name = locale_utils.find_localised_name(item_prototype)
                                 entity.stages = {
                                     -- Note: This is technically botched with icons, TODO: Fix
                                     sheets = {
                                         {
                                             variation_count = 1,
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.35,
                                             shift = {0.2, 0.6}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.25,
                                             shift = {-0.5, 0.2}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.45,
                                             shift = {0, 0}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.4,
                                             shift = {-0.2, -0.6}
                                         }
@@ -559,8 +575,8 @@ randomizations.item = function(id)
                                                 variation_count = 1,
                                                 frame_sequence = new_frame_sequence,
                                                 frame_count = variation.leaves.frame_count,
-                                                filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                                size = item_node.item.icon_size or 64,
+                                                filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                                size = item_prototype.icon_size or 64,
                                                 scale = 0.3,
                                                 shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}
                                             })
@@ -617,8 +633,8 @@ randomizations.item = function(id)
                                     local selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                     for i = 1, #shifts do
                                         table.insert(entity.lower_pictures[j].layers, {
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.25,
                                             tint = {236, 152, 130},
                                             shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}
@@ -665,8 +681,8 @@ randomizations.item = function(id)
                                     selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                     for i = 1, #shifts do
                                         table.insert(variation.layers, {
-                                            filename = item_node.item.icon or item_node.item.icons[1].icon,
-                                            size = item_node.item.icon_size or 64,
+                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
+                                            size = item_prototype.icon_size or 64,
                                             scale = 0.2,
                                             shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}
                                         })
@@ -684,18 +700,18 @@ randomizations.item = function(id)
         for item_class, _ in pairs(defines.prototypes.item) do
             if data.raw[item_class] ~= nil then
                 for _, item in pairs(data.raw[item_class]) do
-                    if item.spoil_result == old_node.item.name then
+                    if item.spoil_result == old_item.name then
                         table.insert(changes, {
                             tbl = item,
                             prop = "spoil_result",
-                            new_val = item_node.item.name
+                            new_val = item_prototype.name
                         })
                     end
-                    --[[if item.burnt_result == old_node.item.name then
+                    --[[if item.burnt_result == old_item.name then
                         table.insert(changes, {
                             tbl = item,
                             prop = "burnt_result",
-                            new_val = item_node.item.name
+                            new_val = item_prototype.name
                         })
                     end]]
                 end
@@ -704,75 +720,75 @@ randomizations.item = function(id)
         -- Transfer old node's fuel value here
         -- This must be done after burnt results
         --[[table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_value",
-            new_val = old_node.item.fuel_value
+            new_val = old_item.fuel_value
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_category",
-            new_val = old_node.item.fuel_category
+            new_val = old_item.fuel_category
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_acceleration_multiplier",
-            new_val = old_node.item.fuel_acceleration_multiplier
+            new_val = old_item.fuel_acceleration_multiplier
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_top_speed_multiplier",
-            new_val = old_node.item.fuel_top_speed_multiplier
+            new_val = old_item.fuel_top_speed_multiplier
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_emissions_multiplier",
-            new_val = old_node.item.fuel_emissions_multiplier
+            new_val = old_item.fuel_emissions_multiplier
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "fuel_glow_color",
-            new_val = old_node.item.fuel_glow_color
+            new_val = old_item.fuel_glow_color
         })]]
         -- Transfer old node's spoil stats
         -- This must be done after the spoil_results are updated
         table.insert(post_changes_spoil, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "spoil_result",
-            old_node_item = old_node.item
+            old_node_item = old_item
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "spoil_ticks",
-            new_val = old_node.item.spoil_ticks
+            new_val = old_item.spoil_ticks
         })
         -- CRITICAL TODO: Needs fixing for same reasons as post_changes_spoil
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "spoil_to_trigger_result",
-            new_val = old_node.item.spoil_to_trigger_result
+            new_val = old_item.spoil_to_trigger_result
         })
         table.insert(post_changes, {
-            tbl = item_node.item,
+            tbl = item_prototype,
             prop = "spoil_level",
-            new_val = old_node.item.spoil_level
+            new_val = old_item.spoil_level
         })
 
         -- Change trigger techs
         for _, technology in pairs(data.raw.technology) do
             if technology.research_trigger ~= nil then
                 if technology.research_trigger.type == "craft-item" then
-                    if technology.research_trigger.item == old_node.item.name then
+                    if technology.research_trigger.item == old_item.name then
                         table.insert(changes, {
                             tbl = technology.research_trigger,
                             prop = "item",
-                            new_val = item_node.item.name
+                            new_val = item_prototype.name
                         })
                     end
-                    if type(technology.research_trigger.item) == "table" and technology.research_trigger.item.name == old_node.item.name then
+                    if type(technology.research_trigger.item) == "table" and technology.research_trigger.item.name == old_item.name then
                         table.insert(changes, {
                             tbl = technology.research_trigger.item,
                             prop = "name",
-                            new_val = item_node.item.name
+                            new_val = item_prototype.name
                         })
                     end
                 end
@@ -781,15 +797,15 @@ randomizations.item = function(id)
 
         -- TODO: Make this check less ad-hoc
         -- If this is a coal replacement, give it a fuel value
-        if old_node.item.name == "coal" then
+        if old_item.name == "coal" then
             -- TODO: Need to do something special if this is the only non-chemical fuel for something...
-            if item_node.item.fuel_category ~= "chemical" then
-                item_node.item.fuel_category = "chemical"
-                item_node.item.fuel_value = "4MJ"
-            elseif util.parse_energy(item_node.item.fuel_value) < 1000000 then
-                item_node.item.fuel_value = "1MJ"
+            if item_prototype.fuel_category ~= "chemical" then
+                item_prototype.fuel_category = "chemical"
+                item_prototype.fuel_value = "4MJ"
+            elseif util.parse_energy(item_prototype.fuel_value) < 1000000 then
+                item_prototype.fuel_value = "1MJ"
             end
-            item_node.item.localised_name = {"", locale_utils.find_localised_name(item_node.item), "\n[color=red](Burnable)[/color]"}
+            -- item_prototype.localised_name = {"", locale_utils.find_localised_name(item_prototype), "\n[color=red](Burnable)[/color]"}
         end
     end
     for _, change in pairs(changes) do

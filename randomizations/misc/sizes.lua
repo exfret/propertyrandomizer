@@ -14,7 +14,8 @@ randomizations.cliff_sizes = function(id)
                     id = id,
                     key = rng.key({id = id, prototype = cliff}),
                     dummy = 1,
-                    dir = -1
+                    dir = -1,
+                    variance = "small"
                 })
 
                 for _, vector in pairs(orientation.collision_bounding_box) do
@@ -79,7 +80,9 @@ randomizations.unit_sizes = function(id)
             table.insert(factors, randomize({
                 key = rng.key({linked = true, id = id, tier = group_name}),
                 dummy = 1,
-                dir = -1
+                dir = -1,
+                variance = "very_small",
+                rounding = "none"
             }))
         end
 
@@ -88,6 +91,8 @@ randomizations.unit_sizes = function(id)
         for ind, unit in pairs(group) do
             -- Set factor to factors[ind]
             local factor = factors[ind]
+            local key = rng.key({prototype = unit, id = id, tier = group_name})
+            local rounding_params = { key = key, rounding = "discrete_float" }
 
             if unit.type == "unit" then
                 -- Change actual size
@@ -103,12 +108,20 @@ randomizations.unit_sizes = function(id)
                 reformat.change_entity_corpse_size(unit, factor)
 
                 -- For big units, make them a bit faster and also the animation a bit slower
-                unit.movement_speed = unit.movement_speed * math.pow(factor, 1 / 3)
-                unit.distance_per_frame = unit.distance_per_frame / math.pow(factor, 2 / 3)
+                local old_movement_speed = unit.movement_speed
+                -- To km/h
+                unit.movement_speed = unit.movement_speed * 216
+                unit.movement_speed = randnum.fixes(rounding_params, unit.movement_speed * factor)
+                -- Back to tiles per tick
+                unit.movement_speed = unit.movement_speed / 216
+
+                local speed_factor_post_rounding = unit.movement_speed / old_movement_speed
+                -- This'll be an ugly unrounded number, but no one'll ever see it, so it's fine
+                unit.distance_per_frame = unit.distance_per_frame * speed_factor_post_rounding
             elseif unit.type == "spider-unit" then
                 -- Change actual size
                 reformat.change_box_sizes(unit, factor)
-                unit.height = unit.height * factor
+                unit.height = randnum.fixes(rounding_params, unit.height * factor)
 
                 -- Spider-engine (includes legs)
                 reformat.change_spider_engine_size(unit.spider_engine, factor)
@@ -131,12 +144,46 @@ randomizations.unit_sizes = function(id)
             if unit.max_health == nil then
                 unit.max_health = 10
             end
-            unit.max_health = unit.max_health * math.pow(factor, 1 / 3)
+            unit.max_health = randnum.fixes(rounding_params, unit.max_health * factor^3)
+            if unit.resistances ~= nil then
+                for _, resistance in pairs(unit.resistances) do
+                    if resistance.decrease ~= nil and resistance.decrease > 0 then
+                        resistance.decrease = randnum.fixes(rounding_params, resistance.decrease * factor^3)
+                    end
+                end
+            end
+            if unit.healing_per_tick ~= nil and unit.healing_per_tick ~= 0 then
+                unit.healing_per_tick = randnum.fixes(rounding_params, unit.healing_per_tick * factor^3)
+            end
+
             -- And range
-            unit.attack_parameters.range = unit.attack_parameters.range * math.pow(factor, 1 / 3)
+            local ap = unit.attack_parameters
+            ap.range = randnum.fixes(rounding_params, ap.range * factor)
+            if ap.min_range ~= nil then
+                ap.min_range = randnum.fixes(rounding_params, ap.min_range * factor)
+            end
+            if ap.min_attack_distance ~= nil then
+                ap.min_attack_distance = randnum.fixes(rounding_params, ap.min_attack_distance * factor)
+            end
+            unit.vision_distance = math.min(randnum.fixes(rounding_params, unit.vision_distance * factor), 100)
+            if unit.max_pursue_distance == nil then
+                unit.max_pursue_distance = 50
+            end
+            unit.max_pursue_distance = randnum.fixes(rounding_params, unit.max_pursue_distance * factor)
+
+            -- And attack
+            if ap.damage_modifier == nil then
+                ap.damage_modifier = 1
+            end
+            ap.damage_modifier = randnum.fixes(rounding_params, ap.damage_modifier * factor^3)
+
+            -- Realistically, if factor directly affects height, width and depth measurements of a unit, then its mass should scale with factor^3
+            -- Speed and range scale with lengths of limbs and such, so scale with factor^1
+            -- Max health and damage scale with mass, so scale with factor^3
+            -- Flat resistances and healing make more sense to think of as ratios of max health, so those scale with factor^3 too
 
             -- Localised description
-            unit.localised_description = locale_utils.create_localised_description(unit, factor, id)
+            unit.localised_description = locale_utils.create_localised_description(unit, factor, id, { variance = "very_small", flipped = true })
         end
     end
 end
