@@ -260,8 +260,8 @@ randomizations.belt_speed = function(id)
         for _, belt in pairs(data.raw[belt_class]) do
             table.insert(old_speeds, belt.speed)
             table.insert(belts, belt)
-            -- Multiply belt speed by 480 so that it rounds correctly
-            belt.speed = belt.speed * 480
+            -- Multiply belt speed by 256 so that it rounds correctly
+            belt.speed = belt.speed * 256
         end
     end
 
@@ -270,12 +270,13 @@ randomizations.belt_speed = function(id)
         prototypes = belts,
         property = "speed",
         range_min = "small",
-        rounding = "discrete_float"
+        rounding = "discrete",
+        abs_min = 1
     })
 
-    -- Undo earlier multiplication by 480
+    -- Undo earlier multiplication by 256
     for ind, belt in pairs(belts) do
-        belt.speed = belt.speed / 480
+        belt.speed = belt.speed / 256
 
         locale_utils.create_localised_description(belt, belt.speed / old_speeds[ind], id)
     end
