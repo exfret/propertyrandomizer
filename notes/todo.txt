@@ -70,6 +70,7 @@ Bigger things:
 59. Figure out a way to randomize past "required" nodes
 60. Forward fill could put solar panels first, so use that perhaps for item randomization
 61. Surface condition randomization
+62. Randomized settings setting
 
 DONE:
 55. Make the topological sort random

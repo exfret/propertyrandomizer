@@ -46,8 +46,7 @@ randnum.fill_in_defaults = function(params)
     for k, _ in pairs(params) do
         if not is_allowed_param[k] then
             -- This param was misspelled!
-            log("Incorrect randomization key: " .. k)
-            error()
+            error("Misspelled randomization parameter: " .. k)
         end
     end
 
@@ -73,10 +72,10 @@ randnum.fill_in_defaults = function(params)
     local defaults = {
         abs_min = "none",
         abs_max = "none",
-        range = "medium",
+        range = "same",
         range_min = "same",
         range_max = "same",
-        variance = "medium",
+        variance = "same",
         bias = 0,
         dir = 1,
         rounding = "normal"
@@ -85,6 +84,16 @@ randnum.fill_in_defaults = function(params)
         if params[key] == nil then
             params[key] = default_val
         end
+    end
+    if params.variance == "same" then
+        params.variance = params.range
+    end
+    if params.range == "same" then
+        params.range = params.variance
+    end
+    if params.range == "same" and params.variance == "same" then
+        params.range = "medium"
+        params.variance = "medium"
     end
 
     -- Fill in for min/max factors
@@ -323,54 +332,56 @@ randnum.rand = function(params)
     local val, soft_min, hard_min, soft_max, hard_max = params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max
     local mul_std, bias_idx, chaos_val = params.mul_std, global_bias_idx, global_chaos
 
-    --[[ What is this, a homebrewed random walk algorithm?
-    -- Perform randomization
-    for i = 1, constants.num_rolls do
-        local sign = dir
-        if rng.value(key) >= real_bias then
-            sign = -1 * sign
-        end
-
-        for j = 1, constants.steps_per_roll do
-            local forces = 0
-
-            if val < soft_min then
-                forces = 1 - (val - hard_min) / (soft_min - hard_min)
-            end
-            if val > soft_max then
-                forces = -1 + (hard_max - val) / (hard_max - soft_max)
+    -- exfret's Homebrewed random walk algorithm
+    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "exfret-random-walk" then
+        for i = 1, constants.num_rolls do
+            local sign = dir
+            if rng.value(key) >= real_bias then
+                sign = -1 * sign
             end
 
-            val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
+            for j = 1, constants.steps_per_roll do
+                local forces = 0
 
-            -- Reset t_val if it passed hard_max or hard_min due to too high forces
-            if val > hard_max then
-                val = hard_max * 0.95 + hard_min * 0.05
-            end
-            if val < hard_min then
-                val = hard_min * 0.95 + hard_max * 0.05
+                if val < soft_min then
+                    forces = 1 - (val - hard_min) / (soft_min - hard_min)
+                end
+                if val > soft_max then
+                    forces = -1 + (hard_max - val) / (hard_max - soft_max)
+                end
+
+                val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
+
+                -- Reset t_val if it passed hard_max or hard_min due to too high forces
+                if val > hard_max then
+                    val = hard_max * 0.95 + hard_min * 0.05
+                end
+                if val < hard_min then
+                    val = hard_min * 0.95 + hard_max * 0.05
+                end
             end
         end
     end
-    ]]
 
-    if dir < 0 then
-        -- assuming 5 bias options: 0 (strong negative) to 4 (strong positive) with 2 as no bias
-        bias_idx = (5 - 1) - bias_idx
-    elseif dir == 0 then
-        bias_idx = 2
+    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "fleishman" then
+        if dir < 0 then
+            -- assuming 5 bias options: 0 (strong negative) to 4 (strong positive) with 2 as no bias
+            bias_idx = (5 - 1) - bias_idx
+        elseif dir == 0 then
+            bias_idx = 2
+        end
     end
 
     val = fleish.randomize_multiplicatively(key, val, mul_std, bias_idx, chaos_val)
 
-    --[[ Nah, no mercy
-    if val > hard_max then
-        val = hard_max
+    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "exfret-random-walk" then
+        if val > hard_max then
+            val = hard_max
+        end
+        if val < hard_min then
+            val = hard_min
+        end
     end
-    if val < hard_min then
-        val = hard_min
-    end
-    ]]
 
     val = randnum.fixes(params, val)
 
