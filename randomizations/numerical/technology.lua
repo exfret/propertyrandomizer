@@ -99,6 +99,7 @@ randomizations.tech_upgrades = function(id)
         ["change-recipe-productivity"] = true
     }
 
+    -- TODO: Use locale for this
     local modifier_names = {
         ["inserter-stack-size-bonus"] = "Inserter stack size bonus",
         ["bulk-inserter-capacity-bonus"] = "Bulk inserter stack size bonus",

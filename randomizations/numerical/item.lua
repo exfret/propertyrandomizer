@@ -313,7 +313,6 @@ randomizations.gun_damage_modifier = function(id)
     end
 end
 
--- TODO: Fix now that transformers aren't a thing
 -- NEW
 randomizations.gun_movement_slowdown_factor = function(id)
     for _, gun in pairs(data.raw.gun) do

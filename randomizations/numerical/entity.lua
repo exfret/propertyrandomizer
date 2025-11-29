@@ -67,100 +67,110 @@ end
 
 -- New
 randomizations.agricultural_tower_radius = function(id)
-    for _, ag_tower in pairs(data.raw["agricultural-tower"]) do
-        local old_value = ag_tower.radius
-        randomize({
-            id = id,
-            prototype = ag_tower,
-            property = "radius",
-            abs_min = 1,
-            range = "small",
-            rounding = "discrete",
-            variance = "small"
-        })
-        local factor = ag_tower.radius / old_value
-        locale_utils.create_localised_description(ag_tower, factor, id, { variance = "small" })
+    if data.raw["agricultural-tower"] ~= nil then
+        for _, ag_tower in pairs(data.raw["agricultural-tower"]) do
+            local old_value = ag_tower.radius
+            randomize({
+                id = id,
+                prototype = ag_tower,
+                property = "radius",
+                abs_min = 1,
+                range = "small",
+                rounding = "discrete",
+                variance = "small"
+            })
+            local factor = ag_tower.radius / old_value
+            locale_utils.create_localised_description(ag_tower, factor, id, { variance = "small" })
+        end
     end
 end
 
 -- Not added to spec yet
 randomizations.asteroid_collector_offset = function(id)
-    for _, collector in pairs(data.raw["asteroid-collector"]) do
-        randomize({
-            id = id,
-            prototype = collector,
-            property = "collection_box_offset",
-            range = "small",
-            variance = "small"
-        })
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "collection_box_offset",
+                range = "small",
+                variance = "small"
+            })
+        end
     end
 end
 
 -- New
 randomizations.asteroid_collector_radius = function(id)
-    for _, collector in pairs(data.raw["asteroid-collector"]) do
-        local old_value = collector.collection_radius
-        randomize({
-            id = id,
-            prototype = collector,
-            property = "collection_radius",
-            range = "small",
-            variance = "small",
-            rounding = "discrete"
-        })
-        local factor = collector.collection_radius / old_value
-        locale_utils.create_localised_description(collector, factor, id, { variance = "small" })
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            local old_value = collector.collection_radius
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "collection_radius",
+                range = "small",
+                variance = "small",
+                rounding = "discrete"
+            })
+            local factor = collector.collection_radius / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "small" })
+        end
     end
 end
 
 -- New
 randomizations.asteroid_collector_speed = function(id)
-    for _, collector in pairs(data.raw["asteroid-collector"]) do
-        if collector.arm_speed_base ~= nil then
-            collector.arm_speed_base = 0.1
+    if data.raw["asteroid-collector"] then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.arm_speed_base ~= nil then
+                collector.arm_speed_base = 0.1
+            end
+
+            local old_arm_speed = collector.arm_speed_base
+
+            -- To km/h
+            collector.arm_speed_base = collector.arm_speed_base * 216
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "arm_speed_base",
+                range = "small",
+                rounding = "discrete_float"
+            })
+            -- Back to tiles per tick
+            collector.arm_speed_base = collector.arm_speed_base / 216
+
+            local factor = collector.arm_speed_base / old_arm_speed
+            -- Increase quality scaling by same amount
+            if collector.arm_speed_quality_scaling ~= nil then
+                collector.arm_speed_quality_scaling = collector.arm_speed_quality_scaling * factor
+            end
+            locale_utils.create_localised_description(collector, factor, id)
         end
-
-        local old_arm_speed = collector.arm_speed_base
-
-        -- To km/h
-        collector.arm_speed_base = collector.arm_speed_base * 216
-        randomize({
-            id = id,
-            prototype = collector,
-            property = "arm_speed_base",
-            range = "small",
-            rounding = "discrete_float"
-        })
-        -- Back to tiles per tick
-        collector.arm_speed_base = collector.arm_speed_base / 216
-
-        local factor = collector.arm_speed_base / old_arm_speed
-        -- Increase quality scaling by same amount
-        if collector.arm_speed_quality_scaling ~= nil then
-            collector.arm_speed_quality_scaling = collector.arm_speed_quality_scaling * factor
-        end
-        locale_utils.create_localised_description(collector, factor, id)
     end
 end
 
 randomizations.asteroid_mass = function(id)
-    for _, asteroid in pairs(data.raw.asteroid) do
-        if asteroid.mass == nil then
-            asteroid.mass = 1
+    if data.raw.asteroid ~= nil then
+        for _, asteroid in pairs(data.raw.asteroid) do
+            if asteroid.mass == nil then
+                asteroid.mass = 1
+            end
+            local old_value = asteroid.mass
+
+            randomize({
+                id = id,
+                prototype = asteroid,
+                property = "mass",
+                range = "small",
+                rounding = "discrete_float",
+                dir = -1
+            })
+
+            local factor = asteroid.mass / old_value
+            locale_utils.create_localised_description(asteroid, factor, id, {flipped = true})
         end
-        local old_value = asteroid.mass
-
-        randomize({
-            id = id,
-            prototype = asteroid,
-            property = "mass",
-            range = "small",
-            rounding = "discrete_float",
-            dir = -1
-        })
-
-        local factor = asteroid.mass / old_value
-        locale_utils.create_localised_description(asteroid, factor, id, {flipped = true})
     end
 end
 
@@ -420,32 +430,36 @@ end
 -- New
 -- Not added to spec yet
 randomizations.capture_robot_capture_speed = function(id)
-    for _, bot in pairs(data.raw["capture-robot"]) do
-        if bot.capture_speed == nil then
-            bot.capture_speed = 1
-        end
+    if data.raw["capture-robot"] ~= nil then
+        for _, bot in pairs(data.raw["capture-robot"]) do
+            if bot.capture_speed == nil then
+                bot.capture_speed = 1
+            end
 
-        randomize({
-            id = id,
-            prototype = bot,
-            property = "capture_speed"
-        })
+            randomize({
+                id = id,
+                prototype = bot,
+                property = "capture_speed"
+            })
+        end
     end
 end
 
 -- New
 -- Not added to spec yet
 randomizations.capture_robot_search_radius = function(id)
-    for _, bot in pairs(data.raw["capture-robot"]) do
-        if bot.search_radius == nil then
-            bot.search_radius = 1
-        end
+    if data.raw["capture-robot"] ~= nil then
+        for _, bot in pairs(data.raw["capture-robot"]) do
+            if bot.search_radius == nil then
+                bot.search_radius = 1
+            end
 
-        randomize({
-            id = id,
-            prototype = bot,
-            property = "search_radius"
-        })
+            randomize({
+                id = id,
+                prototype = bot,
+                property = "search_radius"
+            })
+        end
     end
 end
 
@@ -1412,20 +1426,22 @@ randomizations.resistances = function(id)
     end
 
     -- Perhaps asteroids of equal size should have the same resistances.
-    for name, asteroid in pairs(data.raw["asteroid"]) do
-        local source = nil
-        if name:match("^small") then
-            source = data.raw["asteroid"]["small-metallic-asteroid"]
-        elseif name:match("^medium") then
-            source = data.raw["asteroid"]["medium-metallic-asteroid"]
-        elseif name:match("^big") then
-            source = data.raw["asteroid"]["big-metallic-asteroid"]
-        elseif name:match("^huge") then
-            source = data.raw["asteroid"]["huge-metallic-asteroid"]
-        end
+    if data.raw.asteroid ~= nil then
+        for name, asteroid in pairs(data.raw["asteroid"]) do
+            local source = nil
+            if name:match("^small") then
+                source = data.raw["asteroid"]["small-metallic-asteroid"]
+            elseif name:match("^medium") then
+                source = data.raw["asteroid"]["medium-metallic-asteroid"]
+            elseif name:match("^big") then
+                source = data.raw["asteroid"]["big-metallic-asteroid"]
+            elseif name:match("^huge") then
+                source = data.raw["asteroid"]["huge-metallic-asteroid"]
+            end
 
-        if source ~= nil then
-            asteroid.resistances = table.deepcopy(source.resistances)
+            if source ~= nil then
+                asteroid.resistances = table.deepcopy(source.resistances)
+            end
         end
     end
 end

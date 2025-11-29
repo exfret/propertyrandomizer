@@ -1,16 +1,22 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.3.14
+Version: 0.4.0
 Date: ?
   Features:
-    - Planet softlocks removed with recipe randomization
+    - Added Nifyr's contributions to project, marked in changelog
+    - Chaos setting now changes range of possible values as well
+    - Dynamic description coloring
     - Beacon profile randomization
     - Equipment shape randomization
-    - Chaos setting now changes range of possible values as well
-    - Added some small randomizations
+    - (Nifyr and exfret): Many new smaller/numerical randomizations
+    - (Nifyr): Performance improvements to graph building
+    - Planet softlocks removed with recipe randomization
   Changes:
-    - Recipe randomization favors complexity more
+    - (Nifyr) Trying out new numerical randomization algorithm
+    - (Nifyr) New rounding algorithm
+    - (Nifyr) Reworked randomization of fuel items, modules, electric poles, inserter/drill offsets, unit sizes, 
   Bugfixes:
     - Removed occasional infinite loop in recipe randomization
+    - (Nifyr) Recycling recipes are now regenerated following vanilla rules
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.13
 Date: 2025.09.10
