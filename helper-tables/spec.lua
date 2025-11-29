@@ -35,12 +35,13 @@ local spec = {
             val = "more"
         }
     },
+    --[[ Currently makes things a little too hard
     ammo_categories = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     ammo_damage = {
         setting = {
             name = "propertyrandomizer-military",
