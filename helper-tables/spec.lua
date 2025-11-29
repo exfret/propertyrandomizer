@@ -29,6 +29,19 @@ local spec = {
             val = "more"
         }
     },
+    agricultural_tower_radius = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    --[[ Currently makes things a little too hard
+    ammo_categories = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },]]
     ammo_damage = {
         setting = {
             name = "propertyrandomizer-military",
@@ -44,6 +57,30 @@ local spec = {
     armor_inventory_bonus = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    armor_resistances = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    asteroid_collector_radius = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_collector_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_mass = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -97,11 +134,24 @@ local spec = {
             val = "default"
         }
     },
+    bot_cargo_capacity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     -- This is energy USAGE, not how much they can hold
     bot_energy = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "default"
+        }
+    },
+    -- THIS is how much energy they can hold
+    bot_energy_capacity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
         }
     },
     bot_speed = {
@@ -117,6 +167,12 @@ local spec = {
         }
     },
     capsule_actions = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    capsule_cooldown = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
@@ -231,13 +287,12 @@ local spec = {
             val = "default"
         }
     },
-    -- TODO: Test!
-    --[[equipment_grid_sizes = {
+    equipment_grid_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },]]
+    },
     equipment_movement_bonus = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -354,6 +409,18 @@ local spec = {
             val = "more"
         }
     },
+    inserter_base_hand_size = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    inserter_filter = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     inserter_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -382,6 +449,13 @@ local spec = {
     item_stack_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    -- Affects rocket capacity
+    item_weights = {
+        setting = {
+            name = "propertyrandomizer-logistic",
             val = "more"
         }
     },
@@ -415,8 +489,12 @@ local spec = {
             val = "more"
         }
     },
-    -- This should actually be fine, I believe it just needs testing right now
-    -- CRITICAL TODO: MAKE SURE THIS IS WROKING
+    locomotive_max_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     module_effects = {
         setting = {
             name = "propertyrandomizer-production",
@@ -441,7 +519,7 @@ local spec = {
             val = "more"
         }
     },
-    -- Doesn't randomize certain sensitive things, like enemy HP
+    -- Affects everything, including enemy HP
     max_health = {
         setting = {
             name = "propertyrandomizer-military",
@@ -455,11 +533,29 @@ local spec = {
             val = "more"
         }
     },
+    mining_fluid_amount_needed = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     -- Mining drill speeds
     mining_speeds = {
         setting = {
             name = "propertyrandomizer-production",
             val = "less"
+        }
+    },
+    mining_times = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    mining_times_resource = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
         }
     },
     module_slots = {
@@ -510,10 +606,34 @@ local spec = {
             val = "more"
         }
     },
-    -- The slots in roboports for bots and repair packs
-    roboport_inventory = {
+    recipe_crafting_times = {
         setting = {
-            name = "propertyrandomizer-logistic",
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    recipe_ingredients_numerical = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- Also inversely affects recycling yields
+    recipe_maximum_productivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    recipe_results_numerical = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    resistances = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -537,7 +657,20 @@ local spec = {
             val = "more"
         }
     },
+    -- The slots in roboports for bots and repair packs
+    roboport_inventory = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     roboport_logistic_radius = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    roboport_radar_range = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
@@ -578,6 +711,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-production",
             val = "default"
+        }
+    },
+    tech_upgrades = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
         }
     },
     tile_walking_speed_modifier = {
@@ -664,13 +803,25 @@ local spec = {
             val = "more"
         }
     },
-    -- How fast vehicles are
+    vehicle_effectivity = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    -- How fast vehicles accelerate
     vehicle_power = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "less"
         }
-    }
+    },
+    vehicle_weight = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
 }
 
 return spec

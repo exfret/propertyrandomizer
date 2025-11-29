@@ -1,27 +1,63 @@
 local randnum = require("lib/random/randnum")
+local categories = require("helper-tables/categories")
+local locale_utils = require("lib/locale")
+local rng = require("lib/random/rng")
 
 local randomize = randnum.rand
 
--- NEW? Wasn't tested at least
+local round = function (num)
+    return math.floor(num + 0.5)
+end
+
+-- New
 randomizations.equipment_grid_sizes = function(id)
-    for _, grid in pairs(data.raw["equipment-grid"]) do
-        randomize({
-            id = id,
-            prototype = grid,
-            property = "height",
-            abs_min = 2,
-            range = "small",
-            variance = "small",
-            rounding = "discrete"
-        })
-        randomize({
-            id = id,
-            prototype = grid,
-            property = "width",
-            abs_min = 2,
-            range = "small",
-            variance = "small",
-            rounding = "discrete"
-        })
+    local target_prototypes = {}
+    for class_name, _ in pairs(categories.vehicles) do
+        for _, vehicle in pairs(data.raw[class_name]) do
+            table.insert(target_prototypes, vehicle)
+        end
+    end
+    for _, armor in pairs(data.raw.armor) do
+        table.insert(target_prototypes, armor)
+    end
+
+    for _, grid_owner in pairs(target_prototypes) do
+        if grid_owner.equipment_grid ~= nil then
+            local grid = data.raw["equipment-grid"][grid_owner.equipment_grid]
+            local old_grid_size = grid.width * grid.height
+            if old_grid_size > 0 then
+                local old_aspect_ratio = grid.width / grid.height
+
+                local key = rng.key({id = id, prototype = grid_owner})
+                local new_grid_size = randomize({
+                    key = key,
+                    dummy = old_grid_size,
+                    rounding = "none",
+                    abs_min = 1,
+                    variance = "big",
+                })
+
+                local new_aspect_ratio = randomize({
+                    key = key,
+                    dummy = old_aspect_ratio,
+                    rounding = "none",
+                    dir = 0,
+                    variance = "big"
+                })
+
+                -- Calculate new width and height based on new size and aspect ratio
+                local new_height = math.sqrt(new_grid_size / new_aspect_ratio)
+                local new_width = new_aspect_ratio * new_height
+                new_height = randnum.fixes({ key = key, rounding = "discrete" }, new_height)
+                new_width = randnum.fixes({ key = key, rounding = "discrete" }, new_width)
+                grid.height = new_height
+                grid.width = new_width
+
+                new_grid_size = new_height * new_width
+                local factor = new_grid_size / old_grid_size
+
+                locale_utils.create_localised_description(grid_owner, factor, id, { variance = "big" })
+            end
+        end
     end
 end

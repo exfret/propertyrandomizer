@@ -49,6 +49,9 @@ randomizations.capsule_actions = function(id)
         end
     end
 
+    --[[ Custom capsule actions are cool, but let's leave custom content to base game and other mods.
+    -- Also that atomic capsule is ridiculous.
+    
     -- Create new capsule actions
 
     local atomic_capsule_action = table.deepcopy(data.raw.capsule.grenade.capsule_action)
@@ -116,7 +119,7 @@ randomizations.capsule_actions = function(id)
     }
     table.insert(capsule_prototype_list, "dummy-teleport")
     table.insert(capsule_action_list, teleport_capsule_action)
-
+]]
     -- Now shuffle capsule actions and reassign
     
     rng.shuffle(rng.key({id = id}), capsule_action_list)
@@ -131,8 +134,8 @@ randomizations.capsule_actions = function(id)
                     next_prototype.type = "item"
                     data.raw.capsule[next_prototype.name] = nil
                     data.raw.item[next_prototype.name] = next_prototype
-                    next_prototype.localised_name = {"", "Broken ", locale_utils.find_localised_name(next_prototype)}
-                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=red](Lost capsule powers)[/color]"}
+                    -- next_prototype.localised_name = {"", "Broken ", locale_utils.find_localised_name(next_prototype)}
+                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=red](Dysfunctional)[/color]"}
                 end
             else
                 next_prototype.capsule_action = action
@@ -141,8 +144,8 @@ randomizations.capsule_actions = function(id)
                     next_prototype.type = "capsule"
                     data.raw.item[next_prototype.name] = nil
                     data.raw.capsule[next_prototype.name] = next_prototype
-                    next_prototype.localised_name = {"", locale_utils.find_localised_name(next_prototype), " (Capsule)"}
-                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Gained capsule powers)[/color]"}
+                    -- next_prototype.localised_name = {"", locale_utils.find_localised_name(next_prototype), " (Capsule)"}
+                    next_prototype.localised_description = {"", locale_utils.find_localised_description(next_prototype), "\n[color=green](Single-use)[/color]"}
                 end
             end
         end

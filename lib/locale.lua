@@ -202,6 +202,36 @@ function locale_utils.find_localised_description(prototype, extra_params)
     end
 end
 
+local lerp = function(v1, v2, t)
+    return math.floor(v1 * (1 - t) + v2 * t)
+end
+
+local colors = {
+    magenta =       { 255, 0, 255 },
+    red =           { 255, 0, 0 },
+    orange =        { 255, 128, 0 },
+    gray =          { 128, 128, 128 },
+    light_green =   { 128, 255, 0 },
+    green =         { 0, 255, 0 },
+    cyan =          { 0, 255, 255 },
+    white =         { 255, 255, 255 }
+}
+
+local rgb_to_string = function(r, g, b)
+    return string.format("%d,%d,%d", r, g, b)
+end
+
+local color_to_string = function(color)
+    return rgb_to_string(color[1], color[2], color[3])
+end
+
+local lerp_color = function (color1, color2, t)
+    local r = lerp(color1[1], color2[1], t)
+    local g = lerp(color1[2], color2[2], t)
+    local b = lerp(color1[3], color2[3], t)
+    return rgb_to_string(r, g, b)
+end
+
 function locale_utils.create_tooltip(factor, extra_params)
     -- Have percent_change be rounded
     local percent_change
@@ -212,32 +242,42 @@ function locale_utils.create_tooltip(factor, extra_params)
         percent_change = math.floor(100 * (factor - 1) + 0.5)
     end
     local color
-    if percent_change >= 100 then
-        if not extra_params.flipped then
-            color = "green"
-        else
-            color = "red"
-        end
-    elseif percent_change >= 30 then
-        if not extra_params.flipped then
-            color = "144,238,144"
-        else
-            color = "yellow"
-        end
-    elseif percent_change >= -30 then
-        color = "gray"
-    elseif percent_change >= -60 then
-        if not extra_params.flipped then
-            color = "yellow"
-        else
-            color = "144,238,144"
-        end
+    local mul_std = 1.5
+    if extra_params.mul_std ~= nil then
+        mul_std = extra_params.mul_std
+    end
+    local exponent = math.log(factor, mul_std)
+    if extra_params.flipped then
+        exponent = 0 - exponent
+    end
+    if exponent < -8 then
+        color = color_to_string(colors.white)
+    elseif exponent < -4 then
+        local t = (exponent + 8) / 4
+        color = lerp_color(colors.white, colors.magenta, t)
+    elseif exponent < -2 then
+        local t = (exponent + 4) / 2
+        color = lerp_color(colors.magenta, colors.red, t)
+    elseif exponent < -1 then
+        local t = (exponent + 2) / 1
+        color = lerp_color(colors.red, colors.orange, t)
+    elseif exponent < 0 then
+        local t = (exponent + 1) / 1
+        color = lerp_color(colors.orange, colors.gray, t)
+    elseif exponent < 1 then
+        local t = (exponent + 0) / 1
+        color = lerp_color(colors.gray, colors.light_green, t)
+    elseif exponent < 2 then
+        local t = (exponent - 1) / 1
+        color = lerp_color(colors.light_green, colors.green, t)
+    elseif exponent < 4 then
+        local t = (exponent - 2) / 2
+        color = lerp_color(colors.green, colors.cyan, t)
+    elseif exponent < 8 then
+        local t = (exponent - 4) / 4
+        color = lerp_color(colors.cyan, colors.white, t)
     else
-        if not extra_params.flipped then
-            color = "red"
-        else
-            color = "green"
-        end
+        color = color_to_string(colors.white)
     end
     local sign_symbol = ""
     if percent_change >= 0 then
@@ -245,6 +285,14 @@ function locale_utils.create_tooltip(factor, extra_params)
     end
     return "[color=" .. color .. "]" .. sign_symbol .. percent_change .. "%"
 end
+
+local str_to_mul_std = {
+    very_small = 1.1,
+    small = 1.2,
+    medium = 1.5,
+    big = 2.0,
+    very_big = 3.5
+}
 
 function locale_utils.create_localised_description(prototype, factor, id, extra_params)
     if extra_params == nil then
@@ -266,7 +314,19 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
         round_more = extra_params.round_more
     end
 
-    return {"", locale_utils.find_localised_description(prototype, {with_newline = true}), locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more}), {"propertyrandomizer-tooltip." .. id}, addons .. "[/color]"}
+    local mul_std = 1.5
+    if extra_params.variance ~= nil then
+        mul_std = str_to_mul_std[extra_params.variance]
+    end
+
+    prototype.localised_description = {
+        "",
+        locale_utils.find_localised_description(prototype, {with_newline = true}),
+        locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more, mul_std = mul_std}),
+        {"propertyrandomizer-tooltip." .. id},
+        addons .. "[/color]"
+    }
+    return prototype.localised_description
 end
 
 function locale_utils.capitalize(str)

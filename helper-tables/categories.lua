@@ -68,8 +68,32 @@ categories.machine_energy_usage_keys = {
     ["radar"] = {["energy_usage"] = "power"},
     ["roboport"] = {["energy_usage"] = "power"},
     ["rocket-silo"] = {["active_energy_usage"] = "power", ["lamp_energy_usage"] = "power", ["energy_usage"] = "power"},
+    ["arithmetic-combinator"] = {["active_energy_usage"] = "power"},
+    ["decider-combinator"] = {["active_energy_usage"] = "power"},
     ["selector-combinator"] = {["active_energy_usage"] = "power"},
     ["spidertron"] = {["movement_energy_consumption"] = "power"}
+}
+
+-- This doesn't include stuff like blueprint books and selection tool
+-- Still includes stuff like red wire since those are classified as items
+categories.normal_item_classes = {
+    ["ammo"] = true,
+    ["armor"] = true,
+    ["capsule"] = true,
+    ["gun"] = true,
+    ["item"] = true,
+    ["item-with-entity-data"] = true,
+    ["item-with-inventory"] = true,
+    ["item-with-label"] = true,
+    ["item-with-tags"] = true,
+    ["module"] = true,
+    ["repair-tool"] = true,
+    ["space-platform-starter-pack"] = true,
+    ["tool"] = true,
+}
+
+categories.special_item_subgroups = {
+    ["spawnables"] = true
 }
 
 -- Note: Artillery turrets not included
