@@ -351,7 +351,7 @@ randomizations.item = function(id)
                 -- We truly couldn't proceed in old_order!
                 log(serpent.block(old_order[i]))
                 log(i)
-                error()
+                error("Item randomization failed!")
                 --return false
             end
         end
@@ -799,6 +799,10 @@ randomizations.item = function(id)
         -- If this is a coal replacement, give it a fuel value
         if old_item.name == "coal" then
             -- TODO: Need to do something special if this is the only non-chemical fuel for something...
+            if item_prototype.fuel_category == nil then
+                item_prototype.localised_description = {"", locale_utils.find_localised_description(item_prototype), "\n[color=green](Combustible)[/color]"}
+            end
+
             if item_prototype.fuel_category ~= "chemical" then
                 item_prototype.fuel_category = "chemical"
                 item_prototype.fuel_value = "4MJ"
