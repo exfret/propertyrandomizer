@@ -1,3 +1,5 @@
+-- This is a draft of a master graph randomization algorithm by Nifyr
+
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 local graph_utils = require("lib/graph/graph-utils")

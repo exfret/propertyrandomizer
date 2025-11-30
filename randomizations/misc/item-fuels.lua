@@ -127,7 +127,7 @@ randomizations.item_fuels = function(id)
                         -- item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Burnable)[/color]"}
                     end
                     if item.fuel_category == nil and item._nonreactive then
-                        item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Fireproof)[/color]"}
+                        item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Not combustible)[/color]"}
                         item._nonreactive = nil
                     end
                 end

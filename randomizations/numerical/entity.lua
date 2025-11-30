@@ -385,7 +385,7 @@ randomizations.bot_speed = function(id)
 
                     -- To km/h
                     bot.speed = bot.speed * 216
-                    -- No more bias toward faster bots
+                    -- No more bias toward faster bots with new algorithm
                     -- Fate alone determines your suffering now :D
                     randomize({
                         id = id,
