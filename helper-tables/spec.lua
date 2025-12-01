@@ -211,6 +211,12 @@ local spec = {
             val = "default"
         }
     },
+    cliff_explosive_radius = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {
