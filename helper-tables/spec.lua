@@ -739,6 +739,13 @@ local spec = {
             val = "more"
         }
     },
+    -- Affects science capacity
+    tool_durability = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     turret_damage_modifier = {
         setting = {
             name = "propertyrandomizer-military",
