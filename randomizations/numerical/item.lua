@@ -716,8 +716,10 @@ end
 -- New
 randomizations.tool_durability = function(id)
 
+    -- Opting to just randomize repair tool durability for now
     local tool_classes = {
-        "tool", "armor", "repair-tool"
+        --"tool", "armor",
+        "repair-tool"
     }
 
     for _, class in pairs(tool_classes) do
