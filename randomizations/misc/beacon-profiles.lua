@@ -79,7 +79,7 @@ local beacon_profiles = {
     },
     {
         func = function(n, i) -- Exactly i beacons
-            return 5 * math.max(0, math.min((i+1) - n, n - (i-1)))
+            return math.max(0, math.min((i+1) - n, n - (i-1)))
         end,
         coefficients = {9, 5.5, 4, 3.5, 3, 2.5},
         description = "(Finicky distribution)",
