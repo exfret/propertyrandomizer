@@ -639,6 +639,12 @@ local spec = {
             val = "more"
         }
     },
+    repair_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     resistances = {
         setting = {
             name = "propertyrandomizer-military",

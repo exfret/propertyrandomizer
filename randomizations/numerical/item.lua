@@ -694,3 +694,49 @@ randomizations.module_effects = function(id)
         end
     end
 end
+
+-- New
+randomizations.repair_speed = function(id)
+    for _, repair_tool in pairs(data.raw["repair-tool"]) do
+        local old_value = repair_tool.speed
+
+        randomize({
+            id = id,
+            prototype = repair_tool,
+            property = "speed",
+            rounding = "discrete_float",
+        })
+
+        local factor = repair_tool.speed / old_value
+
+        locale_utils.create_localised_description(repair_tool, factor, id)
+    end
+end
+
+-- New
+randomizations.tool_durability = function(id)
+
+    local tool_classes = {
+        "tool", "armor", "repair-tool"
+    }
+
+    for _, class in pairs(tool_classes) do
+        for _, tool in pairs(data.raw[class]) do
+            if tool.infinite == nil or not tool.infinite then
+                local old_value = tool.durability
+
+                -- This could technically give non-integer durabilities to repair tools, but might be fine
+                randomize({
+                    id = id,
+                    prototype = tool,
+                    property = "durability",
+                    rounding = "discrete_float",
+                })
+
+                local factor = tool.durability / old_value
+
+                locale_utils.create_localised_description(tool, factor, id)
+            end
+        end
+    end
+end
