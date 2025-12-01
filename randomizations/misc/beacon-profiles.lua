@@ -19,7 +19,7 @@ local beacon_profiles = {
             return 1 / math.sqrt(n)
         end,
         coefficients = {1},
-        description = nil,
+        description = "(Standard distribution)",
     },
     {
         func = function(n, i) -- Constant (1.1 Vanilla)
@@ -37,7 +37,12 @@ local beacon_profiles = {
     },
     {
         func = function(n, i) -- Noisy scaling
-            return randnum.rand({key = "profile", dummy = 1}) / math.sqrt(n)
+            return randnum.rand({
+                key = "profile",
+                dummy = 1,
+                variance = "big",
+                rounding = "discrete_float",
+            }) / math.sqrt(n)
         end,
         coefficients = {1},
         description = "(Noisy distribution)",
@@ -102,11 +107,16 @@ randomizations.beacon_profiles = function(id)
             table.insert(profile, coefficient * profile_group.func(n, i))
         end
 
-        beacon.profile = profile
+        -- There's probably a smarter way of detecting this, but this works too
+        local change = 0
+        for j = 1, math.min(#beacon.profile, #profile) do
+            change = change + math.abs(beacon.profile[j] - profile[j])
+        end
 
-        -- Assuming coefficient == 1 means it's the vanilla one
-        if coefficient ~= 1 and profile_group.description ~= nil then
+        if change > 1 and profile_group.description ~= nil then
             beacon.localised_description = {"", locale_utils.find_localised_description(beacon), "\n[color=red]" .. profile_group.description .. "[/color]"}
         end
+
+        beacon.profile = profile
     end
 end
