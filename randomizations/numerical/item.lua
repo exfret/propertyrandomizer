@@ -289,6 +289,29 @@ randomizations.capsule_throwable_damage = function(id)
     end
 end
 
+-- New
+randomizations.cliff_explosive_radius = function(id)
+    for _, capsule in pairs(data.raw.capsule) do
+        local capsule_action = capsule.capsule_action
+        -- Cliff explosives don't actually do damage, but technically they still could and are basically just a throwable filtered at cliffs
+        if capsule_action.type == "destroy-cliffs" then
+            local old_value = capsule_action.radius
+
+            randomize({
+                id = id,
+                prototype = capsule,
+                property = "radius",
+                rounding = "discrete_float",
+                variance = "medium",
+            })
+
+            local factor = capsule_action.radius / old_value
+
+            locale_utils.create_localised_description(capsule, factor, id)
+        end
+    end
+end
+
 randomizations.gun_damage_modifier = function(id)
     for _, gun in pairs(data.raw.gun) do
         local attack_parameters = gun.attack_parameters
