@@ -86,10 +86,11 @@ local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
 local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
-
 randomizations = {}
 require("randomizations.graph.core")
-randomizations.graph("graph")
+local trigger_util = require("lib/trigger")
+
+local projectiles = trigger_util.get_projectile_creator_table()
 
 local graph = build_graph.graph
 
