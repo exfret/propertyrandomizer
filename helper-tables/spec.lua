@@ -211,12 +211,6 @@ local spec = {
             val = "default"
         }
     },
-    cliff_explosive_radius = {
-        setting = {
-            name = "propertyrandomizer-misc",
-            val = "more"
-        }
-    },
     -- A classic
     cliff_sizes = {
         setting = {
@@ -580,6 +574,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "less"
+        }
+    },
+    projectile_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
         }
     },
     pump_pumping_speed = {

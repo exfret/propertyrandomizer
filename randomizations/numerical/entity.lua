@@ -4,6 +4,7 @@ local randprob = require("lib/random/randprob")
 local randbool = require("lib/random/randbool")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
 
@@ -1276,6 +1277,52 @@ randomizations.pipe_to_ground_distance = function(id)
         for ind, pipe_connection in pairs(pipe.fluid_box.pipe_connections) do
             if pipe_connection.max_underground_distance ~= nil and pipe_connection.max_underground_distance > 0 then
                 locale_utils.create_localised_description(pipe, pipe_connection.max_underground_distance / pipe_to_old_underground_distances[pipe.name][ind], id)
+            end
+        end
+    end
+end
+
+randomizations.projectile_effect_radius = function (id)
+    local projectiles = trigger_utils.get_projectile_creator_table()
+
+    local target_classes = {
+        ["capsule"] = true
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger_effect in pairs(structs["trigger-effect"]) do
+                if trigger_effect.radius ~= nil and trigger_effect.radius > 0 then
+                    randomized = true
+                    trigger_effect.radius = randnum.fixes(rounding_params, trigger_effect.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
             end
         end
     end
