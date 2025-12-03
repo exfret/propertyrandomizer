@@ -1253,29 +1253,6 @@ randomizations.max_health = function(id)
 end
 
 -- New
-randomizations.mining_fluid_amount_needed = function(id)
-    for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                if entity.minable ~= nil and entity.minable.required_fluid ~= nil then
-                    local old_value = entity.minable.fluid_amount
-                    randomize({
-                        id = id,
-                        prototype = entity,
-                        tbl = entity.minable,
-                        property = "fluid_amount",
-                        dir = -1,
-                        rounding = "discrete"
-                    })
-
-                    local factor = entity.minable.fluid_amount / old_value
-                    locale_utils.create_localised_description(entity, factor, id, {flipped = true})
-                end
-            end
-        end
-    end
-end
-
 randomizations.mining_drill_radius = function (id)
     for _, mining_drill in pairs(data.raw["mining-drill"]) do
         local collision_radius = get_collision_radius(mining_drill)
@@ -1309,6 +1286,54 @@ randomizations.mining_drill_radius = function (id)
                 width = 10,
                 height = 10,
             }
+        end
+    end
+end
+
+-- New
+randomizations.mining_drill_resource_drain = function (id)
+    for _, mining_drill in pairs(data.raw["mining-drill"]) do
+        if mining_drill.resource_drain_rate_percent == nil then
+            mining_drill.resource_drain_rate_percent = 100
+        end
+
+        local old_value = mining_drill.resource_drain_rate_percent
+
+        randomize({
+            id = id,
+            prototype = mining_drill,
+            property = "resource_drain_rate_percent",
+            dir = -1,
+            rounding = "discrete",
+            abs_min = 1,
+            abs_max = 100,
+        })
+
+        local factor = mining_drill.resource_drain_rate_percent / old_value
+        locale_utils.create_localised_description(mining_drill, factor, id, { flipped = true })
+    end
+end
+
+-- New
+randomizations.mining_fluid_amount_needed = function(id)
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.minable ~= nil and entity.minable.required_fluid ~= nil then
+                    local old_value = entity.minable.fluid_amount
+                    randomize({
+                        id = id,
+                        prototype = entity,
+                        tbl = entity.minable,
+                        property = "fluid_amount",
+                        dir = -1,
+                        rounding = "discrete"
+                    })
+
+                    local factor = entity.minable.fluid_amount / old_value
+                    locale_utils.create_localised_description(entity, factor, id, {flipped = true})
+                end
+            end
         end
     end
 end

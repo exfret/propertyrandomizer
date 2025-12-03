@@ -573,6 +573,12 @@ local spec = {
             val = "more"
         }
     },
+    mining_drill_resource_drain = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     mining_fluid_amount_needed = {
         setting = {
             name = "propertyrandomizer-logistic",
