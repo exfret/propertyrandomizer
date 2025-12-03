@@ -1051,22 +1051,28 @@ randomizations.machine_pollution = function(id)
                 for _, energy_source_key in pairs({"burner", "energy_source"}) do
                     if entity[energy_source_key] ~= nil then
                         local energy_source = entity[energy_source_key]
-
                         if energy_source.emissions_per_minute ~= nil then
+                            local randomized = false
+                            local rng_key = rng.key({id = id, prototype = entity})
+                            local factor = randomize({
+                                key = rng_key,
+                                dummy = 1,
+                                range = "small",
+                                dir = -1,
+                                rounding = "none",
+                            })
+                            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
                             for pollutant_id, pollutant_amount in pairs(energy_source.emissions_per_minute) do
-                                local old_pollution = pollutant_amount
+                                if pollutant_amount > 0 then
+                                    local new_amount = randnum.fixes(rounding_params, pollutant_amount * factor)
+                                    energy_source.emissions_per_minute[pollutant_id] = new_amount
+                                    randomized = true
+                                end
+                            end
 
-                                randomize({
-                                    id = id,
-                                    prototype = entity,
-                                    tbl = energy_source.emissions_per_minute,
-                                    property = pollutant_id,
-                                    range = "small",
-                                    dir = -1,
-                                    rounding = "discrete_float"
-                                })
-
-                                locale_utils.create_localised_description(entity, energy_source.emissions_per_minute[pollutant_id] / old_pollution, id, {addons = " (" .. pollutant_id .. ")", flipped = true})
+                            if randomized then
+                                locale_utils.create_localised_description(entity, factor, id, { flipped = true })
                             end
                         end
                     end
@@ -1466,7 +1472,7 @@ randomizations.resistances = function(id)
                         end
                     end
                     if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Specialized resistance)[/color]"}
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
                     end
                 end
             end
