@@ -611,6 +611,109 @@ randomizations.electric_pole_supply_area = function(id)
     end
 end
 
+-- New
+randomizations.fusion_generator_max_power = function(id)
+    for _, generator in pairs(data.raw["fusion-generator"]) do
+        local old_value = util.parse_energy(generator.energy_source.output_flow_limit)
+
+        randomizations.energy({
+            is_power = true,
+            id = id,
+            prototype = generator,
+            tbl = generator.energy_source,
+            property = "output_flow_limit",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = util.parse_energy(generator.energy_source.output_flow_limit) / old_value
+
+        locale_utils.create_localised_description(generator, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_generator_speed = function(id)
+    for _, generator in pairs(data.raw["fusion-generator"]) do
+        local old_value = generator.max_fluid_usage
+
+        randomize({
+            id = id,
+            prototype = generator,
+            property = "max_fluid_usage",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+
+        local factor = generator.max_fluid_usage / old_value
+
+        locale_utils.create_localised_description(generator, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_neighbor_bonus = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        if reactor.neighbour_bonus == nil then
+            reactor.neighbour_bonus = 1
+        end
+
+        local old_value = reactor.neighbour_bonus
+
+        randomize({
+            id = id,
+            prototype = reactor,
+            property = "neighbour_bonus",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = reactor.neighbour_bonus / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_power_input = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        local old_value = util.parse_energy(reactor.power_input)
+
+        randomizations.energy({
+            is_power = true,
+            id = id,
+            prototype = reactor,
+            property = "power_input",
+            dir = -1,
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = util.parse_energy(reactor.power_input) / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { flipped = true, variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_speed = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        local old_value = reactor.max_fluid_usage
+
+        randomize({
+            id = id,
+            prototype = reactor,
+            property = "max_fluid_usage",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = reactor.max_fluid_usage / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { variance = "big" })
+    end
+end
+
 randomizations.gate_opening_speed = function(id)
     for _, gate in pairs(data.raw.gate) do
         if gate.opening_speed > 0 then
