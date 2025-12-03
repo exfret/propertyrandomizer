@@ -363,6 +363,40 @@ local spec = {
             val = "more"
         }
     },
+    -- How much max power output
+    fusion_generator_max_power = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much input fluid to power and output fluid per tick
+    fusion_generator_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    fusion_reactor_neighbor_bonus = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much electric power is required
+    fusion_reactor_power_input = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much input fluid and fuel to output fluid per tick
+    fusion_reactor_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     gate_opening_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
