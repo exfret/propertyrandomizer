@@ -1301,6 +1301,15 @@ randomizations.mining_drill_radius = function (id)
         local factor = radius / mining_drill.resource_searching_radius
         mining_drill.resource_searching_radius = radius
         locale_utils.create_localised_description(mining_drill, factor, id, { variance = "small" })
+
+        -- Vanilla burner mining drill has no visualization
+        if mining_drill.radius_visualisation_picture == nil then
+            mining_drill.radius_visualisation_picture =  {
+                filename = "__base__/graphics/entity/electric-mining-drill/electric-mining-drill-radius-visualization.png",
+                width = 10,
+                height = 10,
+            }
+        end
     end
 end
 
