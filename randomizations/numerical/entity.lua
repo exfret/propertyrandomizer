@@ -1054,17 +1054,33 @@ randomizations.machine_pollution = function(id)
                         if energy_source.emissions_per_minute ~= nil then
                             local randomized = false
                             local rng_key = rng.key({id = id, prototype = entity})
-                            local factor = randomize({
+                            local positive_factor = randomize({
                                 key = rng_key,
                                 dummy = 1,
                                 range = "small",
                                 dir = -1,
                                 rounding = "none",
                             })
+                            local negative_factor = randomize({
+                                key = rng_key,
+                                dummy = 1,
+                                range = "small",
+                                dir = 1,
+                                rounding = "none",
+                            })
                             local rounding_params = { key = rng_key, rounding = "discrete_float" }
+                            local positive = true
+                            local factor = positive_factor
 
                             for pollutant_id, pollutant_amount in pairs(energy_source.emissions_per_minute) do
-                                if pollutant_amount > 0 then
+                                if pollutant_amount ~= 0 then
+                                    if pollutant_amount > 0 then
+                                        factor = positive_factor
+                                        positive = true
+                                    else
+                                        factor = negative_factor
+                                        positive = false
+                                    end
                                     local new_amount = randnum.fixes(rounding_params, pollutant_amount * factor)
                                     energy_source.emissions_per_minute[pollutant_id] = new_amount
                                     randomized = true
@@ -1072,7 +1088,9 @@ randomizations.machine_pollution = function(id)
                             end
 
                             if randomized then
-                                locale_utils.create_localised_description(entity, factor, id, { flipped = true })
+                                -- Factor doesn't take into consideration the effects of rounding, which may be huge, but it's fine
+                                -- Also, if there are both negative and positive pollution values, this will only show one of them
+                                locale_utils.create_localised_description(entity, factor, id, { flipped = positive })
                             end
                         end
                     end
