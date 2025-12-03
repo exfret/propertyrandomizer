@@ -761,6 +761,12 @@ local spec = {
             val = "less"
         }
     },
+    spoil_time = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     storage_tank_capacity = {
         setting = {
             name = "propertyrandomizer-logistic",

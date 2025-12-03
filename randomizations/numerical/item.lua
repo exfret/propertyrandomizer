@@ -6,6 +6,19 @@ local locale_utils = require("lib/locale")
 
 local randomize = randnum.rand
 
+local items = {}
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            items[item.name] = item
+        end
+    end
+end
+
+local round = function (n)
+    return math.floor(n + 0.5)
+end
+
 randomizations.ammo_damage = function(id)
     local function get_targets(tbls, action)
         local targets = randomizations.trigger({}, action, "gather-damage")
@@ -687,6 +700,61 @@ randomizations.repair_speed = function(id)
         local factor = repair_tool.speed / old_value
 
         locale_utils.create_localised_description(repair_tool, factor, id)
+    end
+end
+
+-- New
+randomizations.spoil_time = function (id)
+
+    local ticks = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+
+    for _, item in pairs(items) do
+        if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
+            local old_value = item.spoil_ticks
+            local magnitude = ticks
+            if item.spoil_ticks > ticks_per_second then
+                magnitude = seconds
+                item.spoil_ticks = item.spoil_ticks / ticks_per_second
+                if item.spoil_ticks > seconds_per_minute then
+                    magnitude = minutes
+                    item.spoil_ticks = item.spoil_ticks / seconds_per_minute
+                    if item.spoil_ticks > minutes_per_hour then
+                        magnitude = hours
+                        item.spoil_ticks = item.spoil_ticks / minutes_per_hour
+                    end
+                end
+            end
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "spoil_ticks",
+                variance = "medium",
+                rounding = "discrete_float",
+            })
+
+            if magnitude == seconds then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second
+            elseif magnitude == minutes then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
+            elseif magnitude == hours then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+            end
+
+            item.spoil_ticks = math.max(round(item.spoil_ticks), 1)
+
+            local factor = item.spoil_ticks / old_value
+
+            locale_utils.create_localised_description(item, factor, id)
+        end
     end
 end
 
