@@ -8,6 +8,14 @@ local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
 
+local get_collision_radius = function(entity)
+    return math.ceil(entity.collision_box[2][1] - entity.collision_box[1][1]) / 2
+end
+
+local round = function (n)
+    return math.floor(n + 0.5)
+end
+
 randomizations.accumulator_buffer = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
         if accumulator.energy_source.buffer_capacity ~= nil then
@@ -571,10 +579,6 @@ end
 randomizations.electric_pole_supply_area = function(id)
     local electric_poles = {}
     local electric_pole_to_old_supply_area = {}
-
-    local get_collision_radius = function(electric_pole)
-        return math.ceil(electric_pole.collision_box[2][1] - electric_pole.collision_box[1][1]) / 2
-    end
 
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
         table.insert(electric_poles, electric_pole)
@@ -1269,6 +1273,34 @@ randomizations.mining_fluid_amount_needed = function(id)
                 end
             end
         end
+    end
+end
+
+randomizations.mining_drill_radius = function (id)
+    for _, mining_drill in pairs(data.raw["mining-drill"]) do
+        local collision_radius = get_collision_radius(mining_drill)
+        local odd_size = (collision_radius * 2) % 2 == 1
+        local radius = mining_drill.resource_searching_radius
+        if odd_size then
+            radius = radius + 0.5
+        end
+        radius = round(radius)
+
+        radius = randomize({
+            key = rng.key({ id = id, prototype = mining_drill }),
+            dummy = radius,
+            rounding = "discrete",
+            variance = "small",
+        })
+
+        -- Vanilla radius always has a 0.01 margin
+        radius = radius - 0.01
+        if odd_size then
+            radius = radius - 0.5
+        end
+        local factor = radius / mining_drill.resource_searching_radius
+        mining_drill.resource_searching_radius = radius
+        locale_utils.create_localised_description(mining_drill, factor, id, { variance = "small" })
     end
 end
 
