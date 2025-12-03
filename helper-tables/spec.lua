@@ -84,6 +84,12 @@ local spec = {
             val = "more"
         }
     },
+    base_effect = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     beacon_distribution_effectivity = {
         setting = {
             name = "propertyrandomizer-production",

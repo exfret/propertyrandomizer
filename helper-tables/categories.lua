@@ -23,6 +23,14 @@ categories.crafting_machines = {
     ["rocket-silo"] = true
 }
 
+categories.effect_receivers = {
+    ["assembling-machine"] = true,
+    ["rocket-silo"] = true,
+    ["furnace"] = true,
+    ["lab"] = true,
+    ["mining-drill"] = true
+}
+
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {
     ["car"] = true,

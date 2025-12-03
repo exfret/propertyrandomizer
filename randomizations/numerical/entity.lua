@@ -16,6 +16,55 @@ local round = function (n)
     return math.floor(n + 0.5)
 end
 
+local get_allowed_effects = function (entity)
+    local class = entity.type
+    local prototype_mining_drill = "mining-drill"
+    local prototype_lab = "lab"
+    local crafting_machine_prototypes = {
+        ["assembling-machine"] = true,
+        ["rocket-silo"] = true,
+        ["furnace"] = true,
+    }
+    local no_quality_recipe_categories = {
+        ["oil-processing"] = true,
+        ["rocket-building"] = true,
+    }
+    if crafting_machine_prototypes[class] ~= nil then
+        local allowed_effects = { "speed", "consumption", "pollution" }
+        local productivity = true
+        local quality = true
+        for _, crafting_category in pairs(entity.crafting_categories) do
+            if crafting_category == "recycling" then
+                productivity = false
+            end
+            if no_quality_recipe_categories[crafting_category] ~= nil then
+                quality = false
+            end
+        end
+        if productivity then
+            table.insert(allowed_effects, "productivity")
+        end
+        if quality then
+            table.insert(allowed_effects, "quality")
+        end
+        return allowed_effects
+    elseif class == prototype_lab then
+        return { "speed", "productivity", "consumption", "pollution" }
+    elseif class == prototype_mining_drill then
+        local fluid = false
+        for _, resource_category in pairs(entity.resource_categories) do
+            if resource_category == "basic-fluid" then
+                fluid = true
+            end
+        end
+        if fluid then
+            return { "speed", "productivity", "consumption", "pollution" }
+        else
+            return { "speed", "productivity", "consumption", "pollution", "quality" }
+        end
+    end
+end
+
 randomizations.accumulator_buffer = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
         if accumulator.energy_source.buffer_capacity ~= nil then
@@ -179,6 +228,128 @@ randomizations.asteroid_mass = function(id)
 
             local factor = asteroid.mass / old_value
             locale_utils.create_localised_description(asteroid, factor, id, {flipped = true})
+        end
+    end
+end
+
+randomizations.base_effect = function (id)
+
+    -- Chance of considering to add/remove base effect from 
+    local toggle_base_effect_p = 0.5
+    -- Chance of negative base effect
+    local negative_effect_p = 0.5
+
+    local negative_effects = {
+        ["consumption"] = true,
+        ["pollution"] = true,
+    }
+    local base_effect_receivers = 0
+    local possible_effect_receivers = {}
+
+    for entity_class, _ in pairs(categories.effect_receivers) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                table.insert(possible_effect_receivers, entity)
+                if entity.effect_receiver == nil then
+                    entity.effect_receiver = {}
+                end
+                if entity.effect_receiver.base_effect == nil then
+                    entity.effect_receiver.base_effect = {}
+                end
+                for _, value in pairs(entity.effect_receiver.base_effect) do
+                    if value ~= 0 then
+                        base_effect_receivers = base_effect_receivers + 1
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    local ratio = base_effect_receivers / #possible_effect_receivers
+    toggle_base_effect_p = toggle_base_effect_p * ratio
+
+    -- Applying the probability on individual effects rather than entities in order to get 5 times the base effects
+    -- However, not just positive effects and not just productivity
+    for _, entity in pairs(possible_effect_receivers) do
+        local rng_key = rng.key({ id = id, prototype = entity })
+        local base_effect = entity.effect_receiver.base_effect
+
+        -- Janky way of determining description but I can't be bothered
+        local gained_positive_effect = false
+        local gained_negative_effect = false
+        local lost_positive_effect = false
+        local lost_negative_effect = false
+        local factor = -1
+        local dir = 0
+
+        for _, effect_name in pairs(get_allowed_effects(entity)) do
+            local old_effect = base_effect[effect_name]
+            local had_effect = old_effect ~= nil and old_effect ~= 0
+            if had_effect and randbool.rand_bias_chaos(rng_key, toggle_base_effect_p, -1) then
+                base_effect[effect_name] = nil
+                if old_effect > 0 ~= (negative_effects[effect_name] ~= nil) then
+                    lost_positive_effect = true
+                else
+                    lost_negative_effect = true
+                end
+            end
+            if base_effect[effect_name] == nil and randbool.rand_bias_chaos(rng_key, toggle_base_effect_p, 1) then
+                local value = 0.5
+                if negative_effects[effect_name] ~= nil then
+                    value = value * -1
+                end
+                if randbool.rand_bias(rng_key, negative_effect_p, -1) then
+                    value = value * -1
+                    if lost_negative_effect and had_effect then
+                        lost_negative_effect = false
+                    else
+                        gained_negative_effect = true
+                    end
+                else
+                    if lost_positive_effect and had_effect then
+                        lost_positive_effect = false
+                    else
+                        gained_positive_effect = true
+                    end
+                end
+                base_effect[effect_name] = value
+            end
+            if base_effect[effect_name] ~= nil and base_effect[effect_name] ~= 0 then
+                local current_dir = -1
+                if base_effect[effect_name] > 0 ~= (negative_effects[effect_name] ~= nil) then
+                    current_dir = 1
+                end
+                randomize({
+                    id = id,
+                    prototype = entity,
+                    tbl = base_effect,
+                    property = effect_name,
+                    rounding = "discrete_float",
+                    variance = "medium",
+                    dir = current_dir,
+                    abs_min = -327,
+                    abs_max = 327,
+                })
+                if had_effect then
+                    dir = current_dir
+                    factor = base_effect[effect_name] / old_effect
+                end
+            end
+        end
+
+        if gained_positive_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Base effect)[/color]"}
+        elseif gained_negative_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Base effect)[/color]"}
+        end
+        if lost_positive_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Missing base effect)[/color]"}
+        elseif lost_negative_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Missing base effect)[/color]"}
+        end
+        if factor ~= -1 then
+            locale_utils.create_localised_description(entity, factor, id, { flipped = dir < 0 })
         end
     end
 end
@@ -1482,37 +1653,7 @@ randomizations.module_slots = function(id)
                         abs_min = 1,
                         variance = "big"
                     })
-                    if entity_class == prototype_mining_drill then
-                        local fluid = false
-                        for _, resource_category in pairs(entity.resource_categories) do
-                            if resource_category == "basic-fluid" then
-                                fluid = true
-                            end
-                        end
-                        if fluid then
-                            entity.allowed_effects = { "speed", "productivity", "consumption", "pollution" }
-                        else
-                            entity.allowed_effects = { "speed", "productivity", "consumption", "pollution", "quality" }
-                        end
-                    elseif crafting_machine_prototypes[entity_class] ~= nil then
-                        entity.allowed_effects = { "speed", "consumption", "pollution" }
-                        local productivity = true
-                        local quality = true
-                        for _, crafting_category in pairs(entity.crafting_categories) do
-                            if crafting_category == "recycling" then
-                                productivity = false
-                            end
-                            if no_quality_recipe_categories[crafting_category] ~= nil then
-                                quality = false
-                            end
-                        end
-                        if productivity then
-                            table.insert(entity.allowed_effects, "productivity")
-                        end
-                        if quality then
-                            table.insert(entity.allowed_effects, "quality")
-                        end
-                    end
+                    entity.allowed_effects = get_allowed_effects(entity)
                     entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
                 end
             end
