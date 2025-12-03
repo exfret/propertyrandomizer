@@ -1379,12 +1379,76 @@ randomizations.mining_times_resource = function(id)
 end
 
 randomizations.module_slots = function(id)
+
+    -- Chance of considering toggling between modules/no modules
+    local toggle_module_slots_p = 0.5
+
+    local module_slot_counts = {}
+    local no_module_slots_count = 0
+
+    local prototype_beacon = "beacon"
+    local prototype_mining_drill = "mining-drill"
+    local crafting_machine_prototypes = {
+        ["assembling-machine"] = true,
+        ["rocket-silo"] = true,
+        ["furnace"] = true,
+    }
+    local no_quality_recipe_categories = {
+        ["oil-processing"] = true,
+        ["rocket-building"] = true,
+    }
+
     for entity_class, _ in pairs(categories.entities_with_module_slots) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.module_slots ~= nil and entity.module_slots > 0 then
-                    local old_module_slots = entity.module_slots
+                    table.insert(module_slot_counts, entity.module_slots)
+                else
+                    no_module_slots_count = no_module_slots_count + 1
+                end
+                if entity_class ~= prototype_beacon then
+                    if entity.effect_receiver == nil then
+                        entity.effect_receiver = {}
+                    end
+                end
+            end
+        end
+    end
 
+    local ratio = #module_slot_counts / (no_module_slots_count + #module_slot_counts)
+    -- Chance of giving module slots to an entity that previously didn't have any
+    local add_p = toggle_module_slots_p * ratio
+    -- Chance of removing all module slots from an entity
+    local remove_p = toggle_module_slots_p * (1 - ratio)
+
+    for entity_class, _ in pairs(categories.entities_with_module_slots) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                local rng_key = rng.key({ id = id, prototype = entity })
+                if entity.module_slots ~= nil and entity.module_slots > 0 then
+                    if entity_class ~= prototype_beacon and randbool.rand_bias_chaos(rng_key, remove_p, -1) then
+                        entity.effect_receiver.uses_module_effects = false
+                        entity.effect_receiver.uses_beacon_effects = false
+                        entity.module_slots = 0
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Module incompatible)[/color]"}
+                    else
+                        local old_module_slots = entity.module_slots
+
+                        randomize({
+                            id = id,
+                            prototype = entity,
+                            property = "module_slots",
+                            rounding = "discrete",
+                            abs_min = 1,
+                            variance = "big"
+                        })
+
+                        locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                    end
+                elseif randbool.rand_bias_chaos(rng_key, add_p, 1) then
+                    entity.effect_receiver.uses_module_effects = true
+                    entity.effect_receiver.uses_beacon_effects = true
+                    entity.module_slots = module_slot_counts[rng.int(rng_key, #module_slot_counts)]
                     randomize({
                         id = id,
                         prototype = entity,
@@ -1393,8 +1457,38 @@ randomizations.module_slots = function(id)
                         abs_min = 1,
                         variance = "big"
                     })
-
-                    locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                    if entity_class == prototype_mining_drill then
+                        local fluid = false
+                        for _, resource_category in pairs(entity.resource_categories) do
+                            if resource_category == "basic-fluid" then
+                                fluid = true
+                            end
+                        end
+                        if fluid then
+                            entity.allowed_effects = { "speed", "productivity", "consumption", "pollution" }
+                        else
+                            entity.allowed_effects = { "speed", "productivity", "consumption", "pollution", "quality" }
+                        end
+                    elseif crafting_machine_prototypes[entity_class] ~= nil then
+                        entity.allowed_effects = { "speed", "consumption", "pollution" }
+                        local productivity = true
+                        local quality = true
+                        for _, crafting_category in pairs(entity.crafting_categories) do
+                            if crafting_category == "recycling" then
+                                productivity = false
+                            end
+                            if no_quality_recipe_categories[crafting_category] ~= nil then
+                                quality = false
+                            end
+                        end
+                        if productivity then
+                            table.insert(entity.allowed_effects, "productivity")
+                        end
+                        if quality then
+                            table.insert(entity.allowed_effects, "quality")
+                        end
+                    end
+                    entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
                 end
             end
         end
