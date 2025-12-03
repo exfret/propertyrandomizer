@@ -3,6 +3,7 @@ local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
 
@@ -700,6 +701,58 @@ randomizations.repair_speed = function(id)
         local factor = repair_tool.speed / old_value
 
         locale_utils.create_localised_description(repair_tool, factor, id)
+    end
+end
+
+-- New
+randomizations.spoil_spawn = function (id)
+
+    -- Every enemy!!!
+    local spawnable_units = {}
+    for unit_name, _ in pairs(data.raw["unit"]) do
+        table.insert(spawnable_units, unit_name)
+    end
+    for unit_name, _ in pairs(data.raw["turret"]) do
+        table.insert(spawnable_units, unit_name)
+    end
+    for unit_name, _ in pairs(data.raw["unit-spawner"]) do
+        table.insert(spawnable_units, unit_name)
+    end
+    for unit_name, _ in pairs(data.raw["spider-unit"]) do
+        table.insert(spawnable_units, unit_name)
+    end
+    --[[ Turns out these do a little too much instant destruction upon spawning to be justifiable
+    for unit_name, _ in pairs(data.raw["segmented-unit"]) do
+        table.insert(spawnable_units, unit_name)
+    end]]
+
+    for _, item in pairs(items) do
+        if item.spoil_to_trigger_result ~= nil then
+            local structs = {}
+            trigger_utils.gather_item_structs(structs, item, true)
+            local entity_mapping = {}
+            local rng_key = rng.key({id = id, prototype = item})
+            for _, trigger_effect in pairs(structs["trigger-effect"]) do
+                if trigger_effect.entity_name ~= nil then
+                    local new_entity_name = entity_mapping[trigger_effect.entity_name]
+                    if new_entity_name == nil then
+                        new_entity_name = spawnable_units[rng.int(rng_key, #spawnable_units)]
+                        entity_mapping[trigger_effect.entity_name] = new_entity_name
+                    end
+                    trigger_effect.entity_name = new_entity_name
+                end
+            end
+            local randomized = false
+            for from, to in pairs(entity_mapping) do
+                if from ~= to then
+                    randomized = true
+                    break
+                end
+            end
+            if randomized then
+                item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
+            end
+        end
     end
 end
 

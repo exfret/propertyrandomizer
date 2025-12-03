@@ -132,6 +132,9 @@ local gather_trigger_effect_structs = function (structs, trigger_effect, stop_pr
         if te.entity_name ~= nil then
             gather_entity_name_structs(structs, te.entity_name, stop_prototype)
         end
+        if te.non_colliding_fail_result ~= nil then
+            export.gather_trigger_structs(structs, te.non_colliding_fail_result, stop_prototype)
+        end
         if te.action ~= nil then
             export.gather_trigger_structs(structs, te.action, stop_prototype)
         end
@@ -145,11 +148,11 @@ local gather_trigger_delivery_structs = function (structs, trigger_delivery, sto
     mtm_insert(structs, struct_trigger_delivery, trigger_delivery)
     if trigger_delivery.source_effects ~= nil then
         to_array(trigger_delivery.source_effects)
-        gather_trigger_effect_structs(structs, trigger_delivery.source_effects)
+        gather_trigger_effect_structs(structs, trigger_delivery.source_effects, stop_prototype)
     end
     if trigger_delivery.target_effects ~= nil then
         to_array(trigger_delivery.target_effects)
-        gather_trigger_effect_structs(structs, trigger_delivery.target_effects)
+        gather_trigger_effect_structs(structs, trigger_delivery.target_effects, stop_prototype)
     end
     if trigger_delivery.projectile ~= nil then
         gather_entity_name_structs(structs, trigger_delivery.projectile, stop_prototype)
@@ -262,6 +265,10 @@ local gather_spider_leg_trigger_effect_structs = function (structs, spider_leg_t
     gather_trigger_effect_structs(structs, spider_leg_trigger_effect.effect, stop_prototype)
 end
 
+local gather_spoil_to_trigger_result_structs = function (structs, spoil_to_trigger_result, stop_prototype)
+    export.gather_trigger_structs(structs, spoil_to_trigger_result.trigger, stop_prototype)
+end
+
 export.gather_trigger_structs = function (structs, trigger, stop_prototype)
     local triggers = to_array(trigger)
     for _, t in pairs(triggers) do
@@ -333,6 +340,7 @@ export.gather_delayed_active_trigger_structs = function (structs, delayed_active
 end
 
 export.gather_ammo_structs = function (structs, ammo, stop_prototype)
+    export.gather_item_structs(structs, ammo, stop_prototype)
     local ammo_types = to_array(ammo.ammo_type)
     for _, ammo_type in pairs(ammo_types) do
         gather_ammo_type_structs(structs, ammo_type, stop_prototype)
@@ -340,6 +348,7 @@ export.gather_ammo_structs = function (structs, ammo, stop_prototype)
 end
 
 export.gather_capsule_structs = function (structs, capsule, stop_prototype)
+    export.gather_item_structs(structs, capsule, stop_prototype)
     gather_capsule_action_structs(structs, capsule.capsule_action, stop_prototype)
 end
 
@@ -405,6 +414,15 @@ export.gather_capture_robot_structs = function (structs, capture_robot, stop_pro
     gather_entity_with_health_structs(structs, capture_robot, stop_prototype)
     if capture_robot.destroy_action ~= nil then
         export.gather_trigger_structs(structs, capture_robot.destroy_action, stop_prototype)
+    end
+end
+
+export.gather_item_structs = function (structs, item, stop_prototype)
+    if item.spoil_to_trigger_result ~= nil then
+        gather_spoil_to_trigger_result_structs(structs, item.spoil_to_trigger_result, stop_prototype)
+    end
+    if item.destroyed_by_dropping_trigger ~= nil then
+        export.gather_trigger_structs(structs, item.destroyed_by_dropping_trigger, stop_prototype)
     end
 end
 
