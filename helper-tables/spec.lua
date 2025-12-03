@@ -761,6 +761,12 @@ local spec = {
             val = "less"
         }
     },
+    spoil_spawn = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     spoil_time = {
         setting = {
             name = "propertyrandomizer-misc",
