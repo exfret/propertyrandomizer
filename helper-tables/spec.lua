@@ -666,6 +666,18 @@ local spec = {
             val = "less"
         }
     },
+    plant_growth_time = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    plant_harvest_pollution = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     projectile_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",

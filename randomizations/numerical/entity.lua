@@ -1801,6 +1801,89 @@ randomizations.pipe_to_ground_distance = function(id)
     end
 end
 
+-- New
+randomizations.plant_growth_time = function (id)
+
+    local ticks = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+    for _, plant in pairs(data.raw["plant"]) do
+        local old_value = plant.growth_ticks
+
+        local magnitude = ticks
+        if plant.growth_ticks > ticks_per_second then
+            magnitude = seconds
+            plant.growth_ticks = plant.growth_ticks / ticks_per_second
+            if plant.growth_ticks > seconds_per_minute then
+                magnitude = minutes
+                plant.growth_ticks = plant.growth_ticks / seconds_per_minute
+                if plant.growth_ticks > minutes_per_hour then
+                    magnitude = hours
+                    plant.growth_ticks = plant.growth_ticks / minutes_per_hour
+                end
+            end
+        end
+
+        randomize({
+            id = id,
+            prototype = plant,
+            property = "growth_ticks",
+            variance = "medium",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        if magnitude == seconds then
+            plant.growth_ticks = plant.growth_ticks * ticks_per_second
+        elseif magnitude == minutes then
+            plant.growth_ticks = plant.growth_ticks * ticks_per_second * seconds_per_minute
+        elseif magnitude == hours then
+            plant.growth_ticks = plant.growth_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+        end
+
+        plant.growth_ticks = math.max(round(plant.growth_ticks), 1)
+
+        local factor = plant.growth_ticks / old_value
+
+        locale_utils.create_localised_description(plant, factor, id, { flipped = true })
+    end
+end
+
+randomizations.plant_harvest_pollution = function (id)
+    for _, plant in pairs(data.raw["plant"]) do
+        if plant.harvest_emissions ~= nil then
+            local randomized = false
+            local rng_key = rng.key({id = id, prototype = plant})
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                dir = -1,
+                rounding = "none",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for pollutant_id, pollutant_amount in pairs(plant.harvest_emissions) do
+                if pollutant_amount > 0 then
+                    local new_amount = randnum.fixes(rounding_params, pollutant_amount * factor)
+                    plant.harvest_emissions[pollutant_id] = new_amount
+                    randomized = true
+                end
+            end
+
+            if randomized then
+                -- Factor doesn't take into consideration the effects of rounding, so description may be inaccurate
+                locale_utils.create_localised_description(plant, factor, id, { flipped = true })
+            end
+        end
+    end
+end
+
 randomizations.projectile_effect_radius = function (id)
     local projectiles = trigger_utils.get_projectile_creator_table()
 
