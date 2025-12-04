@@ -729,6 +729,12 @@ local spec = {
             val = "more"
         }
     },
+    recipe_result_probabilities = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     recipe_results_numerical = {
         setting = {
             name = "propertyrandomizer-production",

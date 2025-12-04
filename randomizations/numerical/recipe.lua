@@ -1,7 +1,8 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
+local randprob = require("lib/random/randprob")
 local locale_utils = require("lib/locale")
-local rng = require("lib.random.rng")
+local rng = require("lib/random/rng")
 
 local randomize = randnum.rand
 
@@ -76,6 +77,24 @@ for item_class, _ in pairs(defines.prototypes.item) do
         for _, item in pairs(data.raw[item_class]) do
             if item.stack_size <= 1 then
                 non_stackable_items[item.name] = true
+            end
+        end
+    end
+end
+
+-- New
+randomizations.recipe_result_probabilities = function(id)
+    for _, recipe in pairs(data.raw.recipe) do
+        for _, product in pairs(recipe.results or {}) do
+            if product.probability ~= nil then
+                randprob.rand({
+                    id = id,
+                    prototype = recipe,
+                    tbl = product,
+                    property = "probability",
+                    rounding = "discrete_float",
+                    dir = 1
+                })
             end
         end
     end
