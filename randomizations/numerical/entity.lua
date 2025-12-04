@@ -1212,13 +1212,13 @@ randomizations.lightning_attractor_drain = function (id)
                 tbl = la.energy_source,
                 property = "drain",
                 dir = -1,
-                variance = "big",
+                variance = "medium",
                 rounding = "discrete_float"
             })
 
             local factor = util.parse_energy(la.energy_source.drain) / old_value
 
-            locale_utils.create_localised_description(la, factor, id, { variance = "big", flipped = true })
+            locale_utils.create_localised_description(la, factor, id, { variance = "medium", flipped = true })
         end
     end
 end
@@ -1233,13 +1233,13 @@ randomizations.lightning_attractor_efficiency = function (id)
                 id = id,
                 prototype = la,
                 property = "efficiency",
-                variance = "big",
+                variance = "medium",
                 rounding = "discrete_float"
             })
 
             local factor = la.efficiency / old_value
 
-            locale_utils.create_localised_description(la, factor, id, { variance = "big" })
+            locale_utils.create_localised_description(la, factor, id, { variance = "medium" })
         end
     end
 end
@@ -1898,6 +1898,23 @@ randomizations.radar_search_area = function(id)
 end
 
 randomizations.reactor_consumption = function(id)
+    for _, reactor in pairs(data.raw.reactor) do
+        local old_consumption = util.parse_energy(reactor.consumption)
+
+        randomizations.energy({
+            is_power = true,
+            id = id,
+            prototype = reactor,
+            property = "consumption",
+            rounding = "discrete_float",
+        })
+
+        locale_utils.create_localised_description(reactor, util.parse_energy(reactor.consumption) / old_consumption, id)
+    end
+end
+
+-- New
+randomizations.reactor_effectivity = function(id)
     for _, reactor in pairs(data.raw.reactor) do
         local old_consumption = util.parse_energy(reactor.consumption)
 
