@@ -924,6 +924,68 @@ randomizations.generator_fluid_usage = function(id)
     end
 end
 
+randomizations.health_regeneration = function (id)
+    local enemy_classes = {
+        ["asteroid"] = true,
+        ["segment"] = true,
+        ["segmented-unit"] = true,
+        ["simple-entity"] = true,
+        ["spider-unit"] = true,
+        ["tree"] = true, -- They're standing in the way of my factory!
+        ["turret"] = true,
+        ["unit"] = true,
+        ["unit-spawner"] = true
+    }
+
+    local tree_classes = {
+        ["tree"] = true,
+        ["plant"] = true,
+    }
+
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.healing_per_tick == nil and tree_classes[entity_class] ~= nil then
+                    entity.healing_per_tick = 0.1 / 60
+                end
+
+                if entity.healing_per_tick ~= nil and entity.healing_per_tick ~= 0 then
+                    local dir = -1
+                    local old_value = entity.healing_per_tick
+                    if enemy_classes[entity_class] == nil then
+                        dir = 1
+                    end
+                    if old_value < 0 then
+                        dir = dir * -1
+                        entity.healing_per_tick = entity.healing_per_tick * -1
+                    end
+
+                    -- To health per second
+                    entity.healing_per_tick = entity.healing_per_tick * 60
+
+                    randomize({
+                        id = id,
+                        prototype = entity,
+                        property = "healing_per_tick",
+                        rounding = "discrete_float",
+                        dir = dir,
+                    })
+
+                    -- Back to health per tick
+                    entity.healing_per_tick = entity.healing_per_tick / 60
+
+                    if old_value < 0 then
+                        entity.healing_per_tick = entity.healing_per_tick * -1
+                    end
+
+                    local factor = entity.healing_per_tick / old_value
+                    locale_utils.create_localised_description(entity, factor, id, { flipped = dir < 0 })
+                end
+            end
+        end
+    end
+end
+
 randomizations.inserter_base_hand_size = function(id)
     for _, inserter in pairs(data.raw.inserter) do
         if inserter.stack_size_bonus == nil then
