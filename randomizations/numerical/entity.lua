@@ -1109,6 +1109,31 @@ randomizations.lab_research_speed = function(id)
     end
 end
 
+-- New
+randomizations.lab_science_pack_drain = function(id)
+    for _, lab in pairs(data.raw.lab) do
+        if lab.science_pack_drain_rate_percent == nil then
+            lab.science_pack_drain_rate_percent = 100
+        end
+
+        local old_value = lab.science_pack_drain_rate_percent
+
+        randomize({
+            id = id,
+            prototype = lab,
+            property = "science_pack_drain_rate_percent",
+            dir = -1,
+            rounding = "discrete",
+            abs_min = 1,
+            abs_max = 100,
+        })
+
+        local factor = lab.science_pack_drain_rate_percent / old_value
+
+        locale_utils.create_localised_description(lab, factor, id, { flipped = true })
+    end
+end
+
 randomizations.landmine_damage = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
         if landmine.action ~= nil then
