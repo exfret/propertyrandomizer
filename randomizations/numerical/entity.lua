@@ -1916,17 +1916,26 @@ end
 -- New
 randomizations.reactor_effectivity = function(id)
     for _, reactor in pairs(data.raw.reactor) do
-        local old_consumption = util.parse_energy(reactor.consumption)
+        if reactor.energy_source.type == "burner" then
+            if reactor.energy_source.effectivity == nil then
+                reactor.energy_source.effectivity = 1
+            end
 
-        randomizations.energy({
-            is_power = true,
-            id = id,
-            prototype = reactor,
-            property = "consumption",
-            rounding = "discrete_float",
-        })
+            local old_value = reactor.energy_source.effectivity
 
-        locale_utils.create_localised_description(reactor, util.parse_energy(reactor.consumption) / old_consumption, id)
+            randomize({
+                id = id,
+                prototype = reactor,
+                tbl = reactor.energy_source,
+                property = "effectivity",
+                rounding = "discrete_float",
+                variance = "medium",
+            })
+
+            local factor = reactor.energy_source.effectivity / old_value
+
+            locale_utils.create_localised_description(reactor, factor, id)
+        end
     end
 end
 

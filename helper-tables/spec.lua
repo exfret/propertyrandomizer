@@ -682,6 +682,12 @@ local spec = {
             val = "less"
         }
     },
+    reactor_effectivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     reactor_neighbour_bonus = {
         setting = {
             name = "propertyrandomizer-production",
