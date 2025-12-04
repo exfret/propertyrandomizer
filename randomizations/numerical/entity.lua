@@ -1200,6 +1200,72 @@ randomizations.landmine_trigger_radius = function(id)
 end
 
 -- New
+randomizations.lightning_attractor_drain = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.energy_source ~= nil and la.energy_source.drain ~= nil then
+            local old_value = util.parse_energy(la.energy_source.drain)
+
+            randomizations.energy({
+                is_power = true,
+                id = id,
+                prototype = la,
+                tbl = la.energy_source,
+                property = "drain",
+                dir = -1,
+                variance = "big",
+                rounding = "discrete_float"
+            })
+
+            local factor = util.parse_energy(la.energy_source.drain) / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "big", flipped = true })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_attractor_efficiency = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.efficiency ~= nil and la.efficiency > 0 then
+            local old_value = la.efficiency
+
+            randomize({
+                id = id,
+                prototype = la,
+                property = "efficiency",
+                variance = "big",
+                rounding = "discrete_float"
+            })
+
+            local factor = la.efficiency / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_attractor_range = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.range_elongation ~= nil and la.range_elongation > 0 then
+            local old_value = la.range_elongation
+
+            randomize({
+                id = id,
+                prototype = la,
+                property = "range_elongation",
+                variance = "small",
+                rounding = "discrete_float"
+            })
+
+            local factor = la.range_elongation / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
 randomizations.locomotive_max_speed = function(id)
 
     local max_value = 0

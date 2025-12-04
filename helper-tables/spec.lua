@@ -535,6 +535,24 @@ local spec = {
             val = "more"
         }
     },
+    lightning_attractor_drain = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    lightning_attractor_efficiency = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    lightning_attractor_range = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     locomotive_max_speed = {
         setting = {
             name = "propertyrandomizer-misc",
