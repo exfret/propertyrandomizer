@@ -814,7 +814,7 @@ randomizations.spoil_spawn = function (id)
         if had_spawn and not now_spawns then
             item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Neutralized)[/color]"}
         elseif not had_spawn and now_spawns then
-            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Corrupted)[/color]"}
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Infested)[/color]"}
         elseif changed then
             item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
         end
