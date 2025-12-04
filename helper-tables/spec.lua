@@ -505,6 +505,12 @@ local spec = {
             val = "default"
         }
     },
+    lab_science_pack_drain = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     landmine_damage = {
         setting = {
             name = "propertyrandomizer-military",
