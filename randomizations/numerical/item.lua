@@ -268,47 +268,30 @@ randomizations.capsule_cooldown = function(id)
     end
 end
 
--- TODO: Healing amount displayed? Agh
 randomizations.capsule_healing = function(id)
     for _, capsule in pairs(data.raw.capsule) do
-        local capsule_action = capsule.capsule_action
-        if capsule_action.type == "use-on-self" then
-            local ammo_type = capsule_action.attack_parameters.ammo_type
-            if ammo_type ~= nil then
-                if ammo_type.action then
-                    randomizations.trigger({
-                        id = id,
-                        prototype = capsule
-                    }, ammo_type.action, "healing")
+        local structs = {}
+        trigger_utils.gather_capsule_structs(structs, capsule, true)
+        local rng_key = rng.key({ id = id, prototype = capsule })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+        local changed = false
 
-                    -- Check for stickers
-                    for _, sticker in pairs(randomizations.trigger({}, ammo_type.action, "gather-stickers")) do
-                        local sticker_prot = data.raw.sticker[sticker]
-                        -- Check if we've already randomized this sticker's healing
-                        if not randomization_info.touched[rng.key({id = id, prototype = sticker_prot})] then
-                            randomization_info.touched[rng.key({id = id, prototype = sticker_prot})] = true
-
-                            if sticker_prot.damage_per_tick ~= nil then
-                                if sticker_prot.damage_interval == nil then
-                                    sticker_prot.damage_interval = 1
-                                end
-
-                                -- Multiply by negative one to make it positive for randomization
-                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
-                                randomize({
-                                    id = id,
-                                    prototype = sticker_prot,
-                                    tbl = sticker_prot.damage_per_tick,
-                                    property = "amount",
-                                    rounding = "none"
-                                })
-                                -- Undo earlier multiplication by -1
-                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
-                            end
-                        end
-                    end
-                end
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount < 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(capsule, factor, id, { variance = "big" })
         end
     end
 end

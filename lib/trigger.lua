@@ -32,6 +32,7 @@ local struct_spider_leg_specification = "spider-leg-specification"
 local struct_attack_reaction_item = "attack-reaction-item"
 local struct_spider_leg_trigger_effect = "spider-leg-trigger-effect"
 local struct_explosion_definition = "explosion-definition"
+local struct_damage_parameters = "damage-parameters"
 
 local data_raw_table = function (class)
     return data.raw[class] or {}
@@ -125,18 +126,25 @@ local to_array = function (single_or_array)
     return single_or_array
 end
 
+local gather_damage_parameters_structs = function (structs, damage_parameters, stop_prototype)
+    mtm_insert(structs, struct_damage_parameters, damage_parameters)
+end
+
 local gather_trigger_effect_structs = function (structs, trigger_effect, stop_prototype)
     local trigger_effects = to_array(trigger_effect)
     for _, te in pairs(trigger_effects) do
         mtm_insert(structs, struct_trigger_effect, te)
+        if te.action ~= nil then
+            export.gather_trigger_structs(structs, te.action, stop_prototype)
+        end
+        if te.damage ~= nil then
+            gather_damage_parameters_structs(structs, te.damage, stop_prototype)
+        end
         if te.entity_name ~= nil then
             gather_entity_name_structs(structs, te.entity_name, stop_prototype)
         end
         if te.non_colliding_fail_result ~= nil then
             export.gather_trigger_structs(structs, te.non_colliding_fail_result, stop_prototype)
-        end
-        if te.action ~= nil then
-            export.gather_trigger_structs(structs, te.action, stop_prototype)
         end
         if te.sticker ~= nil then
             gather_entity_name_structs(structs, te.sticker, stop_prototype)
