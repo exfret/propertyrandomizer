@@ -172,12 +172,12 @@ local spec = {
             val = "less"
         }
     },
-    capsule_actions = {
+    --[[capsule_actions = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     capsule_cooldown = {
         setting = {
             name = "propertyrandomizer-misc",
