@@ -7,8 +7,8 @@ local Fleishman = {}
 Fleishman.__index = Fleishman
 
 --- Generate a standard normal random variable using Box-Muller transform.
--- @param key string The key used for random number generation
--- @return number Standard normal random variable
+--- @param key string The key used for random number generation
+--- @return number Standard normal random variable
 function Fleishman.rand_normal(key)
     local u1 = rng.value(key)
     local u2 = rng.value(key)
@@ -20,11 +20,11 @@ function Fleishman.rand_normal(key)
 end
 
 --- Create a new Fleishman random number generator.
--- @param mean number Target mean of the distribution
--- @param std number Target standard deviation
--- @param skew number Target skewness
--- @param ekurt number Target excess kurtosis
--- @return table New Fleishman instance
+--- @param mean number Target mean of the distribution
+--- @param std number Target standard deviation
+--- @param skew number Target skewness
+--- @param ekurt number Target excess kurtosis
+--- @return table New Fleishman instance
 function Fleishman.new(mean, std, skew, ekurt)
     local self = setmetatable({}, Fleishman)
     self._b = 0
@@ -46,16 +46,16 @@ function Fleishman:_fl_func(b0, c0, d0)
 end
 
 --- Solve for coefficients that will generate the desired distribution.
--- @param mean number Target mean
--- @param std number Target standard deviation
--- @param skew number Target skewness
--- @param ekurt number Target excess kurtosis
+--- @param mean number Target mean
+--- @param std number Target standard deviation
+--- @param skew number Target skewness
+--- @param ekurt number Target excess kurtosis
 function Fleishman:_solve_coefficients(mean, std, skew, ekurt)
     self._mean = mean
     self._std = std
     self._skew = skew
     self._ekurt = ekurt
-    
+
     local converge = 1e-30
     local max_iter = 128
     local ekurt_thresh = -1.13168 + 1.58837 * self._skew * self._skew
@@ -142,8 +142,8 @@ function Fleishman:_solve_coefficients(mean, std, skew, ekurt)
 end
 
 --- Generate a random number with the specified distribution parameters.
--- @param key string The key used for random number generation
--- @return number Random number from the configured distribution
+--- @param key string The key used for random number generation
+--- @return number Random number from the configured distribution
 function Fleishman:generate(key)
     local X = Fleishman.rand_normal(key)
     return (-1 * self._c + X * (self._b + X * (self._c + X * self._d))) * self._std + self._mean
@@ -158,18 +158,18 @@ local CHAOS_COEFF = 0.6 -- Selected to calibrate std behavior to the global chao
 local instance_cache = {}
 
 --- Get or create a Fleishman instance for the given parameters
--- @param bias_idx number Index representing bias level
--- @param chaos_val number Chaos factor affecting standard deviation
--- @return table Fleishman instance configured for these parameters
+--- @param bias_idx number Index representing bias level
+--- @param chaos_val number Chaos factor affecting standard deviation
+--- @return table Fleishman instance configured for these parameters
 local function get_fleishman_instance(bias_idx, chaos_val)
     -- Create a cache key from the parameters
     local cache_key = string.format("%.0f_%.6f", bias_idx, chaos_val)
-    
+
     -- Return cached instance if it exists
     if instance_cache[cache_key] then
         return instance_cache[cache_key]
     end
-    
+
     -- Calculate parameters for new instance
     local no_bias_idx = (BIAS_OPTION_COUNT - 1) / 2 -- Index representing no bias. Curiously also works for even counts.
     local bias_val = bias_idx - no_bias_idx -- Convert bias index to signed bias value -2 to 2
@@ -179,7 +179,7 @@ local function get_fleishman_instance(bias_idx, chaos_val)
     local exp_skew = bias_sign * (math.sqrt((bias_strength + 1.13168) / 1.58837) - 2^(-1 * bias_strength)) -- Skew increases with bias strength in direction of bias
     local exp_mean = MEAN_COEFF * bias_sign * bias_strength * exp_std / BIAS_OPTION_COUNT -- Mean is shifted in an attempt to center the mode around 0 after skew
     local exp_ekurt = bias_strength -- Excess kurtosis has to increase with skew due to Fleishman method constraints
-    
+
     -- Create and cache new instance
     instance_cache[cache_key] = Fleishman.new(exp_mean, exp_std, exp_skew, exp_ekurt)
     return instance_cache[cache_key]
@@ -191,24 +191,24 @@ function Fleishman.clear_cache()
 end
 
 --- Generalized multiplicative random number generator using Fleishman method.
--- @param key string The key used for random number generation
--- @param old_val number The original value to be randomized
--- @param mul_std number Multiplicative standard deviation factor
--- @param bias_idx number Index representing bias level (0 to BIAS_OPTION_COUNT-1)
--- @param chaos_val number Chaos factor affecting standard deviation
--- @return number A non-normally distributed random number based on the inputs
+--- @param key string The key used for random number generation
+--- @param old_val number The original value to be randomized
+--- @param mul_std number Multiplicative standard deviation factor
+--- @param bias_idx number Index representing bias level (0 to BIAS_OPTION_COUNT-1)
+--- @param chaos_val number Chaos factor affecting standard deviation
+--- @return number A non-normally distributed random number based on the inputs
 function Fleishman.randomize_multiplicatively(key, old_val, mul_std, bias_idx, chaos_val)
     local rng_inst = get_fleishman_instance(bias_idx, chaos_val)
     return old_val * mul_std^rng_inst:generate(key) -- Use generated number as exponent to cause multiplicative effect
 end
 
 --- Generalized random number generator using Fleishman method.
--- @param key string The key used for random number generation
--- @param old_val number The original value to be randomized
--- @param std number Standard deviation factor
--- @param bias_idx number Index representing bias level (0 to BIAS_OPTION_COUNT-1)
--- @param chaos_val number Chaos factor affecting standard deviation
--- @return number A non-normally distributed random number based on the inputs
+--- @param key string The key used for random number generation
+--- @param old_val number The original value to be randomized
+--- @param std number Standard deviation factor
+--- @param bias_idx number Index representing bias level (0 to BIAS_OPTION_COUNT-1)
+--- @param chaos_val number Chaos factor affecting standard deviation
+--- @return number A non-normally distributed random number based on the inputs
 function Fleishman.randomize(key, old_val, std, bias_idx, chaos_val)
     local rng_inst = get_fleishman_instance(bias_idx, chaos_val)
     return old_val + std*rng_inst:generate(key)
