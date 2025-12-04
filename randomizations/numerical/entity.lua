@@ -1600,6 +1600,70 @@ randomizations.mining_fluid_amount_needed = function(id)
     end
 end
 
+-- New
+randomizations.mining_results = function(id)
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                -- The results property seems to only contain stuff that doesn't build the entity
+                -- Safe to randomize? Surely
+                if entity.minable ~= nil and entity.minable.results ~= nil then
+                    local rng_key = rng.key({ id = id, prototype = entity })
+                    for _, product in pairs(entity.minable.results) do
+                        if product.amount ~= nil then
+                            if product.amount > 0 then
+                                randomize({
+                                    id = id,
+                                    prototype = entity,
+                                    tbl = product,
+                                    property = "amount",
+                                    dir = 1,
+                                    rounding = "discrete",
+                                    variance = "medium",
+                                })
+                            end
+                        else
+                            local diff = product.amount_max - product.amount_min
+                            if diff > 0 then
+                                diff = randomize({
+                                    key = rng_key,
+                                    dummy = diff,
+                                    rounding = "discrete",
+                                    dir = 1,
+                                    variance = "medium",
+                                })
+                            end
+                            if product.amount_min > 0 then
+                                randomize({
+                                    id = id,
+                                    prototype = entity,
+                                    tbl = product,
+                                    property = "amount_min",
+                                    dir = 1,
+                                    rounding = "discrete",
+                                    variance = "medium",
+                                })
+                            end
+                            product.amount_max = product.amount_min + diff
+                        end
+                        if product.probability ~= nil then
+                            randprob.rand({
+                                id = id,
+                                prototype = entity,
+                                tbl = product,
+                                property = "probability",
+                                dir = 1,
+                                rounding = "discrete_float",
+                                variance = "medium",
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
 -- Don't do tier preservation, mining drills seem different enough, at least in vanilla
 randomizations.mining_speeds = function(id)
     for _, mining_drill in pairs(data.raw["mining-drill"]) do

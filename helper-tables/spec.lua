@@ -629,6 +629,14 @@ local spec = {
             val = "more"
         }
     },
+    -- Includes anything with a defined results field
+    -- That's rocks, plants and fluid resouces in vanilla
+    mining_results = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     -- Mining drill speeds
     mining_speeds = {
         setting = {
