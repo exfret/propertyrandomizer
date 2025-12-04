@@ -442,6 +442,12 @@ local spec = {
             val = "default"
         }
     },
+    health_regeneration = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Where inserters can take from and where the put items
     inserter_offsets = {
         setting = {
