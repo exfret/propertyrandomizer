@@ -1,6 +1,7 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
+local randbool = require("lib/random/randbool")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local trigger_utils = require("lib/trigger")
@@ -8,16 +9,62 @@ local trigger_utils = require("lib/trigger")
 local randomize = randnum.rand
 
 local items = {}
-for item_class, _ in pairs(defines.prototypes.item) do
+for item_class, _ in pairs(categories.normal_item_classes) do
     if data.raw[item_class] ~= nil then
         for _, item in pairs(data.raw[item_class]) do
-            items[item.name] = item
+            if categories.special_item_subgroups[item.subgroup] == nil then
+                items[item.name] = item
+            end
         end
     end
 end
 
 local round = function (n)
     return math.floor(n + 0.5)
+end
+
+local randomize_spoil_time = function (id, item)
+
+    local ticks = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+    local magnitude = ticks
+    if item.spoil_ticks > ticks_per_second then
+        magnitude = seconds
+        item.spoil_ticks = item.spoil_ticks / ticks_per_second
+        if item.spoil_ticks > seconds_per_minute then
+            magnitude = minutes
+            item.spoil_ticks = item.spoil_ticks / seconds_per_minute
+            if item.spoil_ticks > minutes_per_hour then
+                magnitude = hours
+                item.spoil_ticks = item.spoil_ticks / minutes_per_hour
+            end
+        end
+    end
+
+    randomize({
+        id = id,
+        prototype = item,
+        property = "spoil_ticks",
+        variance = "medium",
+        rounding = "discrete_float",
+    })
+
+    if magnitude == seconds then
+        item.spoil_ticks = item.spoil_ticks * ticks_per_second
+    elseif magnitude == minutes then
+        item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
+    elseif magnitude == hours then
+        item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+    end
+
+    item.spoil_ticks = math.max(round(item.spoil_ticks), 1)
 end
 
 randomizations.ammo_damage = function(id)
@@ -707,31 +754,57 @@ end
 -- New
 randomizations.spoil_spawn = function (id)
 
-    -- Every enemy!!!
-    local spawnable_units = {}
-    for unit_name, _ in pairs(data.raw["unit"]) do
-        table.insert(spawnable_units, unit_name)
-    end
-    for unit_name, _ in pairs(data.raw["turret"]) do
-        table.insert(spawnable_units, unit_name)
-    end
-    for unit_name, _ in pairs(data.raw["unit-spawner"]) do
-        table.insert(spawnable_units, unit_name)
-    end
-    for unit_name, _ in pairs(data.raw["spider-unit"]) do
-        table.insert(spawnable_units, unit_name)
-    end
-    --[[ Turns out these do a little too much instant destruction upon spawning to be justifiable
-    for unit_name, _ in pairs(data.raw["segmented-unit"]) do
-        table.insert(spawnable_units, unit_name)
-    end]]
+    -- Chance of considering adding/removing a spoil trigger for an item
+    local toggle_spoil_to_trigger_result_p = 0.5
+
+    local spoil_to_trigger_result_pool = {}
+    local spoil_ticks_pool = {}
+    local item_count = 0
 
     for _, item in pairs(items) do
+        item_count = item_count + 1
+        if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
+            table.insert(spoil_ticks_pool, item.spoil_ticks)
+            if item.spoil_to_trigger_result ~= nil then
+                table.insert(spoil_to_trigger_result_pool, table.deepcopy(item.spoil_to_trigger_result))
+            end
+        end
+    end
+
+    local ratio = #spoil_to_trigger_result_pool / item_count
+    local add_p = toggle_spoil_to_trigger_result_p * ratio
+    local remove_p = toggle_spoil_to_trigger_result_p * (1 - ratio)
+
+    -- Let's just stick to regular units for now...
+    local spawnable_units = {}
+    for unit_name, unit in pairs(data.raw["unit"]) do
+        if unit.hidden ~= true then
+            table.insert(spawnable_units, unit_name)
+        end
+    end
+
+    for _, item in pairs(items) do
+        local had_spawn = item.spoil_to_trigger_result ~= nil
+        local rng_key = rng.key({id = id, prototype = item})
+        local changed = false
+        if had_spawn and randbool.rand_bias_chaos(rng_key, remove_p, 1) then
+            item.spoil_to_trigger_result = nil
+            if item.spoil_result == nil then
+                item.spoil_ticks = nil
+            end
+        end
+        if not had_spawn and randbool.rand_bias_chaos(rng_key, add_p, -1) then
+            local spoil_spawn = spoil_to_trigger_result_pool[rng.int(rng_key, #spoil_to_trigger_result_pool)]
+            item.spoil_to_trigger_result = table.deepcopy(spoil_spawn)
+            if item.spoil_ticks == nil or item.spoil_ticks <= 0 then
+                item.spoil_ticks = spoil_ticks_pool[rng.int(rng_key, #spoil_ticks_pool)]
+                randomize_spoil_time(id, item)
+            end
+        end
         if item.spoil_to_trigger_result ~= nil then
             local structs = {}
             trigger_utils.gather_item_structs(structs, item, true)
             local entity_mapping = {}
-            local rng_key = rng.key({id = id, prototype = item})
             for _, trigger_effect in pairs(structs["trigger-effect"]) do
                 if trigger_effect.entity_name ~= nil then
                     local new_entity_name = entity_mapping[trigger_effect.entity_name]
@@ -742,67 +815,31 @@ randomizations.spoil_spawn = function (id)
                     trigger_effect.entity_name = new_entity_name
                 end
             end
-            local randomized = false
             for from, to in pairs(entity_mapping) do
                 if from ~= to then
-                    randomized = true
+                    changed = true
                     break
                 end
             end
-            if randomized then
-                item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
-            end
+        end
+        local now_spawns = item.spoil_to_trigger_result ~= nil
+        if had_spawn and not now_spawns then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Neutralized)[/color]"}
+        elseif not had_spawn and now_spawns then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Corrupted)[/color]"}
+        elseif changed then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
         end
     end
 end
 
 -- New
 randomizations.spoil_time = function (id)
-
-    local ticks = "ticks"
-    local seconds = "seconds"
-    local minutes = "minutes"
-    local hours = "hours"
-
-    local ticks_per_second = 60
-    local seconds_per_minute = 60
-    local minutes_per_hour = 60
-
-
     for _, item in pairs(items) do
         if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
             local old_value = item.spoil_ticks
-            local magnitude = ticks
-            if item.spoil_ticks > ticks_per_second then
-                magnitude = seconds
-                item.spoil_ticks = item.spoil_ticks / ticks_per_second
-                if item.spoil_ticks > seconds_per_minute then
-                    magnitude = minutes
-                    item.spoil_ticks = item.spoil_ticks / seconds_per_minute
-                    if item.spoil_ticks > minutes_per_hour then
-                        magnitude = hours
-                        item.spoil_ticks = item.spoil_ticks / minutes_per_hour
-                    end
-                end
-            end
 
-            randomize({
-                id = id,
-                prototype = item,
-                property = "spoil_ticks",
-                variance = "medium",
-                rounding = "discrete_float",
-            })
-
-            if magnitude == seconds then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second
-            elseif magnitude == minutes then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
-            elseif magnitude == hours then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
-            end
-
-            item.spoil_ticks = math.max(round(item.spoil_ticks), 1)
+            randomize_spoil_time(id, item)
 
             local factor = item.spoil_ticks / old_value
 
