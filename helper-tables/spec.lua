@@ -809,7 +809,9 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
-        }
+        },
+        -- Needs to be done before spoil time randomization
+        order = 1,
     },
     spoil_time = {
         setting = {
