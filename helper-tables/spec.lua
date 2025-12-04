@@ -474,6 +474,18 @@ local spec = {
             val = "default"
         }
     },
+    item_fuel_acceleration = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    item_fuel_top_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     item_fuel_value = {
         setting = {
             name = "propertyrandomizer-production",
@@ -484,7 +496,9 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
-        }
+        },
+        -- Needs to be done before fuel stats randomizations
+        order = 1,
     },
     item_stack_sizes = {
         setting = {

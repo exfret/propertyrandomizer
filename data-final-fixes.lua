@@ -146,9 +146,11 @@ log("Done applying graph-based randomizations")
 log("Applying numerical/misc randomizations")
 
 -- Now randomize
-for id, to_perform in pairs(randomizations_to_perform) do
-    if to_perform then
-        randomizations[id](id)
+for _, order_group in pairs(randomizations_to_perform) do
+    for id, to_perform in pairs(order_group) do
+        if to_perform then
+            randomizations[id](id)
+        end
     end
 end
 

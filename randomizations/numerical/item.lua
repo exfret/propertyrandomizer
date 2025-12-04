@@ -424,24 +424,74 @@ randomizations.gun_shooting_speed = function(id)
     end
 end
 
-randomizations.item_fuel_value = function(id)
-    for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                if item.fuel_value ~= nil then
-                    local old_fuel_value = util.parse_energy(item.fuel_value)
-
-                    randomizations.energy({
-                        id = id,
-                        prototype = item,
-                        property = "fuel_value",
-                        range = "small",
-                        rounding = "discrete_float"
-                    })
-
-                    locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
-                end
+-- New
+randomizations.item_fuel_acceleration = function(id)
+    for _, item in pairs(items) do
+        -- Change this if vehicles ever use other types of fuel
+        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+            if item.fuel_acceleration_multiplier == nil then
+                item.fuel_acceleration_multiplier = 1.0
             end
+
+            local old_value = item.fuel_acceleration_multiplier
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "fuel_acceleration_multiplier",
+                rounding = "discrete_float",
+                variance = "medium",
+                dir = 1,
+            })
+
+            local factor = item.fuel_acceleration_multiplier / old_value
+
+            locale_utils.create_localised_description(item, factor, id)
+        end
+    end
+end
+
+-- New
+randomizations.item_fuel_top_speed = function(id)
+    for _, item in pairs(items) do
+        -- Change this if vehicles ever use other types of fuel
+        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+            if item.fuel_top_speed_multiplier == nil then
+                item.fuel_top_speed_multiplier = 1.0
+            end
+
+            local old_value = item.fuel_top_speed_multiplier
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "fuel_top_speed_multiplier",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = 1,
+            })
+
+            local factor = item.fuel_top_speed_multiplier / old_value
+
+            locale_utils.create_localised_description(item, factor, id, { variance = "big" })
+        end
+    end
+end
+
+randomizations.item_fuel_value = function(id)
+    for _, item in pairs(items) do
+        if item.fuel_value ~= nil then
+            local old_fuel_value = util.parse_energy(item.fuel_value)
+
+            randomizations.energy({
+                id = id,
+                prototype = item,
+                property = "fuel_value",
+                range = "small",
+                rounding = "discrete_float"
+            })
+
+            locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
         end
     end
 end
