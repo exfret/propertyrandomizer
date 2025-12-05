@@ -857,6 +857,12 @@ local spec = {
             val = "more"
         }
     },
+    sticker_healing = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     storage_tank_capacity = {
         setting = {
             name = "propertyrandomizer-logistic",
