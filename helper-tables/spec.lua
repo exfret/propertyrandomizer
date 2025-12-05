@@ -102,6 +102,12 @@ local spec = {
             val = "more"
         }
     },
+    asteroid_yields = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     base_effect = {
         setting = {
             name = "propertyrandomizer-production",

@@ -23,6 +23,7 @@ local prototype_land_mine = "land-mine"
 local prototype_fire = "fire"
 local prototype_segmented_unit = "segmented-unit"
 local prototype_segment = "segment"
+local prototype_asteroid = "asteroid"
 
 local struct_trigger_effect = "trigger-effect"
 local struct_trigger_delivery = "trigger-delivery"
@@ -518,6 +519,10 @@ export.gather_segmented_unit_structs = function (structs, segmented_unit, stop_p
     end
 end
 
+export.gather_asteroid_structs = function (structs, asteroid, stop_prototype)
+    gather_entity_with_health_structs(structs, asteroid, stop_prototype)
+end
+
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps projectiles to prototypes that may (directly or undirectly) create the projectile
 -------------------------------------------------------------------------------------------------------------------------------
@@ -601,6 +606,7 @@ export.entity_class_to_gather_struct_func = {
     [prototype_fire] = export.gather_fire_structs,
     [prototype_segmented_unit] = export.gather_segmented_unit_structs,
     [prototype_segment] = export.gather_segment_structs,
+    [prototype_asteroid] = export.gather_asteroid_structs,
 }
 
 export.active_trigger_class_to_gather_struct_func = {

@@ -355,6 +355,40 @@ randomizations.asteroid_mass = function(id)
     end
 end
 
+randomizations.asteroid_yields = function (id)
+    if data.raw.asteroid ~= nil then
+        for _, asteroid in pairs(data.raw.asteroid) do
+            local structs = {}
+            trigger_utils.gather_asteroid_structs(structs, asteroid, true)
+            local rng_key = rng.key({ id = id, prototype = asteroid })
+            for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+                if trigger_effect.offsets ~= nil then
+                    local offsets = trigger_effect.offsets
+                    local dir = -1
+                    if trigger_effect.type == "create-asteroid-chunk" then
+                        dir = 1
+                    end
+                    local new_count = randomize({
+                        key = rng_key,
+                        dummy = #offsets,
+                        variance = "medium",
+                        dir = dir,
+                        rounding = "discrete",
+                    })
+                    while new_count < #offsets do
+                        table.remove(offsets)
+                    end
+                    while new_count > #offsets do
+                        -- Let's just put every asteroid in the exact same position and hope no one notices
+                        local v = { 0, 0 }
+                        table.insert(offsets, v)
+                    end
+                end
+            end
+        end
+    end
+end
+
 randomizations.base_effect = function (id)
 
     -- Chance of considering to add/remove base effect from 
