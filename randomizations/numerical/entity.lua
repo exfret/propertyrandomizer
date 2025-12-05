@@ -2760,6 +2760,95 @@ randomizations.storage_tank_capacity = function(id)
     end
 end
 
+-- New
+randomizations.thruster_consumption = function (id)
+    for _, thruster in pairs(data.raw["thruster"]) do
+        thruster.min_performance = {
+            fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
+            fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
+            effectivity = thruster.min_performance.effectivity or thruster.min_performance[3],
+        }
+        thruster.max_performance = {
+            fluid_volume = thruster.max_performance.fluid_volume or thruster.max_performance[1],
+            fluid_usage = thruster.max_performance.fluid_usage or thruster.max_performance[2],
+            effectivity = thruster.max_performance.effectivity or thruster.max_performance[3],
+        }
+
+        -- Randomizing min and max separately seems interesting so let's do that
+        local old_max = thruster.max_performance.fluid_usage
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage - thruster.min_performance.fluid_usage
+
+        -- To fluid per second
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage * 60
+        thruster.min_performance.fluid_usage = thruster.min_performance.fluid_usage * 60
+
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.min_performance,
+            property = "fluid_usage",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.max_performance,
+            property = "fluid_usage",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+
+        -- Back to fluid per tick
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage / 60
+        thruster.min_performance.fluid_usage = thruster.min_performance.fluid_usage / 60
+
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage + thruster.min_performance.fluid_usage
+
+        local factor = thruster.max_performance.fluid_usage / old_max
+        locale_utils.create_localised_description(thruster, factor, id)
+    end
+end
+
+-- New
+randomizations.thruster_effectivity = function (id)
+    for _, thruster in pairs(data.raw["thruster"]) do
+        thruster.min_performance = {
+            fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
+            fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
+            effectivity = thruster.min_performance.effectivity or thruster.min_performance[3],
+        }
+        thruster.max_performance = {
+            fluid_volume = thruster.max_performance.fluid_volume or thruster.max_performance[1],
+            fluid_usage = thruster.max_performance.fluid_usage or thruster.max_performance[2],
+            effectivity = thruster.max_performance.effectivity or thruster.max_performance[3],
+        }
+
+        -- Randomizing min and max separately seems interesting so let's do that
+        local old_max = thruster.max_performance.effectivity
+
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.min_performance,
+            property = "effectivity",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.max_performance,
+            property = "effectivity",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+
+        local factor = thruster.max_performance.effectivity / old_max
+        locale_utils.create_localised_description(thruster, factor, id)
+    end
+end
+
 randomizations.turret_damage_modifier = function(id)
     for turret_class, _ in pairs(categories.turrets) do
         for _, turret in pairs(data.raw[turret_class]) do
