@@ -194,6 +194,78 @@ randomizations.agricultural_tower_radius = function(id)
     end
 end
 
+-- New
+randomizations.asteroid_collector_arm_inventory = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.arm_inventory_size == nil then
+                collector.arm_inventory_size = 5
+            end
+
+            local old_value = collector.arm_inventory_size
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "arm_inventory_size",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.arm_inventory_size / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.asteroid_collector_base_arm_count = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.arm_count_base == nil then
+                collector.arm_count_base = 3
+            end
+
+            local old_value = collector.arm_count_base
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "arm_count_base",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.arm_count_base / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.asteroid_collector_inventory = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.inventory_size == nil then
+                collector.inventory_size = 39
+            end
+
+            local old_value = collector.inventory_size
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "inventory_size",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.inventory_size / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
 -- Not added to spec yet
 randomizations.asteroid_collector_offset = function(id)
     if data.raw["asteroid-collector"] ~= nil then

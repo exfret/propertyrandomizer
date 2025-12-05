@@ -66,6 +66,24 @@ local spec = {
             val = "more"
         }
     },
+    asteroid_collector_arm_inventory = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_collector_base_arm_count = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_collector_inventory = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     asteroid_collector_radius = {
         setting = {
             name = "propertyrandomizer-production",
