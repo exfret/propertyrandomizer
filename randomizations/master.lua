@@ -26,6 +26,7 @@ log("Gathering misc randomizations")
 require("misc/beacon-profiles")
 require("randomizations/misc/ammo-categories")
 require("randomizations/misc/capsule-actions")
+require("randomizations/misc/damage-types")
 -- TODO
 require("randomizations/misc/equipment-shapes")
 require("randomizations/misc/fluid-boxes")
