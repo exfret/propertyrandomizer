@@ -223,6 +223,18 @@ local spec = {
             val = "default"
         }
     },
+    cargo_bay_inventory_bonus = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    cargo_landing_pad_radar_range = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {

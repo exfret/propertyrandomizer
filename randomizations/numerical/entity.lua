@@ -720,6 +720,46 @@ randomizations.car_rotation_speed = function(id)
     end
 end
 
+-- New
+randomizations.cargo_bay_inventory_bonus = function (id)
+    for _, cargo_bay in pairs(data.raw["cargo-bay"]) do
+        local old_value = cargo_bay.inventory_size_bonus
+
+        randomize({
+            id = id,
+            prototype = cargo_bay,
+            property = "inventory_size_bonus",
+            rounding = "discrete",
+            variance = "medium",
+        })
+
+        local factor = cargo_bay.inventory_size_bonus / old_value
+
+        locale_utils.create_localised_description(cargo_bay, factor, id, { variance = "medium" })
+    end
+end
+
+-- New
+randomizations.cargo_landing_pad_radar_range = function (id)
+    for _, clp in pairs(data.raw["cargo-landing-pad"]) do
+        if clp.radar_range ~= nil and clp.radar_range > 0 then
+            local old_value = clp.radar_range
+
+            randomize({
+                id = id,
+                prototype = clp,
+                property = "radar_range",
+                rounding = "discrete",
+                variance = "small",
+            })
+
+            local factor = clp.radar_range / old_value
+
+            locale_utils.create_localised_description(clp, factor, id, { variance = "small" })
+        end
+    end
+end
+
 -- Includes linked randomization based on crafting speeds
 randomizations.crafting_machine_speed = function(id)
     -- Separate by crafting category
