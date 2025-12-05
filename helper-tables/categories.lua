@@ -34,11 +34,13 @@ categories.effect_receivers = {
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {
     ["car"] = true,
+    ["cargo-landing-pad"] = true,
     -- These are randomized separately
     --["cargo-wagon"] = true,
     --["container"] = true,
     --["logistic-container"] = true,
-    ["spider-vehicle"] = true
+    ["space-platform-hub"] = true,
+    ["spider-vehicle"] = true,
 }
 
 categories.entities_with_module_slots = {
