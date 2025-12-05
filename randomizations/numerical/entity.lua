@@ -2595,6 +2595,23 @@ randomizations.solar_panel_production = function(id)
     end
 end
 
+randomizations.space_platform_initial_items = function (id)
+    for _, spsp in pairs(data.raw["space-platform-starter-pack"]) do
+        for _, product in pairs(spsp.initial_items or {}) do
+            if product.amount ~= nil then
+                randomize({
+                    id = id,
+                    prototype = spsp,
+                    tbl = product,
+                    property = "amount",
+                    rounding = "discrete",
+                    variance = "big",
+                })
+            end
+        end
+    end
+end
+
 -- New
 randomizations.sticker_duration = function (id)
     local stickers = trigger_utils.get_sticker_creator_table()
