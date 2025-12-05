@@ -192,7 +192,7 @@ randomizations.armor_resistances = function(id)
                 end
             end
             if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Specialized resistance)[/color]"}
+                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Botched resistance)[/color]"}
             end
         end
     end
