@@ -879,6 +879,12 @@ local spec = {
             val = "less"
         }
     },
+    space_platform_initial_items = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     spoil_spawn = {
         setting = {
             name = "propertyrandomizer-misc",
