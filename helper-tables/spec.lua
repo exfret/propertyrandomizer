@@ -941,6 +941,18 @@ local spec = {
             val = "more"
         }
     },
+    thruster_consumption = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    thruster_effectivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     tile_walking_speed_modifier = {
         setting = {
             name = "propertyrandomizer-misc",
