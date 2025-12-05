@@ -65,6 +65,57 @@ local get_allowed_effects = function (entity)
     end
 end
 
+local to_unit_time = function (ticks)
+
+    local ticks_unit = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+    local unit = ticks_unit
+    local time = ticks
+
+    if time > ticks_per_second then
+        unit = seconds
+        time = time / ticks_per_second
+        if time > seconds_per_minute then
+            unit = minutes
+            time = time / seconds_per_minute
+            if time > minutes_per_hour then
+                unit = hours
+                time = time / minutes_per_hour
+            end
+        end
+    end
+
+    return { unit = unit, value = time }
+end
+
+local to_ticks = function (unit, value)
+
+    local ticks_unit = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+    if unit == seconds then
+        value = value * ticks_per_second
+    elseif unit == minutes then
+        value = value * ticks_per_second * seconds_per_minute
+    elseif unit == hours then
+        value = value * ticks_per_second * seconds_per_minute * minutes_per_hour
+    end
+
+    return math.max(round(value), 1)
+end
+
 randomizations.accumulator_buffer = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
         if accumulator.energy_source.buffer_capacity ~= nil then
@@ -1929,32 +1980,11 @@ end
 
 -- New
 randomizations.plant_growth_time = function (id)
-
-    local ticks = "ticks"
-    local seconds = "seconds"
-    local minutes = "minutes"
-    local hours = "hours"
-
-    local ticks_per_second = 60
-    local seconds_per_minute = 60
-    local minutes_per_hour = 60
-
     for _, plant in pairs(data.raw["plant"]) do
         local old_value = plant.growth_ticks
 
-        local magnitude = ticks
-        if plant.growth_ticks > ticks_per_second then
-            magnitude = seconds
-            plant.growth_ticks = plant.growth_ticks / ticks_per_second
-            if plant.growth_ticks > seconds_per_minute then
-                magnitude = minutes
-                plant.growth_ticks = plant.growth_ticks / seconds_per_minute
-                if plant.growth_ticks > minutes_per_hour then
-                    magnitude = hours
-                    plant.growth_ticks = plant.growth_ticks / minutes_per_hour
-                end
-            end
-        end
+        local unit_time = to_unit_time(plant.growth_ticks)
+        plant.growth_ticks = unit_time.value
 
         randomize({
             id = id,
@@ -1965,15 +1995,7 @@ randomizations.plant_growth_time = function (id)
             dir = -1,
         })
 
-        if magnitude == seconds then
-            plant.growth_ticks = plant.growth_ticks * ticks_per_second
-        elseif magnitude == minutes then
-            plant.growth_ticks = plant.growth_ticks * ticks_per_second * seconds_per_minute
-        elseif magnitude == hours then
-            plant.growth_ticks = plant.growth_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
-        end
-
-        plant.growth_ticks = math.max(round(plant.growth_ticks), 1)
+        plant.growth_ticks = to_ticks(unit_time.unit, plant.growth_ticks)
 
         local factor = plant.growth_ticks / old_value
 
@@ -2458,6 +2480,54 @@ randomizations.solar_panel_production = function(id)
         })
 
         locale_utils.create_localised_description(solar_panel, util.parse_energy(solar_panel.production) / old_production, id)
+    end
+end
+
+-- New
+randomizations.sticker_duration = function (id)
+    local stickers = trigger_utils.get_sticker_creator_table()
+
+    local target_classes = {
+        ["capsule"] = true
+    }
+
+    -- As fate would have it, some capsules have multiple stickers handling different aspects of the same "effect".
+    -- For instance, yumako healing and animation are handled by two separate stickers.
+    -- This randomizes each separately, meaning yumako will get two descriptions of changed sticker duration.
+    -- Oh well :)
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+
+            local old_value = sticker.duration_in_ticks
+
+            local unit_time = to_unit_time(sticker.duration_in_ticks)
+            sticker.duration_in_ticks = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = sticker,
+                property = "duration_in_ticks",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            sticker.duration_in_ticks = to_ticks(unit_time.unit, sticker.duration_in_ticks)
+
+            local factor = sticker.duration_in_ticks / old_value
+
+            for _, prototype in pairs(affected_prototypes) do
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+            end
+        end
     end
 end
 

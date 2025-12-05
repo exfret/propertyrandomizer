@@ -88,10 +88,9 @@ local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
 randomizations = {}
 require("randomizations.numerical.item")
-randomizations.spoil_spawn("spoil_spawn")
 local trigger_util = require("lib/trigger")
 
-local projectiles = trigger_util.get_projectile_creator_table()
+local stickers = trigger_util.get_sticker_creator_table()
 
 local graph = build_graph.graph
 

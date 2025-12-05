@@ -19,6 +19,10 @@ local prototype_unit = "unit"
 local prototype_tree = "tree"
 local prototype_explosion = "explosion"
 local prototype_capture_robot = "capture-robot"
+local prototype_land_mine = "land-mine"
+local prototype_fire = "fire"
+local prototype_segmented_unit = "segmented-unit"
+local prototype_segment = "segment"
 
 local struct_trigger_effect = "trigger-effect"
 local struct_trigger_delivery = "trigger-delivery"
@@ -33,6 +37,9 @@ local struct_attack_reaction_item = "attack-reaction-item"
 local struct_spider_leg_trigger_effect = "spider-leg-trigger-effect"
 local struct_explosion_definition = "explosion-definition"
 local struct_damage_parameters = "damage-parameters"
+local struct_spoil_to_trigger_result = "spoil-to-trigger-result"
+local struct_segment_engine_specification = "segment-engine-specification"
+local struct_segment_specification = "segment-specification"
 
 local data_raw_table = function (class)
     return data.raw[class] or {}
@@ -59,6 +66,13 @@ local mtm_insert = function (mtm_table, key, value)
     table.insert(mtm_table[key], value)
 end
 
+local mtm_set_insert = function (mtm_table, key, name, value)
+    if mtm_table[key] == nil then
+        mtm_table[key] = {}
+    end
+    mtm_table[key][name] = value
+end
+
 local find_item_class = function (item_name)
     for class, _ in pairs(defines.prototypes.item) do
         if data_raw_table(class)[item_name] ~= nil then
@@ -69,9 +83,12 @@ local find_item_class = function (item_name)
 end
 local gather_item_name_structs = function (structs, item_name, stop_prototype)
     local class = find_item_class(item_name)
+    if structs[class] ~= nil and structs[class][item_name] ~= nil then
+        return
+    end
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local item = data_raw_table(class)[item_name]
-        mtm_insert(structs, class, item)
+        mtm_set_insert(structs, class, item_name, item)
         local gather_structs = export.item_class_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, item, stop_prototype)
@@ -89,9 +106,12 @@ local find_entity_class = function (entity_name)
 end
 local gather_entity_name_structs = function (structs, entity_name, stop_prototype)
     local class = find_entity_class(entity_name)
+    if structs[class] ~= nil and structs[class][entity_name] ~= nil then
+        return
+    end
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local entity = data_raw_table(class)[entity_name]
-        mtm_insert(structs, class, entity)
+        mtm_set_insert(structs, class, entity_name, entity)
         local gather_structs = export.entity_class_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, entity, stop_prototype)
@@ -109,9 +129,12 @@ local find_active_trigger_name_class = function (active_trigger_name)
 end
 local gather_active_trigger_structs = function (structs, active_trigger_name, stop_prototype)
     local class = find_active_trigger_name_class(active_trigger_name)
+    if structs[class] ~= nil and structs[class][active_trigger_name] ~= nil then
+        return
+    end
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local active_trigger = data_raw_table(class)[active_trigger_name]
-        mtm_insert(structs, class, active_trigger)
+        mtm_set_insert(structs, class, active_trigger_name, active_trigger)
         local gather_structs = export.active_trigger_class_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, active_trigger, stop_prototype)
@@ -274,7 +297,20 @@ local gather_spider_leg_trigger_effect_structs = function (structs, spider_leg_t
 end
 
 local gather_spoil_to_trigger_result_structs = function (structs, spoil_to_trigger_result, stop_prototype)
+    mtm_insert(structs, struct_spoil_to_trigger_result, spoil_to_trigger_result)
     export.gather_trigger_structs(structs, spoil_to_trigger_result.trigger, stop_prototype)
+end
+
+local gather_segment_specification_structs = function (structs, segment_specification, stop_prototype)
+    mtm_insert(structs, struct_segment_specification, segment_specification)
+    gather_entity_name_structs(structs, segment_specification.segment, stop_prototype)
+end
+
+local gather_segment_engine_specification_structs = function (structs, segment_engine_specification, stop_prototype)
+    mtm_insert(structs, struct_segment_engine_specification, segment_engine_specification)
+    for _, segment_specification in pairs(segment_engine_specification.segments) do
+        gather_segment_specification_structs(structs, segment_specification, stop_prototype)
+    end
 end
 
 export.gather_trigger_structs = function (structs, trigger, stop_prototype)
@@ -322,6 +358,9 @@ export.gather_stream_structs = function (structs, stream, stop_prototype)
     end
     if stream.action ~= nil then
         export.gather_trigger_structs(structs, stream.action, stop_prototype)
+    end
+    if stream.special_neutral_target_damage ~= nil then
+        gather_damage_parameters_structs(structs, stream.special_neutral_target_damage, stop_prototype)
     end
 end
 
@@ -380,6 +419,9 @@ export.gather_sticker_structs = function (structs, sticker, stop_prototype)
     if sticker.update_effects ~= nil then
         gather_trigger_effect_with_cooldown_structs(structs, sticker.update_effects, stop_prototype)
     end
+    if sticker.damage_per_tick ~= nil then
+        gather_damage_parameters_structs(structs, sticker.damage_per_tick, stop_prototype)
+    end
 end
 
 export.gather_spider_unit_structs = function (structs, spider_unit, stop_prototype)
@@ -434,6 +476,48 @@ export.gather_item_structs = function (structs, item, stop_prototype)
     end
 end
 
+export.gather_land_mine_structs = function (structs, land_mine, stop_prototype)
+    gather_entity_with_health_structs(structs, land_mine, stop_prototype)
+    if land_mine.action ~= nil then
+        export.gather_trigger_structs(structs, land_mine.action, stop_prototype)
+    end
+end
+
+export.gather_fire_structs = function (structs, fire, stop_prototype)
+    gather_entity_structs(structs, fire, stop_prototype)
+    gather_damage_parameters_structs(structs, fire.damage_per_tick, stop_prototype)
+    if fire.spawn_entity ~= nil then
+        gather_entity_name_structs(structs, fire.spawn_entity, stop_prototype)
+    end
+    if fire.on_fuel_added_action ~= nil then
+        export.gather_trigger_structs(structs, fire.on_fuel_added_action, stop_prototype)
+    end
+    if fire.on_damage_tick_effect ~= nil then
+        export.gather_trigger_structs(structs, fire.on_damage_tick_effect, stop_prototype)
+    end
+end
+
+export.gather_segment_structs = function (structs, segmented_unit, stop_prototype)
+    gather_entity_with_health_structs(structs, segmented_unit, stop_prototype)
+    if segmented_unit.update_effects ~= nil then
+        gather_trigger_effect_with_cooldown_structs(structs, segmented_unit.update_effects, stop_prototype)
+    end
+    if segmented_unit.update_effects_while_enraged ~= nil then
+        gather_trigger_effect_with_cooldown_structs(structs, segmented_unit.update_effects_while_enraged, stop_prototype)
+    end
+end
+
+export.gather_segmented_unit_structs = function (structs, segmented_unit, stop_prototype)
+    export.gather_segment_structs(structs, segmented_unit, stop_prototype)
+    gather_segment_engine_specification_structs(structs, segmented_unit.segment_engine, stop_prototype)
+    if segmented_unit.attack_parameters then
+        gather_attack_parameters_structs(structs, segmented_unit.attack_parameters, stop_prototype)
+    end
+    if segmented_unit.revenge_attack_parameters then
+        gather_attack_parameters_structs(structs, segmented_unit.revenge_attack_parameters, stop_prototype)
+    end
+end
+
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps projectiles to prototypes that may (directly or undirectly) create the projectile
 -------------------------------------------------------------------------------------------------------------------------------
@@ -466,6 +550,34 @@ export.get_projectile_creator_table = function ()
     return projectile_to_creators
 end
 
+local sticker_to_creators = nil
+
+export.get_sticker_creator_table = function ()
+    if sticker_to_creators ~= nil then
+        return sticker_to_creators
+    end
+
+    sticker_to_creators = {}
+
+    for item_name, item in pairs(items) do
+        local structs = {}
+        gather_item_name_structs(structs, item_name)
+        for _, sticker in pairs(structs[prototype_sticker] or {}) do
+            mtm_insert(sticker_to_creators, sticker.name, item)
+        end
+    end
+
+    for entity_name, entity in pairs(entities) do
+        local structs = {}
+        gather_entity_name_structs(structs, entity_name)
+        for _, sticker in pairs(structs[prototype_sticker] or {}) do
+            mtm_insert(sticker_to_creators, sticker.name, entity)
+        end
+    end
+
+    return sticker_to_creators
+end
+
 export.item_class_to_gather_struct_func = {
     [prototype_ammo] = export.gather_ammo_structs,
     [prototype_capsule] = export.gather_capsule_structs,
@@ -485,6 +597,10 @@ export.entity_class_to_gather_struct_func = {
     [prototype_tree] = export.gather_tree_structs,
     [prototype_explosion] = export.gather_explosion_structs,
     [prototype_capture_robot] = export.gather_capture_robot_structs,
+    [prototype_land_mine] = export.gather_land_mine_structs,
+    [prototype_fire] = export.gather_fire_structs,
+    [prototype_segmented_unit] = export.gather_segmented_unit_structs,
+    [prototype_segment] = export.gather_segment_structs,
 }
 
 export.active_trigger_class_to_gather_struct_func = {
