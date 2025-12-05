@@ -857,6 +857,12 @@ local spec = {
             val = "more"
         }
     },
+    sticker_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     sticker_duration = {
         setting = {
             name = "propertyrandomizer-misc",
