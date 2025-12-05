@@ -2550,37 +2550,77 @@ randomizations.sticker_healing = function (id)
 
         if #affected_prototypes > 0 then
             local sticker = data.raw.sticker[sticker_name]
-            if sticker.damage_per_tick ~= nil and sticker.damage_per_tick.amount < 0 then
-                local old_value = sticker.damage_per_tick.amount
+            local structs = {}
+            trigger_utils.gather_sticker_structs(structs, sticker, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = sticker })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-                local damage_interval = 1
-                if sticker.damage_interval ~= nil then
-                    damage_interval = sticker.damage_interval
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount < 0 then
+                    local damage_interval = 1
+                    if sticker.damage_interval ~= nil then
+                        damage_interval = sticker.damage_interval
+                    end
+                    local intervals_per_sec = 60 / damage_interval
+
+                    -- To healing per second
+                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
+
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+
+                    -- Back to healing per interval
+                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
+
+                    changed = true
                 end
-                local intervals_per_sec = 60 / damage_interval
+            end
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
 
-                -- To positive
-                sticker.damage_per_tick.amount = sticker.damage_per_tick.amount * -1
+-- New
+randomizations.sticker_movement_speed = function (id)
+    local stickers = trigger_utils.get_sticker_creator_table()
 
-                -- To healing per second
-                sticker.damage_per_tick.amount = sticker.damage_per_tick.amount * intervals_per_sec
+    local target_classes = {
+        ["capsule"] = true
+    }
+
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+            if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier > 1 then
+                local old_value = sticker.target_movement_modifier
 
                 randomize({
                     id = id,
                     prototype = sticker,
-                    tbl = sticker.damage_per_tick,
-                    property = "amount",
+                    property = "target_movement_modifier",
                     rounding = "discrete_float",
                     variance = "big",
                 })
 
-                -- Back to healing per interval
-                sticker.damage_per_tick.amount = sticker.damage_per_tick.amount / intervals_per_sec
-
-                -- Back to negative
-                sticker.damage_per_tick.amount = sticker.damage_per_tick.amount * -1
-
-                local factor = sticker.damage_per_tick.amount / old_value
+                local factor = sticker.target_movement_modifier / old_value
 
                 for _, prototype in pairs(affected_prototypes) do
                     locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
