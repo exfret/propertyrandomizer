@@ -6,6 +6,17 @@ local rng = require("lib/random/rng")
 
 local randomize = randnum.rand
 
+local non_stackable_items = {}
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            if item.stack_size <= 1 then
+                non_stackable_items[item.name] = true
+            end
+        end
+    end
+end
+
 -- New
 randomizations.recipe_crafting_times = function(id)
     for _, recipe in pairs(data.raw.recipe) do
@@ -71,12 +82,22 @@ randomizations.recipe_maximum_productivity = function(id)
     end
 end
 
-local non_stackable_items = {}
-for item_class, _ in pairs(defines.prototypes.item) do
-    if data.raw[item_class] ~= nil then
-        for _, item in pairs(data.raw[item_class]) do
-            if item.stack_size <= 1 then
-                non_stackable_items[item.name] = true
+-- New
+randomizations.recipe_result_percent_spoiled = function(id)
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.category ~= "recycling" and recipe.results ~= nil then
+            for _, product in pairs(recipe.results) do
+                if product.percent_spoiled ~= nil then
+                    randprob.rand({
+                        id = id,
+                        prototype = recipe,
+                        tbl = product,
+                        property = "percent_spoiled",
+                        rounding = "discrete_float",
+                        variance = "big",
+                        dir = -1,
+                    })
+                end
             end
         end
     end

@@ -761,6 +761,12 @@ local spec = {
             val = "more"
         }
     },
+    recipe_result_percent_spoiled = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     recipe_result_probabilities = {
         setting = {
             name = "propertyrandomizer-production",
