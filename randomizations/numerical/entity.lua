@@ -195,6 +195,100 @@ randomizations.agricultural_tower_radius = function(id)
 end
 
 -- New
+randomizations.artillery_projectile_damage = function (id)
+    local projectiles = trigger_utils.get_artillery_projectile_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw["artillery-projectile"][projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.artillery_projectile_effect_radius = function (id)
+    local projectiles = trigger_utils.get_artillery_projectile_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw["artillery-projectile"][projectile_name]
+            local structs = {}
+            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "small" })
+                end
+            end
+        end
+    end
+end
+
+-- New
 randomizations.asteroid_collector_arm_inventory = function(id)
     if data.raw["asteroid-collector"] ~= nil then
         for _, collector in pairs(data.raw["asteroid-collector"]) do

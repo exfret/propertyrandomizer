@@ -90,6 +90,24 @@ local spec = {
             val = "more"
         }
     },
+    artillery_projectile_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    artillery_projectile_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    artillery_projectile_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     asteroid_collector_arm_inventory = {
         setting = {
             name = "propertyrandomizer-production",
