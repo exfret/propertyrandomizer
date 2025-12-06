@@ -842,6 +842,13 @@ local spec = {
             val = "more"
         }
     },
+    -- How many projectiles get spawned by projectiles
+    projectile_projectile_count = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     pump_pumping_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
