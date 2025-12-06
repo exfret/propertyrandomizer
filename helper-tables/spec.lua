@@ -909,6 +909,12 @@ local spec = {
             val = "less"
         }
     },
+    space_connection_length = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     space_location_solar_power_space = {
         setting = {
             name = "propertyrandomizer-production",

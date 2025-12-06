@@ -170,6 +170,27 @@ randomizations.planet_solar_power = function (id)
     end
 end
 
+randomizations.space_connection_length = function (id)
+    for _, space_connection in pairs(data.raw["space-connection"]) do
+        if space_connection.length == nil then
+            space_connection.length = 600
+        end
+        local old_value = space_connection.length
+
+        randnum.rand({
+            id = id,
+            prototype = space_connection,
+            property = "length",
+            variance = "medium",
+            rounding = "discrete",
+            dir = -1,
+        })
+
+        local factor = space_connection.length / old_value
+        locale_utils.create_localised_description(space_connection, factor, id, { variance = "medium", flipped = true })
+    end
+end
+
 randomizations.space_location_solar_power_space = function (id)
 
     local space_location_classes = {
