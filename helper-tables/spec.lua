@@ -48,6 +48,12 @@ local spec = {
             val = "less"
         }
     },
+    ammo_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     ammo_magazine_size = {
         setting = {
             name = "propertyrandomizer-military",

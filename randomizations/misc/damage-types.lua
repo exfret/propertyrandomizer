@@ -8,6 +8,32 @@ for name, _ in pairs(data.raw["damage-type"]) do
     table.insert(damage_type_names, name)
 end
 
+local add_damage_type_description = function (prototype)
+    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), "\n[color=red](Damage type augment)[/color]"}
+end
+
+-- New
+randomizations.ammo_damage_types = function (id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local changed = false
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            local old_type = damage_parameters.type
+            damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+            if damage_parameters.type ~= old_type then
+                changed = true
+            end
+        end
+
+        if changed then
+            add_damage_type_description(ammo)
+        end
+    end
+end
+
 -- New
 randomizations.capsule_damage_types = function (id)
     for _, capsule in pairs(data.raw.capsule) do
@@ -25,7 +51,7 @@ randomizations.capsule_damage_types = function (id)
         end
 
         if changed then
-            capsule.localised_description = {"", locale_utils.find_localised_description(capsule), "\n[color=red](Damage type augment)[/color]"}
+            add_damage_type_description(capsule)
         end
     end
 end
@@ -63,7 +89,7 @@ randomizations.sticker_damage_types = function (id)
             end
             if changed then
                 for _, prototype in pairs(affected_prototypes) do
-                    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), "\n[color=red](Damage type augment)[/color]"}
+                    add_damage_type_description(prototype)
                 end
             end
         end
