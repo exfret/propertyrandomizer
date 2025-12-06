@@ -438,6 +438,24 @@ local spec = {
             val = "default"
         }
     },
+    fire_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fire_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fire_lifetime = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     fluid_box_locations = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -462,6 +480,18 @@ local spec = {
     fluid_heat_capacity = {
         setting = {
             name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    fluid_stream_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fluid_stream_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -1023,6 +1053,12 @@ local spec = {
     spoil_time = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    sticker_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },

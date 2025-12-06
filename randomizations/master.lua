@@ -23,7 +23,7 @@ require("randomizations/graph/technology")
 log("Gathering misc randomizations")
 
 -- Misc randomizations
-require("misc/beacon-profiles")
+require("randomizations/misc/beacon-profiles")
 require("randomizations/misc/ammo-categories")
 require("randomizations/misc/capsule-actions")
 require("randomizations/misc/damage-types")
