@@ -2228,7 +2228,8 @@ randomizations.projectile_effect_radius = function (id)
     local projectiles = trigger_utils.get_projectile_creator_table()
 
     local target_classes = {
-        ["capsule"] = true
+        ["capsule"] = true,
+        ["ammo"] = true,
     }
 
     for projectile_name, creators in pairs(projectiles) do
@@ -2250,7 +2251,7 @@ randomizations.projectile_effect_radius = function (id)
                 key = rng_key,
                 dummy = 1,
                 rounding = "none",
-                variance = "medium",
+                variance = "small",
             })
             local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
@@ -2261,9 +2262,16 @@ randomizations.projectile_effect_radius = function (id)
                 end
             end
 
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
             if randomized then
                 for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "small" })
                 end
             end
         end
