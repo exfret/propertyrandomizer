@@ -313,6 +313,28 @@ randomizations.gun_damage_modifier = function(id)
     end
 end
 
+randomizations.gun_minimum_range = function(id)
+    for _, gun in pairs(data.raw.gun) do
+        if gun.attack_parameters.min_range ~= nil then
+            local old_min_range = gun.attack_parameters.min_range
+
+            randomize({
+                id = id,
+                prototype = gun,
+                tbl = gun.attack_parameters,
+                property = "min_range",
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            gun.attack_parameters.range = gun.attack_parameters.range - old_min_range + gun.attack_parameters.min_range
+
+            local factor = gun.attack_parameters.min_range / old_min_range
+            locale_utils.create_localised_description(gun, factor, id, { variance = "medium" })
+        end
+    end
+end
+
 -- NEW
 randomizations.gun_movement_slowdown_factor = function(id)
     for _, gun in pairs(data.raw.gun) do
