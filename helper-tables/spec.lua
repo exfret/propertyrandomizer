@@ -471,6 +471,12 @@ local spec = {
             val = "more"
         }
     },
+    gun_minimum_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Broken without transformer now
     --[[gun_movement_slowdown_factor = {
         setting = {
