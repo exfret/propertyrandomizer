@@ -19,4 +19,5 @@ settings.startup = {
     ["propertyrandomizer-watch-the-world-burn"] = {value = false},
     ["propertyrandomizer-dupes"] = {value = false},
     ["propertyrandomizer-recipe-tech-unlock"] = {value = false},
+    ["propertyrandomizer-numerical-algorithm"] = {value = "fleishman"},
 }
