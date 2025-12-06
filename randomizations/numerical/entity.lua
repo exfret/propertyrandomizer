@@ -214,7 +214,7 @@ randomizations.artillery_projectile_damage = function (id)
         if #affected_prototypes > 0 then
             local projectile = data.raw["artillery-projectile"][projectile_name]
             local structs = {}
-            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
             local changed = false
             local rng_key = rng.key({ id = id, prototype = projectile })
             local factor = randomize({
@@ -234,7 +234,7 @@ randomizations.artillery_projectile_damage = function (id)
 
             if changed then
                 for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
                 end
             end
         end
@@ -281,7 +281,7 @@ randomizations.artillery_projectile_effect_radius = function (id)
 
             if randomized then
                 for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "small" })
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
                 end
             end
         end
@@ -1074,6 +1074,192 @@ randomizations.electric_pole_supply_area = function(id)
         electric_pole.supply_area_distance = math.min(max_value, electric_pole.supply_area_distance + collision_radius)
 
         locale_utils.create_localised_description(electric_pole, electric_pole.supply_area_distance / electric_pole_to_old_supply_area[electric_pole.name], id, { variance = "small" })
+    end
+end
+
+-- New
+randomizations.fire_damage = function (id)
+    local fires = trigger_utils.get_fire_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for fire_name, creators in pairs(fires) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local fire = data.raw.fire[fire_name]
+            local structs = {}
+            trigger_utils.gather_fire_structs(structs, fire, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = fire })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fire_lifetime = function (id)
+    local fires = trigger_utils.get_fire_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for fire_name, creators in pairs(fires) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local fire = data.raw.fire[fire_name]
+            if fire.initial_lifetime == nil then
+                fire.initial_lifetime = 300
+            end
+
+            local old_value = fire.initial_lifetime
+            local unit_time = to_unit_time(fire.initial_lifetime)
+            fire.initial_lifetime = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = fire,
+                property = "initial_lifetime",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            fire.initial_lifetime = to_ticks(unit_time.unit, fire.initial_lifetime)
+
+            local factor = fire.initial_lifetime / old_value
+            for _, prototype in pairs(affected_prototypes) do
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_stream_damage = function (id)
+    local streams = trigger_utils.get_stream_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for stream_name, creators in pairs(streams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local stream = data.raw.stream[stream_name]
+            local structs = {}
+            trigger_utils.gather_stream_structs(structs, stream, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = stream })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_stream_effect_radius = function (id)
+    local streams = trigger_utils.get_stream_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for stream_name, creators in pairs(streams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local stream = data.raw.stream[stream_name]
+            local structs = {}
+            trigger_utils.gather_stream_structs(structs, stream, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = stream })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
     end
 end
 
@@ -2885,11 +3071,71 @@ randomizations.space_platform_initial_items = function (id)
 end
 
 -- New
+randomizations.sticker_damage = function (id)
+    local stickers = trigger_utils.get_sticker_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true
+    }
+
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+            local structs = {}
+            trigger_utils.gather_sticker_structs(structs, sticker, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = sticker })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    local damage_interval = 1
+                    if sticker.damage_interval ~= nil then
+                        damage_interval = sticker.damage_interval
+                    end
+                    local intervals_per_sec = 60 / damage_interval
+
+                    -- To damage per second
+                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
+
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+
+                    -- Back to damage per interval
+                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
+
+                    changed = true
+                end
+            end
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
 randomizations.sticker_duration = function (id)
     local stickers = trigger_utils.get_sticker_creator_table()
 
     local target_classes = {
-        ["capsule"] = true
+        ["capsule"] = true,
+        ["ammo"] = true,
     }
 
     -- As fate would have it, some capsules have multiple stickers handling different aspects of the same "effect".
@@ -2996,7 +3242,8 @@ randomizations.sticker_movement_speed = function (id)
     local stickers = trigger_utils.get_sticker_creator_table()
 
     local target_classes = {
-        ["capsule"] = true
+        ["capsule"] = true,
+        ["ammo"] = true,
     }
 
     for sticker_name, creators in pairs(stickers) do
@@ -3010,7 +3257,12 @@ randomizations.sticker_movement_speed = function (id)
 
         if #affected_prototypes > 0 then
             local sticker = data.raw.sticker[sticker_name]
-            if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier > 1 then
+            if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier ~= 1 then
+                local dir = 1
+                if sticker.target_movement_modifier < 1 then
+                    dir = -1
+                end
+
                 local old_value = sticker.target_movement_modifier
 
                 randomize({
@@ -3019,12 +3271,13 @@ randomizations.sticker_movement_speed = function (id)
                     property = "target_movement_modifier",
                     rounding = "discrete_float",
                     variance = "big",
+                    dir = dir,
                 })
 
                 local factor = sticker.target_movement_modifier / old_value
 
                 for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big", flipped = dir < 0 })
                 end
             end
         end
