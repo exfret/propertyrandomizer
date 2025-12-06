@@ -71,6 +71,36 @@ randomizations.ammo_magazine_size = function(id)
     end
 end
 
+-- New
+randomizations.ammo_projectile_count = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
+
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.repeat_count ~= nil and trigger.repeat_count > 1 then
+                trigger.repeat_count = randnum.fixes(rounding_params, trigger.repeat_count * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
 randomizations.ammo_projectile_range = function(id)
     for _, ammo in pairs(data.raw.ammo) do
         local structs = {}

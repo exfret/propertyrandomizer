@@ -317,7 +317,7 @@ end
 export.gather_trigger_structs = function (structs, trigger, stop_prototype)
     local triggers = to_array(trigger)
     for _, t in pairs(triggers) do
-        mtm_insert(structs, struct_trigger, trigger)
+        mtm_insert(structs, struct_trigger, t)
         if t.action_delivery ~= nil then
             local trigger_deliveries = t.action_delivery
             if trigger_deliveries.type ~= nil then

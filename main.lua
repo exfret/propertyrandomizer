@@ -81,6 +81,10 @@ for class, amount in pairs(per_entity_class) do
 end]]
 
 global_seed = 767614037
+global_chaos_range = 1
+global_chaos = 1
+global_bias = 0
+global_bias_idx = 2
 
 local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
@@ -90,7 +94,7 @@ randomizations = {}
 require("randomizations.numerical.item")
 local trigger_util = require("lib/trigger")
 
-local stickers = trigger_util.get_sticker_creator_table()
+randomizations.ammo_projectile_count("ammo_projectile_count")
 
 local graph = build_graph.graph
 

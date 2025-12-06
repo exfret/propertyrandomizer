@@ -60,6 +60,12 @@ local spec = {
             val = "more"
         }
     },
+    ammo_projectile_count = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     ammo_projectile_range = {
         setting = {
             name = "propertyrandomizer-military",
