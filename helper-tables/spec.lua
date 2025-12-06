@@ -788,6 +788,12 @@ local spec = {
             val = "more"
         }
     },
+    projectile_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     projectile_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",

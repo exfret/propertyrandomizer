@@ -2178,6 +2178,52 @@ randomizations.plant_harvest_pollution = function (id)
     end
 end
 
+randomizations.projectile_damage = function (id)
+    local projectiles = trigger_utils.get_projectile_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
 randomizations.projectile_effect_radius = function (id)
     local projectiles = trigger_utils.get_projectile_creator_table()
 
