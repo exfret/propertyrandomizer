@@ -23,6 +23,13 @@ local round = function (n)
     return math.floor(n + 0.5)
 end
 
+local to_array = function (single_or_array)
+    if type(single_or_array) ~= "table" or single_or_array[1] == nil then
+        return { single_or_array }
+    end
+    return single_or_array
+end
+
 randomizations.ammo_damage = function(id)
     for _, ammo in pairs(data.raw.ammo) do
         local structs = {}
@@ -125,6 +132,32 @@ randomizations.ammo_projectile_range = function(id)
 
         if changed then
             locale_utils.create_localised_description(ammo, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.ammo_range_modifier = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local ammo_types = to_array(ammo.ammo_type)
+        for _, ammo_type in pairs(ammo_types) do
+            if ammo_type.range_modifier == nil then
+                ammo_type.range_modifier = 1
+            end
+            local old_value = ammo_type.range_modifier
+
+            randomize({
+                id = id,
+                prototype = ammo,
+                tbl = ammo_type,
+                property = "range_modifier",
+                rounding = "discrete_float",
+                variance = "small",
+                dir = 1,
+            })
+
+            local factor = ammo_type.range_modifier / old_value
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "small" })
         end
     end
 end
