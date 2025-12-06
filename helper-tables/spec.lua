@@ -42,6 +42,12 @@ local spec = {
             val = "more"
         }
     },]]
+    ammo_cooldown_modifier = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     ammo_damage = {
         setting = {
             name = "propertyrandomizer-military",
