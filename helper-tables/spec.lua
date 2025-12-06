@@ -722,6 +722,30 @@ local spec = {
             val = "less"
         }
     },
+    planet_day_night_cycles = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    planet_gravity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    planet_lightning_density = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    planet_solar_power = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     plant_growth_time = {
         setting = {
             name = "propertyrandomizer-production",
@@ -883,6 +907,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-production",
             val = "less"
+        }
+    },
+    space_location_solar_power_space = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
         }
     },
     space_platform_initial_items = {
