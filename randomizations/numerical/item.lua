@@ -30,6 +30,39 @@ local to_array = function (single_or_array)
     return single_or_array
 end
 
+-- New
+randomizations.ammo_cooldown_modifier = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local ammo_types = to_array(ammo.ammo_type)
+        for _, ammo_type in pairs(ammo_types) do
+            if ammo_type.cooldown_modifier == nil then
+                ammo_type.cooldown_modifier = 1
+            end
+
+            -- To shooting speed modifier
+            ammo_type.cooldown_modifier = 1 / ammo_type.cooldown_modifier
+
+            local old_value = ammo_type.cooldown_modifier
+
+            randomize({
+                id = id,
+                prototype = ammo,
+                tbl = ammo_type,
+                property = "cooldown_modifier",
+                rounding = "discrete_float",
+                variance = "medium",
+                dir = 1,
+            })
+
+            local factor = ammo_type.cooldown_modifier / old_value
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "medium" })
+
+            -- Back to cooldown modifier
+            ammo_type.cooldown_modifier = 1 / ammo_type.cooldown_modifier
+        end
+    end
+end
+
 randomizations.ammo_damage = function(id)
     for _, ammo in pairs(data.raw.ammo) do
         local structs = {}
