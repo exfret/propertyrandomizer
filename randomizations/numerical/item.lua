@@ -24,80 +24,29 @@ local round = function (n)
 end
 
 randomizations.ammo_damage = function(id)
-    local function get_targets(tbls, action)
-        local targets = randomizations.trigger({}, action, "gather-damage")
-        for _, target in pairs(targets) do
-            table.insert(tbls, target)
-        end
-
-        -- Consider any projectiles that cause further damage
-        local projectiles = {}
-        for _, projectile in pairs(randomizations.trigger({}, action, "gather-projectiles")) do
-            table.insert(projectiles, projectile)
-        end
-        for _, projectile in pairs(randomizations.trigger({}, action, "gather-artillery-projectiles")) do
-            table.insert(projectiles, projectile)
-        end
-        for _, projectile in pairs(projectiles) do
-            local proj_prot = data.raw.projectile[projectile]
-            if proj_prot == nil then
-                proj_prot = data.raw["artillery-projectile"][projectile]
-            end
-            -- See if this projectile's been touched for the purposes of this randomization
-            if not randomization_info.touched[rng.key({id = id, prototype = proj_prot})] then
-                randomization_info.touched[rng.key({id = id, prototype = proj_prot})] = true
-
-                if proj_prot.action ~= nil then
-                    get_targets(tbls, proj_prot.action)
-                end
-                if proj_prot.final_action ~= nil then
-                    get_targets(tbls, proj_prot.final_action)
-                end
-            end
-        end
-    end
-
-    -- Randomize within ammo categories
-    for _, ammo_category in pairs(data.raw["ammo-category"]) do
-        local tbls = {}
-        local ammo_to_old_damage = {}
-
-        for _, ammo in pairs(data.raw.ammo) do
-            if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
-                ammo_to_old_damage[ammo.name] = 0
-                local new_targets = {}
-                get_targets(new_targets, ammo.ammo_type.action)
-                for _, new_target in pairs(new_targets) do
-                    -- Just add up damage amounts
-                    ammo_to_old_damage[ammo.name] = ammo_to_old_damage[ammo.name] + new_target.amount
-                    table.insert(tbls, new_target)
-                end
-            end
-        end
-
-        randomizations.linked({
-            id = id,
-            tbls = tbls,
-            property = "amount",
-            range = "small",
-            rounding = "discrete_float"
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "medium",
+            rounding = "none",
+            dir = 1,
         })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-        for _, ammo in pairs(data.raw.ammo) do
-            if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
-                -- Just get the targets/damage amounts again
-                local new_damage_amount = 0
-                local targets = {}
-                get_targets(targets, ammo.ammo_type.action)
-                for _, target in pairs(targets) do
-                    new_damage_amount = new_damage_amount + target.amount
-                end
-
-                -- Check that this ammo's damage wasn't 0 just in case it's some special action bullet
-                if ammo_to_old_damage[ammo.name] ~= 0 then
-                    locale_utils.create_localised_description(ammo, new_damage_amount / ammo_to_old_damage[ammo.name], id)
-                end
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id)
         end
     end
 end
