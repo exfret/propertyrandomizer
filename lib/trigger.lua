@@ -527,6 +527,34 @@ end
 --- This returns a table that maps projectiles to prototypes that may (directly or undirectly) create the projectile
 -------------------------------------------------------------------------------------------------------------------------------
 
+local artillery_projectile_to_creators = nil
+
+export.get_artillery_projectile_creator_table = function ()
+    if artillery_projectile_to_creators ~= nil then
+        return artillery_projectile_to_creators
+    end
+
+    artillery_projectile_to_creators = {}
+
+    for item_name, item in pairs(items) do
+        local structs = {}
+        gather_item_name_structs(structs, item_name)
+        for _, projectile in pairs(structs[prototype_artillery_projectile] or {}) do
+            mtm_insert(artillery_projectile_to_creators, projectile.name, item)
+        end
+    end
+
+    for entity_name, entity in pairs(entities) do
+        local structs = {}
+        gather_entity_name_structs(structs, entity_name)
+        for _, projectile in pairs(structs[prototype_artillery_projectile] or {}) do
+            mtm_insert(artillery_projectile_to_creators, projectile.name, entity)
+        end
+    end
+
+    return artillery_projectile_to_creators
+end
+
 local projectile_to_creators = nil
 
 export.get_projectile_creator_table = function ()

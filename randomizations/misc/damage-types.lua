@@ -35,6 +35,47 @@ randomizations.ammo_damage_types = function (id)
 end
 
 -- New
+randomizations.artillery_projectile_damage_types = function (id)
+    local projectiles = trigger_utils.get_artillery_projectile_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw["artillery-projectile"][projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                local old_type = damage_parameters.type
+                damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+                if damage_parameters.type ~= old_type then
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    add_damage_type_description(prototype)
+                end
+            end
+        end
+    end
+end
+
+-- New
 randomizations.capsule_damage_types = function (id)
     for _, capsule in pairs(data.raw.capsule) do
         local structs = {}
