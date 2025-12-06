@@ -122,6 +122,34 @@ randomizations.ammo_magazine_size = function(id)
     end
 end
 
+randomizations.ammo_projectile_range = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, trigger_delivery in pairs(structs["trigger-delivery"] or {}) do
+            if trigger_delivery.max_range ~= nil and trigger_delivery.max_range > 0 then
+                trigger_delivery.max_range = randnum.fixes(rounding_params, trigger_delivery.max_range * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "big" })
+        end
+    end
+end
+
 randomizations.armor_inventory_bonus = function(id)
     local prototypes = {}
     local armor_to_old_bonus = {}
