@@ -72,6 +72,12 @@ local spec = {
             val = "more"
         }
     },
+    ammo_range_modifier = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     armor_inventory_bonus = {
         setting = {
             name = "propertyrandomizer-misc",
