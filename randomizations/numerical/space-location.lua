@@ -1,5 +1,11 @@
 local randnum = require("lib/random/randnum")
 local locale_utils = require("lib/locale")
+local rng = require("lib/random/rng")
+
+local space_location_classes = {
+    "planet",
+    "space-location",
+}
 
 local round = function (n)
     return math.floor(n + 0.5)
@@ -53,6 +59,64 @@ local to_ticks = function (unit, value)
     end
 
     return math.max(round(value), 1)
+end
+
+randomizations.asteroid_spawns = function (id)
+    for _, class in pairs(space_location_classes) do
+        for _, space_location in pairs(data.raw[class]) do
+            if space_location.asteroid_spawn_definitions ~= nil then
+                local entity_to_factor = {}
+                local rng_key = rng.key({ id = id, prototype = space_location })
+                for _, asd in pairs(space_location.asteroid_spawn_definitions) do
+                    local factor = entity_to_factor[asd.asteroid]
+                    if factor == nil then
+                        local dir = -1
+                        if asd.type == "asteroid-chunk" then
+                            dir = 1
+                        end
+                        factor = randnum.rand({
+                            key = rng_key,
+                            dummy = 1,
+                            variance = "medium",
+                            rounding = "none",
+                            dir = dir,
+                        })
+                        entity_to_factor[asd.asteroid] = factor
+                    end
+                    asd.probability = asd.probability * factor
+                end
+            end
+        end
+    end
+
+    for _, space_connection in pairs(data.raw["space-connection"]) do
+        for i = 1, #space_connection.asteroid_spawn_definitions or 0 do
+            local asd = space_connection.asteroid_spawn_definitions[i]
+            space_connection.asteroid_spawn_definitions[i] = {
+                type = asd.type or "entity",
+                asteroid = asd.asteroid or asd[1],
+                spawn_points = asd.spawn_points or asd[2],
+            }
+            asd = space_connection.asteroid_spawn_definitions[i]
+
+            local dir = -1
+            if asd.type == "asteroid-chunk" then
+                dir = 1
+            end
+            local factor = randnum.rand({
+                id = id,
+                prototype = space_connection,
+                dummy = 1,
+                variance = "medium",
+                rounding = "none",
+                dir = dir,
+            })
+
+            for _, spawn_point in pairs(asd.spawn_points) do
+                spawn_point.probability = spawn_point.probability * factor
+            end
+        end
+    end
 end
 
 randomizations.planet_day_night_cycles = function (id)
@@ -192,12 +256,6 @@ randomizations.space_connection_length = function (id)
 end
 
 randomizations.space_location_solar_power_space = function (id)
-
-    local space_location_classes = {
-        "planet",
-        "space-location",
-    }
-
     for _, class in pairs(space_location_classes) do
         for _, planet in pairs(data.raw[class]) do
             if planet.solar_power_in_space == nil then
