@@ -812,6 +812,12 @@ local spec = {
             val = "more"
         }
     },
+    projectile_piercing_power = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     pump_pumping_speed = {
         setting = {
             name = "propertyrandomizer-logistic",

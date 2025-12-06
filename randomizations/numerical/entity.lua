@@ -2270,6 +2270,44 @@ randomizations.projectile_effect_radius = function (id)
     end
 end
 
+randomizations.projectile_piercing_power = function (id)
+    local projectiles = trigger_utils.get_projectile_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            if projectile.piercing_damage ~= nil and projectile.piercing_damage > 0 then
+                local old_value = projectile.piercing_damage
+
+                randomize({
+                    id = id,
+                    prototype = projectile,
+                    property = "piercing_damage",
+                    rounding = "discrete_float",
+                    variance = "big",
+                })
+
+                local factor = projectile.piercing_damage / old_value
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
 randomizations.pump_pumping_speed = function(id)
     for _, pump in pairs(data.raw.pump) do
         local old_pumping_speed = pump.pumping_speed
