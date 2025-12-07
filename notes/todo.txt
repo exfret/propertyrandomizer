@@ -1,6 +1,6 @@
 WORKING ON:
- - Integrating Nifyr's changes
  - Undo surface isolatability (too fickle)
+ - Fix my new randomization
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
  - Back to ammo preservation
  - Fix topological sort
