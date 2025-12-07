@@ -199,6 +199,12 @@ local spec = {
             val = "more"
         }
     },
+    beam_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     beam_width = {
         setting = {
             name = "propertyrandomizer-military",
