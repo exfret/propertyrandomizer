@@ -6,7 +6,7 @@ local locale_utils = require("lib/locale")
 
 -- New
 randomizations.chain_max_jumps = function (id)
-    local chains = trigger_utils.get_chain_active_trigger_creator_table()
+    local chains = trigger_utils.get_creator_table("chain-active-trigger")
 
     local target_classes = {
         ["ammo"] = true,
@@ -48,7 +48,7 @@ end
 
 -- New
 randomizations.chain_fork_chance = function (id)
-    local chains = trigger_utils.get_chain_active_trigger_creator_table()
+    local chains = trigger_utils.get_creator_table("chain-active-trigger")
 
     local target_classes = {
         ["ammo"] = true,
