@@ -735,6 +735,12 @@ local spec = {
             val = "default"
         }
     },
+    landmine_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     landmine_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",
