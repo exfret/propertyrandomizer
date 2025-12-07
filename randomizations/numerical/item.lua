@@ -468,7 +468,7 @@ randomizations.module_effects = function(id)
         "pollution",
         "quality"
     }
-    -- You have no idea the lengths i went to in order to develop this point system and calculate these stats
+    -- You have no idea the lengths I went to in order to develop this point system and calculate these stats
     local tier_points = {
         {
             negative_per_cat = -16,
@@ -483,6 +483,7 @@ randomizations.module_effects = function(id)
             target_sum = 70
         }
     }
+    -- Frequency: weighting to determine relatively how frequent it is
     local negative_effect_stats = {
         consumption = {
             name = "consumption",
@@ -576,7 +577,6 @@ randomizations.module_effects = function(id)
         -- Assuming at most 1 module per tier in each category
         module_categories[module.category][module.tier] = module
 
-        -- 
         module.localised_description = {"", locale_utils.find_localised_description(module), "\n[color=red](Reconfigured)[/color]"}
     end
     
@@ -615,7 +615,12 @@ randomizations.module_effects = function(id)
             end
 
             -- Move all of the code above to outside of the module loop to have different tiers of the same module categories to have the same effects
-
+            if tier_points[tier] == nil then
+                tier_points[tier] = {
+                    target_sum = tier * 25,
+                    negative_per_cat = tier * -8 - 8
+                }
+            end
             local negative_target_sum = tier_points[tier].negative_per_cat * negative_effect_count
             local positive_target_sum = tier_points[tier].target_sum - negative_target_sum
             local positive_sum = 0
