@@ -24,6 +24,7 @@ local prototype_fire = "fire"
 local prototype_segmented_unit = "segmented-unit"
 local prototype_segment = "segment"
 local prototype_asteroid = "asteroid"
+local prototype_active_defense_equipment = "active-defense-equipment"
 
 local struct_trigger_effect = "trigger-effect"
 local struct_trigger_delivery = "trigger-delivery"
@@ -57,6 +58,13 @@ local entities = {}
 for class, _ in pairs(defines.prototypes.entity) do
     for _, entity in pairs(data_raw_table(class)) do
         entities[entity.name] = entity
+    end
+end
+
+local equipment = {}
+for class, _ in pairs(defines.prototypes.equipment) do
+    for _, e in pairs(data_raw_table(class)) do
+        equipment[e.name] = e
     end
 end
 
@@ -139,6 +147,29 @@ local gather_active_trigger_structs = function (structs, active_trigger_name, st
         local gather_structs = export.active_trigger_class_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, active_trigger, stop_prototype)
+        end
+    end
+end
+
+local find_equipment_name_class = function (equipment_name)
+    for class, _ in pairs(defines.prototypes.equipment) do
+        if data_raw_table(class)[equipment_name] ~= nil then
+            return class
+        end
+    end
+    error()
+end
+local gather_equipment_name_structs = function (structs, equipment_name, stop_prototype)
+    local class = find_equipment_name_class(equipment_name)
+    if structs[class] ~= nil and structs[class][equipment_name] ~= nil then
+        return
+    end
+    if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
+        local equipment = data_raw_table(class)[equipment_name]
+        mtm_set_insert(structs, class, equipment_name, equipment)
+        local gather_structs = export.equipment_class_to_gather_struct_func[class]
+        if gather_structs ~= nil then
+            gather_structs(structs, equipment, stop_prototype)
         end
     end
 end
@@ -523,6 +554,10 @@ export.gather_asteroid_structs = function (structs, asteroid, stop_prototype)
     gather_entity_with_health_structs(structs, asteroid, stop_prototype)
 end
 
+export.gather_active_defense_equipment_structs = function (structs, active_defense_equipment, stop_prototype)
+    gather_attack_parameters_structs(structs, active_defense_equipment.attack_parameters, stop_prototype)
+end
+
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
 -------------------------------------------------------------------------------------------------------------------------------
@@ -549,6 +584,14 @@ export.get_creator_table = function (prototype_type)
         gather_entity_name_structs(structs, entity_name)
         for _, prototype in pairs(structs[prototype_type] or {}) do
             mtm_insert(prototype_to_creators[prototype_type], prototype.name, entity)
+        end
+    end
+
+    for equipment_name, e in pairs(equipment) do
+        local structs = {}
+        gather_equipment_name_structs(structs, equipment_name)
+        for _, prototype in pairs(structs[prototype_type] or {}) do
+            mtm_insert(prototype_to_creators[prototype_type], prototype.name, e)
         end
     end
 
@@ -584,6 +627,10 @@ export.entity_class_to_gather_struct_func = {
 export.active_trigger_class_to_gather_struct_func = {
     [prototype_chain_active_trigger] = export.gather_chain_active_trigger_structs,
     [prototype_delayed_active_trigger] = export.gather_delayed_active_trigger_structs,
+}
+
+export.equipment_class_to_gather_struct_func = {
+    [prototype_active_defense_equipment] = export.gather_active_defense_equipment_structs,
 }
 
 return export

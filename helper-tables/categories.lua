@@ -54,7 +54,6 @@ categories.entities_with_module_slots = {
 
 categories.equipment_energy_usage_keys = {
     ["belt-immunity-equipment"] = {["energy_consumption"] = "power"},
-    ["energy-shield-equipment"] = {["energy_per_shield"] = "energy"},
     ["movement-bonus-equipment"] = {["energy_consumption"] = "power"},
     ["night-vision-equipment"] = {["energy_input"] = "power"}
 }
