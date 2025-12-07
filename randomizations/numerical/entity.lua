@@ -65,7 +65,6 @@ randomizations.accumulator_output_flow = function(id)
     end
 end
 
--- New
 randomizations.agricultural_tower_radius = function(id)
     if data.raw["agricultural-tower"] ~= nil then
         for _, ag_tower in pairs(data.raw["agricultural-tower"]) do
@@ -85,7 +84,6 @@ randomizations.agricultural_tower_radius = function(id)
     end
 end
 
--- Not added to spec yet
 randomizations.asteroid_collector_offset = function(id)
     if data.raw["asteroid-collector"] ~= nil then
         for _, collector in pairs(data.raw["asteroid-collector"]) do
@@ -100,7 +98,6 @@ randomizations.asteroid_collector_offset = function(id)
     end
 end
 
--- New
 randomizations.asteroid_collector_radius = function(id)
     if data.raw["asteroid-collector"] ~= nil then
         for _, collector in pairs(data.raw["asteroid-collector"]) do
@@ -119,7 +116,6 @@ randomizations.asteroid_collector_radius = function(id)
     end
 end
 
--- New
 randomizations.asteroid_collector_speed = function(id)
     if data.raw["asteroid-collector"] then
         for _, collector in pairs(data.raw["asteroid-collector"]) do
@@ -212,8 +208,6 @@ randomizations.beacon_supply_area = function(id)
     end
 end
 
--- New
--- Not added to spec yet
 randomizations.beam_damage = function(id)
     for _, beam in pairs(data.raw.beam) do
         if beam.action ~= nil then
@@ -225,8 +219,6 @@ randomizations.beam_damage = function(id)
     end
 end
 
--- New
--- Not added to spec yet
 randomizations.beam_damage_interval = function(id)
     for _, beam in pairs(data.raw.beam) do
         randomize({
@@ -239,8 +231,6 @@ randomizations.beam_damage_interval = function(id)
     end
 end
 
--- New
--- Not added to spec yet
 randomizations.beam_width = function(id)
     for _, beam in pairs(data.raw.beam) do
         randomize({
@@ -428,8 +418,6 @@ randomizations.burner_generator_output = function(id)
     end
 end
 
--- New
--- Not added to spec yet
 randomizations.capture_robot_capture_speed = function(id)
     if data.raw["capture-robot"] ~= nil then
         for _, bot in pairs(data.raw["capture-robot"]) do
@@ -437,17 +425,19 @@ randomizations.capture_robot_capture_speed = function(id)
                 bot.capture_speed = 1
             end
 
+            local old_speed = bot.capture_speed
+
             randomize({
                 id = id,
                 prototype = bot,
                 property = "capture_speed"
             })
+
+            locale_utils.create_localised_description(bot, bot.capture_speed / old_speed, id)
         end
     end
 end
 
--- New
--- Not added to spec yet
 randomizations.capture_robot_search_radius = function(id)
     if data.raw["capture-robot"] ~= nil then
         for _, bot in pairs(data.raw["capture-robot"]) do
@@ -455,19 +445,16 @@ randomizations.capture_robot_search_radius = function(id)
                 bot.search_radius = 1
             end
 
+            local old_search_radius = bot.search_radius
+
             randomize({
                 id = id,
                 prototype = bot,
                 property = "search_radius"
             })
-        end
-    end
-end
 
--- NEW
-randomizations.car_effectivity = function(id)
-    for _, car in pairs(data.raw.car) do
-        -- CRITICAL TODO
+            locale_utils.create_localised_description(bot, bot.search_radius / old_search_radius, id)
+        end
     end
 end
 
@@ -895,7 +882,6 @@ randomizations.landmine_trigger_radius = function(id)
     end
 end
 
--- New
 randomizations.locomotive_max_speed = function(id)
 
     local max_value = 0
@@ -1120,7 +1106,6 @@ randomizations.max_health = function(id)
     end
 end
 
--- New
 randomizations.mining_fluid_amount_needed = function(id)
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
@@ -1161,7 +1146,6 @@ randomizations.mining_speeds = function(id)
     end
 end
 
--- New
 randomizations.mining_times = function(id)
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if entity_class ~= "resource" and data.raw[entity_class] ~= nil then
@@ -1187,7 +1171,6 @@ randomizations.mining_times = function(id)
     end
 end
 
--- New
 randomizations.mining_times_resource = function(id)
     for _, resource in pairs(data.raw.resource) do
         if resource.minable ~= nil then
@@ -1369,7 +1352,6 @@ randomizations.reactor_neighbour_bonus = function(id)
     end
 end
 
--- New
 randomizations.resistances = function(id)
     local damage_type_names = {}
     for name, _ in pairs(data.raw["damage-type"]) do
@@ -2016,7 +1998,6 @@ randomizations.vehicle_crash_damage = function(id)
     end
 end
 
--- New
 randomizations.vehicle_effectivity = function(id)
     -- Effectivity for cars and locomotives are in separate spots
     for _, car in pairs(data.raw.car) do

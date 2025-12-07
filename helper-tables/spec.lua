@@ -192,7 +192,6 @@ local spec = {
             val = "default"
         }
     },
-
     capture_robot_capture_speed = {
         setting = {
             name = "propertyrandomizer-misc",
