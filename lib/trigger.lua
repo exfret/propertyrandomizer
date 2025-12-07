@@ -401,7 +401,7 @@ export.gather_capsule_structs = function (structs, capsule, stop_prototype)
 end
 
 export.gather_combat_robot_structs = function (structs, combat_robot, stop_prototype)
-    gather_entity_structs(structs, combat_robot, stop_prototype)
+    gather_entity_with_health_structs(structs, combat_robot, stop_prototype)
     gather_attack_parameters_structs(structs, combat_robot.attack_parameters, stop_prototype)
     if combat_robot.destroy_action ~= nil then
         export.gather_trigger_structs(structs, combat_robot.destroy_action, stop_prototype)
