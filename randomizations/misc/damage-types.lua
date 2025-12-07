@@ -183,6 +183,7 @@ randomizations.projectile_damage_types = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["capsule"] = true,
     }
 
     for projectile_name, creators in pairs(projectiles) do
