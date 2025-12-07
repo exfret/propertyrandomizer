@@ -25,6 +25,9 @@ local prototype_segmented_unit = "segmented-unit"
 local prototype_segment = "segment"
 local prototype_asteroid = "asteroid"
 local prototype_active_defense_equipment = "active-defense-equipment"
+local prototype_ammo_turret = "ammo-turret"
+local prototype_electric_turret = "electric-turret"
+local prototype_fluid_turret = "fluid-turret"
 
 local struct_trigger_effect = "trigger-effect"
 local struct_trigger_delivery = "trigger-delivery"
@@ -345,6 +348,11 @@ local gather_segment_engine_specification_structs = function (structs, segment_e
     end
 end
 
+local gather_turret_structs = function (structs, turret, stop_prototype)
+    gather_entity_with_health_structs(structs, turret, stop_prototype)
+    gather_attack_parameters_structs(structs, turret.attack_parameters, stop_prototype)
+end
+
 export.gather_trigger_structs = function (structs, trigger, stop_prototype)
     local triggers = to_array(trigger)
     for _, t in pairs(triggers) do
@@ -550,13 +558,15 @@ export.gather_segmented_unit_structs = function (structs, segmented_unit, stop_p
     end
 end
 
-export.gather_asteroid_structs = function (structs, asteroid, stop_prototype)
-    gather_entity_with_health_structs(structs, asteroid, stop_prototype)
-end
+export.gather_asteroid_structs = gather_entity_with_health_structs
 
 export.gather_active_defense_equipment_structs = function (structs, active_defense_equipment, stop_prototype)
     gather_attack_parameters_structs(structs, active_defense_equipment.attack_parameters, stop_prototype)
 end
+
+export.gather_ammo_turret_structs = gather_turret_structs
+export.gather_electric_turret_structs = gather_turret_structs
+export.gather_fluid_turret_structs = gather_turret_structs
 
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
@@ -622,6 +632,9 @@ export.entity_class_to_gather_struct_func = {
     [prototype_segmented_unit] = export.gather_segmented_unit_structs,
     [prototype_segment] = export.gather_segment_structs,
     [prototype_asteroid] = export.gather_asteroid_structs,
+    [prototype_ammo_turret] = export.gather_ammo_turret_structs,
+    [prototype_electric_turret] = export.gather_electric_turret_structs,
+    [prototype_fluid_turret] = export.gather_fluid_turret_structs,
 }
 
 export.active_trigger_class_to_gather_struct_func = {

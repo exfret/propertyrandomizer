@@ -80,9 +80,10 @@ randomizations.beam_damage_types = function (id)
     local beams = trigger_utils.get_creator_table("beam")
 
     local target_classes = {
+        ["active-defense-equipment"] = true,
         ["ammo"] = true,
         ["combat-robot"] = true,
-        ["active-defense-equipment"] = true,
+        ["electric-turret"] = true,
     }
 
     for beam_name, creators in pairs(beams) do
@@ -167,6 +168,7 @@ randomizations.fire_damage_types = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for fire_name, creators in pairs(fires) do
@@ -312,6 +314,7 @@ randomizations.sticker_damage_types = function (id)
     local target_classes = {
         ["capsule"] = true,
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for sticker_name, creators in pairs(stickers) do

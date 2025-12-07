@@ -10,6 +10,7 @@ randomizations.chain_max_jumps = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["electric-turret"] = true,
     }
 
     for chain_name, creators in pairs(chains) do
@@ -52,6 +53,7 @@ randomizations.chain_fork_chance = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["electric-turret"] = true,
     }
 
     for chain_name, creators in pairs(chains) do
