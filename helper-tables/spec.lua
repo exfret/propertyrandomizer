@@ -392,10 +392,10 @@ local spec = {
             val = "more"
         }
     },
-    equipment_active_defense_damage = {
+    equipment_active_defense_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",
-            val = "default"
+            val = "more"
         }
     },
     equipment_active_defense_range = {
@@ -425,6 +425,12 @@ local spec = {
             val = "more"
         }
     },
+    equipment_energy_per_shield = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     equipment_energy_usage = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -441,6 +447,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
+        }
+    },
+    equipment_inventory_bonus = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
         }
     },
     equipment_movement_bonus = {
@@ -477,6 +489,12 @@ local spec = {
     equipment_shapes = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    equipment_shield_hitpoints = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },

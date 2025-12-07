@@ -1,6 +1,8 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
+local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
 
@@ -25,27 +27,31 @@ randomizations.equipment_active_defense_cooldown = function(id)
     end
 end
 
-randomizations.equipment_active_defense_damage = function(id)
+-- New
+randomizations.equipment_active_defense_effect_radius = function (id)
     for _, equipment in pairs(data.raw["active-defense-equipment"]) do
-        local attack_parameters = equipment.attack_parameters
-        
-        -- Easiest to just modify the attack damage modifier
-        if attack_parameters.damage_modifier == nil then
-            attack_parameters.damage_modifier = 1
-        end
-        local old_value = attack_parameters.damage_modifier
-
-        randomize({
-            id = id,
-            prototype = equipment,
-            tbl = attack_parameters,
-            property = "damage_modifier",
-            rounding = "discrete_float",
-            variance = "big",
+        local structs = {}
+        trigger_utils.gather_active_defense_equipment_structs(structs, equipment, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = equipment })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
         })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-        local factor = attack_parameters.damage_modifier / old_value
-        locale_utils.create_localised_description(equipment, factor, id, { variance = "big" })
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.radius ~= nil and trigger.radius > 0 then
+                changed = true
+                trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(equipment, factor, id, { variance = "medium" })
+        end
     end
 end
 
@@ -137,6 +143,26 @@ randomizations.equipment_battery_output_limit = function(id)
     end
 end
 
+-- New
+randomizations.equipment_energy_per_shield = function(id)
+    for _, equipment in pairs(data.raw["energy-shield-equipment"]) do
+        local old_value = util.parse_energy(equipment.energy_per_shield)
+
+        randomizations.energy({
+            is_power = false,
+            id = id,
+            prototype = equipment,
+            property = "energy_per_shield",
+            dir = -1,
+            rounding = "discrete_float",
+            variance = "big",
+        })
+
+        local factor = util.parse_energy(equipment.energy_per_shield) / old_value
+        locale_utils.create_localised_description(equipment, factor, id, { flipped = true, variance = "big" })
+    end
+end
+
 randomizations.equipment_energy_usage = function(id)
     -- Note: Copied from entity's energy usage function
     -- This is a bit overkill but I already had the code
@@ -218,6 +244,28 @@ randomizations.equipment_energy_usage = function(id)
             end
         end
     end
+
+    -- Special handling for energy shield equipment
+    for _, equipment in pairs(data.raw["energy-shield-equipment"]) do
+        if equipment.energy_source.input_flow_limit ~= nil then
+            local old_value = util.parse_energy(equipment.energy_source.input_flow_limit)
+
+            randomizations.energy({
+                is_power = true,
+                id = id,
+                prototype = equipment,
+                tbl = equipment.energy_source,
+                property = "input_flow_limit",
+                dir = 1,
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            local factor = util.parse_energy(equipment.energy_source.input_flow_limit) / old_value
+
+            locale_utils.create_localised_description(equipment, factor, id, { variance = "big" })
+        end
+    end
 end
 
 randomizations.equipment_generator_power = function(id)
@@ -235,6 +283,24 @@ randomizations.equipment_generator_power = function(id)
         })
 
         locale_utils.create_localised_description(equipment, util.parse_energy(equipment.power) / old_power, id, { variance = "big" })
+    end
+end
+
+randomizations.equipment_inventory_bonus = function(id)
+    for _, equipment in pairs(data.raw["inventory-bonus-equipment"]) do
+        local old_value = equipment.inventory_size_bonus
+
+        randomize({
+            id = id,
+            prototype = equipment,
+            property = "inventory_size_bonus",
+            rounding = "discrete",
+            variance = "big",
+        })
+
+        local factor = equipment.inventory_size_bonus / old_value
+
+        locale_utils.create_localised_description(equipment, factor, id, { variance = "big" })
     end
 end
 
@@ -346,6 +412,24 @@ randomizations.equipment_personal_roboport_max_robots = function(id)
 
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
         locale_utils.create_localised_description(equipment, equipment.robot_limit / equipment_to_old_max_robots[equipment.name], id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.equipment_shield_hitpoints = function(id)
+    for _, equipment in pairs(data.raw["energy-shield-equipment"]) do
+        local old_value = equipment.max_shield_value
+
+        randomize({
+            id = id,
+            prototype = equipment,
+            property = "max_shield_value",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+
+        local factor = equipment.max_shield_value / old_value
+        locale_utils.create_localised_description(equipment, factor, id, { variance = "big" })
     end
 end
 

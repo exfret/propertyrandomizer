@@ -650,6 +650,7 @@ randomizations.beam_damage = function (id)
     local target_classes = {
         ["ammo"] = true,
         ["combat-robot"] = true,
+        ["active-defense-equipment"] = true,
     }
 
     for beam_name, creators in pairs(beams) do
