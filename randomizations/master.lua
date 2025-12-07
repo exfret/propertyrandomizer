@@ -41,6 +41,7 @@ require("randomizations/misc/visual")
 log("Gathering numerical randomizations")
 
 -- Require the numerical randomizations
+require("randomizations/numerical/active-trigger")
 require("randomizations/numerical/entity")
 require("randomizations/numerical/equipment")
 require("randomizations/numerical/equipment-grid")
