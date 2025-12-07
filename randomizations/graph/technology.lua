@@ -5,6 +5,8 @@ local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 
 randomizations.technology_tree_insnipping = function(id, dont_apply)
+    log("Starting technology randomization")
+
     local function hash_tech(tech)
         if tech.unit == nil then
             return "triggertech"

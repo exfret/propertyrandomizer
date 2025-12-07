@@ -1,10 +1,15 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.4.0
+Version: 0.4.1
 Date: ?
+  Bugfixes:
+    - Allowed module randomization with modded modules
+---------------------------------------------------------------------------------------------------
+Version: 0.4.0
+Date: 2025.12.07
   Features:
     - Added Nifyr's contributions to project, marked in changelog
     - Chaos setting now changes range of possible values as well
-    - Dynamic description coloring
+    - (Nifyr) Dynamic description coloring
     - Beacon profile randomization
     - Equipment shape randomization
     - (Nifyr and exfret): Many new smaller/numerical randomizations

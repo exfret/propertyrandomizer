@@ -3939,6 +3939,7 @@ end
 ----------------------------------------------------------------------
 
 function build_graph.add_dependents(graph_param)
+    log("Adding dependents")
     for _, node in pairs(graph_param) do
         node.dependents = {}
     end
