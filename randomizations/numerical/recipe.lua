@@ -5,7 +5,6 @@ local rng = require("lib.random.rng")
 
 local randomize = randnum.rand
 
--- New
 randomizations.recipe_crafting_times = function(id)
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.energy_required == nil then
@@ -22,7 +21,6 @@ randomizations.recipe_crafting_times = function(id)
     end
 end
 
--- New
 randomizations.recipe_ingredients_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.category ~= nil and recipe.category == "recycling" then
@@ -81,7 +79,6 @@ for item_class, _ in pairs(defines.prototypes.item) do
     end
 end
 
--- New
 randomizations.recipe_results_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.category ~= nil and recipe.category == "recycling" then

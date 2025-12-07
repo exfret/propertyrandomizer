@@ -181,7 +181,6 @@ randomizations.armor_resistances = function(id)
     end
 end
 
--- New
 randomizations.capsule_cooldown = function(id)
     for _, capsule in pairs(data.raw.capsule) do
         if capsule.capsule_action.attack_parameters then
@@ -277,6 +276,8 @@ randomizations.capsule_throw_range = function(id)
 end
 
 -- New
+-- Not added to spec yet
+-- TODO
 randomizations.capsule_throwable_damage = function(id)
     for _, capsule in pairs(data.raw.capsule) do
         local capsule_action = capsule.capsule_action
@@ -313,7 +314,7 @@ randomizations.gun_damage_modifier = function(id)
     end
 end
 
--- NEW
+-- Not added to spec yet
 randomizations.gun_movement_slowdown_factor = function(id)
     for _, gun in pairs(data.raw.gun) do
         local attack_parameters = gun.attack_parameters
