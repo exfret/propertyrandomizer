@@ -644,14 +644,48 @@ randomizations.beacon_supply_area = function(id)
 end
 
 -- New
--- Not added to spec yet
-randomizations.beam_damage = function(id)
-    for _, beam in pairs(data.raw.beam) do
-        if beam.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = beam
-            }, beam.action, "damage")
+randomizations.beam_damage = function (id)
+    local beams = trigger_utils.get_beam_creator_table()
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for beam_name, creators in pairs(beams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local beam = data.raw.beam[beam_name]
+            local structs = {}
+            trigger_utils.gather_beam_structs(structs, beam, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = beam })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
         end
     end
 end

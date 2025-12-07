@@ -524,7 +524,7 @@ export.gather_asteroid_structs = function (structs, asteroid, stop_prototype)
 end
 
 -------------------------------------------------------------------------------------------------------------------------------
---- This returns a table that maps projectiles to prototypes that may (directly or undirectly) create the projectile
+--- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
 -------------------------------------------------------------------------------------------------------------------------------
 
 local artillery_projectile_to_creators = nil
@@ -553,6 +553,62 @@ export.get_artillery_projectile_creator_table = function ()
     end
 
     return artillery_projectile_to_creators
+end
+
+local beam_to_creators = nil
+
+export.get_beam_creator_table = function ()
+    if beam_to_creators ~= nil then
+        return beam_to_creators
+    end
+
+    beam_to_creators = {}
+
+    for item_name, item in pairs(items) do
+        local structs = {}
+        gather_item_name_structs(structs, item_name)
+        for _, projectile in pairs(structs[prototype_beam] or {}) do
+            mtm_insert(beam_to_creators, projectile.name, item)
+        end
+    end
+
+    for entity_name, entity in pairs(entities) do
+        local structs = {}
+        gather_entity_name_structs(structs, entity_name)
+        for _, projectile in pairs(structs[prototype_beam] or {}) do
+            mtm_insert(beam_to_creators, projectile.name, entity)
+        end
+    end
+
+    return beam_to_creators
+end
+
+local chain_active_trigger_to_creators = nil
+
+export.get_chain_active_trigger_creator_table = function ()
+    if chain_active_trigger_to_creators ~= nil then
+        return chain_active_trigger_to_creators
+    end
+
+    chain_active_trigger_to_creators = {}
+
+    for item_name, item in pairs(items) do
+        local structs = {}
+        gather_item_name_structs(structs, item_name)
+        for _, projectile in pairs(structs[prototype_chain_active_trigger] or {}) do
+            mtm_insert(chain_active_trigger_to_creators, projectile.name, item)
+        end
+    end
+
+    for entity_name, entity in pairs(entities) do
+        local structs = {}
+        gather_entity_name_structs(structs, entity_name)
+        for _, projectile in pairs(structs[prototype_chain_active_trigger] or {}) do
+            mtm_insert(chain_active_trigger_to_creators, projectile.name, entity)
+        end
+    end
+
+    return chain_active_trigger_to_creators
 end
 
 local fire_to_creators = nil
