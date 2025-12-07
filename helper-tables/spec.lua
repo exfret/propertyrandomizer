@@ -561,6 +561,12 @@ local spec = {
             val = "more"
         }
     },
+    fluid_turret_consumption = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- How much max power output
     fusion_generator_max_power = {
         setting = {

@@ -648,9 +648,10 @@ randomizations.beam_damage = function (id)
     local beams = trigger_utils.get_creator_table("beam")
 
     local target_classes = {
+        ["active-defense-equipment"] = true,
         ["ammo"] = true,
         ["combat-robot"] = true,
-        ["active-defense-equipment"] = true,
+        ["electric-turret"] = true,
     }
 
     for beam_name, creators in pairs(beams) do
@@ -1223,6 +1224,7 @@ randomizations.fire_damage = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for fire_name, creators in pairs(fires) do
@@ -1270,6 +1272,7 @@ randomizations.fire_lifetime = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for fire_name, creators in pairs(fires) do
@@ -1315,6 +1318,7 @@ randomizations.fluid_stream_damage = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for stream_name, creators in pairs(streams) do
@@ -1362,6 +1366,7 @@ randomizations.fluid_stream_effect_radius = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for stream_name, creators in pairs(streams) do
@@ -1399,6 +1404,39 @@ randomizations.fluid_stream_effect_radius = function (id)
                     locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
                 end
             end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_turret_consumption = function(id)
+    for _, turret in pairs(data.raw["fluid-turret"]) do
+        if turret.attack_parameters.fluid_consumption ~= nil then
+            local old_value = turret.attack_parameters.fluid_consumption
+
+            -- To fluid per second
+            turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * 60 / turret.attack_parameters.cooldown
+
+            randomize({
+                id = id,
+                prototype = turret,
+                tbl = turret.attack_parameters,
+                property = "fluid_consumption",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = -1,
+            })
+
+            -- Back to fluid per attack
+            turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * turret.attack_parameters.cooldown / 60
+
+            local factor = turret.attack_parameters.fluid_consumption / old_value
+
+            locale_utils.create_localised_description(turret, factor, id, { flipped = true, variance = "big" })
         end
     end
 end
@@ -3434,7 +3472,8 @@ randomizations.sticker_damage = function (id)
     local stickers = trigger_utils.get_creator_table("sticker")
 
     local target_classes = {
-        ["ammo"] = true
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for sticker_name, creators in pairs(stickers) do
@@ -3495,6 +3534,7 @@ randomizations.sticker_duration = function (id)
     local target_classes = {
         ["capsule"] = true,
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     -- As fate would have it, some capsules have multiple stickers handling different aspects of the same "effect".
@@ -3603,6 +3643,7 @@ randomizations.sticker_movement_speed = function (id)
     local target_classes = {
         ["capsule"] = true,
         ["ammo"] = true,
+        ["fluid-turret"] = true,
     }
 
     for sticker_name, creators in pairs(stickers) do
@@ -3921,8 +3962,28 @@ randomizations.turret_shooting_speed = function(id)
             -- Back to ticks per attack
             turret.attack_parameters.cooldown = 60 / turret.attack_parameters.cooldown
 
+            -- Fix rounding of fluid consumption since it depends on cooldown
+            if turret.attack_parameters.fluid_consumption ~= nil then
+                -- To fluid per second
+                turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * 60 / turret.attack_parameters.cooldown
+
+                local rng_key = rng.key({ id = id, prototype = turret })
+                local rounding_params = { key = rng_key, rounding = "discrete_float" }
+                turret.attack_parameters.fluid_consumption = randnum.fixes(
+                    rounding_params,
+                    turret.attack_parameters.fluid_consumption
+                )
+                -- Back to fluid per tick
+                turret.attack_parameters.fluid_consumption
+                    = turret.attack_parameters.fluid_consumption
+                    * turret.attack_parameters.cooldown / 60
+            end
+
             local new_shooting_speed = 1 / turret.attack_parameters.cooldown
-            locale_utils.create_localised_description(turret, new_shooting_speed / old_shooting_speed, id)
+            local factor = new_shooting_speed / old_shooting_speed
+            locale_utils.create_localised_description(turret, factor, id)
         end
     end
 end
