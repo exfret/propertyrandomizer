@@ -3118,6 +3118,146 @@ randomizations.rocket_silo_launch_time = function(id)
     end
 end
 
+-- New
+randomizations.smoke_damage = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            local structs = {}
+            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = smoke })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.smoke_effect_radius = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            local structs = {}
+            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = smoke })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"] or {}) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.smoke_trigger_speed = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            if smoke.action_cooldown ~= nil and smoke.action_cooldown > 0 then
+                local old_value = smoke.action_cooldown
+
+                -- To triggers per second
+                smoke.action_cooldown = 60 / smoke.action_cooldown
+
+                randomize({
+                    id = id,
+                    prototype = smoke,
+                    property = "action_cooldown",
+                    rounding = "discrete_float",
+                    variance = "big",
+                })
+
+                -- Back to cooldown ticks
+                smoke.action_cooldown = 60 / smoke.action_cooldown
+                smoke.action_cooldown = math.max(round(smoke.action_cooldown), 1)
+
+                local factor = old_value / smoke.action_cooldown
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
 randomizations.solar_panel_production = function(id)
     for _, solar_panel in pairs(data.raw["solar-panel"]) do
         local old_production = util.parse_energy(solar_panel.production)

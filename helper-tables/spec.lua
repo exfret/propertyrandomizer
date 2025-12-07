@@ -1043,6 +1043,30 @@ local spec = {
             val = "more"
         }
     },]]
+    smoke_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_trigger_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     solar_panel_production = {
         setting = {
             name = "propertyrandomizer-production",
