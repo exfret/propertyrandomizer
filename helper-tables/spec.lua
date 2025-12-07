@@ -866,6 +866,13 @@ local spec = {
             val = "more"
         }
     },
+    -- How many projectiles get spawned by projectiles as part of a cluster
+    projectile_cluster_size = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     projectile_damage = {
         setting = {
             name = "propertyrandomizer-military",
