@@ -338,6 +338,36 @@ local spec = {
             val = "more"
         }
     },
+    combat_robot_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_lifetime = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_shooting_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     crafting_machine_speed = {
         setting = {
             name = "propertyrandomizer-production",

@@ -81,6 +81,7 @@ randomizations.beam_damage_types = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["combat-robot"] = true,
     }
 
     for beam_name, creators in pairs(beams) do
@@ -133,6 +134,28 @@ randomizations.capsule_damage_types = function (id)
 
         if changed then
             add_damage_type_description(capsule)
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_damage_types = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        local structs = {}
+        trigger_utils.gather_combat_robot_structs(structs, robot, true)
+        local rng_key = rng.key({ id = id, prototype = robot })
+        local changed = false
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            local old_type = damage_parameters.type
+            damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+            if damage_parameters.type ~= old_type then
+                changed = true
+            end
+        end
+
+        if changed then
+            add_damage_type_description(robot)
         end
     end
 end

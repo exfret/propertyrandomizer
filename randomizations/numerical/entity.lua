@@ -649,6 +649,7 @@ randomizations.beam_damage = function (id)
 
     local target_classes = {
         ["ammo"] = true,
+        ["combat-robot"] = true,
     }
 
     for beam_name, creators in pairs(beams) do
@@ -990,6 +991,110 @@ randomizations.cargo_landing_pad_radar_range = function (id)
             local factor = clp.radar_range / old_value
 
             locale_utils.create_localised_description(clp, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_damage = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        local structs = {}
+        trigger_utils.gather_combat_robot_structs(structs, robot, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = robot })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "big",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_lifetime = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.time_to_live > 0 then
+            local old_value = robot.time_to_live
+
+            local unit_time = to_unit_time(robot.time_to_live)
+            robot.time_to_live = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = robot,
+                property = "time_to_live",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            robot.time_to_live = to_ticks(unit_time.unit, robot.time_to_live)
+
+            local factor = robot.time_to_live / old_value
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_range = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.attack_parameters.range > 0 then
+            local old_value = robot.attack_parameters.range
+
+            randomize({
+                id = id,
+                prototype = robot,
+                tbl = robot.attack_parameters,
+                property = "range",
+                rounding = "discrete_float",
+                variance = "medium",
+            })
+
+            local factor = robot.attack_parameters.range / old_value
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_shooting_speed = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.attack_parameters.cooldown > 0 then
+            local old_value = robot.attack_parameters.cooldown
+
+            -- To attacks per second
+            robot.attack_parameters.cooldown = 60 / robot.attack_parameters.cooldown
+
+            randomize({
+                id = id,
+                prototype = robot,
+                tbl = robot.attack_parameters,
+                property = "cooldown",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            -- Back to ticks per attack
+            robot.attack_parameters.cooldown = 60 / robot.attack_parameters.cooldown
+
+            local factor = old_value / robot.attack_parameters.cooldown
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
         end
     end
 end
