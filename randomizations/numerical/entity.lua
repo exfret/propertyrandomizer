@@ -1815,24 +1815,54 @@ end
 
 randomizations.landmine_damage = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
-        if landmine.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = landmine,
-                variance = "big"
-            }, landmine.action, "damage")
+        local structs = {}
+        trigger_utils.gather_land_mine_structs(structs, landmine, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = landmine })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "big",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(landmine, factor, id, { variance = "big" })
         end
     end
 end
 
 randomizations.landmine_effect_radius = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
-        if landmine.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = landmine,
-                variance = "medium"
-            }, landmine.action, "effect-radius")
+        local structs = {}
+        trigger_utils.gather_land_mine_structs(structs, landmine, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = landmine })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.radius ~= nil and trigger.radius > 0 then
+                changed = true
+                trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(landmine, factor, id, { variance = "medium" })
         end
     end
 end

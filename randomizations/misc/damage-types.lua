@@ -202,6 +202,28 @@ randomizations.fire_damage_types = function (id)
 end
 
 -- New
+randomizations.landmine_damage_types = function(id)
+    for _, landmine in pairs(data.raw["land-mine"]) do
+        local structs = {}
+        trigger_utils.gather_land_mine_structs(structs, landmine, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = landmine })
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            local old_type = damage_parameters.type
+            damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+            if damage_parameters.type ~= old_type then
+                changed = true
+            end
+        end
+
+        if changed then
+            add_damage_type_description(landmine)
+        end
+    end
+end
+
+-- New
 randomizations.projectile_damage_types = function (id)
     local projectiles = trigger_utils.get_creator_table("projectile")
 
