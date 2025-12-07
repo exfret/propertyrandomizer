@@ -91,7 +91,6 @@ local beacon_profiles = {
     },
 }
 
--- New
 randomizations.beacon_profiles = function(id)
     -- TODO: Check that beacon profiles are balanced based off max multipliers!
 

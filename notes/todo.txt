@@ -1,4 +1,5 @@
 WORKING ON:
+ - Fix my new randomizations
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
  - Back to ammo preservation
  - Fix topological sort

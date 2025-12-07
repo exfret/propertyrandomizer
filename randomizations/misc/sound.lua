@@ -4,7 +4,6 @@ local rng = require("lib/random/rng")
 
 local sounds = {}
 
--- NEW
 randomizations.all_sounds = function(id)
     local sound_file_extensions = {
         [".ogg"] = true,
