@@ -220,6 +220,46 @@ randomizations.projectile_damage_types = function (id)
 end
 
 -- New
+randomizations.smoke_damage_types = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            local structs = {}
+            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = smoke })
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                local old_type = damage_parameters.type
+                damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+                if damage_parameters.type ~= old_type then
+                    changed = true
+                end
+            end
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    add_damage_type_description(prototype)
+                end
+            end
+        end
+    end
+end
+
+-- New
 randomizations.sticker_damage_types = function (id)
     local stickers = trigger_utils.get_creator_table("sticker")
 
