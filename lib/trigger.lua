@@ -527,200 +527,32 @@ end
 --- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
 -------------------------------------------------------------------------------------------------------------------------------
 
-local artillery_projectile_to_creators = nil
+local prototype_to_creators = {}
 
-export.get_artillery_projectile_creator_table = function ()
-    if artillery_projectile_to_creators ~= nil then
-        return artillery_projectile_to_creators
+export.get_creator_table = function (prototype_type)
+    if prototype_to_creators[prototype_type] ~= nil then
+        return prototype_to_creators[prototype_type]
     end
 
-    artillery_projectile_to_creators = {}
+    prototype_to_creators[prototype_type] = {}
 
     for item_name, item in pairs(items) do
         local structs = {}
         gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_artillery_projectile] or {}) do
-            mtm_insert(artillery_projectile_to_creators, projectile.name, item)
+        for _, prototype in pairs(structs[prototype_type] or {}) do
+            mtm_insert(prototype_to_creators[prototype_type], prototype.name, item)
         end
     end
 
     for entity_name, entity in pairs(entities) do
         local structs = {}
         gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_artillery_projectile] or {}) do
-            mtm_insert(artillery_projectile_to_creators, projectile.name, entity)
+        for _, prototype in pairs(structs[prototype_type] or {}) do
+            mtm_insert(prototype_to_creators[prototype_type], prototype.name, entity)
         end
     end
 
-    return artillery_projectile_to_creators
-end
-
-local beam_to_creators = nil
-
-export.get_beam_creator_table = function ()
-    if beam_to_creators ~= nil then
-        return beam_to_creators
-    end
-
-    beam_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_beam] or {}) do
-            mtm_insert(beam_to_creators, projectile.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_beam] or {}) do
-            mtm_insert(beam_to_creators, projectile.name, entity)
-        end
-    end
-
-    return beam_to_creators
-end
-
-local chain_active_trigger_to_creators = nil
-
-export.get_chain_active_trigger_creator_table = function ()
-    if chain_active_trigger_to_creators ~= nil then
-        return chain_active_trigger_to_creators
-    end
-
-    chain_active_trigger_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_chain_active_trigger] or {}) do
-            mtm_insert(chain_active_trigger_to_creators, projectile.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_chain_active_trigger] or {}) do
-            mtm_insert(chain_active_trigger_to_creators, projectile.name, entity)
-        end
-    end
-
-    return chain_active_trigger_to_creators
-end
-
-local fire_to_creators = nil
-
-export.get_fire_creator_table = function ()
-    if fire_to_creators ~= nil then
-        return fire_to_creators
-    end
-
-    fire_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_fire] or {}) do
-            mtm_insert(fire_to_creators, projectile.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_fire] or {}) do
-            mtm_insert(fire_to_creators, projectile.name, entity)
-        end
-    end
-
-    return fire_to_creators
-end
-
-local projectile_to_creators = nil
-
-export.get_projectile_creator_table = function ()
-    if projectile_to_creators ~= nil then
-        return projectile_to_creators
-    end
-
-    projectile_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_projectile] or {}) do
-            mtm_insert(projectile_to_creators, projectile.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_projectile] or {}) do
-            mtm_insert(projectile_to_creators, projectile.name, entity)
-        end
-    end
-
-    return projectile_to_creators
-end
-
-local sticker_to_creators = nil
-
-export.get_sticker_creator_table = function ()
-    if sticker_to_creators ~= nil then
-        return sticker_to_creators
-    end
-
-    sticker_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, sticker in pairs(structs[prototype_sticker] or {}) do
-            mtm_insert(sticker_to_creators, sticker.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, sticker in pairs(structs[prototype_sticker] or {}) do
-            mtm_insert(sticker_to_creators, sticker.name, entity)
-        end
-    end
-
-    return sticker_to_creators
-end
-
-local stream_to_creators = nil
-
-export.get_stream_creator_table = function ()
-    if stream_to_creators ~= nil then
-        return stream_to_creators
-    end
-
-    stream_to_creators = {}
-
-    for item_name, item in pairs(items) do
-        local structs = {}
-        gather_item_name_structs(structs, item_name)
-        for _, projectile in pairs(structs[prototype_stream] or {}) do
-            mtm_insert(stream_to_creators, projectile.name, item)
-        end
-    end
-
-    for entity_name, entity in pairs(entities) do
-        local structs = {}
-        gather_entity_name_structs(structs, entity_name)
-        for _, projectile in pairs(structs[prototype_stream] or {}) do
-            mtm_insert(stream_to_creators, projectile.name, entity)
-        end
-    end
-
-    return stream_to_creators
+    return prototype_to_creators[prototype_type]
 end
 
 export.item_class_to_gather_struct_func = {

@@ -196,7 +196,7 @@ end
 
 -- New
 randomizations.artillery_projectile_damage = function (id)
-    local projectiles = trigger_utils.get_artillery_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
 
     local target_classes = {
         ["ammo"] = true,
@@ -243,7 +243,7 @@ end
 
 -- New
 randomizations.artillery_projectile_effect_radius = function (id)
-    local projectiles = trigger_utils.get_artillery_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
 
     local target_classes = {
         ["ammo"] = true,
@@ -645,7 +645,7 @@ end
 
 -- New
 randomizations.beam_damage = function (id)
-    local beams = trigger_utils.get_beam_creator_table()
+    local beams = trigger_utils.get_creator_table("beam")
 
     local target_classes = {
         ["ammo"] = true,
@@ -1113,7 +1113,7 @@ end
 
 -- New
 randomizations.fire_damage = function (id)
-    local fires = trigger_utils.get_fire_creator_table()
+    local fires = trigger_utils.get_creator_table("fire")
 
     local target_classes = {
         ["ammo"] = true,
@@ -1160,7 +1160,7 @@ end
 
 -- New
 randomizations.fire_lifetime = function (id)
-    local fires = trigger_utils.get_fire_creator_table()
+    local fires = trigger_utils.get_creator_table("fire")
 
     local target_classes = {
         ["ammo"] = true,
@@ -1205,7 +1205,7 @@ end
 
 -- New
 randomizations.fluid_stream_damage = function (id)
-    local streams = trigger_utils.get_stream_creator_table()
+    local streams = trigger_utils.get_creator_table("stream")
 
     local target_classes = {
         ["ammo"] = true,
@@ -1252,7 +1252,7 @@ end
 
 -- New
 randomizations.fluid_stream_effect_radius = function (id)
-    local streams = trigger_utils.get_stream_creator_table()
+    local streams = trigger_utils.get_creator_table("stream")
 
     local target_classes = {
         ["ammo"] = true,
@@ -2495,7 +2495,7 @@ end
 
 -- New
 randomizations.projectile_cluster_size = function (id)
-    local projectiles = trigger_utils.get_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("projectile")
 
     local target_classes = {
         ["capsule"] = true,
@@ -2543,7 +2543,7 @@ end
 
 -- New
 randomizations.projectile_damage = function (id)
-    local projectiles = trigger_utils.get_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("projectile")
 
     local target_classes = {
         ["ammo"] = true,
@@ -2591,7 +2591,7 @@ end
 
 -- New
 randomizations.projectile_effect_radius = function (id)
-    local projectiles = trigger_utils.get_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("projectile")
 
     local target_classes = {
         ["capsule"] = true,
@@ -2646,7 +2646,7 @@ end
 
 -- New
 randomizations.projectile_piercing_power = function (id)
-    local projectiles = trigger_utils.get_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("projectile")
 
     local target_classes = {
         ["ammo"] = true,
@@ -2685,7 +2685,7 @@ end
 
 -- New
 randomizations.projectile_projectile_count = function (id)
-    local projectiles = trigger_utils.get_projectile_creator_table()
+    local projectiles = trigger_utils.get_creator_table("projectile")
 
     local target_classes = {
         ["ammo"] = true,
@@ -3155,7 +3155,7 @@ end
 
 -- New
 randomizations.sticker_damage = function (id)
-    local stickers = trigger_utils.get_sticker_creator_table()
+    local stickers = trigger_utils.get_creator_table("sticker")
 
     local target_classes = {
         ["ammo"] = true
@@ -3214,7 +3214,7 @@ end
 
 -- New
 randomizations.sticker_duration = function (id)
-    local stickers = trigger_utils.get_sticker_creator_table()
+    local stickers = trigger_utils.get_creator_table("sticker")
 
     local target_classes = {
         ["capsule"] = true,
@@ -3263,7 +3263,7 @@ end
 
 -- New
 randomizations.sticker_healing = function (id)
-    local stickers = trigger_utils.get_sticker_creator_table()
+    local stickers = trigger_utils.get_creator_table("sticker")
 
     local target_classes = {
         ["capsule"] = true
@@ -3322,7 +3322,7 @@ end
 
 -- New
 randomizations.sticker_movement_speed = function (id)
-    local stickers = trigger_utils.get_sticker_creator_table()
+    local stickers = trigger_utils.get_creator_table("sticker")
 
     local target_classes = {
         ["capsule"] = true,
