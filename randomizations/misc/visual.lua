@@ -4,7 +4,6 @@ local reformat = require("lib/reformat")
 -- Idea: Look for simple sprite definitions of the same size/other params and just shuffle those
 -- Also map colors
 
--- NEW
 randomizations.all_icons = function(id)
     local icon_infos = reformat.all_icon_properties()
 

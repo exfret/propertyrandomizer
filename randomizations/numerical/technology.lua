@@ -19,6 +19,7 @@ randomizations.tech_costs = function(id)
                     tbl = tech.unit,
                     property = "count",
                     abs_min = 1,
+                    bias = 0.05,
                     dir = -1,
                     rounding = "discrete"
                 })
@@ -30,6 +31,7 @@ randomizations.tech_costs = function(id)
                 local formula_multiplier = randomize({
                     key = key,
                     dummy = 1,
+                    bias = 0.05,
                     dir = -1,
                     rounding = "discrete_float"
                 })
@@ -52,6 +54,7 @@ randomizations.tech_times = function(id)
                 tbl = tech.unit,
                 property = "time",
                 abs_min = 1,
+                bias = 0.05,
                 dir = -1,
                 rounding = "discrete_float"
             })

@@ -706,7 +706,7 @@ randomizations.recipe_ingredients = function(id)
     end
 
     -- What can be reached from a planet alone with all techs but no access to other surfaces
-    local planet_isolation_sort_info = {}
+    --[[local planet_isolation_sort_info = {}
     for _, planet_name in pairs(planet_names) do
         local planet_isolation_graph = table.deepcopy(dep_graph)
 
@@ -784,7 +784,7 @@ randomizations.recipe_ingredients = function(id)
                 break
             end
         end
-    end
+    end]]
 
     log("Shuffling")
 
@@ -873,7 +873,7 @@ randomizations.recipe_ingredients = function(id)
                 is_nauvis_tech = false
             end
         end]=]
-        for _, planet_name in pairs(planet_names) do
+        --[[for _, planet_name in pairs(planet_names) do
             if planet_isolation_sort_info[planet_name].before_rocket_silo[build_graph.key(dependent.type, dependent.name)] then
                 if planet_isolation_sort_info[planet_name].reachable[build_graph.key(dependent.type, dependent.name)] then
                     for reachable_node_name, _ in pairs(reachable) do
@@ -918,7 +918,7 @@ randomizations.recipe_ingredients = function(id)
                 --log(reachable_node_name)
                 reachable[reachable_node_name] = nil
             end
-        end
+        end]]
 
         --log(serpent.block(reachable))
 

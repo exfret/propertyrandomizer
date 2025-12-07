@@ -34,7 +34,6 @@ randomizations.recipe_crafting_times = function(id)
     end
 end
 
--- New
 randomizations.recipe_ingredients_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.category ~= nil and recipe.category == "recycling" then
