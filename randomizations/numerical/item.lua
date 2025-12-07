@@ -551,7 +551,7 @@ randomizations.item_stack_sizes = function(id)
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                if item.stack_size ~= nil and item.stack_size > 1 then
+                if item.stack_size ~= nil and item.stack_size >= 2 then
                     local old_stack_size = item.stack_size
 
                     randomize({
@@ -561,7 +561,8 @@ randomizations.item_stack_sizes = function(id)
                         range_min = "small",
                         range_max = "big",
                         bias = 0.1,
-                        rounding = "discrete"
+                        rounding = "discrete",
+                        abs_min = 2,
                     })
 
                     locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
