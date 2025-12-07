@@ -319,6 +319,18 @@ local spec = {
             val = "more"
         }
     },
+    chain_fork_chance = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    chain_max_jumps = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {

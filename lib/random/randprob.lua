@@ -8,6 +8,12 @@ randprob.scale_odds = function(p, factor)
     return scaled_p / (scaled_p + not_p)
 end
 
+randprob.calc_odds_factor = function(p_old, p_new)
+    local odds_old = p_old / (1 - p_old)
+    local odds_new = p_new / (1 - p_new)
+    return odds_new / odds_old
+end
+
 randprob.rand = function(params)
     randnum.fill_in_defaults(params)
     if params.abs_min == "none" then params.abs_min = nil end
