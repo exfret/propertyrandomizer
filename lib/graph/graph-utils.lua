@@ -51,6 +51,13 @@ util.create_edge = function (prereq_key, dependent_key, graph)
 end
 
 util.add_prereq = function (prereq, dependent)
+    -- Check if this edge has already been added
+    for _, dependent2 in pairs(prereq.dependents) do
+        if dependent2.type == dependent.type and dependent2.name == dependent.name then
+            return
+        end
+    end
+
     if prereq.dependents ~= nil then
         prereq.dependents[#prereq.dependents+1] = {
             type = dependent.type,

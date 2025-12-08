@@ -9,7 +9,7 @@ WORKING ON:
    * Check if game is possible after planetary randomization and print to console
    * Fix localisation with dupe and item randomization
  - Allow item randomization to apply to some fluids? If it does, just give the item's effects to the barrel
- - Dupes with better graphics
+ - Dupes with better graphics (use artisinal reskins?)
 
  - Look into rocket launch time bug
 
