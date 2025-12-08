@@ -94,7 +94,7 @@ local success_result = function (dependent_key, parents, reachablility_cache, pa
 end
 
 -- Most of these are for algorithm debugging/analysis
-local get_empty_stats = function ()
+path.get_empty_stats = function ()
     return { chache_hits = 0, removed_node_hits = 0, max_depth = 0, loop_hits = 0, nodes_checked = 0, nodes_evaluated = 0,
     and_nodes_evaluated = 0, or_nodes_evaluated = 0, and_failures = 0, or_failures = 0, and_successes = 0, or_successes = 0 }
 end
@@ -178,7 +178,7 @@ path.find_path = function (graph, target_node, node_types)
     local target_key = graph_utils.get_node_key(target_node)
     local required_nodes = { [target_key] = true }
 
-    local stats = get_empty_stats()
+    local stats = path.get_empty_stats()
     local path_reachability_cache = {}
     local path_expr = path.check_reachable_top_down(graph, target_node, nil, {}, required_nodes, 0, path_reachability_cache, stats).path_expr
     local path_set = evaluate_expr(path_expr, path_reachability_cache, {})
