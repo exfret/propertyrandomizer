@@ -554,6 +554,12 @@ local spec = {
             val = "more"
         }
     },
+    fluid_stream_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     fluid_stream_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",
