@@ -3825,6 +3825,7 @@ build_graph.ops = {
     ["heat-surface"] = "AND",
     ["hold-fluid-surface"] = "OR",
     ["item"] = "OR",
+    ["item-slot"] = "OR", -- Used during item randomization; not constructed here
     ["item-space-surface"] = "OR",
     ["item-surface"] = "OR",
     ["item-insertion"] = "OR",
