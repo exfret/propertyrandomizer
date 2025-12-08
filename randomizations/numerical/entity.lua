@@ -3149,30 +3149,48 @@ end
 -- New
 randomizations.sticker_movement_speed = function (id)
     indirect.iterate_child_prototypes("sticker", function (sticker, parents, structs, is_enemy)
+        local modifier = sticker.target_movement_modifier or 1
+        local from = sticker.target_movement_modifier_from or modifier
+        local vehicle_modifier = sticker.vehicle_speed_modifier or 1
+        local vehicle_from = sticker.vehicle_speed_modifier_from or vehicle_modifier
+
+        local dir = 1
+        if is_enemy then
+            dir = -1
+        end
+        if from < 1 or vehicle_from < 1 then
+            dir = -dir
+        end
+
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = sticker })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+            dir = dir,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
         if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier ~= 1 then
-            local dir = 1
-            if is_enemy then
-                dir = -1
-            end
-            if sticker.target_movement_modifier < 1 then
-                dir = -dir
-            end
-
-            local old_value = sticker.target_movement_modifier
-
-            randomize({
-                id = id,
-                prototype = sticker,
-                property = "target_movement_modifier",
-                rounding = "discrete_float",
-                variance = "big",
-                dir = dir,
-            })
-
-            local factor = sticker.target_movement_modifier / old_value
-
+            sticker.target_movement_modifier = randnum.fixes(rounding_params, sticker.target_movement_modifier * factor)
+            changed = true
+        end
+        if sticker.target_movement_modifier_from ~= nil and sticker.target_movement_modifier_from ~= 1 then
+            sticker.target_movement_modifier_from = randnum.fixes(rounding_params, sticker.target_movement_modifier_from * factor)
+            changed = true
+        end
+        if sticker.vehicle_speed_modifier ~= nil and sticker.vehicle_speed_modifier ~= 1 then
+            sticker.vehicle_speed_modifier = randnum.fixes(rounding_params, sticker.vehicle_speed_modifier * factor)
+            changed = true
+        end
+        if sticker.vehicle_speed_modifier_from ~= nil and sticker.vehicle_speed_modifier_from ~= 1 then
+            sticker.vehicle_speed_modifier_from = randnum.fixes(rounding_params, sticker.vehicle_speed_modifier_from * factor)
+            changed = true
+        end
+        if changed then
             for _, prototype in pairs(parents) do
-                locale_utils.create_localised_description(prototype, factor, id, { variance = "big", flipped = dir < 0 })
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "medium", flipped = dir < 0 })
             end
         end
     end)
