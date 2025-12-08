@@ -67,20 +67,30 @@ local setting_values = {
 
 randomizations_to_perform = {}
 for id, rand_info in pairs(spec) do
+    local order = 10
+    if rand_info.order ~= nil then
+        order = rand_info.order
+    end
+
+    if randomizations_to_perform[order] == nil then
+        randomizations_to_perform[order] = {}
+    end
+    local order_group = randomizations_to_perform[order]
+
     if rand_info.setting == "none" then
-        randomizations_to_perform[id] = false
+        order_group[id] = false
     elseif type(rand_info.setting) == "table" then
 
         if setting_values[settings.startup[rand_info.setting.name].value] >= setting_values[rand_info.setting.val] then
-            randomizations_to_perform[id] = true
+            order_group[id] = true
         else
-            randomizations_to_perform[id] = false
+            order_group[id] = false
         end
     elseif type(rand_info.setting) == "string" then
         if settings.startup[rand_info.setting].value then
-            randomizations_to_perform[id] = true
+            order_group[id] = true
         else
-            randomizations_to_perform[id] = false
+            order_group[id] = false
         end
     else
         -- Setting key not set by mistake
@@ -98,7 +108,11 @@ for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].v
 
     -- Check if the override was in the spec
     if spec[override] ~= nil then
-        randomizations_to_perform[override] = new_val
+        for _, order_group in pairs(randomizations_to_perform) do
+            if order_group[override] ~= nil then
+                order_group[override] = new_val
+            end
+        end
     else
         table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
     end

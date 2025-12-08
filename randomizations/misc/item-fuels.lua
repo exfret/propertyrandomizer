@@ -82,13 +82,6 @@ randomizations.item_fuels = function(id)
                             "1.21GJ"
                         }
                         item.fuel_value = possible_fuel_values[rng.int(key, #possible_fuel_values)]
-                        randomizations.energy({
-                            id = id,
-                            prototype = item,
-                            property = "fuel_value",
-                            rounding = "discrete_float",
-                            variance = "small"
-                        })
 
                         local possible_acceleration_multipliers = {
                             0.5,
@@ -98,13 +91,6 @@ randomizations.item_fuels = function(id)
                             2.5,
                         }
                         item.fuel_acceleration_multiplier = possible_acceleration_multipliers[rng.int(key, #possible_acceleration_multipliers)]
-                        randnum.rand({
-                            id = id,
-                            prototype = item,
-                            property = "fuel_acceleration_multiplier",
-                            rounding = "discrete_float",
-                            variance = "very_small"
-                        })
 
                         local possible_top_speed_multipliers = {
                             0.5,
@@ -114,13 +100,6 @@ randomizations.item_fuels = function(id)
                             1.15,
                         }
                         item.fuel_top_speed_multiplier = possible_top_speed_multipliers[rng.int(key, #possible_top_speed_multipliers)]
-                        randnum.rand({
-                            id = id,
-                            prototype = item,
-                            property = "fuel_top_speed_multiplier",
-                            rounding = "discrete_float",
-                            variance = "small"
-                        })
 
                         item.fuel_category = "chemical"
                         item._nonreactive = nil

@@ -1,86 +1,92 @@
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
+local randbool = require("lib/random/randbool")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
 
-randomizations.ammo_damage = function(id)
-    local function get_targets(tbls, action)
-        local targets = randomizations.trigger({}, action, "gather-damage")
-        for _, target in pairs(targets) do
-            table.insert(tbls, target)
-        end
-
-        -- Consider any projectiles that cause further damage
-        local projectiles = {}
-        for _, projectile in pairs(randomizations.trigger({}, action, "gather-projectiles")) do
-            table.insert(projectiles, projectile)
-        end
-        for _, projectile in pairs(randomizations.trigger({}, action, "gather-artillery-projectiles")) do
-            table.insert(projectiles, projectile)
-        end
-        for _, projectile in pairs(projectiles) do
-            local proj_prot = data.raw.projectile[projectile]
-            if proj_prot == nil then
-                proj_prot = data.raw["artillery-projectile"][projectile]
-            end
-            -- See if this projectile's been touched for the purposes of this randomization
-            if not randomization_info.touched[rng.key({id = id, prototype = proj_prot})] then
-                randomization_info.touched[rng.key({id = id, prototype = proj_prot})] = true
-
-                if proj_prot.action ~= nil then
-                    get_targets(tbls, proj_prot.action)
-                end
-                if proj_prot.final_action ~= nil then
-                    get_targets(tbls, proj_prot.final_action)
-                end
+local items = {}
+for item_class, _ in pairs(categories.normal_item_classes) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            if categories.special_item_subgroups[item.subgroup] == nil then
+                items[item.name] = item
             end
         end
     end
+end
 
-    -- Randomize within ammo categories
-    for _, ammo_category in pairs(data.raw["ammo-category"]) do
-        local tbls = {}
-        local ammo_to_old_damage = {}
+local round = function (n)
+    return math.floor(n + 0.5)
+end
 
-        for _, ammo in pairs(data.raw.ammo) do
-            if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
-                ammo_to_old_damage[ammo.name] = 0
-                local new_targets = {}
-                get_targets(new_targets, ammo.ammo_type.action)
-                for _, new_target in pairs(new_targets) do
-                    -- Just add up damage amounts
-                    ammo_to_old_damage[ammo.name] = ammo_to_old_damage[ammo.name] + new_target.amount
-                    table.insert(tbls, new_target)
-                end
+local to_array = function (single_or_array)
+    if type(single_or_array) ~= "table" or single_or_array[1] == nil then
+        return { single_or_array }
+    end
+    return single_or_array
+end
+
+-- New
+randomizations.ammo_cooldown_modifier = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local ammo_types = to_array(ammo.ammo_type)
+        for _, ammo_type in pairs(ammo_types) do
+            if ammo_type.cooldown_modifier == nil then
+                ammo_type.cooldown_modifier = 1
+            end
+
+            -- To shooting speed modifier
+            ammo_type.cooldown_modifier = 1 / ammo_type.cooldown_modifier
+
+            local old_value = ammo_type.cooldown_modifier
+
+            randomize({
+                id = id,
+                prototype = ammo,
+                tbl = ammo_type,
+                property = "cooldown_modifier",
+                rounding = "discrete_float",
+                variance = "medium",
+                dir = 1,
+            })
+
+            local factor = ammo_type.cooldown_modifier / old_value
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "medium" })
+
+            -- Back to cooldown modifier
+            ammo_type.cooldown_modifier = 1 / ammo_type.cooldown_modifier
+        end
+    end
+end
+
+randomizations.ammo_damage = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "medium",
+            rounding = "none",
+            dir = 1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
         end
 
-        randomizations.linked({
-            id = id,
-            tbls = tbls,
-            property = "amount",
-            range = "small",
-            rounding = "discrete_float"
-        })
-
-        for _, ammo in pairs(data.raw.ammo) do
-            if ammo.ammo_type.action ~= nil and ammo.ammo_category == ammo_category.name then
-                -- Just get the targets/damage amounts again
-                local new_damage_amount = 0
-                local targets = {}
-                get_targets(targets, ammo.ammo_type.action)
-                for _, target in pairs(targets) do
-                    new_damage_amount = new_damage_amount + target.amount
-                end
-
-                -- Check that this ammo's damage wasn't 0 just in case it's some special action bullet
-                if ammo_to_old_damage[ammo.name] ~= 0 then
-                    locale_utils.create_localised_description(ammo, new_damage_amount / ammo_to_old_damage[ammo.name], id)
-                end
-            end
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id)
         end
     end
 end
@@ -101,6 +107,90 @@ randomizations.ammo_magazine_size = function(id)
             })
 
             locale_utils.create_localised_description(ammo, ammo.magazine_size / old_magazine_size, id)
+        end
+    end
+end
+
+-- New
+randomizations.ammo_projectile_count = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
+
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.repeat_count ~= nil and trigger.repeat_count > 1 then
+                trigger.repeat_count = randnum.fixes(rounding_params, trigger.repeat_count * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.ammo_projectile_range = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local structs = {}
+        trigger_utils.gather_ammo_structs(structs, ammo, true)
+        local rng_key = rng.key({ id = id, prototype = ammo })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, trigger_delivery in pairs(structs["trigger-delivery"] or {}) do
+            if trigger_delivery.max_range ~= nil and trigger_delivery.max_range > 0 then
+                trigger_delivery.max_range = randnum.fixes(rounding_params, trigger_delivery.max_range * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.ammo_range_modifier = function(id)
+    for _, ammo in pairs(data.raw.ammo) do
+        local ammo_types = to_array(ammo.ammo_type)
+        for _, ammo_type in pairs(ammo_types) do
+            if ammo_type.range_modifier == nil then
+                ammo_type.range_modifier = 1
+            end
+            local old_value = ammo_type.range_modifier
+
+            randomize({
+                id = id,
+                prototype = ammo,
+                tbl = ammo_type,
+                property = "range_modifier",
+                rounding = "discrete_float",
+                variance = "small",
+                dir = 1,
+            })
+
+            local factor = ammo_type.range_modifier / old_value
+            locale_utils.create_localised_description(ammo, factor, id, { variance = "small" })
         end
     end
 end
@@ -175,7 +265,7 @@ randomizations.armor_resistances = function(id)
                 end
             end
             if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Specialized resistance)[/color]"}
+                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Botched resistance)[/color]"}
             end
         end
     end
@@ -206,47 +296,30 @@ randomizations.capsule_cooldown = function(id)
     end
 end
 
--- TODO: Healing amount displayed? Agh
 randomizations.capsule_healing = function(id)
     for _, capsule in pairs(data.raw.capsule) do
-        local capsule_action = capsule.capsule_action
-        if capsule_action.type == "use-on-self" then
-            local ammo_type = capsule_action.attack_parameters.ammo_type
-            if ammo_type ~= nil then
-                if ammo_type.action then
-                    randomizations.trigger({
-                        id = id,
-                        prototype = capsule
-                    }, ammo_type.action, "healing")
+        local structs = {}
+        trigger_utils.gather_capsule_structs(structs, capsule, true)
+        local rng_key = rng.key({ id = id, prototype = capsule })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = 1,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+        local changed = false
 
-                    -- Check for stickers
-                    for _, sticker in pairs(randomizations.trigger({}, ammo_type.action, "gather-stickers")) do
-                        local sticker_prot = data.raw.sticker[sticker]
-                        -- Check if we've already randomized this sticker's healing
-                        if not randomization_info.touched[rng.key({id = id, prototype = sticker_prot})] then
-                            randomization_info.touched[rng.key({id = id, prototype = sticker_prot})] = true
-
-                            if sticker_prot.damage_per_tick ~= nil then
-                                if sticker_prot.damage_interval == nil then
-                                    sticker_prot.damage_interval = 1
-                                end
-
-                                -- Multiply by negative one to make it positive for randomization
-                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
-                                randomize({
-                                    id = id,
-                                    prototype = sticker_prot,
-                                    tbl = sticker_prot.damage_per_tick,
-                                    property = "amount",
-                                    rounding = "none"
-                                })
-                                -- Undo earlier multiplication by -1
-                                sticker_prot.damage_per_tick.amount = -sticker_prot.damage_per_tick.amount
-                            end
-                        end
-                    end
-                end
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount < 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(capsule, factor, id, { variance = "big" })
         end
     end
 end
@@ -311,6 +384,28 @@ randomizations.gun_damage_modifier = function(id)
         })
 
         locale_utils.create_localised_description(gun, attack_parameters.damage_modifier / old_modifier, id, { variance = "big" })
+    end
+end
+
+randomizations.gun_minimum_range = function(id)
+    for _, gun in pairs(data.raw.gun) do
+        if gun.attack_parameters.min_range ~= nil then
+            local old_min_range = gun.attack_parameters.min_range
+
+            randomize({
+                id = id,
+                prototype = gun,
+                tbl = gun.attack_parameters,
+                property = "min_range",
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            gun.attack_parameters.range = gun.attack_parameters.range - old_min_range + gun.attack_parameters.min_range
+
+            local factor = gun.attack_parameters.min_range / old_min_range
+            locale_utils.create_localised_description(gun, factor, id, { variance = "medium" })
+        end
     end
 end
 
@@ -381,24 +476,74 @@ randomizations.gun_shooting_speed = function(id)
     end
 end
 
-randomizations.item_fuel_value = function(id)
-    for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                if item.fuel_value ~= nil then
-                    local old_fuel_value = util.parse_energy(item.fuel_value)
-
-                    randomizations.energy({
-                        id = id,
-                        prototype = item,
-                        property = "fuel_value",
-                        range = "small",
-                        rounding = "discrete_float"
-                    })
-
-                    locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
-                end
+-- New
+randomizations.item_fuel_acceleration = function(id)
+    for _, item in pairs(items) do
+        -- Change this if vehicles ever use other types of fuel
+        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+            if item.fuel_acceleration_multiplier == nil then
+                item.fuel_acceleration_multiplier = 1.0
             end
+
+            local old_value = item.fuel_acceleration_multiplier
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "fuel_acceleration_multiplier",
+                rounding = "discrete_float",
+                variance = "medium",
+                dir = 1,
+            })
+
+            local factor = item.fuel_acceleration_multiplier / old_value
+
+            locale_utils.create_localised_description(item, factor, id)
+        end
+    end
+end
+
+-- New
+randomizations.item_fuel_top_speed = function(id)
+    for _, item in pairs(items) do
+        -- Change this if vehicles ever use other types of fuel
+        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+            if item.fuel_top_speed_multiplier == nil then
+                item.fuel_top_speed_multiplier = 1.0
+            end
+
+            local old_value = item.fuel_top_speed_multiplier
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "fuel_top_speed_multiplier",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = 1,
+            })
+
+            local factor = item.fuel_top_speed_multiplier / old_value
+
+            locale_utils.create_localised_description(item, factor, id, { variance = "big" })
+        end
+    end
+end
+
+randomizations.item_fuel_value = function(id)
+    for _, item in pairs(items) do
+        if item.fuel_value ~= nil then
+            local old_fuel_value = util.parse_energy(item.fuel_value)
+
+            randomizations.energy({
+                id = id,
+                prototype = item,
+                property = "fuel_value",
+                range = "small",
+                rounding = "discrete_float"
+            })
+
+            locale_utils.create_localised_description(item, util.parse_energy(item.fuel_value) / old_fuel_value, id)
         end
     end
 end
@@ -407,7 +552,7 @@ randomizations.item_stack_sizes = function(id)
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                if item.stack_size ~= nil and item.stack_size > 1 then
+                if item.stack_size ~= nil and item.stack_size >= 2 then
                     local old_stack_size = item.stack_size
 
                     randomize({
@@ -417,7 +562,8 @@ randomizations.item_stack_sizes = function(id)
                         range_min = "small",
                         range_max = "big",
                         bias = 0.1,
-                        rounding = "discrete"
+                        rounding = "discrete",
+                        abs_min = 2,
                     })
 
                     locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
@@ -673,6 +819,190 @@ randomizations.module_effects = function(id)
                     end
                     module.effect[effect.name] = effect_strength
                 end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.repair_speed = function(id)
+    for _, repair_tool in pairs(data.raw["repair-tool"]) do
+        local old_value = repair_tool.speed
+
+        randomize({
+            id = id,
+            prototype = repair_tool,
+            property = "speed",
+            rounding = "discrete_float",
+        })
+
+        local factor = repair_tool.speed / old_value
+
+        locale_utils.create_localised_description(repair_tool, factor, id)
+    end
+end
+
+-- New
+randomizations.spoil_spawn = function (id)
+
+    -- Chance of considering adding/removing a spoil trigger for an item
+    local toggle_spoil_to_trigger_result_p = 0.5
+
+    local spoil_to_trigger_result_pool = {}
+    local spoil_ticks_pool = {}
+    local item_count = 0
+
+    for _, item in pairs(items) do
+        item_count = item_count + 1
+        if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
+            table.insert(spoil_ticks_pool, item.spoil_ticks)
+            if item.spoil_to_trigger_result ~= nil then
+                table.insert(spoil_to_trigger_result_pool, table.deepcopy(item.spoil_to_trigger_result))
+            end
+        end
+    end
+
+    local ratio = #spoil_to_trigger_result_pool / item_count
+    local add_p = toggle_spoil_to_trigger_result_p * ratio
+    local remove_p = toggle_spoil_to_trigger_result_p * (1 - ratio)
+
+    -- Let's just stick to regular units for now...
+    local spawnable_units = {}
+    for unit_name, unit in pairs(data.raw["unit"]) do
+        if unit.hidden ~= true then
+            table.insert(spawnable_units, unit_name)
+        end
+    end
+
+    for _, item in pairs(items) do
+        local had_spawn = item.spoil_to_trigger_result ~= nil
+        local rng_key = rng.key({id = id, prototype = item})
+        local changed = false
+        if had_spawn and randbool.rand_bias_chaos(rng_key, remove_p, 1) then
+            item.spoil_to_trigger_result = nil
+            if item.spoil_result == nil then
+                item.spoil_ticks = nil
+            end
+        end
+        if not had_spawn and randbool.rand_bias_chaos(rng_key, add_p, -1) then
+            local spoil_spawn = spoil_to_trigger_result_pool[rng.int(rng_key, #spoil_to_trigger_result_pool)]
+            item.spoil_to_trigger_result = table.deepcopy(spoil_spawn)
+            if item.spoil_ticks == nil or item.spoil_ticks <= 0 then
+                item.spoil_ticks = spoil_ticks_pool[rng.int(rng_key, #spoil_ticks_pool)]
+            end
+        end
+        if item.spoil_to_trigger_result ~= nil then
+            local structs = {}
+            trigger_utils.gather_item_structs(structs, item, true)
+            local entity_mapping = {}
+            for _, trigger_effect in pairs(structs["trigger-effect"]) do
+                if trigger_effect.entity_name ~= nil then
+                    local new_entity_name = entity_mapping[trigger_effect.entity_name]
+                    if new_entity_name == nil then
+                        new_entity_name = spawnable_units[rng.int(rng_key, #spawnable_units)]
+                        entity_mapping[trigger_effect.entity_name] = new_entity_name
+                    end
+                    trigger_effect.entity_name = new_entity_name
+                end
+            end
+            for from, to in pairs(entity_mapping) do
+                if from ~= to then
+                    changed = true
+                    break
+                end
+            end
+        end
+        local now_spawns = item.spoil_to_trigger_result ~= nil
+        if had_spawn and not now_spawns then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Neutralized)[/color]"}
+        elseif not had_spawn and now_spawns then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Infested)[/color]"}
+        elseif changed then
+            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
+        end
+    end
+end
+
+-- New
+randomizations.spoil_time = function (id)
+
+    local ticks = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+    for _, item in pairs(items) do
+        if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
+            local old_value = item.spoil_ticks
+
+            local magnitude = ticks
+            if item.spoil_ticks > ticks_per_second then
+                magnitude = seconds
+                item.spoil_ticks = item.spoil_ticks / ticks_per_second
+                if item.spoil_ticks > seconds_per_minute then
+                    magnitude = minutes
+                    item.spoil_ticks = item.spoil_ticks / seconds_per_minute
+                    if item.spoil_ticks > minutes_per_hour then
+                        magnitude = hours
+                        item.spoil_ticks = item.spoil_ticks / minutes_per_hour
+                    end
+                end
+            end
+
+            randomize({
+                id = id,
+                prototype = item,
+                property = "spoil_ticks",
+                variance = "medium",
+                rounding = "discrete_float",
+            })
+
+            if magnitude == seconds then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second
+            elseif magnitude == minutes then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
+            elseif magnitude == hours then
+                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+            end
+
+            item.spoil_ticks = math.max(round(item.spoil_ticks), 1)
+
+            local factor = item.spoil_ticks / old_value
+
+            locale_utils.create_localised_description(item, factor, id)
+        end
+    end
+end
+
+-- New
+randomizations.tool_durability = function(id)
+
+    -- Opting to just randomize repair tool durability for now
+    local tool_classes = {
+        --"tool", "armor",
+        "repair-tool"
+    }
+
+    for _, class in pairs(tool_classes) do
+        for _, tool in pairs(data.raw[class]) do
+            if tool.infinite == nil or not tool.infinite then
+                local old_value = tool.durability
+
+                -- This could technically give non-integer durabilities to repair tools, but might be fine
+                randomize({
+                    id = id,
+                    prototype = tool,
+                    property = "durability",
+                    rounding = "discrete_float",
+                })
+
+                local factor = tool.durability / old_value
+
+                locale_utils.create_localised_description(tool, factor, id)
             end
         end
     end

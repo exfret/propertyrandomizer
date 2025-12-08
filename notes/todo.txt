@@ -26,6 +26,34 @@ Bigger things:
  - Randomize things in groups: all ores lower stack size for example, one master roll, not just random for each
  - Topological sort with caveats
 
+Ideas from Nifyr (not necessarily good ones):
+ - Randomize recipe crafting categories
+ - Randomize crafting machine crafting categories
+ - Randomize energy source type for agricultural towers, boilers, crafting machines, inserters, labs, mining drills
+    offshore pumps, pumps, radars and reactors
+ - Randomize energy source type for ammo turrets, asteroid collectors, beacons, combinators, electric turrets,
+    inventory bonus equipment, lamps, programmable speakers and roboports (can be electric or void/nil)
+ - Randomize energy source type for cars, generator equipment, locomotives, roboport equipment and spider vehicles
+    (can be burner or void/nil)
+ - Randomize fuel categories for burners
+ - Randomize ammo categories per ammo, gun and ammo turret prototypes
+ - Randomize input and output fluids of boiler prototypes, perhaps by treating it as a recipe in recipe randomizer?
+ - Randomize input fluid of generator prototypes
+ - Randomize input fluid of fusion reactor prototypes + output fluid of fusion generator prototypes
+ - Randomize output fluid of fusion reactor prototypes + input fluid of fusion generator prototypes? Treat them like recipes?
+    Make plasma part of recipe randomization?
+ - Randomize which resources require fluid to mine + which fluid per resource. Treat as recipes?
+ - Randomize which items spoil + spoil results. Treat as recipes?
+ - Randomize which fuels have burnt results and which burnt result per fuel. Treat as recipes?
+ - Randomize mining results of plants. Treat seed -> plant result as recipe?
+ - Randomize fuel and oxidizer fluids for thrusters
+ - Randomize asteroid spawns per space location and space connection
+ - Randomize the planet-space connection graph (the space map)
+ - Randomize which item and fluid resources appear on each planet
+ - Randomize which entities appear on each planet
+ - Randomize which planets have lightning
+ - Randomize fluid tiles per planet or fluid per fluid tile
+
 3. Rounding after rescalings
 8. Blacklists?
 12. Combat robot damage?
@@ -35,6 +63,7 @@ Bigger things:
 18. Clamp end result to the hard min/max range in case it escaped outside
 19. Why is supply area for electric poles only working for substations?
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
+ - Nifyr commented out this fix under the impression that it wasn't necessary
 23. Automatability nodes
 24. Add build_graph_compat nodes to Obsidian spec
 25. Check if node-transport-item-to-surface actually needs to also rely on the corresponding planet-launch
