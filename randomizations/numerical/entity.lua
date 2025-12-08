@@ -1777,19 +1777,21 @@ randomizations.inventory_sizes = function(id)
 
     -- Now everything else is randomized separately
     for entity_class, _ in pairs(categories.entities_with_inventory) do
-        for _, entity in pairs(data.raw[entity_class]) do
-            if entity.inventory_size > 1 then
-                local old_inventory_size = entity.inventory_size
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.inventory_size > 1 then
+                    local old_inventory_size = entity.inventory_size
 
-                randomize({
-                    id = id,
-                    prototype = entity,
-                    property = "inventory_size",
-                    abs_min = 1,
-                    rounding = "discrete"
-                })
+                    randomize({
+                        id = id,
+                        prototype = entity,
+                        property = "inventory_size",
+                        abs_min = 1,
+                        rounding = "discrete"
+                    })
 
-                locale_utils.create_localised_description(entity, entity.inventory_size / old_inventory_size, id)
+                    locale_utils.create_localised_description(entity, entity.inventory_size / old_inventory_size, id)
+                end
             end
         end
     end

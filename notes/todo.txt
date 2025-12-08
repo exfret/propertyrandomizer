@@ -3,12 +3,13 @@ WORKING ON:
 
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
  - Back to ammo preservation
- - Fix topological sort
  - Then, maybe recipe rando changes based on chaos
  - Also maybe "bundled" randomization where some things get randomized together for a consistent "story"
  - Planetary randomization
    * Check if game is possible after planetary randomization and print to console
    * Fix localisation with dupe and item randomization
+ - Allow item randomization to apply to some fluids? If it does, just give the item's effects to the barrel
+ - Dupes with better graphics
 
  - Look into rocket launch time bug
 

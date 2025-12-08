@@ -307,7 +307,8 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_types)
     local master_key = graph_utils.get_node_key(target_node)
     assert(graph[master_key])
 
-    local start_time = os.clock()
+    -- exfret: This needs to be removed when "online"
+    --local start_time = os.clock()
 
     local required_nodes = { [master_key] = true }
     local not_required_nodes = {}
@@ -423,7 +424,7 @@ min_rec_req.minimum_recursive_requirements = function (target_node, node_types)
     end
 
     local node_count = set_utils.count(required_nodes)
-    local elapsed_time = os.clock() - start_time
+    --local elapsed_time = os.clock() - start_time
 
     return required_nodes
 end
