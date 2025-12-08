@@ -101,7 +101,7 @@ local gather_item_name_structs = function (structs, item_name, stop_prototype)
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local item = data_raw_table(class)[item_name]
         mtm_set_insert(structs, class, item_name, item)
-        local gather_structs = export.item_class_to_gather_struct_func[class]
+        local gather_structs = export.type_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, item, stop_prototype)
         end
@@ -124,7 +124,7 @@ local gather_entity_name_structs = function (structs, entity_name, stop_prototyp
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local entity = data_raw_table(class)[entity_name]
         mtm_set_insert(structs, class, entity_name, entity)
-        local gather_structs = export.entity_class_to_gather_struct_func[class]
+        local gather_structs = export.type_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, entity, stop_prototype)
         end
@@ -147,7 +147,7 @@ local gather_active_trigger_structs = function (structs, active_trigger_name, st
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local active_trigger = data_raw_table(class)[active_trigger_name]
         mtm_set_insert(structs, class, active_trigger_name, active_trigger)
-        local gather_structs = export.active_trigger_class_to_gather_struct_func[class]
+        local gather_structs = export.type_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, active_trigger, stop_prototype)
         end
@@ -170,7 +170,7 @@ local gather_equipment_name_structs = function (structs, equipment_name, stop_pr
     if stop_prototype ~= true and class ~= nil and class ~= stop_prototype then
         local equipment = data_raw_table(class)[equipment_name]
         mtm_set_insert(structs, class, equipment_name, equipment)
-        local gather_structs = export.equipment_class_to_gather_struct_func[class]
+        local gather_structs = export.type_to_gather_struct_func[class]
         if gather_structs ~= nil then
             gather_structs(structs, equipment, stop_prototype)
         end
@@ -608,42 +608,33 @@ export.get_creator_table = function (prototype_type)
     return prototype_to_creators[prototype_type]
 end
 
-export.item_class_to_gather_struct_func = {
-    [prototype_ammo] = export.gather_ammo_structs,
-    [prototype_capsule] = export.gather_capsule_structs,
-}
-
-export.entity_class_to_gather_struct_func = {
-    [prototype_projectile] = export.gather_projectile_structs,
-    [prototype_beam] = export.gather_beam_structs,
-    [prototype_stream] = export.gather_stream_structs,
-    [prototype_artillery_projectile] = export.gather_artillery_projectile_structs,
-    [prototype_combat_robot] = export.gather_combat_robot_structs,
-    [prototype_smoke_with_trigger] = export.gather_smoke_with_trigger_structs,
-    [prototype_sticker] = export.gather_sticker_structs,
-    [prototype_spider_unit] = export.gather_spider_unit_structs,
-    [prototype_spider_leg] = export.gather_spider_leg_structs,
-    [prototype_unit] = export.gather_unit_structs,
-    [prototype_tree] = export.gather_tree_structs,
-    [prototype_explosion] = export.gather_explosion_structs,
-    [prototype_capture_robot] = export.gather_capture_robot_structs,
-    [prototype_land_mine] = export.gather_land_mine_structs,
-    [prototype_fire] = export.gather_fire_structs,
-    [prototype_segmented_unit] = export.gather_segmented_unit_structs,
-    [prototype_segment] = export.gather_segment_structs,
-    [prototype_asteroid] = export.gather_asteroid_structs,
-    [prototype_ammo_turret] = export.gather_ammo_turret_structs,
-    [prototype_electric_turret] = export.gather_electric_turret_structs,
-    [prototype_fluid_turret] = export.gather_fluid_turret_structs,
-}
-
-export.active_trigger_class_to_gather_struct_func = {
-    [prototype_chain_active_trigger] = export.gather_chain_active_trigger_structs,
-    [prototype_delayed_active_trigger] = export.gather_delayed_active_trigger_structs,
-}
-
-export.equipment_class_to_gather_struct_func = {
+export.type_to_gather_struct_func = {
     [prototype_active_defense_equipment] = export.gather_active_defense_equipment_structs,
+    [prototype_ammo] = export.gather_ammo_structs,
+    [prototype_ammo_turret] = export.gather_ammo_turret_structs,
+    [prototype_artillery_projectile] = export.gather_artillery_projectile_structs,
+    [prototype_asteroid] = export.gather_asteroid_structs,
+    [prototype_beam] = export.gather_beam_structs,
+    [prototype_capsule] = export.gather_capsule_structs,
+    [prototype_capture_robot] = export.gather_capture_robot_structs,
+    [prototype_chain_active_trigger] = export.gather_chain_active_trigger_structs,
+    [prototype_combat_robot] = export.gather_combat_robot_structs,
+    [prototype_delayed_active_trigger] = export.gather_delayed_active_trigger_structs,
+    [prototype_electric_turret] = export.gather_electric_turret_structs,
+    [prototype_explosion] = export.gather_explosion_structs,
+    [prototype_fire] = export.gather_fire_structs,
+    [prototype_fluid_turret] = export.gather_fluid_turret_structs,
+    [prototype_land_mine] = export.gather_land_mine_structs,
+    [prototype_projectile] = export.gather_projectile_structs,
+    [prototype_segment] = export.gather_segment_structs,
+    [prototype_segmented_unit] = export.gather_segmented_unit_structs,
+    [prototype_smoke_with_trigger] = export.gather_smoke_with_trigger_structs,
+    [prototype_spider_leg] = export.gather_spider_leg_structs,
+    [prototype_spider_unit] = export.gather_spider_unit_structs,
+    [prototype_sticker] = export.gather_sticker_structs,
+    [prototype_stream] = export.gather_stream_structs,
+    [prototype_tree] = export.gather_tree_structs,
+    [prototype_unit] = export.gather_unit_structs,
 }
 
 return export
