@@ -65,6 +65,10 @@ end
 function reformat.change_corpse_size(corpse_id, factor)
     local corpse = data.raw.corpse[corpse_id]
 
+    if corpse == nil then
+        return
+    end
+
     local graphics_properties = {
         "animation",
         "animation_overlay",
