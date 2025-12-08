@@ -1,8 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.1
 Date: ?
+  Features:
+    - (Nifyr) Filled in many numerical randomizations that weren't done yet
+    - (Nifyr) A new system for trigger-based randomizations, allowing for better randomization of capsules, military stuff, and more
+    - (Nifyr) Randomize spoil result entity of items that spawn units when they spoil
   Bugfixes:
-    - Allowed module randomization with modded modules
+    - Allowed module randomization with modded modules and a few other mod incompatibilities
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.0
 Date: 2025.12.07
