@@ -348,3 +348,25 @@ randomizations.sticker_damage_types = function (id)
         end
     end
 end
+
+-- New
+randomizations.unit_damage_types = function (id)
+    for _, unit in pairs(data.raw.unit or {}) do
+        local structs = {}
+        trigger_utils.gather_unit_structs(structs, unit, true)
+        local rng_key = rng.key({ id = id, prototype = unit })
+        local changed = false
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            local old_type = damage_parameters.type
+            damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
+            if damage_parameters.type ~= old_type then
+                changed = true
+            end
+        end
+
+        if changed then
+            add_damage_type_description(unit)
+        end
+    end
+end
