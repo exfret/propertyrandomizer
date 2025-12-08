@@ -4033,30 +4033,56 @@ randomizations.unit_attack_speed = function(id)
     end
 end
 
-randomizations.unit_melee_damage = function(id)
-    for _, unit_class in pairs({"unit", "spider-unit"}) do
-        if data.raw[unit_class] ~= nil then
-            for _, unit in pairs(data.raw[unit_class]) do
-                local attack_parameters = unit.attack_parameters
+randomizations.unit_damage = function(id)
+    for _, unit in pairs(data.raw["unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_unit_structs(structs, unit, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = unit })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+            dir = -1,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-                if attack_parameters.damage_modifier == nil then
-                    attack_parameters.damage_modifier = 1
-                end
-
-                local old_damage = attack_parameters.damage_modifier
-
-                randomize({
-                    id = id,
-                    prototype = unit,
-                    tbl = attack_parameters,
-                    property = "damage_modifier",
-                    range = "small",
-                    dir = -1,
-                    rounding = "discrete_float"
-                })
-
-                locale_utils.create_localised_description(unit, attack_parameters.damage_modifier / old_damage, id, {flipped = true})
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(unit, factor, id, { flipped = true, variance = "medium" })
+        end
+    end
+
+    for _, unit in pairs(data.raw["spider-unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_spider_unit_structs(structs, unit, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = unit })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+            dir = -1,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(unit, factor, id, { flipped = true, variance = "medium" })
         end
     end
 end
