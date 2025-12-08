@@ -949,7 +949,7 @@ end
 
 -- New
 randomizations.cargo_bay_inventory_bonus = function (id)
-    for _, cargo_bay in pairs(data.raw["cargo-bay"]) do
+    for _, cargo_bay in pairs(data.raw["cargo-bay"] or {}) do
         local old_value = cargo_bay.inventory_size_bonus
 
         randomize({
@@ -1433,7 +1433,7 @@ end
 
 -- New
 randomizations.fusion_generator_max_power = function(id)
-    for _, generator in pairs(data.raw["fusion-generator"]) do
+    for _, generator in pairs(data.raw["fusion-generator"] or {}) do
         local old_value = util.parse_energy(generator.energy_source.output_flow_limit)
 
         randomizations.energy({
@@ -1454,7 +1454,7 @@ end
 
 -- New
 randomizations.fusion_generator_speed = function(id)
-    for _, generator in pairs(data.raw["fusion-generator"]) do
+    for _, generator in pairs(data.raw["fusion-generator"] or {}) do
         local old_value = generator.max_fluid_usage
 
         randomize({
@@ -1473,7 +1473,7 @@ end
 
 -- New
 randomizations.fusion_reactor_neighbor_bonus = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         if reactor.neighbour_bonus == nil then
             reactor.neighbour_bonus = 1
         end
@@ -1496,7 +1496,7 @@ end
 
 -- New
 randomizations.fusion_reactor_power_input = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         local old_value = util.parse_energy(reactor.power_input)
 
         randomizations.energy({
@@ -1517,7 +1517,7 @@ end
 
 -- New
 randomizations.fusion_reactor_speed = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         local old_value = reactor.max_fluid_usage
 
         randomize({
@@ -1940,7 +1940,7 @@ end
 
 -- New
 randomizations.lightning_attractor_drain = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.energy_source ~= nil and la.energy_source.drain ~= nil then
             local old_value = util.parse_energy(la.energy_source.drain)
 
@@ -1964,7 +1964,7 @@ end
 
 -- New
 randomizations.lightning_attractor_efficiency = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.efficiency ~= nil and la.efficiency > 0 then
             local old_value = la.efficiency
 
@@ -1985,7 +1985,7 @@ end
 
 -- New
 randomizations.lightning_attractor_range = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.range_elongation ~= nil and la.range_elongation > 0 then
             local old_value = la.range_elongation
 
@@ -2604,7 +2604,7 @@ end
 
 -- New
 randomizations.plant_growth_time = function (id)
-    for _, plant in pairs(data.raw["plant"]) do
+    for _, plant in pairs(data.raw["plant"] or {}) do
         local old_value = plant.growth_ticks
 
         local unit_time = to_unit_time(plant.growth_ticks)
@@ -2629,7 +2629,7 @@ end
 
 -- New
 randomizations.plant_harvest_pollution = function (id)
-    for _, plant in pairs(data.raw["plant"]) do
+    for _, plant in pairs(data.raw["plant"] or {}) do
         if plant.harvest_emissions ~= nil then
             local randomized = false
             local rng_key = rng.key({id = id, prototype = plant})
@@ -3451,7 +3451,7 @@ randomizations.solar_panel_production = function(id)
 end
 
 randomizations.space_platform_initial_items = function (id)
-    for _, spsp in pairs(data.raw["space-platform-starter-pack"]) do
+    for _, spsp in pairs(data.raw["space-platform-starter-pack"] or {}) do
         for _, product in pairs(spsp.initial_items or {}) do
             if product.amount ~= nil then
                 randomize({
@@ -3704,7 +3704,7 @@ end
 
 -- New
 randomizations.thruster_consumption = function (id)
-    for _, thruster in pairs(data.raw["thruster"]) do
+    for _, thruster in pairs(data.raw["thruster"] or {}) do
         thruster.min_performance = {
             fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
             fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
@@ -3754,7 +3754,7 @@ end
 
 -- New
 randomizations.thruster_effectivity = function (id)
-    for _, thruster in pairs(data.raw["thruster"]) do
+    for _, thruster in pairs(data.raw["thruster"] or {}) do
         thruster.min_performance = {
             fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
             fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
