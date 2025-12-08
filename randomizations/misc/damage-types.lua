@@ -81,6 +81,13 @@ randomizations.fire_damage_types = function (id)
 end
 
 -- New
+randomizations.fluid_stream_damage_types = function (id)
+    indirect.iterate_child_prototypes("stream", function (prototype, parents, structs, is_enemy)
+        damage_type_randomization(prototype, parents, structs, id)
+    end)
+end
+
+-- New
 randomizations.landmine_damage_types = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
         local structs = {}
