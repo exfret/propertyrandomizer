@@ -1307,6 +1307,12 @@ local spec = {
             val = "more"
         }
     },
+    unit_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Doesn't include demolishers
     unit_sizes = {
         setting = {
