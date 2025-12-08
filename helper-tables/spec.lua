@@ -1285,7 +1285,7 @@ local spec = {
             val = "more"
         }
     },
-    unit_melee_damage = {
+    unit_damage = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
