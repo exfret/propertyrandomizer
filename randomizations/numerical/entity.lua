@@ -4109,6 +4109,31 @@ randomizations.unit_pollution_to_join_attack = function(id)
 end
 
 -- New
+randomizations.unit_range = function(id)
+    for _, unit_class in pairs({"unit", "spider-unit"}) do
+        for _, unit in pairs(data.raw[unit_class] or {}) do
+            local attack_parameters = unit.attack_parameters
+            if attack_parameters.range > 0 then
+                local old_value = attack_parameters.range
+
+                randomize({
+                    id = id,
+                    prototype = unit,
+                    tbl = attack_parameters,
+                    property = "range",
+                    dir = -1,
+                    variance = "small",
+                    rounding = "discrete_float"
+                })
+
+                local factor = attack_parameters.range / old_value
+                locale_utils.create_localised_description(unit, factor, id, { flipped = true, variance = "small" })
+            end
+        end
+    end
+end
+
+-- New
 -- Not added to spec yet
 randomizations.unit_spawner_time_to_capture = function(id)
     for _, spawner in pairs(data.raw["unit-spawner"]) do
