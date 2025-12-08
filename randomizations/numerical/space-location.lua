@@ -89,7 +89,7 @@ randomizations.asteroid_spawns = function (id)
         end
     end
 
-    for _, space_connection in pairs(data.raw["space-connection"]) do
+    for _, space_connection in pairs(data.raw["space-connection"] or {}) do
         for i = 1, #space_connection.asteroid_spawn_definitions or 0 do
             local asd = space_connection.asteroid_spawn_definitions[i]
             space_connection.asteroid_spawn_definitions[i] = {
@@ -235,7 +235,7 @@ randomizations.planet_solar_power = function (id)
 end
 
 randomizations.space_connection_length = function (id)
-    for _, space_connection in pairs(data.raw["space-connection"]) do
+    for _, space_connection in pairs(data.raw["space-connection"] or {}) do
         if space_connection.length == nil then
             space_connection.length = 600
         end

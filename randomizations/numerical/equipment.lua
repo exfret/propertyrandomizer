@@ -287,7 +287,7 @@ randomizations.equipment_generator_power = function(id)
 end
 
 randomizations.equipment_inventory_bonus = function(id)
-    for _, equipment in pairs(data.raw["inventory-bonus-equipment"]) do
+    for _, equipment in pairs(data.raw["inventory-bonus-equipment"] or {}) do
         local old_value = equipment.inventory_size_bonus
 
         randomize({
