@@ -1291,6 +1291,12 @@ local spec = {
             val = "more"
         }
     },
+    unit_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Doesn't include gleba spider-units (those move in different ways)
     -- Also doesn't include demolishers
     unit_movement_speed = {
