@@ -81,40 +81,17 @@ for class, amount in pairs(per_entity_class) do
 end]]
 
 global_seed = 767614037
+global_chaos_range = 1
+global_chaos = 1
+global_bias = 0
+global_bias_idx = 2
 
 local build_graph = require("lib/graph/build-graph")
 local min_rec_req = require("lib/graph/min-rec-req")
 local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
-
 randomizations = {}
-require("randomizations.graph.core")
-randomizations.graph("graph")
-
-local graph = build_graph.graph
-
--- adjust graph to make rocket building on certain planets never rely on import
-
-local independent_planets = { "nauvis", "vulcanus", "gleba", "fulgora" }
-
-for item_class, _ in pairs(defines.prototypes.item) do
-    if data.raw[item_class] ~= nil then
-        for _, item in pairs(data.raw[item_class]) do
-            for _, planet_name in pairs(independent_planets) do
-                local import_node = graph[build_graph.key("transport-item-to-planet", build_graph.compound_key({item.name, planet_name}))]
-                local export_node = graph[build_graph.key("rocket-launch-planet", planet_name)]
-
-                table.insert(import_node.prereqs, {
-                    type = export_node.type,
-                    name = export_node.name
-                })
-            end
-        end
-    end
-end
-
-build_graph.add_dependents(graph)
-
+local trigger_util = require("lib/trigger")
 
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]

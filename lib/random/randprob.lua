@@ -8,6 +8,12 @@ randprob.scale_odds = function(p, factor)
     return scaled_p / (scaled_p + not_p)
 end
 
+randprob.calc_odds_factor = function(p_old, p_new)
+    local odds_old = p_old / (1 - p_old)
+    local odds_new = p_new / (1 - p_new)
+    return odds_new / odds_old
+end
+
 randprob.rand = function(params)
     randnum.fill_in_defaults(params)
     if params.abs_min == "none" then params.abs_min = nil end
@@ -35,9 +41,11 @@ randprob.rand = function(params)
     params.abs_min = nil
     params.abs_max = nil
     params.prototype = nil
-    params.tbl = nil
-    params.property = nil
     params.dummy = 1
+    local tbl = params.tbl
+    params.tbl = nil
+    local property = params.property
+    params.property = nil
     local rounding = params.rounding
     params.rounding = "none"
     local factor = randnum.rand(params)
@@ -66,6 +74,7 @@ randprob.rand = function(params)
     params.abs_max = abs_max
     new_p = randnum.fixes(params, new_p)
 
+    tbl[property] = new_p
     return new_p
 end
 

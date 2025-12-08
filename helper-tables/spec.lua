@@ -42,13 +42,43 @@ local spec = {
             val = "more"
         }
     },]]
+    ammo_cooldown_modifier = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     ammo_damage = {
         setting = {
             name = "propertyrandomizer-military",
             val = "less"
         }
     },
+    ammo_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     ammo_magazine_size = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    ammo_projectile_count = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    ammo_projectile_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    ammo_range_modifier = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
@@ -63,6 +93,42 @@ local spec = {
     armor_resistances = {
         setting = {
             name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    artillery_projectile_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    artillery_projectile_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    artillery_projectile_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    asteroid_collector_arm_inventory = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_collector_base_arm_count = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    asteroid_collector_inventory = {
+        setting = {
+            name = "propertyrandomizer-production",
             val = "more"
         }
     },
@@ -81,6 +147,24 @@ local spec = {
     asteroid_mass = {
         setting = {
             name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    asteroid_spawns = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    asteroid_yields = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    base_effect = {
+        setting = {
+            name = "propertyrandomizer-production",
             val = "more"
         }
     },
@@ -110,6 +194,12 @@ local spec = {
         }
     },
     beam_damage_interval = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    beam_damage_types = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
@@ -178,6 +268,12 @@ local spec = {
             val = "more"
         }
     },
+    capsule_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Applies to fish and the fruits in space age
     capsule_healing = {
         setting = {
@@ -210,10 +306,64 @@ local spec = {
             val = "default"
         }
     },
+    cargo_bay_inventory_bonus = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    cargo_landing_pad_radar_range = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    chain_fork_chance = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    chain_max_jumps = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    combat_robot_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_lifetime = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    combat_robot_shooting_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -241,10 +391,10 @@ local spec = {
             val = "more"
         }
     },
-    equipment_active_defense_damage = {
+    equipment_active_defense_effect_radius = {
         setting = {
             name = "propertyrandomizer-military",
-            val = "default"
+            val = "more"
         }
     },
     equipment_active_defense_range = {
@@ -274,6 +424,12 @@ local spec = {
             val = "more"
         }
     },
+    equipment_energy_per_shield = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     equipment_energy_usage = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -290,6 +446,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
+        }
+    },
+    equipment_inventory_bonus = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
         }
     },
     equipment_movement_bonus = {
@@ -329,10 +491,34 @@ local spec = {
             val = "more"
         }
     },
+    equipment_shield_hitpoints = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     equipment_solar_panel_production = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
+        }
+    },
+    fire_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fire_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fire_lifetime = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
         }
     },
     fluid_box_locations = {
@@ -362,6 +548,58 @@ local spec = {
             val = "more"
         }
     },
+    fluid_stream_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fluid_stream_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fluid_turret_consumption = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    -- How much max power output
+    fusion_generator_max_power = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much input fluid to power and output fluid per tick
+    fusion_generator_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    fusion_reactor_neighbor_bonus = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much electric power is required
+    fusion_reactor_power_input = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    -- How much input fluid and fuel to output fluid per tick
+    fusion_reactor_speed = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     gate_opening_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -377,6 +615,12 @@ local spec = {
     },
     -- TODO for gun randomizations: Make different vehicle guns not get randomized differently
     gun_damage_modifier = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    gun_minimum_range = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
@@ -399,6 +643,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-military",
             val = "default"
+        }
+    },
+    health_regeneration = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
         }
     },
     -- Where inserters can take from and where the put items
@@ -433,6 +683,18 @@ local spec = {
             val = "default"
         }
     },
+    item_fuel_acceleration = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    item_fuel_top_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     item_fuel_value = {
         setting = {
             name = "propertyrandomizer-production",
@@ -443,7 +705,9 @@ local spec = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
-        }
+        },
+        -- Needs to be done before fuel stats randomizations
+        order = 1,
     },
     item_stack_sizes = {
         setting = {
@@ -464,10 +728,22 @@ local spec = {
             val = "default"
         }
     },
+    lab_science_pack_drain = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     landmine_damage = {
         setting = {
             name = "propertyrandomizer-military",
             val = "default"
+        }
+    },
+    landmine_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
         }
     },
     landmine_effect_radius = {
@@ -485,6 +761,24 @@ local spec = {
     landmine_trigger_radius = {
         setting = {
             name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    lightning_attractor_drain = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    lightning_attractor_efficiency = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    lightning_attractor_range = {
+        setting = {
+            name = "propertyrandomizer-production",
             val = "more"
         }
     },
@@ -532,9 +826,29 @@ local spec = {
             val = "more"
         }
     },
+    mining_drill_radius = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    mining_drill_resource_drain = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
     mining_fluid_amount_needed = {
         setting = {
             name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    -- Includes anything with a defined results field
+    -- That's rocks, plants and fluid resouces in vanilla
+    mining_results = {
+        setting = {
+            name = "propertyrandomizer-production",
             val = "more"
         }
     },
@@ -575,6 +889,80 @@ local spec = {
             val = "less"
         }
     },
+    planet_day_night_cycles = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    planet_gravity = {
+        setting = {
+            name = "propertyrandomizer-logistic",
+            val = "more"
+        }
+    },
+    planet_lightning_density = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    planet_solar_power = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    plant_growth_time = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    plant_harvest_pollution = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    -- How many projectiles get spawned by projectiles as part of a cluster
+    projectile_cluster_size = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    projectile_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    projectile_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    projectile_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    projectile_piercing_power = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    -- How many projectiles get spawned by projectiles
+    projectile_projectile_count = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     pump_pumping_speed = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -597,6 +985,12 @@ local spec = {
         setting = {
             name = "propertyrandomizer-production",
             val = "less"
+        }
+    },
+    reactor_effectivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
         }
     },
     reactor_neighbour_bonus = {
@@ -626,9 +1020,27 @@ local spec = {
             val = "more"
         }
     },
+    recipe_result_percent_spoiled = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    recipe_result_probabilities = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     recipe_results_numerical = {
         setting = {
             name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    repair_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -690,10 +1102,96 @@ local spec = {
             val = "more"
         }
     },]]
+    smoke_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_effect_radius = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    smoke_trigger_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     solar_panel_production = {
         setting = {
             name = "propertyrandomizer-production",
             val = "less"
+        }
+    },
+    space_connection_length = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    space_location_solar_power_space = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    space_platform_initial_items = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    spoil_spawn = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        },
+        -- Needs to be done before spoil time randomization
+        order = 1,
+    },
+    spoil_time = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    sticker_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    sticker_damage_types = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    sticker_duration = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    sticker_healing = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    sticker_movement_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
         }
     },
     storage_tank_capacity = {
@@ -720,9 +1218,28 @@ local spec = {
             val = "more"
         }
     },
+    thruster_consumption = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    thruster_effectivity = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     tile_walking_speed_modifier = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    -- Affects science capacity
+    tool_durability = {
+        setting = {
+            name = "propertyrandomizer-production",
             val = "more"
         }
     },

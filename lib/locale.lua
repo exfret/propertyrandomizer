@@ -319,13 +319,25 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
         mul_std = str_to_mul_std[extra_params.variance]
     end
 
-    prototype.localised_description = {
-        "",
-        locale_utils.find_localised_description(prototype, {with_newline = true}),
-        locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more, mul_std = mul_std}),
-        {"propertyrandomizer-tooltip." .. id},
-        addons .. "[/color]"
-    }
+    -- Started to hit a recursion limit, how embarrassing
+    local inner_localised_description = locale_utils.find_localised_description(prototype, {with_newline = true})
+    local percentage = locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more, mul_std = mul_std})
+    local description = {"propertyrandomizer-tooltip." .. id}
+    local addon_text = addons .. "[/color]"
+    if inner_localised_description[1] == "" and #inner_localised_description <= 17 then
+        prototype.localised_description = { "" }
+        for i = 2, #inner_localised_description do
+            prototype.localised_description[i] = inner_localised_description[i]
+        end
+        table.insert(prototype.localised_description, percentage)
+        table.insert(prototype.localised_description, description)
+        table.insert(prototype.localised_description, addon_text)
+    else
+        prototype.localised_description = {
+            "", inner_localised_description, percentage, description, addon_text
+        }
+    end
+
     return prototype.localised_description
 end
 

@@ -4,8 +4,117 @@ local randprob = require("lib/random/randprob")
 local randbool = require("lib/random/randbool")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local trigger_utils = require("lib/trigger")
 
 local randomize = randnum.rand
+
+local get_collision_radius = function(entity)
+    return math.ceil(entity.collision_box[2][1] - entity.collision_box[1][1]) / 2
+end
+
+local round = function (n)
+    return math.floor(n + 0.5)
+end
+
+local get_allowed_effects = function (entity)
+    local class = entity.type
+    local prototype_mining_drill = "mining-drill"
+    local prototype_lab = "lab"
+    local crafting_machine_prototypes = {
+        ["assembling-machine"] = true,
+        ["rocket-silo"] = true,
+        ["furnace"] = true,
+    }
+    local no_quality_recipe_categories = {
+        ["oil-processing"] = true,
+        ["rocket-building"] = true,
+    }
+    if crafting_machine_prototypes[class] ~= nil then
+        local allowed_effects = { "speed", "consumption", "pollution" }
+        local productivity = true
+        local quality = true
+        for _, crafting_category in pairs(entity.crafting_categories) do
+            if crafting_category == "recycling" then
+                productivity = false
+            end
+            if no_quality_recipe_categories[crafting_category] ~= nil then
+                quality = false
+            end
+        end
+        if productivity then
+            table.insert(allowed_effects, "productivity")
+        end
+        if quality then
+            table.insert(allowed_effects, "quality")
+        end
+        return allowed_effects
+    elseif class == prototype_lab then
+        return { "speed", "productivity", "consumption", "pollution" }
+    elseif class == prototype_mining_drill then
+        local fluid = false
+        for _, resource_category in pairs(entity.resource_categories) do
+            if resource_category == "basic-fluid" then
+                fluid = true
+            end
+        end
+        if fluid then
+            return { "speed", "productivity", "consumption", "pollution" }
+        else
+            return { "speed", "productivity", "consumption", "pollution", "quality" }
+        end
+    end
+end
+
+local to_unit_time = function (ticks)
+
+    local ticks_unit = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+    local unit = ticks_unit
+    local time = ticks
+
+    if time > ticks_per_second then
+        unit = seconds
+        time = time / ticks_per_second
+        if time > seconds_per_minute then
+            unit = minutes
+            time = time / seconds_per_minute
+            if time > minutes_per_hour then
+                unit = hours
+                time = time / minutes_per_hour
+            end
+        end
+    end
+
+    return { unit = unit, value = time }
+end
+
+local to_ticks = function (unit, value)
+
+    local ticks_unit = "ticks"
+    local seconds = "seconds"
+    local minutes = "minutes"
+    local hours = "hours"
+
+    local ticks_per_second = 60
+    local seconds_per_minute = 60
+    local minutes_per_hour = 60
+
+    if unit == seconds then
+        value = value * ticks_per_second
+    elseif unit == minutes then
+        value = value * ticks_per_second * seconds_per_minute
+    elseif unit == hours then
+        value = value * ticks_per_second * seconds_per_minute * minutes_per_hour
+    end
+
+    return math.max(round(value), 1)
+end
 
 randomizations.accumulator_buffer = function(id)
     for _, accumulator in pairs(data.raw.accumulator) do
@@ -84,6 +193,173 @@ randomizations.agricultural_tower_radius = function(id)
     end
 end
 
+-- New
+randomizations.artillery_projectile_damage = function (id)
+    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw["artillery-projectile"][projectile_name]
+            local structs = {}
+            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.artillery_projectile_effect_radius = function (id)
+    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw["artillery-projectile"][projectile_name]
+            local structs = {}
+            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.asteroid_collector_arm_inventory = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.arm_inventory_size == nil then
+                collector.arm_inventory_size = 5
+            end
+
+            local old_value = collector.arm_inventory_size
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "arm_inventory_size",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.arm_inventory_size / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.asteroid_collector_base_arm_count = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.arm_count_base == nil then
+                collector.arm_count_base = 3
+            end
+
+            local old_value = collector.arm_count_base
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "arm_count_base",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.arm_count_base / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.asteroid_collector_inventory = function(id)
+    if data.raw["asteroid-collector"] ~= nil then
+        for _, collector in pairs(data.raw["asteroid-collector"]) do
+            if collector.inventory_size == nil then
+                collector.inventory_size = 39
+            end
+
+            local old_value = collector.inventory_size
+
+            randomize({
+                id = id,
+                prototype = collector,
+                property = "inventory_size",
+                rounding = "discrete",
+                variance = "medium",
+            })
+
+            local factor = collector.inventory_size / old_value
+            locale_utils.create_localised_description(collector, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- Not added to spec yet
 randomizations.asteroid_collector_offset = function(id)
     if data.raw["asteroid-collector"] ~= nil then
         for _, collector in pairs(data.raw["asteroid-collector"]) do
@@ -170,6 +446,162 @@ randomizations.asteroid_mass = function(id)
     end
 end
 
+randomizations.asteroid_yields = function (id)
+    if data.raw.asteroid ~= nil then
+        for _, asteroid in pairs(data.raw.asteroid) do
+            local structs = {}
+            trigger_utils.gather_asteroid_structs(structs, asteroid, true)
+            local rng_key = rng.key({ id = id, prototype = asteroid })
+            for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+                if trigger_effect.offsets ~= nil then
+                    local offsets = trigger_effect.offsets
+                    local dir = -1
+                    if trigger_effect.type == "create-asteroid-chunk" then
+                        dir = 1
+                    end
+                    local new_count = randomize({
+                        key = rng_key,
+                        dummy = #offsets,
+                        variance = "medium",
+                        dir = dir,
+                        rounding = "discrete",
+                    })
+                    while new_count < #offsets do
+                        table.remove(offsets)
+                    end
+                    while new_count > #offsets do
+                        -- Let's just put every asteroid in the exact same position and hope no one notices
+                        local v = { 0, 0 }
+                        table.insert(offsets, v)
+                    end
+                end
+            end
+        end
+    end
+end
+
+randomizations.base_effect = function (id)
+
+    -- Chance of considering to add/remove base effect from 
+    local toggle_base_effect_p = 0.5
+    -- Chance of negative base effect
+    local negative_effect_p = 0.5
+
+    local negative_effects = {
+        ["consumption"] = true,
+        ["pollution"] = true,
+    }
+    local base_effect_receivers = 0
+    local possible_effect_receivers = {}
+
+    for entity_class, _ in pairs(categories.effect_receivers) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                table.insert(possible_effect_receivers, entity)
+                if entity.effect_receiver == nil then
+                    entity.effect_receiver = {}
+                end
+                if entity.effect_receiver.base_effect == nil then
+                    entity.effect_receiver.base_effect = {}
+                end
+                for _, value in pairs(entity.effect_receiver.base_effect) do
+                    if value ~= 0 then
+                        base_effect_receivers = base_effect_receivers + 1
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    local ratio = base_effect_receivers / #possible_effect_receivers
+    toggle_base_effect_p = toggle_base_effect_p * ratio
+
+    -- Applying the probability on individual effects rather than entities in order to get 5 times the base effects
+    -- However, not just positive effects and not just productivity
+    for _, entity in pairs(possible_effect_receivers) do
+        local rng_key = rng.key({ id = id, prototype = entity })
+        local base_effect = entity.effect_receiver.base_effect
+
+        -- Janky way of determining description but I can't be bothered
+        local gained_positive_effect = false
+        local gained_negative_effect = false
+        local lost_positive_effect = false
+        local lost_negative_effect = false
+        local factor = -1
+        local dir = 0
+
+        for _, effect_name in pairs(get_allowed_effects(entity)) do
+            local old_effect = base_effect[effect_name]
+            local had_effect = old_effect ~= nil and old_effect ~= 0
+            if had_effect and randbool.rand_bias_chaos(rng_key, toggle_base_effect_p, -1) then
+                base_effect[effect_name] = nil
+                if old_effect > 0 ~= (negative_effects[effect_name] ~= nil) then
+                    lost_positive_effect = true
+                else
+                    lost_negative_effect = true
+                end
+            end
+            if base_effect[effect_name] == nil and randbool.rand_bias_chaos(rng_key, toggle_base_effect_p, 1) then
+                local value = 0.5
+                if negative_effects[effect_name] ~= nil then
+                    value = value * -1
+                end
+                if randbool.rand_bias(rng_key, negative_effect_p, -1) then
+                    value = value * -1
+                    if lost_negative_effect and had_effect then
+                        lost_negative_effect = false
+                    else
+                        gained_negative_effect = true
+                    end
+                else
+                    if lost_positive_effect and had_effect then
+                        lost_positive_effect = false
+                    else
+                        gained_positive_effect = true
+                    end
+                end
+                base_effect[effect_name] = value
+            end
+            if base_effect[effect_name] ~= nil and base_effect[effect_name] ~= 0 then
+                local current_dir = -1
+                if base_effect[effect_name] > 0 ~= (negative_effects[effect_name] ~= nil) then
+                    current_dir = 1
+                end
+                randomize({
+                    id = id,
+                    prototype = entity,
+                    tbl = base_effect,
+                    property = effect_name,
+                    rounding = "discrete_float",
+                    variance = "medium",
+                    dir = current_dir,
+                    abs_min = -327,
+                    abs_max = 327,
+                })
+                if had_effect then
+                    dir = current_dir
+                    factor = base_effect[effect_name] / old_effect
+                end
+            end
+        end
+
+        if gained_positive_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Base effect)[/color]"}
+        elseif gained_negative_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Base effect)[/color]"}
+        end
+        if lost_positive_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Missing base effect)[/color]"}
+        elseif lost_negative_effect then
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Missing base effect)[/color]"}
+        end
+        if factor ~= -1 then
+            locale_utils.create_localised_description(entity, factor, id, { flipped = dir < 0 })
+        end
+    end
+end
+
 randomizations.beacon_distribution_effectivity = function(id)
     for _, beacon in pairs(data.raw.beacon) do
         local old_distribution_effectivity = beacon.distribution_effectivity
@@ -208,13 +640,52 @@ randomizations.beacon_supply_area = function(id)
     end
 end
 
-randomizations.beam_damage = function(id)
-    for _, beam in pairs(data.raw.beam) do
-        if beam.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = beam
-            }, beam.action, "damage")
+-- New
+randomizations.beam_damage = function (id)
+    local beams = trigger_utils.get_creator_table("beam")
+
+    local target_classes = {
+        ["active-defense-equipment"] = true,
+        ["ammo"] = true,
+        ["combat-robot"] = true,
+        ["electric-turret"] = true,
+    }
+
+    for beam_name, creators in pairs(beams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local beam = data.raw.beam[beam_name]
+            local structs = {}
+            trigger_utils.gather_beam_structs(structs, beam, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = beam })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
         end
     end
 end
@@ -476,6 +947,150 @@ randomizations.car_rotation_speed = function(id)
     end
 end
 
+-- New
+randomizations.cargo_bay_inventory_bonus = function (id)
+    for _, cargo_bay in pairs(data.raw["cargo-bay"]) do
+        local old_value = cargo_bay.inventory_size_bonus
+
+        randomize({
+            id = id,
+            prototype = cargo_bay,
+            property = "inventory_size_bonus",
+            rounding = "discrete",
+            variance = "medium",
+        })
+
+        local factor = cargo_bay.inventory_size_bonus / old_value
+
+        locale_utils.create_localised_description(cargo_bay, factor, id, { variance = "medium" })
+    end
+end
+
+-- New
+randomizations.cargo_landing_pad_radar_range = function (id)
+    for _, clp in pairs(data.raw["cargo-landing-pad"]) do
+        if clp.radar_range ~= nil and clp.radar_range > 0 then
+            local old_value = clp.radar_range
+
+            randomize({
+                id = id,
+                prototype = clp,
+                property = "radar_range",
+                rounding = "discrete",
+                variance = "small",
+            })
+
+            local factor = clp.radar_range / old_value
+
+            locale_utils.create_localised_description(clp, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_damage = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        local structs = {}
+        trigger_utils.gather_combat_robot_structs(structs, robot, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = robot })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "big",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_lifetime = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.time_to_live > 0 then
+            local old_value = robot.time_to_live
+
+            local unit_time = to_unit_time(robot.time_to_live)
+            robot.time_to_live = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = robot,
+                property = "time_to_live",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            robot.time_to_live = to_ticks(unit_time.unit, robot.time_to_live)
+
+            local factor = robot.time_to_live / old_value
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_range = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.attack_parameters.range > 0 then
+            local old_value = robot.attack_parameters.range
+
+            randomize({
+                id = id,
+                prototype = robot,
+                tbl = robot.attack_parameters,
+                property = "range",
+                rounding = "discrete_float",
+                variance = "medium",
+            })
+
+            local factor = robot.attack_parameters.range / old_value
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.combat_robot_shooting_speed = function (id)
+    for _, robot in pairs(data.raw["combat-robot"]) do
+        if robot.attack_parameters.cooldown > 0 then
+            local old_value = robot.attack_parameters.cooldown
+
+            -- To attacks per second
+            robot.attack_parameters.cooldown = 60 / robot.attack_parameters.cooldown
+
+            randomize({
+                id = id,
+                prototype = robot,
+                tbl = robot.attack_parameters,
+                property = "cooldown",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            -- Back to ticks per attack
+            robot.attack_parameters.cooldown = 60 / robot.attack_parameters.cooldown
+
+            local factor = old_value / robot.attack_parameters.cooldown
+
+            locale_utils.create_localised_description(robot, factor, id, { variance = "big" })
+        end
+    end
+end
+
 -- Includes linked randomization based on crafting speeds
 randomizations.crafting_machine_speed = function(id)
     -- Separate by crafting category
@@ -558,10 +1173,6 @@ randomizations.electric_pole_supply_area = function(id)
     local electric_poles = {}
     local electric_pole_to_old_supply_area = {}
 
-    local get_collision_radius = function(electric_pole)
-        return math.ceil(electric_pole.collision_box[2][1] - electric_pole.collision_box[1][1]) / 2
-    end
-
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
         table.insert(electric_poles, electric_pole)
         electric_pole_to_old_supply_area[electric_pole.name] = electric_pole.supply_area_distance
@@ -597,6 +1208,332 @@ randomizations.electric_pole_supply_area = function(id)
     end
 end
 
+-- New
+randomizations.fire_damage = function (id)
+    local fires = trigger_utils.get_creator_table("fire")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for fire_name, creators in pairs(fires) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local fire = data.raw.fire[fire_name]
+            local structs = {}
+            trigger_utils.gather_fire_structs(structs, fire, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = fire })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fire_lifetime = function (id)
+    local fires = trigger_utils.get_creator_table("fire")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for fire_name, creators in pairs(fires) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local fire = data.raw.fire[fire_name]
+            if fire.initial_lifetime == nil then
+                fire.initial_lifetime = 300
+            end
+
+            local old_value = fire.initial_lifetime
+            local unit_time = to_unit_time(fire.initial_lifetime)
+            fire.initial_lifetime = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = fire,
+                property = "initial_lifetime",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            fire.initial_lifetime = to_ticks(unit_time.unit, fire.initial_lifetime)
+
+            local factor = fire.initial_lifetime / old_value
+            for _, prototype in pairs(affected_prototypes) do
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_stream_damage = function (id)
+    local streams = trigger_utils.get_creator_table("stream")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for stream_name, creators in pairs(streams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local stream = data.raw.stream[stream_name]
+            local structs = {}
+            trigger_utils.gather_stream_structs(structs, stream, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = stream })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_stream_effect_radius = function (id)
+    local streams = trigger_utils.get_creator_table("stream")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for stream_name, creators in pairs(streams) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local stream = data.raw.stream[stream_name]
+            local structs = {}
+            trigger_utils.gather_stream_structs(structs, stream, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = stream })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.fluid_turret_consumption = function(id)
+    for _, turret in pairs(data.raw["fluid-turret"]) do
+        if turret.attack_parameters.fluid_consumption ~= nil then
+            local old_value = turret.attack_parameters.fluid_consumption
+
+            -- To fluid per second
+            turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * 60 / turret.attack_parameters.cooldown
+
+            randomize({
+                id = id,
+                prototype = turret,
+                tbl = turret.attack_parameters,
+                property = "fluid_consumption",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = -1,
+            })
+
+            -- Back to fluid per attack
+            turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * turret.attack_parameters.cooldown / 60
+
+            local factor = turret.attack_parameters.fluid_consumption / old_value
+
+            locale_utils.create_localised_description(turret, factor, id, { flipped = true, variance = "big" })
+        end
+    end
+end
+
+-- New
+randomizations.fusion_generator_max_power = function(id)
+    for _, generator in pairs(data.raw["fusion-generator"]) do
+        local old_value = util.parse_energy(generator.energy_source.output_flow_limit)
+
+        randomizations.energy({
+            is_power = true,
+            id = id,
+            prototype = generator,
+            tbl = generator.energy_source,
+            property = "output_flow_limit",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = util.parse_energy(generator.energy_source.output_flow_limit) / old_value
+
+        locale_utils.create_localised_description(generator, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_generator_speed = function(id)
+    for _, generator in pairs(data.raw["fusion-generator"]) do
+        local old_value = generator.max_fluid_usage
+
+        randomize({
+            id = id,
+            prototype = generator,
+            property = "max_fluid_usage",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+
+        local factor = generator.max_fluid_usage / old_value
+
+        locale_utils.create_localised_description(generator, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_neighbor_bonus = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        if reactor.neighbour_bonus == nil then
+            reactor.neighbour_bonus = 1
+        end
+
+        local old_value = reactor.neighbour_bonus
+
+        randomize({
+            id = id,
+            prototype = reactor,
+            property = "neighbour_bonus",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = reactor.neighbour_bonus / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_power_input = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        local old_value = util.parse_energy(reactor.power_input)
+
+        randomizations.energy({
+            is_power = true,
+            id = id,
+            prototype = reactor,
+            property = "power_input",
+            dir = -1,
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = util.parse_energy(reactor.power_input) / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { flipped = true, variance = "big" })
+    end
+end
+
+-- New
+randomizations.fusion_reactor_speed = function(id)
+    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+        local old_value = reactor.max_fluid_usage
+
+        randomize({
+            id = id,
+            prototype = reactor,
+            property = "max_fluid_usage",
+            rounding = "discrete_float",
+            variance = "big"
+        })
+
+        local factor = reactor.max_fluid_usage / old_value
+
+        locale_utils.create_localised_description(reactor, factor, id, { variance = "big" })
+    end
+end
+
 randomizations.gate_opening_speed = function(id)
     for _, gate in pairs(data.raw.gate) do
         if gate.opening_speed > 0 then
@@ -629,6 +1566,68 @@ randomizations.generator_fluid_usage = function(id)
         })
 
         locale_utils.create_localised_description(generator, generator.fluid_usage_per_tick / old_fluid_usage, id)
+    end
+end
+
+randomizations.health_regeneration = function (id)
+    local enemy_classes = {
+        ["asteroid"] = true,
+        ["segment"] = true,
+        ["segmented-unit"] = true,
+        ["simple-entity"] = true,
+        ["spider-unit"] = true,
+        ["tree"] = true, -- They're standing in the way of my factory!
+        ["turret"] = true,
+        ["unit"] = true,
+        ["unit-spawner"] = true
+    }
+
+    local tree_classes = {
+        ["tree"] = true,
+        ["plant"] = true,
+    }
+
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.healing_per_tick == nil and tree_classes[entity_class] ~= nil then
+                    entity.healing_per_tick = 0.1 / 60
+                end
+
+                if entity.healing_per_tick ~= nil and entity.healing_per_tick ~= 0 then
+                    local dir = -1
+                    local old_value = entity.healing_per_tick
+                    if enemy_classes[entity_class] == nil then
+                        dir = 1
+                    end
+                    if old_value < 0 then
+                        dir = dir * -1
+                        entity.healing_per_tick = entity.healing_per_tick * -1
+                    end
+
+                    -- To health per second
+                    entity.healing_per_tick = entity.healing_per_tick * 60
+
+                    randomize({
+                        id = id,
+                        prototype = entity,
+                        property = "healing_per_tick",
+                        rounding = "discrete_float",
+                        dir = dir,
+                    })
+
+                    -- Back to health per tick
+                    entity.healing_per_tick = entity.healing_per_tick / 60
+
+                    if old_value < 0 then
+                        entity.healing_per_tick = entity.healing_per_tick * -1
+                    end
+
+                    local factor = entity.healing_per_tick / old_value
+                    locale_utils.create_localised_description(entity, factor, id, { flipped = dir < 0 })
+                end
+            end
+        end
     end
 end
 
@@ -817,26 +1816,81 @@ randomizations.lab_research_speed = function(id)
     end
 end
 
+-- New
+randomizations.lab_science_pack_drain = function(id)
+    for _, lab in pairs(data.raw.lab) do
+        if lab.science_pack_drain_rate_percent == nil then
+            lab.science_pack_drain_rate_percent = 100
+        end
+
+        local old_value = lab.science_pack_drain_rate_percent
+
+        randomize({
+            id = id,
+            prototype = lab,
+            property = "science_pack_drain_rate_percent",
+            dir = -1,
+            rounding = "discrete",
+            abs_min = 1,
+            abs_max = 100,
+        })
+
+        local factor = lab.science_pack_drain_rate_percent / old_value
+
+        locale_utils.create_localised_description(lab, factor, id, { flipped = true })
+    end
+end
+
 randomizations.landmine_damage = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
-        if landmine.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = landmine,
-                variance = "big"
-            }, landmine.action, "damage")
+        local structs = {}
+        trigger_utils.gather_land_mine_structs(structs, landmine, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = landmine })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "big",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(landmine, factor, id, { variance = "big" })
         end
     end
 end
 
 randomizations.landmine_effect_radius = function(id)
     for _, landmine in pairs(data.raw["land-mine"]) do
-        if landmine.action ~= nil then
-            randomizations.trigger({
-                id = id,
-                prototype = landmine,
-                variance = "medium"
-            }, landmine.action, "effect-radius")
+        local structs = {}
+        trigger_utils.gather_land_mine_structs(structs, landmine, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = landmine })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.radius ~= nil and trigger.radius > 0 then
+                changed = true
+                trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(landmine, factor, id, { variance = "medium" })
         end
     end
 end
@@ -882,6 +1936,73 @@ randomizations.landmine_trigger_radius = function(id)
     end
 end
 
+-- New
+randomizations.lightning_attractor_drain = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.energy_source ~= nil and la.energy_source.drain ~= nil then
+            local old_value = util.parse_energy(la.energy_source.drain)
+
+            randomizations.energy({
+                is_power = true,
+                id = id,
+                prototype = la,
+                tbl = la.energy_source,
+                property = "drain",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            local factor = util.parse_energy(la.energy_source.drain) / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "medium", flipped = true })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_attractor_efficiency = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.efficiency ~= nil and la.efficiency > 0 then
+            local old_value = la.efficiency
+
+            randomize({
+                id = id,
+                prototype = la,
+                property = "efficiency",
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            local factor = la.efficiency / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_attractor_range = function (id)
+    for _, la in pairs(data.raw["lightning-attractor"]) do
+        if la.range_elongation ~= nil and la.range_elongation > 0 then
+            local old_value = la.range_elongation
+
+            randomize({
+                id = id,
+                prototype = la,
+                property = "range_elongation",
+                variance = "small",
+                rounding = "discrete_float"
+            })
+
+            local factor = la.range_elongation / old_value
+
+            locale_utils.create_localised_description(la, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
 randomizations.locomotive_max_speed = function(id)
 
     local max_value = 0
@@ -1036,22 +2157,46 @@ randomizations.machine_pollution = function(id)
                 for _, energy_source_key in pairs({"burner", "energy_source"}) do
                     if entity[energy_source_key] ~= nil then
                         local energy_source = entity[energy_source_key]
-
                         if energy_source.emissions_per_minute ~= nil then
+                            local randomized = false
+                            local rng_key = rng.key({id = id, prototype = entity})
+                            local positive_factor = randomize({
+                                key = rng_key,
+                                dummy = 1,
+                                range = "small",
+                                dir = -1,
+                                rounding = "none",
+                            })
+                            local negative_factor = randomize({
+                                key = rng_key,
+                                dummy = 1,
+                                range = "small",
+                                dir = 1,
+                                rounding = "none",
+                            })
+                            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+                            local positive = true
+                            local factor = positive_factor
+
                             for pollutant_id, pollutant_amount in pairs(energy_source.emissions_per_minute) do
-                                local old_pollution = pollutant_amount
+                                if pollutant_amount ~= 0 then
+                                    if pollutant_amount > 0 then
+                                        factor = positive_factor
+                                        positive = true
+                                    else
+                                        factor = negative_factor
+                                        positive = false
+                                    end
+                                    local new_amount = randnum.fixes(rounding_params, pollutant_amount * factor)
+                                    energy_source.emissions_per_minute[pollutant_id] = new_amount
+                                    randomized = true
+                                end
+                            end
 
-                                randomize({
-                                    id = id,
-                                    prototype = entity,
-                                    tbl = energy_source.emissions_per_minute,
-                                    property = pollutant_id,
-                                    range = "small",
-                                    dir = -1,
-                                    rounding = "discrete_float"
-                                })
-
-                                locale_utils.create_localised_description(entity, energy_source.emissions_per_minute[pollutant_id] / old_pollution, id, {addons = " (" .. pollutant_id .. ")", flipped = true})
+                            if randomized then
+                                -- Factor doesn't take into consideration the effects of rounding, which may be huge, but it's fine
+                                -- Also, if there are both negative and positive pollution values, this will only show one of them
+                                locale_utils.create_localised_description(entity, factor, id, { flipped = positive })
                             end
                         end
                     end
@@ -1106,6 +2251,69 @@ randomizations.max_health = function(id)
     end
 end
 
+-- New
+randomizations.mining_drill_radius = function (id)
+    for _, mining_drill in pairs(data.raw["mining-drill"]) do
+        local collision_radius = get_collision_radius(mining_drill)
+        local odd_size = (collision_radius * 2) % 2 == 1
+        local radius = mining_drill.resource_searching_radius
+        if odd_size then
+            radius = radius + 0.5
+        end
+        radius = round(radius)
+
+        radius = randomize({
+            key = rng.key({ id = id, prototype = mining_drill }),
+            dummy = radius,
+            rounding = "discrete",
+            variance = "small",
+        })
+
+        -- Vanilla radius always has a 0.01 margin
+        radius = radius - 0.01
+        if odd_size then
+            radius = radius - 0.5
+        end
+        local factor = radius / mining_drill.resource_searching_radius
+        mining_drill.resource_searching_radius = radius
+        locale_utils.create_localised_description(mining_drill, factor, id, { variance = "small" })
+
+        -- Vanilla burner mining drill has no visualization
+        if mining_drill.radius_visualisation_picture == nil then
+            mining_drill.radius_visualisation_picture =  {
+                filename = "__base__/graphics/entity/electric-mining-drill/electric-mining-drill-radius-visualization.png",
+                width = 10,
+                height = 10,
+            }
+        end
+    end
+end
+
+-- New
+randomizations.mining_drill_resource_drain = function (id)
+    for _, mining_drill in pairs(data.raw["mining-drill"]) do
+        if mining_drill.resource_drain_rate_percent == nil then
+            mining_drill.resource_drain_rate_percent = 100
+        end
+
+        local old_value = mining_drill.resource_drain_rate_percent
+
+        randomize({
+            id = id,
+            prototype = mining_drill,
+            property = "resource_drain_rate_percent",
+            dir = -1,
+            rounding = "discrete",
+            abs_min = 1,
+            abs_max = 100,
+        })
+
+        local factor = mining_drill.resource_drain_rate_percent / old_value
+        locale_utils.create_localised_description(mining_drill, factor, id, { flipped = true })
+    end
+end
+
+-- New
 randomizations.mining_fluid_amount_needed = function(id)
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
@@ -1123,6 +2331,70 @@ randomizations.mining_fluid_amount_needed = function(id)
 
                     local factor = entity.minable.fluid_amount / old_value
                     locale_utils.create_localised_description(entity, factor, id, {flipped = true})
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.mining_results = function(id)
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                -- The results property seems to only contain stuff that doesn't build the entity
+                -- Safe to randomize? Surely
+                if entity.minable ~= nil and entity.minable.results ~= nil then
+                    local rng_key = rng.key({ id = id, prototype = entity })
+                    for _, product in pairs(entity.minable.results) do
+                        if product.amount ~= nil then
+                            if product.amount > 0 then
+                                randomize({
+                                    id = id,
+                                    prototype = entity,
+                                    tbl = product,
+                                    property = "amount",
+                                    dir = 1,
+                                    rounding = "discrete",
+                                    variance = "medium",
+                                })
+                            end
+                        else
+                            local diff = product.amount_max - product.amount_min
+                            if diff > 0 then
+                                diff = randomize({
+                                    key = rng_key,
+                                    dummy = diff,
+                                    rounding = "discrete",
+                                    dir = 1,
+                                    variance = "medium",
+                                })
+                            end
+                            if product.amount_min > 0 then
+                                randomize({
+                                    id = id,
+                                    prototype = entity,
+                                    tbl = product,
+                                    property = "amount_min",
+                                    dir = 1,
+                                    rounding = "discrete",
+                                    variance = "medium",
+                                })
+                            end
+                            product.amount_max = product.amount_min + diff
+                        end
+                        if product.probability ~= nil then
+                            randprob.rand({
+                                id = id,
+                                prototype = entity,
+                                tbl = product,
+                                property = "probability",
+                                dir = 1,
+                                rounding = "discrete_float",
+                                variance = "medium",
+                            })
+                        end
+                    end
                 end
             end
         end
@@ -1193,12 +2465,76 @@ randomizations.mining_times_resource = function(id)
 end
 
 randomizations.module_slots = function(id)
+
+    -- Chance of considering toggling between modules/no modules
+    local toggle_module_slots_p = 0.5
+
+    local module_slot_counts = {}
+    local no_module_slots_count = 0
+
+    local prototype_beacon = "beacon"
+    local prototype_mining_drill = "mining-drill"
+    local crafting_machine_prototypes = {
+        ["assembling-machine"] = true,
+        ["rocket-silo"] = true,
+        ["furnace"] = true,
+    }
+    local no_quality_recipe_categories = {
+        ["oil-processing"] = true,
+        ["rocket-building"] = true,
+    }
+
     for entity_class, _ in pairs(categories.entities_with_module_slots) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.module_slots ~= nil and entity.module_slots > 0 then
-                    local old_module_slots = entity.module_slots
+                    table.insert(module_slot_counts, entity.module_slots)
+                else
+                    no_module_slots_count = no_module_slots_count + 1
+                end
+                if entity_class ~= prototype_beacon then
+                    if entity.effect_receiver == nil then
+                        entity.effect_receiver = {}
+                    end
+                end
+            end
+        end
+    end
 
+    local ratio = #module_slot_counts / (no_module_slots_count + #module_slot_counts)
+    -- Chance of giving module slots to an entity that previously didn't have any
+    local add_p = toggle_module_slots_p * ratio
+    -- Chance of removing all module slots from an entity
+    local remove_p = toggle_module_slots_p * (1 - ratio)
+
+    for entity_class, _ in pairs(categories.entities_with_module_slots) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                local rng_key = rng.key({ id = id, prototype = entity })
+                if entity.module_slots ~= nil and entity.module_slots > 0 then
+                    if entity_class ~= prototype_beacon and randbool.rand_bias_chaos(rng_key, remove_p, -1) then
+                        entity.effect_receiver.uses_module_effects = false
+                        entity.effect_receiver.uses_beacon_effects = false
+                        entity.module_slots = 0
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Module incompatible)[/color]"}
+                    else
+                        local old_module_slots = entity.module_slots
+
+                        randomize({
+                            id = id,
+                            prototype = entity,
+                            property = "module_slots",
+                            rounding = "discrete",
+                            abs_min = 1,
+                            variance = "big"
+                        })
+
+                        locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                    end
+                elseif randbool.rand_bias_chaos(rng_key, add_p, 1) then
+                    entity.effect_receiver.uses_module_effects = true
+                    entity.effect_receiver.uses_beacon_effects = true
+                    entity.module_slots = module_slot_counts[rng.int(rng_key, #module_slot_counts)]
                     randomize({
                         id = id,
                         prototype = entity,
@@ -1207,8 +2543,8 @@ randomizations.module_slots = function(id)
                         abs_min = 1,
                         variance = "big"
                     })
-
-                    locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                    entity.allowed_effects = get_allowed_effects(entity)
+                    entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
                 end
             end
         end
@@ -1259,6 +2595,299 @@ randomizations.pipe_to_ground_distance = function(id)
         for ind, pipe_connection in pairs(pipe.fluid_box.pipe_connections) do
             if pipe_connection.max_underground_distance ~= nil and pipe_connection.max_underground_distance > 0 then
                 locale_utils.create_localised_description(pipe, pipe_connection.max_underground_distance / pipe_to_old_underground_distances[pipe.name][ind], id)
+            end
+        end
+    end
+end
+
+-- New
+randomizations.plant_growth_time = function (id)
+    for _, plant in pairs(data.raw["plant"]) do
+        local old_value = plant.growth_ticks
+
+        local unit_time = to_unit_time(plant.growth_ticks)
+        plant.growth_ticks = unit_time.value
+
+        randomize({
+            id = id,
+            prototype = plant,
+            property = "growth_ticks",
+            variance = "medium",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        plant.growth_ticks = to_ticks(unit_time.unit, plant.growth_ticks)
+
+        local factor = plant.growth_ticks / old_value
+
+        locale_utils.create_localised_description(plant, factor, id, { flipped = true })
+    end
+end
+
+-- New
+randomizations.plant_harvest_pollution = function (id)
+    for _, plant in pairs(data.raw["plant"]) do
+        if plant.harvest_emissions ~= nil then
+            local randomized = false
+            local rng_key = rng.key({id = id, prototype = plant})
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                dir = -1,
+                rounding = "none",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for pollutant_id, pollutant_amount in pairs(plant.harvest_emissions) do
+                if pollutant_amount > 0 then
+                    local new_amount = randnum.fixes(rounding_params, pollutant_amount * factor)
+                    plant.harvest_emissions[pollutant_id] = new_amount
+                    randomized = true
+                end
+            end
+
+            if randomized then
+                -- Factor doesn't take into consideration the effects of rounding, so description may be inaccurate
+                locale_utils.create_localised_description(plant, factor, id, { flipped = true })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.projectile_cluster_size = function (id)
+    local projectiles = trigger_utils.get_creator_table("projectile")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                variance = "big",
+                rounding = "none",
+                dir = 1,
+            })
+            local changed = false
+            local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
+
+            for _, trigger in pairs(structs["trigger"] or {}) do
+                if trigger.cluster_count ~= nil then
+                    trigger.cluster_count = randnum.fixes(rounding_params, trigger.cluster_count * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.projectile_damage = function (id)
+    local projectiles = trigger_utils.get_creator_table("projectile")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["capsule"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.projectile_effect_radius = function (id)
+    local projectiles = trigger_utils.get_creator_table("projectile")
+
+    local target_classes = {
+        ["capsule"] = true,
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "small",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger_effect in pairs(structs["trigger-effect"]) do
+                if trigger_effect.radius ~= nil and trigger_effect.radius > 0 then
+                    randomized = true
+                    trigger_effect.radius = randnum.fixes(rounding_params, trigger_effect.radius * factor)
+                end
+            end
+
+            for _, trigger in pairs(structs["trigger"]) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "small" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.projectile_piercing_power = function (id)
+    local projectiles = trigger_utils.get_creator_table("projectile")
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            if projectile.piercing_damage ~= nil and projectile.piercing_damage > 0 then
+                local old_value = projectile.piercing_damage
+
+                randomize({
+                    id = id,
+                    prototype = projectile,
+                    property = "piercing_damage",
+                    rounding = "discrete_float",
+                    variance = "big",
+                })
+
+                local factor = projectile.piercing_damage / old_value
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.projectile_projectile_count = function (id)
+    local projectiles = trigger_utils.get_creator_table("projectile")
+
+    local target_classes = {
+        ["ammo"] = true,
+    }
+
+    for projectile_name, creators in pairs(projectiles) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local projectile = data.raw.projectile[projectile_name]
+            local structs = {}
+            trigger_utils.gather_projectile_structs(structs, projectile, true)
+            local rng_key = rng.key({ id = id, prototype = projectile })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                variance = "big",
+                rounding = "none",
+                dir = 1,
+            })
+            local changed = false
+            local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
+
+            for _, trigger in pairs(structs["trigger"] or {}) do
+                if trigger.repeat_count ~= nil and trigger.repeat_count > 1 then
+                    trigger.repeat_count = randnum.fixes(rounding_params, trigger.repeat_count * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
             end
         end
     end
@@ -1330,6 +2959,32 @@ randomizations.reactor_consumption = function(id)
     end
 end
 
+-- New
+randomizations.reactor_effectivity = function(id)
+    for _, reactor in pairs(data.raw.reactor) do
+        if reactor.energy_source.type == "burner" then
+            if reactor.energy_source.effectivity == nil then
+                reactor.energy_source.effectivity = 1
+            end
+
+            local old_value = reactor.energy_source.effectivity
+
+            randomize({
+                id = id,
+                prototype = reactor,
+                tbl = reactor.energy_source,
+                property = "effectivity",
+                rounding = "discrete_float",
+                variance = "medium",
+            })
+
+            local factor = reactor.energy_source.effectivity / old_value
+
+            locale_utils.create_localised_description(reactor, factor, id)
+        end
+    end
+end
+
 randomizations.reactor_neighbour_bonus = function(id)
     for _, reactor in pairs(data.raw.reactor) do
         if reactor.neighbour_bonus == nil then
@@ -1357,16 +3012,26 @@ randomizations.resistances = function(id)
     for name, _ in pairs(data.raw["damage-type"]) do
         table.insert(damage_type_names, name)
     end
+    -- In a cruel twist of fate, some entities share a reference to the same resistances table
+    -- To avoid randomizing those multiple times, keep track of which tables have already been randomized
+    local randomized_tables = {}
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                if entity.resistances ~= nil then
+                if entity.resistances ~= nil and #entity.resistances > 0 and randomized_tables[entity.resistances] == nil then
                     local shuffled_damage_type_names = table.deepcopy(damage_type_names)
                     local key = rng.key({id = id, prototype = entity})
                     rng.shuffle(key, shuffled_damage_type_names)
                     local dir = 1
                     if enemy_health_classes[entity_class] then
                         dir = -1
+                        -- Normally the player doesn't have access to acid damage.
+                        -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
+                        -- To avoid this, and because it sounds interesting, we give all enemies an extra resistance before shuffle.
+                        -- 100% is maybe a bit much, but hey, it brings an element of strategy. Adjust if needed.
+                        if #entity.resistances < #damage_type_names then
+                            table.insert(entity.resistances, { percent = 100 })
+                        end
                     end
                     local i = 1
                     local old_flat_resistance_sum = 0
@@ -1401,7 +3066,8 @@ randomizations.resistances = function(id)
                         end
                     end
                     if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Specialized resistance)[/color]"}
+                        randomized_tables[entity.resistances] = true
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
                     end
                 end
             end
@@ -1624,6 +3290,146 @@ randomizations.rocket_silo_launch_time = function(id)
     end
 end
 
+-- New
+randomizations.smoke_damage = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            local structs = {}
+            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = smoke })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                    changed = true
+                end
+            end
+
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.smoke_effect_radius = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            local structs = {}
+            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
+            local randomized = false
+            local rng_key = rng.key({ id = id, prototype = smoke })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "medium",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, trigger in pairs(structs["trigger"] or {}) do
+                if trigger.radius ~= nil and trigger.radius > 0 then
+                    randomized = true
+                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+                end
+            end
+
+            if randomized then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.smoke_trigger_speed = function (id)
+    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+
+    local target_classes = {
+        ["capsule"] = true,
+    }
+
+    for smoke_name, creators in pairs(smokes) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local smoke = data.raw["smoke-with-trigger"][smoke_name]
+            if smoke.action_cooldown ~= nil and smoke.action_cooldown > 0 then
+                local old_value = smoke.action_cooldown
+
+                -- To triggers per second
+                smoke.action_cooldown = 60 / smoke.action_cooldown
+
+                randomize({
+                    id = id,
+                    prototype = smoke,
+                    property = "action_cooldown",
+                    rounding = "discrete_float",
+                    variance = "big",
+                })
+
+                -- Back to cooldown ticks
+                smoke.action_cooldown = 60 / smoke.action_cooldown
+                smoke.action_cooldown = math.max(round(smoke.action_cooldown), 1)
+
+                local factor = old_value / smoke.action_cooldown
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
 randomizations.solar_panel_production = function(id)
     for _, solar_panel in pairs(data.raw["solar-panel"]) do
         local old_production = util.parse_energy(solar_panel.production)
@@ -1642,6 +3448,240 @@ randomizations.solar_panel_production = function(id)
     end
 end
 
+randomizations.space_platform_initial_items = function (id)
+    for _, spsp in pairs(data.raw["space-platform-starter-pack"]) do
+        for _, product in pairs(spsp.initial_items or {}) do
+            if product.amount ~= nil then
+                randomize({
+                    id = id,
+                    prototype = spsp,
+                    tbl = product,
+                    property = "amount",
+                    rounding = "discrete",
+                    variance = "big",
+                })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.sticker_damage = function (id)
+    local stickers = trigger_utils.get_creator_table("sticker")
+
+    local target_classes = {
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+            local structs = {}
+            trigger_utils.gather_sticker_structs(structs, sticker, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = sticker })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount > 0 then
+                    local damage_interval = 1
+                    if sticker.damage_interval ~= nil then
+                        damage_interval = sticker.damage_interval
+                    end
+                    local intervals_per_sec = 60 / damage_interval
+
+                    -- To damage per second
+                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
+
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+
+                    -- Back to damage per interval
+                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
+
+                    changed = true
+                end
+            end
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.sticker_duration = function (id)
+    local stickers = trigger_utils.get_creator_table("sticker")
+
+    local target_classes = {
+        ["capsule"] = true,
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    -- As fate would have it, some capsules have multiple stickers handling different aspects of the same "effect".
+    -- For instance, yumako healing and animation are handled by two separate stickers.
+    -- This randomizes each separately, meaning yumako will get two descriptions of changed sticker duration.
+    -- Oh well :)
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+
+            local old_value = sticker.duration_in_ticks
+
+            local unit_time = to_unit_time(sticker.duration_in_ticks)
+            sticker.duration_in_ticks = unit_time.value
+
+            randomize({
+                id = id,
+                prototype = sticker,
+                property = "duration_in_ticks",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            sticker.duration_in_ticks = to_ticks(unit_time.unit, sticker.duration_in_ticks)
+
+            local factor = sticker.duration_in_ticks / old_value
+
+            for _, prototype in pairs(affected_prototypes) do
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.sticker_healing = function (id)
+    local stickers = trigger_utils.get_creator_table("sticker")
+
+    local target_classes = {
+        ["capsule"] = true
+    }
+
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+            local structs = {}
+            trigger_utils.gather_sticker_structs(structs, sticker, true)
+            local changed = false
+            local rng_key = rng.key({ id = id, prototype = sticker })
+            local factor = randomize({
+                key = rng_key,
+                dummy = 1,
+                rounding = "none",
+                variance = "big",
+            })
+            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+                if damage_parameters.amount < 0 then
+                    local damage_interval = 1
+                    if sticker.damage_interval ~= nil then
+                        damage_interval = sticker.damage_interval
+                    end
+                    local intervals_per_sec = 60 / damage_interval
+
+                    -- To healing per second
+                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
+
+                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+
+                    -- Back to healing per interval
+                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
+
+                    changed = true
+                end
+            end
+            if changed then
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                end
+            end
+        end
+    end
+end
+
+-- New
+randomizations.sticker_movement_speed = function (id)
+    local stickers = trigger_utils.get_creator_table("sticker")
+
+    local target_classes = {
+        ["capsule"] = true,
+        ["ammo"] = true,
+        ["fluid-turret"] = true,
+    }
+
+    for sticker_name, creators in pairs(stickers) do
+        local affected_prototypes = {}
+
+        for _, prototype in pairs(creators) do
+            if target_classes[prototype.type] ~= nil then
+                affected_prototypes[#affected_prototypes+1] = prototype
+            end
+        end
+
+        if #affected_prototypes > 0 then
+            local sticker = data.raw.sticker[sticker_name]
+            if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier ~= 1 then
+                local dir = 1
+                if sticker.target_movement_modifier < 1 then
+                    dir = -1
+                end
+
+                local old_value = sticker.target_movement_modifier
+
+                randomize({
+                    id = id,
+                    prototype = sticker,
+                    property = "target_movement_modifier",
+                    rounding = "discrete_float",
+                    variance = "big",
+                    dir = dir,
+                })
+
+                local factor = sticker.target_movement_modifier / old_value
+
+                for _, prototype in pairs(affected_prototypes) do
+                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big", flipped = dir < 0 })
+                end
+            end
+        end
+    end
+end
+
 randomizations.storage_tank_capacity = function(id)
     for _, storage_tank in pairs(data.raw["storage-tank"]) do
         local old_capacity = storage_tank.fluid_box.volume
@@ -1657,6 +3697,95 @@ randomizations.storage_tank_capacity = function(id)
         })
 
         locale_utils.create_localised_description(storage_tank, storage_tank.fluid_box.volume / old_capacity, id, { variance = "big" })
+    end
+end
+
+-- New
+randomizations.thruster_consumption = function (id)
+    for _, thruster in pairs(data.raw["thruster"]) do
+        thruster.min_performance = {
+            fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
+            fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
+            effectivity = thruster.min_performance.effectivity or thruster.min_performance[3],
+        }
+        thruster.max_performance = {
+            fluid_volume = thruster.max_performance.fluid_volume or thruster.max_performance[1],
+            fluid_usage = thruster.max_performance.fluid_usage or thruster.max_performance[2],
+            effectivity = thruster.max_performance.effectivity or thruster.max_performance[3],
+        }
+
+        -- Randomizing min and max separately seems interesting so let's do that
+        local old_max = thruster.max_performance.fluid_usage
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage - thruster.min_performance.fluid_usage
+
+        -- To fluid per second
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage * 60
+        thruster.min_performance.fluid_usage = thruster.min_performance.fluid_usage * 60
+
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.min_performance,
+            property = "fluid_usage",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.max_performance,
+            property = "fluid_usage",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+
+        -- Back to fluid per tick
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage / 60
+        thruster.min_performance.fluid_usage = thruster.min_performance.fluid_usage / 60
+
+        thruster.max_performance.fluid_usage = thruster.max_performance.fluid_usage + thruster.min_performance.fluid_usage
+
+        local factor = thruster.max_performance.fluid_usage / old_max
+        locale_utils.create_localised_description(thruster, factor, id)
+    end
+end
+
+-- New
+randomizations.thruster_effectivity = function (id)
+    for _, thruster in pairs(data.raw["thruster"]) do
+        thruster.min_performance = {
+            fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
+            fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
+            effectivity = thruster.min_performance.effectivity or thruster.min_performance[3],
+        }
+        thruster.max_performance = {
+            fluid_volume = thruster.max_performance.fluid_volume or thruster.max_performance[1],
+            fluid_usage = thruster.max_performance.fluid_usage or thruster.max_performance[2],
+            effectivity = thruster.max_performance.effectivity or thruster.max_performance[3],
+        }
+
+        -- Randomizing min and max separately seems interesting so let's do that
+        local old_max = thruster.max_performance.effectivity
+
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.min_performance,
+            property = "effectivity",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+        randomize({
+            id = id,
+            prototype = thruster,
+            tbl = thruster.max_performance,
+            property = "effectivity",
+            rounding = "discrete_float",
+            variance = "medium"
+        })
+
+        local factor = thruster.max_performance.effectivity / old_max
+        locale_utils.create_localised_description(thruster, factor, id)
     end
 end
 
@@ -1831,8 +3960,28 @@ randomizations.turret_shooting_speed = function(id)
             -- Back to ticks per attack
             turret.attack_parameters.cooldown = 60 / turret.attack_parameters.cooldown
 
+            -- Fix rounding of fluid consumption since it depends on cooldown
+            if turret.attack_parameters.fluid_consumption ~= nil then
+                -- To fluid per second
+                turret.attack_parameters.fluid_consumption
+                = turret.attack_parameters.fluid_consumption
+                * 60 / turret.attack_parameters.cooldown
+
+                local rng_key = rng.key({ id = id, prototype = turret })
+                local rounding_params = { key = rng_key, rounding = "discrete_float" }
+                turret.attack_parameters.fluid_consumption = randnum.fixes(
+                    rounding_params,
+                    turret.attack_parameters.fluid_consumption
+                )
+                -- Back to fluid per tick
+                turret.attack_parameters.fluid_consumption
+                    = turret.attack_parameters.fluid_consumption
+                    * turret.attack_parameters.cooldown / 60
+            end
+
             local new_shooting_speed = 1 / turret.attack_parameters.cooldown
-            locale_utils.create_localised_description(turret, new_shooting_speed / old_shooting_speed, id)
+            local factor = new_shooting_speed / old_shooting_speed
+            locale_utils.create_localised_description(turret, factor, id)
         end
     end
 end

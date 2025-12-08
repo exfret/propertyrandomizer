@@ -370,9 +370,10 @@ randnum.rand = function(params)
         elseif dir == 0 then
             bias_idx = 2
         end
+
+        val = fleish.randomize_multiplicatively(key, val, mul_std, bias_idx, chaos_val)
     end
 
-    val = fleish.randomize_multiplicatively(key, val, mul_std, bias_idx, chaos_val)
 
     if settings.startup["propertyrandomizer-numerical-algorithm"].value == "exfret-random-walk" then
         if val > hard_max then

@@ -23,14 +23,24 @@ categories.crafting_machines = {
     ["rocket-silo"] = true
 }
 
+categories.effect_receivers = {
+    ["assembling-machine"] = true,
+    ["rocket-silo"] = true,
+    ["furnace"] = true,
+    ["lab"] = true,
+    ["mining-drill"] = true
+}
+
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {
     ["car"] = true,
+    ["cargo-landing-pad"] = true,
     -- These are randomized separately
     --["cargo-wagon"] = true,
     --["container"] = true,
     --["logistic-container"] = true,
-    ["spider-vehicle"] = true
+    ["space-platform-hub"] = true,
+    ["spider-vehicle"] = true,
 }
 
 categories.entities_with_module_slots = {
@@ -44,7 +54,6 @@ categories.entities_with_module_slots = {
 
 categories.equipment_energy_usage_keys = {
     ["belt-immunity-equipment"] = {["energy_consumption"] = "power"},
-    ["energy-shield-equipment"] = {["energy_per_shield"] = "energy"},
     ["movement-bonus-equipment"] = {["energy_consumption"] = "power"},
     ["night-vision-equipment"] = {["energy_input"] = "power"}
 }
