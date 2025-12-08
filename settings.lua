@@ -219,6 +219,20 @@ data:extend({
     {
         setting_type = "startup",
         type = "string-setting",
+        name = "propertyrandomizer-softlock-prevention",
+        localised_name = "Soflock errors",
+        localised_description = "How strict to be about error-ing on application startup if potential softlocks are found. Errors are always reported when starting a new game.",
+        allowed_values = {
+            "control-only",
+            "critical",
+            --"all"
+        },
+        default_value = "control-only",
+        order = "f-b[softlock]"
+    },
+    {
+        setting_type = "startup",
+        type = "string-setting",
         name = "propertyrandomizer-overrides",
         localised_name = "Custom overrides [See Tooltip]",
         localised_description = "For extra fancy customization. See README for more information. README can be found in the mod folder locally or online here: github.com/exfret/propertyrandomizer",

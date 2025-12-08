@@ -4,22 +4,48 @@ local flow_cost = require("lib/graph/flow-cost")
 local graph_utils = require("lib/graph/graph-utils")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
-
-local dont_randomize_item = {
-    ["rocket-part"] = true,
-}
-
--- item lookup
-local items = {}
-for item_class, _ in pairs(defines.prototypes.item) do
-    if data.raw[item_class] ~= nil then
-        for _, item in pairs(data.raw[item_class]) do
-            items[item.name] = item
-        end
-    end
-end
+local locale_utils = require("lib/locale")
 
 randomizations.item_new = function(id)
+    local dont_randomize_item = {
+        ["rocket-part"] = true,
+    }
+
+    -- item lookup
+    local items = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                items[item.name] = item
+            end
+        end
+    end
+
+    -- lootable entity lookup
+    local lootable_entities = {}
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                table.insert(lootable_entities, entity)
+            end
+        end
+    end
+
+    local raw_resource_items = {}
+    for _, resource in pairs(data.raw.resource) do
+        if resource.minable ~= nil then
+            if resource.minable.results ~= nil then
+                for _, result in pairs(resource.minable.results) do
+                    if result.type == "item" then
+                        raw_resource_items[result.name] = true
+                    end
+                end
+            else
+                raw_resource_items[resource.minable.result] = true
+            end
+        end
+    end
+    
     -- Special cost analysis for item randomization
     local modified_raw_resource_table = flow_cost.get_default_raw_resource_table()
     -- Consider fish/wood as expensive in a slot, but not when traveling
@@ -53,8 +79,8 @@ randomizations.item_new = function(id)
                 end
                 -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
                 if stackable and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
-                    -- Some randomness to determine whether to randomize it
-                    if rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then
+                    -- Some randomness to determine whether to randomize it (always randomize raw resources)
+                    if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then
                         to_be_randomized[build_graph.key(node.type, node.name)] = true
                     end
                 end
@@ -68,17 +94,20 @@ randomizations.item_new = function(id)
         ["build-entity-item"] = true,
         ["build-entity-item-surface"] = true,
         ["build-tile-item-surface"] = true,
+        -- This is an AND node so it needs fixing!
+        --["build-tile-item-surface-with-item"] = true,
         ["plant-entity-item-surface"] = true,
-        ["repair-pack"] = true,
-        ["rocket-turret"] = true,
-        ["rocket-ammo"] = true,
-        ["burn-item"] = true,
         -- Note: fuel-category-surface is used primarily
         ["fuel-category"] = true,
         ["fuel-category-surface"] = true,
-        -- This is an AND node so it needs fixing!
-        --["build-tile-item-surface-with-item"] = true,
+        ["burn-item"] = true,
         ["burn-item-surface"] = true,
+        -- Special compat nodes
+        ["starter-gun"] = true,
+        ["starter-gun-ammo"] = true,
+        ["repair-pack"] = true,
+        ["rocket-turret"] = true,
+        ["rocket-ammo"] = true,
     }
     for node_name, _ in pairs(to_be_randomized) do
         local item_node = dep_graph[node_name]
@@ -122,14 +151,14 @@ randomizations.item_new = function(id)
     -- Now re-sort and create our list of dependents and prereqs for shuffling
     local prereq_sort_info = top_sort.sort(dep_graph)
 
-    local shuffled_prereqs = {}
-    local sorted_dependents = {}
+    local item_slots = {}
+    local item_travelers = {}
     local blacklist = {}
     for _, item_node in pairs(prereq_sort_info.sorted) do
         local node_name = build_graph.key(item_node.type, item_node.name)
         if to_be_randomized[node_name] then
-            table.insert(shuffled_prereqs, item_node.prereqs[1])
-            table.insert(sorted_dependents, item_node)
+            table.insert(item_slots, dep_graph[build_graph.key(item_node.prereqs[1].type, item_node.prereqs[1].name)])
+            table.insert(item_travelers, item_node)
             -- Blacklist the edges incoming to the item-surface nodes corresponding to this item
             for surface_name, surface in pairs(build_graph.surfaces) do
                 local item_surface_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({item_node.name, surface_name}))]
@@ -142,9 +171,143 @@ randomizations.item_new = function(id)
         end
     end
 
+    rng.shuffle(rng.key({id = id}), item_travelers)
+
+    local slot_to_item = {}
+    local item_to_slot = {}
+    local curr_sort_state = top_sort.sort(dep_graph, blacklist)
+
+    local function is_slot_reachable(slot)
+        -- Check if this is a prereq itself rather than a proper node yet
+        slot_node = slot
+        if slot.prereqs == nil then
+            local slot_node = dep_graph[build_graph.key(slot.type, slot.name)]
+        end
+        for _, prereq in pairs(slot_node.prereqs) do
+            if curr_sort_state.reachable[build_graph.key(prereq.type, prereq.name)] then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function is_item_reachable(item_node)
+        -- Kind of weird, but consider an item reachable if it's directly reachable or if it's *old* slot is reachable
+        -- This shouldn't need to be technically accurate; item reachability is mainly to help guide the randomizer to make good choices
+        return curr_sort_state.reachable[build_graph.key(item_node.type, item_node.name)] or is_slot_reachable(dep_graph[build_graph.key("item-slot", item_node.name)])
+    end
+
+    for i = 1, #item_slots do
+        local old_slot
+        local new_item
+
+        for j = 1, constants.item_randomization_max_fallbacks do
+            for _, curr_slot in pairs(item_slots) do
+                if slot_to_item[curr_slot.name] == nil and is_slot_reachable(curr_slot) then
+                    for _, proposed_item in pairs(item_travelers) do
+                        if item_to_slot[proposed_item.name] == nil and is_item_reachable(proposed_item) then
+                            local proposed_item_prot = items[proposed_item.name]
+                            local slot_item = items[curr_slot.name]
+
+                            -- Check that costs align
+                            local worry_about_costs = false
+                            if traveler_cost ~= nil and (slot_item.place_result ~= nil or slot_item.type ~= "item" or slot_item.fuel_value ~= nil or slot_item.place_as_tile ~= nil or slot_item.plant_result ~= nil) then
+                                worry_about_costs = true
+                            end
+                            if not worry_about_costs or (slot_cost ~= nil and slot_cost <= constants.item_randomization_cost_factor_threshold * traveler_cost) then
+                                -- Check now that stack sizes match up
+                                if proposed_item_prot.stack_size >= slot_item.stack_size / 10 then
+                                    old_slot = curr_slot
+                                    new_item = proposed_item
+                                    break
+                                end
+                            end
+                        end
+                    end
+
+                    if new_item ~= nil then
+                        break
+                    else
+                        log("No valid traveling items")
+                        log(curr_slot.name)
+                    end
+                elseif not is_slot_reachable(curr_slot) then
+                    log("Unreachable slot")
+                    log(curr_slot.name)
+                end
+            end
+
+            if new_item == nil then
+                -- Try to find a traveler to switch earlier
+                local succeeded_in_traveler_switch = false
+                for _, failed_traveler in pairs(item_travelers) do
+                    if item_to_slot[failed_traveler.name] == nil and is_item_reachable(failed_traveler) then
+                        -- Fallback to switching this item back earlier to its vanilla spot
+                        local vanilla_slot = dep_graph[build_graph.key("item-slot", failed_traveler.name)]
+                        -- We know its vanilla slot was already taken since that should always be available by now (and the fact we failed means it's probably getting used by something else)
+                        -- Otherwise, if no items satisfy this, it's hopeless
+                        local booted_out_item = slot_to_item[vanilla_slot.name]
+
+                        if booted_out_item ~= nil then
+                            -- Switch out slot/item tables
+                            slot_to_item[vanilla_slot.name] = failed_traveler
+                            item_to_slot[failed_traveler.name] = vanilla_slot
+                            item_to_slot[booted_out_item.name] = nil
+
+                            -- Repair the graph
+                            -- No blacklist changes needed since those are all on the item-surface/item-slot level (though we'll need to re-sort from the beginning)
+                            graph_utils.remove_prereq(vanilla_slot, booted_out_item)
+                            graph_utils.add_prereq(vanilla_slot, failed_traveler)
+
+                            -- Redo the sort state entirely instead of trying to backtrack
+                            -- This is slow, but we're in a desperate state by now anyways
+                            curr_sort_state = top_sort.sort(dep_graph, blacklist)
+
+                            succeeded_in_traveler_switch = true
+                            break
+                        end
+                    end
+                end
+                if not succeeded_in_traveler_switch then
+                    break
+                end
+            end
+        end
+        -- If still no new items were found, report error
+        if new_item == nil then
+            log(serpent.block(curr_sort_state.reachable))
+            log("Unused traveling items:")
+            for _, traveling_item in pairs(item_travelers) do
+                if item_to_slot[traveling_item.name] == nil then
+                    log(traveling_item.name)
+                    log(is_item_reachable(traveling_item))
+                end
+            end
+            error("Item randomization failed. Perhaps try a different seed?")
+        end
+
+        log(old_slot.name)
+        log(new_item.name)
+
+        slot_to_item[old_slot.name] = new_item
+        item_to_slot[new_item.name] = old_slot
+
+        local old_slot_node = dep_graph[build_graph.key(old_slot.type, old_slot.name)]
+        -- Connect the traveler to the slot and unblacklist the slot
+        graph_utils.add_prereq(old_slot_node, new_item)
+        curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {old_slot_node, new_item})
+        for surface_name, surface in pairs(build_graph.surfaces) do
+            local item_surface_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({old_slot.name, surface_name}))]
+            for _, prereq in pairs(item_surface_node.prereqs) do
+                blacklist[build_graph.conn_key({prereq, item_surface_node})] = false
+                curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {prereq, item_surface_node})
+            end
+        end
+    end
+
     -- Shuffle prereqs
     -- Note: In old algorithm, I actually sort the prereqs and shuffle the dependents... strange, but it seemed to work well?
-    rng.shuffle(rng.key({id = id}), shuffled_prereqs)
+    --[[rng.shuffle(rng.key({id = id}), shuffled_prereqs)
     local slot_to_item = {}
     local curr_sort_state = top_sort.sort(dep_graph, blacklist)
     for _, dep_traveler in pairs(sorted_dependents) do
@@ -193,6 +356,7 @@ randomizations.item_new = function(id)
         local new_slot_node = dep_graph[build_graph.key(new_slot.type, new_slot.name)]
         -- Connect the traveler to the slot and unblacklist the slot
         graph_utils.add_prereq(new_slot_node, dep_traveler)
+        curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {new_slot_node, dep_traveler})
         for surface_name, surface in pairs(build_graph.surfaces) do
             local item_surface_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({new_slot.name, surface_name}))]
             for _, prereq in pairs(item_surface_node.prereqs) do
@@ -200,16 +364,18 @@ randomizations.item_new = function(id)
                 curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {prereq, item_surface_node})
             end
         end
-    end
+    end]]
 
     ----------------------------------------------------------------------
     -- Messy data.raw change
     ----------------------------------------------------------------------
 
     local new_order = {}
-    local old_order = shuffled_prereqs
+    local visited_old_order = {}
+    local old_order = item_slots
     for _, thing in pairs(old_order) do
         table.insert(new_order, slot_to_item[thing.name])
+        table.insert(visited_old_order, thing)
     end
 
     -- Fix data.raw
@@ -220,11 +386,11 @@ randomizations.item_new = function(id)
     for ind, item_node in pairs(new_order) do
         -- item_node takes the place of same-indexed node in old_order
         local old_node = visited_old_order[ind]
-        local old_item = items[old_node.item]
+        local old_item = items[old_node.name]
 
-        local item_prototype = items[item_node.item]
-        local incoming_cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_prototype)]
-        local outgoing_cost = old_aggregate_cost_for_new.material_to_cost[flow_cost.get_prot_id(old_item)]
+        local item_prototype = items[item_node.name]
+        local incoming_cost = cost_as_traveler.material_to_cost[flow_cost.get_prot_id(item_prototype)]
+        local outgoing_cost = cost_as_slot.material_to_cost[flow_cost.get_prot_id(old_item)]
         local amount_multiplier = 1
         local is_significant = false
         if item_prototype.place_result ~= nil or item_prototype.type ~= "item" or item_prototype.fuel_value ~= nil or item_prototype.place_as_tile ~= nil or item_prototype.plant_result ~= nil then
@@ -238,7 +404,7 @@ randomizations.item_new = function(id)
             for _, material_property in pairs({"ingredients", "results"}) do
                 if recipe[material_property] ~= nil then
                     for _, ing_or_prod in pairs(recipe[material_property]) do
-                        if ing_or_prod.name == old_node.name then
+                        if ing_or_prod.type == "item" and ing_or_prod.name == old_node.name then
                             table.insert(changes, {
                                 tbl = ing_or_prod,
                                 prop = "name",
@@ -249,7 +415,7 @@ randomizations.item_new = function(id)
                             if material_property == "results" and recipe.category ~= "recycling" then
                                 for _, key in pairs({"amount", "amount_min", "amount_max"}) do
                                     if ing_or_prod[key] ~= nil then
-                                        ing_or_prod[key] = math.min(65535, ing_or_prod[key] * amount_multiplier)
+                                        ing_or_prod[key] = math.max(1, math.min(65535, ing_or_prod[key] * amount_multiplier))
                                     end
                                 end
                             end
@@ -302,6 +468,23 @@ randomizations.item_new = function(id)
             end
         end
 
+        -- Replace loot results
+        for _, entity in pairs(lootable_entities) do
+            if entity.loot ~= nil then
+                for ind_in_loot, loot_entry in pairs(entity.loot) do
+                    if loot_entry.item == old_node.name then
+                        loot_entry.count_min = math.max(1, math.min(65535, (loot_entry.count_min or 1) * amount_multiplier))
+                        loot_entry.count_max = math.max(1, math.min(65535, (loot_entry.count_max or 1) * amount_multiplier))
+                        table.insert(changes, {
+                            tbl = entity.loot[ind_in_loot],
+                            prop = "item",
+                            new_val = item_node.name
+                        })
+                    end
+                end
+            end
+        end
+
         -- Replace mine results
         local minable_things = table.deepcopy(defines.prototypes.entity)
         -- Need to account for asteroid chunks as well
@@ -335,7 +518,7 @@ randomizations.item_new = function(id)
                                         -- Multiply amounts if this is significantly more expensive
                                         for _, key in pairs({"amount", "amount_min", "amount_max"}) do
                                             if result[key] ~= nil then
-                                                result[key] = math.min(65535, result[key] * amount_multiplier)
+                                                result[key] = math.max(1, math.min(65535, result[key] * amount_multiplier))
                                             end
                                         end
 
@@ -349,7 +532,7 @@ randomizations.item_new = function(id)
                                     new_val = item_node.name
                                 })
 
-                                entity.minable.count = math.min(65535, (entity.minable.count or 1) * amount_multiplier)
+                                entity.minable.count = math.max(1, math.min(65535, (entity.minable.count or 1) * amount_multiplier))
 
                                 has_result = true
                             end
@@ -677,6 +860,6 @@ randomizations.item_new = function(id)
         change.tbl[change.prop] = change.old_node_item[change.prop]
     end
 
-    -- return that we've succeeded
-    return true
+    -- return the maps between slots and items and vice versa to show we succeeded and keep track of old item positions
+    return {slot_to_item = slot_to_item, item_to_slot = item_to_slot}
 end

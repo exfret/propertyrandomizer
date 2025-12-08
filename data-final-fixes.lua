@@ -50,6 +50,12 @@ build_graph_compat = require("lib/graph/build-graph-compat")
 log("Adding dependents")
 build_graph.add_dependents(dep_graph)
 
+log("Finding initially reachable nodes")
+local top_sort = require("lib/graph/top-sort")
+-- A deepcopy is necessary because otherwise modifications to the nodes by randomizations mess up the sorts "sorted" key
+-- TODO: This slows down startup, though, so I want to find a way around it
+local initial_sort_info = top_sort.sort(table.deepcopy(dep_graph))
+
 log("Gathering randomizations")
 
 -- Load in randomizations
@@ -64,6 +70,7 @@ if settings.startup["propertyrandomizer-technology"].value then
     log("Applying technology tree randomization")
 
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
+
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -71,24 +78,31 @@ if settings.startup["propertyrandomizer-technology"].value then
     build_graph.add_dependents(dep_graph)
 
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
+
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
+
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
+
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
+
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
+
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
+
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
+
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -118,10 +132,11 @@ if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
     build_graph.add_dependents(dep_graph)
 end
 
+local item_slot_info = {}
 if settings.startup["propertyrandomizer-item"].value then
     log("Applying item randomization")
 
-    local should_break = randomizations.item("item")
+    item_slot_info = randomizations.item_new("item-new")
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -180,6 +195,56 @@ log("Applying fixes")
 
 -- Any fixes needed
 randomizations.fixes()
+
+-- Final check for completability
+
+local final_sort_info = top_sort.sort(dep_graph)
+
+local reachability_warning_to_insert
+if #final_sort_info.sorted < #initial_sort_info.sorted then
+    local first_node_unreachable
+    for _, node in pairs(initial_sort_info.sorted) do
+        if not final_sort_info.reachable[build_graph.key(node.type, node.name)] and first_node_unreachable == nil then
+            first_node_unreachable = node
+        end
+    end
+    log("First unreachable...")
+    log(serpent.block(first_node_unreachable))
+
+    -- It's legitimately possible for some nodes to be no longer possible, like crafting impossible if something is a resource
+    --[[if settings.startup["propertyrandomizer-softlock-prevention"].value == "all" then
+        error("Softlock encountered, only " .. tostring(#final_sort_info.sorted) .. " / " .. tostring(#initial_sort_info.sorted) .. " nodes reachable.")
+    else
+        reachability_warning_to_insert = "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Potential softlock encountered, only " .. tostring(#final_sort_info.sorted) .. " / " .. tostring(#initial_sort_info.sorted) .. " game pieces reachable."
+    end]]
+
+    local first_tech_unreachable
+    local old_reachable_technologies = 0
+    for _, node in pairs(initial_sort_info.sorted) do
+        if node.type == "technology" then
+            old_reachable_technologies = old_reachable_technologies + 1
+
+            if not final_sort_info.reachable[build_graph.key(node.type, node.name)] and first_tech_unreachable == nil then
+                first_tech_unreachable = node.name
+            end
+        end
+    end
+    local new_reachable_technologies = 0
+    for _, node in pairs(final_sort_info.sorted) do
+        if node.type == "technology" then
+            new_reachable_technologies = new_reachable_technologies + 1
+        end
+    end
+    if new_reachable_technologies < old_reachable_technologies then
+        reachability_warning_to_insert = "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Potential critical softlock; only " .. tostring(new_reachable_technologies) .. " / " .. tostring(old_reachable_technologies) .. " technologies found reachable. First unreachable found: " .. first_tech_unreachable
+        if settings.startup["propertyrandomizer-softlock-prevention"].value == "critical" then
+            error("Critical softlock encountered, only " .. tostring(new_reachable_technologies) .. " / " .. tostring(old_reachable_technologies) .. " technologies reachable.")
+        end
+    end
+end
+if reachability_warning_to_insert ~= nil then
+    table.insert(randomization_info.warnings, reachability_warning_to_insert)
+end
 
 -- Add warnings for control stage
 if not offline then

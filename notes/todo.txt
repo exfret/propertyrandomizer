@@ -1,6 +1,7 @@
 WORKING ON:
- - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
+ - New item randomization?
 
+ - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
  - Back to ammo preservation
  - Then, maybe recipe rando changes based on chaos
