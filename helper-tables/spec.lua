@@ -1272,6 +1272,12 @@ local spec = {
             val = "more"
         }
     },
+    tile_pollution_absorption = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     tile_walking_speed_modifier = {
         setting = {
             name = "propertyrandomizer-misc",
