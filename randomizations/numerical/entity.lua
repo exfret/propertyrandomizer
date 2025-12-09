@@ -2715,62 +2715,70 @@ randomizations.resistances = function(id)
     for name, _ in pairs(data.raw["damage-type"]) do
         table.insert(damage_type_names, name)
     end
+    local apply_resistance_description = function (entity)
+        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
+    end
+
     -- In a cruel twist of fate, some entities share a reference to the same resistances table
     -- To avoid randomizing those multiple times, keep track of which tables have already been randomized
     local randomized_tables = {}
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                if entity.resistances ~= nil and #entity.resistances > 0 and randomized_tables[entity.resistances] == nil then
-                    local shuffled_damage_type_names = table.deepcopy(damage_type_names)
-                    local key = rng.key({id = id, prototype = entity})
-                    rng.shuffle(key, shuffled_damage_type_names)
-                    local dir = 1
-                    if enemy_health_classes[entity_class] then
-                        dir = -1
-                        -- Normally the player doesn't have access to acid damage.
-                        -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
-                        -- To avoid this, and because it sounds interesting, we give all enemies an extra resistance before shuffle.
-                        -- 100% is maybe a bit much, but hey, it brings an element of strategy. Adjust if needed.
-                        if #entity.resistances < #damage_type_names then
-                            table.insert(entity.resistances, { percent = 100 })
+                if randomized_tables[entity.resistances] ~= nil then
+                    apply_resistance_description(entity)
+                else
+                    if entity.resistances ~= nil and #entity.resistances > 0 and randomized_tables[entity.resistances] == nil then
+                        local shuffled_damage_type_names = table.deepcopy(damage_type_names)
+                        local key = rng.key({id = id, prototype = entity})
+                        rng.shuffle(key, shuffled_damage_type_names)
+                        local dir = 1
+                        if enemy_health_classes[entity_class] then
+                            dir = -1
+                            -- Normally the player doesn't have access to acid damage.
+                            -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
+                            -- To avoid this, and because it sounds interesting, we give all enemies an extra resistance before shuffle.
+                            -- 100% is maybe a bit much, but hey, it brings an element of strategy. Adjust if needed.
+                            if #entity.resistances < #damage_type_names then
+                                table.insert(entity.resistances, { percent = 100 })
+                            end
                         end
-                    end
-                    local i = 1
-                    local old_flat_resistance_sum = 0
-                    local old_p_resistance_sum = 0
-                    for _, resistance in pairs(entity.resistances) do
-                        resistance.type = shuffled_damage_type_names[i]
-                        i = i + 1
-                        if resistance.decrease ~= nil and resistance.decrease > 0 then
-                            old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
-                            randomize({
-                                key = key,
-                                prototype = entity,
-                                tbl = resistance,
-                                property = "decrease",
-                                rounding = "discrete_float",
-                                variance = "medium",
-                                dir = dir,
-                            })
+                        local i = 1
+                        local old_flat_resistance_sum = 0
+                        local old_p_resistance_sum = 0
+                        for _, resistance in pairs(entity.resistances) do
+                            resistance.type = shuffled_damage_type_names[i]
+                            i = i + 1
+                            if resistance.decrease ~= nil and resistance.decrease > 0 then
+                                old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
+                                randomize({
+                                    key = key,
+                                    prototype = entity,
+                                    tbl = resistance,
+                                    property = "decrease",
+                                    rounding = "discrete_float",
+                                    variance = "medium",
+                                    dir = dir,
+                                })
+                            end
+                            if resistance.percent ~= nil and resistance.percent > 0 then
+                                old_p_resistance_sum = old_p_resistance_sum + resistance.percent
+                                resistance.percent = randprob.rand({
+                                    key = key,
+                                    prototype = entity,
+                                    tbl = resistance,
+                                    property = "percent",
+                                    rounding = "discrete_float",
+                                    variance = "medium",
+                                    dir = dir,
+                                    probability_scale = 100,
+                                })
+                            end
                         end
-                        if resistance.percent ~= nil and resistance.percent > 0 then
-                            old_p_resistance_sum = old_p_resistance_sum + resistance.percent
-                            resistance.percent = randprob.rand({
-                                key = key,
-                                prototype = entity,
-                                tbl = resistance,
-                                property = "percent",
-                                rounding = "discrete_float",
-                                variance = "medium",
-                                dir = dir,
-                                probability_scale = 100,
-                            })
+                        if old_flat_resistance_sum + old_p_resistance_sum > 0 then
+                            randomized_tables[entity.resistances] = true
+                            apply_resistance_description(entity)
                         end
-                    end
-                    if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                        randomized_tables[entity.resistances] = true
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
                     end
                 end
             end
