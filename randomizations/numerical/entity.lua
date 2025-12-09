@@ -2252,6 +2252,23 @@ randomizations.mining_results = function(id)
                         end
                     end
                 end
+                if entity.minable ~= nil and entity_class == "fish" then
+                    if entity.minable.count == nil then
+                        entity.minable.count = 1
+                    end
+
+                    if entity.minable.count > 0 then
+                        randomize({
+                            id = id,
+                            prototype = entity,
+                            tbl = entity.minable,
+                            property = "count",
+                            dir = 1,
+                            rounding = "discrete",
+                            variance = "medium",
+                        })
+                    end
+                end
             end
         end
     end
