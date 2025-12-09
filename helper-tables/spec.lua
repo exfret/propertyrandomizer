@@ -330,6 +330,12 @@ local spec = {
             val = "more"
         }
     },
+    character_crafting_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {
