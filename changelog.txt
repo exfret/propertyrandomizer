@@ -2,9 +2,13 @@
 Version: 0.4.1
 Date: ?
   Features:
+    - Complete rewrite of item randomization, refactoring and removing softlocks
+    - Item randomization is now more random; enjoy your atomic rocket ore!
     - (Nifyr) Filled in many numerical randomizations that weren't done yet
     - (Nifyr) A new system for trigger-based randomizations, allowing for better randomization of capsules, military stuff, and more
     - (Nifyr) Randomize spoil result entity of items that spawn units when they spoil
+  Changes:
+    - Watch the world burn mode is hidden for now as it awaits further development
   Bugfixes:
     - Allowed module randomization with modded modules and a few other mod incompatibilities
 ---------------------------------------------------------------------------------------------------

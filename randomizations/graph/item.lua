@@ -38,7 +38,7 @@ randomizations.item = function(id)
     local graph_sort = sort_info.sorted
 
     -- TODO: Need gun-turret node I think?
-    type_stays_with_node = {
+    local type_stays_with_node = {
         ["build-entity-item"] = true,
         ["build-entity-item-surface"] = true,
         ["build-tile-item-surface"] = true,
@@ -239,7 +239,7 @@ randomizations.item = function(id)
                         -- Right now special just means it can place something or is not a standard item
                         local is_significant_item = false
                         local cost_threshold
-                        if old_cost ~= nil and (proposed_item.place_result ~= nil or proposed_item.type ~= "item" or proposed_item.fuel_value ~= nil or proposed_item.place_as_tile ~= nil or item_prototype.plant_result ~= nil) then
+                        if old_cost ~= nil and (proposed_item.place_result ~= nil or proposed_item.type ~= "item" or proposed_item.fuel_value ~= nil or proposed_item.place_as_tile ~= nil or proposed_item.plant_result ~= nil) then
                             is_significant_item = true
 
                             -- Cost threshold is higher for more expensive items, since they're probably less common
@@ -259,7 +259,7 @@ randomizations.item = function(id)
                         -- Check cost preservation if item_node is significant
                         -- Actually, let's just multiply results later and just make sure the new one has a cost for now
                         -- No wait, do have a cost threshold just for the more ridiculous cases
-                        cost_threshold = 100
+                        local cost_threshold = 100
                         if not is_significant_item or (new_cost ~= nil and new_cost <= cost_threshold * old_cost) then
                             -- Check now that stack sizes match up / no more light armor ore
                             if proposed_item.stack_size >= item_prototype.stack_size / 10 then

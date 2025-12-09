@@ -17,7 +17,8 @@ data:extend({
         localised_name = "Watch the world burn",
         localised_description = "Sets bias to worst, chaos to ultimate, adds tons of duplicates for a longer game, and turns on every randomization. Also includes a couple... \"tweaks\". Takes precedence over all below settings. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.",
         default_value = false,
-        order = "az[burn]"
+        order = "az[burn]",
+        hidden = true
     },
     {
         setting_type = "startup",
@@ -215,6 +216,20 @@ data:extend({
         },
         default_value = "fleishman",
         order = "f-a[algorithm]"
+    },
+    {
+        setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-softlock-prevention",
+        localised_name = "Soflock errors",
+        localised_description = "How strict to be about error-ing on application startup if potential softlocks are found. Errors are always reported when starting a new game.",
+        allowed_values = {
+            "control-only",
+            "critical",
+            --"all"
+        },
+        default_value = "control-only",
+        order = "f-b[softlock]"
     },
     {
         setting_type = "startup",

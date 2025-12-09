@@ -1,6 +1,7 @@
 WORKING ON:
- - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
+ - New item randomization?
 
+ - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
  - Back to ammo preservation
  - Then, maybe recipe rando changes based on chaos
@@ -9,7 +10,7 @@ WORKING ON:
    * Check if game is possible after planetary randomization and print to console
    * Fix localisation with dupe and item randomization
  - Allow item randomization to apply to some fluids? If it does, just give the item's effects to the barrel
- - Dupes with better graphics
+ - Dupes with better graphics (use artisinal reskins?)
 
  - Look into rocket launch time bug
 
