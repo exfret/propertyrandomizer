@@ -953,6 +953,29 @@ randomizations.cargo_landing_pad_radar_range = function (id)
 end
 
 -- New
+randomizations.character_crafting_speed = function (id)
+    for _, character in pairs(data.raw["character"] or {}) do
+        if character.crafting_speed == nil then
+            character.crafting_speed = 1
+        end
+
+        local old_value = character.crafting_speed
+
+        randomize({
+            id = id,
+            prototype = character,
+            property = "crafting_speed",
+            rounding = "discrete_float",
+            variance = "medium",
+            dir = 1,
+        })
+
+        local factor = character.crafting_speed / old_value
+        locale_utils.create_localised_description(character, factor, id, { variance = "medium" })
+    end
+end
+
+-- New
 randomizations.combat_robot_damage = function (id)
     for _, robot in pairs(data.raw["combat-robot"]) do
         local structs = {}
