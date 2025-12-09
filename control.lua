@@ -74,8 +74,16 @@ script.on_nth_tick(1, function(event)
         for data, _ in pairs(table_to_load) do
             local _, warnings = serpent.load(data)
             for _, warning in pairs(warnings) do
-                game.print(warning)
+                if type(warning) == "string" then
+                    storage.there_was_warning = true
+                    game.print(warning)
+                end
             end
+        end
+    elseif event.tick >= 60 and game.players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
+        storage.gave_warning_flying_text = true
+        for _, player in pairs(game.players) do
+            player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
         end
     end
 end)

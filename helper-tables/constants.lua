@@ -19,8 +19,11 @@ local constants = {
     non_starting_planet_bonus = 3,
     max_num_failed_attempts_ing_search = 10000,
     -- Item randomization
+    -- These first two are going to be retired in favor of just putting the setting in-line
     item_randomization_probability_high = 1,
     item_randomization_probability_low = settings.startup["propertyrandomizer-item-percent"].value / 100,
+    item_randomization_cost_factor_threshold = 100,
+    item_randomization_max_fallbacks = 100,
     -- Randomizations to build dependency graph for
     dep_graph_randomizations = {
         ["propertyrandomizer-technology"] = true,

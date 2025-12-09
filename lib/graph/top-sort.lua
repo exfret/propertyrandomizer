@@ -39,7 +39,7 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
 
             if dependent_node ~= nil then
                 -- Allow blacklisted to be reachable and in top sort, but not in open nodes
-                local is_blacklisted = blacklist[build_graph.compound_key({curr_key, dependent_key})]
+                local is_blacklisted = blacklist[build_graph.conn_key({curr_node, dependent_node})]
 
                 num_satisfiers[dependent_key] = num_satisfiers[dependent_key] + 1
                 if is_blacklisted then
