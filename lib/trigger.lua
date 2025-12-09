@@ -2,49 +2,50 @@
 
 local export = {}
 
-local prototype_projectile = "projectile"
-local prototype_artillery_projectile = "artillery-projectile"
-local prototype_beam = "beam"
-local prototype_stream = "stream"
-local prototype_chain_active_trigger = "chain-active-trigger"
-local prototype_delayed_active_trigger = "delayed-active-trigger"
-local prototype_ammo = "ammo"
-local prototype_capsule = "capsule"
-local prototype_combat_robot = "combat-robot"
-local prototype_smoke_with_trigger = "smoke-with-trigger"
-local prototype_sticker = "sticker"
-local prototype_spider_unit = "spider-unit"
-local prototype_spider_leg = "spider-leg"
-local prototype_unit = "unit"
-local prototype_tree = "tree"
-local prototype_explosion = "explosion"
-local prototype_capture_robot = "capture-robot"
-local prototype_land_mine = "land-mine"
-local prototype_fire = "fire"
-local prototype_segmented_unit = "segmented-unit"
-local prototype_segment = "segment"
-local prototype_asteroid = "asteroid"
 local prototype_active_defense_equipment = "active-defense-equipment"
+local prototype_ammo = "ammo"
 local prototype_ammo_turret = "ammo-turret"
+local prototype_artillery_projectile = "artillery-projectile"
+local prototype_asteroid = "asteroid"
+local prototype_beam = "beam"
+local prototype_capsule = "capsule"
+local prototype_capture_robot = "capture-robot"
+local prototype_chain_active_trigger = "chain-active-trigger"
+local prototype_combat_robot = "combat-robot"
+local prototype_delayed_active_trigger = "delayed-active-trigger"
 local prototype_electric_turret = "electric-turret"
+local prototype_explosion = "explosion"
+local prototype_fire = "fire"
 local prototype_fluid_turret = "fluid-turret"
+local prototype_land_mine = "land-mine"
+local prototype_projectile = "projectile"
+local prototype_smoke_with_trigger = "smoke-with-trigger"
+local prototype_segment = "segment"
+local prototype_segmented_unit = "segmented-unit"
+local prototype_spider_leg = "spider-leg"
+local prototype_spider_unit = "spider-unit"
+local prototype_sticker = "sticker"
+local prototype_stream = "stream"
+local prototype_tree = "tree"
+local prototype_turret = "turret"
+local prototype_unit = "unit"
 
-local struct_trigger_effect = "trigger-effect"
-local struct_trigger_delivery = "trigger-delivery"
-local struct_trigger = "trigger"
 local struct_ammo_type = "ammo-type"
-local struct_capsule_action = "capsule-action"
 local struct_attack_parameters = "attack-parameters"
-local struct_trigger_effect_with_cooldown = "trigger-effect-with-cooldown"
-local struct_spider_engine_specification = "spider-engine-specification"
-local struct_spider_leg_specification = "spider-leg-specification"
 local struct_attack_reaction_item = "attack-reaction-item"
-local struct_spider_leg_trigger_effect = "spider-leg-trigger-effect"
-local struct_explosion_definition = "explosion-definition"
+local struct_capsule_action = "capsule-action"
 local struct_damage_parameters = "damage-parameters"
-local struct_spoil_to_trigger_result = "spoil-to-trigger-result"
+local struct_explosion_definition = "explosion-definition"
 local struct_segment_engine_specification = "segment-engine-specification"
 local struct_segment_specification = "segment-specification"
+local struct_spider_engine_specification = "spider-engine-specification"
+local struct_spider_leg_specification = "spider-leg-specification"
+local struct_spider_leg_trigger_effect = "spider-leg-trigger-effect"
+local struct_spoil_to_trigger_result = "spoil-to-trigger-result"
+local struct_trigger = "trigger"
+local struct_trigger_delivery = "trigger-delivery"
+local struct_trigger_effect = "trigger-effect"
+local struct_trigger_effect_with_cooldown = "trigger-effect-with-cooldown"
 
 local data_raw_table = function (class)
     return data.raw[class] or {}
@@ -348,11 +349,6 @@ local gather_segment_engine_specification_structs = function (structs, segment_e
     end
 end
 
-local gather_turret_structs = function (structs, turret, stop_prototype)
-    gather_entity_with_health_structs(structs, turret, stop_prototype)
-    gather_attack_parameters_structs(structs, turret.attack_parameters, stop_prototype)
-end
-
 export.gather_trigger_structs = function (structs, trigger, stop_prototype)
     local triggers = to_array(trigger)
     for _, t in pairs(triggers) do
@@ -564,9 +560,14 @@ export.gather_active_defense_equipment_structs = function (structs, active_defen
     gather_attack_parameters_structs(structs, active_defense_equipment.attack_parameters, stop_prototype)
 end
 
-export.gather_ammo_turret_structs = gather_turret_structs
-export.gather_electric_turret_structs = gather_turret_structs
-export.gather_fluid_turret_structs = gather_turret_structs
+export.gather_turret_structs = function (structs, turret, stop_prototype)
+    gather_entity_with_health_structs(structs, turret, stop_prototype)
+    gather_attack_parameters_structs(structs, turret.attack_parameters, stop_prototype)
+end
+
+export.gather_ammo_turret_structs = export.gather_turret_structs
+export.gather_electric_turret_structs = export.gather_turret_structs
+export.gather_fluid_turret_structs = export.gather_turret_structs
 
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
@@ -634,6 +635,7 @@ export.type_to_gather_struct_func = {
     [prototype_sticker] = export.gather_sticker_structs,
     [prototype_stream] = export.gather_stream_structs,
     [prototype_tree] = export.gather_tree_structs,
+    [prototype_turret] = export.gather_turret_structs,
     [prototype_unit] = export.gather_unit_structs,
 }
 
