@@ -1358,6 +1358,18 @@ local spec = {
             val = "more"
         }
     },
+    worm_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    worm_shooting_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
 }
 
 return spec
