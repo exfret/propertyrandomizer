@@ -1344,6 +1344,18 @@ local spec = {
             val = "more"
         }
     },
+    unit_spawner_loot = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    unit_spawner_yields = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- How much damage crashing into things with a given vehicle does
     vehicle_crash_damage = {
         setting = {

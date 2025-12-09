@@ -3114,15 +3114,11 @@ randomizations.spider_unit_yields = function (id)
         for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
             if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
                 local offsets = trigger_effect.offsets
-                local dir = -1
-                if entities[trigger_effect.entity_name].type == "simple-entity" then
-                    dir = 1
-                end
                 local new_count = randomize({
                     key = rng_key,
                     dummy = #offsets,
                     variance = "medium",
-                    dir = dir,
+                    dir = 1,
                     rounding = "discrete",
                 })
                 while new_count < #offsets do
@@ -3736,6 +3732,57 @@ randomizations.unit_range = function(id)
 end
 
 -- New
+randomizations.unit_spawner_loot = function (id)
+    for _, spawner in pairs(data.raw["unit-spawner"] or {}) do
+        for _, loot in pairs(spawner.loot or {}) do
+            if loot.probability == nil then
+                loot.probability = 1
+            end
+            if loot.count_min == nil then
+                loot.count_min = 1
+            end
+            if loot.count_max == nil then
+                loot.count_max = 1
+            end
+
+            randprob.rand({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "probability",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            loot.count_max = loot.count_max - loot.count_min
+
+            randomize({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "count_min",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete"
+            })
+
+            randomize({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "count_max",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete"
+            })
+
+            loot.count_max = loot.count_max + loot.count_min
+        end
+    end
+end
+
+-- New
 -- Not added to spec yet
 randomizations.unit_spawner_time_to_capture = function(id)
     for _, spawner in pairs(data.raw["unit-spawner"]) do
@@ -3744,6 +3791,41 @@ randomizations.unit_spawner_time_to_capture = function(id)
             prototype = spawner,
             property = "time_to_capture"
         })
+    end
+end
+
+-- New
+randomizations.unit_spawner_yields = function (id)
+    for _, spawner in pairs(data.raw["unit-spawner"] or {}) do
+        local structs = {}
+        trigger_utils.gather_unit_spawner_structs(structs, spawner, true)
+        local rng_key = rng.key({ id = id, prototype = spawner })
+        for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+            if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
+                local offsets = trigger_effect.offsets
+                local new_count = randomize({
+                    key = rng_key,
+                    dummy = #offsets,
+                    variance = "medium",
+                    dir = -1,
+                    rounding = "discrete",
+                })
+                while new_count < #offsets do
+                    table.remove(offsets)
+                end
+                local magnitude = 1.0
+                if #offsets > 0 then
+                    local x = offsets[1][1] or offsets[1].x
+                    local y = offsets[1][2] or offsets[1].y
+                    magnitude = math.sqrt(x^2 + y^2)
+                end
+                while new_count > #offsets do
+                    local v = { fleish.rand_normal(rng_key) * magnitude,
+                        fleish.rand_normal(rng_key) * magnitude }
+                    table.insert(offsets, v)
+                end
+            end
+        end
     end
 end
 
