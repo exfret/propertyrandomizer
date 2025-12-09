@@ -3783,3 +3783,95 @@ randomizations.vehicle_weight = function(id)
         end
     end
 end
+
+-- New
+randomizations.worm_range = function(id)
+    for _, worm in pairs(data.raw["turret"] or {}) do
+        local old_value = worm.attack_parameters.range
+
+        randomize({
+            id = id,
+            prototype = worm,
+            tbl = worm.attack_parameters,
+            property = "range",
+            variance = "small",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        local factor = worm.attack_parameters.range / old_value
+
+        if worm.prepare_range ~= nil then
+            worm.prepare_range = worm.prepare_range * factor
+        end
+
+        locale_utils.create_localised_description(worm, factor, id, { flipped = true, variance = "small" })
+    end
+end
+
+-- New
+randomizations.worm_shooting_speed = function(id)
+    for _, worm in pairs(data.raw["turret"] or {}) do
+        if worm.starting_attack_speed ~= nil and worm.ending_attack_speed ~= nil then
+
+            -- After lots of trial and error, it would seem that shooting speeds are determined by this formula
+            local shooting_speed = 60 / (1 / worm.starting_attack_speed + 1 / worm.ending_attack_speed)
+
+            local new_shooting_speed = randomize({
+                key = rng.key({ id = id, prototype = worm }),
+                dummy = shooting_speed,
+                variance = "medium",
+                rounding = "discrete_float",
+                dir = -1,
+            })
+            local factor = new_shooting_speed / shooting_speed
+
+            worm.starting_attack_speed = worm.starting_attack_speed * factor
+            worm.ending_attack_speed = worm.ending_attack_speed * factor
+            worm.attack_parameters.cooldown = worm.attack_parameters.cooldown / factor
+
+            -- Let's adjust the other animation speeds too
+            if worm.folded_speed ~= nil then
+                worm.folded_speed = worm.folded_speed * factor
+            end
+            if worm.folded_speed_secondary ~= nil then
+                worm.folded_speed_secondary = worm.folded_speed_secondary * factor
+            end
+            if worm.preparing_speed ~= nil then
+                worm.preparing_speed = worm.preparing_speed * factor
+            end
+            if worm.preparing_speed_when_killed ~= nil then
+                worm.preparing_speed_when_killed = worm.preparing_speed_when_killed * factor
+            end
+            if worm.prepared_speed ~= nil then
+                worm.prepared_speed = worm.prepared_speed * factor
+            end
+            if worm.prepared_speed_secondary ~= nil then
+                worm.prepared_speed_secondary = worm.prepared_speed_secondary * factor
+            end
+            if worm.prepared_alternative_speed ~= nil then
+                worm.prepared_alternative_speed = worm.prepared_alternative_speed * factor
+            end
+            if worm.prepared_alternative_speed_secondary ~= nil then
+                worm.prepared_alternative_speed_secondary = worm.prepared_alternative_speed_secondary * factor
+            end
+            if worm.prepared_alternative_speed_when_killed ~= nil then
+                worm.prepared_alternative_speed_when_killed = worm.prepared_alternative_speed_when_killed * factor
+            end
+            if worm.starting_attack_speed_when_killed ~= nil then
+                worm.starting_attack_speed_when_killed = worm.starting_attack_speed_when_killed * factor
+            end
+            if worm.ending_attack_speed_when_killed ~= nil then
+                worm.ending_attack_speed_when_killed = worm.ending_attack_speed_when_killed * factor
+            end
+            if worm.folding_speed ~= nil then
+                worm.folding_speed = worm.folding_speed * factor
+            end
+            if worm.folding_speed_when_killed ~= nil then
+                worm.folding_speed_when_killed = worm.folding_speed_when_killed * factor
+            end
+
+            locale_utils.create_localised_description(worm, factor, id, { flipped = true, variance = "medium" })
+        end
+    end
+end
