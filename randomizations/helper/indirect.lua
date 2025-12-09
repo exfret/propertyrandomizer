@@ -9,6 +9,7 @@ local parent_types = {
     ["combat-robot"] = true,
     ["electric-turret"] = true,
     ["fluid-turret"] = true,
+    ["turret"] = true,
     ["unit"] = true,
 }
 
