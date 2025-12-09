@@ -1108,6 +1108,30 @@ local spec = {
             val = "more"
         }
     },]]
+    segmented_unit_attacking_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_enraged_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_investigating_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_patrolling_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     smoke_damage = {
         setting = {
             name = "propertyrandomizer-military",
