@@ -2,6 +2,7 @@ local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
 local randbool = require("lib/random/randbool")
+local fleish = require("lib/random/fleishman")
 local rng = require("lib/random/rng")
 local indirect = require("randomizations/helper/indirect")
 local locale_utils = require("lib/locale")
@@ -182,6 +183,14 @@ local effect_radius_randomization = function (prototype, parents, structs, is_en
         for _, parent in pairs(parents) do
             locale_utils.create_localised_description(parent, factor, id, { flipped = dir < 0, variance = variance })
         end
+    end
+end
+
+-- Entity lookup
+local entities = {}
+for entity_class, _ in pairs(defines.prototypes.entity) do
+    for _, entity in pairs(data.raw[entity_class] or {}) do
+        entities[entity.name] = entity
     end
 end
 
@@ -455,12 +464,22 @@ randomizations.asteroid_yields = function (id)
                         dir = dir,
                         rounding = "discrete",
                     })
+
                     while new_count < #offsets do
                         table.remove(offsets)
                     end
+
+                    -- Figure out how big the offsets are so we can generate similar ones
+                    local magnitude = 1.0
+                    if #offsets > 0 then
+                        local x = offsets[1][1] or offsets[1].x
+                        local y = offsets[1][2] or offsets[1].y
+                        magnitude = math.sqrt(x^2 + y^2)
+                    end
+
                     while new_count > #offsets do
-                        -- Let's just put every asteroid in the exact same position and hope no one notices
-                        local v = { 0, 0 }
+                        local v = { fleish.rand_normal(rng_key) * magnitude,
+                            fleish.rand_normal(rng_key) * magnitude }
                         table.insert(offsets, v)
                     end
                 end
@@ -3052,6 +3071,74 @@ randomizations.space_platform_initial_items = function (id)
                     rounding = "discrete",
                     variance = "big",
                 })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.spider_unit_projectile_range = function(id)
+    for _, spider in pairs(data.raw["spider-unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_spider_unit_structs(structs, spider, true)
+        local rng_key = rng.key({ id = id, prototype = spider })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "medium",
+            rounding = "none",
+            dir = -1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+        for _, trigger_delivery in pairs(structs["trigger-delivery"] or {}) do
+            if trigger_delivery.max_range ~= nil and trigger_delivery.max_range > 0 then
+                trigger_delivery.max_range = randnum.fixes(rounding_params, trigger_delivery.max_range * factor)
+                changed = true
+            end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(spider, factor, id, { variance = "medium" })
+        end
+    end
+end
+
+-- New
+randomizations.spider_unit_yields = function (id)
+    for _, spider in pairs(data.raw["spider-unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_spider_unit_structs(structs, spider, true)
+        local rng_key = rng.key({ id = id, prototype = spider })
+        for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+            if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
+                local offsets = trigger_effect.offsets
+                local dir = -1
+                if entities[trigger_effect.entity_name].type == "simple-entity" then
+                    dir = 1
+                end
+                local new_count = randomize({
+                    key = rng_key,
+                    dummy = #offsets,
+                    variance = "medium",
+                    dir = dir,
+                    rounding = "discrete",
+                })
+                while new_count < #offsets do
+                    table.remove(offsets)
+                end
+                local magnitude = 1.0
+                if #offsets > 0 then
+                    local x = offsets[1][1] or offsets[1].x
+                    local y = offsets[1][2] or offsets[1].y
+                    magnitude = math.sqrt(x^2 + y^2)
+                end
+                while new_count > #offsets do
+                    local v = { fleish.rand_normal(rng_key) * magnitude,
+                        fleish.rand_normal(rng_key) * magnitude }
+                    table.insert(offsets, v)
+                end
             end
         end
     end

@@ -1156,6 +1156,18 @@ local spec = {
             val = "more"
         }
     },
+    spider_unit_projectile_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    spider_unit_yields = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     spoil_spawn = {
         setting = {
             name = "propertyrandomizer-misc",
