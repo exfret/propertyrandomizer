@@ -2994,6 +2994,98 @@ randomizations.rocket_silo_launch_time = function(id)
 end
 
 -- New
+randomizations.segmented_unit_attacking_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.attacking_speed
+
+        -- To km/h
+        unit.attacking_speed = unit.attacking_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "attacking_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.attacking_speed = unit.attacking_speed / 216
+
+        local factor = unit.attacking_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.segmented_unit_enraged_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.enraged_speed
+
+        -- To km/h
+        unit.enraged_speed = unit.enraged_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "enraged_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.enraged_speed = unit.enraged_speed / 216
+
+        local factor = unit.enraged_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.segmented_unit_investigating_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.investigating_speed
+
+        -- To km/h
+        unit.investigating_speed = unit.investigating_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "investigating_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.investigating_speed = unit.investigating_speed / 216
+
+        local factor = unit.investigating_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.segmented_unit_patrolling_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.patrolling_speed
+
+        -- To km/h
+        unit.patrolling_speed = unit.patrolling_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "patrolling_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.patrolling_speed = unit.patrolling_speed / 216
+
+        local factor = unit.patrolling_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
 randomizations.smoke_damage = function (id)
     indirect.iterate_child_prototypes("smoke-with-trigger", function (prototype, parents, structs, is_enemy)
         damage_randomization(prototype, parents, structs, is_enemy, id, "big")
