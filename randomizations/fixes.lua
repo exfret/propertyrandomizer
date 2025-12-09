@@ -275,4 +275,12 @@ randomizations.fixes = function()
             end
         end
     end
+
+    -- Make all segments of a segmented unit have the same max health
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        for _, segment_specification in pairs(unit.segment_engine.segments) do
+            local segment = data.raw["segment"][segment_specification.segment]
+            segment.max_health = unit.max_health
+        end
+    end
 end

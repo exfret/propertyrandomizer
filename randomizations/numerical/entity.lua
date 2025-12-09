@@ -2058,7 +2058,8 @@ randomizations.max_health = function(id)
     -- Just check whether the max_health key is non-nil
     -- Some entities can have health but have this be nil since it's optional, let's just not worry about those
     for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
+        -- Segment prototypes are handled in fixes
+        if data.raw[entity_class] ~= nil and entity_class ~= "segment" then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.max_health ~= nil then
                     local old_max_health = entity.max_health
