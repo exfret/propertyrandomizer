@@ -23,7 +23,7 @@ local constants = {
     item_randomization_probability_high = 1,
     item_randomization_probability_low = settings.startup["propertyrandomizer-item-percent"].value / 100,
     item_randomization_cost_factor_threshold = 100,
-    item_randomization_max_fallbacks = 10,
+    item_randomization_max_fallbacks = 100,
     -- Randomizations to build dependency graph for
     dep_graph_randomizations = {
         ["propertyrandomizer-technology"] = true,

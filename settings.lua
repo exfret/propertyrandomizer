@@ -17,7 +17,8 @@ data:extend({
         localised_name = "Watch the world burn",
         localised_description = "Sets bias to worst, chaos to ultimate, adds tons of duplicates for a longer game, and turns on every randomization. Also includes a couple... \"tweaks\". Takes precedence over all below settings. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.",
         default_value = false,
-        order = "az[burn]"
+        order = "az[burn]",
+        hidden = true
     },
     {
         setting_type = "startup",
