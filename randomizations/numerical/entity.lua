@@ -3603,16 +3603,19 @@ randomizations.unit_pollution_to_join_attack = function(id)
             for _, unit in pairs(data.raw[unit_class]) do
                 if unit.absorptions_to_join_attack ~= nil then
                     for pollutant_id, pollutant_amount in pairs(unit.absorptions_to_join_attack) do
-                        randomize({
-                            id = id,
-                            prototype = unit,
-                            tbl = unit.absorptions_to_join_attack,
-                            property = pollutant_id,
-                            range = "very_small",
-                            rounding = "discrete_float"
-                        })
+                        if pollutant_amount > 0 then
 
-                        locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                            randomize({
+                                id = id,
+                                prototype = unit,
+                                tbl = unit.absorptions_to_join_attack,
+                                property = pollutant_id,
+                                range = "very_small",
+                                rounding = "discrete_float"
+                            })
+
+                            locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                        end
                     end
                 end
             end
