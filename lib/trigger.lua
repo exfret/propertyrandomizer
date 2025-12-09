@@ -29,6 +29,7 @@ local prototype_stream = "stream"
 local prototype_tree = "tree"
 local prototype_turret = "turret"
 local prototype_unit = "unit"
+local prototype_unit_spawner = "unit-spawner"
 
 local struct_ammo_type = "ammo-type"
 local struct_attack_parameters = "attack-parameters"
@@ -569,6 +570,11 @@ export.gather_ammo_turret_structs = export.gather_turret_structs
 export.gather_electric_turret_structs = export.gather_turret_structs
 export.gather_fluid_turret_structs = export.gather_turret_structs
 
+export.gather_unit_spawner_structs = function (structs, unit_spawner, stop_prototype)
+    gather_entity_with_health_structs(structs, unit_spawner, stop_prototype)
+    -- add result_units here if needed
+end
+
 -------------------------------------------------------------------------------------------------------------------------------
 --- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
 -------------------------------------------------------------------------------------------------------------------------------
@@ -637,6 +643,7 @@ export.type_to_gather_struct_func = {
     [prototype_tree] = export.gather_tree_structs,
     [prototype_turret] = export.gather_turret_structs,
     [prototype_unit] = export.gather_unit_structs,
+    [prototype_unit_spawner] = export.gather_unit_spawner_structs,
 }
 
 return export
