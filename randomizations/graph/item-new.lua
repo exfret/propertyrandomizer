@@ -6,6 +6,8 @@ local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
+local path = require("lib/graph/path")
+
 randomizations.item_new = function(id)
     local dont_randomize_item = {
         ["rocket-part"] = true,
@@ -62,6 +64,76 @@ randomizations.item_new = function(id)
     -- Pre-processing: Grab valid item nodes
     local initial_sort_info = top_sort.sort(dep_graph)
 
+    -- Find shortest path; first we need to sort prereqs
+    local node_to_ind_in_sorted = {}
+    -- Create a node for enforcing all technologies reachable
+    local all_technologies_node = {
+        type = "recipe-surface",
+        name = "all-technologies-node",
+        prereqs = {},
+        dependents = {}
+    }
+    for ind, node in pairs(initial_sort_info.sorted) do
+        node_to_ind_in_sorted[build_graph.key(node.type, node.name)] = ind
+        if node.type == "technology" then
+            graph_utils.add_prereq(node, all_technologies_node)
+        end
+    end
+    for _, node in pairs(initial_sort_info.sorted) do
+        table.sort(node.prereqs, function(prereq1, prereq2)
+            return (node_to_ind_in_sorted[build_graph.key(prereq1.type, prereq1.name)] or 0) < (node_to_ind_in_sorted[build_graph.key(prereq2.type, prereq2.name)] or 0)
+        end)
+    end
+    local short_path = {}
+    -- Calculate specially for space age
+    if mods["space-age"] then
+        -- CRITICAL TODO: Fix the shortest path algorithm so I don't have to do this!
+        short_path = {
+            ["item:boiler"] = true,
+            ["item:steam-engine"] = true,
+            ["item:stone-furnace"] = true,
+            ["item:offshore-pump"] = true,
+            ["item:small-electric-pole"] = true,
+            ["item:lab"] = true,
+            ["item:inserter"] = true,
+            ["item:transport-belt"] = true,
+            ["item:gun-turret"] = true,
+            ["item:submachine-gun"] = true,
+            ["item:firearm-magazine"] = true,
+            ["item:underground-belt"] = true,
+            ["item:splitter"] = true,
+            ["item:assembling-machine-1"] = true,
+            ["item:burner-mining-drill"] = true,
+            ["item:electric-mining-drill"] = true,
+            ["item:wooden-chest"] = true,
+            ["item:pipe"] = true,
+            ["item:rocket-silo"] = true,
+            ["item:cargo-landing-pad"] = true,
+            ["item:thruster"] = true,
+            ["item:space-platform-foundation"] = true,
+            ["item:space-platform-starter-pack"] = true,
+            ["item:crusher"] = true,
+            ["item:oil-refinery"] = true,
+            ["item:chemical-plant"] = true,
+            ["item:assembling-machine-2"] = true,
+            ["item:asteroid-collector"] = true,
+            ["item:solar-panel"] = true,
+            ["item:cargo-bay"] = true,
+        }
+        --[[for _, node in pairs(initial_sort_info.sorted) do
+            if node.type == "technology" then
+                log(node.name)
+                local partial_path = path.find_path(dep_graph, node)
+                for new_node, _ in pairs(partial_path) do
+                    short_path[new_node] = true
+                end
+            end
+        end]]
+    else
+        short_path = path.find_path(dep_graph, all_technologies_node)
+    end
+    log(serpent.block(short_path))
+
     local to_be_randomized = {}
     for _, node in pairs(initial_sort_info.sorted) do
         if node.type == "item" then
@@ -80,7 +152,7 @@ randomizations.item_new = function(id)
                 -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
                 if stackable and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
                     -- Some randomness to determine whether to randomize it (always randomize raw resources)
-                    if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then
+                    if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then                        
                         to_be_randomized[build_graph.key(node.type, node.name)] = true
                     end
                 end
@@ -97,11 +169,13 @@ randomizations.item_new = function(id)
         -- This is an AND node so it needs fixing!
         --["build-tile-item-surface-with-item"] = true,
         ["plant-entity-item-surface"] = true,
-        -- Note: fuel-category-surface is used primarily
+        -- Note: fuel-category-surface is used primarily; fuel-category is probably redundant
         ["fuel-category"] = true,
         ["fuel-category-surface"] = true,
         ["burn-item"] = true,
         ["burn-item-surface"] = true,
+        -- For space platform starter pack
+        ["send-item-to-orbit-planet"] = true,
         -- Special compat nodes
         ["starter-gun"] = true,
         ["starter-gun-ammo"] = true,
@@ -147,6 +221,9 @@ randomizations.item_new = function(id)
         -- Add this temporarily for graph sorting; it will be taken away later
         graph_utils.add_prereq(item_slot_node, item_node)
     end
+    -- We'll make sure chemical fuel is always available as a hotfix at the end, so make sure it's satisfied as a node
+    -- build-entity-surface-condition-true is just an easy always-on node to choose
+    graph_utils.add_prereq(dep_graph[build_graph.key("build-entity-surface-condition-true", "canonical")], dep_graph[build_graph.key("fuel-category-surface", build_graph.compound_key({"chemical", build_graph.compound_key({"planet", "nauvis"})}))])
 
     -- Now re-sort and create our list of dependents and prereqs for shuffling
     local prereq_sort_info = top_sort.sort(dep_graph)
@@ -175,6 +252,10 @@ randomizations.item_new = function(id)
 
     local slot_to_item = {}
     local item_to_slot = {}
+    -- Whether we've filled a slot with something exciting
+    -- Exciting slots can be replaced by more boring items if reachability requires it
+    local exciting_slots = {}
+    local in_exciting_slots = {}
     local curr_sort_state = top_sort.sort(dep_graph, blacklist)
 
     local function is_slot_reachable(slot)
@@ -197,6 +278,12 @@ randomizations.item_new = function(id)
         return curr_sort_state.reachable[build_graph.key(item_node.type, item_node.name)] or is_slot_reachable(dep_graph[build_graph.key("item-slot", item_node.name)])
     end
 
+    local function is_boring(node)
+        local item_prototype = items[node.name]
+        return not (item_prototype.type ~= "item" or item_prototype.place_result ~= nil or item_prototype.place_as_equipment_result ~= nil or (item_prototype.fuel_category ~= nil and item_prototype.fuel_category ~= "chemical") or item_prototype.plant_result ~= nil or item_prototype.place_as_tile ~= nil)
+    end
+
+    local desperate_reachability_disable = false
     for i = 1, #item_slots do
         local old_slot
         local new_item
@@ -205,7 +292,15 @@ randomizations.item_new = function(id)
             for _, curr_slot in pairs(item_slots) do
                 if slot_to_item[curr_slot.name] == nil and is_slot_reachable(curr_slot) then
                     for _, proposed_item in pairs(item_travelers) do
-                        if item_to_slot[proposed_item.name] == nil and is_item_reachable(proposed_item) then
+                        -- If we're almost done just say whatever and accept this proposal
+                        if desperate_reachability_disable then
+                            old_slot = curr_slot
+                            new_item = proposed_item
+                            break
+                        end
+                        
+                        -- Don't make sure it's reachable if it's a boring slot
+                        if item_to_slot[proposed_item.name] == nil and (is_boring(curr_slot) or is_item_reachable(proposed_item)) then
                             local proposed_item_prot = items[proposed_item.name]
                             local slot_item = items[curr_slot.name]
 
@@ -217,6 +312,10 @@ randomizations.item_new = function(id)
                             if not worry_about_costs or (slot_cost ~= nil and slot_cost <= constants.item_randomization_cost_factor_threshold * traveler_cost) then
                                 -- Check now that stack sizes match up
                                 if proposed_item_prot.stack_size >= slot_item.stack_size / 10 then
+                                    if is_boring(curr_slot) and not in_exciting_slots[curr_slot.name] then
+                                        table.insert(exciting_slots, curr_slot)
+                                        in_exciting_slots[curr_slot.name] = true
+                                    end
                                     old_slot = curr_slot
                                     new_item = proposed_item
                                     break
@@ -239,33 +338,82 @@ randomizations.item_new = function(id)
 
             if new_item == nil then
                 -- Try to find a traveler to switch earlier
+                -- NOTE/CRITICAL TODO: This is broken because the switches can violate reachability of later nodes!
                 local succeeded_in_traveler_switch = false
-                for _, failed_traveler in pairs(item_travelers) do
-                    if item_to_slot[failed_traveler.name] == nil and is_item_reachable(failed_traveler) then
-                        -- Fallback to switching this item back earlier to its vanilla spot
-                        local vanilla_slot = dep_graph[build_graph.key("item-slot", failed_traveler.name)]
-                        -- We know its vanilla slot was already taken since that should always be available by now (and the fact we failed means it's probably getting used by something else)
-                        -- Otherwise, if no items satisfy this, it's hopeless
-                        local booted_out_item = slot_to_item[vanilla_slot.name]
-
-                        if booted_out_item ~= nil then
-                            -- Switch out slot/item tables
-                            slot_to_item[vanilla_slot.name] = failed_traveler
-                            item_to_slot[failed_traveler.name] = vanilla_slot
-                            item_to_slot[booted_out_item.name] = nil
-
-                            -- Repair the graph
-                            -- No blacklist changes needed since those are all on the item-surface/item-slot level (though we'll need to re-sort from the beginning)
-                            graph_utils.remove_prereq(vanilla_slot, booted_out_item)
-                            graph_utils.add_prereq(vanilla_slot, failed_traveler)
-
-                            -- Redo the sort state entirely instead of trying to backtrack
-                            -- This is slow, but we're in a desperate state by now anyways
-                            curr_sort_state = top_sort.sort(dep_graph, blacklist)
-
-                            succeeded_in_traveler_switch = true
-                            break
+                for should_check_on_short_path = 1, 2 do
+                    for _, failed_traveler in pairs(item_travelers) do
+                        local on_short_path = false
+                        if short_path[build_graph.key("item", failed_traveler.name)] then
+                            on_short_path = true
+                        else
+                            for surface_name, surface in pairs(build_graph.surfaces) do
+                                if short_path[build_graph.key("item-surface", build_graph.compound_key({failed_traveler.name, surface_name}))] then
+                                    on_short_path = true
+                                end
+                            end
                         end
+                        if item_to_slot[failed_traveler.name] == nil and is_item_reachable(failed_traveler) and not is_boring(failed_traveler) and (on_short_path or should_check_on_short_path == 2) then
+                            -- Fallback to switching this item back earlier to its vanilla spot
+                            --local vanilla_slot = dep_graph[build_graph.key("item-slot", failed_traveler.name)]
+                            -- We know its vanilla slot was already taken since that should always be available by now (and the fact we failed means it's probably getting used by something else)
+                            -- Otherwise, if no items satisfy this, it's hopeless
+                            -- Note: this can cause softlocks if we're not careful, so remove it for now
+                            local booted_out_slot --= slot_to_item[vanilla_slot.name]
+                            -- Our last resort is to boot something exciting out
+                            -- Note: actually trying this as the *first* resort now
+                            log(#exciting_slots)
+                            if #exciting_slots >= 1 then
+                                local ind_to_boot = #exciting_slots--rng.int(rng.key({id = id}), #exciting_slots)
+                                booted_out_slot = exciting_slots[ind_to_boot]
+                                table.remove(exciting_slots, ind_to_boot)
+                                in_exciting_slots[booted_out_slot.name] = nil
+                            end
+
+                            -- The variable names to come are a mess; I'm sorry
+                            if booted_out_slot ~= nil then
+                                log("Booting out " .. booted_out_slot.name .. " slot for " .. failed_traveler.name)
+
+                                -- Switch out slot/item tables
+                                local item_being_booted_out = slot_to_item[booted_out_slot.name]
+                                local corresponding_slot = dep_graph[build_graph.key("item-slot", item_being_booted_out.name)]
+                                slot_to_item[booted_out_slot.name] = failed_traveler
+                                item_to_slot[failed_traveler.name] = booted_out_slot
+                                item_to_slot[item_being_booted_out.name] = nil
+
+                                -- Repair the graph
+                                -- No blacklist changes needed since those are all on the item-surface/item-slot level (though we'll need to re-sort from the beginning)
+                                graph_utils.remove_prereq(corresponding_slot, item_being_booted_out)
+                                graph_utils.add_prereq(booted_out_slot, failed_traveler)
+
+                                local old_num_reachable = #curr_sort_state.sorted
+
+                                -- Redo the sort state entirely instead of trying to backtrack
+                                -- This is slow, but we're in a desperate state by now anyways
+                                curr_sort_state = top_sort.sort(dep_graph, blacklist)
+
+                                -- As a heuristic, reject if we didn't get at least as many reachable things
+                                if #curr_sort_state.sorted < old_num_reachable then
+                                    -- Note: With the current changes, we should actually never enter this
+                                    error("Actually reduced reachable by " .. tostring(old_num_reachable - #curr_sort_state.sorted))
+                                    -- Undo our changes
+                                    slot_to_item[vanilla_slot.name] = booted_out_item
+                                    item_to_slot[failed_traveler.name] = nil
+                                    item_to_slot[booted_out_item.name] = vanilla_slot
+                                    graph_utils.remove_prereq(vanilla_slot, failed_traveler)
+                                    graph_utils.add_prereq(vanilla_slot, booted_out_item)
+                                    curr_sort_state = top_sort.sort(dep_graph, blacklist)
+
+                                    in_exciting_slots[booted_out_item.name] = true
+                                    table.insert(exciting_slots, booted_out_item)
+                                else
+                                    succeeded_in_traveler_switch = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if succeeded_in_traveler_switch then
+                        break
                     end
                 end
                 if not succeeded_in_traveler_switch then
@@ -283,24 +431,60 @@ randomizations.item_new = function(id)
                     log(is_item_reachable(traveling_item))
                 end
             end
-            error("Item randomization failed. Perhaps try a different seed?")
-        end
+            -- If we're more than 90% of the way there, disable reachability conditions instead
+            if not desperate_reachability_disable and (#item_slots - i) <= 0.1 * #item_slots then
+                log("Disabling reachability checks... " .. tostring(math.floor(100 * i / #item_slots)) .. "% of the way done!")
+                desperate_reachability_disable = true
+            else
+                error("Item randomization failed at " .. tostring(math.floor(100 * i / #item_slots)) .. "%. Perhaps try a different seed?")
+            end
+        else
+            log(old_slot.name)
+            log(new_item.name)
 
-        log(old_slot.name)
-        log(new_item.name)
+            slot_to_item[old_slot.name] = new_item
+            item_to_slot[new_item.name] = old_slot
 
-        slot_to_item[old_slot.name] = new_item
-        item_to_slot[new_item.name] = old_slot
+            local old_slot_node = dep_graph[build_graph.key(old_slot.type, old_slot.name)]
+            -- Connect the traveler to the slot and unblacklist the slot
+            -- Connect "boring-turned-exciting" connections to their original spot so that they don't have an effect on reachability until later
+            if in_exciting_slots[old_slot.name] then
+                local new_item_corresponding_slot = dep_graph[build_graph.key("item-slot", new_item.name)]
+                graph_utils.add_prereq(new_item_corresponding_slot, new_item)
+                -- Sort in case we already missed this
+                if curr_sort_state.reachable[build_graph.key(new_item_corresponding_slot.type, new_item_corresponding_slot.name)] then
+                    curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {new_item_corresponding_slot, new_item})
+                end
+            else
+                graph_utils.add_prereq(old_slot_node, new_item)
+                curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {old_slot_node, new_item})
+            end
+            for surface_name, surface in pairs(build_graph.surfaces) do
+                local item_surface_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({old_slot.name, surface_name}))]
+                for _, prereq in pairs(item_surface_node.prereqs) do
+                    blacklist[build_graph.conn_key({prereq, item_surface_node})] = false
+                    curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {prereq, item_surface_node})
+                end
+            end
 
-        local old_slot_node = dep_graph[build_graph.key(old_slot.type, old_slot.name)]
-        -- Connect the traveler to the slot and unblacklist the slot
-        graph_utils.add_prereq(old_slot_node, new_item)
-        curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {old_slot_node, new_item})
-        for surface_name, surface in pairs(build_graph.surfaces) do
-            local item_surface_node = dep_graph[build_graph.key("item-surface", build_graph.compound_key({old_slot.name, surface_name}))]
-            for _, prereq in pairs(item_surface_node.prereqs) do
-                blacklist[build_graph.conn_key({prereq, item_surface_node})] = false
-                curr_sort_state = top_sort.sort(dep_graph, blacklist, curr_sort_state, {prereq, item_surface_node})
+            -- See if any exciting connections have turned boring by turning reachable
+            local to_remove_from_exciting = {}
+            for exciting_slot_name, _ in pairs(in_exciting_slots) do
+                local exciting_item_name = slot_to_item[exciting_slot_name].name
+                if curr_sort_state.reachable[build_graph.key("item-slot", exciting_item_name)] then
+                    log(exciting_item_name .. " is no longer exciting")
+                    table.insert(to_remove_from_exciting, exciting_slot_name)
+                    local ind_to_remove
+                    for ind, exciting_slot in pairs(exciting_slots) do
+                        if exciting_slot.name == exciting_slot_name then
+                            ind_to_remove = ind
+                        end
+                    end
+                    table.remove(exciting_slots, ind_to_remove)
+                end
+            end
+            for _, to_remove in pairs(to_remove_from_exciting) do
+                in_exciting_slots[to_remove] = nil
             end
         end
     end
