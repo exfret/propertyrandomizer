@@ -794,6 +794,18 @@ local spec = {
             val = "more"
         }
     },
+    lightning_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    lightning_energy = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     locomotive_max_speed = {
         setting = {
             name = "propertyrandomizer-misc",
