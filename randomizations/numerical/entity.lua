@@ -69,7 +69,6 @@ end
 
 local to_unit_time = function (ticks)
 
-    local ticks_unit = "ticks"
     local seconds = "seconds"
     local minutes = "minutes"
     local hours = "hours"
@@ -77,19 +76,17 @@ local to_unit_time = function (ticks)
     local ticks_per_second = 60
     local seconds_per_minute = 60
     local minutes_per_hour = 60
-    local unit = ticks_unit
+
+    local unit = seconds
     local time = ticks
 
-    if time > ticks_per_second then
-        unit = seconds
-        time = time / ticks_per_second
-        if time > seconds_per_minute then
-            unit = minutes
-            time = time / seconds_per_minute
-            if time > minutes_per_hour then
-                unit = hours
-                time = time / minutes_per_hour
-            end
+    time = time / ticks_per_second
+    if time > seconds_per_minute then
+        unit = minutes
+        time = time / seconds_per_minute
+        if time > minutes_per_hour then
+            unit = hours
+            time = time / minutes_per_hour
         end
     end
 
@@ -1853,6 +1850,51 @@ randomizations.lightning_attractor_range = function (id)
             local factor = la.range_elongation / old_value
 
             locale_utils.create_localised_description(la, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_damage = function (id)
+    for _, lightning in pairs(data.raw["lightning"] or {}) do
+        if lightning.damage == nil then
+            lightning.damage = 100
+        end
+        local old_value = lightning.damage
+
+        randomize({
+            id = id,
+            prototype = lightning,
+            property = "damage",
+            variance = "medium",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        local factor = lightning.damage / old_value
+
+        locale_utils.create_localised_description(lightning, factor, id, { flipped = true, variance = "medium" })
+    end
+end
+
+-- New
+randomizations.lightning_energy = function (id)
+    for _, lightning in pairs(data.raw["lightning"] or {}) do
+        if lightning.energy ~= nil then
+            local old_value = util.parse_energy(lightning.energy)
+
+            randomizations.energy({
+                is_power = false,
+                id = id,
+                prototype = lightning,
+                property = "energy",
+                dir = 1,
+                rounding = "discrete_float"
+            })
+
+            local factor = util.parse_energy(lightning.energy) / old_value
+
+            locale_utils.create_localised_description(lightning, factor, id, { variance = "medium" })
         end
     end
 end
