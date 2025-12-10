@@ -229,7 +229,8 @@ data:extend({
             --"all"
         },
         default_value = "control-only",
-        order = "f-b[softlock]"
+        order = "f-b[softlock]",
+        hidden = true
     },
     {
         setting_type = "startup",

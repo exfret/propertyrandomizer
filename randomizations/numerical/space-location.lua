@@ -62,6 +62,10 @@ local to_ticks = function (unit, value)
 end
 
 randomizations.asteroid_spawns = function (id)
+    if not mods["space-age"] then
+        return
+    end
+
     for _, class in pairs(space_location_classes) do
         for _, space_location in pairs(data.raw[class]) do
             if space_location.asteroid_spawn_definitions ~= nil then
@@ -119,6 +123,7 @@ randomizations.asteroid_spawns = function (id)
     end
 end
 
+-- This is applicable to base game
 randomizations.planet_day_night_cycles = function (id)
     for _, planet in pairs(data.raw["planet"]) do
         if planet.surface_properties ~= nil then
@@ -148,6 +153,7 @@ randomizations.planet_day_night_cycles = function (id)
     end
 end
 
+-- I think this is also applicable to base game in the sense that it at least doesn't break it, but I don't think it does anything either
 randomizations.planet_gravity = function (id)
     for _, planet in pairs(data.raw["planet"]) do
         if planet.surface_properties ~= nil then
@@ -176,6 +182,7 @@ randomizations.planet_gravity = function (id)
     end
 end
 
+-- According to the API this is also fine in base game... maybe should test this because like, wait you can have lightning attractors in base game?..
 randomizations.planet_lightning_density = function (id)
     for _, planet in pairs(data.raw["planet"]) do
         if planet.lightning_properties ~= nil then
@@ -209,6 +216,7 @@ randomizations.planet_lightning_density = function (id)
     end
 end
 
+-- Pretty standard base game randomization
 randomizations.planet_solar_power = function (id)
     for _, planet in pairs(data.raw["planet"]) do
         if planet.surface_properties ~= nil then
@@ -234,7 +242,12 @@ randomizations.planet_solar_power = function (id)
     end
 end
 
+-- Definitely a space age only randomization; added guard clause
 randomizations.space_connection_length = function (id)
+    if not mods["space-age"] then
+        return
+    end
+
     for _, space_connection in pairs(data.raw["space-connection"]) do
         if space_connection.length == nil then
             space_connection.length = 600
@@ -255,7 +268,13 @@ randomizations.space_connection_length = function (id)
     end
 end
 
+-- Added a guard clause because even though no space age only prototypes/properties are used, data.raw["space-location"] will be empty without space age, causing a crash
+-- I'm wondering if we should just populate all the space age class tables to just be empty tables at least to avoid all these errors
 randomizations.space_location_solar_power_space = function (id)
+    if not mods["space-age"] then
+        return
+    end
+    
     for _, class in pairs(space_location_classes) do
         for _, planet in pairs(data.raw[class]) do
             if planet.solar_power_in_space == nil then

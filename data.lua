@@ -17,3 +17,7 @@ data:extend({
         icon_size = 127
     }
 })
+
+-- Turn settings off that I made hidden so that players aren't stuck with them on
+settings.startup["propertyrandomizer-softlock-prevention"].value = false
+settings.startup["propertyrandomizer-watch-the-world-burn"].value = false
