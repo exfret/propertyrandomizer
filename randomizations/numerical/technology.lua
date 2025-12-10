@@ -43,6 +43,35 @@ randomizations.tech_costs = function(id)
     end
 end
 
+randomizations.tech_craft_requirement = function (id)
+    for _, tech in pairs(data.raw.technology or {}) do
+        if tech.research_trigger ~= nil
+        and tech.research_trigger.count ~= nil
+        and tech.research_trigger.count > 1 then
+            local rounding = "discrete_float"
+            if tech.research_trigger == "craft-item" then
+                rounding = "discrete"
+            end
+
+            local old_value = tech.research_trigger.count
+
+            randomize({
+                id = id,
+                prototype = tech,
+                tbl = tech.research_trigger,
+                property = "count",
+                rounding = rounding,
+                variance = "medium",
+                dir = -1,
+                abs_min = 2,
+            })
+
+            local factor = tech.research_trigger.count / old_value
+            locale_utils.create_localised_description(tech, factor, id, {flipped = true})
+        end
+    end
+end
+
 randomizations.tech_times = function(id)
     for _, tech in pairs(data.raw.technology) do
         if tech.unit ~= nil then
@@ -144,7 +173,7 @@ randomizations.tech_upgrades = function(id)
                 local abs_max = nil
                 if change_property[modifier.type] then
                     target_property = "change"
-                    abs_max = 327.66
+                    abs_max = 327
                 end
                 if ignore_modifiers[modifier.type] == nil and modifier[target_property] > 0 then
                     local old_value = modifier[target_property]
