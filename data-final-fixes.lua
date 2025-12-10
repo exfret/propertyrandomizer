@@ -16,6 +16,10 @@ log("Gathering config")
 -- Must be loaded first because it also loads settings
 require("config")
 
+-- Initial reformats to smooth along everything else
+local reformat = require("lib/reformat")
+reformat.initial()
+
 -- Special changes for watch the world burn mode
 if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
     require("watch-the-world-burn")

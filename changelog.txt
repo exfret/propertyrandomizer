@@ -1,6 +1,19 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.4.1
+Version: 0.4.3
 Date: ?
+  Changes:
+    - "Softlock prevention" setting is now removed since I found it redundant with the error on world startup (which also gives you the chance to change settings afterward)
+  Bugfixes:
+    - Removed error on startup without space age due to trying to access space age only prototypes (again)
+    - Turned off hidden settings in case they were stuck as on for some people
+---------------------------------------------------------------------------------------------------
+Version: 0.4.2
+Date: 2025.12.08
+  Changes:
+    - Misc. changes, unreleased version
+---------------------------------------------------------------------------------------------------
+Version: 0.4.1
+Date: 2025.12.08
   Features:
     - Complete rewrite of item randomization, refactoring and removing softlocks
     - Item randomization is now more random; enjoy your atomic rocket ore!

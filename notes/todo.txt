@@ -1,5 +1,6 @@
 WORKING ON:
- - New item randomization?
+ - Dupes!
+    - No wait!! First, unified randomization!
 
  - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)

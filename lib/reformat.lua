@@ -2,6 +2,40 @@ local rng = require("lib/random/rng")
 
 local reformat = {}
 
+-- Reformattings that need to happen at the very beginning of the randomization process
+function reformat.initial()
+    -- Right now this just populates all the class names to avoid space age errors
+    log(serpent.block(defines.prototypes))
+    for _, class_names in pairs(defines.prototypes) do
+        for class_name, _ in pairs(class_names) do
+            if data.raw[class_name] == nil then
+                data.raw[class_name] = {}
+            end
+        end
+    end
+    -- The code above actually was working but I'll leave this here for now in case it comes in handy later
+    -- Since defines doesn't populate space age tables without space age, we actually have to do this ourselves manually
+    -- I'll keep what's above just in case something in base game gets its table emptied, though
+    --[[local space_age_only_classes = {
+        "agricultural-tower",
+        "asteroid-collector",
+        "asteroid",
+        "capture-robot",
+        "cargo-bay",
+        "lightning-attractor",
+        "lightning",
+        "segment",
+        "segmented-unit",
+        "space-platform-hub",
+        "thruster",
+    }
+    for _, class_name in pairs(space_age_only_classes) do
+        if data.raw[class_name] == nil then
+            data.raw[class_name] = {}
+        end
+    end]]
+end
+
 -- Recursive, so can't be defined with the =function syntax
 function reformat.change_image_size(picture, factor)
     if picture.layers ~= nil then

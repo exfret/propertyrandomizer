@@ -2,11 +2,10 @@ local constants = require("helper-tables/constants")
 local build_graph = require("lib/graph/build-graph")
 local flow_cost = require("lib/graph/flow-cost")
 local graph_utils = require("lib/graph/graph-utils")
+local path = require("lib/graph/path")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
-
-local path = require("lib/graph/path")
 
 randomizations.item_new = function(id)
     local dont_randomize_item = {
