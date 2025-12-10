@@ -1266,6 +1266,12 @@ local spec = {
             val = "default"
         }
     },
+    tech_craft_requirement = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     tech_times = {
         setting = {
             name = "propertyrandomizer-production",
