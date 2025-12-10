@@ -836,6 +836,12 @@ local spec = {
             val = "more"
         }
     },
+    map_gen_preset = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- Affects everything, including enemy HP
     max_health = {
         setting = {
