@@ -42,7 +42,7 @@ randomizations.equipment_grid_sizes = function(id)
                     dummy = old_aspect_ratio,
                     rounding = "none",
                     dir = 0,
-                    variance = "big"
+                    variance = "medium"
                 })
 
                 -- Calculate new width and height based on new size and aspect ratio
