@@ -456,6 +456,10 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
     end
 
     local function choose_unused_ind(index_in_ings)
+        if #potential_ings == 0 then
+            error("No possible ingredients for recipe.")
+        end
+
         local num_failed_attempts = 0
 
         while true do
@@ -470,6 +474,7 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
 
             num_failed_attempts = num_failed_attempts + 1
             if num_failed_attempts >= constants.max_num_failed_attempts_ing_search then
+                log(serpent.block(potential_ings))
                 error("Max number of failed attempts reached during recipe ingredient randomization.")
             end
         end
@@ -668,6 +673,15 @@ randomizations.recipe_ingredients = function(id)
                                 end
                                 -- Add to blacklist
                                 blacklist[build_graph.conn_key({prereq, dependent_node})] = true
+                                -- Add recipe being made on other surfaces to blacklist
+                                for surface_name, surface in pairs(build_graph.surfaces) do
+                                    if surface_name ~= dependent_node.surface then
+                                        local other_surface_node = dep_graph[build_graph.key("recipe-surface", build_graph.compound_key({dependent_node.recipe, surface_name}))]
+                                        for _, surface_node_prereq in pairs(other_surface_node.prereqs) do
+                                            blacklist[build_graph.conn_key({surface_node_prereq, other_surface_node})] = true
+                                        end
+                                    end
+                                end
                             end
                         end
                     end
@@ -1179,20 +1193,23 @@ randomizations.recipe_ingredients = function(id)
                         return false
                     end
 
-                    -- If this is a fluid, make sure it's available on the relevant surface
-                    if prereq.ing.type == "fluid" and not reachable[build_graph.key("fluid-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
-                        return false
-                    end
+                    -- As a hotfix, assume being on nauvis means it's everywhere
+                    -- CRITICAL TODO: FIX!
+                    if build_graph.surfaces[dependent.surface].name ~= "nauvis" then
+                        -- If this is a fluid, make sure it's available on the relevant surface
+                        if prereq.ing.type == "fluid" and not reachable[build_graph.key("fluid-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
+                            return false
+                        end
 
-                    -- If this is an item, make sure it's available on the relevant surface (this in particular rules out certain spoilables)
-                    if prereq.ing.type == "item" and not reachable[build_graph.key("item-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
-                        return false
-                    end
+                        -- If this is an item, make sure it's available on the relevant surface (this in particular rules out certain spoilables)
+                        if prereq.ing.type == "item" and not reachable[build_graph.key("item-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
+                            return false
+                        end
 
-                    -- If this material has a manually assigned surface, make sure this is that surface
-                    --log(serpent.block(prereq.ing))
-                    if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name}) then
-                        return false
+                        -- If this material has a manually assigned surface, make sure this is that surface
+                        if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name}) then
+                            return false
+                        end
                     end
 
                     -- Make sure the ingredient isn't too cheap
@@ -1240,6 +1257,7 @@ randomizations.recipe_ingredients = function(id)
 
         local my_potential_ings = {}
         local valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
+
         for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
             table.insert(my_potential_ings, prereq.ing)
         end
@@ -1316,7 +1334,20 @@ randomizations.recipe_ingredients = function(id)
         -- Update reachability
         for _, prereq in pairs(dependent.prereqs) do
             blacklist[build_graph.conn_key({prereq, dependent})] = false
-            sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, dependent})
+            if reachable[build_graph.key(prereq.type, prereq.name)] then
+                sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {prereq, dependent})
+            end
+        end
+        for surface_name, surface in pairs(build_graph.surfaces) do
+            if surface_name ~= dependent.surface then
+                local other_surface_node = dep_graph[build_graph.key("recipe-surface", build_graph.compound_key({dependent.recipe, surface_name}))]
+                for _, surface_node_prereq in pairs(other_surface_node.prereqs) do
+                    blacklist[build_graph.conn_key({surface_node_prereq, other_surface_node})] = false
+                    if reachable[build_graph.key(surface_node_prereq.type, surface_node_prereq.name)] then
+                        sort_state = top_sort.sort(dep_graph, blacklist, sort_state, {surface_node_prereq, other_surface_node})
+                    end
+                end
+            end
         end
         -- Get rid of the blacklisted property
         table.remove(dependent_to_new_ings[dependent_recipe.name], 1)

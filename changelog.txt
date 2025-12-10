@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.4.3
+Version: 0.4.4
 Date: ?
+  Bugfixes:
+    - Fixed core logic issue with recipe randomization and multiple planets
+---------------------------------------------------------------------------------------------------
+Version: 0.4.3
+Date: 2025.12.10
   Changes:
     - "Softlock prevention" setting is now removed since I found it redundant with the error on world startup (which also gives you the chance to change settings afterward)
   Bugfixes:

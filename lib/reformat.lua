@@ -5,7 +5,6 @@ local reformat = {}
 -- Reformattings that need to happen at the very beginning of the randomization process
 function reformat.initial()
     -- Right now this just populates all the class names to avoid space age errors
-    log(serpent.block(defines.prototypes))
     for _, class_names in pairs(defines.prototypes) do
         for class_name, _ in pairs(class_names) do
             if data.raw[class_name] == nil then
