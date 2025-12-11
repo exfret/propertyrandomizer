@@ -8,7 +8,7 @@ end
 
 randomizations.map_gen_preset = function (id)
     local preset = {
-        order = "randomized",
+        order = "aa",
         basic_settings = {
             autoplace_controls = {},
             property_expression_names = {},
