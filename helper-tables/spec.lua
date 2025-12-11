@@ -330,6 +330,12 @@ local spec = {
             val = "more"
         }
     },
+    character_crafting_speed = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     -- A classic
     cliff_sizes = {
         setting = {
@@ -549,6 +555,12 @@ local spec = {
         }
     },
     fluid_stream_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    fluid_stream_damage_types = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
@@ -782,6 +794,18 @@ local spec = {
             val = "more"
         }
     },
+    lightning_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    lightning_energy = {
+        setting = {
+            name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
     locomotive_max_speed = {
         setting = {
             name = "propertyrandomizer-misc",
@@ -807,6 +831,12 @@ local spec = {
         }
     },
     map_colors = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    map_gen_preset = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
@@ -1102,6 +1132,30 @@ local spec = {
             val = "more"
         }
     },]]
+    segmented_unit_attacking_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_enraged_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_investigating_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    segmented_unit_patrolling_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     smoke_damage = {
         setting = {
             name = "propertyrandomizer-military",
@@ -1145,6 +1199,18 @@ local spec = {
         }
     },
     space_platform_initial_items = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    spider_unit_projectile_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    spider_unit_yields = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
@@ -1206,6 +1272,12 @@ local spec = {
             val = "default"
         }
     },
+    tech_craft_requirement = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     tech_times = {
         setting = {
             name = "propertyrandomizer-production",
@@ -1227,6 +1299,12 @@ local spec = {
     thruster_effectivity = {
         setting = {
             name = "propertyrandomizer-production",
+            val = "more"
+        }
+    },
+    tile_pollution_absorption = {
+        setting = {
+            name = "propertyrandomizer-misc",
             val = "more"
         }
     },
@@ -1285,7 +1363,13 @@ local spec = {
             val = "more"
         }
     },
-    unit_melee_damage = {
+    unit_damage = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    unit_damage_types = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
@@ -1307,10 +1391,28 @@ local spec = {
             val = "more"
         }
     },
+    unit_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
     -- Doesn't include demolishers
     unit_sizes = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    unit_spawner_loot = {
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    unit_spawner_yields = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },
@@ -1337,6 +1439,18 @@ local spec = {
     vehicle_weight = {
         setting = {
             name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
+    worm_range = {
+        setting = {
+            name = "propertyrandomizer-military",
+            val = "more"
+        }
+    },
+    worm_shooting_speed = {
+        setting = {
+            name = "propertyrandomizer-military",
             val = "more"
         }
     },

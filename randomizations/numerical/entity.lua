@@ -2,7 +2,9 @@ local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
 local randbool = require("lib/random/randbool")
+local fleish = require("lib/random/fleishman")
 local rng = require("lib/random/rng")
+local indirect = require("randomizations/helper/indirect")
 local locale_utils = require("lib/locale")
 local trigger_utils = require("lib/trigger")
 
@@ -67,7 +69,6 @@ end
 
 local to_unit_time = function (ticks)
 
-    local ticks_unit = "ticks"
     local seconds = "seconds"
     local minutes = "minutes"
     local hours = "hours"
@@ -75,19 +76,17 @@ local to_unit_time = function (ticks)
     local ticks_per_second = 60
     local seconds_per_minute = 60
     local minutes_per_hour = 60
-    local unit = ticks_unit
+
+    local unit = seconds
     local time = ticks
 
-    if time > ticks_per_second then
-        unit = seconds
-        time = time / ticks_per_second
-        if time > seconds_per_minute then
-            unit = minutes
-            time = time / seconds_per_minute
-            if time > minutes_per_hour then
-                unit = hours
-                time = time / minutes_per_hour
-            end
+    time = time / ticks_per_second
+    if time > seconds_per_minute then
+        unit = minutes
+        time = time / seconds_per_minute
+        if time > minutes_per_hour then
+            unit = hours
+            time = time / minutes_per_hour
         end
     end
 
@@ -96,7 +95,6 @@ end
 
 local to_ticks = function (unit, value)
 
-    local ticks_unit = "ticks"
     local seconds = "seconds"
     local minutes = "minutes"
     local hours = "hours"
@@ -114,6 +112,83 @@ local to_ticks = function (unit, value)
     end
 
     return math.max(round(value), 1)
+end
+
+local damage_randomization = function (prototype, parents, structs, is_enemy, id, variance)
+    local dir = 1
+    if is_enemy then
+        dir = -1
+    end
+
+    local changed = false
+    local rng_key = rng.key({ id = id, prototype = prototype })
+    local factor = randomize({
+        key = rng_key,
+        dummy = 1,
+        rounding = "none",
+        variance = variance,
+        dir = dir,
+    })
+    local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+    for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+        if damage_parameters.amount > 0 then
+            damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+            changed = true
+        end
+    end
+
+    if changed then
+        for _, parent in pairs(parents) do
+            locale_utils.create_localised_description(parent, factor, id, { flipped = dir < 0, variance = variance })
+        end
+    end
+end
+
+local effect_radius_randomization = function (prototype, parents, structs, is_enemy, id, variance)
+    local dir = 1
+    if is_enemy then
+        dir = -1
+    end
+
+    local changed = false
+    local rng_key = rng.key({ id = id, prototype = prototype })
+    local factor = randomize({
+        key = rng_key,
+        dummy = 1,
+        rounding = "none",
+        variance = variance,
+        dir = dir,
+    })
+    local rounding_params = { key = rng_key, rounding = "discrete_float" }
+
+    for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+        if trigger_effect.radius ~= nil and trigger_effect.radius > 0 then
+            changed = true
+            trigger_effect.radius = randnum.fixes(rounding_params, trigger_effect.radius * factor)
+        end
+    end
+
+    for _, trigger in pairs(structs["trigger"] or {}) do
+        if trigger.radius ~= nil and trigger.radius > 0 then
+            changed = true
+            trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
+        end
+    end
+
+    if changed then
+        for _, parent in pairs(parents) do
+            locale_utils.create_localised_description(parent, factor, id, { flipped = dir < 0, variance = variance })
+        end
+    end
+end
+
+-- Entity lookup
+local entities = {}
+for entity_class, _ in pairs(defines.prototypes.entity) do
+    for _, entity in pairs(data.raw[entity_class] or {}) do
+        entities[entity.name] = entity
+    end
 end
 
 randomizations.accumulator_buffer = function(id)
@@ -195,96 +270,16 @@ end
 
 -- New
 randomizations.artillery_projectile_damage = function (id)
-    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
-
-    local target_classes = {
-        ["ammo"] = true,
-    }
-
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local projectile = data.raw["artillery-projectile"][projectile_name]
-            local structs = {}
-            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("artillery-projectile", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "big")
+    end)
 end
 
 -- New
 randomizations.artillery_projectile_effect_radius = function (id)
-    local projectiles = trigger_utils.get_creator_table("artillery-projectile")
-
-    local target_classes = {
-        ["ammo"] = true,
-    }
-
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local projectile = data.raw["artillery-projectile"][projectile_name]
-            local structs = {}
-            trigger_utils.gather_artillery_projectile_structs(structs, projectile, true)
-            local randomized = false
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "medium",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, trigger in pairs(structs["trigger"]) do
-                if trigger.radius ~= nil and trigger.radius > 0 then
-                    randomized = true
-                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
-                end
-            end
-
-            if randomized then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("artillery-projectile", function (prototype, parents, structs, is_enemy)
+        effect_radius_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
@@ -466,12 +461,22 @@ randomizations.asteroid_yields = function (id)
                         dir = dir,
                         rounding = "discrete",
                     })
+
                     while new_count < #offsets do
                         table.remove(offsets)
                     end
+
+                    -- Figure out how big the offsets are so we can generate similar ones
+                    local magnitude = 1.0
+                    if #offsets > 0 then
+                        local x = offsets[1][1] or offsets[1].x
+                        local y = offsets[1][2] or offsets[1].y
+                        magnitude = math.sqrt(x^2 + y^2)
+                    end
+
                     while new_count > #offsets do
-                        -- Let's just put every asteroid in the exact same position and hope no one notices
-                        local v = { 0, 0 }
+                        local v = { fleish.rand_normal(rng_key) * magnitude,
+                            fleish.rand_normal(rng_key) * magnitude }
                         table.insert(offsets, v)
                     end
                 end
@@ -642,52 +647,9 @@ end
 
 -- New
 randomizations.beam_damage = function (id)
-    local beams = trigger_utils.get_creator_table("beam")
-
-    local target_classes = {
-        ["active-defense-equipment"] = true,
-        ["ammo"] = true,
-        ["combat-robot"] = true,
-        ["electric-turret"] = true,
-    }
-
-    for beam_name, creators in pairs(beams) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local beam = data.raw.beam[beam_name]
-            local structs = {}
-            trigger_utils.gather_beam_structs(structs, beam, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = beam })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "medium",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("beam", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 randomizations.beam_damage_interval = function(id)
@@ -949,7 +911,7 @@ end
 
 -- New
 randomizations.cargo_bay_inventory_bonus = function (id)
-    for _, cargo_bay in pairs(data.raw["cargo-bay"]) do
+    for _, cargo_bay in pairs(data.raw["cargo-bay"] or {}) do
         local old_value = cargo_bay.inventory_size_bonus
 
         randomize({
@@ -984,6 +946,29 @@ randomizations.cargo_landing_pad_radar_range = function (id)
 
             locale_utils.create_localised_description(clp, factor, id, { variance = "small" })
         end
+    end
+end
+
+-- New
+randomizations.character_crafting_speed = function (id)
+    for _, character in pairs(data.raw["character"] or {}) do
+        if character.crafting_speed == nil then
+            character.crafting_speed = 1
+        end
+
+        local old_value = character.crafting_speed
+
+        randomize({
+            id = id,
+            prototype = character,
+            property = "crafting_speed",
+            rounding = "discrete_float",
+            variance = "medium",
+            dir = 1,
+        })
+
+        local factor = character.crafting_speed / old_value
+        locale_utils.create_localised_description(character, factor, id, { variance = "medium" })
     end
 end
 
@@ -1210,192 +1195,57 @@ end
 
 -- New
 randomizations.fire_damage = function (id)
-    local fires = trigger_utils.get_creator_table("fire")
-
-    local target_classes = {
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for fire_name, creators in pairs(fires) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local fire = data.raw.fire[fire_name]
-            local structs = {}
-            trigger_utils.gather_fire_structs(structs, fire, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = fire })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("fire", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
 randomizations.fire_lifetime = function (id)
-    local fires = trigger_utils.get_creator_table("fire")
-
-    local target_classes = {
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for fire_name, creators in pairs(fires) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
+    indirect.iterate_child_prototypes("fire", function (fire, parents, structs, is_enemy)
+        local dir = 1
+        if is_enemy then
+            dir = -1
         end
 
-        if #affected_prototypes > 0 then
-            local fire = data.raw.fire[fire_name]
-            if fire.initial_lifetime == nil then
-                fire.initial_lifetime = 300
-            end
-
-            local old_value = fire.initial_lifetime
-            local unit_time = to_unit_time(fire.initial_lifetime)
-            fire.initial_lifetime = unit_time.value
-
-            randomize({
-                id = id,
-                prototype = fire,
-                property = "initial_lifetime",
-                rounding = "discrete_float",
-                variance = "big",
-            })
-
-            fire.initial_lifetime = to_ticks(unit_time.unit, fire.initial_lifetime)
-
-            local factor = fire.initial_lifetime / old_value
-            for _, prototype in pairs(affected_prototypes) do
-                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-            end
+        if fire.initial_lifetime == nil then
+            fire.initial_lifetime = 300
         end
-    end
+
+        local old_value = fire.initial_lifetime
+        local unit_time = to_unit_time(fire.initial_lifetime)
+        fire.initial_lifetime = unit_time.value
+
+        randomize({
+            id = id,
+            prototype = fire,
+            property = "initial_lifetime",
+            rounding = "discrete_float",
+            variance = "medium",
+            dir = dir,
+        })
+
+        fire.initial_lifetime = to_ticks(unit_time.unit, fire.initial_lifetime)
+
+        local factor = fire.initial_lifetime / old_value
+        for _, prototype in pairs(parents) do
+            locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "medium" })
+        end
+    end)
 end
 
 -- New
 randomizations.fluid_stream_damage = function (id)
-    local streams = trigger_utils.get_creator_table("stream")
-
-    local target_classes = {
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for stream_name, creators in pairs(streams) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local stream = data.raw.stream[stream_name]
-            local structs = {}
-            trigger_utils.gather_stream_structs(structs, stream, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = stream })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("stream", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
 randomizations.fluid_stream_effect_radius = function (id)
-    local streams = trigger_utils.get_creator_table("stream")
-
-    local target_classes = {
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for stream_name, creators in pairs(streams) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local stream = data.raw.stream[stream_name]
-            local structs = {}
-            trigger_utils.gather_stream_structs(structs, stream, true)
-            local randomized = false
-            local rng_key = rng.key({ id = id, prototype = stream })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "medium",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, trigger in pairs(structs["trigger"]) do
-                if trigger.radius ~= nil and trigger.radius > 0 then
-                    randomized = true
-                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
-                end
-            end
-
-            if randomized then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("stream", function (prototype, parents, structs, is_enemy)
+        effect_radius_randomization(prototype, parents, structs, is_enemy, id, "small")
+    end)
 end
 
 -- New
@@ -1433,7 +1283,7 @@ end
 
 -- New
 randomizations.fusion_generator_max_power = function(id)
-    for _, generator in pairs(data.raw["fusion-generator"]) do
+    for _, generator in pairs(data.raw["fusion-generator"] or {}) do
         local old_value = util.parse_energy(generator.energy_source.output_flow_limit)
 
         randomizations.energy({
@@ -1454,7 +1304,7 @@ end
 
 -- New
 randomizations.fusion_generator_speed = function(id)
-    for _, generator in pairs(data.raw["fusion-generator"]) do
+    for _, generator in pairs(data.raw["fusion-generator"] or {}) do
         local old_value = generator.max_fluid_usage
 
         randomize({
@@ -1473,7 +1323,7 @@ end
 
 -- New
 randomizations.fusion_reactor_neighbor_bonus = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         if reactor.neighbour_bonus == nil then
             reactor.neighbour_bonus = 1
         end
@@ -1496,7 +1346,7 @@ end
 
 -- New
 randomizations.fusion_reactor_power_input = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         local old_value = util.parse_energy(reactor.power_input)
 
         randomizations.energy({
@@ -1517,7 +1367,7 @@ end
 
 -- New
 randomizations.fusion_reactor_speed = function(id)
-    for _, reactor in pairs(data.raw["fusion-reactor"]) do
+    for _, reactor in pairs(data.raw["fusion-reactor"] or {}) do
         local old_value = reactor.max_fluid_usage
 
         randomize({
@@ -1940,7 +1790,7 @@ end
 
 -- New
 randomizations.lightning_attractor_drain = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.energy_source ~= nil and la.energy_source.drain ~= nil then
             local old_value = util.parse_energy(la.energy_source.drain)
 
@@ -1964,7 +1814,7 @@ end
 
 -- New
 randomizations.lightning_attractor_efficiency = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.efficiency ~= nil and la.efficiency > 0 then
             local old_value = la.efficiency
 
@@ -1985,7 +1835,7 @@ end
 
 -- New
 randomizations.lightning_attractor_range = function (id)
-    for _, la in pairs(data.raw["lightning-attractor"]) do
+    for _, la in pairs(data.raw["lightning-attractor"] or {}) do
         if la.range_elongation ~= nil and la.range_elongation > 0 then
             local old_value = la.range_elongation
 
@@ -2000,6 +1850,51 @@ randomizations.lightning_attractor_range = function (id)
             local factor = la.range_elongation / old_value
 
             locale_utils.create_localised_description(la, factor, id, { variance = "small" })
+        end
+    end
+end
+
+-- New
+randomizations.lightning_damage = function (id)
+    for _, lightning in pairs(data.raw["lightning"] or {}) do
+        if lightning.damage == nil then
+            lightning.damage = 100
+        end
+        local old_value = lightning.damage
+
+        randomize({
+            id = id,
+            prototype = lightning,
+            property = "damage",
+            variance = "medium",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        local factor = lightning.damage / old_value
+
+        locale_utils.create_localised_description(lightning, factor, id, { flipped = true, variance = "medium" })
+    end
+end
+
+-- New
+randomizations.lightning_energy = function (id)
+    for _, lightning in pairs(data.raw["lightning"] or {}) do
+        if lightning.energy ~= nil then
+            local old_value = util.parse_energy(lightning.energy)
+
+            randomizations.energy({
+                is_power = false,
+                id = id,
+                prototype = lightning,
+                property = "energy",
+                dir = 1,
+                rounding = "discrete_float"
+            })
+
+            local factor = util.parse_energy(lightning.energy) / old_value
+
+            locale_utils.create_localised_description(lightning, factor, id, { variance = "medium" })
         end
     end
 end
@@ -2228,7 +2123,8 @@ randomizations.max_health = function(id)
     -- Just check whether the max_health key is non-nil
     -- Some entities can have health but have this be nil since it's optional, let's just not worry about those
     for entity_class, _ in pairs(defines.prototypes.entity) do
-        if data.raw[entity_class] ~= nil then
+        -- Segment prototypes are handled in fixes
+        if data.raw[entity_class] ~= nil and entity_class ~= "segment" then
             for _, entity in pairs(data.raw[entity_class]) do
                 if entity.max_health ~= nil then
                     local old_max_health = entity.max_health
@@ -2396,6 +2292,23 @@ randomizations.mining_results = function(id)
                                 variance = "medium",
                             })
                         end
+                    end
+                end
+                if entity.minable ~= nil and entity_class == "fish" then
+                    if entity.minable.count == nil then
+                        entity.minable.count = 1
+                    end
+
+                    if entity.minable.count > 0 then
+                        randomize({
+                            id = id,
+                            prototype = entity,
+                            tbl = entity.minable,
+                            property = "count",
+                            dir = 1,
+                            rounding = "discrete",
+                            variance = "medium",
+                        })
                     end
                 end
             end
@@ -2604,7 +2517,7 @@ end
 
 -- New
 randomizations.plant_growth_time = function (id)
-    for _, plant in pairs(data.raw["plant"]) do
+    for _, plant in pairs(data.raw["plant"] or {}) do
         local old_value = plant.growth_ticks
 
         local unit_time = to_unit_time(plant.growth_ticks)
@@ -2629,7 +2542,7 @@ end
 
 -- New
 randomizations.plant_harvest_pollution = function (id)
-    for _, plant in pairs(data.raw["plant"]) do
+    for _, plant in pairs(data.raw["plant"] or {}) do
         if plant.harvest_emissions ~= nil then
             local randomized = false
             local rng_key = rng.key({id = id, prototype = plant})
@@ -2659,240 +2572,111 @@ end
 
 -- New
 randomizations.projectile_cluster_size = function (id)
-    local projectiles = trigger_utils.get_creator_table("projectile")
+    indirect.iterate_child_prototypes("projectile", function(projectile, parents, structs, is_enemy)
+        local dir = 1
+        if is_enemy then
+            dir = -1
+        end
 
-    local target_classes = {
-        ["capsule"] = true,
-    }
+        local rng_key = rng.key({ id = id, prototype = projectile })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = dir,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
 
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.cluster_count ~= nil then
+                trigger.cluster_count = randnum.fixes(rounding_params, trigger.cluster_count * factor)
+                changed = true
             end
         end
 
-        if #affected_prototypes > 0 then
-            local projectile = data.raw.projectile[projectile_name]
-            local structs = {}
-            trigger_utils.gather_projectile_structs(structs, projectile, true)
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                variance = "big",
-                rounding = "none",
-                dir = 1,
-            })
-            local changed = false
-            local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
-
-            for _, trigger in pairs(structs["trigger"] or {}) do
-                if trigger.cluster_count ~= nil then
-                    trigger.cluster_count = randnum.fixes(rounding_params, trigger.cluster_count * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
+        if changed then
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "big" })
             end
         end
-    end
+    end)
 end
 
 -- New
 randomizations.projectile_damage = function (id)
-    local projectiles = trigger_utils.get_creator_table("projectile")
-
-    local target_classes = {
-        ["ammo"] = true,
-        ["capsule"] = true,
-    }
-
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local projectile = data.raw.projectile[projectile_name]
-            local structs = {}
-            trigger_utils.gather_projectile_structs(structs, projectile, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "medium",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("projectile", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
 randomizations.projectile_effect_radius = function (id)
-    local projectiles = trigger_utils.get_creator_table("projectile")
-
-    local target_classes = {
-        ["capsule"] = true,
-        ["ammo"] = true,
-    }
-
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local projectile = data.raw.projectile[projectile_name]
-            local structs = {}
-            trigger_utils.gather_projectile_structs(structs, projectile, true)
-            local randomized = false
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "small",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, trigger_effect in pairs(structs["trigger-effect"]) do
-                if trigger_effect.radius ~= nil and trigger_effect.radius > 0 then
-                    randomized = true
-                    trigger_effect.radius = randnum.fixes(rounding_params, trigger_effect.radius * factor)
-                end
-            end
-
-            for _, trigger in pairs(structs["trigger"]) do
-                if trigger.radius ~= nil and trigger.radius > 0 then
-                    randomized = true
-                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
-                end
-            end
-
-            if randomized then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "small" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("projectile", function (prototype, parents, structs, is_enemy)
+        effect_radius_randomization(prototype, parents, structs, is_enemy, id, "small")
+    end)
 end
 
 -- New
 randomizations.projectile_piercing_power = function (id)
-    local projectiles = trigger_utils.get_creator_table("projectile")
+    indirect.iterate_child_prototypes("projectile", function (projectile, parents, structs, is_enemy)
+        if projectile.piercing_damage ~= nil and projectile.piercing_damage > 0 then
+            local dir = 1
+            if is_enemy then
+                dir = -1
+            end
+            local old_value = projectile.piercing_damage
 
-    local target_classes = {
-        ["ammo"] = true,
-    }
+            randomize({
+                id = id,
+                prototype = projectile,
+                property = "piercing_damage",
+                rounding = "discrete_float",
+                variance = "big",
+                dir = dir,
+            })
 
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
+            local factor = projectile.piercing_damage / old_value
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "big" })
             end
         end
-
-        if #affected_prototypes > 0 then
-            local projectile = data.raw.projectile[projectile_name]
-            if projectile.piercing_damage ~= nil and projectile.piercing_damage > 0 then
-                local old_value = projectile.piercing_damage
-
-                randomize({
-                    id = id,
-                    prototype = projectile,
-                    property = "piercing_damage",
-                    rounding = "discrete_float",
-                    variance = "big",
-                })
-
-                local factor = projectile.piercing_damage / old_value
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
-    end
+    end)
 end
 
 -- New
 randomizations.projectile_projectile_count = function (id)
-    local projectiles = trigger_utils.get_creator_table("projectile")
+    indirect.iterate_child_prototypes("projectile", function (projectile, parents, structs, is_enemy)
+        local dir = 1
+        if is_enemy then
+            dir = -1
+        end
 
-    local target_classes = {
-        ["ammo"] = true,
-    }
+        local rng_key = rng.key({ id = id, prototype = projectile })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "big",
+            rounding = "none",
+            dir = dir,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
 
-    for projectile_name, creators in pairs(projectiles) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
+        for _, trigger in pairs(structs["trigger"] or {}) do
+            if trigger.repeat_count ~= nil and trigger.repeat_count > 1 then
+                trigger.repeat_count = randnum.fixes(rounding_params, trigger.repeat_count * factor)
+                changed = true
             end
         end
 
-        if #affected_prototypes > 0 then
-            local projectile = data.raw.projectile[projectile_name]
-            local structs = {}
-            trigger_utils.gather_projectile_structs(structs, projectile, true)
-            local rng_key = rng.key({ id = id, prototype = projectile })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                variance = "big",
-                rounding = "none",
-                dir = 1,
-            })
-            local changed = false
-            local rounding_params = { key = rng_key, rounding = "discrete", abs_min = 2 }
-
-            for _, trigger in pairs(structs["trigger"] or {}) do
-                if trigger.repeat_count ~= nil and trigger.repeat_count > 1 then
-                    trigger.repeat_count = randnum.fixes(rounding_params, trigger.repeat_count * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
+        if changed then
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "big" })
             end
         end
-    end
+    end)
 end
 
 randomizations.pump_pumping_speed = function(id)
@@ -3014,62 +2798,70 @@ randomizations.resistances = function(id)
     for name, _ in pairs(data.raw["damage-type"]) do
         table.insert(damage_type_names, name)
     end
+    local apply_resistance_description = function (entity)
+        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
+    end
+
     -- In a cruel twist of fate, some entities share a reference to the same resistances table
     -- To avoid randomizing those multiple times, keep track of which tables have already been randomized
     local randomized_tables = {}
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                if entity.resistances ~= nil and #entity.resistances > 0 and randomized_tables[entity.resistances] == nil then
-                    local shuffled_damage_type_names = table.deepcopy(damage_type_names)
-                    local key = rng.key({id = id, prototype = entity})
-                    rng.shuffle(key, shuffled_damage_type_names)
-                    local dir = 1
-                    if enemy_health_classes[entity_class] then
-                        dir = -1
-                        -- Normally the player doesn't have access to acid damage.
-                        -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
-                        -- To avoid this, and because it sounds interesting, we give all enemies an extra resistance before shuffle.
-                        -- 100% is maybe a bit much, but hey, it brings an element of strategy. Adjust if needed.
-                        if #entity.resistances < #damage_type_names then
-                            table.insert(entity.resistances, { percent = 100 })
+                if randomized_tables[entity.resistances] ~= nil then
+                    apply_resistance_description(entity)
+                else
+                    if entity.resistances ~= nil and #entity.resistances > 0 and randomized_tables[entity.resistances] == nil then
+                        local shuffled_damage_type_names = table.deepcopy(damage_type_names)
+                        local key = rng.key({id = id, prototype = entity})
+                        rng.shuffle(key, shuffled_damage_type_names)
+                        local dir = 1
+                        if enemy_health_classes[entity_class] then
+                            dir = -1
+                            -- Normally the player doesn't have access to acid damage.
+                            -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
+                            -- To avoid this, and because it sounds interesting, we give all enemies an extra resistance before shuffle.
+                            -- 100% is maybe a bit much, but hey, it brings an element of strategy. Adjust if needed.
+                            if #entity.resistances < #damage_type_names then
+                                table.insert(entity.resistances, { percent = 100 })
+                            end
                         end
-                    end
-                    local i = 1
-                    local old_flat_resistance_sum = 0
-                    local old_p_resistance_sum = 0
-                    for _, resistance in pairs(entity.resistances) do
-                        resistance.type = shuffled_damage_type_names[i]
-                        i = i + 1
-                        if resistance.decrease ~= nil and resistance.decrease > 0 then
-                            old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
-                            randomize({
-                                key = key,
-                                prototype = entity,
-                                tbl = resistance,
-                                property = "decrease",
-                                rounding = "discrete_float",
-                                variance = "medium",
-                                dir = dir,
-                            })
+                        local i = 1
+                        local old_flat_resistance_sum = 0
+                        local old_p_resistance_sum = 0
+                        for _, resistance in pairs(entity.resistances) do
+                            resistance.type = shuffled_damage_type_names[i]
+                            i = i + 1
+                            if resistance.decrease ~= nil and resistance.decrease > 0 then
+                                old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
+                                randomize({
+                                    key = key,
+                                    prototype = entity,
+                                    tbl = resistance,
+                                    property = "decrease",
+                                    rounding = "discrete_float",
+                                    variance = "medium",
+                                    dir = dir,
+                                })
+                            end
+                            if resistance.percent ~= nil and resistance.percent > 0 then
+                                old_p_resistance_sum = old_p_resistance_sum + resistance.percent
+                                resistance.percent = randprob.rand({
+                                    key = key,
+                                    prototype = entity,
+                                    tbl = resistance,
+                                    property = "percent",
+                                    rounding = "discrete_float",
+                                    variance = "medium",
+                                    dir = dir,
+                                    probability_scale = 100,
+                                })
+                            end
                         end
-                        if resistance.percent ~= nil and resistance.percent > 0 then
-                            old_p_resistance_sum = old_p_resistance_sum + resistance.percent
-                            resistance.percent = randprob.rand({
-                                key = key,
-                                prototype = entity,
-                                tbl = resistance,
-                                property = "percent",
-                                rounding = "discrete_float",
-                                variance = "medium",
-                                dir = dir,
-                                probability_scale = 100,
-                            })
+                        if old_flat_resistance_sum + old_p_resistance_sum > 0 then
+                            randomized_tables[entity.resistances] = true
+                            apply_resistance_description(entity)
                         end
-                    end
-                    if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                        randomized_tables[entity.resistances] = true
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
                     end
                 end
             end
@@ -3293,143 +3085,143 @@ randomizations.rocket_silo_launch_time = function(id)
 end
 
 -- New
-randomizations.smoke_damage = function (id)
-    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+randomizations.segmented_unit_attacking_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.attacking_speed
 
-    local target_classes = {
-        ["capsule"] = true,
-    }
+        -- To km/h
+        unit.attacking_speed = unit.attacking_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "attacking_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.attacking_speed = unit.attacking_speed / 216
 
-    for smoke_name, creators in pairs(smokes) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local smoke = data.raw["smoke-with-trigger"][smoke_name]
-            local structs = {}
-            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = smoke })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-                    changed = true
-                end
-            end
-
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
+        local factor = unit.attacking_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
     end
+end
+
+-- New
+randomizations.segmented_unit_enraged_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.enraged_speed
+
+        -- To km/h
+        unit.enraged_speed = unit.enraged_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "enraged_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.enraged_speed = unit.enraged_speed / 216
+
+        local factor = unit.enraged_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.segmented_unit_investigating_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.investigating_speed
+
+        -- To km/h
+        unit.investigating_speed = unit.investigating_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "investigating_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.investigating_speed = unit.investigating_speed / 216
+
+        local factor = unit.investigating_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.segmented_unit_patrolling_speed = function (id)
+    for _, unit in pairs(data.raw["segmented-unit"] or {}) do
+        local old_value = unit.patrolling_speed
+
+        -- To km/h
+        unit.patrolling_speed = unit.patrolling_speed * 216
+        randomize({
+            id = id,
+            prototype = unit,
+            property = "patrolling_speed",
+            rounding = "discrete_float",
+            variance = "big",
+            dir = -1,
+        })
+        -- Back to tiles per tick
+        unit.patrolling_speed = unit.patrolling_speed / 216
+
+        local factor = unit.patrolling_speed / old_value
+        locale_utils.create_localised_description(unit, factor, id, {flipped = true, variance = "big"})
+    end
+end
+
+-- New
+randomizations.smoke_damage = function (id)
+    indirect.iterate_child_prototypes("smoke-with-trigger", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "big")
+    end)
 end
 
 -- New
 randomizations.smoke_effect_radius = function (id)
-    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
-
-    local target_classes = {
-        ["capsule"] = true,
-    }
-
-    for smoke_name, creators in pairs(smokes) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
-        end
-
-        if #affected_prototypes > 0 then
-            local smoke = data.raw["smoke-with-trigger"][smoke_name]
-            local structs = {}
-            trigger_utils.gather_smoke_with_trigger_structs(structs, smoke, true)
-            local randomized = false
-            local rng_key = rng.key({ id = id, prototype = smoke })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "medium",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
-
-            for _, trigger in pairs(structs["trigger"] or {}) do
-                if trigger.radius ~= nil and trigger.radius > 0 then
-                    randomized = true
-                    trigger.radius = randnum.fixes(rounding_params, trigger.radius * factor)
-                end
-            end
-
-            if randomized then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "medium" })
-                end
-            end
-        end
-    end
+    indirect.iterate_child_prototypes("smoke-with-trigger", function (prototype, parents, structs, is_enemy)
+        effect_radius_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
 randomizations.smoke_trigger_speed = function (id)
-    local smokes = trigger_utils.get_creator_table("smoke-with-trigger")
+    indirect.iterate_child_prototypes("smoke-with-trigger", function (smoke, parents, structs, is_enemy)
+        if smoke.action_cooldown ~= nil and smoke.action_cooldown > 0 then
+            local dir = 1
+            if is_enemy then
+                dir = -1
+            end
 
-    local target_classes = {
-        ["capsule"] = true,
-    }
+            local old_value = smoke.action_cooldown
 
-    for smoke_name, creators in pairs(smokes) do
-        local affected_prototypes = {}
+            -- To triggers per second
+            smoke.action_cooldown = 60 / smoke.action_cooldown
 
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
+            randomize({
+                id = id,
+                prototype = smoke,
+                property = "action_cooldown",
+                rounding = "discrete_float",
+                variance = "big",
+            })
+
+            -- Back to cooldown ticks
+            smoke.action_cooldown = 60 / smoke.action_cooldown
+            smoke.action_cooldown = math.max(round(smoke.action_cooldown), 1)
+
+            local factor = old_value / smoke.action_cooldown
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "big" })
             end
         end
-
-        if #affected_prototypes > 0 then
-            local smoke = data.raw["smoke-with-trigger"][smoke_name]
-            if smoke.action_cooldown ~= nil and smoke.action_cooldown > 0 then
-                local old_value = smoke.action_cooldown
-
-                -- To triggers per second
-                smoke.action_cooldown = 60 / smoke.action_cooldown
-
-                randomize({
-                    id = id,
-                    prototype = smoke,
-                    property = "action_cooldown",
-                    rounding = "discrete_float",
-                    variance = "big",
-                })
-
-                -- Back to cooldown ticks
-                smoke.action_cooldown = 60 / smoke.action_cooldown
-                smoke.action_cooldown = math.max(round(smoke.action_cooldown), 1)
-
-                local factor = old_value / smoke.action_cooldown
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
-            end
-        end
-    end
+    end)
 end
 
 randomizations.solar_panel_production = function(id)
@@ -3451,7 +3243,7 @@ randomizations.solar_panel_production = function(id)
 end
 
 randomizations.space_platform_initial_items = function (id)
-    for _, spsp in pairs(data.raw["space-platform-starter-pack"]) do
+    for _, spsp in pairs(data.raw["space-platform-starter-pack"] or {}) do
         for _, product in pairs(spsp.initial_items or {}) do
             if product.amount ~= nil then
                 randomize({
@@ -3468,220 +3260,206 @@ randomizations.space_platform_initial_items = function (id)
 end
 
 -- New
-randomizations.sticker_damage = function (id)
-    local stickers = trigger_utils.get_creator_table("sticker")
+randomizations.spider_unit_projectile_range = function(id)
+    for _, spider in pairs(data.raw["spider-unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_spider_unit_structs(structs, spider, true)
+        local rng_key = rng.key({ id = id, prototype = spider })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            variance = "medium",
+            rounding = "none",
+            dir = -1,
+        })
+        local changed = false
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-    local target_classes = {
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for sticker_name, creators in pairs(stickers) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
+        for _, trigger_delivery in pairs(structs["trigger-delivery"] or {}) do
+            if trigger_delivery.max_range ~= nil and trigger_delivery.max_range > 0 then
+                trigger_delivery.max_range = randnum.fixes(rounding_params, trigger_delivery.max_range * factor)
+                changed = true
             end
         end
 
-        if #affected_prototypes > 0 then
-            local sticker = data.raw.sticker[sticker_name]
-            local structs = {}
-            trigger_utils.gather_sticker_structs(structs, sticker, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = sticker })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+        if changed then
+            locale_utils.create_localised_description(spider, factor, id, { variance = "medium" })
+        end
+    end
+end
 
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount > 0 then
-                    local damage_interval = 1
-                    if sticker.damage_interval ~= nil then
-                        damage_interval = sticker.damage_interval
-                    end
-                    local intervals_per_sec = 60 / damage_interval
-
-                    -- To damage per second
-                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
-
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-
-                    -- Back to damage per interval
-                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
-
-                    changed = true
+-- New
+randomizations.spider_unit_yields = function (id)
+    for _, spider in pairs(data.raw["spider-unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_spider_unit_structs(structs, spider, true)
+        local rng_key = rng.key({ id = id, prototype = spider })
+        for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+            if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
+                local offsets = trigger_effect.offsets
+                local new_count = randomize({
+                    key = rng_key,
+                    dummy = #offsets,
+                    variance = "medium",
+                    dir = 1,
+                    rounding = "discrete",
+                })
+                while new_count < #offsets do
+                    table.remove(offsets)
                 end
-            end
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
+                local magnitude = 1.0
+                if #offsets > 0 then
+                    local x = offsets[1][1] or offsets[1].x
+                    local y = offsets[1][2] or offsets[1].y
+                    magnitude = math.sqrt(x^2 + y^2)
+                end
+                while new_count > #offsets do
+                    local v = { fleish.rand_normal(rng_key) * magnitude,
+                        fleish.rand_normal(rng_key) * magnitude }
+                    table.insert(offsets, v)
                 end
             end
         end
     end
+end
+
+-- New
+randomizations.sticker_damage = function (id)
+    indirect.iterate_child_prototypes("sticker", function (prototype, parents, structs, is_enemy)
+        damage_randomization(prototype, parents, structs, is_enemy, id, "medium")
+    end)
 end
 
 -- New
 randomizations.sticker_duration = function (id)
-    local stickers = trigger_utils.get_creator_table("sticker")
-
-    local target_classes = {
-        ["capsule"] = true,
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
     -- As fate would have it, some capsules have multiple stickers handling different aspects of the same "effect".
     -- For instance, yumako healing and animation are handled by two separate stickers.
     -- This randomizes each separately, meaning yumako will get two descriptions of changed sticker duration.
     -- Oh well :)
-    for sticker_name, creators in pairs(stickers) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
+    indirect.iterate_child_prototypes("sticker", function (sticker, parents, structs, is_enemy)
+        local dir = 1
+        if is_enemy then
+            dir = -1
         end
 
-        if #affected_prototypes > 0 then
-            local sticker = data.raw.sticker[sticker_name]
+        local old_value = sticker.duration_in_ticks
 
-            local old_value = sticker.duration_in_ticks
+        local unit_time = to_unit_time(sticker.duration_in_ticks)
+        sticker.duration_in_ticks = unit_time.value
 
-            local unit_time = to_unit_time(sticker.duration_in_ticks)
-            sticker.duration_in_ticks = unit_time.value
+        randomize({
+            id = id,
+            prototype = sticker,
+            property = "duration_in_ticks",
+            rounding = "discrete_float",
+            variance = "medium",
+            dir = dir,
+        })
 
-            randomize({
-                id = id,
-                prototype = sticker,
-                property = "duration_in_ticks",
-                rounding = "discrete_float",
-                variance = "big",
-            })
+        sticker.duration_in_ticks = to_ticks(unit_time.unit, sticker.duration_in_ticks)
 
-            sticker.duration_in_ticks = to_ticks(unit_time.unit, sticker.duration_in_ticks)
+        local factor = sticker.duration_in_ticks / old_value
 
-            local factor = sticker.duration_in_ticks / old_value
-
-            for _, prototype in pairs(affected_prototypes) do
-                locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-            end
+        for _, prototype in pairs(parents) do
+            locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "medium" })
         end
-    end
+    end)
 end
 
 -- New
 randomizations.sticker_healing = function (id)
-    local stickers = trigger_utils.get_creator_table("sticker")
-
-    local target_classes = {
-        ["capsule"] = true
-    }
-
-    for sticker_name, creators in pairs(stickers) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
+    indirect.iterate_child_prototypes("sticker", function (sticker, parents, structs, is_enemy)
+        local dir = 1
+        if is_enemy then
+            dir = -1
         end
 
-        if #affected_prototypes > 0 then
-            local sticker = data.raw.sticker[sticker_name]
-            local structs = {}
-            trigger_utils.gather_sticker_structs(structs, sticker, true)
-            local changed = false
-            local rng_key = rng.key({ id = id, prototype = sticker })
-            local factor = randomize({
-                key = rng_key,
-                dummy = 1,
-                rounding = "none",
-                variance = "big",
-            })
-            local rounding_params = { key = rng_key, rounding = "discrete_float" }
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = sticker })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "big",
+            dir = dir,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-            for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
-                if damage_parameters.amount < 0 then
-                    local damage_interval = 1
-                    if sticker.damage_interval ~= nil then
-                        damage_interval = sticker.damage_interval
-                    end
-                    local intervals_per_sec = 60 / damage_interval
-
-                    -- To healing per second
-                    damage_parameters.amount = damage_parameters.amount * intervals_per_sec
-
-                    damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
-
-                    -- Back to healing per interval
-                    damage_parameters.amount = damage_parameters.amount / intervals_per_sec
-
-                    changed = true
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount < 0 then
+                local damage_interval = 1
+                if sticker.damage_interval ~= nil then
+                    damage_interval = sticker.damage_interval
                 end
-            end
-            if changed then
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big" })
-                end
+                local intervals_per_sec = 60 / damage_interval
+
+                -- To healing per second
+                damage_parameters.amount = damage_parameters.amount * intervals_per_sec
+
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+
+                -- Back to healing per interval
+                damage_parameters.amount = damage_parameters.amount / intervals_per_sec
+
+                changed = true
             end
         end
-    end
+        if changed then
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { flipped = dir < 0, variance = "big" })
+            end
+        end
+    end)
 end
 
 -- New
 randomizations.sticker_movement_speed = function (id)
-    local stickers = trigger_utils.get_creator_table("sticker")
+    indirect.iterate_child_prototypes("sticker", function (sticker, parents, structs, is_enemy)
+        local modifier = sticker.target_movement_modifier or 1
+        local from = sticker.target_movement_modifier_from or modifier
+        local vehicle_modifier = sticker.vehicle_speed_modifier or 1
+        local vehicle_from = sticker.vehicle_speed_modifier_from or vehicle_modifier
 
-    local target_classes = {
-        ["capsule"] = true,
-        ["ammo"] = true,
-        ["fluid-turret"] = true,
-    }
-
-    for sticker_name, creators in pairs(stickers) do
-        local affected_prototypes = {}
-
-        for _, prototype in pairs(creators) do
-            if target_classes[prototype.type] ~= nil then
-                affected_prototypes[#affected_prototypes+1] = prototype
-            end
+        local dir = 1
+        if is_enemy then
+            dir = -1
+        end
+        if from < 1 or vehicle_from < 1 then
+            dir = -dir
         end
 
-        if #affected_prototypes > 0 then
-            local sticker = data.raw.sticker[sticker_name]
-            if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier ~= 1 then
-                local dir = 1
-                if sticker.target_movement_modifier < 1 then
-                    dir = -1
-                end
-
-                local old_value = sticker.target_movement_modifier
-
-                randomize({
-                    id = id,
-                    prototype = sticker,
-                    property = "target_movement_modifier",
-                    rounding = "discrete_float",
-                    variance = "big",
-                    dir = dir,
-                })
-
-                local factor = sticker.target_movement_modifier / old_value
-
-                for _, prototype in pairs(affected_prototypes) do
-                    locale_utils.create_localised_description(prototype, factor, id, { variance = "big", flipped = dir < 0 })
-                end
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = sticker })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+            dir = dir,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
+        if sticker.target_movement_modifier ~= nil and sticker.target_movement_modifier ~= 1 then
+            sticker.target_movement_modifier = randnum.fixes(rounding_params, sticker.target_movement_modifier * factor)
+            changed = true
+        end
+        if sticker.target_movement_modifier_from ~= nil and sticker.target_movement_modifier_from ~= 1 then
+            sticker.target_movement_modifier_from = randnum.fixes(rounding_params, sticker.target_movement_modifier_from * factor)
+            changed = true
+        end
+        if sticker.vehicle_speed_modifier ~= nil and sticker.vehicle_speed_modifier ~= 1 then
+            sticker.vehicle_speed_modifier = randnum.fixes(rounding_params, sticker.vehicle_speed_modifier * factor)
+            changed = true
+        end
+        if sticker.vehicle_speed_modifier_from ~= nil and sticker.vehicle_speed_modifier_from ~= 1 then
+            sticker.vehicle_speed_modifier_from = randnum.fixes(rounding_params, sticker.vehicle_speed_modifier_from * factor)
+            changed = true
+        end
+        if changed then
+            for _, prototype in pairs(parents) do
+                locale_utils.create_localised_description(prototype, factor, id, { variance = "medium", flipped = dir < 0 })
             end
         end
-    end
+    end)
 end
 
 randomizations.storage_tank_capacity = function(id)
@@ -3704,7 +3482,7 @@ end
 
 -- New
 randomizations.thruster_consumption = function (id)
-    for _, thruster in pairs(data.raw["thruster"]) do
+    for _, thruster in pairs(data.raw["thruster"] or {}) do
         thruster.min_performance = {
             fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
             fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
@@ -3754,7 +3532,7 @@ end
 
 -- New
 randomizations.thruster_effectivity = function (id)
-    for _, thruster in pairs(data.raw["thruster"]) do
+    for _, thruster in pairs(data.raw["thruster"] or {}) do
         thruster.min_performance = {
             fluid_volume = thruster.min_performance.fluid_volume or thruster.min_performance[1],
             fluid_usage = thruster.min_performance.fluid_usage or thruster.min_performance[2],
@@ -4033,30 +3811,30 @@ randomizations.unit_attack_speed = function(id)
     end
 end
 
-randomizations.unit_melee_damage = function(id)
-    for _, unit_class in pairs({"unit", "spider-unit"}) do
-        if data.raw[unit_class] ~= nil then
-            for _, unit in pairs(data.raw[unit_class]) do
-                local attack_parameters = unit.attack_parameters
+randomizations.unit_damage = function(id)
+    for _, unit in pairs(data.raw["unit"] or {}) do
+        local structs = {}
+        trigger_utils.gather_unit_structs(structs, unit, true)
+        local changed = false
+        local rng_key = rng.key({ id = id, prototype = unit })
+        local factor = randomize({
+            key = rng_key,
+            dummy = 1,
+            rounding = "none",
+            variance = "medium",
+            dir = -1,
+        })
+        local rounding_params = { key = rng_key, rounding = "discrete_float" }
 
-                if attack_parameters.damage_modifier == nil then
-                    attack_parameters.damage_modifier = 1
-                end
-
-                local old_damage = attack_parameters.damage_modifier
-
-                randomize({
-                    id = id,
-                    prototype = unit,
-                    tbl = attack_parameters,
-                    property = "damage_modifier",
-                    range = "small",
-                    dir = -1,
-                    rounding = "discrete_float"
-                })
-
-                locale_utils.create_localised_description(unit, attack_parameters.damage_modifier / old_damage, id, {flipped = true})
+        for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
+            if damage_parameters.amount > 0 then
+                damage_parameters.amount = randnum.fixes(rounding_params, damage_parameters.amount * factor)
+                changed = true
             end
+        end
+
+        if changed then
+            locale_utils.create_localised_description(unit, factor, id, { flipped = true, variance = "medium" })
         end
     end
 end
@@ -4091,19 +3869,98 @@ randomizations.unit_pollution_to_join_attack = function(id)
             for _, unit in pairs(data.raw[unit_class]) do
                 if unit.absorptions_to_join_attack ~= nil then
                     for pollutant_id, pollutant_amount in pairs(unit.absorptions_to_join_attack) do
-                        randomize({
-                            id = id,
-                            prototype = unit,
-                            tbl = unit.absorptions_to_join_attack,
-                            property = pollutant_id,
-                            range = "very_small",
-                            rounding = "discrete_float"
-                        })
+                        if pollutant_amount > 0 then
 
-                        locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                            randomize({
+                                id = id,
+                                prototype = unit,
+                                tbl = unit.absorptions_to_join_attack,
+                                property = pollutant_id,
+                                range = "very_small",
+                                rounding = "discrete_float"
+                            })
+
+                            locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                        end
                     end
                 end
             end
+        end
+    end
+end
+
+-- New
+randomizations.unit_range = function(id)
+    for _, unit_class in pairs({"unit", "spider-unit"}) do
+        for _, unit in pairs(data.raw[unit_class] or {}) do
+            local attack_parameters = unit.attack_parameters
+            if attack_parameters.range > 0 then
+                local old_value = attack_parameters.range
+
+                randomize({
+                    id = id,
+                    prototype = unit,
+                    tbl = attack_parameters,
+                    property = "range",
+                    dir = -1,
+                    variance = "small",
+                    rounding = "discrete_float"
+                })
+
+                local factor = attack_parameters.range / old_value
+                locale_utils.create_localised_description(unit, factor, id, { flipped = true, variance = "small" })
+            end
+        end
+    end
+end
+
+-- New
+randomizations.unit_spawner_loot = function (id)
+    for _, spawner in pairs(data.raw["unit-spawner"] or {}) do
+        for _, loot in pairs(spawner.loot or {}) do
+            if loot.probability == nil then
+                loot.probability = 1
+            end
+            if loot.count_min == nil then
+                loot.count_min = 1
+            end
+            if loot.count_max == nil then
+                loot.count_max = 1
+            end
+
+            randprob.rand({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "probability",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete_float"
+            })
+
+            loot.count_max = loot.count_max - loot.count_min
+
+            randomize({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "count_min",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete"
+            })
+
+            randomize({
+                id = id,
+                prototype = spawner,
+                tbl = loot,
+                property = "count_max",
+                dir = -1,
+                variance = "medium",
+                rounding = "discrete"
+            })
+
+            loot.count_max = loot.count_max + loot.count_min
         end
     end
 end
@@ -4117,6 +3974,41 @@ randomizations.unit_spawner_time_to_capture = function(id)
             prototype = spawner,
             property = "time_to_capture"
         })
+    end
+end
+
+-- New
+randomizations.unit_spawner_yields = function (id)
+    for _, spawner in pairs(data.raw["unit-spawner"] or {}) do
+        local structs = {}
+        trigger_utils.gather_unit_spawner_structs(structs, spawner, true)
+        local rng_key = rng.key({ id = id, prototype = spawner })
+        for _, trigger_effect in pairs(structs["trigger-effect"] or {}) do
+            if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
+                local offsets = trigger_effect.offsets
+                local new_count = randomize({
+                    key = rng_key,
+                    dummy = #offsets,
+                    variance = "medium",
+                    dir = -1,
+                    rounding = "discrete",
+                })
+                while new_count < #offsets do
+                    table.remove(offsets)
+                end
+                local magnitude = 1.0
+                if #offsets > 0 then
+                    local x = offsets[1][1] or offsets[1].x
+                    local y = offsets[1][2] or offsets[1].y
+                    magnitude = math.sqrt(x^2 + y^2)
+                end
+                while new_count > #offsets do
+                    local v = { fleish.rand_normal(rng_key) * magnitude,
+                        fleish.rand_normal(rng_key) * magnitude }
+                    table.insert(offsets, v)
+                end
+            end
+        end
     end
 end
 
@@ -4243,6 +4135,98 @@ randomizations.vehicle_weight = function(id)
             local factor = vehicle.weight / old_value
 
             locale_utils.create_localised_description(vehicle, factor, id, { variance = "big", flipped = true })
+        end
+    end
+end
+
+-- New
+randomizations.worm_range = function(id)
+    for _, worm in pairs(data.raw["turret"] or {}) do
+        local old_value = worm.attack_parameters.range
+
+        randomize({
+            id = id,
+            prototype = worm,
+            tbl = worm.attack_parameters,
+            property = "range",
+            variance = "small",
+            rounding = "discrete_float",
+            dir = -1,
+        })
+
+        local factor = worm.attack_parameters.range / old_value
+
+        if worm.prepare_range ~= nil then
+            worm.prepare_range = worm.prepare_range * factor
+        end
+
+        locale_utils.create_localised_description(worm, factor, id, { flipped = true, variance = "small" })
+    end
+end
+
+-- New
+randomizations.worm_shooting_speed = function(id)
+    for _, worm in pairs(data.raw["turret"] or {}) do
+        if worm.starting_attack_speed ~= nil and worm.ending_attack_speed ~= nil then
+
+            -- After lots of trial and error, it would seem that shooting speeds are determined by this formula
+            local shooting_speed = 60 / (1 / worm.starting_attack_speed + 1 / worm.ending_attack_speed)
+
+            local new_shooting_speed = randomize({
+                key = rng.key({ id = id, prototype = worm }),
+                dummy = shooting_speed,
+                variance = "medium",
+                rounding = "discrete_float",
+                dir = -1,
+            })
+            local factor = new_shooting_speed / shooting_speed
+
+            worm.starting_attack_speed = worm.starting_attack_speed * factor
+            worm.ending_attack_speed = worm.ending_attack_speed * factor
+            worm.attack_parameters.cooldown = worm.attack_parameters.cooldown / factor
+
+            -- Let's adjust the other animation speeds too
+            if worm.folded_speed ~= nil then
+                worm.folded_speed = worm.folded_speed * factor
+            end
+            if worm.folded_speed_secondary ~= nil then
+                worm.folded_speed_secondary = worm.folded_speed_secondary * factor
+            end
+            if worm.preparing_speed ~= nil then
+                worm.preparing_speed = worm.preparing_speed * factor
+            end
+            if worm.preparing_speed_when_killed ~= nil then
+                worm.preparing_speed_when_killed = worm.preparing_speed_when_killed * factor
+            end
+            if worm.prepared_speed ~= nil then
+                worm.prepared_speed = worm.prepared_speed * factor
+            end
+            if worm.prepared_speed_secondary ~= nil then
+                worm.prepared_speed_secondary = worm.prepared_speed_secondary * factor
+            end
+            if worm.prepared_alternative_speed ~= nil then
+                worm.prepared_alternative_speed = worm.prepared_alternative_speed * factor
+            end
+            if worm.prepared_alternative_speed_secondary ~= nil then
+                worm.prepared_alternative_speed_secondary = worm.prepared_alternative_speed_secondary * factor
+            end
+            if worm.prepared_alternative_speed_when_killed ~= nil then
+                worm.prepared_alternative_speed_when_killed = worm.prepared_alternative_speed_when_killed * factor
+            end
+            if worm.starting_attack_speed_when_killed ~= nil then
+                worm.starting_attack_speed_when_killed = worm.starting_attack_speed_when_killed * factor
+            end
+            if worm.ending_attack_speed_when_killed ~= nil then
+                worm.ending_attack_speed_when_killed = worm.ending_attack_speed_when_killed * factor
+            end
+            if worm.folding_speed ~= nil then
+                worm.folding_speed = worm.folding_speed * factor
+            end
+            if worm.folding_speed_when_killed ~= nil then
+                worm.folding_speed_when_killed = worm.folding_speed_when_killed * factor
+            end
+
+            locale_utils.create_localised_description(worm, factor, id, { flipped = true, variance = "medium" })
         end
     end
 end
