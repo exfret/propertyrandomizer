@@ -92,6 +92,8 @@ local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
 randomizations = {}
 local trigger_util = require("lib/trigger")
+require("randomizations.graph.core")
+randomizations.graph("graph")
 
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]
