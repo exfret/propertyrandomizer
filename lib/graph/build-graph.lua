@@ -151,19 +151,23 @@ local function recipe_to_spoofed_category_name(recipe)
 
     return compound_key({recipe.category or "crafting", num_input_fluids, num_output_fluids})
 end
-local spoofed_recipe_categories = {}
-for _, recipe in pairs(data.raw.recipe) do
-    local spoofed_category_name = recipe_to_spoofed_category_name(recipe)
-    if spoofed_recipe_categories[spoofed_category_name] == nil then
-        local fluid_amounts = recipe_to_num_fluids(recipe)
+build_graph.spoofed_recipe_categories = {}
+local function recalculate_spoofed_recipe_categories()
+    for _, recipe in pairs(data.raw.recipe) do
+        local spoofed_category_name = recipe_to_spoofed_category_name(recipe)
+        if build_graph.spoofed_recipe_categories[spoofed_category_name] == nil then
+            local fluid_amounts = recipe_to_num_fluids(recipe)
 
-        spoofed_recipe_categories[spoofed_category_name] = {
-            recipe_category = data.raw["recipe-category"][recipe.category or "crafting"],
-            input_fluids = fluid_amounts.input_fluids,
-            output_fluids = fluid_amounts.output_fluids
-        }
+            build_graph.spoofed_recipe_categories[spoofed_category_name] = {
+                recipe_category = data.raw["recipe-category"][recipe.category or "crafting"],
+                input_fluids = fluid_amounts.input_fluids,
+                output_fluids = fluid_amounts.output_fluids
+            }
+        end
     end
 end
+recalculate_spoofed_recipe_categories()
+build_graph.recalculate_spoofed_recipe_categories = recalculate_spoofed_recipe_categories
 
 -- Get resource categories
 
@@ -200,19 +204,23 @@ local function resource_to_spoofed_category_name(resource)
 
     return compound_key({category, fluid_names.input_fluid, fluid_names.output_fluid})
 end
-local spoofed_resource_categories = {}
-for _, resource in pairs(data.raw.resource) do
-    local spoofed_category_name = resource_to_spoofed_category_name(resource)
-    if spoofed_resource_categories[spoofed_category_name] == nil then
-        local fluid_amounts = resource_to_fluids(resource)
+build_graph.spoofed_resource_categories = {}
+local function recalculate_spoofed_resource_categories()
+    for _, resource in pairs(data.raw.resource) do
+        local spoofed_category_name = resource_to_spoofed_category_name(resource)
+        if build_graph.spoofed_resource_categories[spoofed_category_name] == nil then
+            local fluid_amounts = resource_to_fluids(resource)
 
-        spoofed_resource_categories[spoofed_category_name] = {
-            resource_category = data.raw["resource-category"][resource.category or "basic-solid"],
-            input_fluid = fluid_amounts.input_fluid,
-            output_fluid = fluid_amounts.output_fluid
-        }
+            build_graph.spoofed_resource_categories[spoofed_category_name] = {
+                resource_category = data.raw["resource-category"][resource.category or "basic-solid"],
+                input_fluid = fluid_amounts.input_fluid,
+                output_fluid = fluid_amounts.output_fluid
+            }
+        end
     end
 end
+recalculate_spoofed_resource_categories()
+build_graph.recalculate_spoofed_resource_categories = recalculate_spoofed_resource_categories
 
 -- Get science pack sets
 
@@ -701,7 +709,7 @@ local function load()
     local crafting_machine_to_recipes = {}
     for crafting_machine_class, _ in pairs(crafting_machine_classes) do
         for _, crafting_machine in pairs(get_prototypes(crafting_machine_class)) do
-            for spoofed_recipe_category_name, spoofed_recipe_category in pairs(spoofed_recipe_categories) do
+            for spoofed_recipe_category_name, spoofed_recipe_category in pairs(build_graph.spoofed_recipe_categories) do
                 if is_crafting_machine_compatible_with_recipe_category(crafting_machine, spoofed_recipe_category) then
                     for _, recipe in pairs(mtm_lookup(spoofed_recipe_category_to_recipes, spoofed_recipe_category_name)) do
                         mtm_insert(crafting_machine_to_recipes, crafting_machine.name, recipe)
@@ -778,6 +786,11 @@ local function load()
             end
         end
     end
+    
+    -- Update spoofed recipe/resource categories
+    -- This should probably just be put directly in here with the rest of the mtm stuff...
+    build_graph.recalculate_spoofed_recipe_categories()
+    build_graph.recalculate_spoofed_resource_categories()
 
     ----------------------------------------------------------------------
     -- Nodes
@@ -1272,7 +1285,9 @@ local function load()
             })
         end
 
-        add_to_graph("craft-material", material_name, prereqs)
+        add_to_graph("craft-material", material_name, prereqs, {
+            material = material_name,
+        })
     end
 
     -- craft-material-surface
@@ -1295,6 +1310,26 @@ local function load()
                 material = material_name,
             })
         end
+    end
+
+    -- create-fluid
+    log("Adding: create-fluid")
+    -- Can we create this fluid somewhere?
+    -- This is unnecessary for reachability, but needed for technical purposes in unified randomization
+
+    for _, fluid in pairs(get_prototypes("fluid")) do
+        prereqs = {}
+
+        for surface_name, surface in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "create-fluid-surface",
+                name = compound_key({fluid.name, surface_name})
+            })
+        end
+
+        add_to_graph("create-fluid", fluid.name, prereqs, {
+            fluid = fluid.name
+        })
     end
 
     -- create-fluid-offshore-surface
@@ -1959,7 +1994,8 @@ local function load()
             end
 
             add_to_graph("hold-fluid-surface", compound_key({fluid.name, surface_key}), prereqs, {
-                surface = surface_key
+                surface = surface_key,
+                fluid = fluid
             })
         end
     end
@@ -2710,14 +2746,16 @@ local function load()
             })
         end
 
-        add_to_graph("recipe", recipe.name, prereqs)
+        add_to_graph("recipe", recipe.name, prereqs, {
+            recipe = recipe.name,
+        })
     end
 
     -- recipe-category
     log("Adding: recipe-category")
     -- Would we be able to use recipes of this category somewhere?
 
-    for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
+    for spoofed_category_name, spoofed_category in pairs(build_graph.spoofed_recipe_categories) do
         prereqs = {}
 
         for surface_key, surface in pairs(surfaces) do
@@ -2734,7 +2772,7 @@ local function load()
     log("Adding: recipe-category-surface")
     -- Would we be able to use recipes of this category on this surface?
 
-    for spoofed_category_name, spoofed_category in pairs(spoofed_recipe_categories) do
+    for spoofed_category_name, spoofed_category in pairs(build_graph.spoofed_recipe_categories) do
         for surface_key, surface in pairs(surfaces) do
             prereqs = {}
 
@@ -2775,7 +2813,7 @@ local function load()
     log("Adding: recipe-category-surface-automation")
     -- Would we be able to automate recipes of this category on this surface?
 
-    for spoofed_category_name, spooofed_category in pairs(spoofed_recipe_categories) do
+    for spoofed_category_name, spooofed_category in pairs(build_graph.spoofed_recipe_categories) do
         for surface_key, surface in pairs(surfaces) do
             prereqs = {}
 
@@ -2854,12 +2892,12 @@ local function load()
             end
             if surface_conditions_satisfied then
                 table.insert(prereqs, {
-                    type = "build-entity-surface-condition-true",
+                    type = "recipe-surface-condition-true",
                     name = "canonical"
                 })
             else
                 table.insert(prereqs, {
-                    type = "build-entity-surface-condition-false",
+                    type = "recipe-surface-condition-false",
                     name = "canonical"
                 })
             end
@@ -2955,7 +2993,7 @@ local function load()
     log("Adding: resource-category")
     -- Would we be able to mine resources of this category somewhere?
 
-    for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
+    for spoofed_category_name, spoofed_category in pairs(build_graph.spoofed_resource_categories) do
         prereqs = {}
 
         for surface_key, surface in pairs(surfaces) do
@@ -2973,7 +3011,7 @@ local function load()
     -- Would we be able to mine resources of this category on this surface?
 
     -- TODO: Also split into automated and non-automated version
-    for spoofed_category_name, spoofed_category in pairs(spoofed_resource_categories) do
+    for spoofed_category_name, spoofed_category in pairs(build_graph.spoofed_resource_categories) do
         for surface_key, surface in pairs(surfaces) do
             prereqs = {}
 
@@ -3797,8 +3835,10 @@ build_graph.ops = {
     ["capture-spawner-surface"] = "AND",
     ["cargo-landing-pad-planet"] = "OR",
     ["character"] = "OR",
+    ["completion"] = "AND", -- Used during simultaneous randomization to find nodes which are significant in some way at least
     ["craft-material"] = "OR",
     ["craft-material-surface"] = "OR",
+    ["create-fluid"] = "OR",
     ["create-fluid-offshore-surface"] = "AND",
     ["create-fluid-surface"] = "OR",
     ["create-space-platform"] = "OR",
@@ -3869,6 +3909,8 @@ build_graph.ops = {
     ["send-item-to-orbit-planet"] = "AND",
     ["send-surface-starter-pack"] = "OR",
     ["send-surface-starter-pack-planet"] = "OR",
+    ["slot"] = "OR", -- Used and constructed during simultaneous randomization
+    ["slot-surface"] = "OR",
     ["space-connection"] = "AND",
     ["space-location"] = "OR",
     ["space-location-discovery"] = "OR",
@@ -3889,7 +3931,10 @@ build_graph.ops = {
     ["technology"] = "AND",
     ["thruster-surface"] = "AND",
     ["transport-item-to-planet"] = "AND",
+    ["traveler"] = "OR", -- Used and constructed during simultaneous randomization
+    ["traveler-surface"] = "OR",
     ["valid-tile-placement-surface"] = "OR",
+    ["victory"] = "AND", -- Used during simultaneous randomization to find a shortest path through the game
     ["void-energy"] = "AND"
 }
 

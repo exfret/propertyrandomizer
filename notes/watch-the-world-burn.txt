@@ -8,3 +8,7 @@ Sets chaos to ultimate, adds tons of duplicates for a longer game, and turns on 
 Everything is duped, not just important stuff
 Everything has extra ingredients and results
 Some other things
+
+This could be a setting for extra capsule actions and other custom stuff
+We could add a dummy iron ore, and later replace wherever it is with real iron ore, but this would at least give the chance to get more starter patches without needing new items (similar idea to recipe ingredients)
+Extra planets

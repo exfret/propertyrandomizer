@@ -24,8 +24,23 @@ local constants = {
     item_randomization_probability_low = settings.startup["propertyrandomizer-item-percent"].value / 100,
     item_randomization_cost_factor_threshold = 100,
     item_randomization_max_fallbacks = 100,
+
+    -- Unified randomizations constants
+    unified_randomization_bonus_priority_criticality = {
+        -- The bonus priority for a traveler being on the critical path
+        ["is_critical"] = 1,
+        -- The ADDITIONAL bonus priority for a traveler at least being "significant" (i.e.- leading to some new item)
+        ["is_significant"] = 1,
+    },
+    -- The bonus priority for a traveler being surface specific (and also by requirement the same surface as the given slot)
+    unified_randomization_bonus_priority_surface = 1,
+    unified_randomization_max_bootings_in_a_row = 100,
+    
+    unified_recipe_results_dummy_fraction = 1,
+
     -- Randomizations to build dependency graph for
     dep_graph_randomizations = {
+        ["propertyrandomizer-unified"] = true,
         ["propertyrandomizer-technology"] = true,
         ["propertyrandomizer-recipe"] = true,
         ["propertyrandomizer-item"] = true,

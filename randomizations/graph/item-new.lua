@@ -419,6 +419,7 @@ randomizations.item_new = function(id)
                     break
                 end
             end
+            -- CRITICAL TODO: Should we be breaking out of this loop if new_item ~= nil???
         end
         -- If still no new items were found, report error
         if new_item == nil then

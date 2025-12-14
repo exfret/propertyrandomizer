@@ -15,6 +15,8 @@ require("randomizations/planetary/tile")
 log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
+
+require("randomizations/graph/unified/execute")
 require("randomizations/graph/item")
 require("randomizations/graph/item-new")
 require("randomizations/graph/recipe")

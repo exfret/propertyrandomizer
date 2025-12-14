@@ -86,6 +86,27 @@ randomizations.fixes = function()
     end
     data.raw["utility-constants"].default.max_belt_stack_size = uint8_max
 
+    -- Factoriopedia annoyingly hides barrel recipes; why didn't the devs think about what if they were randomized?
+    for _, recipe in pairs(data.raw.recipe) do
+        recipe.factoriopedia_alternative = nil
+        recipe.subgroup = "fluid-recipes"
+    end
+
+    -- Add fluid connections to assembling machines and remove recipes with fluids from crafting category
+    -- CRITICAL TODO: Add fluid connections!
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.ingredients ~= nil then
+            for _, ing in pairs(recipe.ingredients) do
+                if ing.type == "fluid" then
+                    if recipe.category == nil or recipe.category == "crafting" then
+                        recipe.category = "crafting-with-fluid"
+                    end
+                    break
+                end
+            end
+        end
+    end
+
     ----------------------------------------------------------------------
     -- Fix recycling recipes
     ----------------------------------------------------------------------

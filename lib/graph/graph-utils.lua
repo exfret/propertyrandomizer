@@ -33,6 +33,16 @@ util.get_node = function (graph, prereq)
     return graph[build_graph.key(prereq.type, prereq.name)]
 end
 
+-- exfret: I use this so much that having a shorthand where it can use the dep_graph global is great
+util.get = function (prereq)
+    return dep_graph[build_graph.key(prereq.type, prereq.name)]
+end
+
+-- exfret: Same thing but get from type and name
+util.getk = function (node_type, node_name)
+    return dep_graph[build_graph.key(node_type, node_name)]
+end
+
 util.create_edge_type = function (prereq_type, dependent_type)
     return { key = build_graph.key(prereq_type, dependent_type), prereq_type = prereq_type, dependent_type = dependent_type }
 end
