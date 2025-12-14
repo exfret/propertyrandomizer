@@ -432,6 +432,9 @@ local function load(graph)
             ["military-science-pack"] = true,
             ["chemical-science-pack"] = true,
         }
+        if mods["space-age"] then
+            is_chemical_science_ings["space-science-pack"] = true
+        end
 
         local past_chemical_science = false
         if technology.unit ~= nil then
@@ -476,6 +479,9 @@ local function load(graph)
             ["military-science-pack"] = true,
             ["chemical-science-pack"] = true,
         }
+        if mods["space-age"] then
+            is_chemical_science_ings["space-science-pack"] = true
+        end
 
         local past_chemical_science = false
         if technology.unit ~= nil then

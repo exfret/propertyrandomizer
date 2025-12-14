@@ -128,7 +128,8 @@ data:extend({
         localised_name = "Unified (beta)",
         localised_description = "Randomizes everything all at once. Not recommended with the other major randomizations below.",
         default_value = false,
-        order = "d-a[unified]"
+        order = "d-a[unified]",
+        hidden = true
     },
     {
         setting_type = "startup",

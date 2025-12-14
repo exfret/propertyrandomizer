@@ -71,7 +71,7 @@ require("randomizations/master")
 log("Applying graph-based randomizations")
 
 if settings.startup["propertyrandomizer-unified"].value then
-    randomizations.unified("unified")
+    --randomizations.unified("unified")
 
     -- Rebuild graph
     build_graph.load()
@@ -213,6 +213,10 @@ randomizations.fixes()
 -- Final check for completability
 
 local final_sort_info = top_sort.sort(dep_graph)
+
+for _, node in pairs(final_sort_info.sorted) do
+    log(build_graph.key(node.type, node.name))
+end
 
 local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then

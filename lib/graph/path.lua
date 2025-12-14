@@ -1,3 +1,4 @@
+local constants = require("helper-tables/constants")
 local graph_utils = require("lib/graph/graph-utils")
 local set_utils = require("lib/graph/set-utils")
 
@@ -120,13 +121,13 @@ path.check_reachable_top_down = function (graph, dependent_node, removed_key, pa
     end
 
     -- These numbers were selected because they worked well with the graph at the time this was developed
-    if stats.removed_node_hits >= 16 then
+    if stats.removed_node_hits >= constants.path_max_removed_node_hits then
         return undetermined_result()
     end
-    if depth >= 128 then
+    if depth >= constants.path_max_depth then
         return undetermined_result()
     end
-    if stats.nodes_checked >= 8192 then
+    if stats.nodes_checked >= constants.path_max_nodes_checked then
         return undetermined_result()
     end
 

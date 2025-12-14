@@ -83,6 +83,11 @@ randomizations.unified = function(id)
         end
     end
 
+    -- Conduct any presurgeries
+    for _, handler in pairs(conn_handlers) do
+        handler.presurgery()
+    end
+
     ----------------------------------------------------------------------------------------------------
     -- MODIFICATIONS: ADDING DUMMIES
     ----------------------------------------------------------------------------------------------------
@@ -547,6 +552,20 @@ randomizations.unified = function(id)
         return slot_key
     end
 
+    -- Precompute a list of potential travelers for each slot
+    local slot_to_possibilites = {}
+    for _, slot in pairs(sorted_slots) do
+        slot_to_possibilites[graph_utils.get_node_key(slot)] = {}
+        for ind, traveler in pairs(shuffled_travelers) do
+            if conn_handlers[slot.handler_id].validate_connection(slot, traveler) then
+                table.insert(slot_to_possibilites[graph_utils.get_node_key(slot)], {
+                    ind = ind,
+                    traveler = traveler
+                })
+            end
+        end
+    end
+
     for i = 1, #sorted_slots do
         -- Check if we've filled all the slots we need to
         if num_normal_travelers_satisfied == num_normal_travelers then
@@ -567,7 +586,8 @@ randomizations.unified = function(id)
                     break
                 end
                 if slot_to_traveler[graph_utils.get_node_key(proposed_slot)] == nil and is_slot_reachable(curr_global_sort_info.reachable, proposed_slot) then
-                    for _, proposed_traveler in pairs(shuffled_travelers) do
+                    for _, proposed_traveler_info in pairs(slot_to_possibilites[graph_utils.get_node_key(proposed_slot)]) do
+                        local proposed_traveler = proposed_traveler_info.traveler
                         
     ----------------------------------------------------------------------------------------------------
     -- JUDGE THE PROPOSAL
@@ -596,10 +616,6 @@ randomizations.unified = function(id)
                         local to_be_reserved = false
                         if not this_traveler_reachable and is_reservable(proposed_slot) then
                             to_be_reserved = true
-                        end
-
-                        if i == 2 then
-                            log(serpent.block(proposed_traveler))
                         end
 
                         -- If the thing that this traveler unlocks was already reachable, do a permanent reservation
@@ -634,37 +650,46 @@ randomizations.unified = function(id)
                 local failed_travelers_in_priority_order = {}
                 for _, failed_traveler in pairs(shuffled_travelers) do
                     -- Check reachable and unused
-                    if is_traveler_reachable(curr_global_sort_info.reachable, failed_traveler) and traveler_to_slot[graph_utils.get_node_key(failed_traveler)] == nil then
+                    if is_traveler_reachable(curr_global_sort_info.reachable, failed_traveler) and traveler_to_slot[graph_utils.get_node_key(failed_traveler)] == nil --[[and not curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(failed_traveler))] ]] then
                         table.insert(failed_travelers_in_priority_order, failed_traveler)
                     end
                 end
                 table.sort(failed_travelers_in_priority_order, function(t1, t2)
                     return conn_handlers[t1.handler_id].traveler_priority(t1) > conn_handlers[t2.handler_id].traveler_priority(t2)
                 end)
-                for _, failed_traveler in pairs(failed_travelers_in_priority_order) do
-                    local ind_to_boot = #reserved_slots
-                    local booted_slot = reserved_slots[ind_to_boot]
-                    if #reserved_slots >= 1 and conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, failed_traveler) then
-                        -- Boot out the most recent reservation
-                        table.remove(reserved_slots, ind_to_boot)
-                        is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
-                        is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
+                if #reserved_slots >= 1 then
+                    for ind_to_boot = #reserved_slots, 1, -1 do
+                        local found_successful_booter = false
+                        for _, failed_traveler in pairs(failed_travelers_in_priority_order) do
+                            local booted_slot = reserved_slots[ind_to_boot]
+                            if conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, failed_traveler) then
+                                -- Boot out the most recent reservation
+                                table.remove(reserved_slots, ind_to_boot)
+                                is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
+                                is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
 
-                        -- Switch out slot/traveler tables
-                        local booted_traveler = slot_to_traveler[graph_utils.get_node_key(booted_slot)]
-                        slot_to_traveler[graph_utils.get_node_key(booted_slot)] = failed_traveler
-                        traveler_to_slot[graph_utils.get_node_key(failed_traveler)] = booted_slot
-                        traveler_to_slot[graph_utils.get_node_key(booted_traveler)] = nil
+                                -- Switch out slot/traveler tables
+                                local booted_traveler = slot_to_traveler[graph_utils.get_node_key(booted_slot)]
+                                slot_to_traveler[graph_utils.get_node_key(booted_slot)] = failed_traveler
+                                traveler_to_slot[graph_utils.get_node_key(failed_traveler)] = booted_slot
+                                traveler_to_slot[graph_utils.get_node_key(booted_traveler)] = nil
 
-                        -- If we booted out a dummy traveler, this increases number of non-dummies
-                        -- Theoretically, a dummy could boot out something normal, but that's very unlikely and I don't feel like testing for everything
-                        if booted_traveler.dummy and not failed_traveler.dummy then
-                            num_normal_travelers_satisfied = num_normal_travelers_satisfied + 1
+                                -- If we booted out a dummy traveler, this increases number of non-dummies
+                                -- Theoretically, a dummy could boot out something normal, but that's very unlikely and I don't feel like testing for everything
+                                if booted_traveler.dummy and not failed_traveler.dummy then
+                                    num_normal_travelers_satisfied = num_normal_travelers_satisfied + 1
+                                end
+
+                                add_slot_traveler_conns(booted_slot, failed_traveler)
+
+                                found_successful_booter = true
+                                log("Booted out " .. graph_utils.get_node_key(booted_traveler) .. " in slot " .. graph_utils.get_node_key(booted_slot) .. " in favor of " .. graph_utils.get_node_key(failed_traveler))
+                                break
+                            end
                         end
-
-                        add_slot_traveler_conns(booted_slot, failed_traveler)
-
-                        log("Booted out " .. graph_utils.get_node_key(booted_traveler) .. " in slot " .. graph_utils.get_node_key(booted_slot) .. " in favor of " .. graph_utils.get_node_key(failed_traveler))
+                        if found_successful_booter then
+                            break
+                        end
                     end
                 end
             else
@@ -694,6 +719,13 @@ randomizations.unified = function(id)
             end
             if no_really_its_fine then
                 log("Randomizer limped over the finish line, but think's it's okay?")
+                break
+            end
+
+            -- Okay, I'm desperate; if we got far enough it's probably fine
+            local its_not_actually_fine = (num_normal_travelers_satisfied / num_normal_travelers) > 0.9
+            if its_not_actually_fine then
+                log("RIP")
                 break
             end
 

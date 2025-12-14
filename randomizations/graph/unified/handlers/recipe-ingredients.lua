@@ -20,6 +20,8 @@ recipe_ingredients.target_types = {
 }
 recipe_ingredients.group_surfaces = true
 
+-- CRITICAL TODO: Also allow adding different items/fluids as ingredients than normally by having some dummy recipes for each item/fluid
+
 -- Note: This is ignored since we actually only consider the first ingredient ever
 -- CRITICAL TODO: FIX THIS!
 recipe_ingredients.add_dummies = function()
@@ -99,6 +101,10 @@ recipe_ingredients.create_traveler = function(edge)
     -- Only do one ingredient per recipe
     -- Otherwise we get issues since recipes are AND nodes
     if ingredient_index ~= 1 then
+        return false
+    end
+
+    if data.raw.recipe[edge[2].recipe].category == "recycling" then
         return false
     end
 
