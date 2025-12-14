@@ -2,6 +2,7 @@
 
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
+local displace = require("lib/random/displacement-shuffle")
 local graph_utils = require("lib/graph/graph-utils")
 local build_graph = require("lib/graph/build-graph")
 local path_utils = require("lib/graph/path")
@@ -324,8 +325,74 @@ randomizations.graph = function(id)
 
     -- Constitutes an attempt at graph randomization
     state.try_randomize_graph = function ()
+
         -- Base the randomized graph off of the vanilla graph
         state.random_graph = table.deepcopy(state.vanilla_graph)
+
+        -- Shuffled nodes
+        state.shuffled_order = {}
+        for i, node in pairs(state.vanilla_top_sort.sorted) do
+            state.shuffled_order[i] = node
+        end
+        -- How much do we wanna displace the nodes?
+        local avg_displacement = #state.shuffled_order / math.exp(3)
+        displace.displacement_shuffle_chaos(state.rng_key, state.shuffled_order, avg_displacement)
+
+        state.shuffled_order_ordinals = {}
+        for i, node in pairs(state.shuffled_order) do
+            state.shuffled_order_ordinals[graph_utils.get_node_key(node)] = i
+        end
+
+        -- Ensure topological ordering of nodes whose edges we're not changing
+        for i = 1, #state.shuffled_order do
+            local node = state.shuffled_order[i]
+            local node_key = graph_utils.get_node_key(node)
+            if graph_utils.is_and_node(node) then
+                local highest_ordinal = 0
+                for _, prereq in pairs(node.prereqs) do
+                    local prereq_key = graph_utils.get_node_key(prereq)
+                    local edge = graph_utils.create_edge(prereq_key, node_key, state.random_graph)
+                    local prereq_ordinal = state.shuffled_order_ordinals[prereq_key]
+                    if state.target_edges[edge.key] ~= nil then
+                        prereq_ordinal = 0
+                    end
+                    if prereq_ordinal > highest_ordinal then
+                        highest_ordinal = prereq_ordinal
+                    end
+                end
+                if highest_ordinal > i then
+                    local prereq_node = state.shuffled_order[highest_ordinal]
+                    local prereq_key = graph_utils.get_node_key(prereq_node)
+                    state.shuffled_order[highest_ordinal] = node
+                    state.shuffled_order[i] = prereq_node
+                    state.shuffled_order_ordinals[node_key] = highest_ordinal
+                    state.shuffled_order_ordinals[prereq_key] = i
+                    i = i - 1
+                end
+            elseif graph_utils.is_or_node(node) then
+                local lowest_ordinal = #state.shuffled_order + 1
+                for _, prereq in pairs(node.prereqs) do
+                    local prereq_key = graph_utils.get_node_key(prereq)
+                    local edge = graph_utils.create_edge(prereq_key, node_key, state.random_graph)
+                    local prereq_ordinal = state.shuffled_order_ordinals[prereq_key]
+                    if state.target_edges[edge.key] ~= nil then
+                        prereq_ordinal = 0
+                    end
+                    if prereq_ordinal < lowest_ordinal then
+                        lowest_ordinal = prereq_ordinal
+                    end
+                end
+                if lowest_ordinal > i then
+                    local prereq_node = state.shuffled_order[lowest_ordinal]
+                    local prereq_key = graph_utils.get_node_key(prereq_node)
+                    state.shuffled_order[lowest_ordinal] = node
+                    state.shuffled_order[i] = prereq_node
+                    state.shuffled_order_ordinals[node_key] = lowest_ordinal
+                    state.shuffled_order_ordinals[prereq_key] = i
+                    i = i - 1
+                end
+            end
+        end
 
         -- Set up scenarios to figure out critical edges for getting un-stuck
         state.scenario_to_critical_edges = {}
@@ -413,9 +480,8 @@ randomizations.graph = function(id)
             end
         end
 
-        state.scenarios = {}
-
         -- Create scenarios to keep track of while randomizing the new graph
+        state.scenarios = {}
         for _, planet_name in pairs(state.scenario_planet_names) do
             local scenario = {
                 surface_key = build_graph.compound_key({surface_type_planet, planet_name}),
@@ -455,12 +521,12 @@ randomizations.graph = function(id)
             state.process_scenario(scenario)
 
             -- Set the ordinals for parallel progression
-            scenario.start_ordinal = state.top_sort_ordinals[scenario.start_node_key]
-            scenario.end_ordinal = state.top_sort_ordinals[build_graph.key(rocket_launch_planet_node_type, planet_name)]
+            scenario.start_ordinal = state.shuffled_order_ordinals[scenario.start_node_key]
+            scenario.end_ordinal = state.shuffled_order_ordinals[build_graph.key(rocket_launch_planet_node_type, planet_name)]
             scenario.prev_ordinal = scenario.start_ordinal
 
             for i = 1, scenario.start_ordinal do
-                local node_key = graph_utils.get_node_key(state.vanilla_top_sort.sorted[i])
+                local node_key = graph_utils.get_node_key(state.shuffled_order[i])
                 local node = scenario.graph[node_key]
                 if state.permanent_unlock_node_types[node.type] ~= nil then
                     state.unlock_scenario_node(scenario, node_key)
@@ -495,10 +561,13 @@ randomizations.graph = function(id)
         state.randomizer = nil
 
         -- Mechanism for postponing prereq assignment to nodes
-        state.postponed_nodes = queue.new_queue()
+        state.postponed_locked_nodes = queue.new_queue()
+        state.postponed_nodes_set = {}
 
         -- Keep track of which nodes have been made reachable
         state.random_graph_reachable = {}
+
+        state.prereqs_added = {}
 
         -- Let the randomization commence
         -- Traverse the nodes in a randomized topological order
@@ -506,17 +575,19 @@ randomizations.graph = function(id)
         -- Other nodes are reachable if enough of their prereqs are
         -- If the node is reachable, potentially add to prereq pool
         -- If not, add it to postponed_nodes and make it reachable at first opportunity
-        state.check_postponed = false
-        for ordinal, vanilla_node in pairs(state.vanilla_top_sort.sorted) do
+        state.check_postponed_locked_nodes = false
+        for ordinal, vanilla_node in pairs(state.shuffled_order) do
 
             -- First, go through the postponed nodes and see if any them can now be made reachable
-            if not queue.is_empty(state.postponed_nodes) then
-                while state.check_postponed do
-                    state.check_postponed = false
-                    local old_queue = state.postponed_nodes
-                    state.postponed_nodes = queue.new_queue()
+            if not queue.is_empty(state.postponed_locked_nodes) then
+                while state.check_postponed_locked_nodes do
+                    state.check_postponed_locked_nodes = false
+                    local old_queue = state.postponed_locked_nodes
+                    state.postponed_locked_nodes = queue.new_queue()
                     while not queue.is_empty(old_queue) do
-                        state.try_make_reachable(queue.pop(old_queue))
+                        local call_info = queue.pop(old_queue)
+                        state.postponed_nodes_set[call_info.node_key] = nil
+                        state.try_make_reachable(call_info.node_key, call_info.override_scenario)
                     end
                 end
             end
@@ -529,8 +600,7 @@ randomizations.graph = function(id)
         end
 
         -- Cleanup time
-        state.check_postponed = nil
-        state.ordinal = nil
+        state.check_postponed_locked_nodes = nil
         state.node = nil
         state.node_key = nil
         state.override_edge_type_to_edges = nil
@@ -574,10 +644,11 @@ randomizations.graph = function(id)
             for _, scenario_key in pairs(state.scenario_planet_names) do
                 state.showstoppers_per_scenario[scenario_key] = {}
             end
-            while not queue.is_empty(state.postponed_nodes) do
-                local node_key = queue.pop(state.postponed_nodes)
+            while not queue.is_empty(state.postponed_locked_nodes) do
+                local call_info = queue.pop(state.postponed_locked_nodes)
+                local node_key = call_info.node_key
                 if state.locked_nodes[node_key] ~= nil then
-                    local ordinal = state.top_sort_ordinals[node_key]
+                    local ordinal = state.shuffled_order_ordinals[node_key]
                     local dependent = state.vanilla_graph[node_key]
                     local surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(dependent)
                     for _, prereq in ipairs(dependent.prereqs) do
@@ -785,12 +856,9 @@ randomizations.graph = function(id)
     end
 
     -- For assigning edges during randomization
-    state.assign_prereqs = function (node_key, extra_params)
-        extra_params = extra_params or {}
-        local override_scenario = extra_params.override_scenario
+    state.assign_prereqs = function (node_key, override_scenario)
 
         state.node_key = node_key
-        state.ordinal = state.top_sort_ordinals[node_key]
         state.node = state.random_graph[state.node_key]
 
         state.dependent_is_surface_specific = state.surface_specific(state.node.type)
@@ -1065,11 +1133,13 @@ randomizations.graph = function(id)
     state.add_prereq_edges = function (node_key)
 
         state.node_key = node_key
-        state.ordinal = state.top_sort_ordinals[node_key]
         state.node = state.random_graph[state.node_key]
 
-        -- Check if any postponed nodes now can become reachable
-        state.check_postponed = true
+        if state.prereqs_added[node_key] ~= nil then
+            return
+        end
+        state.prereqs_added[node_key] = true
+        state.check_postponed_locked_nodes = true
 
         local surface_info = state.get_prereq_info(state.node.type, state.node.surface)
         local self_edge = graph_utils.create_edge(state.node_key, state.node_key, state.random_graph)
@@ -1123,30 +1193,43 @@ randomizations.graph = function(id)
         return node_reachable
     end
 
-    state.try_make_reachable = function (node_key)
-        state.node_key = node_key
-        state.ordinal = state.top_sort_ordinals[state.node_key]
-        state.node = state.random_graph[state.node_key]
+    state.try_make_reachable = function (node_key, override_scenario)
+        local node = state.random_graph[node_key]
 
-        if state.locked_nodes[state.node_key] ~= nil then
+        if state.locked_nodes[node_key] ~= nil then
             -- Dependent in need of new prereqs detected
-            local success = state.assign_prereqs(state.node_key)
+            local success = state.assign_prereqs(node_key, override_scenario)
             if success then
-                state.locked_nodes[state.node_key] = nil
+                state.locked_nodes[node_key] = nil
             end
         end
 
-        if state.prereqs_in_random_graph(state.node_key) then
-            state.random_graph_reachable[state.node_key] = true
-        else
-            queue.push(state.postponed_nodes, state.node_key)
+        if state.prereqs_in_random_graph(node_key) then
+            -- Reachable node detected
+            state.random_graph_reachable[node_key] = true
+            for _, dependent in pairs(node.dependents) do
+                local dependent_key = graph_utils.get_node_key(dependent)
+                local call_info = state.postponed_nodes_set[dependent_key]
+                if call_info ~= nil then
+                    if state.locked_nodes[call_info.node_key] == nil then
+                        state.postponed_nodes_set[dependent_key] = nil
+                        state.try_make_reachable(call_info.node_key, call_info.override_scenario)
+                    end
+                end
+            end
+        elseif override_scenario == nil or state.locked_nodes[node_key] ~= nil then
+            local call_info = { node_key = node_key, override_scenario = override_scenario }
+            state.postponed_nodes_set[node_key] = call_info
+            if state.locked_nodes[node_key] ~= nil then
+                queue.push(state.postponed_locked_nodes, call_info)
+            end
         end
 
-        if state.random_graph_reachable[state.node_key] ~= nil
-        and state.target_prereq_types[state.node.type] ~= nil then
+        if state.random_graph_reachable[node_key] ~= nil
+        and state.target_prereq_types[node.type] ~= nil then
 
             -- Reachable prereq detected
-            state.add_prereq_edges(state.node_key)
+            state.add_prereq_edges(node_key)
         end
     end
 
@@ -1167,7 +1250,7 @@ randomizations.graph = function(id)
 
                 -- Find out if any locked nodes have been encountered by any scenarios
                 for i = scenario.prev_ordinal + 1, ordinal_in_scenario do
-                    local scenario_node_key = graph_utils.get_node_key(state.vanilla_top_sort.sorted[i])
+                    local scenario_node_key = graph_utils.get_node_key(state.shuffled_order[i])
                     if state.locked_nodes[scenario_node_key] ~= nil and node_key_to_scenarios[scenario_node_key] == nil then
 
                         local scenario_node = state.random_graph[scenario_node_key]
@@ -1178,7 +1261,7 @@ randomizations.graph = function(id)
                             local surface_ambiguous_key_info = state.surface_ambiguous_key_info[surface_ambiguous_key]
                             scenario_node_key = surface_ambiguous_key_info.node_keys[surface_ambiguous_key_info.first_surface]
                             scenario_node = state.random_graph[scenario_node_key]
-                            local scenario_node_ordinal = state.top_sort_ordinals[scenario_node_key]
+                            local scenario_node_ordinal = state.shuffled_order_ordinals[scenario_node_key]
 
                             -- Find out which scenarios this node could be relevant for
                             for _, scenario2 in pairs(state.scenarios) do
@@ -1220,22 +1303,19 @@ randomizations.graph = function(id)
 
             -- Select one of the scenarios at random as source of edges if multiple were found
             local scenario = target_scenarios[rng.int(state.rng_key, #target_scenarios)]
-            local success = state.assign_prereqs(scenario_node_key, { override_scenario = scenario })
-            if success then
-                state.locked_nodes[scenario_node_key] = nil
-            else
-                queue.push(state.postponed_nodes, state.node_key)
-            end
+            state.try_make_reachable(scenario_node_key, scenario)
         end
     end
 
     local success = false
+    state.attempts = 0
     state.previous_showstoppers = {}
     for _, scenario_key in pairs(state.scenario_planet_names) do
         state.previous_showstoppers[scenario_key] = {}
     end
     while not success do
         state.showstoppers_per_scenario = {}
+        state.attempts = state.attempts + 1
         success = state.try_randomize_graph()
         for scenario_key, node_keys in pairs(state.showstoppers_per_scenario) do
             for node_key, _ in pairs(node_keys) do
@@ -1254,6 +1334,7 @@ randomizations.graph = function(id)
     -- Is the game completable?
     local random_graph_top_sort = top_sort.sort(state.random_graph)
     assert(random_graph_top_sort.reachable[end_game_key] ~= nil)
+    return state
 end
 
 return graph_randomizations
