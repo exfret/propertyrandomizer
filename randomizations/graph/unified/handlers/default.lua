@@ -119,6 +119,7 @@ end
 -- I'm wondering if reflection should be done all at once as a separate step rather than handled by each slot individually
 -- In item randomization, for example, we need to first gather the changes, so like an item that spoils into one thing being changed might cause that new item to see it needs to be changed again wrongly
 -- However, as long as we detect what needs to be changed from the graph rather than from data.raw, I think we're good
+-- TODO: Also pass in speicific indices to the slots of this handler so we don't have to go through sorted_slots a bazillion different times
 default.reflect = function(sorted_slots, slot_to_traveler)
 end
 

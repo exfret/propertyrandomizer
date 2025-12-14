@@ -31,6 +31,7 @@ local dont_randomize_ings = {
 -- Also put jellynut and yumako here so that their processing recipes don't get randomized
 -- Also make lava still useful by preserving it in spots
 local dont_randomize_ings_space_age = {
+    ["item-spoilage"] = true,
     ["item-yumako"] = true,
     ["item-jellynut"] = true,
     ["fluid-fluoroketone-cold"] = true,

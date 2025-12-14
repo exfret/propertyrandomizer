@@ -39,6 +39,7 @@ local constants = {
     -- The bonus priority for a traveler being surface specific (and also by requirement the same surface as the given slot)
     unified_randomization_bonus_priority_surface = 1,
     unified_randomization_max_bootings_in_a_row = 100,
+    unified_randomization_bootings_until_dummy_slot = 4,
     
     unified_recipe_results_dummy_fraction = 1,
 

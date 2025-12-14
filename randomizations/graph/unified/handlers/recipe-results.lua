@@ -136,6 +136,17 @@ recipe_results.create_slot = function(edge)
         return false
     end
 
+    -- Store trigger techs to change
+    local trigger_techs = {}
+    for _, technology in pairs(data.raw.technology) do
+        if technology.research_trigger ~= nil and technology.research_trigger.type == "craft-item" and "item" == helper.get_material_type(material) and technology.research_trigger.item == helper.get_material_name(material) then
+            table.insert(trigger_techs, technology)
+        end
+        if technology.research_trigger ~= nil and technology.research_trigger.type == "craft-fluid" and "fluid" == helper.get_material_type(material) and technology.research_trigger.fluid == helper.get_material_name(material) then
+            table.insert(trigger_techs, technology)
+        end
+    end
+
     local result_index = find_result_index(edge[1].recipe, edge[2].material)
     if result_index == nil then
         return false
@@ -143,6 +154,7 @@ recipe_results.create_slot = function(edge)
     return {
         recipe = edge[1].recipe,
         ind = result_index,
+        trigger_techs = trigger_techs,
     }
 end
 
@@ -261,6 +273,7 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
         end
     end
 
+    local tech_to_slot = {}
     for _, slot in pairs(sorted_slots) do
         if slot.handler_id == "recipe-results" then
             local traveler = slot_to_traveler[graph_utils.get_node_key(slot)]
@@ -268,6 +281,11 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
                 local recipe_prot
                 if not slot.dummy then
                     recipe_prot = data.raw.recipe[slot.recipe]
+
+                    -- Look for technology trigger effects to change
+                    for _, tech in pairs(slot.trigger_techs) do
+                        tech_to_slot[tech.name] = slot
+                    end
                     
                     if not traveler.dummy then
                         reassign_slot_material(recipe_prot.results[slot.ind], traveler)
@@ -326,23 +344,15 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
     end
 
     -- Fix technology trigger effects
-    for _, tech in pairs(data.raw.technology) do
-        if tech.research_trigger ~= nil and tech.research_trigger.type == "craft-item" then
-            -- CRITICAL TODO: Some other way to find the recipe if it's not just the name of the item that you have to craft
-            if data.raw.recipe[tech.research_trigger.item] ~= nil then
-                tech.research_trigger.item = data.raw.recipe[tech.research_trigger.item].results[1].name
-            else
-                tech.research_trigger.item = "iron-plate"
-            end
+    -- We actually do this in the main execute.lua now
+    --[[for _, tech in pairs(data.raw.technology) do
+        if tech_to_slot[tech.name] ~= nil then
+            local new_crafting_material = slot_to_traveler[graph_utils.get_node_key(tech_to_slot[tech.name])]
+            tech.research_trigger.type = "craft-" .. new_crafting_material.material_type
+            tech.research_trigger.item = new_crafting_material.item
+            tech.research_trigger.fluid = new_crafting_material.fluid
         end
-        if tech.research_trigger ~= nil and tech.research_trigger.type == "craft-fluid" then
-            if data.raw.recipe[tech.research_trigger.fluid] ~= nil then
-                tech.research_trigger.item = data.raw.recipe[tech.research_trigger.fluid].results[1].name
-            else
-                tech.research_trigger.item = "sulfuric-acid"
-            end
-        end
-    end
+    end]]
 end
 
 return recipe_results
