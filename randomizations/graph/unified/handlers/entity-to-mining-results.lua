@@ -82,7 +82,7 @@ entity_to_mining_results.create_slot = function(edge)
     end
 
     if edge[2].dummy then
-        inds = "dummy"
+        inds = {#entity.minable.results}
     end
 
     return {

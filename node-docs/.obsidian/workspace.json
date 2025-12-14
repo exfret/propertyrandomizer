@@ -41,17 +41,31 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Main Nodes/node-create-fluid-offshore-surface.md",
+                "file": "Main Nodes/node-entity-buildability-surface.md",
                 "mode": "source",
                 "source": true,
                 "backlinks": false
               },
               "icon": "lucide-file",
-              "title": "node-create-fluid-offshore-surface"
+              "title": "node-entity-buildability-surface"
+            }
+          },
+          {
+            "id": "095fe0ee9307c969",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Main Nodes/node-entity-buildability.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "node-entity-buildability"
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -195,10 +209,14 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "5423087ef038d3a8",
+  "active": "095fe0ee9307c969",
   "lastOpenFiles": [
-    "Main Nodes/node-create-fluid.md",
+    "Main Nodes/node-entity-buildability-surface.md",
+    "Main Nodes/node-entity-buildability.md",
+    "Main Nodes/node-spawn-tile.md",
+    "Main Nodes/node-spawn-tile-surface.md",
     "Main Nodes/node-create-fluid-offshore-surface.md",
+    "Main Nodes/node-create-fluid.md",
     "Main Nodes/node-create-fluid-surface.md",
     "Main Nodes/node-mine-entity-surface.md",
     "node-fuel-category.md",
@@ -219,10 +237,6 @@
     "Main Nodes/node-fuel-category-burner.md",
     "Main Nodes/node-electricity-surface.md",
     "Main Nodes/node-electricity-production-surface.md",
-    "Main Nodes/node-electricity-distribution-surface.md",
-    "Main Nodes/node-create-space-platform.md",
-    "Main Nodes/node-create-space-platform-tech-unlock.md",
-    "Main Nodes/node-damage-type-amount-surface.md",
     "Compat Nodes",
     "Planetary Mechanics",
     "Mechanics Nodes",

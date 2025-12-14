@@ -1357,7 +1357,7 @@ local function load()
                         name = compound_key({pump.name, surface_key})
                     })
 
-                    add_to_graph("create-fluid-offshore-surface", compound_key({pump.name, tile.name, surface_key}), prereqs, {
+                    add_to_graph("create-fluid-offshore-surface", compound_key({compound_key({pump.name, tile.name}), surface_key}), prereqs, {
                         surface = surface_key
                     })
                 end
@@ -1710,6 +1710,26 @@ local function load()
                     })
                 end
             end
+        end
+    end
+
+    -- entity-buildability
+    log("Adding: entity-buildability")
+    -- Could this entity be built somewhere?
+    -- Mostly needed for technical reasons for the randomizer
+
+    for _, build_property in pairs(buildable_entity_keys) do
+        for _, entity in pairs(buildable_entities[build_property]) do
+            prereqs = {}
+
+            for surface_name, surface in pairs(surfaces) do
+                table.insert(prereqs, {
+                    type = "entity-buildability-surface",
+                    name = compound_key({entity.name, surface_name})
+                })
+            end
+
+            add_to_graph("entity-buildability", entity.name, prereqs)
         end
     end
 
@@ -3552,6 +3572,26 @@ local function load()
 
     -- TODO
 
+    -- spawn-tile
+    log("Adding: spawn-tile")
+    -- Does this tile spawn somewhere?
+    -- Needed for technical reasons
+
+    for _, tile in pairs(get_prototypes("tile")) do
+        prereqs = {}
+
+        for surface_name, surface in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "spawn-tile-surface",
+                name = build_graph.compound_key({tile.name, surface_name})
+            })
+        end
+
+        add_to_graph("spawn-tile", tile.name, prereqs, {
+            tile = tile.name
+        })
+    end
+
     -- spawn-tile-surface
     log("Adding: spawn-tile-surface")
     -- Do we have all we need to access this tile on this surface?
@@ -3601,6 +3641,7 @@ local function load()
             end
 
             add_to_graph("spawn-tile-surface", compound_key({tile.name, surface_key}), prereqs, {
+                tile = tile.name,
                 surface = surface_key
             })
         end
@@ -3798,6 +3839,53 @@ local function load()
     add_to_graph("void-energy", "canonical", prereqs)
 
     ----------------------------------------------------------------------
+    -- Add surface-agnostic nodes for types that don't already have them
+    ----------------------------------------------------------------------
+
+    -- This is needed for technical reasons
+    -- I already do this manually with a few node types above
+    -- TODO: Refactor so I'm just using this for consistency
+    local manual_types = table.deepcopy(build_graph.ops)
+    local agnostics_added = {}
+    for _, node in pairs(graph) do
+        if string.sub(node.type, -8, -1) == "-surface" then
+            local agnostic_type = string.sub(node.type, 1, -9)
+            if manual_types[agnostic_type] == nil then
+                if build_graph.ops[agnostic_type] == nil then
+                    build_graph.ops[agnostic_type] = "OR"
+                end
+                -- Attempt to strip the surface name off the node
+                -- This is imperfect and ugly and took me >20 tries to get right but it works now (hopefully)
+                local i, _ = string.find(string.reverse(node.name), node_name_separator)
+                local j
+                if i ~= nil then
+                    -- Need to do it again because surface names have separators
+                    j, _ = string.find(string.sub(string.reverse(node.name), i+1, -1), node_name_separator)
+                end
+                local agnostic_name
+                if i ~= nil and j ~= nil then
+                    agnostic_name = string.sub(node.name, 1, -(i+j)-1)
+                else
+                    agnostic_name = "canonical"
+                end
+                local agnostic_key = key(agnostic_type, agnostic_name)
+                if agnostics_added[agnostic_key] == nil then
+                    agnostics_added[agnostic_key] = table.deepcopy(node)
+                    agnostics_added[agnostic_key].type = agnostic_type
+                    agnostics_added[agnostic_key].name = agnostic_name
+                    agnostics_added[agnostic_key].surface = nil
+                    agnostics_added[agnostic_key].prereqs = {}
+                    graph[agnostic_key] = agnostics_added[agnostic_key]
+                end
+                table.insert(agnostics_added[agnostic_key].prereqs, {
+                    type = node.type,
+                    name = node.name
+                })
+            end
+        end
+    end
+
+    ----------------------------------------------------------------------
     -- Load in new graph
     ----------------------------------------------------------------------
 
@@ -3849,6 +3937,7 @@ build_graph.ops = {
     ["electricity-production-surface"] = "OR",
     ["electricity-surface"] = "AND",
     ["energy-source-surface"] = "OR",
+    ["entity-buildability"] = "OR",
     ["entity-buildability-surface"] = "OR",
     ["entity-buildability-surface-true"] = "AND",
     ["entity-operation-items"] = "OR",
@@ -3923,6 +4012,7 @@ build_graph.ops = {
     ["spawn-entity"] = "OR",
     ["spawn-entity-surface"] = "OR",
     ["spawn-rail-surface"] = "OR",
+    ["spawn-tile"] = "OR",
     ["spawn-tile-surface"] = "OR",
     ["spawner-capturability"] = "OR",
     ["starting-character"] = "AND",

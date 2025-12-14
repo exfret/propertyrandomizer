@@ -2,15 +2,17 @@ local build_graph = require("lib/graph/build-graph")
 local graph_utils = require("lib/graph/graph-utils")
 local helper = require("randomizations/graph/unified/helper")
 
+-- TODO
+
 local planet_water_tile = {}
 
 -- Any edges with source in source_types and target in target_types is considered for randomization
 -- We can add extra conditions, but any such edge *could* be randomized by this handler, and as problems might arise if multiple handlers try to touch the same edge, try not to allow any common source --> target types in different handlers
 planet_water_tile.source_types = {
-    ["surface"] = true
+    ["offshore-pump-fluid-surface"] = true
 }
 planet_water_tile.target_types = {
-    ["spawn-tile-surface"] = true
+    ["create-fluid-surface"] = true
 }
 planet_water_tile.group_surfaces = false
 
@@ -27,6 +29,13 @@ for _, planet_name in pairs(planet_names) do
 end
 
 planet_water_tile.presurgery = function()
+    build_graph.ops["offshore-pump-fluid-surface"] = "OR"
+    for surface_name, surface in pairs(build_graph.surfaces) do
+        if is_planet[surface_name] then
+            local water_tile_node = helper.create_dummy_node("offshore-pump-fluid-surface", surface_name)
+
+        end
+    end
 end
 
 planet_water_tile.add_dummies = function()
