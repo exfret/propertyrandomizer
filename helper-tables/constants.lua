@@ -5,6 +5,10 @@ local constants = {
     split_bias = 0.06,
     step_size_modifier = 0.4, -- Things were getting a little too random, thus this
     steps_per_roll = 20,
+
+    path_max_removed_node_hits = 3 * 16,
+    path_max_depth = 3 * 128,
+    path_max_nodes_checked = 3 * 8192,
     -- Technology randomization (no special constants yet)
     -- Recipe randomization
     max_flow_iterations = 10000,

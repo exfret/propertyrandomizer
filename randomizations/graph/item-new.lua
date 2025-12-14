@@ -10,6 +10,7 @@ local locale_utils = require("lib/locale")
 randomizations.item_new = function(id)
     local dont_randomize_item = {
         ["rocket-part"] = true,
+        ["spoilage"] = true,
     }
 
     -- item lookup

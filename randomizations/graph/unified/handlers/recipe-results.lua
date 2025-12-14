@@ -207,11 +207,6 @@ end
 
 -- What is likely to progress us/fix our problems?
 recipe_results.traveler_priority = function(traveler)
-    -- Check if the material this traveler gives us access to is something already accessible
-    if recipe_results.state.curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(traveler))] then
-        return -1
-    end
-
     -- I'm too exhausted to do anything fancier for now
     -- Note that find_priority in helper accounts for dummy
     return helper.find_priority(traveler, recipe_results.state)
@@ -333,10 +328,19 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
     -- Fix technology trigger effects
     for _, tech in pairs(data.raw.technology) do
         if tech.research_trigger ~= nil and tech.research_trigger.type == "craft-item" then
-            tech.research_trigger.item = data.raw.recipe[tech.research_trigger.item].results[1].name
+            -- CRITICAL TODO: Some other way to find the recipe if it's not just the name of the item that you have to craft
+            if data.raw.recipe[tech.research_trigger.item] ~= nil then
+                tech.research_trigger.item = data.raw.recipe[tech.research_trigger.item].results[1].name
+            else
+                tech.research_trigger.item = "iron-plate"
+            end
         end
         if tech.research_trigger ~= nil and tech.research_trigger.type == "craft-fluid" then
-            tech.research_trigger.item = data.raw.recipe[tech.research_trigger.fluid].results[1].name
+            if data.raw.recipe[tech.research_trigger.fluid] ~= nil then
+                tech.research_trigger.item = data.raw.recipe[tech.research_trigger.fluid].results[1].name
+            else
+                tech.research_trigger.item = "sulfuric-acid"
+            end
         end
     end
 end

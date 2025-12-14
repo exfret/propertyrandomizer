@@ -294,6 +294,11 @@ local function find_base_priority(traveler, state)
 end
 
 local function find_priority(traveler, state)
+    -- Check if the material this traveler gives us access to is something already accessible
+    if state.curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(traveler))] then
+        return -1
+    end
+
     local priority = 0
 
     priority = priority + find_base_priority(traveler, state)

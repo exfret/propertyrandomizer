@@ -145,6 +145,10 @@ entity_to_mining_results.is_reservable = function(slot)
     return true
 end
 
+entity_to_mining_results.traveler_priority = function(traveler)
+    return helper.find_priority(traveler, entity_to_mining_results.state)
+end
+
 entity_to_mining_results.validate_connection = function(slot, traveler)
     -- CRITICAL TODO: Need to check that this slot supports fluid mining (is a resource with a mining category with mining drills having fluid outputs
     if traveler.item == nil and traveler.fluid == nil then

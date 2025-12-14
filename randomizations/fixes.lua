@@ -91,6 +91,14 @@ randomizations.fixes = function()
         recipe.factoriopedia_alternative = nil
         recipe.subgroup = "fluid-recipes"
     end
+    -- In fact, let's make sure nothing is hidden in factoriopedia; information wants to be free!
+    for _, class in pairs(data.raw) do
+        for _, prototype in pairs(class) do
+            if prototype.hidden == true or prototype.hidden_in_factoriopedia == true then
+                prototype.hidden_in_factoriopedia = false
+            end
+        end
+    end
 
     -- Add fluid connections to assembling machines and remove recipes with fluids from crafting category
     -- CRITICAL TODO: Add fluid connections!

@@ -2,68 +2,54 @@ local build_graph = require("lib/graph/build-graph")
 local graph_utils = require("lib/graph/graph-utils")
 local helper = require("randomizations/graph/unified/helper")
 
--- This file demonstrates the default layout of a handler
--- It's not just for show though! Fields not in the required_fields table are automatically populated with the functions here if not defined/overrided by a handler
-
-local default = {}
-
--- Note that default's implementation of all the fields here aren't used since they're always mandatory; they're just here for demonstration purposes
-default.required_fields = {
-    ["source_types"] = true,
-    ["target_types"] = true,
-    ["group_surfaces"] = true,
-    ["to_canonical"] = true,
-    ["traveler_priority"] = true,
-    ["validate_connection"] = true,
-    ["reflect"] = true,
-}
-
--- State is some pointers to extra info created by execute.lua, which calls the handlers
--- It's often big tables that we wouldn't want to create inside each handler, like top_sort's
-default.state = {}
-default.init = function(state)
-    for k, v in pairs(state) do
-        default.state[k] = v
-    end
-end
+local planet_water_tile = {}
 
 -- Any edges with source in source_types and target in target_types is considered for randomization
 -- We can add extra conditions, but any such edge *could* be randomized by this handler, and as problems might arise if multiple handlers try to touch the same edge, try not to allow any common source --> target types in different handlers
-default.source_types = {
+planet_water_tile.source_types = {
+    ["surface"] = true
 }
-default.target_types = {
+planet_water_tile.target_types = {
+    ["spawn-tile-surface"] = true
 }
--- Does this handler involve nodes with surface-specific variants that we need to account for?
--- A good example is anything 
-default.group_surfaces = false
+planet_water_tile.group_surfaces = false
 
--- Pre-surgery allows handlers to separate out edges in the dependency graph or otherwise modify it as necessary before anything else happens
-default.presurgery = function()
+local planet_names = {
+    "nauvis",
+    "fulgora",
+    "gleba",
+    "vulcanus",
+    "aquilo"
+}
+local is_planet = {}
+for _, planet_name in pairs(planet_names) do
+    is_planet[build_graph.compound_key({"planet", planet_name})] = true
 end
 
--- Dummies are extra slots (and travelers) to help smoothen the randomization process; they correspond to "virtual" recipes/etc. that we create later if needed
--- Dummies are manually put at the end of topological sorts so that they are only used if necessary
-default.add_dummies = function()
-    -- By default, we add no dummies
+planet_water_tile.presurgery = function()
 end
 
--- This function creates a slot
--- Most of the fields for a slot are filled out in execute.lua already, so a lot of the time we just return an empty table
--- This function also often tests to see if a given edge is valid to be randomized, and if not just returns false rather than an empty table
--- TODO: Split this test out to a separate function (I think that would be more intuitive)
-default.create_slot = function(edge)
+planet_water_tile.add_dummies = function()
+end
+
+planet_water_tile.create_slot = function(edge)
+    if not is_planet[edge[1].name] then
+        return false
+    end
+
     return {}
 end
 
--- This function creates a traveler
--- Also is usually an empty table
-default.create_traveler = function(edge)
+planet_water_tile.create_traveler = function(edge)
+
+
     return {}
 end
 
--- This table takes a slot or traveler from this handler and returns the "concrete" type of node it is
--- For example, in recipe result randomization, when given a traveler, it wouldn't return the craft-material node, but rather the item node (crafting something isn't a literal "thing" in the game; items are)
 default.to_canonical = function(slot_or_traveler)
+    if slot_or_traveler.connector_type == "slot" then
+
+    end
 end
 
 -- One part of unified randomization is that travelers not yet reachable can "reserve" slots for when they do become reachable
@@ -105,7 +91,6 @@ end
 --     3 means this is basically required to come quickly, like a science pack or electricity components early on
 -- I wonder also if I should have even fewer levels (in particular, combining levels 2 and 3) or do things a slightly different way, but I'm trying this out for now
 default.traveler_priority = function(traveler)
-    -- This is what it normally looks like, though traveler_priority is mandatory so this implementation doesn't matter
     return helper.find_priority(traveler, default.state)
 end
 

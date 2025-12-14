@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.5
-Date: ?
+Date: 2025.12.14
+  Features:
+    - (Nifyr) Randomized map settings
+    - (Nifyr) Many new enemy/environmental numerical randomizations
+  Bugfixes:
+    - Blacklisted spoilage from item randomization
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.4
 Date: 2025.12.10
