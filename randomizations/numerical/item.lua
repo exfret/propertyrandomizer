@@ -614,21 +614,12 @@ randomizations.module_effects = function(id)
         "pollution",
         "quality"
     }
-    -- You have no idea the lengths I went to in order to develop this point system and calculate these stats
-    local tier_points = {
-        {
-            negative_per_cat = -16,
-            target_sum = 25
-        },
-        {
-            negative_per_cat = -24,
-            target_sum = 40
-        },
-        {
-            negative_per_cat = -32,
-            target_sum = 70
-        }
-    }
+    local negative_per_cat = function (tier)
+        return tier * (-8) - 8
+    end
+    local target_sum = function (tier)
+        return 8 * tier^2 - 8 * tier + 24
+    end
     -- Frequency: weighting to determine relatively how frequent it is
     local negative_effect_stats = {
         consumption = {
@@ -725,12 +716,38 @@ randomizations.module_effects = function(id)
 
         module.localised_description = {"", locale_utils.find_localised_description(module), "\n[color=red](Reconfigured)[/color]"}
     end
-    
-    for _, module_category in pairs(module_categories) do
+
+    -- Prepare shuffled effect lists
+    local module_effect_lists = {}
+    local flattened_list = {}
+    for category_name, module_category in pairs(module_categories) do
+        module_effect_lists[category_name] = {}
         for tier, module in pairs(module_category) do
             local key = rng.key({id = id, prototype = module})
-            local shuffled_effect_names = table.deepcopy(effect_names)
-            rng.shuffle(key, shuffled_effect_names)
+            module_effect_lists[category_name][tier] = table.deepcopy(effect_names)
+            rng.shuffle(key, module_effect_lists[category_name][tier])
+            flattened_list[#flattened_list+1] = module_effect_lists[category_name][tier]
+        end
+    end
+
+    -- Ensure that each effect is first in at least one list
+    rng.shuffle(rng.key({id = id}), flattened_list)
+    for i = 1, #effect_names do
+        local list = { effect_names[i] }
+        for _, effect in pairs(flattened_list[i]) do
+            if effect ~= effect_names[i] then
+                list[#list+1] = effect
+            end
+        end
+        for j = 1, #effect_names do
+            flattened_list[i][j] = list[j]
+        end
+    end
+
+    for category_name, module_category in pairs(module_categories) do
+        for tier, module in pairs(module_category) do
+            local key = rng.key({id = id, prototype = module})
+            local shuffled_effect_names = module_effect_lists[category_name][tier]
 
             -- It's always 1 normally, but not anymore!!
             local positive_effect_count = 1
@@ -748,9 +765,6 @@ randomizations.module_effects = function(id)
             -- Uniform 0 to 3 negative effect count because that just so happens to be the distribution from space age
             local negative_effect_count = math.min(rng.range(key, 0, 3), max_negative_effect_count)
 
-            -- No coordination between different categories when picking which effects they have
-            -- That is to say, modules may have overlapping effects
-            -- Also, there may be effects no modules grant
             local target_positive_effects = {}
             local target_negative_effects = {}
             for i = 1, positive_effect_count do
@@ -760,15 +774,10 @@ randomizations.module_effects = function(id)
                 target_negative_effects[i - positive_effect_count] = negative_effect_stats[shuffled_effect_names[i]]
             end
 
-            -- Move all of the code above to outside of the module loop to have different tiers of the same module categories to have the same effects
-            if tier_points[tier] == nil then
-                tier_points[tier] = {
-                    target_sum = tier * 25,
-                    negative_per_cat = tier * -8 - 8
-                }
-            end
-            local negative_target_sum = tier_points[tier].negative_per_cat * negative_effect_count
-            local positive_target_sum = tier_points[tier].target_sum - negative_target_sum
+            -- Move all of the code above to outside of the module loop to make different tiers of the same module categories have the same effects
+
+            local negative_target_sum = negative_per_cat(tier) * negative_effect_count
+            local positive_target_sum = target_sum(tier) - negative_target_sum
             local positive_sum = 0
             while positive_sum < positive_target_sum do
                 local effect = random_effect(key, target_positive_effects)
@@ -792,7 +801,7 @@ randomizations.module_effects = function(id)
                         dummy = effect_strength,
                         rounding = "discrete_float",
                         abs_min = 0.01,
-                        abs_max = 327.67,
+                        abs_max = 327,
                         variance = "big",
                     })
                     if module.effect[effect.name] < 0 then
@@ -811,7 +820,7 @@ randomizations.module_effects = function(id)
                         rounding = "discrete_float",
                         dir = -1,
                         abs_min = 0.01,
-                        abs_max = 327.67,
+                        abs_max = 327,
                         variance = "big",
                     })
                     if module.effect[effect.name] < 0 then
