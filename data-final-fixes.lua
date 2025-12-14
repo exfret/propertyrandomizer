@@ -70,6 +70,16 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
+if settings.startup["propertyrandomizer-unified"].value then
+    randomizations.unified("unified")
+
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+end
+
 if settings.startup["propertyrandomizer-technology"].value then
     log("Applying technology tree randomization")
 
@@ -206,6 +216,8 @@ local final_sort_info = top_sort.sort(dep_graph)
 
 local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
+    log(serpent.block(final_sort_info.reachable))
+
     local first_node_unreachable
     for _, node in pairs(initial_sort_info.sorted) do
         if not final_sort_info.reachable[build_graph.key(node.type, node.name)] and first_node_unreachable == nil then

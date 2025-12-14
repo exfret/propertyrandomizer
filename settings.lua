@@ -124,11 +124,20 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-unified",
+        localised_name = "Unified (beta)",
+        localised_description = "Randomizes everything all at once. Not recommended with the other major randomizations below.",
+        default_value = false,
+        order = "d-a[unified]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-technology",
         localised_name = "Technologies",
         localised_description = "Randomizes the technology tree (which techs are prerequisites to which other ones).",
         default_value = false,
-        order = "d-a[technology]"
+        order = "d-b[technology]"
     },
     {
         setting_type = "startup",
@@ -137,7 +146,7 @@ data:extend({
         localised_name = "Recipes",
         localised_description = "Randomizes all recipe ingredients (not just the amounts).",
         default_value = false,
-        order = "d-b[recipe]"
+        order = "d-c[recipe]"
     },
     {
         setting_type = "startup",
@@ -146,7 +155,7 @@ data:extend({
         localised_name = "Recipe unlocks",
         localised_description = "Randomizes which tech a recipe is unlocked by.",
         default_value = false,
-        order = "d-c[recipe]"
+        order = "d-d[recipe]"
     },
     {
         setting_type = "startup",
@@ -155,7 +164,7 @@ data:extend({
         localised_name = "Items",
         localised_description = "Randomizes where items are in the game. For example, instead of mining coal you might mine fish, or furnaces could replace circuits as one of the most common intermediates.",
         default_value = false,
-        order = "d-d[item]"
+        order = "d-e[item]"
     },
     {
         setting_type = "startup",
@@ -166,7 +175,7 @@ data:extend({
         default_value = 30,
         minimum_value = 0,
         maximum_value = 100,
-        order = "d-da[item]"
+        order = "d-ea[item]"
     },
     {
         setting_type = "startup",

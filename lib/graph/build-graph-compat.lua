@@ -429,6 +429,7 @@ local function load(graph)
         local is_chemical_science_ings = {
             ["automation-science-pack"] = true,
             ["logistic-science-pack"] = true,
+            ["military-science-pack"] = true,
             ["chemical-science-pack"] = true,
         }
 
@@ -472,6 +473,7 @@ local function load(graph)
         local is_chemical_science_ings = {
             ["automation-science-pack"] = true,
             ["logistic-science-pack"] = true,
+            ["military-science-pack"] = true,
             ["chemical-science-pack"] = true,
         }
 

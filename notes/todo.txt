@@ -16,6 +16,19 @@ WORKING ON:
  - Look into rocket launch time bug
 
 Bigger things:
+ - Unified randomization
+ - Dupes
+ - Figure out how to integrate other graph randomizations into unified randomization
+ - Smooth out some edges:
+    * Ammo automatability in space
+    * Ensure softlocks less common
+    * Ensure crashes not common
+    * Preserve ability to build a silo from any surface without leaving
+    * Make loading faster
+ - Customizability, custom blacklists of items to not be randomized, etc. (and a tool to generate override strings in-game)
+ - Light mod compatibility
+ - Watch the world burn mode
+
  - Various numerical/space age especially randomizations need adding
  - Tech packs required randomization
  - Dupes
@@ -106,6 +119,8 @@ Ideas from Nifyr (not necessarily good ones):
 61. Surface condition randomization
 62. Randomized settings setting
 63. Allow backtracking/more attempts with item (maybe also recipe) randomization, add as a setting with note that load times may be slow
+64. Make a list of "physical" nodes (ones that aren't an abstract/logical requirement or whatever), which are the ones used for determining softlocks (for example, operate-entity for crafting machines, the item nodes themselves rather than surface-specific nodes)
+65. Add back short spoil time transport blacklist to build-graph-compat
 
 DONE:
 55. Make the topological sort random

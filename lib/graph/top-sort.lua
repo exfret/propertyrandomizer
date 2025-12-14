@@ -30,6 +30,7 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
     local randomized = extra_params.randomized or false
     local key = extra_params.key or rng.key({ id = "top_sort" })
     local depth_first = extra_params.depth_first or false
+    local make_new_conn_reachable = extra_params.make_new_conn_reachable or false
 
     local process_dependents = function (curr_node)
         local curr_key = build_graph.key(curr_node.type, curr_node.name)
@@ -38,40 +39,62 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
             local dependent_node = graph[dependent_key]
 
             if dependent_node ~= nil then
-                -- Allow blacklisted to be reachable and in top sort, but not in open nodes
-                local is_blacklisted = blacklist[build_graph.conn_key({curr_node, dependent_node})]
-
-                num_satisfiers[dependent_key] = num_satisfiers[dependent_key] + 1
-                if is_blacklisted then
-                    num_blacklisted_prereqs[dependent_key] = num_blacklisted_prereqs[dependent_key] + 1
-                end
-
-                if build_graph.ops[dependent_node.type] == "AND" then
-                    if num_satisfiers[dependent_key] == num_needed_satisfiers[dependent_key] then
-                        -- Check that no connections were blacklisted ones
-                        if num_blacklisted_prereqs[dependent_key] == 0 then
-                            in_open[dependent_key] = true
-                            table.insert(open, dependent_node)
-                        else
-                            reachable[dependent_key] = true
-                            table.insert(sorted, dependent_node)
+                -- Do the slightly less efficient approach if make_new_conn_reachable is true
+                -- In that case, blacklist won't be used, so we don't have to worry about that complexity
+                if make_new_conn_reachable then
+                    local total_satisfied_prereqs = 0
+                    for _, prereq in pairs(dependent_node.prereqs) do
+                        if reachable[build_graph.key(prereq.type, prereq.name)] then
+                            total_satisfied_prereqs = total_satisfied_prereqs + 1
                         end
                     end
-                elseif build_graph.ops[dependent_node.type] == "OR" then
-                    -- Check if it's already been added
-                    if not reachable[dependent_key] then
-                        -- Just need to check that this connection was not a blacklisted one in this case
-                        if not reachable[dependent_key] and not is_blacklisted then
+                    if build_graph.ops[dependent_node.type] == "AND" then
+                        if total_satisfied_prereqs == #dependent_node.prereqs then
                             in_open[dependent_key] = true
                             table.insert(open, dependent_node)
-                        else
-                            reachable[dependent_key] = true
-                            table.insert(sorted, dependent_node)
+                        end
+                    else
+                        if total_satisfied_prereqs >= 1 then
+                            in_open[dependent_key] = true
+                            table.insert(open, dependent_node)
                         end
                     end
                 else
-                    -- I misspelled something
-                    error()
+                    -- Allow blacklisted to be reachable and in top sort, but not in open nodes
+                    local is_blacklisted = blacklist[build_graph.conn_key({curr_node, dependent_node})]
+
+                    num_satisfiers[dependent_key] = num_satisfiers[dependent_key] + 1
+                    if is_blacklisted then
+                        num_blacklisted_prereqs[dependent_key] = num_blacklisted_prereqs[dependent_key] + 1
+                    end
+
+                    if build_graph.ops[dependent_node.type] == "AND" then
+                        if num_satisfiers[dependent_key] == num_needed_satisfiers[dependent_key] then
+                            -- Check that no connections were blacklisted ones
+                            if num_blacklisted_prereqs[dependent_key] == 0 then
+                                in_open[dependent_key] = true
+                                table.insert(open, dependent_node)
+                            else
+                                reachable[dependent_key] = true
+                                table.insert(sorted, dependent_node)
+                            end
+                        end
+                    elseif build_graph.ops[dependent_node.type] == "OR" then
+                        -- Check if it's already been added
+                        if not reachable[dependent_key] then
+                            -- Just need to check that this connection was not a blacklisted one in this case
+                            if not reachable[dependent_key] and not is_blacklisted then
+                                in_open[dependent_key] = true
+                                table.insert(open, dependent_node)
+                            else
+                                reachable[dependent_key] = true
+                                table.insert(sorted, dependent_node)
+                            end
+                        end
+                    else
+                        -- I misspelled something
+                        error()
+                    end
                 end
             end
         end
@@ -95,6 +118,12 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
         local dependent = new_conn[2]
         local dependent_key = build_graph.key(dependent.type, dependent.name)
         local dependent_node = graph[dependent_key]
+
+        -- Some randomizations, namely unified/item randomization, need new_conn to also be made reachable, not just un-blacklisted
+        if make_new_conn_reachable then
+            table.insert(open, dependent_node)
+            in_open[dependent_key] = true
+        end
 
         -- Check if the new node is now reachable without blacklist, and if so add it to open nodes
         num_blacklisted_prereqs[dependent_key] = num_blacklisted_prereqs[dependent_key] - 1

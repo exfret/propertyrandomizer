@@ -32,15 +32,28 @@ local dupe_number_to_filename = {
 -- Also counts duplicates as having been duplicated
 dupe.has_been_duplicated = {}
 
-dupe.prototype = function(prototype, dupe_number)
+-- Most other functions have dupe_number instead of extra_info, I'm converting over to more informative extra_info over time
+dupe.prototype = function(prototype, extra_info)
     local new_prototype = table.deepcopy(prototype)
 
+    local suffix_addon
+    if type(extra_info) == "table" then
+        suffix_addon = extra_info.suffix
+    else
+        -- extra_info in this case is a dupe_number
+        suffix_addon = tostring(extra_info)
+    end
+
     -- Need to add the -copy at the end to prevent the special behavior for technology prototypes with -number at end of prototype names
-    new_prototype.name = new_prototype.name .. "-exfret-" .. tostring(dupe_number) .. "-copy"
-    new_prototype.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(prototype), tostring(dupe_number)}
+    new_prototype.name = new_prototype.name .. "-exfret-" .. suffix_addon .. "-copy"
+    new_prototype.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(prototype), suffix_addon}
     -- For help in localisation later
     new_prototype.orig_name = prototype.name
-    new_prototype.dupe_number = dupe_number
+    if type(extra_info) == "table" then
+        new_prototype.suffix = extra_info.suffix
+    else
+        new_prototype.dupe_number = extra_info
+    end
 
     data:extend({
         new_prototype
@@ -52,10 +65,18 @@ dupe.prototype = function(prototype, dupe_number)
     return new_prototype
 end
 
-dupe.recipe = function(recipe, dupe_number)
-    local new_recipe = dupe.prototype(recipe, dupe_number)
-    -- Recipes get special dupe names to distinguish them from an item that's duplicated
-    new_recipe.localised_name = {"propertyrandomizer.recipe_dupe", locale_utils.find_localised_name(recipe), tostring(dupe_number)}
+dupe.recipe = function(recipe, extra_info)
+    local has_number_suffix = true
+    if type(extra_info) == "table" then
+        has_number_suffix = false
+    end
+
+    local new_recipe = dupe.prototype(recipe, extra_info)
+    -- Don't fix names of specially suffixed recipes; they'll be fixed in the function calling this
+    if has_number_suffix then
+        -- Recipes get special dupe names to distinguish them from an item that's duplicated
+        new_recipe.localised_name = {"propertyrandomizer.recipe_dupe", locale_utils.find_localised_name(recipe), tostring(extra_info)}
+    end
 
     -- Recipe tech unlocks
     for _, technology in pairs(data.raw.technology) do
@@ -71,53 +92,56 @@ dupe.recipe = function(recipe, dupe_number)
         end
     end
 
-    -- Also need to do icon
-    local recipe_icons
-    if new_recipe.icons == nil and new_recipe.icon == nil then
-        local item_with_icon_name
-        if new_recipe.main_product ~= nil then
-            item_with_icon_name = new_recipe.main_product
-        else
-            item_with_icon_name = new_recipe.results[1].name
-        end
-        local item_with_icon
-        for item_class, _ in pairs(defines.prototypes.item) do
-            if data.raw[item_class] ~= nil then
-                if data.raw[item_class][item_with_icon_name] ~= nil then
-                    item_with_icon = data.raw[item_class][item_with_icon_name]
+    -- Only fix icons if it's not a specially suffixed recipe
+    if has_number_suffix then
+        -- Also need to do icon
+        local recipe_icons
+        if new_recipe.icons == nil and new_recipe.icon == nil then
+            local item_with_icon_name
+            if new_recipe.main_product ~= nil then
+                item_with_icon_name = new_recipe.main_product
+            else
+                item_with_icon_name = new_recipe.results[1].name
+            end
+            local item_with_icon
+            for item_class, _ in pairs(defines.prototypes.item) do
+                if data.raw[item_class] ~= nil then
+                    if data.raw[item_class][item_with_icon_name] ~= nil then
+                        item_with_icon = data.raw[item_class][item_with_icon_name]
+                    end
                 end
             end
-        end
-        if data.raw.fluid[item_with_icon_name] ~= nil then
-            item_with_icon = data.raw.fluid[item_with_icon_name]
-        end
-        if item_with_icon.icons ~= nil then
-            recipe_icons = item_with_icon.icons
-        else
+            if data.raw.fluid[item_with_icon_name] ~= nil then
+                item_with_icon = data.raw.fluid[item_with_icon_name]
+            end
+            if item_with_icon.icons ~= nil then
+                recipe_icons = item_with_icon.icons
+            else
+                recipe_icons = {
+                    {
+                        icon = item_with_icon.icon,
+                        icon_size = item_with_icon.icon_size or 64
+                    }
+                }
+            end
+        elseif new_recipe.icons == nil then
             recipe_icons = {
                 {
-                    icon = item_with_icon.icon,
-                    icon_size = item_with_icon.icon_size or 64
+                    icon = new_recipe.icon,
+                    icon_size = new_recipe.icon_size or 64
                 }
             }
+        else
+            recipe_icons = new_recipe.icons
         end
-    elseif new_recipe.icons == nil then
-        recipe_icons = {
-            {
-                icon = new_recipe.icon,
-                icon_size = new_recipe.icon_size or 64
-            }
-        }
-    else
-        recipe_icons = new_recipe.icons
+        new_recipe.icons = recipe_icons
+        table.insert(new_recipe.icons, {
+            icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[extra_info],
+            icon_size = 120,
+            scale = 1 / 6,
+            shift = {7, -7}
+        })
     end
-    new_recipe.icons = recipe_icons
-    table.insert(new_recipe.icons, {
-        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-        icon_size = 120,
-        scale = 1 / 6,
-        shift = {7, -7}
-    })
 
     return new_recipe
 end
@@ -152,7 +176,8 @@ dupe.item = function(item, dupe_number)
                 item_icons = new_item[icon_prefix_type .. "icons"]
             end
             table.insert(item_icons, {
-                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                -- extra_info is the dupe_number on this part
+                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[extra_info],
                 icon_size = 120,
                 scale = 1 / 6,
                 shift = {-7, -7}
