@@ -1358,7 +1358,9 @@ local function load()
                     })
 
                     add_to_graph("create-fluid-offshore-surface", compound_key({compound_key({pump.name, tile.name}), surface_key}), prereqs, {
-                        surface = surface_key
+                        -- Technically the fluid could be the offshore pump's filter, but ignoring that for now
+                        fluid = tile.fluid,
+                        surface = surface_key,
                     })
                 end
             end

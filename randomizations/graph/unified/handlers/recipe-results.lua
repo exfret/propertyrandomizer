@@ -292,8 +292,8 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
                     else
                         -- CRITICAL TODO: We're removing the whole recipe here just because of one result missing; we should probably fix that!
                         -- Remove this recipe
-                        recipe_prot.hidden = true
-                        helper.remove_recipe_tech_unlock(recipe_prot.name)
+                        --recipe_prot.hidden = true
+                        --helper.remove_recipe_tech_unlock(recipe_prot.name)
                     end
                 else
                     if not traveler.dummy then
@@ -339,6 +339,26 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
 
                     -- CRITICAL TODO: Correct localised names
                 end
+            end
+        end
+    end
+
+    -- Fix main products; not sure how they're broken
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.main_product ~= nil then
+            if recipe.results ~= nil then
+                local has_valid_result = false
+                for _, ing in pairs(recipe.results) do
+                    if ing.name == recipe.main_product then
+                        has_valid_result = true
+                        break
+                    end
+                end
+                if not has_valid_result then
+                    recipe.main_product = nil
+                end
+            else
+                recipe.main_product = nil
             end
         end
     end

@@ -8,7 +8,7 @@ tile_pump_fluid.source_types = {
     ["spawn-tile-surface"] = true
 }
 tile_pump_fluid.target_types = {
-    ["create-fluid-surface"] = true
+    ["create-fluid-offshore-surface"] = true
 }
 tile_pump_fluid.group_surfaces = false
 
@@ -44,12 +44,16 @@ tile_pump_fluid.to_canonical = function(slot_or_traveler)
 end
 
 tile_pump_fluid.is_reservable = function(slot)    
+    if slot.fluid == "water" then
+        return false
+    end
+
     return true
 end
 
 tile_pump_fluid.traveler_priority = function(traveler)
     -- Just some educated guesses for what will get us out of softlocks for now
-    if traveler.fluid == "water" or traveler.fluid == "steam" then
+    if traveler.fluid == "water" --[[or traveler.fluid == "steam"]] then
         return 3
     elseif string.find(traveler.fluid, "oil") ~= nil or traveler.fluid == "lava" then
         return 2
@@ -59,10 +63,19 @@ tile_pump_fluid.traveler_priority = function(traveler)
 end
 
 tile_pump_fluid.validate_connection = function(slot, traveler)
+    if traveler.handler_id ~= "tile-pump-fluid" then
+        return false
+    end
+
     if traveler.fluid == nil then
         return false
     end
-    if traveler.dummy == nil then
+    if traveler.dummy then
+        return false
+    end
+
+    -- Force lava not on vulcanus
+    if slot.fluid == "lava" and traveler.fluid == "lava" then
         return false
     end
 

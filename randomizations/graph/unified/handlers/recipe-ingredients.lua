@@ -91,7 +91,7 @@ recipe_ingredients.create_traveler = function(edge)
     local material_type
     local ingredient_index
     for ind, ing in pairs(data.raw.recipe[edge[2].recipe].ingredients) do
-        if ((ing.type == "item" and ing.name == edge[1].item) or (ing.type == "fluid" and ing.fluid == edge[1].fluid)) then
+        if ((ing.type == "item" and ing.name == edge[1].item) or (ing.type == "fluid" and ing.name == edge[1].fluid)) then
             material_type = ing.type
             ingredient_index = ind
             break
