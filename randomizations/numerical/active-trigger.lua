@@ -25,6 +25,7 @@ randomizations.chain_max_jumps = function (id)
             rounding = "discrete",
             variance = "small",
             dir = dir,
+            data_type = "uint32",
         })
 
         local factor = chain.max_jumps / old_value

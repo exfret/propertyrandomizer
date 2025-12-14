@@ -42,6 +42,8 @@ randnum.fill_in_defaults = function(params)
         mul_std = true,
         -- For percentage randomization implementation
         probability_scale = true,
+        -- For automatically determining absolute boundaries
+        data_type = true,
     }
     for k, _ in pairs(params) do
         if not is_allowed_param[k] then
@@ -139,6 +141,23 @@ randnum.fill_in_defaults = function(params)
     -- Returns either negative or positive the split bias
     local real_split_bias = constants.split_bias * (2 * rng.range(params.key, 0, 1) - 1)
     params.real_bias = 0.5 + params.bias + real_split_bias + global_bias
+
+    local str_to_abs_boundaries = {
+        effect_value = { -300, 300 },
+        uint8 = { 0, 200 },
+        uint16 = { 0, 60000 },
+        uint32 = { 0, 4000000000 },
+        uint64 = { 0, 10000000000000000000 },
+    }
+    if params.data_type ~= nil then
+        local boundaries = str_to_abs_boundaries[params.data_type]
+        if params.abs_min == "none" then
+            params.abs_min = boundaries[1]
+        end
+        if params.abs_max == "none" then
+            params.abs_max = boundaries[2]
+        end
+    end
 
     -- If the value is already below or above the absolute min or max, skip randomization
     if (params.abs_min ~= "none" and params.val < params.abs_min) or (params.abs_max ~= "none" and params.val > params.abs_max) then

@@ -21,7 +21,8 @@ randomizations.tech_costs = function(id)
                     abs_min = 1,
                     bias = 0.05,
                     dir = -1,
-                    rounding = "discrete"
+                    rounding = "discrete",
+                    data_type = "uint64",
                 })
 
                 locale_utils.create_localised_description(tech, tech.unit.count / old_count, id, {flipped = true})
@@ -64,6 +65,7 @@ randomizations.tech_craft_requirement = function (id)
                 variance = "medium",
                 dir = -1,
                 abs_min = 2,
+                data_type = "uint32",
             })
 
             local factor = tech.research_trigger.count / old_value
@@ -173,7 +175,7 @@ randomizations.tech_upgrades = function(id)
                 local abs_max = nil
                 if change_property[modifier.type] then
                     target_property = "change"
-                    abs_max = 327
+                    abs_max = 300
                 end
                 if ignore_modifiers[modifier.type] == nil and modifier[target_property] > 0 then
                     local old_value = modifier[target_property]
