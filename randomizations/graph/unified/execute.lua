@@ -12,8 +12,8 @@ local handler_ids = {
     -- Having troubles with this; likely because recipes are AND nodes
     "recipe-ingredients",
     "recipe-results",
-    --"surface-tile",
-    "tile-pump-fluid",
+    "surface-tile",
+    --"tile-pump-fluid",
 }
 
 -- CRITICAL TODO:
@@ -306,6 +306,9 @@ randomizations.unified = function(id)
                                 slot_or_traveler.connector_type = connector_type
                                 slot_or_traveler.handler_id = handler_id
                                 slot_or_traveler.edge = edge
+                                if helper.surface_to_agnostic[graph_utils.get_node_key(node)] ~= nil then
+                                    slot_or_traveler.home_surface = node_to_surface[graph_utils.get_node_key(helper.surface_to_agnostic[graph_utils.get_node_key(node)])]
+                                end
                             end
                             if node.dummy then
                                 slot.dummy = true
@@ -460,6 +463,8 @@ randomizations.unified = function(id)
         return conn_handlers[traveler.handler_id].traveler_priority(traveler)
     end
 
+    log(serpent.block(node_to_surface))
+
     -- Since slots are chosen first, we don't need to pay attention to surface constraints yet
     -- Still allow to restrict reachable in case we need it later
     local function is_slot_reachable(reachable, slot)
@@ -473,6 +478,11 @@ randomizations.unified = function(id)
                 -- TODO: Make to_canonical more informative in dummy case to prevent softlocks from this assumption
                 if conn_handlers[slot.handler_id].group_surfaces and helper.to_canonical(slot) ~= "dummy" then
                     if node.surface == node_to_surface[graph_utils.get_node_key(helper.to_canonical(slot))] then
+                        return reachable[graph_utils.get_node_key(node)]
+                    end
+                -- Let's try with this new home_surface key I just concocted
+                elseif conn_handlers[slot.handler_id].group_surfaces and slot.home_surface ~= nil then
+                    if node.surface == slot.home_surface then
                         return reachable[graph_utils.get_node_key(node)]
                     end
                 elseif reachable[graph_utils.get_node_key(node)] then
@@ -674,7 +684,7 @@ randomizations.unified = function(id)
                                             this_traveler_reachable = false
                                         else
                                             local traveler_surface = node_to_surface[helper.to_canonical(proposed_traveler)]
-                                            if traveler_surface ~= "nauvis" and traveler_surface ~= slot_surface then
+                                            if --[[traveler_surface ~= "nauvis" and]] traveler_surface ~= slot_surface then
                                                 this_traveler_reachable = false
                                             end
                                         end
@@ -933,6 +943,36 @@ randomizations.unified = function(id)
                 end
                 modded_sort_info = top_sort.sort(dep_graph, nil, modded_sort_info, {graph_utils.getk("craft-material", old_crafting_material_req), node}, {make_new_conn_reachable = true})
                 next_materials = get_next_materials()
+            end
+        end
+    end
+
+    -- Remove duplicate ingredients
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.ingredients ~= nil then
+            local new_ings_map_item = {}
+            local new_ings_map_fluid = {}
+            for _, ing in pairs(recipe.ingredients) do
+                if ing.type == "item" then
+                    if new_ings_map_item[ing.name] ~= nil then
+                        new_ings_map_item[ing.name].amount = new_ings_map_item[ing.name].amount + (ing.amount or 1)
+                    else
+                        new_ings_map_item[ing.name] = ing
+                    end
+                else
+                    if new_ings_map_fluid[ing.name] ~= nil then
+                        new_ings_map_fluid[ing.name].amount = new_ings_map_fluid[ing.name].amount + (ing.amount or 1)
+                    else
+                        new_ings_map_fluid[ing.name] = ing
+                    end
+                end
+            end
+            recipe.ingredients = {}
+            for _, ing in pairs(new_ings_map_item) do
+                table.insert(recipe.ingredients, ing)
+            end
+            for _, ing in pairs(new_ings_map_fluid) do
+                table.insert(recipe.ingredients, ing)
             end
         end
     end

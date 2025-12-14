@@ -88,17 +88,20 @@ randomizations.fixes = function()
 
     -- Factoriopedia annoyingly hides barrel recipes; why didn't the devs think about what if they were randomized?
     for _, recipe in pairs(data.raw.recipe) do
-        recipe.factoriopedia_alternative = nil
-        recipe.subgroup = "fluid-recipes"
+        if recipe.subgroup == "fill-barrel" or recipe.subgroup == "empty-barrel" or recipe.subgroup == "barrel" then
+            recipe.factoriopedia_alternative = nil
+            recipe.subgroup = "fluid-recipes"
+        end
     end
     -- In fact, let's make sure nothing is hidden in factoriopedia; information wants to be free!
-    for _, class in pairs(data.raw) do
+    -- Actually, I think that was a bit extreme
+    --[[for _, class in pairs(data.raw) do
         for _, prototype in pairs(class) do
             if prototype.hidden == true or prototype.hidden_in_factoriopedia == true then
                 prototype.hidden_in_factoriopedia = false
             end
         end
-    end
+    end]]
 
     -- Add fluid connections to assembling machines and remove recipes with fluids from crafting category
     -- CRITICAL TODO: Add fluid connections!

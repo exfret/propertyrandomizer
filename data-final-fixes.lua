@@ -71,7 +71,7 @@ require("randomizations/master")
 log("Applying graph-based randomizations")
 
 if settings.startup["propertyrandomizer-unified"].value then
-    --randomizations.unified("unified")
+    randomizations.unified("unified")
 
     -- Rebuild graph
     build_graph.load()
