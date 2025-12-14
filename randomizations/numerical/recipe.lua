@@ -55,7 +55,8 @@ randomizations.recipe_ingredients_numerical = function(id)
                         range = "small",
                         variance = "small",
                         dir = -1,
-                        rounding = "discrete"
+                        rounding = "discrete",
+                        data_type = "uint16",
                     })
                     ing.amount = new_production + ignored_by_stats
                 end
@@ -143,7 +144,8 @@ randomizations.recipe_results_numerical = function(id)
                             range = "small",
                             variance = "small",
                             dir = 1,
-                            rounding = "discrete"
+                            rounding = "discrete",
+                            data_type = "uint16",
                         })
                         result.amount = new_production + ignored_by_stats
                     end
