@@ -296,6 +296,7 @@ randomizations.equipment_inventory_bonus = function(id)
             property = "inventory_size_bonus",
             rounding = "discrete",
             variance = "big",
+            data_type = "uint16",
         })
 
         local factor = equipment.inventory_size_bonus / old_value
@@ -362,6 +363,7 @@ randomizations.equipment_personal_roboport_charging_station_count = function(id)
                 range = "small",
                 rounding = "discrete",
                 variance = "big",
+                data_type = "uint32",
             })
 
             locale_utils.create_localised_description(equipment, equipment.charging_station_count / old_station_count, id, { variance = "big" })
@@ -408,6 +410,7 @@ randomizations.equipment_personal_roboport_max_robots = function(id)
         range = "small",
         rounding = "discrete",
         variance = "big",
+        data_type = "uint32",
     })
 
     for _, equipment in pairs(data.raw["roboport-equipment"]) do

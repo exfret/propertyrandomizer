@@ -211,6 +211,7 @@ randomizations.armor_inventory_bonus = function(id)
         property = "inventory_size_bonus",
         rounding = "discrete",
         variance = "big",
+        data_type = "uint16",
     })
 
     for _, armor in pairs(data.raw.armor) do
@@ -564,6 +565,7 @@ randomizations.item_stack_sizes = function(id)
                         bias = 0.1,
                         rounding = "discrete",
                         abs_min = 2,
+                        data_type = "uint32",
                     })
 
                     locale_utils.create_localised_description(item, item.stack_size / old_stack_size, id)
@@ -801,8 +803,8 @@ randomizations.module_effects = function(id)
                         dummy = effect_strength,
                         rounding = "discrete_float",
                         abs_min = 0.01,
-                        abs_max = 327,
                         variance = "big",
+                        data_type = "effect_value",
                     })
                     if module.effect[effect.name] < 0 then
                         effect_strength = 0 - effect_strength
@@ -820,8 +822,8 @@ randomizations.module_effects = function(id)
                         rounding = "discrete_float",
                         dir = -1,
                         abs_min = 0.01,
-                        abs_max = 327,
                         variance = "big",
+                        data_type = "effect_value",
                     })
                     if module.effect[effect.name] < 0 then
                         effect_strength = 0 - effect_strength
@@ -978,7 +980,7 @@ randomizations.spoil_time = function (id)
                 item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
             end
 
-            item.spoil_ticks = math.max(round(item.spoil_ticks), 1)
+            item.spoil_ticks = math.min(math.max(round(item.spoil_ticks), 1), 4000000000)
 
             local factor = item.spoil_ticks / old_value
 

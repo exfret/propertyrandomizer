@@ -58,7 +58,7 @@ local to_ticks = function (unit, value)
         value = value * ticks_per_second * seconds_per_minute * minutes_per_hour
     end
 
-    return math.max(round(value), 1)
+    return math.min(math.max(round(value), 1), 4000000000)
 end
 
 randomizations.asteroid_spawns = function (id)
@@ -261,6 +261,7 @@ randomizations.space_connection_length = function (id)
             variance = "medium",
             rounding = "discrete",
             dir = -1,
+            data_type = "uint32",
         })
 
         local factor = space_connection.length / old_value
