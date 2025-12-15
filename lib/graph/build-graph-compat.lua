@@ -33,12 +33,14 @@ local function load(graph)
     build_graph.ops["mining-drill"] = "OR"
 
     for _, technology in pairs(data.raw.technology) do
-        local tech_node = graph[build_graph.key("technology", technology.name)]
+        if technology.unit ~= nil then
+            local tech_node = graph[build_graph.key("technology", technology.name)]
 
-        table.insert(tech_node.prereqs, {
-            type = "mining-drill",
-            name = "canonical"
-        })
+            table.insert(tech_node.prereqs, {
+                type = "mining-drill",
+                name = "canonical"
+            })
+        end
     end
 
     -- Require an assembling machine with crafting as a category before all techs with unit other than automation
@@ -439,7 +441,7 @@ local function load(graph)
         local past_chemical_science = false
         if technology.unit ~= nil then
             for _, ing in pairs(technology.unit.ingredients) do
-                if not is_chemical_science_ings[ing[1]] then
+                if not is_chemical_science_ings[ ing[1] ] then
                     past_chemical_science = true
                 end
             end
@@ -486,7 +488,7 @@ local function load(graph)
         local past_chemical_science = false
         if technology.unit ~= nil then
             for _, ing in pairs(technology.unit.ingredients) do
-                if not is_chemical_science_ings[ing[1]] then
+                if not is_chemical_science_ings[ ing[1] ] then
                     past_chemical_science = true
                 end
             end
@@ -530,7 +532,7 @@ local function load(graph)
         local past_logistic_science = false
         if technology.unit ~= nil then
             for _, ing in pairs(technology.unit.ingredients) do
-                if not is_logistic_science_ings[ing[1]] then
+                if not is_logistic_science_ings[ ing[1] ] then
                     past_logistic_science = true
                 end
             end
