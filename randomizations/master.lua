@@ -16,6 +16,8 @@ log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
 
+require("randomizations/graph/core")
+
 require("randomizations/graph/unified/execute")
 require("randomizations/graph/item")
 require("randomizations/graph/item-new")
