@@ -6,6 +6,14 @@ local helper = require("randomizations/graph/unified/helper")
 
 local entity_to_mining_results = {}
 
+local state = {}
+entity_to_mining_results.state = state
+entity_to_mining_results.init = function(state)
+    for k, v in pairs(state) do
+        entity_to_mining_results.state[k] = v
+    end
+end
+
 entity_to_mining_results.source_types = {
     ["mine-entity-surface"] = true,
 }
@@ -171,10 +179,10 @@ entity_to_mining_results.validate_connection = function(slot, traveler)
     return true
 end
 
-entity_to_mining_results.reflect = function(sorted_slots, slot_to_traveler)
+entity_to_mining_results.reflect = function(slot_to_traveler)
     -- First turn all mining results into improper tables: indices may not be in order
     -- This is so that we know where to remove the mining results
-    for _, slot in pairs(sorted_slots) do
+    for _, slot in pairs(state.sorted_slots) do
         if slot.handler_id == "entity-to-mining-results" then
             local entity = helper.entities[slot.entity]
 

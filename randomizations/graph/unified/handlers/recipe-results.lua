@@ -7,7 +7,8 @@ local helper = require("randomizations/graph/unified/helper")
 
 local recipe_results = {}
 
-recipe_results.state = {}
+local state = {}
+recipe_results.state = state
 recipe_results.init = function(state)
     for k, v in pairs(state) do
         recipe_results.state[k] = v
@@ -123,6 +124,7 @@ recipe_results.create_slot = function(edge)
             original_recipe = original_recipe_name,
             -- ind in original
             ind = result_index,
+            trigger_techs = {},
         }
     end
 
@@ -253,10 +255,51 @@ recipe_results.validate_connection = function(slot, traveler)
     return true
 end
 
+-- We don't need to fix a trigger tech more than once
+local trigger_techs_fixed = {}
+recipe_results.do_slot_conn_fixes = function(slot, traveler)
+    -- If this traveler is not of type craft-material, make it a craft-material
+    local node_example = graph_utils.get(traveler.nodes[build_graph.compound_key({"planet", "nauvis"})].dependents[1])
+    if node_example.type ~= "craft-material-surface" then
+        for _, node in pairs(traveler.nodes) do
+            local old_dependent = graph_utils.get(node.dependents[1])
+            local material_type
+            local material_name
+            if old_dependent.item ~= nil then
+                material_type = "item"
+                material_name = old_dependent.item
+            else
+                material_type = "fluid"
+                material_name = old_dependent.fluid
+            end
+            -- Test that craft-material node exists in case it's a dummy; if it is then we don't need to worry about this
+            local craft_material_node = graph_utils.getk("craft-material-surface", build_graph.compound_key({material_type .. "-" .. material_name, old_dependent.surface}))
+            if craft_material_node ~= nil then
+                graph_utils.remove_prereq(node, old_dependent)
+                graph_utils.add_prereq(node, craft_material_node)
+            end
+        end
+    end
+
+    -- Also fix trigger techs (this modifies data.raw but it's more convenient here than in reflect)
+    for _, tech in pairs(slot.trigger_techs) do
+        if not trigger_techs_fixed[tech.name] then
+            trigger_techs_fixed[tech.name] = true
+            if traveler.item ~= nil then
+                tech.research_trigger.type = "craft-item"
+                tech.research_trigger.item = traveler.item
+            elseif traveler.fluid ~= nil then
+                tech.research_trigger.type = "craft-fluid"
+                tech.research_trigger.fluid = traveler.fluid
+            end
+        end
+    end
+end
+
 -- I'm wondering if reflection should be done all at once as a separate step rather than handled by each slot individually
 -- In item randomization, for example, we need to first gather the changes, so like an item that spoils into one thing being changed might cause that new item to see it needs to be changed again wrongly
 -- However, as long as we detect what needs to be changed from the graph rather than from data.raw, I think we're good
-recipe_results.reflect = function(sorted_slots, slot_to_traveler)
+recipe_results.reflect = function(slot_to_traveler)
     -- CRITICAL TODO: Cost-based amounts reassignment (also for choosing valid connections)
     -- Do this after testing to make sure it at least runs first
 
@@ -274,7 +317,7 @@ recipe_results.reflect = function(sorted_slots, slot_to_traveler)
     end
 
     local tech_to_slot = {}
-    for _, slot in pairs(sorted_slots) do
+    for _, slot in pairs(state.sorted_slots) do
         if slot.handler_id == "recipe-results" then
             local traveler = slot_to_traveler[graph_utils.get_node_key(slot)]
             if traveler ~= nil then

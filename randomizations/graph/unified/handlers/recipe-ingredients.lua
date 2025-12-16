@@ -4,7 +4,8 @@ local helper = require("randomizations/graph/unified/helper")
 
 local recipe_ingredients = {}
 
-recipe_ingredients.state = {}
+local state = {}
+recipe_ingredients.state = state
 recipe_ingredients.init = function(state)
     for k, v in pairs(state) do
         recipe_ingredients.state[k] = v
@@ -178,7 +179,7 @@ recipe_ingredients.validate_connection = function(slot, traveler)
     return true
 end
 
-recipe_ingredients.reflect = function(sorted_slots, slot_to_traveler)
+recipe_ingredients.reflect = function(slot_to_traveler)
     -- CRITICAL TODO: Cost-based amounts reassignment (also for choosing valid connections)
     -- ^^^ The above critical todo actually applies in a lot of places
 

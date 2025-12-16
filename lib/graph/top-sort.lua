@@ -120,9 +120,11 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
         local dependent_node = graph[dependent_key]
 
         -- Some randomizations, namely unified/item randomization, need new_conn to also be made reachable, not just un-blacklisted
+        -- We (should) already check that the prereq is reachable when this is called
         if make_new_conn_reachable then
             table.insert(open, dependent_node)
             in_open[dependent_key] = true
+            -- Dependent shouldn't be reachable yet for the conns this is called on
         end
 
         -- Check if the new node is now reachable without blacklist, and if so add it to open nodes
@@ -167,6 +169,8 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
         local curr_key = build_graph.key(curr_node.type, curr_node.name)
 
         if not reachable[curr_key] then
+            log("Processing node: " .. curr_key)
+
             reachable[curr_key] = true
             table.insert(sorted, curr_node)
 

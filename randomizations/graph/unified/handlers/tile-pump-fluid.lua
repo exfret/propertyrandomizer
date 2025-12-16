@@ -4,6 +4,14 @@ local helper = require("randomizations/graph/unified/helper")
 
 local tile_pump_fluid = {}
 
+local state = {}
+tile_pump_fluid.state = state
+tile_pump_fluid.init = function(state)
+    for k, v in pairs(state) do
+        tile_pump_fluid.state[k] = v
+    end
+end
+
 tile_pump_fluid.source_types = {
     ["spawn-tile-surface"] = true
 }
@@ -82,8 +90,8 @@ tile_pump_fluid.validate_connection = function(slot, traveler)
     return true
 end
 
-tile_pump_fluid.reflect = function(sorted_slots, slot_to_traveler)
-    for _, slot in pairs(sorted_slots) do
+tile_pump_fluid.reflect = function(slot_to_traveler)
+    for _, slot in pairs(state.sorted_slots) do
         if slot.handler_id == "tile-pump-fluid" then
             -- Actually, just change the autoplace of the old tile (by changing every property of the other tile except autoplace and name), so that essentially we are changing where the fluid tiles spawn
             -- Doing a direct tile to create-fluid connection however is more convenient for the randomization process

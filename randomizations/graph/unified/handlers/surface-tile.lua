@@ -6,6 +6,14 @@ local helper = require("randomizations/graph/unified/helper")
 
 local surface_tile = {}
 
+local state = {}
+surface_tile.state = state
+surface_tile.init = function(state)
+    for k, v in pairs(state) do
+        surface_tile.state[k] = v
+    end
+end
+
 surface_tile.source_types = {
     ["surface"] = true
 }
@@ -58,9 +66,9 @@ surface_tile.validate_connection = function(slot, traveler)
     return true
 end
 
-surface_tile.reflect = function(sorted_slots, slot_to_traveler)
+surface_tile.reflect = function(slot_to_traveler)
     local new_tiles = {}
-    for _, slot in pairs(sorted_slots) do
+    for _, slot in pairs(state.sorted_slots) do
         if slot.handler_id == "surface-tile" then
             local traveler = slot_to_traveler[graph_utils.get_node_key(slot)]
             if traveler ~= nil then
