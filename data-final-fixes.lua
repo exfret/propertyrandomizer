@@ -70,6 +70,12 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
+randomizations.graph("graph")
+build_graph.load()
+dep_graph = build_graph.graph
+build_graph_compat.load(dep_graph)
+build_graph.add_dependents(dep_graph)
+
 if settings.startup["propertyrandomizer-unified"].value then
     randomizations.unified("unified")
 

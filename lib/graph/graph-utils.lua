@@ -141,8 +141,10 @@ util.get_surface_ambiguous_key = function (node)
         for member, value in pairs(node) do
             if not node_member_filter[member] then
                 assert(type(value) ~= "nil")
-                assert(type(value) ~= "table")
                 assert(type(value) ~= "function")
+                if type(value) == "table" then
+                    value = build_graph.compound_key(value)
+                end
                 name_segments[#name_segments+1] = value
             end
         end

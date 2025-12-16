@@ -2984,7 +2984,9 @@ local function load()
             })
         end
 
-        add_to_graph("research-science-pack-set", science_pack_set_name, prereqs)
+        add_to_graph("research-science-pack-set", science_pack_set_name, prereqs, {
+            science_pack_set = science_pack_set
+        })
     end
 
     -- research-science-pack-set-surface

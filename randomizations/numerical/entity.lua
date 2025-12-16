@@ -111,7 +111,7 @@ local to_ticks = function (unit, value)
         value = value * ticks_per_second * seconds_per_minute * minutes_per_hour
     end
 
-    return math.max(round(value), 1)
+    return math.min(math.max(round(value), 1), 4000000000)
 end
 
 local damage_randomization = function (prototype, parents, structs, is_enemy, id, variance)
@@ -298,6 +298,7 @@ randomizations.asteroid_collector_arm_inventory = function(id)
                 property = "arm_inventory_size",
                 rounding = "discrete",
                 variance = "medium",
+                data_type = "uint16",
             })
 
             local factor = collector.arm_inventory_size / old_value
@@ -322,6 +323,7 @@ randomizations.asteroid_collector_base_arm_count = function(id)
                 property = "arm_count_base",
                 rounding = "discrete",
                 variance = "medium",
+                data_type = "uint32",
             })
 
             local factor = collector.arm_count_base / old_value
@@ -346,6 +348,7 @@ randomizations.asteroid_collector_inventory = function(id)
                 property = "inventory_size",
                 rounding = "discrete",
                 variance = "medium",
+                data_type = "uint16",
             })
 
             local factor = collector.inventory_size / old_value
@@ -581,8 +584,7 @@ randomizations.base_effect = function (id)
                     rounding = "discrete_float",
                     variance = "medium",
                     dir = current_dir,
-                    abs_min = -327,
-                    abs_max = 327,
+                    data_type = "effect_value",
                 })
                 if had_effect then
                     dir = current_dir
@@ -733,6 +735,7 @@ randomizations.bot_cargo_capacity = function(id)
                 property = "max_payload_size",
                 rounding = "discrete",
                 abs_min = 1,
+                data_type = "uint32",
             })
 
             local factor = bot.max_payload_size / old_value
@@ -920,6 +923,7 @@ randomizations.cargo_bay_inventory_bonus = function (id)
             property = "inventory_size_bonus",
             rounding = "discrete",
             variance = "medium",
+            data_type = "uint16",
         })
 
         local factor = cargo_bay.inventory_size_bonus / old_value
@@ -940,6 +944,7 @@ randomizations.cargo_landing_pad_radar_range = function (id)
                 property = "radar_range",
                 rounding = "discrete",
                 variance = "small",
+                data_type = "uint32",
             })
 
             local factor = clp.radar_range / old_value
@@ -1493,7 +1498,8 @@ randomizations.inserter_base_hand_size = function(id)
             dummy = old_value,
             rounding = "discrete",
             abs_min = 1,
-            variance = "big"
+            variance = "big",
+            data_type = "uint8",
         })
 
         inserter.stack_size_bonus = new_value - 1
@@ -1599,7 +1605,8 @@ randomizations.inventory_sizes = function(id)
         prototypes = container_list,
         property = "inventory_size",
         abs_min = 1,
-        rounding = "discrete"
+        rounding = "discrete",
+        data_type = "uint16",
     })
     for _, container in pairs(container_list) do
         locale_utils.create_localised_description(container, container.inventory_size / container_to_old_size[container.name], id)
@@ -1619,7 +1626,8 @@ randomizations.inventory_sizes = function(id)
         prototypes = wagon_list,
         property = "inventory_size",
         abs_min = 1,
-        rounding = "discrete"
+        rounding = "discrete",
+        data_type = "uint16",
     })
     for _, cargo_wagon in pairs(wagon_list) do
         locale_utils.create_localised_description(cargo_wagon, cargo_wagon.inventory_size / wagon_to_old_size[cargo_wagon.name], id)
@@ -1637,7 +1645,8 @@ randomizations.inventory_sizes = function(id)
                         prototype = entity,
                         property = "inventory_size",
                         abs_min = 1,
-                        rounding = "discrete"
+                        rounding = "discrete",
+                        data_type = "uint16",
                     })
 
                     locale_utils.create_localised_description(entity, entity.inventory_size / old_inventory_size, id)
@@ -1763,6 +1772,7 @@ randomizations.landmine_timeout = function(id)
             dir = -1,
             rounding = "discrete_float",
             variance = "big",
+            data_type = "uint32",
         })
 
         local factor = landmine.timeout / old_value
@@ -2255,6 +2265,7 @@ randomizations.mining_results = function(id)
                                     dir = 1,
                                     rounding = "discrete",
                                     variance = "medium",
+                                    data_type = "uint16",
                                 })
                             end
                         else
@@ -2266,6 +2277,7 @@ randomizations.mining_results = function(id)
                                     rounding = "discrete",
                                     dir = 1,
                                     variance = "medium",
+                                    data_type = "uint16",
                                 })
                             end
                             if product.amount_min > 0 then
@@ -2277,6 +2289,7 @@ randomizations.mining_results = function(id)
                                     dir = 1,
                                     rounding = "discrete",
                                     variance = "medium",
+                                    data_type = "uint16",
                                 })
                             end
                             product.amount_max = product.amount_min + diff
@@ -2308,6 +2321,7 @@ randomizations.mining_results = function(id)
                             dir = 1,
                             rounding = "discrete",
                             variance = "medium",
+                            data_type = "uint16",
                         })
                     end
                 end
@@ -2441,7 +2455,8 @@ randomizations.module_slots = function(id)
                             property = "module_slots",
                             rounding = "discrete",
                             abs_min = 1,
-                            variance = "big"
+                            variance = "big",
+                            data_type = "uint16",
                         })
 
                         locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
@@ -2456,7 +2471,8 @@ randomizations.module_slots = function(id)
                         property = "module_slots",
                         rounding = "discrete",
                         abs_min = 1,
-                        variance = "big"
+                        variance = "big",
+                        data_type = "uint16",
                     })
                     entity.allowed_effects = get_allowed_effects(entity)
                     entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
@@ -2502,8 +2518,8 @@ randomizations.pipe_to_ground_distance = function(id)
         tbls = underground_pipe_conns,
         property = "max_underground_distance",
         abs_min = 2,
-        abs_max = 255,
-        rounding = "discrete"
+        rounding = "discrete",
+        data_type = "uint8",
     })
 
     for _, pipe in pairs(data.raw["pipe-to-ground"]) do
@@ -2706,7 +2722,8 @@ randomizations.radar_reveal_area = function(id)
             abs_min = 1,
             range = "small",
             variance = "medium",
-            rounding = "discrete"
+            rounding = "discrete",
+            data_type = "uint32",
         })
 
         locale_utils.create_localised_description(radar, radar.max_distance_of_nearby_sector_revealed / old_reveal_area, id, { variance = "medium" })
@@ -2723,6 +2740,7 @@ randomizations.radar_search_area = function(id)
             property = "max_distance_of_sector_revealed",
             rounding = "discrete",
             variance = "medium",
+            data_type = "uint32",
         })
 
         locale_utils.create_localised_description(radar, radar.max_distance_of_sector_revealed / old_search_area, id, { variance = "medium" })
@@ -2925,7 +2943,8 @@ randomizations.roboport_charging_station_count = function(id)
                 property = "charging_station_count",
                 -- Don't randomize if there's only one station, and don't randomize down to one station if there are more
                 abs_min = 2,
-                rounding = "discrete"
+                rounding = "discrete",
+                data_type = "uint32",
             })
 
             locale_utils.create_localised_description(roboport, roboport.charging_station_count / old_station_count, id)
@@ -2967,7 +2986,8 @@ randomizations.roboport_inventory = function(id)
             prototype = roboport,
             property = "material_slots_count",
             range = "small",
-            rounding = "discrete"
+            rounding = "discrete",
+            data_type = "uint16",
         })
 
         randomize({
@@ -2975,7 +2995,8 @@ randomizations.roboport_inventory = function(id)
             prototype = roboport,
             property = "robot_slots_count",
             range = "small",
-            rounding = "discrete"
+            rounding = "discrete",
+            data_type = "uint16",
         })
 
         local factor = (roboport.material_slots_count + roboport.robot_slots_count) / old_value
@@ -3027,7 +3048,8 @@ randomizations.roboport_radar_range = function(id)
                 prototype = roboport,
                 property = "radar_range",
                 variance = "small",
-                rounding = "discrete"
+                rounding = "discrete",
+                data_type = "uint32",
             })
 
             local factor = roboport.radar_range / old_value
@@ -3047,7 +3069,8 @@ randomizations.rocket_parts_required = function(id)
             property = "rocket_parts_required",
             range = "small",
             dir = -1,
-            rounding = "discrete"
+            rounding = "discrete",
+            data_type = "uint32",
         })
 
         locale_utils.create_localised_description(rocket_silo, rocket_silo.rocket_parts_required / old_rocket_parts_required, id, {flipped = true})
@@ -3214,7 +3237,7 @@ randomizations.smoke_trigger_speed = function (id)
 
             -- Back to cooldown ticks
             smoke.action_cooldown = 60 / smoke.action_cooldown
-            smoke.action_cooldown = math.max(round(smoke.action_cooldown), 1)
+            smoke.action_cooldown = math.min(math.max(round(smoke.action_cooldown), 1), 4000000000)
 
             local factor = old_value / smoke.action_cooldown
             for _, prototype in pairs(parents) do
@@ -3253,6 +3276,7 @@ randomizations.space_platform_initial_items = function (id)
                     property = "amount",
                     rounding = "discrete",
                     variance = "big",
+                    data_type = "uint16",
                 })
             end
         end
@@ -3775,9 +3799,9 @@ randomizations.underground_belt_distance = function(id)
             prototype = belt,
             property = "max_distance",
             abs_min = 2,
-            abs_max = 255,
             range_max = "very_big",
-            rounding = "discrete"
+            rounding = "discrete",
+            data_type = "uint8",
         })
 
         locale_utils.create_localised_description(belt, belt.max_distance / old_distance, id)
