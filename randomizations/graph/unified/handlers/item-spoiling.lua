@@ -7,6 +7,7 @@ local helper = require("randomizations/graph/unified/helper")
 
 local item_spoiling = {}
 
+local state = {}
 item_spoiling.state = {}
 item_spoiling.init = function(state)
     for k, v in pairs(state) do
@@ -100,8 +101,8 @@ item_spoiling.validate_connection = function(slot, traveler)
     return true
 end
 
-item_spoiling.reflect = function(sorted_slots, slot_to_traveler)
-    for _, slot in pairs(sorted_slots) do
+item_spoiling.reflect = function(slot_to_traveler)
+    for _, slot in pairs(state.sorted_slots) do
         if slot.handler_id == "item-spoiling" then
             local item_prot = helper.items[slot.item]
             local traveler = slot_to_traveler[graph_utils.get_node_key(slot)]

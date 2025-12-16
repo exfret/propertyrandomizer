@@ -9,6 +9,8 @@ local default = {}
 
 -- Note that default's implementation of all the fields here aren't used since they're always mandatory; they're just here for demonstration purposes
 default.required_fields = {
+    ["state"] = true,
+    ["init"] = true,
     ["source_types"] = true,
     ["target_types"] = true,
     ["group_surfaces"] = true,
@@ -20,7 +22,8 @@ default.required_fields = {
 
 -- State is some pointers to extra info created by execute.lua, which calls the handlers
 -- It's often big tables that we wouldn't want to create inside each handler, like top_sort's
-default.state = {}
+local state = {}
+default.state = state
 default.init = function(state)
     for k, v in pairs(state) do
         default.state[k] = v
@@ -115,12 +118,19 @@ end
 default.validate_connection = function(slot, traveler)
 end
 
+-- Sometimes, after making a connection, we need to do a few fixes to the graph
+-- This is often because we technically connected two different node types (i.e.- a recipe from recipe results to an item node from mining results, one is craft-material and the other is just plain item)
+default.do_slot_conn_fixes = function(slot, traveler)
+end
+default.do_traveler_conn_fixes = function(slot, traveler)
+end
+
 -- This is the "fun" part full of lots of special cases and ad hoc fixes, yay! We reflect our changes onto data.raw, creating new ingredients, modifying recipes, mucking with autoplace, and adding hotfixes
 -- I'm wondering if reflection should be done all at once as a separate step rather than handled by each slot individually
 -- In item randomization, for example, we need to first gather the changes, so like an item that spoils into one thing being changed might cause that new item to see it needs to be changed again wrongly
 -- However, as long as we detect what needs to be changed from the graph rather than from data.raw, I think we're good
 -- TODO: Also pass in speicific indices to the slots of this handler so we don't have to go through sorted_slots a bazillion different times
-default.reflect = function(sorted_slots, slot_to_traveler)
+default.reflect = function(slot_to_traveler)
 end
 
 return default
