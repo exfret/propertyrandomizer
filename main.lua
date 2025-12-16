@@ -81,17 +81,22 @@ for class, amount in pairs(per_entity_class) do
 end]]
 
 global_seed = 767614037
+global_seed = 3991075545
 global_chaos_range = 1
 global_chaos = 1
 global_bias = 0
 global_bias_idx = 2
 
 local build_graph = require("lib/graph/build-graph")
+dep_graph = build_graph.graph
+local build_graph_compat = require("lib/graph/build-graph-compat")
 local min_rec_req = require("lib/graph/min-rec-req")
 local set_utils = require("lib/graph/set-utils")
 local critical_req = require("lib/graph/critical-req")
 randomizations = {}
-local trigger_util = require("lib/trigger")
+require("randomizations/graph/core")
+build_graph.add_dependents(build_graph.graph)
+local state = randomizations.graph("graph")
 
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]

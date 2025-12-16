@@ -118,6 +118,7 @@ randomizations.map_gen_preset = function (id)
         dir = -1,
         variance = "medium",
         rounding = "discrete",
+        data_type = "uint32",
     })
     enemy_expansion.settler_group_max_size = enemy_expansion_defaults.settler_group_max_size - enemy_expansion_defaults.settler_group_min_size
     enemy_expansion.settler_group_min_size = randnum.rand({
@@ -126,6 +127,7 @@ randomizations.map_gen_preset = function (id)
         dir = -1,
         variance = "medium",
         rounding = "discrete",
+        data_type = "uint32",
     })
     enemy_expansion.settler_group_max_size = randnum.rand({
         key = rng_key,
@@ -133,6 +135,7 @@ randomizations.map_gen_preset = function (id)
         dir = -1,
         variance = "medium",
         rounding = "discrete",
+        data_type = "uint32",
     })
     enemy_expansion.settler_group_max_size = enemy_expansion.settler_group_max_size + enemy_expansion.settler_group_min_size
     local ticks_per_minute = 3600
