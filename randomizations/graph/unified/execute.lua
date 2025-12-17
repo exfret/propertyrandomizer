@@ -184,9 +184,24 @@ randomizations.unified = function(id)
         local surface_specific_node_type = node.type .. "-surface"
 
         if node.surface ~= nil then
-            node_to_surface[node_key] = node.surface
+            if node_to_surface[graph_utils.get_node_key(node)] == nil then
+                node_to_surface[node_key] = node.surface
+                local surface_agnostic_node = helper.surface_to_agnostic[node_key]
+                if surface_agnostic_node ~= nil then
+                    node_to_surface[graph_utils.get_node_key(surface_agnostic_node)] = node.surface
+                    for _, surface_node in pairs(helper.get_surface_variants(surface_agnostic_node)) do
+                        node_to_surface[graph_utils.get_node_key(surface_node)] = node.surface
+                    end
+                else
+                    --log(serpent.block(node))
+                end
+            end
         elseif build_graph.ops[surface_specific_node_type] ~= nil then
-            local nauvis_specific_node = helper.specify_node_to_surface(node, build_graph.compound_key({"planet", "nauvis"}))
+            -- Error if we somehow found the surface agnostic node first
+            if node_to_surface[graph_utils.get_node_key(node)] == nil then
+                error()
+            end
+            --[=[local nauvis_specific_node = helper.specify_node_to_surface(node, build_graph.compound_key({"planet", "nauvis"}))
             local nauvis_specific_node_key
             if nauvis_specific_node ~= nil then
                 nauvis_specific_node_key = graph_utils.get_node_key(nauvis_specific_node)
@@ -197,7 +212,7 @@ randomizations.unified = function(id)
                 for _, planet_name in pairs(planet_names) do
                     local surface_specific_node = helper.specify_node_to_surface(node, build_graph.compound_key({"planet", planet_name}))
                     local surface_specific_node_key = graph_utils.get_node_key(surface_specific_node)
-                    if ((vanilla_planet_sort_info[planet_name].reachable[surface_specific_node_key] and not vanilla_planet_sort_info[planet_name].reachable[nauvis_specific_node_key]) or (vanilla_sort_info.reachable[surface_specific_node_key] and not vanilla_sort_info.reachable[nauvis_specific_node_key])) then
+                    if (--[[(vanilla_planet_sort_info[planet_name].reachable[surface_specific_node_key] and not vanilla_planet_sort_info[planet_name].reachable[nauvis_specific_node_key]) or]] (vanilla_sort_info.reachable[surface_specific_node_key] and not vanilla_sort_info.reachable[nauvis_specific_node_key])) then
                         if node_to_surface[node_key] ~= nil then
                             log(node_key .. " has multiple planets")
                             node_to_surface[node_key] = build_graph.compound_key({"planet", "nauvis"})
@@ -221,7 +236,7 @@ randomizations.unified = function(id)
                     -- CRITICAL TODO: Aquilo reachability doesn't seem to quite be working?
                     node_to_surface[node_key] = build_graph.compound_key({"planet", "aquilo"})
                 end
-            end
+            end]=]
         else
             -- A surface-agnostic node with no surface counterparts (like technologies) is simply assigned nauvis
             node_to_surface[node_key] = build_graph.compound_key({"planet", "nauvis"})
@@ -300,14 +315,22 @@ randomizations.unified = function(id)
     local edge_reconfigs = {}
     local slot_to_vanilla_traveler = {}
     local traveler_to_vanilla_slot = {}
-    for _, node in pairs(vanilla_sort_info.sorted) do
+    --[[for _, node in pairs(vanilla_sort_info.sorted) do
         for handler_id, handler in pairs(conn_handlers) do
             if handler.source_types[node.type] then
                 for _, dependent in pairs(node.dependents) do
                     -- Check that the dependent is reachable! Otherwise, we could randomize to connections that aren't even reachable
-                    if vanilla_sort_info.reachable[graph_utils.get_node_key(dependent)] then
-                        if handler.target_types[dependent.type] then
-                            local dependent_node = graph_utils.get(dependent)
+                    if vanilla_sort_info.reachable[graph_utils.get_node_key(dependent)] then]]
+    -- We actually need to sort the slots (prereqs) in a sort according to the dependents... confusing
+    for _, dependent_node in pairs(vanilla_sort_info.sorted) do
+        for handler_id, handler in pairs(conn_handlers) do
+            if handler.target_types[dependent_node.type] then
+                for _, prereq in pairs(dependent_node.prereqs) do
+                    -- Check reachability (prereqs of reachable nodes could be unreachable)
+                    if vanilla_sort_info.reachable[graph_utils.get_node_key(prereq)] then
+                        local node = graph_utils.get(prereq)
+                        if handler.source_types[node.type] then
+                            --local dependent_node = graph_utils.get(dependent)
                             local edge
                             -- If this is a grouped surface handler, then use the surface-agnostic versions of the nodes
                             -- TODO: This assumes a one-to-one connection between edges in the case of one surface or another; this is almost always the case, but I could generalize this
@@ -333,7 +356,8 @@ randomizations.unified = function(id)
                                         -- It makes no sense for slot and traveler to have different home surfaces... we should check if that happens
                                         local node_to_check
                                         if connector_type == "slot" then
-                                            node_to_check = node
+                                            -- Let's try with the slot node being assigned to the dependent node's surface
+                                            node_to_check = dependent_node
                                         else
                                             node_to_check = dependent_node
                                         end
@@ -524,11 +548,26 @@ randomizations.unified = function(id)
             if connector_type == "slot" then
                 return reachable[graph_utils.get_node_key(node)]
             else
-                -- If it's a traveler, we need to advance once to get to the node it's connected to
-                -- Note: or maybe not?
-                -- CRITICAL TODO: Decide on this
+                -- If it's a traveler, we need to advance once to get to the node it's connected to, then check that it would be satisfied if the traveler was
+                local would_connected_node_reachable = true
                 local connected_node = graph_utils.get(node.dependents[1])
-                return reachable[graph_utils.get_node_key(node)] --or reachable[graph_utils.get_node_key(connected_node)]
+                -- That means an OR node would always be satisfied
+                if build_graph.ops[connected_node.type] == "OR" then
+                    return true
+                end
+                for _, prereq in pairs(connected_node.prereqs) do
+                    -- Oh, to prevent locking ourselves in, we need to ignore other traveler nodes (in case reserved) as well... I should probably just build in logic to process a whole AND node at once
+                    --[[if graph_utils.get_node_key(prereq) ~= graph_utils.get_node_key(node) and not reachable[graph_utils.get_node_key(prereq)] then
+                        would_connected_node_reachable = false
+                    end]]
+                    -- Just check if this is reachable using only traveler connections at all
+                    local prereq_node = graph_utils.get(prereq)
+                    if prereq_node.type ~= "traveler-surface" and not reachable[graph_utils.get_node_key(prereq_node)] then
+                        would_connected_node_reachable = false
+                    end
+                end
+                return would_connected_node_reachable
+                --return reachable[graph_utils.get_node_key(node)] --or reachable[graph_utils.get_node_key(connected_node)]
             end
         end
 
@@ -564,7 +603,17 @@ randomizations.unified = function(id)
 
     -- Since slots are chosen first, we don't need to pay attention to surface constraints yet
     -- Still allow to restrict reachable in case we need it later
-    local function is_slot_reachable(reachable, slot)
+    local function is_slot_reachable(reachable, slot, surface_name)
+        -- If surface_name ~= nil, then that means we want to inspect that specific surface, which is straightforward
+        -- CRITICAL TODO: Consider how this works without group_surfaces = true!
+        -- Oh we also still want the slot to be reachable on its default surface still lol
+        -- Oh, no we want the vanilla traveler to be reachable
+        -- Wait this is complicated
+        -- So, we don't want a slot to gobble up a traveler as a reservation if it's too far away
+        if surface_name ~= nil then
+            return reachable[graph_utils.get_node_key(slot.nodes[surface_name])] and reachable[graph_utils.get_node_key(slot.nodes[slot.home_surface])]
+        end
+
         if is_node_reachable(reachable, slot) then
             return true
         end
@@ -580,15 +629,31 @@ randomizations.unified = function(id)
             return false
         end
 
-        if is_node_reachable(reachable, traveler) then
+        if is_slot_reachable(reachable, traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)]) and is_node_reachable(reachable, traveler) then
             return true
         end
 
         -- Is the "or if it would have been reachable in the old version" logic right? Why are we doing that?
         -- I think we need this because travelers start unreachable, so we need a way to say "the corresponding slot is reachable"
-        if is_slot_reachable(reachable, traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)]) then
+        --[[if is_slot_reachable(reachable, traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)]) then
             return true
+        end]]
+        -- Wait I think if it's "the vanilla traveler corresponding to the vanilla slot"
+        --[[if is_node_reachable(reachable, slot_to_vanilla_traveler[graph_utils.get_node_key(traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)])]) then
+            return true
+        end]]
+        -- No no, we do want slots, but not a reserved slot
+        -- Oh not that either, we need the thing to which the traveler corresponds to be reachable if the traveler is satisfied, and for the vanilla slot to be reachable
+        -- No no, we need to change is_slot_reachable
+        --[=[local vanilla_slot = traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)]
+        local traveler_dependent_node = graph_utils.get(traveler.dependents[1])
+        local node_will_be_reachable = true
+        for _, prereq in pairs(traveler_dependent_node.prereqs) do
+            if graph_utils.get_node_key(prereq) ~= graph_utils.get_node_key()
         end
+        if is_slot_reachable(reachable, vanilla_slot) --[[and not is_reserved_slot[graph_utils.get_node_key(vanilla_slot)] ]] then
+            return true
+        end]=]
 
         return false
     end
@@ -620,6 +685,7 @@ randomizations.unified = function(id)
             -- Rewire surface connections of traveler to same surface as slot if necessary
             -- TODO: Broaden the scope of this if necessary; right now it just does immediately around the canonical node, which might not be enough
             --local slot_surface = node_to_surface[graph_utils.get_node_key(helper.to_canonical(slot))]
+            -- CRITICAL TODO: Not sure if we should ever be using slot.home_surface; maybe look into this (home_surface should just be where we want to first assign things)
             if traveler.home_surface ~= nil and slot.home_surface ~= nil and traveler.home_surface ~= slot.home_surface then
                 local traveler_node = helper.specify_node_to_surface(helper.to_canonical(traveler), traveler.home_surface) or helper.to_canonical(traveler)
                 local dependents_to_remove = {}
@@ -640,7 +706,6 @@ randomizations.unified = function(id)
                 traveler.home_surface = slot.home_surface
             end
             -- Since this slot must be reachable, this specific connection must be, so we can do the sort
-            -- CRITICAL TODO: Bring back iterative sort
             curr_global_sort_info = top_sort.sort(dep_graph, nil, curr_global_sort_info, {slot.node, traveler.node}, {make_new_conn_reachable = true})
             --curr_global_sort_info = top_sort.sort(dep_graph)
             for _, handler in pairs(conn_handlers) do
@@ -652,7 +717,6 @@ randomizations.unified = function(id)
                 -- In this case, only one of the surface connections may even be reachable, so we can't naively apply sort to each one because some may be unreachable
                 -- Thus, we need to check for reachability; in this case it is "raw" reachability, not slot reachability
                 if curr_global_sort_info.reachable[graph_utils.get_node_key(slot.nodes[surface_name])] then
-                    -- CRITICAL TODO: Bring back iterative sort
                     curr_global_sort_info = top_sort.sort(dep_graph, nil, curr_global_sort_info, {slot.nodes[surface_name], traveler.nodes[surface_name]}, {make_new_conn_reachable = true})
                     --curr_global_sort_info = top_sort.sort(dep_graph)
                     for _, handler in pairs(conn_handlers) do
@@ -698,13 +762,13 @@ randomizations.unified = function(id)
         end
     end
 
-    log("Beginning with following slots and travelers")
+    --[[log("Beginning with following slots and travelers")
     for _, slot in pairs(sorted_slots) do
         log(graph_utils.get_node_key(slot))
     end
     for _, traveler in pairs(shuffled_travelers) do
         log(graph_utils.get_node_key(traveler))
-    end
+    end]]
     local unused_sorted_slots = {}
     for ind, slot in pairs(sorted_slots) do
         table.insert(unused_sorted_slots, {
@@ -740,7 +804,7 @@ randomizations.unified = function(id)
                 if #reserved_slots >= 1 and j <= constants.unified_randomization_bootings_until_dummy_slot and proposed_slot.dummy then
                     break
                 end
-                if slot_to_traveler[graph_utils.get_node_key(proposed_slot)] == nil and is_slot_reachable(curr_global_sort_info.reachable, proposed_slot) then
+                if --[[(unused_slots_ind <= (10 + 10 * j) or proposed_slot.dummy) and]] slot_to_traveler[graph_utils.get_node_key(proposed_slot)] == nil and is_slot_reachable(curr_global_sort_info.reachable, proposed_slot) then
                     for _, proposed_traveler_info in pairs(slot_to_possibilites[graph_utils.get_node_key(proposed_slot)]) do
                         num_travelers_checked = num_travelers_checked + 1
                         local proposed_traveler = proposed_traveler_info.traveler
@@ -752,9 +816,11 @@ randomizations.unified = function(id)
                         -- First make sure the traveler is unused
                         if traveler_to_slot[graph_utils.get_node_key(proposed_traveler)] == nil then
                             local this_traveler_reachable = true
-                            if not is_traveler_reachable(curr_global_sort_info.reachable, proposed_traveler) then
+                            -- Also need to check not necessarily that the slot was originally on traveler's surface, but that it can be now
+                            if not is_traveler_reachable(curr_global_sort_info.reachable, proposed_traveler) or not is_slot_reachable(curr_global_sort_info.reachable, proposed_slot, proposed_traveler.home_surface) then
                                 this_traveler_reachable = false
-                            elseif not proposed_slot.dummy then
+                            -- Surface reachability should be checked in traveler reachable now
+                            --[=[elseif not proposed_slot.dummy then
                                 -- Note: We an now assume traveler and slot are not dummy
                                 
                                 -- Surface reachability
@@ -774,9 +840,8 @@ randomizations.unified = function(id)
                                                 this_traveler_reachable = false
                                             end
                                         end
-                                        
                                     --end
-                                end
+                                end]=]
                             end
 
                             local to_be_reserved = false
@@ -786,12 +851,14 @@ randomizations.unified = function(id)
 
                             -- If the thing that this traveler unlocks was already reachable, do a permanent reservation
                             -- Note: This previously excluded dummy travelers, but we might actually want dummy travelers to unlock more things
+                            -- Note again: Wait no, they can unlock things but we don't want to rely on that and that's what permanent reservations are about anyways so let's have dummies permanently reserved
+                            -- Changing it didn't seem to change anything, eh
                             local to_be_permanently_reserved = false
-                            if --[[proposed_traveler.dummy or]] curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(proposed_traveler))] then
+                            if proposed_traveler.dummy or curr_global_sort_info.reachable[graph_utils.get_node_key(helper.specify_node_to_surface(helper.to_canonical(proposed_traveler), proposed_traveler.home_surface))] then
                                 to_be_permanently_reserved = true
                             end
 
-                            if to_be_reserved or to_be_permanently_reserved or is_traveler_reachable(curr_global_sort_info.reachable, proposed_traveler) then
+                            if to_be_reserved or to_be_permanently_reserved or this_traveler_reachable --[[or is_traveler_reachable(curr_global_sort_info.reachable, proposed_traveler)]] then
                                 -- See if this slot is happy with this traveler
                                 if conn_handlers[proposed_slot.handler_id].validate_connection(proposed_slot, proposed_traveler) then
                                     if to_be_reserved or to_be_permanently_reserved then
@@ -819,6 +886,8 @@ randomizations.unified = function(id)
             if accepted_slot == nil then
                 log("Trying to boot with " .. tostring(#reserved_slots) .. " reserved slots...")
 
+                local was_booting_successful = false
+
                 local failed_travelers_in_priority_order = {}
                 for _, failed_traveler in pairs(shuffled_travelers) do
                     -- Check reachable and unused
@@ -827,14 +896,28 @@ randomizations.unified = function(id)
                     end
                 end
                 table.sort(failed_travelers_in_priority_order, function(t1, t2)
+                    if not is_traveler_reachable(curr_global_sort_info.reachable, t2) and is_traveler_reachable(curr_global_sort_info.reachable, t1) then
+                        return true
+                    elseif is_traveler_reachable(curr_global_sort_info.reachable, t2) and not is_traveler_reachable(curr_global_sort_info.reachable, t1) then
+                        return false
+                    end
                     return conn_handlers[t1.handler_id].traveler_priority(t1) > conn_handlers[t2.handler_id].traveler_priority(t2)
                 end)
+                -- CRITICAL TODO: Go through travelers also in top sort order for priority, just factor that in
+                -- Excluding based off reachable entirely may be too harsh
+                for _, failed_traveler in pairs(failed_travelers_in_priority_order) do
+                    --log(failed_traveler.name)
+                end
                 if #reserved_slots >= 1 then
                     for ind_to_boot = #reserved_slots, 1, -1 do
                         local found_successful_booter = false
+                        local booted_slot = reserved_slots[ind_to_boot]
                         for _, failed_traveler in pairs(failed_travelers_in_priority_order) do
-                            local booted_slot = reserved_slots[ind_to_boot]
-                            if conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, failed_traveler) then
+                            -- Let's not even try with travelers that we know won't work
+                            if conn_handlers[failed_traveler.handler_id].traveler_priority(failed_traveler) < 0 then
+                                break
+                            end
+                            if --[[booted_slot.home_surface == failed_traveler.home_surface and]] is_slot_reachable(curr_global_sort_info.reachable, booted_slot, failed_traveler.home_surface) and conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, failed_traveler) then
                                 -- Boot out the most recent reservation
                                 table.remove(reserved_slots, ind_to_boot)
                                 is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
@@ -860,9 +943,22 @@ randomizations.unified = function(id)
                             end
                         end
                         if found_successful_booter then
+                            was_booting_successful = true
                             break
                         end
                     end
+                end
+
+                -- I noticed the reservation list growing, but not many reservations being taken, so I decided to try making fulfilling reservations if there got to be enough
+                if not was_booting_successful and #reserved_slots > constants.unified_randomization_max_num_reservations then
+                    -- CRITICAL TODO: This is really a band-aid on a larger problem!
+                    log("Settling in longtime residents")
+                    
+                    local booted_slot = reserved_slots[1]
+                    table.remove(reserved_slots, 1)
+                    is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
+                    is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
+                    add_slot_traveler_conns(booted_slot, slot_to_traveler[graph_utils.get_node_key(booted_slot)])
                 end
             else
                 break
@@ -877,7 +973,7 @@ randomizations.unified = function(id)
                 end
             end
             if actually_its_fine then
-                log("Randomizer limped over the finish line, but think's it's okay?")
+                log("Randomizer limped over the finish line, but I think it's okay?")
                 break
             end
 
@@ -916,6 +1012,10 @@ randomizations.unified = function(id)
                     log("\n" .. graph_utils.get_node_key(traveler))
                     log(is_traveler_reachable(curr_global_sort_info.reachable, traveler))
                 end
+            end
+            log("Reserved slots")
+            for _, slot in pairs(reserved_slots) do
+                log(graph_utils.get_node_key(slot))
             end
             error("Unified randomization failed at " .. tostring(math.floor(100 * num_normal_travelers_satisfied / num_normal_travelers)) .. "%.")
             -- TODO: Decide if I want to disable reachability condition for last stretch

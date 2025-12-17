@@ -250,6 +250,11 @@ recipe_results.validate_connection = function(slot, traveler)
         return false
     end
 
+    -- Enforce that this is not a dummy item/fluid if there are trigger techs attached
+    if #slot.trigger_techs > 0 and traveler.dummy then
+        return false
+    end
+
     -- Otherwise, accept
     -- CRITICAL TODO: Go through any other checks needed!
     return true
@@ -337,6 +342,12 @@ recipe_results.reflect = function(slot_to_traveler)
                         -- Remove this recipe
                         --recipe_prot.hidden = true
                         --helper.remove_recipe_tech_unlock(recipe_prot.name)
+                        -- Okay, hotfix for now, only do this if there are no longer results
+                        -- Need to still follow up with the critical todo to make sure we only address one result per randomization or that we check more carefully if they all go away
+                        if recipe_prot.results ~= nil and #recipe_prot.results == 1 then
+                            recipe_prot.hidden = true
+                            helper.remove_recipe_tech_unlock(recipe_prot.name)
+                        end
                     end
                 else
                     if not traveler.dummy then
@@ -381,6 +392,12 @@ recipe_results.reflect = function(slot_to_traveler)
                     end
 
                     -- CRITICAL TODO: Correct localised names
+                end
+            else
+                -- Hide unused recipes
+                recipe_prot = data.raw.recipe[slot.recipe]
+                if recipe_prot ~= nil then
+                    recipe_prot.hidden = true
                 end
             end
         end

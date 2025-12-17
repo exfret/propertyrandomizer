@@ -105,14 +105,14 @@ for _, planet in pairs(data.raw.planet) do
     }
 end
 if data.raw.surface ~= nil then
-    for _, surface in pairs(data.raw.surface) do
-        surfaces[compound_key({"space-surface", surface.name})] = {
+    for _, surface_prot in pairs(data.raw.surface) do
+        surfaces[compound_key({"space-surface", surface_prot.name})] = {
             type = "space-surface",
-            name = surface.name,
+            name = surface_prot.name,
             prototype = {
-                type = surface.type,
-                name = surface.name,
-                surface_properties = surface.surface_properties
+                type = surface_prot.type,
+                name = surface_prot.name,
+                surface_properties = surface_prot.surface_properties
             }
         }
     end
@@ -791,6 +791,14 @@ local function load()
     -- This should probably just be put directly in here with the rest of the mtm stuff...
     build_graph.recalculate_spoofed_recipe_categories()
     build_graph.recalculate_spoofed_resource_categories()
+    -- Also recalculate materials here
+    for _, item in pairs(items) do
+        materials["item-" .. item.name] = item
+    end
+    for _, fluid in pairs(data.raw.fluid) do
+        materials["fluid-" .. fluid.name] = fluid
+    end
+    build_graph.materials = materials
 
     ----------------------------------------------------------------------
     -- Nodes
@@ -845,9 +853,9 @@ local function load()
     -- Only implemented for space surfaces
     -- Can we use any asteroid collector on this surface?
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
-        local surface_key = compound_key({"space-surface", surface.name})
+        local surface_key = compound_key({"space-surface", surface_prot.name})
 
         for _, entity in pairs(get_prototypes("asteroid-collector")) do
             table.insert(prereqs, {
@@ -856,7 +864,7 @@ local function load()
             })
         end
 
-        add_to_graph("asteroid-collection-surface", surface.name, prereqs, {
+        add_to_graph("asteroid-collection-surface", surface_prot.name, prereqs, {
             surface = surface_key
         })
     end
@@ -1169,7 +1177,9 @@ local function load()
                     name = compound_key({fuel.fuel_category, surface_key})
                 })
 
-                add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs)
+                add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs, {
+                    surface = surface_key
+                })
             end
         end
     end
@@ -1449,10 +1459,10 @@ local function load()
 
     prereqs = {}
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         table.insert(prereqs, {
-            type = "space-surface",
-            name = surface.name
+            type = "space-platform",
+            name = compound_key({"space-surface", surface_prot.name})
         })
     end
 
@@ -1501,13 +1511,13 @@ local function load()
 
     add_to_graph("gun-ammo-surface", "canonical", prereqs)
 
-    -- electricity-distribution-space-platfrom
-    log("Adding: electricity-distribution-space-platfrom")
+    -- electricity-distribution-space-platform
+    log("Adding: electricity-distribution-space-platform")
     -- Do we have all we need to build electricity distribution infrastructure on a space platform?
 
     prereqs = {}
 
-    add_to_graph("electricity-distribution-space-platfrom", "canonical", prereqs)
+    add_to_graph("electricity-distribution-space-platform", "canonical", prereqs)
 
     -- electricity-distribution-surface
     log("Adding: electricity-distribution-surface")
@@ -1525,7 +1535,7 @@ local function load()
             end
         elseif surface.type == "space-surface" then
             table.insert(prereqs, {
-                type = "electricity-distribution-space-platfrom",
+                type = "electricity-distribution-space-platform",
                 name = "canonical"
             })
         end
@@ -1896,7 +1906,9 @@ local function load()
                 })
             end
 
-            add_to_graph("fuel-category-burner-surface", compound_key({fuel_category.name, surface_key}), prereqs)
+            add_to_graph("fuel-category-burner-surface", compound_key({fuel_category.name, surface_key}), prereqs, {
+                surface = surface_key
+            })
         end
     end
 
@@ -1916,7 +1928,9 @@ local function load()
                 })
             end
 
-            add_to_graph("fuel-category-surface", compound_key({fuel_category.name, surface_key}), prereqs)
+            add_to_graph("fuel-category-surface", compound_key({fuel_category.name, surface_key}), prereqs, {
+                surface = surface_key
+            })
         end
     end
 
@@ -2041,8 +2055,10 @@ local function load()
         })
     end
 
-    -- item-space-surface
-    log("Adding: item-space-surface")
+    -- exfret: Renamed to space-platform because of naming conventions some other code I made required
+    -- "-surface" means a surface-specific node there
+    -- item-space-platform
+    log("Adding: item-space-platform")
     -- Do we have access to this item on a space platform?
 
     for _, item in pairs(items) do
@@ -2057,7 +2073,7 @@ local function load()
             end
         end
 
-        add_to_graph("item-space-surface", item.name, prereqs, {
+        add_to_graph("item-space-platform", item.name, prereqs, {
             item = item.name
         })
     end
@@ -2109,7 +2125,7 @@ local function load()
                         if results_in_item then
                             table.insert(prereqs, {
                                 type = "mine-asteroid-chunk-surface",
-                                name = compound_key({asteroid_chunk.name, surface.name})
+                                name = compound_key({asteroid_chunk.name, surface_key})
                             })
                         end
                     end
@@ -2230,10 +2246,10 @@ local function load()
     for _, asteroid_chunk in pairs(get_prototypes("asteroid-chunk")) do
         prereqs = {}
 
-        for _, surface in pairs(get_prototypes("surface")) do
+        for _, surface_prot in pairs(get_prototypes("surface")) do
             table.insert(prereqs, {
                 type = "mine-asteroid-chunk-surface",
-                name = compound_key({asteroid_chunk.name, surface.name})
+                name = compound_key({asteroid_chunk.name, compound_key({"space-surface", surface_prot.name})})
             })
         end
 
@@ -2246,7 +2262,9 @@ local function load()
     -- Do we have all we need to collect asteroids on this surface?
 
     for _, asteroid_chunk in pairs(get_prototypes("asteroid-chunk")) do
-        for _, surface in pairs(get_prototypes("surface")) do
+        -- Note: Surfaces (the prototype) are different from build_graph's "surfaces", which include planets too
+        -- I think the naming scheme Factorio uses is strange since in control stage they're all called surfaces again, but oh well
+        for _, surface_prot in pairs(get_prototypes("surface")) do
             prereqs = {}
 
             table.insert(prereqs, {
@@ -2255,10 +2273,13 @@ local function load()
             })
             table.insert(prereqs, {
                 type = "asteroid-collection-surface",
-                name = surface.name
+                name = surface_prot.name
             })
 
-            add_to_graph("mine-asteroid-chunk-surface", compound_key({asteroid_chunk.name, surface.name}), prereqs)
+            -- Because surface_prot is not a build-graph surface, doing surface_prot.name does not give the right key; we need to build the surface name manually
+            add_to_graph("mine-asteroid-chunk-surface", compound_key({asteroid_chunk.name, compound_key({"space-surface", surface_prot.name})}), prereqs, {
+                surface = compound_key({"space-surface", surface_prot.name})
+            })
         end
     end
 
@@ -2634,10 +2655,10 @@ local function load()
     for _, planet in pairs(get_prototypes("planet")) do
         prereqs = {}
 
-        for _, surface in pairs(get_prototypes("surface")) do
+        for _, surface_prot in pairs(get_prototypes("surface")) do
             table.insert(prereqs, {
                 type = "send-surface-starter-pack-planet",
-                name = compound_key({surface.name, planet.name})
+                name = compound_key({surface_prot.name, planet.name})
             })
         end
 
@@ -2713,6 +2734,7 @@ local function load()
         end
     end
 
+    -- CRITICAL TODO: This needs to have -surface at the end to align with conventions
     -- plant-entity-surface-automatability
     log("Adding: plant-entity-surface-automatability")
     -- Do we have all we need to automate planting this entity on this surface?
@@ -2831,6 +2853,7 @@ local function load()
         end
     end
 
+    -- CRITICAL TODO: This needs to have -surface at the end to align with conventions
     -- recipe-category-surface-automation
     log("Adding: recipe-category-surface-automation")
     -- Would we be able to automate recipes of this category on this surface?
@@ -3009,7 +3032,9 @@ local function load()
                 })
             end
 
-            add_to_graph("research-science-pack-set-surface", compound_key({science_pack_set_name, surface_key}), prereqs)
+            add_to_graph("research-science-pack-set-surface", compound_key({science_pack_set_name, surface_key}), prereqs, {
+                surface = surface_key
+            })
         end
     end
 
@@ -3249,29 +3274,29 @@ local function load()
     -- Do we have all we need to send a space platform starter pack to this surface?
 
     -- Only for space surfaces
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
 
         for _, planet in pairs(get_prototypes("planet")) do
             table.insert(prereqs, {
                 type = "send-surface-starter-pack-planet",
-                name = compound_key({surface.name, planet.name}),
+                name = compound_key({surface_prot.name, planet.name}),
             })
         end
 
-        add_to_graph("send-surface-starter-pack", surface.name, prereqs)
+        add_to_graph("send-surface-starter-pack", surface_prot.name, prereqs)
     end
 
     -- send-surface-starter-pack-planet
     log("Adding: send-surface-starter-pack-planet")
     -- Do we have all we need to send a space platform starter pack from this planet to this surface?
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         for _, planet in pairs(get_prototypes("planet")) do
             prereqs = {}
 
                 for _, starter_pack in pairs(data.raw["space-platform-starter-pack"]) do
-                    if starter_pack.surface == surface.name then
+                    if starter_pack.surface == surface_prot.name then
                         table.insert(prereqs, {
                             type = "send-item-to-orbit-planet",
                             name = compound_key({starter_pack.name, planet.name}),
@@ -3282,7 +3307,7 @@ local function load()
                     end
                 end
 
-            add_to_graph("send-surface-starter-pack-planet", compound_key({surface.name, planet.name}), prereqs)
+            add_to_graph("send-surface-starter-pack-planet", compound_key({surface_prot.name, planet.name}), prereqs)
         end
     end
 
@@ -3367,11 +3392,11 @@ local function load()
         end
     end
 
-    -- space-surface
-    log("Adding: space-surface")
+    -- space-platform
+    log("Adding: space-platform")
     -- Do we have all we need to access this space surface?
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
 
         table.insert(prereqs, {
@@ -3381,10 +3406,12 @@ local function load()
 
         table.insert(prereqs, {
             type = "send-surface-starter-pack",
-            name = surface.name
+            name = surface_prot.name
         })
 
-        add_to_graph("space-surface", surface.name, prereqs)
+        add_to_graph("space-platform", compound_key({"space-surface", surface_prot.name}), prereqs, {
+            surface = compound_key({"space-surface", surface_prot.name})
+        })
     end
 
     -- spaceship
@@ -3393,10 +3420,10 @@ local function load()
 
     prereqs = {}
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         table.insert(prereqs, {
             type = "spaceship-surface",
-            name = surface.name
+            name = compound_key({"canonical", compound_key({"space-surface", surface_prot.name})})
         })
     end
 
@@ -3406,17 +3433,19 @@ local function load()
     log("Adding: spaceship-engine-surface")
     -- Do we have all we need to use a thruster on this surface?
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
 
         for _, thruster in pairs(get_prototypes("thruster")) do
             table.insert(prereqs, {
                 type = "operate-entity-surface",
-                name = compound_key({thruster.name, compound_key({"space-surface", surface.name})})
+                name = compound_key({thruster.name, compound_key({"space-surface", surface_prot.name})})
             })
         end
 
-        add_to_graph("spaceship-engine-surface", surface.name, prereqs)
+        add_to_graph("spaceship-engine-surface", compound_key({"space-surface", surface_prot.name}), prereqs, {
+            surface = compound_key({"space-surface", surface_prot.name})
+        })
     end
 
     -- spaceship-military-surface
@@ -3425,44 +3454,49 @@ local function load()
 
     local spaceship_military_classes = { "ammo-turret", "artillery-turret", "electric-turret", "fluid-turret", "land-mine" }
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
 
         for _, defense_class in pairs(spaceship_military_classes) do
             for _, defense_entity in pairs(get_prototypes(defense_class)) do
                 table.insert(prereqs, {
                     type = "operate-entity-surface",
-                    name = compound_key({defense_entity.name, compound_key({"space-surface", surface.name})})
+                    name = compound_key({defense_entity.name, compound_key({"space-surface", surface_prot.name})})
                 })
             end
         end
 
         -- Combat robots?
 
-        add_to_graph("spaceship-military-surface", surface.name, prereqs)
+        add_to_graph("spaceship-military-surface", compound_key({"space-surface", surface_prot.name}), prereqs, {
+            surface = compound_key({"space-surface", surface_prot.name})
+        })
     end
 
     -- spaceship-surface
     log("Adding: spaceship-surface")
     -- Do we have all we need to make a space platform on this surface that can safely move across space connections?
 
-    for _, surface in pairs(get_prototypes("surface")) do
+    for _, surface_prot in pairs(get_prototypes("surface")) do
         prereqs = {}
 
         table.insert(prereqs, {
             type = "spaceship-engine-surface",
-            name = surface.name
+            name = compound_key({"space-surface", surface_prot.name})
         })
         table.insert(prereqs, {
-            type = "space-surface",
-            name = surface.name
+            type = "space-platform",
+            name = compound_key({"space-surface", surface_prot.name})
         })
         table.insert(prereqs, {
             type = "spaceship-military-surface",
-            name = surface.name
+            name = compound_key({"space-surface", surface_prot.name})
         })
 
-        add_to_graph("spaceship-surface", surface.name, prereqs)
+        -- exfret: I needed to add "canonical" here for some of my code to work... sorry I know it's a bit ugly
+        add_to_graph("spaceship-surface", compound_key({"canonical", compound_key({"space-surface", surface_prot.name})}), prereqs, {
+            surface = compound_key({"space-surface", surface_prot.name})
+        })
     end
 
     -- spawn-asteroid-chunk
@@ -3691,9 +3725,21 @@ local function load()
     for surface_key, surface in pairs(surfaces) do
         prereqs = {}
 
+        local surface_type
+        local surface_name
+        if surface.type == "planet" then
+            surface_type = "planet"
+            surface_name = surface.prototype.name
+        elseif surface.type == "space-surface" then
+            surface_type = "space-platform"
+            surface_name = surface_key
+        else
+            error("Surface with unexpected type.")
+        end
+
         table.insert(prereqs, {
-            type = surface.type,
-            name = surface.prototype.name,
+            type = surface_type,
+            name = surface_name,
             remove_caveat = {
                 ["transported"] = true
             }
@@ -3789,7 +3835,7 @@ local function load()
             })
 
             table.insert(prereqs, {
-                type = "item-space-surface",
+                type = "item-space-platform",
                 name = item.name,
                 add_caveat = {
                     ["transported"] = true
@@ -3849,6 +3895,8 @@ local function load()
     -- This is needed for technical reasons
     -- I already do this manually with a few node types above
     -- TODO: Refactor so I'm just using this for consistency
+    -- CRITICAL TODO: Some node names don't follow convention and so aren't converted correctly (I think?)
+    -- It's not working either way
     local manual_types = table.deepcopy(build_graph.ops)
     local agnostics_added = {}
     for _, node in pairs(graph) do
@@ -3872,6 +3920,7 @@ local function load()
                 else
                     agnostic_name = "canonical"
                 end
+                --log(agnostic_name)
                 local agnostic_key = key(agnostic_type, agnostic_name)
                 if agnostics_added[agnostic_key] == nil then
                     agnostics_added[agnostic_key] = table.deepcopy(node)
@@ -3936,7 +3985,7 @@ build_graph.ops = {
     ["create-space-platform"] = "OR",
     ["create-space-platform-tech-unlock"] = "OR",
     ["damage-type-amount-surface"] = "OR",
-    ["electricity-distribution-space-platfrom"] = "AND",
+    ["electricity-distribution-space-platform"] = "AND",
     ["electricity-distribution-surface"] = "OR",
     ["electricity-production-surface"] = "OR",
     ["electricity-surface"] = "AND",
@@ -3959,7 +4008,7 @@ build_graph.ops = {
     ["hold-fluid-surface"] = "OR",
     ["item"] = "OR",
     ["item-slot"] = "OR", -- Used during item randomization; not constructed here
-    ["item-space-surface"] = "OR",
+    ["item-space-platform"] = "OR",
     ["item-surface"] = "OR",
     ["item-insertion"] = "OR",
     ["loot-entity"] = "OR",
@@ -4007,7 +4056,7 @@ build_graph.ops = {
     ["space-connection"] = "AND",
     ["space-location"] = "OR",
     ["space-location-discovery"] = "OR",
-    ["space-surface"] = "AND",
+    ["space-platform"] = "AND",
     ["spaceship"] = "OR",
     ["spaceship-engine-surface"] = "OR",
     ["spaceship-military-surface"] = "OR",
