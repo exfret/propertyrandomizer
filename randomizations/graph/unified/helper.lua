@@ -294,8 +294,25 @@ local function find_base_priority(traveler, state)
 end
 
 local function find_priority(traveler, state)
+    -- First, do an initial check that the specific node is critical, not just the canonical what-it-leads-to
+    -- Since ice-melting is assigned the wrong surface, we'll need to look at all surfaces and see if any of them are critical
+    -- CRITICAL TODO: Figure out home surfaces more smartly!
+    for _, node in pairs(traveler.nodes) do
+        -- Need to go to the dependent, since that is where the critical map actually is defined, not on the virtual slot/traveler nodes
+        if state.is_critical[graph_utils.get_node_key(node.dependents[1])] then
+            return 2
+        end
+    end
+    for _, node in pairs(traveler.nodes) do
+        if state.is_significant[graph_utils.get_node_key(node.dependents[1])] then
+            return 1
+        end
+    end
+
     -- Check if the material this traveler gives us access to is something already accessible
-    if state.curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(traveler))] then
+    -- Right now, we're specifying traveler to home surface, but I'm not sure if this is the right approach
+    -- This was needed because of things like water, where obtaining it again on nauvis is whatever and deserves a -1, but getting it on a new surface is very important
+    if traveler.dummy or state.curr_global_sort_info.reachable[graph_utils.get_node_key(specify_node_to_surface(helper.to_canonical(traveler), traveler.home_surface))] then
         return -1
     end
 

@@ -124,11 +124,21 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-simultaneous",
+        localised_name = "Simultaneous (beta)",
+        localised_description = "Performs randomizations simultaneously rather than all at once. Currently a WIP.",
+        default_value = false,
+        order = "d-a[simultaneous]",
+        hidden = true
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-unified",
         localised_name = "Unified (beta)",
         localised_description = "Randomizes everything all at once. Not recommended with the other major randomizations below.",
         default_value = false,
-        order = "d-a[unified]",
+        order = "d-b[unified]",
         hidden = true
     },
     {
@@ -138,7 +148,7 @@ data:extend({
         localised_name = "Technologies",
         localised_description = "Randomizes the technology tree (which techs are prerequisites to which other ones).",
         default_value = false,
-        order = "d-b[technology]"
+        order = "d-c[technology]"
     },
     {
         setting_type = "startup",
@@ -147,7 +157,7 @@ data:extend({
         localised_name = "Recipes",
         localised_description = "Randomizes all recipe ingredients (not just the amounts).",
         default_value = false,
-        order = "d-c[recipe]"
+        order = "d-d[recipe]"
     },
     {
         setting_type = "startup",
@@ -156,7 +166,7 @@ data:extend({
         localised_name = "Recipe unlocks",
         localised_description = "Randomizes which tech a recipe is unlocked by.",
         default_value = false,
-        order = "d-d[recipe]"
+        order = "d-e[recipe-tech-unlock]"
     },
     {
         setting_type = "startup",
@@ -165,7 +175,7 @@ data:extend({
         localised_name = "Items",
         localised_description = "Randomizes where items are in the game. For example, instead of mining coal you might mine fish, or furnaces could replace circuits as one of the most common intermediates.",
         default_value = false,
-        order = "d-e[item]"
+        order = "d-f[item]"
     },
     {
         setting_type = "startup",

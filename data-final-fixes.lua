@@ -56,7 +56,7 @@ build_graph.add_dependents(dep_graph)
 
 log("Finding initially reachable nodes")
 local top_sort = require("lib/graph/top-sort")
--- A deepcopy is necessary because otherwise modifications to the nodes by randomizations mess up the sorts "sorted" key
+-- A deepcopy is necessary because otherwise modifications to the nodes by randomizations mess up the sort's "sorted" list
 -- TODO: This slows down startup, though, so I want to find a way around it
 local initial_sort_info = top_sort.sort(table.deepcopy(dep_graph))
 
@@ -70,14 +70,13 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
-randomizations.graph("graph")
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
 
-if settings.startup["propertyrandomizer-unified"].value then
-    randomizations.unified("unified")
+if settings.startup["propertyrandomizer-simultaneous"].value then
+    --randomizations.graph("graph")
 
     -- Rebuild graph
     build_graph.load()
@@ -86,7 +85,19 @@ if settings.startup["propertyrandomizer-unified"].value then
     build_graph.add_dependents(dep_graph)
 end
 
+--if settings.startup["propertyrandomizer-unified"].value then
+    randomizations.unified("unified")
+
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+--end
+
 if settings.startup["propertyrandomizer-technology"].value then
+    -- We currently do tech randomization many times since one time isn't enough to get it that random
+    -- Nifyr's new algorithm (see randomizations/graph/core.lua) works a lot better though, so we'll probably end up using that instead
     log("Applying technology tree randomization")
 
     randomizations.technology_tree_insnipping("technology_tree_insnipping")
@@ -220,9 +231,9 @@ randomizations.fixes()
 
 local final_sort_info = top_sort.sort(dep_graph)
 
-for _, node in pairs(final_sort_info.sorted) do
+--[[for _, node in pairs(final_sort_info.sorted) do
     log(build_graph.key(node.type, node.name))
-end
+end]]
 
 local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then

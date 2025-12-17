@@ -169,7 +169,9 @@ top_sort.sort = function(graph, blacklist, state, new_conn, extra_params)
         local curr_key = build_graph.key(curr_node.type, curr_node.name)
 
         if not reachable[curr_key] then
-            log("Processing node: " .. curr_key)
+            --[[if make_new_conn_reachable then
+                log("Processing node: " .. curr_key)
+            end]]
 
             reachable[curr_key] = true
             table.insert(sorted, curr_node)

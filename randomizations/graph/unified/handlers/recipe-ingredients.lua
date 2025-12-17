@@ -26,8 +26,9 @@ recipe_ingredients.group_surfaces = true
 -- Note: This is ignored since we actually only consider the first ingredient ever
 -- CRITICAL TODO: FIX THIS!
 recipe_ingredients.add_dummies = function()
+    -- CRITICAL TODO: I think dummies here was messing things up more than helping (makes sense with AND nodes); maybe revisit this?
     -- Add an extra item and fluid ingredient for each recipe for the dummies
-    for _, recipe in pairs(data.raw.recipe) do
+    --[[for _, recipe in pairs(data.raw.recipe) do
         if recipe.ingredients ~= nil and #recipe.ingredients > 1 then
             local recipe_node = graph_utils.getk("recipe", recipe.name)
             local dummy_item_ingredient = helper.create_dummy_node("item", build_graph.compound_key({recipe_node.name, "recipe-ingredients-item-dummy"}))
@@ -62,7 +63,7 @@ recipe_ingredients.add_dummies = function()
                 end
             end
         end
-    end
+    end]]
 end
 
 recipe_ingredients.create_slot = function(edge)

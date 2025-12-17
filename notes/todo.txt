@@ -1,4 +1,12 @@
 WORKING ON:
+ - Not matching up some slots to travelers when booting? (Even though traveler is reachable)
+
+ - Nifyr's simultaneous rando...
+    - Have fallback for when path.lua is exponential time (make sure it's only used as a heuristic)
+    - Add ability for nodes to switch surfaces
+       - Need way to test if a node has become surface locked (either it now depends on a surface-locked node or a locked edge in the future requires it to be from a specific surface)
+    - Don't remove unreachable edges and allow for cross-node-type randomization (like craft-material to item)
+
  - Dupes!
     - No wait!! First, unified randomization!
 
