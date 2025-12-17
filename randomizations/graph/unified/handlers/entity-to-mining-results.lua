@@ -90,7 +90,7 @@ entity_to_mining_results.create_slot = function(edge)
     end
 
     if edge[2].dummy then
-        inds = {#entity.minable.results}
+        inds = {#entity.minable.results + 1}
     end
 
     return {
@@ -205,6 +205,12 @@ entity_to_mining_results.reflect = function(slot_to_traveler)
                         end
                     else
                         for _, ind in pairs(slot.inds) do
+                            -- Check in case of dummy
+                            if entity.minable.results[ind] == nil then
+                                entity.minable.results[ind] = {}
+                                entity.minable.results[ind].amount = 1
+                            end
+
                             if traveler.item ~= nil then
                                 entity.minable.results[ind].type = "item"
                                 entity.minable.results[ind].name = traveler.item

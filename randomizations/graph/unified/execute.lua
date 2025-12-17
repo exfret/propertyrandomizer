@@ -101,7 +101,7 @@ randomizations.unified = function(id)
     -- This step must come before the sort so that the dummies appear in the sort
     for _, handler in pairs(conn_handlers) do
         handler.state.pre_dummy_sort_info = pre_dummy_sort_info
-        handler.add_dummies()
+        --handler.add_dummies()
     end
 
     -- Reinitialize helper to account for new dummies
@@ -260,7 +260,60 @@ randomizations.unified = function(id)
         prereqs = {},
         dependents = {}
     }
-    for ind, node in pairs(vanilla_sort_info.sorted) do
+    -- Need critical *edges* so let's add intermediate nodes to simulate that
+    local subdivided_dep_graph = table.deepcopy(dep_graph)
+    for _, reflected_node in pairs(dep_graph) do
+        -- Get a node in subdivided_dep_graph corresponding to the node in dep_graph to prevent infinite loop
+        local node = subdivided_dep_graph[graph_utils.get_node_key(reflected_node)]
+        local prereqs_to_remove = {}
+        local prereqs_to_add = {}
+        for _, prereq in pairs(node.prereqs) do
+            local prereq_node = subdivided_dep_graph[graph_utils.get_node_key(prereq)]
+            table.insert(prereqs_to_remove, prereq_node)
+            local new_node = {
+                type = "logic_or",
+                name = build_graph.conn_key({prereq, node}),
+                prereqs = {},
+                dependents = {},
+            }
+            subdivided_dep_graph[graph_utils.get_node_key(new_node)] = new_node
+            graph_utils.add_prereq(prereq_node, new_node)
+            table.insert(prereqs_to_add, new_node)
+        end
+        for _, prereq_node in pairs(prereqs_to_remove) do
+            graph_utils.remove_prereq(prereq_node, node)
+        end
+        for _, prereq_node in pairs(prereqs_to_add) do
+            graph_utils.add_prereq(prereq_node, node)
+        end
+    end
+    local subdivided_sort_info = top_sort.sort(subdivided_dep_graph)
+    -- Put dummy nodes last in sort
+    local non_dummy_nodes_in_order_subdivided = {}
+    local dummy_nodes_in_order_subdivided = {}
+    for _, node in pairs(subdivided_sort_info.sorted) do
+        if not node.dummy then
+            table.insert(non_dummy_nodes_in_order_subdivided, node)
+        else
+            table.insert(dummy_nodes_in_order_subdivided, node)
+        end
+    end
+    subdivided_sort_info.sorted = {}
+    for _, node in pairs(non_dummy_nodes_in_order_subdivided) do
+        table.insert(subdivided_sort_info.sorted, node)
+    end
+    for _, node in pairs(dummy_nodes_in_order_subdivided) do
+        table.insert(subdivided_sort_info.sorted, node)
+    end
+    -- Remove unreachable prereqs
+    for node_key, _ in pairs(dep_graph) do
+        if not subdivided_sort_info.reachable[node_key] then
+            subdivided_sort_info[node_key] = nil
+        end
+    end
+    local graph_to_use = subdivided_dep_graph
+    local sort_info_to_use = subdivided_sort_info
+    for ind, node in pairs(sort_info_to_use.sorted) do
         node_to_ind_in_sorted[graph_utils.get_node_key(node)] = ind
         if node.type == "item" and not node.dummy then
             graph_utils.add_prereq(node, all_item_node)
@@ -269,23 +322,23 @@ randomizations.unified = function(id)
             end
         end
     end
-    local all_sorted = vanilla_sort_info.sorted
+    local all_sorted = sort_info_to_use.sorted
     table.insert(all_sorted, all_tool_node)
     table.insert(all_sorted, all_item_node)
     for _, node in pairs(all_sorted) do
         table.sort(node.prereqs, function(prereq1, prereq2)
-            if not vanilla_sort_info.reachable[graph_utils.get_node_key(prereq1)] then
+            if not sort_info_to_use.reachable[graph_utils.get_node_key(prereq1)] then
                 return false
             end
-            if not vanilla_sort_info.reachable[graph_utils.get_node_key(prereq2)] then
+            if not sort_info_to_use.reachable[graph_utils.get_node_key(prereq2)] then
                 return true
             end
             return node_to_ind_in_sorted[graph_utils.get_node_key(prereq1)] < node_to_ind_in_sorted[graph_utils.get_node_key(prereq2)]
         end)
     end
-    local is_critical_node = path.find_path(dep_graph, all_tool_node)
+    local is_critical_node = path.find_path(graph_to_use, all_tool_node)
     --log(serpent.block(is_critical_node))
-    local is_significant = path.find_path(dep_graph, all_item_node)
+    local is_significant = path.find_path(graph_to_use, all_item_node)
     --log(serpent.block(is_significant))
 
     ----------------------------------------------------------------------------------------------------
@@ -312,9 +365,12 @@ randomizations.unified = function(id)
     local is_added_slot = {}
     local sorted_slots = {}
     local shuffled_travelers = {}
+    local vanilla_sorted_travelers = {}
     local edge_reconfigs = {}
     local slot_to_vanilla_traveler = {}
     local traveler_to_vanilla_slot = {}
+    -- Gets critical travelers in order
+    local critical_in_order = {}
     --[[for _, node in pairs(vanilla_sort_info.sorted) do
         for handler_id, handler in pairs(conn_handlers) do
             if handler.source_types[node.type] then
@@ -334,16 +390,31 @@ randomizations.unified = function(id)
                             local edge
                             -- If this is a grouped surface handler, then use the surface-agnostic versions of the nodes
                             -- TODO: This assumes a one-to-one connection between edges in the case of one surface or another; this is almost always the case, but I could generalize this
+                            local is_critical_edge = false
+                            local critical_edges = {}
                             if handler.group_surfaces then
                                 edge = {helper.surface_to_agnostic[graph_utils.get_node_key(node)], helper.surface_to_agnostic[graph_utils.get_node_key(dependent_node)]}
+                                
+                                for _, surface_variant_node in pairs(helper.get_surface_variants(helper.surface_to_agnostic[graph_utils.get_node_key(dependent_node)])) do
+                                    local possibly_critical_edge = {helper.specify_node_to_surface(helper.surface_to_agnostic[graph_utils.get_node_key(node)], surface_variant_node.surface), surface_variant_node}
+                                    if is_critical_node[build_graph.key("logic_or", build_graph.conn_key(possibly_critical_edge))] then
+                                        is_critical_edge = true
+                                        table.insert(critical_edges, possibly_critical_edge)
+                                    end
+                                end
                             else
                                 edge = {node, dependent_node}
+                                if is_critical_node[build_graph.key("logic_or", build_graph.conn_key({node, dependent_node}))] then
+                                    is_critical_edge = true
+                                    table.insert(critical_edges, {node, dependent_node})
+                                end
                             end
                             local slot = handler.create_slot(edge)
                             local traveler = handler.create_traveler(edge)
                             -- Check that slot and traveler creation succeeded
                             -- TODO: It might be more intuitive to include this as part of a separate validation function for edges
-                            if slot and traveler then
+                            -- Check if we've added this edge already here (I don't know why we were doing it so late before)
+                            if slot and traveler and not is_added_slot[graph_utils.get_node_key({type = build_graph.compound_key({"slot", handler_id}), name = build_graph.conn_key(edge)})] then
                                 -- Add auto-generated fields
                                 for connector_type, slot_or_traveler in pairs({slot = slot, traveler = traveler}) do
                                     slot_or_traveler.type = build_graph.compound_key({connector_type, handler_id})
@@ -387,15 +458,20 @@ randomizations.unified = function(id)
                                     traveler.dummy = true
                                 end
 
-                                -- Check if we've added this edge already
-                                if not is_added_slot[graph_utils.get_node_key(slot)] then
-                                    is_added_slot[graph_utils.get_node_key(slot)] = true
-                                    table.insert(sorted_slots, slot)
-                                    table.insert(shuffled_travelers, traveler)
-                                    table.insert(edge_reconfigs, {edge = edge, slot = slot, traveler = traveler, handler_id = handler_id})
-                                    slot_to_vanilla_traveler[graph_utils.get_node_key(slot)] = traveler
-                                    traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)] = slot
+                                if is_critical_edge then
+                                    table.insert(critical_in_order, {
+                                        traveler = traveler,
+                                        edges = critical_edges,
+                                    })
                                 end
+                                table.insert(vanilla_sorted_travelers, traveler)
+
+                                is_added_slot[graph_utils.get_node_key(slot)] = true
+                                table.insert(sorted_slots, slot)
+                                table.insert(shuffled_travelers, traveler)
+                                table.insert(edge_reconfigs, {edge = edge, slot = slot, traveler = traveler, handler_id = handler_id})
+                                slot_to_vanilla_traveler[graph_utils.get_node_key(slot)] = traveler
+                                traveler_to_vanilla_slot[graph_utils.get_node_key(traveler)] = slot
                             end
                         end
                     end
@@ -776,9 +852,11 @@ randomizations.unified = function(id)
             slot = slot
         })
     end
+    local critical_in_order_ind = 1
     for i = 1, #sorted_slots do
         -- Check if we've filled all the slots we need to
         if num_normal_travelers_satisfied == num_normal_travelers then
+            log("DONE!!!")
             break
         end
 
@@ -883,8 +961,174 @@ randomizations.unified = function(id)
                 end
             end
 
+            --[=[if accepted_slot == nil then
+                -- Okay fine, let's try now adding the first unreachable traveler of the whole topological sort
+                for _, vanilla_traveler in pairs(vanilla_sorted_travelers) do
+                    -- Here is where we get to check canonical
+                    if not vanilla_traveler.dummy and not curr_global_sort_info.reachable[graph_utils.get_node_key(helper.to_canonical(vanilla_traveler))] then
+                        local corresponding_slot = traveler_to_slot[graph_utils.get_node_key(vanilla_traveler)]
+                        -- We still need to make a surface compatibility check since that isn't made when first doing the reservation
+                        if corresponding_slot ~= nil and is_reserved_slot[graph_utils.get_node_key(corresponding_slot)] and is_slot_reachable(curr_global_sort_info.reachable, corresponding_slot, vanilla_traveler.home_surface) then
+                            -- The only way I could see this happening is if vanilla_traveler is reserving some slot, so we just go fulfill it
+                            fulfill_reservation(graph_utils.get_node_key(corresponding_slot))
+                            is_reserved_slot[graph_utils.get_node_key(corresponding_slot)] = nil
+                            break
+                        else--if corresponding_slot == nil then
+                            -- Find a good slot
+                            -- CRITICAL TODO: In case I haven't written this elsewhere, I need to make sure to process AND nodes all at once
+                            -- Now we boot; even if this was already assigned
+                            local ind_booted
+                            for ind_to_boot = #reserved_slots, 1, -1 do
+                                local booted_slot = reserved_slots[ind_to_boot]
+                                local booted_traveler = slot_to_traveler[graph_utils.get_node_key(booted_slot)]
+                                -- Validate this connection as good
+                                -- The first condition just says we don't want to choose the same traveler on itself
+                                if graph_utils.get_node_key(booted_traveler) ~= graph_utils.get_node_key(vanilla_traveler) and is_slot_reachable(curr_global_sort_info.reachable, booted_slot, vanilla_traveler.home_surface) and conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, vanilla_traveler) then
+                                    if corresponding_slot == nil or not is_reserved_slot[graph_utils.get_node_key(corresponding_slot)] then
+                                        is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
+                                        is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
+                                    
+                                        -- Switch out slot/traveler tables
+                                        slot_to_traveler[graph_utils.get_node_key(booted_slot)] = vanilla_traveler
+                                        traveler_to_slot[graph_utils.get_node_key(vanilla_traveler)] = booted_slot
+                                        traveler_to_slot[graph_utils.get_node_key(booted_traveler)] = nil
+
+                                        -- If we booted out a dummy traveler, this increases number of non-dummies
+                                        -- Technically vanilla_traveler should never be a dummy, but I'll check anyways
+                                        if booted_traveler.dummy and not vanilla_traveler.dummy then
+                                            num_normal_travelers_satisfied = num_normal_travelers_satisfied + 1
+                                        end
+
+                                        add_slot_traveler_conns(booted_slot, vanilla_traveler)
+
+                                        ind_booted = ind_to_boot
+                                    else
+                                        -- Switch out slot/traveler tables
+                                        slot_to_traveler[graph_utils.get_node_key(corresponding_slot)] = booted_traveler
+                                        slot_to_traveler[graph_utils.get_node_key(booted_slot)] = vanilla_traveler
+                                        traveler_to_slot[graph_utils.get_node_key(vanilla_traveler)] = booted_slot
+                                        traveler_to_slot[graph_utils.get_node_key(booted_traveler)] = corresponding_slot
+
+                                        fulfill_reservation(graph_utils.get_node_key(booted_slot))
+                                        is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
+
+                                        -- -1 signals that we just did a switch, not a genuine removal of a reserved traveler
+                                        ind_booted = -1
+                                    end
+                            
+                                    log("Booted out " .. graph_utils.get_node_key(booted_traveler) .. " in slot " .. graph_utils.get_node_key(booted_slot) .. " in favor of " .. graph_utils.get_node_key(vanilla_traveler))
+
+                                    break
+                                end
+                            end
+                            if ind_booted ~= nil then
+                                if ind_booted ~= -1 then
+                                    table.remove(reserved_slots, ind_booted)
+                                end
+                                break
+                            end
+                        --[[else
+                            -- This case is actually fine I think: it corresponds to things like AND nodes that still need other prereqs met first
+                            log(graph_utils.get_node_key(vanilla_traveler))
+                            --log(serpent.block(vanilla_traveler))
+                            --error()]]
+                        end
+                    end
+                end]=]
             if accepted_slot == nil then
-                log("Trying to boot with " .. tostring(#reserved_slots) .. " reserved slots...")
+                -- Add nodes in critical order instead
+                local old_critical_in_order_ind = critical_in_order_ind
+                for i = old_critical_in_order_ind, #critical_in_order do
+                    local curr_critical_info = critical_in_order[i]
+                    local critical_reachable = true
+                    for _, edge in pairs(curr_critical_info.edges) do
+                        if not curr_global_sort_info.reachable[graph_utils.get_node_key(edge[2])] then
+                            critical_reachable = false
+                            break
+                        end
+                    end
+                    if not critical_reachable then
+                        local new_traveler = curr_critical_info.traveler
+                        -- First check if this has been assigned, and it's just reserved; if so it's simple - just fulfill the reservation
+                        local corresponding_slot = traveler_to_slot[graph_utils.get_node_key(new_traveler)]
+                        if corresponding_slot ~= nil and is_reserved_slot[graph_utils.get_node_key(corresponding_slot)] then
+                            fulfill_reservation(graph_utils.get_node_key(corresponding_slot))
+                            is_reserved_slot[graph_utils.get_node_key(corresponding_slot)] = nil
+                            if i == old_critical_in_order_ind then
+                                critical_in_order_ind = critical_in_order_ind + 1
+                            end
+                            break
+                        elseif corresponding_slot == nil then
+                            -- Boot out most recent reservation for this traveler that has correct surface and satisfies constraints
+                            local ind_booted
+                            for ind_to_boot = #reserved_slots, 1, -1 do
+                                local booted_slot = reserved_slots[ind_to_boot]
+                                if is_slot_reachable(curr_global_sort_info.reachable, booted_slot, new_traveler.home_surface) and conn_handlers[booted_slot.handler_id].validate_connection(booted_slot, new_traveler) then
+                                    is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
+                                    is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
+                                    
+                                    -- Switch out slot/traveler tables
+                                    local booted_traveler = slot_to_traveler[graph_utils.get_node_key(booted_slot)]
+                                    slot_to_traveler[graph_utils.get_node_key(booted_slot)] = new_traveler
+                                    traveler_to_slot[graph_utils.get_node_key(new_traveler)] = booted_slot
+                                    traveler_to_slot[graph_utils.get_node_key(booted_traveler)] = nil
+
+                                    -- If we booted out a dummy traveler, this increases number of non-dummies
+                                    -- Technically new_traveler should never be a dummy, but I'll check anyways
+                                    if booted_traveler.dummy and not new_traveler.dummy then
+                                        num_normal_travelers_satisfied = num_normal_travelers_satisfied + 1
+                                    end
+
+                                    add_slot_traveler_conns(booted_slot, new_traveler)
+                            
+                                    log("Booted out " .. graph_utils.get_node_key(booted_traveler) .. " in slot " .. graph_utils.get_node_key(booted_slot) .. " in favor of " .. graph_utils.get_node_key(new_traveler))
+
+                                    ind_booted = ind_to_boot
+                                    break
+                                end
+                            end
+                            if ind_booted ~= nil then
+                                table.remove(reserved_slots, ind_booted)
+                                -- Only increment if we didn't skip anything
+                                if i == old_critical_in_order_ind then
+                                    critical_in_order_ind = i + 1
+                                end
+                                
+                                break
+                            else
+                                log("Critical node not satisfiable:")
+                                --log(serpent.block(curr_critical_info.traveler))
+                            end
+                        -- If it's been fulfilled and not reserved, yet still unreachable, then there's some weirdness we can't cure, so just try another critical node
+                        end
+                    end
+
+                    if i == #critical_in_order then
+                        -- Get the unreachable criticals for logging
+                        local unreachable_critical = {}
+                        for j = 1, #critical_in_order do
+                            local critical_reachable = true
+                            for _, edge in pairs(curr_critical_info.edges) do
+                                if not curr_global_sort_info.reachable[graph_utils.get_node_key(edge[2])] then
+                                    critical_reachable = false
+                                    break
+                                end
+                            end
+                            if not critical_reachable then
+                                table.insert(unreachable_critical, critical_in_order[j])
+                            end
+                        end
+                        -- Actually, if we got everything then we're probably fine
+                        if #unreachable_critical == 0 then
+                            break
+                        end
+                        log(serpent.block(unreachable_critical))
+                        -- We could let some of these errors slide, but too many and we get tons of dummies
+                        --error("Could not find reservation to boot for critical path node.")
+                    end
+                end
+
+                --[=[log("Trying to boot with " .. tostring(#reserved_slots) .. " reserved slots...")
 
                 local was_booting_successful = false
 
@@ -959,7 +1203,7 @@ randomizations.unified = function(id)
                     is_reserved_slot[graph_utils.get_node_key(booted_slot)] = nil
                     is_permanently_reserved[graph_utils.get_node_key(booted_slot)] = nil
                     add_slot_traveler_conns(booted_slot, slot_to_traveler[graph_utils.get_node_key(booted_slot)])
-                end
+                end]=]
             else
                 break
             end
@@ -991,7 +1235,7 @@ randomizations.unified = function(id)
             end
 
             -- Okay, I'm desperate; if we got far enough it's probably fine
-            local its_not_actually_fine = (num_normal_travelers_satisfied / num_normal_travelers) > 0.8
+            local its_not_actually_fine = (num_normal_travelers_satisfied / num_normal_travelers) > 0.9
             if its_not_actually_fine then
                 log("Basically done kinda at " .. tostring(math.floor(100 * num_normal_travelers_satisfied / num_normal_travelers)) .. "% of the way through")
                 log("RIP")
