@@ -76,6 +76,11 @@ build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
 
 if settings.startup["propertyrandomizer-simultaneous"].value then
+
+    -- Include these to toggle individual randomizers
+    --require("randomizations/graph/core/randomizers/recipe")
+    --require("randomizations/graph/core/randomizers/science-pack-set")
+    --require("randomizations/graph/core/randomizers/technology")
     --randomizations.graph("graph")
 
     -- Rebuild graph

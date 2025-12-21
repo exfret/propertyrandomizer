@@ -80,6 +80,7 @@ for class, amount in pairs(per_entity_class) do
     end
 end]]
 
+--[[
 global_seed = 767614037
 global_seed = 3991075545
 global_chaos_range = 1
@@ -96,7 +97,8 @@ local critical_req = require("lib/graph/critical-req")
 randomizations = {}
 require("randomizations/graph/core")
 build_graph.add_dependents(build_graph.graph)
-local state = randomizations.graph("graph")
+randomizations.graph("graph")
+]]
 
 --[[dep_graph_file = io.open("offline/output/dep-graph.json", "wb")
 dep_graph_file:write(json.stringify(build_graph.graph))]]
