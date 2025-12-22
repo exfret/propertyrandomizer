@@ -9,10 +9,140 @@ local helpers = require("randomizations/graph/core/helpers")
 
 local export = {}
 
+local determine_available_edges = function (state)
+    local edge_type = state.edge_type
+    local override_scenario_key = state.override_scenario_key
+    -- Gather the prereq edges
+    local surface_edge_info = helpers.get_prereq_info(state, edge_type.prereq_type, state.node.surface)
+
+    -- Picking from this set of edges ensures that the game is completable
+    state.reachable_prereqs = surface_edge_info.reachable_prereqs
+    -- Picking from this set of edges ensures an unchanged number of dependents per prereq
+    state.unused_edges = surface_edge_info.unused_edges
+    -- Picking from this set of edges ensures that no softlocks occur (i wish)
+    -- This set doesn't feature edges with the same prereq twice
+    state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
+
+    if override_scenario_key ~= nil and state.scenarios[override_scenario_key] ~= nil then
+        local scenario = state.scenarios[override_scenario_key]
+        state.reachable_prereqs = {}
+        local scenario_prereq_info = scenario.prereq_info[edge_type.prereq_type]
+        if scenario_prereq_info ~= nil then
+            local surface_info = scenario_prereq_info.no_surface
+            if state.dependent_is_surface_specific and state.prereq_is_surface_specific then
+                surface_info = scenario_prereq_info.surface_keys[state.node.surface]
+            end
+            if surface_info ~= nil then
+                state.reachable_prereqs = surface_info.edges
+            end
+        end
+        state.unused_edges = state.reachable_prereqs
+        state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
+    end
+
+    state.unused_edges_suitable = true
+    state.prereq_edges_suitable = true
+
+    if #state.suitable_edges < state.first_edge_count then
+        state.suitable_edges = helpers.unique_prereq_edge_filter(state.reachable_prereqs)
+        state.unused_edges_suitable = false
+    end
+    if #state.suitable_edges < state.first_edge_count then
+        -- uh-oh
+        state.prereq_edges_suitable = false
+    end
+
+    -- Find out if this dependent is a shared critical requirement
+    state.critical_node = false
+    local surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(state.node)
+    if state.critical_node_info[edge_type.key] ~= nil
+    and state.critical_node_info[edge_type.key][surface_ambiguous_key] ~= nil then
+
+        -- Aggregate a set of prereqs that are available in all the affected scenarios
+        local filter = set_utils.create_universal_set()
+        for scenario_key, surfaces in pairs(state.critical_node_info[edge_type.key][surface_ambiguous_key]) do
+            local scenario = state.scenarios[scenario_key]
+
+            -- Scenarios get deleted once they complete
+            if scenario ~= nil then
+                local prereq_info = scenario.prereq_info[edge_type.prereq_type]
+
+                if prereq_info == nil then
+                    -- There were no prereqs of this type discovered in this scenario.
+                    -- Failure
+                    filter = {}
+                    break
+                end
+                if state.prereq_is_surface_specific and state.dependent_is_surface_specific then
+                    for surface_key, _ in pairs(surfaces) do
+                        local surface_prereq_info = prereq_info.surface_keys[surface_key]
+
+                        if surface_prereq_info == nil then
+                            -- There were no prereqs of this type for this surface in this scenario.
+                            -- Failure
+                            filter = {}
+                            break
+                        end
+                        set_utils.merge_intersection(filter, prereq_info.surface_keys[surface_key].surface_ambiguous_keys)
+                    end
+                else
+                    set_utils.merge_intersection(filter, prereq_info.no_surface.surface_ambiguous_keys)
+                end
+            end
+        end
+
+        -- Check if there actually were affected scenarios
+        if not set_utils.is_universal_set(filter) then
+
+            -- Shared critical node detected
+            state.critical_node = true
+            state.unused_edges_suitable = true
+            state.prereq_edges_suitable = true
+
+            state.suitable_edges = {}
+            -- Put intersection with unused edges as available edges
+            for _, edge in pairs(state.unused_edges) do
+                local prereq = state.random_graph[edge.prereq_key]
+                local prereq_surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(prereq)
+                if filter[prereq_surface_ambiguous_key] ~= nil then
+                    table.insert(state.suitable_edges, edge)
+                end
+            end
+            state.suitable_edges = helpers.unique_prereq_edge_filter(state.suitable_edges)
+
+            -- Check if there's a good amount of edges
+            if #state.suitable_edges < state.first_edge_count then
+
+                -- This is bad
+                state.unused_edges_suitable = false
+                state.suitable_edges = {}
+
+                -- Try resorting to using any found prereq
+                for _, edge in pairs(state.reachable_prereqs) do
+                    local prereq = state.random_graph[edge.prereq_key]
+                    local prereq_surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(prereq)
+                    if filter[prereq_surface_ambiguous_key] ~= nil then
+                        table.insert(state.suitable_edges, edge)
+                    end
+                end
+                state.suitable_edges = helpers.unique_prereq_edge_filter(state.suitable_edges)
+            end
+
+            if #state.suitable_edges < state.first_edge_count then
+
+                -- uh-oh
+                state.prereq_edges_suitable = false
+                -- The randomizer will surely figure something out
+            end
+        end
+    end
+end
+
 -- For assigning edges during randomization
 local assign_prereqs = function (state, node_key, override_scenario_key)
 
     state.node_key = node_key
+    state.override_scenario_key = override_scenario_key
     state.node = state.random_graph[state.node_key]
     state.node_change_history = {}
     state.compromises_for_dependent = 0
@@ -56,131 +186,7 @@ local assign_prereqs = function (state, node_key, override_scenario_key)
                         end
                     end
 
-                    -- Gather the prereq edges
-                    local surface_edge_info = helpers.get_prereq_info(state, edge_type.prereq_type, state.node.surface)
-
-                    -- Picking from this set of edges ensures that the game is completable
-                    state.reachable_prereqs = surface_edge_info.reachable_prereqs
-                    -- Picking from this set of edges ensures an unchanged number of dependents per prereq
-                    state.unused_edges = surface_edge_info.unused_edges
-                    -- Picking from this set of edges ensures that no softlocks occur (i wish)
-                    -- This set doesn't feature the same prereq twice
-                    state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
-
-                    if override_scenario_key ~= nil and state.scenarios[override_scenario_key] ~= nil then
-                        local scenario = state.scenarios[override_scenario_key]
-                        state.reachable_prereqs = {}
-                        local scenario_prereq_info = scenario.prereq_info[edge_type.prereq_type]
-                        if scenario_prereq_info ~= nil then
-                            local surface_info = scenario_prereq_info.no_surface
-                            if state.dependent_is_surface_specific and state.prereq_is_surface_specific then
-                                surface_info = scenario_prereq_info.surface_keys[state.node.surface]
-                            end
-                            if surface_info ~= nil then
-                                state.reachable_prereqs = surface_info.edges
-                            end
-                        end
-                        state.unused_edges = state.reachable_prereqs
-                        state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
-                    end
-
-                    state.unused_edges_suitable = true
-                    state.prereq_edges_suitable = true
-
-                    if #state.suitable_edges < state.first_edge_count then
-                        state.suitable_edges = helpers.unique_prereq_edge_filter(state.reachable_prereqs)
-                        state.unused_edges_suitable = false
-                    end
-                    if #state.suitable_edges < state.first_edge_count then
-                        -- uh-oh
-                        state.prereq_edges_suitable = false
-                    end
-
-                    -- Find out if this dependent is a shared critical requirement
-                    state.critical_node = false
-                    local surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(state.node)
-                    if state.critical_node_info[edge_type_key] ~= nil
-                    and state.critical_node_info[edge_type_key][surface_ambiguous_key] ~= nil then
-
-                        -- Aggregate a set of prereqs that are available in all the affected scenarios
-                        local filter = set_utils.create_universal_set()
-                        for scenario_key, surfaces in pairs(state.critical_node_info[edge_type_key][surface_ambiguous_key]) do
-                            local scenario = state.scenarios[scenario_key]
-
-                            -- Scenarios get deleted once they complete
-                            if scenario ~= nil then
-                                local prereq_info = scenario.prereq_info[edge_type.prereq_type]
-
-                                if prereq_info == nil then
-                                    -- There were no prereqs of this type discovered in this scenario.
-                                    -- Failure
-                                    filter = {}
-                                    break
-                                end
-                                if state.prereq_is_surface_specific and state.dependent_is_surface_specific then
-                                    for surface_key, _ in pairs(surfaces) do
-                                        local surface_prereq_info = prereq_info.surface_keys[surface_key]
-
-                                        if surface_prereq_info == nil then
-                                            -- There were no prereqs of this type for this surface in this scenario.
-                                            -- Failure
-                                            filter = {}
-                                            break
-                                        end
-                                        set_utils.merge_intersection(filter, prereq_info.surface_keys[surface_key].surface_ambiguous_keys)
-                                    end
-                                else
-                                    set_utils.merge_intersection(filter, prereq_info.no_surface.surface_ambiguous_keys)
-                                end
-                            end
-                        end
-
-                        -- Check if there actually were affected scenarios
-                        if not set_utils.is_universal_set(filter) then
-
-                            -- Shared critical node detected
-                            state.critical_node = true
-                            state.unused_edges_suitable = true
-                            state.prereq_edges_suitable = true
-
-                            state.suitable_edges = {}
-                            -- Put intersection with unused edges as available edges
-                            for _, edge in pairs(state.unused_edges) do
-                                local prereq = state.random_graph[edge.prereq_key]
-                                local prereq_surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(prereq)
-                                if filter[prereq_surface_ambiguous_key] ~= nil then
-                                    table.insert(state.suitable_edges, edge)
-                                end
-                            end
-                            state.suitable_edges = helpers.unique_prereq_edge_filter(state.suitable_edges)
-
-                            -- Check if there's a good amount of edges
-                            if #state.suitable_edges < state.first_edge_count then
-
-                                -- This is bad
-                                state.unused_edges_suitable = false
-                                state.suitable_edges = {}
-
-                                -- Try resorting to using any found prereq
-                                for _, edge in pairs(state.reachable_prereqs) do
-                                    local prereq = state.random_graph[edge.prereq_key]
-                                    local prereq_surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(prereq)
-                                    if filter[prereq_surface_ambiguous_key] ~= nil then
-                                        table.insert(state.suitable_edges, edge)
-                                    end
-                                end
-                                state.suitable_edges = helpers.unique_prereq_edge_filter(state.suitable_edges)
-                            end
-
-                            if #state.suitable_edges < state.first_edge_count then
-
-                                -- uh-oh
-                                state.prereq_edges_suitable = false
-                                -- The randomizer will surely figure something out
-                            end
-                        end
-                    end
-                    -- Available edges determined
+                    determine_available_edges(state)
 
                     if not state.unused_edges_suitable then
                         state.compromises_for_dependent = state.compromises_for_dependent + 1
@@ -578,6 +584,7 @@ local try_randomize_graph = function (state, graph_randomizations)
     state.check_postponed_locked_types = nil
     state.node = nil
     state.node_key = nil
+    state.override_scenario_key = nil
     state.override_edge_type_to_edges = nil
     state.dependent_is_surface_specific = nil
     state.final_old_edges = nil
