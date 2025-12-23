@@ -1,6 +1,7 @@
 local graph_utils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
 local registry = require("randomizations/graph/core/registry")
+local helpers = require("randomizations/graph/core/helpers")
 
 -- Primitive recipe randomizer, does not care about automatability or costs
 
@@ -10,16 +11,6 @@ local item_type = "item"
 local recipe_node_type = "recipe-surface"
 local item_node_type = "item-surface"
 local fluid_node_type = "fluid-surface"
-
--- Item lookup
-local items = {}
-for item_class, _ in pairs(defines.prototypes.item) do
-    if data.raw[item_class] ~= nil then
-        for _, item in pairs(data.raw[item_class]) do
-            items[item.name] = item
-        end
-    end
-end
 
 local recipe_randomizer = registry.create_empty_randomizer("recipe")
 recipe_randomizer.get_target_edges = function (params)
@@ -102,7 +93,7 @@ recipe_randomizer.finalize = function (params)
                 end
                 for i = 1, math.min(#item_prereqs, #item_ingredients) do
                     item_ingredients[i].name = item_prereqs[i]
-                    local item = items[item_prereqs[i]]
+                    local item = helpers.items[item_prereqs[i]]
                     if item.stack_size <= 1 then
                         item_ingredients[i].amount = 1
                     end

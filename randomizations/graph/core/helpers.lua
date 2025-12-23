@@ -70,4 +70,14 @@ export.unique_prereq_edge_filter = function (edge_list)
     return unique
 end
 
+-- Item lookup
+export.items = {}
+for item_class, _ in pairs(defines.prototypes.item) do
+    if data.raw[item_class] ~= nil then
+        for _, item in pairs(data.raw[item_class]) do
+            export.items[item.name] = item
+        end
+    end
+end
+
 return export
