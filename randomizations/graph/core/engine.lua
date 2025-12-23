@@ -6,8 +6,20 @@ local set_utils = require("lib/graph/set-utils")
 local reorder = require("randomizations/graph/core/graph-reorder")
 local sm = require("randomizations/graph/core/scenario-manager")
 local helpers = require("randomizations/graph/core/helpers")
+local const = require("randomizations/graph/core/constants")
 
 local export = {}
+
+local get_preferred_edges = function (state)
+    -- Let the randomizer decide which edges to use
+    if state.randomizer.config.preferred_edges == const.config_unused then
+        return state.unused_edges
+    elseif state.randomizer.config.preferred_edges == const.config_reachable then
+        return state.reachable_prereqs
+    else
+        error("Invalid preferred_edges config")
+    end
+end
 
 local determine_available_edges = function (state)
     local edge_type = state.edge_type
@@ -19,9 +31,12 @@ local determine_available_edges = function (state)
     state.reachable_prereqs = surface_edge_info.reachable_prereqs
     -- Picking from this set of edges ensures an unchanged number of dependents per prereq
     state.unused_edges = surface_edge_info.unused_edges
+
+    local preferred_edges = get_preferred_edges(state)
+
     -- Picking from this set of edges ensures that no softlocks occur (i wish)
     -- This set doesn't feature edges with the same prereq twice
-    state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
+    state.suitable_edges = helpers.unique_prereq_edge_filter(preferred_edges)
 
     if override_scenario_key ~= nil and state.scenarios[override_scenario_key] ~= nil then
         local scenario = state.scenarios[override_scenario_key]
@@ -37,15 +52,16 @@ local determine_available_edges = function (state)
             end
         end
         state.unused_edges = state.reachable_prereqs
-        state.suitable_edges = helpers.unique_prereq_edge_filter(state.unused_edges)
+        preferred_edges = get_preferred_edges(state)
+        state.suitable_edges = helpers.unique_prereq_edge_filter(get_preferred_edges(state))
     end
 
-    state.unused_edges_suitable = true
+    state.preferred_edges_suitable = true
     state.prereq_edges_suitable = true
 
     if #state.suitable_edges < state.first_edge_count then
         state.suitable_edges = helpers.unique_prereq_edge_filter(state.reachable_prereqs)
-        state.unused_edges_suitable = false
+        state.preferred_edges_suitable = false
     end
     if #state.suitable_edges < state.first_edge_count then
         -- uh-oh
@@ -96,12 +112,12 @@ local determine_available_edges = function (state)
 
             -- Shared critical node detected
             state.critical_node = true
-            state.unused_edges_suitable = true
+            state.preferred_edges_suitable = true
             state.prereq_edges_suitable = true
 
             state.suitable_edges = {}
             -- Put intersection with unused edges as available edges
-            for _, edge in pairs(state.unused_edges) do
+            for _, edge in pairs(preferred_edges) do
                 local prereq = state.random_graph[edge.prereq_key]
                 local prereq_surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(prereq)
                 if filter[prereq_surface_ambiguous_key] ~= nil then
@@ -114,7 +130,7 @@ local determine_available_edges = function (state)
             if #state.suitable_edges < state.first_edge_count then
 
                 -- This is bad
-                state.unused_edges_suitable = false
+                state.preferred_edges_suitable = false
                 state.suitable_edges = {}
 
                 -- Try resorting to using any found prereq
@@ -152,6 +168,8 @@ local assign_prereqs = function (state, node_key, override_scenario_key)
     state.final_new_edges = {}
     state.final_used_edges = {}
 
+    local target_randomizers = {}
+
     -- Find an edge type for this type of dependent
     for edge_type_key, edge_type in pairs(state.edge_types) do
         if state.node.type == edge_type.dependent_type then
@@ -176,6 +194,7 @@ local assign_prereqs = function (state, node_key, override_scenario_key)
             for _, randomizer in pairs(state.edge_type_to_randomizers[edge_type_key]) do
                 if randomizer.edge_types[edge_type_key] ~= nil then
                     state.randomizer = randomizer
+                    target_randomizers[randomizer.key] = randomizer
 
                     -- The old prereqs from the perspective of this randomizer
                     state.old_edges = {}
@@ -188,7 +207,7 @@ local assign_prereqs = function (state, node_key, override_scenario_key)
 
                     determine_available_edges(state)
 
-                    if not state.unused_edges_suitable then
+                    if not state.preferred_edges_suitable then
                         state.compromises_for_dependent = state.compromises_for_dependent + 1
                     end
 
@@ -284,6 +303,11 @@ local assign_prereqs = function (state, node_key, override_scenario_key)
     end
 
     state.total_compromises = state.total_compromises + state.compromises_for_dependent
+
+    for _, randomizer in pairs(target_randomizers) do
+        state.randomizer = randomizer
+        randomizer.on_assign_prereqs_success(state)
+    end
 
     -- Success
     return true
@@ -504,12 +528,8 @@ local try_randomize_graph = function (state, graph_randomizations)
 
     -- Keep track of which nodes we haven't decided prereqs for yet
     state.locked_nodes = {}
-    for node_type, _ in pairs(state.target_dependent_types) do
-        for _, node_key in pairs(state.node_type_to_node_keys[node_type]) do
-            if state.shuffled_order_ordinals[node_key] ~= nil then
-                state.locked_nodes[node_key] = true
-            end
-        end
+    for node_key, _ in pairs(state.target_dependents) do
+        state.locked_nodes[node_key] = true
     end
 
     sm.init_scenarios(state)
@@ -601,7 +621,7 @@ local try_randomize_graph = function (state, graph_randomizations)
     state.unused_edges = nil
     state.suitable_edges = nil
     state.critical_node = nil
-    state.unused_edges_suitable = nil
+    state.preferred_edges_suitable = nil
     state.prereq_edges_suitable = nil
     state.new_edges = nil
     state.edges_to_use = nil
@@ -632,18 +652,25 @@ local try_randomize_graph = function (state, graph_randomizations)
                 local call_info = queue.pop(state.postponed_locked_nodes[dependent_type])
                 local node_key = call_info.node_key
                 if state.locked_nodes[node_key] ~= nil and prereqs_in_random_graph(state, node_key) then
-                    local ordinal = state.shuffled_order_ordinals[node_key]
                     local dependent = state.vanilla_graph[node_key]
                     local surface_ambiguous_key = graph_utils.get_surface_ambiguous_key(dependent)
                     for _, prereq in ipairs(dependent.prereqs) do
                         local edge_type = graph_utils.create_edge_type(prereq.type, dependent.type)
                         if state.edge_types[edge_type.key] ~= nil
+                        and state.critical_node_info[edge_type.key] ~= nil
                         and state.critical_node_info[edge_type.key][surface_ambiguous_key] ~= nil then
-                            for scenario_key, _ in pairs(state.critical_node_info[edge_type.key][surface_ambiguous_key]) do
+                            for scenario_key, surfaces in pairs(state.critical_node_info[edge_type.key][surface_ambiguous_key]) do
                                 local scenario = state.scenarios[scenario_key]
-                                if scenario ~= nil and ordinal < scenario.start_ordinal then
-                                    state.showstoppers_per_scenario[scenario_key][node_key] = true
-                                    showstopper = true
+                                if scenario ~= nil then
+                                    local sak_info = state.surface_ambiguous_key_info[surface_ambiguous_key]
+                                    for surface_key, _ in pairs(surfaces) do
+                                        local showstopper_node_key = sak_info.node_keys[surface_key]
+                                        local ordinal = state.shuffled_order_ordinals[showstopper_node_key]
+                                        if ordinal < scenario.end_ordinal then
+                                            state.showstoppers_per_scenario[scenario_key][showstopper_node_key] = true
+                                            showstopper = true
+                                        end
+                                    end
                                 end
                             end
                         end
@@ -672,6 +699,8 @@ export.run = function (state, graph_randomizations)
     state.edge_type_to_randomizers = {}
     -- Gather the edges themselves
     state.target_edges = {}
+    -- Gather dependents that'll have their prereqs randomized
+    state.target_dependents = {}
     for randomizer_key, randomizer in pairs(graph_randomizations.randomizers) do
         state.randomizer = randomizer
         randomizer.edges = randomizer.get_target_edges(state)
@@ -686,6 +715,7 @@ export.run = function (state, graph_randomizations)
                 state.edge_type_to_randomizers[edge_type_key] = {}
             end
             state.edge_type_to_randomizers[edge_type_key][randomizer_key] = randomizer
+            state.target_dependents[edge.dependent_key] = true
         end
     end
     state.randomizer = nil

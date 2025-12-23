@@ -27,4 +27,7 @@ export.electric_energy_distribution_1 = "electric-energy-distribution-1"
 export.planet_discovery_vulcanus = "planet-discovery-vulcanus"
 export.promethium_science_pack = "promethium-science-pack"
 
+export.config_unused = "unused"
+export.config_reachable = "reachable"
+
 return export
