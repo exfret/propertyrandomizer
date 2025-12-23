@@ -78,6 +78,7 @@ build_graph.add_dependents(dep_graph)
 if settings.startup["propertyrandomizer-simultaneous"].value then
 
     -- Include these to toggle individual randomizers
+    --require("randomizations/graph/core/randomizers/burnt-result-source")
     --require("randomizations/graph/core/randomizers/recipe-ingredients")
     --require("randomizations/graph/core/randomizers/technology-ingredients")
     --require("randomizations/graph/core/randomizers/technology-prerequisites")
