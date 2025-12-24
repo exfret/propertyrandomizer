@@ -3,3 +3,4 @@
 3. Cliff sizes aren't randomized due to a startup crash
 4. Potential softlock reported by Malus
 5. Biter eggs are reported to be reachable when they aren't (probably a problem with logic/dependency graph)
+6. Getting amounts that are very large from item rando

@@ -1,5 +1,10 @@
 local categories = {}
 
+categories.ammo_required = {
+    ["ammo-turret"] = true,
+    ["artillery-turret"] = true,
+}
+
 categories.belts = {
     ["transport-belt"] = true,
     ["underground-belt"] = true,
@@ -17,6 +22,12 @@ categories.bot_classes = {
     ["logistic-robot"] = true
 }
 
+categories.corpse = {
+    ["corpse"] = true,
+    ["character-corpse"] = true,
+    ["rail-remnants"] = true,
+}
+
 categories.crafting_machines = {
     ["assembling-machine"] = true,
     ["furnace"] = true,
@@ -30,6 +41,46 @@ categories.effect_receivers = {
     ["lab"] = true,
     ["mining-drill"] = true
 }
+
+-- The following only consider powering the machine, not power that the machine provides
+categories.energy_sources_input = {
+    ["agricultural-tower"] = "energy_source",
+    ["ammo-turret"] = "energy_source",
+    ["arithmetic-combinator"] = "energy_source",
+    ["assembling-machine"] = "energy_source",
+    ["asteroid-collector"] = "energy_source",
+    beacon = "energy_source",
+    boiler = "energy_source",
+    ["burner-generator"] = "burner",
+    car = "energy_source",
+    ["decider-combinator"] = "energy_source",
+    ["electric-turret"] = "energy_source",
+    furnace = "energy_source",
+    ["fusion-reactor"] = {"burner", "energy_source"}, -- Has two operability energy sources
+    inserter = "energy_source",
+    lab = "energy_source",
+    lamp = "energy_source",
+    loader = "energy_source",
+    ["loader-1x1"] = "energy_source",
+    locomotive = "energy_source",
+    ["mining-drill"] = "energy_source",
+    ["offshore-pump"] = "energy_source",
+    ["programmable-speaker"] = "energy_source",
+    pump = "energy_source",
+    radar = "energy_source",
+    reactor = "energy_source",
+    roboport = "energy_source",
+    ["rocket-silo"] = "energy_source",
+    ["selector-combinator"] = "energy_source",
+    ["spider-vehicle"] = "energy_source"
+}
+
+-- For which entities is their energy source forced to be electric?
+categories.energy_sources_input_electric = {
+    ["ammo-turret"] = true,
+    -- CRITICAL TODO
+}
+-- For which entities is their energy source forced to be burner or void?
 
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {
@@ -58,6 +109,39 @@ categories.equipment_energy_usage_keys = {
     ["night-vision-equipment"] = {["energy_input"] = "power"}
 }
 
+-- Equipment types that consume power from the grid
+-- Note: battery-equipment is tertiary (stores power), treated as consumer
+categories.equipment_power_consumers = {
+    ["active-defense-equipment"] = true,
+    ["battery-equipment"] = true,
+    ["belt-immunity-equipment"] = true,
+    ["energy-shield-equipment"] = true,
+    ["inventory-bonus-equipment"] = true,  -- Optional power, but can consume
+    ["movement-bonus-equipment"] = true,
+    ["night-vision-equipment"] = true,
+    ["roboport-equipment"] = true,
+}
+
+-- Equipment types that produce power into the grid (don't need external power)
+categories.equipment_power_producers = {
+    ["solar-panel-equipment"] = true,
+    ["generator-equipment"] = true,
+}
+
+-- Note: Doesn't include thruster; that requires two fluids and so is treated specially
+categories.fluid_required = {
+    ["boiler"] = true,
+    ["fusion-generator"] = true,
+    ["fusion-reactor"] = true,
+    ["generator"] = true,
+    ["fluid-turret"] = true,
+}
+
+-- The heating tower is a reactor prototype, so this is all we need
+categories.heat_producers = {
+    ["reactor"] = true
+}
+
 categories.machine_energy_usage_keys = {
     ["agricultural-tower"] = {["energy_usage"] = "power", ["crane_energy_usage"] = "power"},
     ["ammo-turret"] = {["energy_per_shot"] = "energy"},
@@ -80,7 +164,7 @@ categories.machine_energy_usage_keys = {
     ["arithmetic-combinator"] = {["active_energy_usage"] = "power"},
     ["decider-combinator"] = {["active_energy_usage"] = "power"},
     ["selector-combinator"] = {["active_energy_usage"] = "power"},
-    ["spidertron"] = {["movement_energy_consumption"] = "power"}
+    ["spider-vehicle"] = {["movement_energy_consumption"] = "power"}
 }
 
 -- This doesn't include stuff like blueprint books and selection tool
@@ -99,6 +183,28 @@ categories.normal_item_classes = {
     ["repair-tool"] = true,
     ["space-platform-starter-pack"] = true,
     ["tool"] = true,
+}
+
+categories.rail = {
+    ["curved-rail-a"] = true,
+    ["elevated-curved-rail-a"] = true,
+    ["curved-rail-b"] = true,
+    ["elevated-curved-rail-b"] = true,
+    ["half-diagonal-rail"] = true,
+    ["elevated-half-diagonal-rail"] = true,
+    ["legacy-curved-rail"] = true,
+    ["legacy-straight-rail"] = true,
+    ["rail-ramp"] = true,
+    ["straight-rail"] = true,
+    ["elevated-straight-rail"] = true,
+}
+
+categories.rolling_stock = {
+    ["artillery-wagon"] = true,
+    ["cargo-wagon"] = true,
+    ["infinity-cargo-wagon"] = true,
+    ["fluid-wagon"] = true,
+    ["locomotive"] = true,
 }
 
 categories.special_item_subgroups = {
@@ -120,6 +226,46 @@ categories.vehicles = {
     ["fluid-wagon"] = true,
     ["locomotive"] = true,
     ["spider-vehicle"] = true
+}
+
+-- Vehicle types that can have equipment grids (which should be all of them; but including as a separate category in case I learn otherwise)
+categories.vehicles_with_grids = {
+    ["car"] = true,
+    ["spider-vehicle"] = true,
+    ["locomotive"] = true,
+    ["cargo-wagon"] = true,
+    ["fluid-wagon"] = true,
+    ["artillery-wagon"] = true,
+}
+
+-- It's easier to write down which entities *don't* have health
+categories.without_health = {
+    ["arrow"] = true,
+    ["artillery-flare"] = true,
+    ["artillery-projectile"] = true,
+    ["beam"] = true,
+    ["character-corpse"] = true,
+    ["cliff"] = true,
+    ["corpse"] = true,
+    ["rail-remnants"] = true,
+    ["deconstructible-tile-proxy"] = true,
+    ["entity-ghost"] = true,
+    ["explosion"] = true,
+    ["fire"] = true,
+    ["stream"] = true,
+    ["highlight-box"] = true,
+    ["item-entity"] = true,
+    ["item-request-proxy"] = true,
+    ["lightning"] = true,
+    ["particle-source"] = true,
+    ["projectile"] = true,
+    ["resource"] = true,
+    ["rocket-silo-rocket"] = true,
+    ["rocket-silo-rocket-shadow"] = true,
+    ["smoke-with-trigger"] = true,
+    ["speech-bubble"] = true,
+    ["sticker"] = true,
+    ["tile-ghost"] = true,
 }
 
 return categories
