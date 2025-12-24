@@ -9,6 +9,8 @@ local default = {}
 
 -- Note that default's implementation of all the fields here aren't used since they're always mandatory; they're just here for demonstration purposes
 default.required_fields = {
+    ["state"] = true,
+    ["init"] = true,
     ["source_types"] = true,
     ["target_types"] = true,
     ["group_surfaces"] = true,
@@ -18,15 +20,22 @@ default.required_fields = {
     ["reflect"] = true,
 }
 
--- When gathering edges for the randomizer, first filter by source and target edge types, then by whether it decides to claim the edge after further checks
--- Two different handlers should never claim the same connection (and connections should never have overlapping edges)
+-- State is some pointers to extra info created by execute.lua, which calls the handlers
+-- It's often big tables that we wouldn't want to create inside each handler, like top_sort's
+local state = {}
+default.state = state
+default.init = function(state)
+    for k, v in pairs(state) do
+        default.state[k] = v
+    end
+end
+
+-- Any edges with source in source_types and target in target_types is considered for randomization
+-- We can add extra conditions, but any such edge *could* be randomized by this handler, and as problems might arise if multiple handlers try to touch the same edge, try not to allow any common source --> target types in different handlers
 default.source_types = {
 }
 default.target_types = {
 }
-default.claim = function(slot, traveler)
-end
-
 -- Does this handler involve nodes with surface-specific variants that we need to account for?
 -- A good example is anything 
 default.group_surfaces = false

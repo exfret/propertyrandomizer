@@ -1,14 +1,22 @@
 WORKING ON:
- - Not matching up some slots to travelers when booting? (Even though traveler is reachable)
+ - Unified randomization
+    - Note for AND/OR:
+       - If we take our blacklisted/to-be-randomized edges, and see what happens when randomizing the next one in the top sort, see if that node is an AND node
+       - If it is, then we do all its unrandomized connections to unlock it, then see what's reachable; only unrandomized AND nodes and possibly to-be-randomized OR nodes will become reachable; AND nodes with randomized connections only become reachable after fixing those connections
+       - See if you make any randomized *connections* to OR's reachable...
+       - To make things easier, assume AND-OR, then when you randomize an AND... look at dual graph (ANDs/ORs flipped, randomized edges removed but unrandomized kept; this represents vanilla game and what's unreachable in it)
+       - Dual graph is unreachability in vanilla game because AND nodes need at least one prereq not to be decided yet, and OR nodes need all, and also the fixed edges already encode unreachability since the sources now give off opposite info
+       - Then, when you randomize an AND, its OR outconnections become unreachable AND nodes in the dual graph, so we get to pick for this purpose things that were previously unreachable and send connections to them
+       - Oh, so when you randomize an AND's prereqs, do a prereq shuffle with reachable and a dependent shuffle with unreachable, then for an OR, a prereq shuffle with unreachable and a dependent shuffle with reachable
+       - Prereqs of OR into unreachable makes sense since we can assume to have randomized an in-connection from some AND for it or smth, well at least in AND-OR case since then OR has only become reachable if the AND's have built into it with some sort of prereqs yet
+       - I guess the only special case is OR to OR nodes with forward edges, and we can just separate only those edges with AND's in the middle to treat it as such; this effectively treats it as depending on an AND node
+       - I guess we could also... wait, we could also do unreachable stuff this way! Oh, but the topological sort wouldn't be there to guide us then.
 
  - Nifyr's simultaneous rando...
     - Have fallback for when path.lua is exponential time (make sure it's only used as a heuristic)
     - Add ability for nodes to switch surfaces
        - Need way to test if a node has become surface locked (either it now depends on a surface-locked node or a locked edge in the future requires it to be from a specific surface)
     - Don't remove unreachable edges and allow for cross-node-type randomization (like craft-material to item)
-
- - Dupes!
-    - No wait!! First, unified randomization!
 
  - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
  - Add tooltip info for new randomizations (check diffs to confirm which ones are new)

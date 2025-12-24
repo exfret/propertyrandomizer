@@ -3325,7 +3325,7 @@ randomizations.spider_unit_yields = function (id)
                     key = rng_key,
                     dummy = #offsets,
                     variance = "medium",
-                    dir = 1,
+                    dir = -1,
                     rounding = "discrete",
                 })
                 while new_count < #offsets do

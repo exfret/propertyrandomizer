@@ -27,45 +27,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "node-recipe-surface-isolated.md",
+                "file": "Main Nodes/node-build-tile-item.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "node-recipe-surface-isolated"
-            }
-          },
-          {
-            "id": "4b3cc8c0f053d1d4",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Main Nodes/node-entity-buildability-surface.md",
-                "mode": "source",
-                "source": true,
-                "backlinks": false
-              },
-              "icon": "lucide-file",
-              "title": "node-entity-buildability-surface"
-            }
-          },
-          {
-            "id": "095fe0ee9307c969",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Main Nodes/node-entity-buildability.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "node-entity-buildability"
+              "title": "node-build-tile-item"
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -209,41 +180,46 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "095fe0ee9307c969",
+  "active": "1ad16768bcc2d6d8",
   "lastOpenFiles": [
-    "Main Nodes/node-entity-buildability-surface.md",
-    "Main Nodes/node-entity-buildability.md",
+    "transport-item-surface.md",
+    "node-transport-set.md",
+    "node-recipe-surface-isolated.md",
+    "node-item-surface-isolated.md",
+    "node-fuel-category.md",
+    "node-equipment.md",
+    "node-equipment-category.md",
+    "node-entity-buildability-surface-true.md",
+    "mechanic-ammonia-ocean.md",
+    "Planetary Mechanics.md",
+    "Mechanics Nodes/mechanics-resource-planet.md",
+    "Mechanics Nodes/mechanics-done-planet.md",
+    "Mechanics Nodes",
+    "Main Nodes/node-void-energy.md",
+    "Main Nodes/node-valid-tile-placement-surface.md",
+    "Main Nodes/node-transport-item.md",
+    "Main Nodes/node-transport-item-to-surface.md",
+    "Main Nodes/node-technology.md",
+    "Main Nodes/node-surface.md",
+    "Main Nodes/node-starting-planet.md",
+    "Main Nodes/node-starting-character.md",
+    "Main Nodes/node-spawner-capturability.md",
     "Main Nodes/node-spawn-tile.md",
     "Main Nodes/node-spawn-tile-surface.md",
-    "Main Nodes/node-create-fluid-offshore-surface.md",
-    "Main Nodes/node-create-fluid.md",
-    "Main Nodes/node-create-fluid-surface.md",
-    "Main Nodes/node-mine-entity-surface.md",
-    "node-fuel-category.md",
-    "Main Nodes/node-recipe-surface.md",
-    "Main Nodes/node-item-surface.md",
-    "Main Nodes/node-send-item-to-orbit-planet.md",
-    "Main Nodes/node-planet.md",
-    "Main Nodes/node-surface.md",
-    "Main Nodes/node-transport-item-to-surface.md",
-    "transport-item-surface.md",
-    "Main Nodes/node-burn-item-surface.md",
-    "Main Nodes/node-agricultural-tower-surface.md",
-    "Main Nodes/node-craft-material.md",
-    "Main Nodes/node-craft-material-surface.md",
-    "Main Nodes/node-recipe.md",
-    "Main Nodes/node-recipe-category.md",
-    "Main Nodes/node-energy-source-surface.md",
-    "Main Nodes/node-fuel-category-burner.md",
-    "Main Nodes/node-electricity-surface.md",
-    "Main Nodes/node-electricity-production-surface.md",
+    "Main Nodes/node-spawn-rail-surface.md",
+    "Main Nodes/node-spawn-entity.md",
+    "Main Nodes/node-spawn-entity-surface.md",
     "Compat Nodes",
-    "Planetary Mechanics",
-    "Mechanics Nodes",
+    "Nodes/Electricity",
+    "Nodes/Technology",
+    "Nodes/Recipe",
+    "Nodes/Tile",
+    "Nodes/Fluid",
+    "Nodes/Item",
+    "Nodes/Entity",
+    "Nodes",
     "Pasted image 20250421003153.png",
     "Pasted image 20250420223700.png",
-    "space-nodes.canvas",
-    "Graph Layout/non-resource-autoplace",
-    "Main Nodes"
+    "space-nodes.canvas"
   ]
 }

@@ -1,4 +1,7 @@
-
+-- exfret: I added the ability to pass in one's own items/entities/etc. list to most of these functions, but later we'll want a separate file for these lookup tables
+-- Some randomizations can actually add new prototypes, not to mention the existence of dupes, so it's not sufficient to just gather the entities once in the beginning in those cases
+-- For this reason, these should be stored in lookup tables that can be recomputed with a simple function call when needed
+-- I've started a file for this while creating the new build-graph.lua logic, it is in randomizations/graph/unified/new-lib with a bunch of other heavily WIP stuff if you want to see it
 
 local export = {}
 
@@ -576,19 +579,23 @@ export.gather_unit_spawner_structs = function (structs, unit_spawner, stop_proto
 end
 
 -------------------------------------------------------------------------------------------------------------------------------
---- This returns a table that maps prototypes of a certain type to prototypes that may (directly or undirectly) create it
+--- This returns a table that maps prototypes of a certain type to prototypes that may (directly or indirectly) create it
 -------------------------------------------------------------------------------------------------------------------------------
 
 local prototype_to_creators = {}
 
-export.get_creator_table = function (prototype_type)
+export.get_creator_table = function (prototype_type, item_list, entity_list, equipment_list)
+    -- Assume if any of these are set to non-nil that we are being told to recompute
+    if item_list ~= nil or entity_list ~= nil or equipment_list ~= nil then
+        prototype_to_creators[prototype_type] = nil
+    end
     if prototype_to_creators[prototype_type] ~= nil then
         return prototype_to_creators[prototype_type]
     end
 
     prototype_to_creators[prototype_type] = {}
 
-    for item_name, item in pairs(items) do
+    for item_name, item in pairs(item_list or items) do
         local structs = {}
         gather_item_name_structs(structs, item_name)
         for _, prototype in pairs(structs[prototype_type] or {}) do
@@ -596,7 +603,7 @@ export.get_creator_table = function (prototype_type)
         end
     end
 
-    for entity_name, entity in pairs(entities) do
+    for entity_name, entity in pairs(entity_list or entities) do
         local structs = {}
         gather_entity_name_structs(structs, entity_name)
         for _, prototype in pairs(structs[prototype_type] or {}) do
@@ -604,7 +611,7 @@ export.get_creator_table = function (prototype_type)
         end
     end
 
-    for equipment_name, e in pairs(equipment) do
+    for equipment_name, e in pairs(equipment_list or equipment) do
         local structs = {}
         gather_equipment_name_structs(structs, equipment_name)
         for _, prototype in pairs(structs[prototype_type] or {}) do
