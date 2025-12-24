@@ -119,6 +119,11 @@ local find_entity_class = function (entity_name)
             return class
         end
     end
+    -- Asteroid chunks aren't entities, but I still need to know when they're created
+    -- Note that this technically could have issues with chunks with the same name as an entity
+    if data_raw_table("asteroid-chunk")[entity_name] ~= nil then
+        return "asteroid-chunk"
+    end
     error()
 end
 local gather_entity_name_structs = function (structs, entity_name, stop_prototype)
@@ -211,6 +216,11 @@ local gather_trigger_effect_structs = function (structs, trigger_effect, stop_pr
         end
         if te.sticker ~= nil then
             gather_entity_name_structs(structs, te.sticker, stop_prototype)
+        end
+
+        -- Asteroid chunks aren't entities, but I still need to know when they're created by asteroids for promethium science
+        if te.type == "create-asteroid-chunk" then
+            gather_entity_name_structs(structs, te.asteroid_name, stop_prototype)
         end
     end
 end

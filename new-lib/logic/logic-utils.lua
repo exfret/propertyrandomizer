@@ -208,7 +208,7 @@ lutils.check_freezable = function(entity)
         return false
     end
 
-    local property_list = categories.operation_energy_sources[entity.type]
+    local property_list = categories.energy_sources_input[entity.type]
     if type(property_list) ~= "table" then
         property_list = {property_list}
     end

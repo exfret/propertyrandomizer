@@ -156,14 +156,16 @@ stages[1].fluids = function()
 end
 
 -- Just filters out hidden recipes
+-- EDIT: Nevermind, that prevents recycling recipes from being found
+-- TODO: Need to test whether recipe is hidden only for assembling machine types, but not for furnace types... ugh
 -- TODO: Compatibility for py TURD hidden recipes
 stages[1].recipes = function()
     local recipes = {}
 
     for _, recipe in pairs(prots("recipe")) do
-        if not recipe.hidden then
+        --if not recipe.hidden then
             recipes[recipe.name] = recipe
-        end
+        --end
     end
 
     lu.recipes = recipes
@@ -199,7 +201,7 @@ stages[1].tile_collision_groups = function()
             tile_collision_groups[layers_key] = {}
         end
         if tile_collision_group_to_layers[layers_key] == nil then
-            tile_collision_group_to_layers[layers_key] = collision_layers
+            tile_collision_group_to_layers[layers_key] = tile.collision_mask.layers
         end
         tile_collision_groups[layers_key][tile.name] = true
     end
@@ -263,6 +265,35 @@ end
 ----------------------------------------------------------------------
 
 stages[2] = {}
+
+-- Precompute layers that appear for some entity
+stages[1].entity_collision_groups = function()
+    local entity_collision_groups = {}
+    local entity_collision_group_to_layers = {}
+    local entity_to_collision_group = {}
+
+    for _, entity in pairs(lu.entities) do
+        local collision_layers = {}
+        local collision_mask = entity.collision_mask or collision_mask_util.get_default_mask(entity.type)
+        for layer, _ in pairs(collision_mask.layers) do
+            table.insert(collision_layers, layer)
+        end
+        table.sort(collision_layers)
+        local layers_key = gutils.concat(collision_layers)
+        if entity_collision_groups[layers_key] == nil then
+            entity_collision_groups[layers_key] = {}
+        end
+        if entity_collision_group_to_layers[layers_key] == nil then
+            entity_collision_group_to_layers[layers_key] = collision_mask.layers
+        end
+        entity_collision_groups[layers_key][entity.name] = true
+        entity_to_collision_group[entity.name] = layers_key
+    end
+
+    lu.entity_collision_groups = entity_collision_groups
+    lu.entity_collision_group_to_layers = entity_collision_group_to_layers
+    lu.entity_to_collision_group = entity_to_collision_group
+end
 
 -- Maps space connections to asteroid entities that spawn on them
 -- connection_name -> { asteroid_name -> true }
@@ -599,26 +630,29 @@ end
 stages[2].mcat_to_drills = function()
     local mcat_to_drills = {}
 
-    for _, drill in pairs(prots("mining-drill")) do
-        if lu.entities[drill.name] ~= nil then
-            local has_input_box = drill.input_fluid_box ~= nil
-            local has_output_box = drill.output_fluid_box ~= nil
-            local resource_cats = drill.resource_categories or {"basic-solid"}
+    -- Factorio character is counted as a mining drill; she works just as hard!
+    for _, drill_type in pairs({"mining-drill", "character"}) do
+        for _, drill in pairs(prots(drill_type)) do
+            if lu.entities[drill.name] ~= nil then
+                local has_input_box = drill.input_fluid_box ~= nil
+                local has_output_box = drill.output_fluid_box ~= nil
+                local resource_cats = drill.resource_categories or drill.mining_categories or {"basic-solid"}
 
-            for _, base_cat in pairs(resource_cats) do
-                -- Generate all valid spoofed keys this drill can handle
-                -- A drill without input box can only handle has_input=0
-                -- A drill without output box can only handle has_output=0
-                local max_input = has_input_box and 1 or 0
-                local max_output = has_output_box and 1 or 0
+                for _, base_cat in pairs(resource_cats) do
+                    -- Generate all valid spoofed keys this drill can handle
+                    -- A drill without input box can only handle has_input=0
+                    -- A drill without output box can only handle has_output=0
+                    local max_input = has_input_box and 1 or 0
+                    local max_output = has_output_box and 1 or 0
 
-                for has_input = 0, max_input do
-                    for has_output = 0, max_output do
-                        local spoofed_key = gutils.concat({base_cat, has_input, has_output})
-                        if mcat_to_drills[spoofed_key] == nil then
-                            mcat_to_drills[spoofed_key] = {}
+                    for has_input = 0, max_input do
+                        for has_output = 0, max_output do
+                            local spoofed_key = gutils.concat({base_cat, has_input, has_output})
+                            if mcat_to_drills[spoofed_key] == nil then
+                                mcat_to_drills[spoofed_key] = {}
+                            end
+                            mcat_to_drills[spoofed_key][drill.name] = true
                         end
-                        mcat_to_drills[spoofed_key][drill.name] = true
                     end
                 end
             end
@@ -797,8 +831,8 @@ stages[2].dying_spawns = function()
                         if te.type == "create-entity" and te.entity_name ~= nil then
                             add_spawn(entity_key, gutils.key("entity", te.entity_name))
                         end
-                        if te.type == "create-asteroid-chunk" and te.asteroid_chunk ~= nil then
-                            add_spawn(entity_key, gutils.key("asteroid-chunk", te.asteroid_chunk))
+                        if te.type == "create-asteroid-chunk" and te.asteroid_name ~= nil then
+                            add_spawn(entity_key, gutils.key("asteroid-chunk", te.asteroid_name))
                         end
                     end
                 end
@@ -850,6 +884,48 @@ stages[2].capsule_spawns = function()
 
     lu.capsule_spawns = capsule_spawns
     lu.capsule_spawns_reverse = capsule_spawns_reverse
+end
+
+-- Maps ammo items to entities they spawn
+-- Uses trigger library to gather ammo action trigger effects
+-- ammo_spawns: item_name -> { entity_name -> true }
+-- ammo_spawns_reverse: entity_name -> { item_name -> true }
+stages[2].ammo_spawns = function()
+    local ammo_spawns = {}
+    local ammo_spawns_reverse = {}
+
+    -- Helper to add a spawn relationship
+    local function add_spawn(item_name, entity_name)
+        if ammo_spawns[item_name] == nil then
+            ammo_spawns[item_name] = {}
+        end
+        ammo_spawns[item_name][entity_name] = true
+
+        if ammo_spawns_reverse[entity_name] == nil then
+            ammo_spawns_reverse[entity_name] = {}
+        end
+        ammo_spawns_reverse[entity_name][item_name] = true
+    end
+
+    for item_name, item in pairs(lu.items) do
+        if item.type == "ammo" then
+            -- Use trigger library to gather all trigger effects from ammo
+            local structs = {}
+            tutils.gather_ammo_structs(structs, item, nil)
+
+            -- Extract spawned entities from trigger effects
+            if structs["trigger-effect"] ~= nil then
+                for _, te in pairs(structs["trigger-effect"]) do
+                    if te.type == "create-entity" and te.entity_name ~= nil then
+                        add_spawn(item_name, te.entity_name)
+                    end
+                end
+            end
+        end
+    end
+
+    lu.ammo_spawns = ammo_spawns
+    lu.ammo_spawns_reverse = ammo_spawns_reverse
 end
 
 -- Maps entities to their output fluid (boilers, fusion-reactors, fusion-generators)
@@ -997,6 +1073,10 @@ stages[2].operable_entities = function()
                     operable_entities[entity.name] = true
                 end
             end
+        end
+        -- Also have to add character prototypes themselves
+        if entity.type == "character" then
+            operable_entities[entity.name] = true
         end
     end
 
@@ -1474,9 +1554,9 @@ stages[3].mat_mining_map = function()
         if minable ~= nil then
             local minable_results = minable.results
             if minable_results == nil and minable.result ~= nil then
-                minable_results = {type = "item", name = minable.result, amount = minable.count or 1}
+                minable_results = {{type = "item", name = minable.result, amount = minable.count or 1}}
             end
-            for ind, result in pairs(minable_results) do
+            for ind, result in pairs(minable_results or {}) do
                 local to_material_map = mat_mining_map.to_material[minable_key]
                 local to_minable_map = mat_mining_map.to_minable[gutils.key(result)]
                 if to_material_map[gutils.key(result)] == nil then
