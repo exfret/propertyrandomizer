@@ -40,7 +40,7 @@ gutils.concat = function(key_tbl, sep_level)
 end
 
 gutils.ekey = function(edge)
-    return gutils.key(edge.type, edge.start .. edge_separator .. edge.stop)
+    return edge.start .. edge_separator .. edge.stop
 end
 
 -- TODO: Key deconstruct function for concat and ekey (basically a .split())

@@ -1,12 +1,7 @@
--- NEXT:
---   * Items
---   * Damage rework:
---      * ammo_category points to things that can shoot an ammo, ammo points to ammo_category to see if it can be shot
---      * there is now a damage_type node (just test for "can I do this damage type", maybe include in prereq info how much damage!)
---      * damage_type points to things that can do that damage type (again, with how much damage as extra info), which includes ammo, which again points to ammo_category
---      * new entity-kill node for whether you can kill an entity, points to damage types that damage that entity
---      * don't include ammo as a prereq for gun turrets, it's actually the other way around: gun turrets give you the ability to shoot the ammo
---      * add new item-use node for whether you can use an item, which tests things like usability of ammo
+-- IDEA/TODO: Cull many edges of the graph by deciding ahead of time what to randomize and not expanding nodes that don't matter
+-- For example, if we don't care about whether we can kill certain entities, we can get rid of those entity-kill nodes
+
+-- Note: Only asteroids are checked in entity-kill
 
 -- TODO:
 --   * Add note to allow input-output connections in place of pipes for "hold-fluid"
@@ -86,9 +81,6 @@ local logic = {}
 
 -- Contexts currently include rooms (i.e.- where things can be done)
 logic.contexts = {}
-for room_key, _ in pairs(lu.rooms) do
-    logic.contexts[room_key] = true
-end
 logic.type_info = {}
 
 local curr
@@ -99,7 +91,7 @@ local function add_node(node_type, op, context, node_name, extra)
     if logic.type_info[node_type] == nil then
         logic.type_info[node_type] = {
             op = op,
-            context = context or "transmit",
+            context = context,
         }
     end
 
@@ -116,8 +108,16 @@ local function add_edge(start_type, start_name, extra)
     gutils.add_edge(logic.graph, key(start_type, start_name), key(curr), extra)
 end
 
-logic.load = function()
+logic.build = function()
+    log("Loading lookups")
     lu.load_lookups()
+
+    log("Lookups loaded")
+
+    -- Add contexts
+    for room_key, _ in pairs(lu.rooms) do
+        logic.contexts[room_key] = true
+    end
 
     logic.graph = {}
 
@@ -175,6 +175,7 @@ logic.load = function()
         ----------------------------------------
         -- Can we encounter this asteroid chunk?
 
+        -- Edges from locations that spawn this chunk naturally
         if lu.asteroid_to_place[key("asteroid-chunk", chunk.name)] ~= nil then
             for place_name, place in pairs(lu.asteroid_to_place[key("asteroid-chunk", chunk.name)]) do
                 local node_type
@@ -294,17 +295,36 @@ logic.load = function()
                 add_edge("item-capsule", item_name)
             end
         end
+        if lu.ammo_spawns_reverse[entity.name] ~= nil then
+            for item_name, _ in pairs(lu.ammo_spawns_reverse[entity.name]) do
+                add_edge("item-ammo", item_name)
+            end
+        end
+        -- Asteroid spawning in space
+        if lu.asteroid_to_place[key("entity", entity.name)] ~= nil then
+            for place_name, place in pairs(lu.asteroid_to_place[key("entity", entity.name)]) do
+                local node_type
+                if place.type == "space-connection" then
+                    node_type = "space-connection"
+                else
+                    node_type = "space-location"
+                end
+                add_edge(node_type, place.name)
+            end
+        end
         -- Check if entity spawns from dying trigger effects
-        if lu.dying_spawns_reverse[key(entity)] ~= nil then
-            for dying_entity_key, _ in pairs(lu.dying_spawns_reverse[key(entity)]) do
+        if lu.dying_spawns_reverse[key("entity", entity.name)] ~= nil then
+            for dying_entity_key, _ in pairs(lu.dying_spawns_reverse[key("entity", entity.name)]) do
                 local dying_info = gutils.deconstruct(dying_entity_key)
                 if dying_info.type == "entity" then
                     add_edge("entity-kill", dying_info.name)
                 end
             end
         end
-        -- TODO: Check if entity spawns from ammo
-        -- TODO: Asteroid spawn definitions
+        -- Check if we can get access this through it being our character
+        if entity.type == "character" then
+            add_edge("entity-character", entity.name)
+        end
 
         if buildable ~= nil then
             ----------------------------------------
@@ -316,7 +336,7 @@ logic.load = function()
 
             add_edge("entity-build-item")
             add_edge("entity-build-tile")
-            if entity.surface_conditions ~= nil then
+            if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
                 add_edge("entity-build-surface-condition")
             end
             -- If it's a rolling stock (locomotive/cargo wagon/etc.), check that we can build some rail that it does not collide with
@@ -350,14 +370,16 @@ logic.load = function()
                 })
             end
 
-            ----------------------------------------
-            add_node("entity-build-surface-condition", "OR")
-            ----------------------------------------
-            -- Can we access a room with the right surface conditions for this entity?
+            if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
+                ----------------------------------------
+                add_node("entity-build-surface-condition", "OR")
+                ----------------------------------------
+                -- Can we access a room with the right surface conditions for this entity?
 
-            for room_key, room in pairs(lu.rooms) do
-                if lutils.check_surface_conditions(room, entity.surface_conditions) then
-                    add_edge("room", room_key)
+                for room_key, room in pairs(lu.rooms) do
+                    if lutils.check_surface_conditions(room, entity.surface_conditions or {}) then
+                        add_edge("room", room_key)
+                    end
                 end
             end
 
@@ -369,20 +391,14 @@ logic.load = function()
             -- For optimization, we precompute possible tile collision masks and make a tile-collision node for each group, then simply have this depend on the right groups
             -- If there's a restriction, this gets more complicated, so just depend on the individual tiles (note that this overrides collision masks)
             if not (entity.autoplace ~= nil and entity.autoplace.tile_restriction ~= nil) then
-                for layers_key, _ in pairs(lu.tile_collision_groups) do
-                    local example_mask = {layers = lu.tile_collision_group_to_layers[layers_key]}
-                    if not collision_mask_util.masks_collide(example_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity.type)) then
-                        add_edge("tile-collision-group", layers_key)
-                    end
-                end
+                add_edge("entity-collision-group", lu.entity_to_collision_group[entity.name])
             else
                 -- This is luckily an OR over tiles and transitions
                 for _, restriction in pairs(entity.autoplace.tile_restriction) do
                     -- Ignore transition restrictions (those could play a role but only in mods that force buildings to be on specific transitions)
                     -- Still check collision in case a mod does something dumb since that's easy
-                    if type(restriction) == "string" and not collision_mask_util.masks_collide(data.raw.tile[restriction], entity.collision_mask or collision_mask_util.get_default_mask(entity.type)) then
-                        -- TODO
-                        --add_edge("entity-can-be-placed-on-tile-due-to-restriction")
+                    if type(restriction) == "string" and not collision_mask_util.masks_collide(data.raw.tile[restriction].collision_mask, entity.collision_mask or collision_mask_util.get_default_mask(entity.type)) then
+                        add_edge("tile", restriction)
                     end
                 end
             end
@@ -489,7 +505,8 @@ logic.load = function()
             end
         end
 
-        if not categories.without_health[entity.type] then
+        -- Just check for asteroids and other critical entities now for performance
+        if not categories.without_health[entity.type] and (entity.type == "asteroid" or lu.dying_spawns[key("entity", entity.name)] or (entity.loot ~= nil and #entity.loot > 0) or (entity.corpse ~= nil and lu.minable_corpses[entity.corpse])) then
             ----------------------------------------
             add_node("entity-kill", "AND")
             ----------------------------------------
@@ -541,6 +558,9 @@ logic.load = function()
             add_node("entity-character", "OR")
             ----------------------------------------
             -- Can we inhabit this character entity?
+
+            -- I was originally planning to use this node to test for ability to throw capsules and such, but then just tested for whether you're on a planet
+            -- TODO: Decide if I want to keep this
 
             if entity.name == lutils.starting_character_name then
                 add_edge("starting-character", "")
@@ -950,12 +970,12 @@ logic.load = function()
                 })
             end
         end
-        -- Edge from item-deliver for context cycling
+        -- Edge from item-launch for context cycling
         -- This edge allows items to gain more contexts: an item reachable in one context
         -- can be launched to space, then delivered to a space surface, gaining that context
         local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
-            add_edge("item-deliver")
+            add_edge("item-launch")
         end
         -- Edge from items that spoil into this item
         if lu.spoil_result_to_items[item.name] ~= nil then
@@ -1007,11 +1027,16 @@ logic.load = function()
             add_node("item-launch", "AND", true)
             ----------------------------------------
             -- Can we launch this item into space?
-            -- This node FORGETS context: launching makes item available to ALL space surfaces.
+            -- This node FORGETS context: launching makes item available to all reachable rooms
+            -- Right now, this just filters through deliver to test reachability of that context/room
+            -- Space surfaces can deliver anywhere, and planets can deliver if they can launch
+            -- This causes planets to launch to other planets, which may not be accurate if there ever comes some extra step besides launching into space to deliver an item
+            -- TODO: Address this in more generality
 
             add_edge("item")
-            add_edge("launch", "")
+            add_edge("deliver", "")
 
+            --[[
             ----------------------------------------
             add_node("item-deliver", "AND")
             ----------------------------------------
@@ -1020,6 +1045,7 @@ logic.load = function()
 
             add_edge("item-launch")
             add_edge("space-surface", "")
+            ]]
         end
 
         if item.type == "ammo" then
@@ -1184,11 +1210,11 @@ logic.load = function()
         curr_prot = conn
 
         ----------------------------------------
-        add_node("space-connection", "AND", true)
+        add_node("space-connection", "AND")
         ----------------------------------------
         -- Can we travel along this space connection?
         -- This node FORGETS context: connections are global once available.
-        -- Requires: access to endpoints, discovery, and ability to destroy asteroids
+        -- Requires: access to endpoints, discovery, and ability to destroy asteroids (just tests against 100% resistances)
 
         add_edge("space-connection-enter")
         add_edge("space-connection-discover")
@@ -1240,9 +1266,17 @@ logic.load = function()
         curr_prot = loc
 
         ----------------------------------------
-        add_node("space-location", "OR", true)
+        add_node("space-location", "AND")
         ----------------------------------------
         -- Can we inhabit this space location with some surface?
+        -- This is an AND over space-location-reachable and space nodes to enforce that we're on a surface
+
+        add_edge("space-surface", "")
+        add_edge("space-location-reachable", loc.name)
+
+        ----------------------------------------
+        add_node("space-location-reachable", "OR", true)
+        ----------------------------------------
         -- This node FORGETS context: locations are global once reachable.
         -- OR over: space connections that lead here, launching from planet (bootstrap)
 
@@ -1309,12 +1343,12 @@ logic.load = function()
             local set = {}
             for _, ing in pairs(tech.unit.ingredients) do
                 table.insert(set, ing[1])
-                -- Need the science pack items
-                add_edge("item", ing[1])
             end
             table.sort(set)
+            -- Need the science pack items
+            add_edge("science-pack-set-science", gutils.concat(set))
             -- Need a lab that can accept all packs
-            add_edge("science-pack-set", gutils.concat(set))
+            add_edge("science-pack-set-lab", gutils.concat(set))
         elseif tech.research_trigger ~= nil then
             -- Trigger-based research
             local trigger = tech.research_trigger
@@ -1327,7 +1361,7 @@ logic.load = function()
                 add_edge("fluid-craft", trigger.fluid)
             elseif trigger.type == "send-item-to-orbit" then
                 -- Need to deliver the specified item (must have space surface to receive it)
-                add_edge("item-deliver", trigger.item)
+                add_edge("item-launch", trigger.item)
             elseif trigger.type == "capture-spawner" then
                 -- Need to capture the specified spawner type
                 if trigger.entity ~= nil then
@@ -1433,7 +1467,7 @@ logic.load = function()
                             -- Check if this collision group is blocked by blocking_layers
                             local group_blocked = false
                             if condition_info.blocking_layers ~= nil then
-                                for _, layer in pairs(group_layers) do
+                                for layer, _ in pairs(group_layers) do
                                     if condition_info.blocking_layers[layer] then
                                         group_blocked = true
                                         break
@@ -1529,6 +1563,10 @@ logic.load = function()
         -- For space surfaces: depends on room-create-platform
 
         if room.type == "planet" then
+            -- If this is the starting planet, fulfill it with the starting planet node
+            if room.name == lutils.starting_planet_name then
+                add_edge("starting-planet", "")
+            end
             -- Planet rooms depend on being able to reach orbit (space-location)
             -- Planets ARE space-locations (they inherit), so use room.name directly
             -- For starting planets, this creates a cycle broken by starting conditions (added elsewhere)
@@ -1765,12 +1803,20 @@ logic.load = function()
 
     for set_name, set_packs in pairs(lu.science_sets) do
         ----------------------------------------
-        add_node("science-pack-set", "OR", nil, set_name)
+        add_node("science-pack-set-science", "AND", nil, set_name)
+        ----------------------------------------
+        -- Can we create all these science packs?
+
+        for _, pack in pairs(set_packs) do
+            add_edge("item", pack)
+        end
+
+        ----------------------------------------
+        add_node("science-pack-set-lab", "OR", nil, set_name)
         ----------------------------------------
         -- Can we research with this combination of science packs?
         -- OR over labs that can hold all packs in the set.
 
-        -- RESPONSE: Moved item edges to technology node; this OR now just checks for compatible labs
         -- Need a lab that accepts all packs
         local labs = lu.science_set_to_labs[set_name]
         if labs ~= nil then
@@ -1785,7 +1831,7 @@ logic.load = function()
     ----------------------------------------------------------------------
 
     -- These group tiles by their collision layers for efficient entity placement checks.
-    -- Entity-build-tile depends on these groups rather than individual tiles.
+    -- entity-build-tile depends on entity collision group, which then depends on these groups rather than individual tiles.
 
     curr_class = "tile-collision-group"
 
@@ -1798,6 +1844,24 @@ logic.load = function()
 
         for tile_name, _ in pairs(tiles_in_group) do
             add_edge("tile", tile_name)
+        end
+    end
+
+    ----------------------------------------------------------------------
+    -- Entity Collision Group
+    ----------------------------------------------------------------------
+
+    curr_class = "entity-collision-group"
+
+    for layers_key, layers in pairs(lu.entity_collision_group_to_layers) do
+        ----------------------------------------
+        add_node("entity-collision-group", "OR", nil, layers_key)
+        ----------------------------------------
+
+        for tile_layers_key, tile_layers in pairs(lu.tile_collision_group_to_layers) do
+            if not collision_mask_util.masks_collide({layers = layers}, {layers = tile_layers}) then
+                add_edge("tile-collision-group", tile_layers_key)
+            end
         end
     end
 
@@ -1968,6 +2032,15 @@ logic.load = function()
     add_edge("rocket-silo", "")
     add_edge("cargo-landing-pad", "")
 
+    ----------------------------------------
+    add_node("deliver", "OR", nil, "")
+    ----------------------------------------
+    -- Can we deliver items FROM this location?
+    -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
+
+    add_edge("launch", "")
+    add_edge("space-surface", "")
+
     ----------------------------------------------------------------------
     -- Starting
     ----------------------------------------------------------------------
@@ -1989,16 +2062,6 @@ logic.load = function()
     ----------------------------------------
     -- Do we have access to the starting planet?
     -- SOURCE: AND with no inputs = trivially satisfied.
-    -- This breaks the cycle: room -> space-location -> room-launch -> room
-
-    -- Connect starting-planet to the nauvis room to bootstrap access
-    -- Note: This uses a direct edge rather than going through space-location
-    -- to avoid the circular dependency
-    for room_key, room in pairs(lu.rooms) do
-        if room.type == "planet" and room.name == lutils.starting_planet_name then
-            gutils.add_edge(logic.graph, key("starting-planet", ""), key("room", room_key))
-        end
-    end
 
     ----------------------------------------------------------------------
     -- Logic
@@ -2073,6 +2136,16 @@ logic.load = function()
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
+-- Hotfixes
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+    -- TODO: Fix these
+    -- Right now, we don't add the extra tiles from the starter pack
+    gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 -- Graph lookups
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -2081,11 +2154,28 @@ logic.load = function()
     -- This stuff could probably go in graph-utils
     logic.graph.nodes = {}
     logic.graph.edges = {}
+    logic.graph.sources = {}
+    logic.graph.emitters = {}
+    logic.graph.context_sources = {}
     for key, object in pairs(logic.graph) do
         if object.object_type == "node" then
+            object.op = logic.type_info[object.type].op
+            if object.op == "AND" then
+                logic.graph.sources[key] = true
+            end
+            local node_context = logic.type_info[object.type].context
+            -- Check if not context transmitter
+            if node_context ~= nil then
+                logic.graph.emitters[key] = node_context
+            end
+            -- Check if this represents a context
+            if type(node_context) == "string" then
+                logic.graph.context_sources[key] = node_context
+            end
             logic.graph.nodes[key] = object
             object.pre = {}
             object.dep = {}
+            object.num_pre = 0
         elseif object.object_type == "edge" then
             logic.graph.edges[key] = object
         end
@@ -2095,9 +2185,20 @@ logic.load = function()
 
     -- Add prereqs and depends to nodes
     for edge_key, edge in pairs(logic.edges) do
-        table.insert(logic.nodes[edge.start].dep, edge)
-        table.insert(logic.nodes[edge.stop].pre, edge)
+        if logic.nodes[edge.start] == nil then
+            log(serpent.block(edge))
+        end
+        if logic.nodes[edge.stop] == nil then
+            log(serpent.block(edge))
+        end
+
+        logic.graph.sources[edge.stop] = nil
+        logic.nodes[edge.start].dep[edge_key] = true
+        logic.nodes[edge.stop].pre[edge_key] = true
+        logic.nodes[edge.stop].num_pre = logic.nodes[edge.stop].num_pre + 1
     end
+
+    log(serpent.block(logic.graph.sources))
 end
 
 return logic

@@ -13,8 +13,10 @@ end
 -- Takes a top-level prototype class name and the value of its name property in data.raw and returns its data.raw entry
 dutils.get_prot = function(top_level_class, name)
     for class, _ in pairs(defines.prototypes[top_level_class]) do
-        if data.raw[class][name] ~= nil then
-            return data.raw[class][name] 
+        if data.raw[class] ~= nil then
+            if data.raw[class][name] ~= nil then
+                return data.raw[class][name] 
+            end
         end
     end
 
@@ -25,7 +27,7 @@ end
 dutils.get_all_prots = function(top_level_class)
     local result = {}
     for class, _ in pairs(defines.prototypes[top_level_class]) do
-        for name, prot in pairs(prots(class)) do
+        for name, prot in pairs(dutils.prots(class)) do
             result[name] = prot
         end
     end
