@@ -2180,25 +2180,21 @@ logic.build = function()
             logic.graph.edges[key] = object
         end
     end
-    logic.nodes = logic.graph.nodes
-    logic.edges = logic.graph.edges
 
     -- Add prereqs and depends to nodes
-    for edge_key, edge in pairs(logic.edges) do
-        if logic.nodes[edge.start] == nil then
+    for edge_key, edge in pairs(logic.graph.edges) do
+        if logic.graph.nodes[edge.start] == nil then
             log(serpent.block(edge))
         end
-        if logic.nodes[edge.stop] == nil then
+        if logic.graph.nodes[edge.stop] == nil then
             log(serpent.block(edge))
         end
 
         logic.graph.sources[edge.stop] = nil
-        logic.nodes[edge.start].dep[edge_key] = true
-        logic.nodes[edge.stop].pre[edge_key] = true
-        logic.nodes[edge.stop].num_pre = logic.nodes[edge.stop].num_pre + 1
+        logic.graph.nodes[edge.start].dep[edge_key] = true
+        logic.graph.nodes[edge.stop].pre[edge_key] = true
+        logic.graph.nodes[edge.stop].num_pre = logic.graph.nodes[edge.stop].num_pre + 1
     end
-
-    log(serpent.block(logic.graph.sources))
 end
 
 return logic

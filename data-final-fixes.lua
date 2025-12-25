@@ -1,5 +1,120 @@
 log("Setup")
 
+local logic = require("new-lib/logic/logic")
+
+log("Building")
+logic.build()
+
+log("Normal build-graph")
+
+-- CRITICAL TODO: FIX CONTROL PHASE TOO (UNCOMMENT)
+
+local build_graph = require("lib/graph/build-graph")
+build_graph.add_dependents(build_graph.graph)
+
+log("Done")
+
+local node_amount = 0
+local edge_amount = 0
+local node_type_to_edges = {}
+for _, node in pairs(build_graph.graph) do
+    node_amount = node_amount + 1
+    edge_amount = edge_amount + #node.prereqs
+    if node_type_to_edges[node.type] == nil then
+        node_type_to_edges[node.type] = 0
+    end
+    node_type_to_edges[node.type] = node_type_to_edges[node.type] + #node.prereqs
+end
+--[[log(node_amount)
+log(edge_amount)
+local type_edges_list = {}
+for node_type, amount in pairs(node_type_to_edges) do
+    table.insert(type_edges_list, {
+        type = node_type,
+        amount = amount
+    })
+end
+table.sort(type_edges_list, function(a, b)
+    return a.amount < b.amount
+end)
+log(serpent.block(type_edges_list))]]
+
+node_amount = 0
+edge_amount = 0
+node_type_to_edges = {}
+for _, node in pairs(logic.graph.nodes) do
+    node_amount = node_amount + 1
+    if node_type_to_edges[node.type] == nil then
+        node_type_to_edges[node.type] = 0
+    end
+    local num_pre = 0
+    for _, _ in pairs(node.pre) do
+        num_pre = num_pre + 1
+    end
+    node_type_to_edges[node.type] = node_type_to_edges[node.type] + num_pre
+end
+for _, edge in pairs(logic.graph.edges) do
+    edge_amount = edge_amount + 1
+end
+--[[log(node_amount)
+log(edge_amount)
+type_edges_list = {}
+for node_type, amount in pairs(node_type_to_edges) do
+    table.insert(type_edges_list, {
+        type = node_type,
+        amount = amount
+    })
+end
+table.sort(type_edges_list, function(a, b)
+    return a.amount < b.amount
+end)
+log(serpent.block(type_edges_list))]]
+
+log("top-sort original")
+
+local top1 = require("lib/graph/top-sort")
+local sort_info = top1.sort(build_graph.graph)
+
+log("top-sort new")
+
+local top = require("new-lib/graph/top-sort")
+sort_info = top.sort(logic.graph)
+
+log("end sort")
+
+log("require")
+
+randomizations = {}
+require("randomizations/graph/recipe-tech-unlock")
+
+log("randomization")
+
+global_seed = 238597
+randomizations.recipe_tech_unlock_new(logic.graph)
+
+log("Did it work?")
+
+build_graph.load()
+build_graph.add_dependents(build_graph.graph)
+dep_graph = build_graph.graph
+randomizations.recipe_tech_unlock("recipe_tech_unlock")
+
+log("Okay how long did that take?")
+
+build_graph.load()
+build_graph.add_dependents(build_graph.graph)
+local more_sort_info = top1.sort(build_graph.graph)
+for _, tech in pairs(data.raw.technology) do
+    if not more_sort_info.reachable[build_graph.key("technology", tech.name)] and tech.name ~= "research-productivity" then
+        error(tech.name)
+    end
+end
+
+--[[for _, node_info in pairs(sort_info.sorted) do
+    log("(" .. serpent.block(node_info.contexts) .. ")" .. "\n\t\t" .. node_info.node .. "\n")
+end]]
+
+--[=[
 -- Global information for control stage and other uses for communicating between processes
 randomization_info = {
     warnings = {},
@@ -296,4 +411,4 @@ if not offline then
     })
 end
 
-log("Done!")
+log("Done!")]=]

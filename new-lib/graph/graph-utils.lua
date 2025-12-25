@@ -76,9 +76,41 @@ gutils.add_edge = function(graph, start, stop, extra)
         end
     end
 
-    graph[gutils.ekey(edge)] = edge
+    local edge_key = gutils.ekey(edge)
+    graph[edge_key] = edge
+
+    -- If we have constructed the nodes yet, then populate their pre/dep/etc.
+    if graph.nodes ~= nil then
+        if graph.nodes[edge.start] ~= nil then
+            graph.nodes[edge.start].dep[edge_key] = true
+        end
+        if graph.nodes[edge.stop] ~= nil then
+            graph.nodes[edge.stop].pre[edge_key] = true
+            graph.nodes[edge.stop].num_pre = graph.nodes[edge.stop].num_pre + 1
+            if graph.sources[edge.stop] then
+                graph.sources[edge.stop] = nil
+            end
+        end
+    end
+    -- Only add to edges if we've constructed it
+    if graph.edges ~= nil then
+        graph.edges[edge_key] = edge
+    end
 
     return edge
+end
+
+gutils.remove_edge = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    
+    graph.edges[edge_key] = nil
+    graph.nodes[edge.start].dep[edge_key] = nil
+    graph.nodes[edge.stop].pre[edge_key] = nil
+    graph.nodes[edge.stop].num_pre = graph.nodes[edge.stop].num_pre - 1
+    -- Recompute sources
+    if graph.nodes[edge.stop].op == "AND" and graph.nodes[edge.stop].num_pre == 0 then
+        graph.sources[edge.stop] = true
+    end
 end
 
 return gutils
