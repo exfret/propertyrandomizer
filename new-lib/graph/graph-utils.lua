@@ -45,11 +45,15 @@ end
 
 -- TODO: Key deconstruct function for concat and ekey (basically a .split())
 
+-- Does not add to sources or add op property
 gutils.add_node = function(graph, node_type, node_name, extra)
     local node = {
         object_type = "node",
         type = node_type,
         name = node_name,
+        pre = {},
+        dep = {},
+        num_pre = 0,
     }
 
     if extra ~= nil then
@@ -58,7 +62,13 @@ gutils.add_node = function(graph, node_type, node_name, extra)
         end
     end
 
-    graph[gutils.key(node_type, node_name)] = node
+    local node_key = gutils.key(node_type, node_name)
+
+    graph[node_key] = node
+
+    if graph.nodes ~= nil then
+        graph.nodes[node_key] = node
+    end
 
     return node
 end

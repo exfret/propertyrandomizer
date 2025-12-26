@@ -184,6 +184,8 @@ top.sort = function(graph, state, new_conn, extra)
                 if new_contexts == true or next(new_contexts) ~= nil then
                     add_contexts_to_node(end_node, new_contexts)
                 end
+            else
+                error("Node op not OR or AND")
             end
         end
     end
