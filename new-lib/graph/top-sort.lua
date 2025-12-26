@@ -26,6 +26,7 @@ top.sort = function(graph, state, new_conn, extra)
     local node_context_to_satisfied = state.node_context_to_satisfied or {}
     local open = state.open or {}
     local in_open = state.in_open or {}
+    local node_to_open_inds = state.node_to_open_inds or {}
     -- Keep track of reachable CONTEXTS (not nodes)
     --local reachable = state.reachable or {}
 
@@ -39,6 +40,11 @@ top.sort = function(graph, state, new_conn, extra)
                 end
             end
         end]]
+        -- incoming is used for seeing what the transmitted in context was in path
+        local incoming = contexts
+        if type(incoming) == "table" then
+            incoming = table.deepcopy(incoming)
+        end
 
         -- Check if contexts is overriden
         if logic.type_info[node.type].context == true then
@@ -63,6 +69,7 @@ top.sort = function(graph, state, new_conn, extra)
             table.insert(open, {
                 node = key(node),
                 contexts = contexts,
+                incoming = incoming,
             })
             -- in_open doesn't really matter
             -- Other things should be updated
@@ -84,6 +91,7 @@ top.sort = function(graph, state, new_conn, extra)
                 table.insert(open, {
                     node = key(node),
                     contexts = contexts,
+                    incoming = incoming,
                 })
                 in_open[key(node)] = #open
             end
@@ -205,6 +213,7 @@ top.sort = function(graph, state, new_conn, extra)
             table.insert(open, {
                 node = source,
                 contexts = true,
+                incoming = true,
             })
             in_open[source] = #open
         end
@@ -283,6 +292,8 @@ top.sort = function(graph, state, new_conn, extra)
         -- Remove node from open so it doesn't get added to
         -- Only used for OR nodes now
         in_open[open_info.node] = nil
+        node_to_open_inds[open_info.node] = node_to_open_inds[open_info.node] or {}
+        node_to_open_inds[open_info.node][ind] = true
 
         -- If old contexts is somehow already everything?? then we don't need to do anything (how is this happening?)
         if node_to_contexts[open_info.node] ~= true then
@@ -371,6 +382,7 @@ top.sort = function(graph, state, new_conn, extra)
         node_context_to_satisfied = node_context_to_satisfied,
         open = open,
         in_open = in_open,
+        node_to_open_inds = node_to_open_inds,
         ind = ind,
     }
         
@@ -418,6 +430,124 @@ top.sort = function(graph, state, new_conn, extra)
         sorted = open,
         reachable = reachable,
     }]]
+end
+
+top.path = function(graph, goal, sort)
+    local contexts_in_order = {
+        key({type = "planet", name = "nauvis"}),
+        key({type = "surface", name = "space-platform"}),
+        key({type = "planet", name = "vulcanus"}),
+        key({type = "planet", name = "fulgora"}),
+        key({type = "planet", name = "gleba"}),
+        key({type = "planet", name = "aquilo"}),
+    }
+
+    local open = sort.open
+    local node_to_open_inds = sort.node_to_open_inds
+
+    -- Path is a collection of inds from open, paired with contexts we are wanting from them
+    -- goal itself is an ind with a context
+    -- Note that path works backwards
+    local path = {goal}
+    -- ind + context to whether it's in the path yet (note that we need both)
+    local in_path = {}
+    for context, _ in pairs(logic.contexts) do
+        in_path[context] = {}
+    end
+
+    local ind = 1
+    while ind <= #path do
+        local curr_goal = path[ind]
+
+        local curr_open = open[curr_goal.ind]
+        local goal_context = curr_goal.context
+        local curr_node = graph.nodes[curr_open.node]
+        -- Try to get this context as early as possible
+        -- If this is a context emitter, then choose earliest possible context
+        local earlier_emitter = false
+        if logic.type_info[curr_node.type].context ~= nil then
+            local earliest_ind
+            for open_ind, _ in pairs(node_to_open_inds[curr_open.node]) do
+                if earliest_ind == nil or open_ind < earliest_ind then
+                    earliest_ind = open_ind
+                end
+            end
+            -- Decide new goal context based off earliest available context in order
+            for _, available_context in pairs(contexts_in_order) do
+                if curr_open.incoming == true or curr_open.incoming[available_context] then
+                    goal_context = available_context
+                    break
+                end
+            end
+            -- If we got an earlier node, push it and continue
+            if earliest_ind < curr_goal.ind then
+                earlier_emitter = true
+                if not in_path[goal_context][earliest_ind] then
+                    table.insert(path, {
+                        ind = earliest_ind,
+                        context = goal_context,
+                    })
+                    in_path[goal_context][earliest_ind] = true
+                end
+            end
+        end
+        if not earlier_emitter then
+            if curr_node.op == "AND" then
+                -- Add each of the prereq node's contexts
+                for pre, _ in pairs(curr_node.pre) do
+                    local prenode = graph.nodes[graph.edges[pre].start]
+                    -- Get first occurrence with this context
+                    local first_occurrence
+                    for open_ind, _ in pairs(node_to_open_inds[key(prenode)]) do
+                        local occurrence_contexts = open[open_ind].contexts
+                        if occurrence_contexts == true or occurrence_contexts[goal_context] then
+                            if first_occurrence == nil or open_ind < first_occurrence then
+                                first_occurrence = open_ind
+                            end
+                        end
+                    end
+                    -- Add this occurrence
+                    if not in_path[goal_context][first_occurrence] then
+                        table.insert(path, {
+                            ind = first_occurrence,
+                            context = goal_context,
+                        })
+                        in_path[goal_context][first_occurrence] = true
+                    end
+                end
+            elseif curr_node.op == "OR" then
+                -- Find earliest prereq with this context
+                local first_occurrence
+                for pre, _ in pairs(curr_node.pre) do
+                    local prenode = graph.nodes[graph.edges[pre].start]
+                    for open_ind, _ in pairs(node_to_open_inds[key(prenode)] or {}) do
+                        local occurrence_contexts = open[open_ind].contexts
+                        if occurrence_contexts == true or occurrence_contexts[goal_context] then
+                            if first_occurrence == nil or open_ind < first_occurrence then
+                                first_occurrence = open_ind
+                            end
+                        end
+                    end
+                end
+                if first_occurrence == nil then
+                    log(serpent.block(curr_open))
+                    log(goal_context)
+                    log(serpent.block(curr_node))
+                end
+                if not in_path[goal_context][first_occurrence] then
+                    table.insert(path, {
+                        ind = first_occurrence,
+                        context = goal_context,
+                    })
+                    in_path[goal_context][first_occurrence] = true
+                end
+            end
+        end
+
+        ind = ind + 1
+    end
+
+    return path
 end
 
 return top

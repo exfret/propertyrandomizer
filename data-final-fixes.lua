@@ -1,6 +1,7 @@
 log("Setup")
 
 local logic = require("new-lib/logic/logic")
+local gutils = require("new-lib/graph/graph-utils")
 
 log("Building")
 logic.build()
@@ -83,6 +84,49 @@ sort_info = top.sort(logic.graph)
 
 log("end sort")
 
+-- Try with new path algo
+local promethium_inds = sort_info.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
+local earliest_ind
+for ind, _ in pairs(promethium_inds) do
+    if earliest_ind == nil or ind < earliest_ind then
+        earliest_ind = ind
+    end
+end
+local path = top.path(logic.graph, { ind = earliest_ind, context = gutils.key({type = "surface", name = "space-platform"}) }, sort_info)
+local encountered = {}
+table.sort(path, function(a, b)
+    return a.ind > b.ind
+end)
+local num_items = 0
+local num_nodes = 0
+for i = #path, 1, -1 do
+    if not encountered[sort_info.open[path[i].ind].node] then
+        encountered[sort_info.open[path[i].ind].node] = true
+        num_nodes = num_nodes + 1
+        if logic.graph.nodes[sort_info.open[path[i].ind].node].type == "item" then
+            num_items = num_items + 1
+            log(sort_info.open[path[i].ind].node)
+        end
+    end
+end
+local encountered_sort = {}
+local total_num_items = 0
+local total_num_nodes = 0
+for _, open_info in pairs(sort_info.open) do
+    if not encountered_sort[open_info.node] then
+        encountered_sort[open_info.node] = true
+        total_num_nodes = total_num_nodes + 1
+        if logic.graph.nodes[open_info.node].type == "item" then
+            total_num_items = total_num_items + 1
+            log(open_info.node)
+        end
+    end
+end
+log(num_items)
+log(total_num_items)
+log(num_nodes)
+log(total_num_nodes)
+
 log("require")
 
 randomizations = {}
@@ -91,7 +135,7 @@ require("randomizations/graph/recipe-tech-unlock")
 log("randomization")
 
 global_seed = 238597
-local recipe_results = require("randomizations/graph/unified/new/recipe-results")
+local recipe_results = require("randomizations/graph/unified/recipe-results")
 recipe_results.execute(logic.graph)
 
 --[[randomizations.recipe_tech_unlock_new(logic.graph)
@@ -113,7 +157,6 @@ local graph_utils = require("lib/graph/graph-utils")
 build_graph.add_dependents(build_graph.graph)
 graph_utils.add_prereq(build_graph.graph[build_graph.key("build-entity-surface-condition-true", "canonical")], build_graph.graph[build_graph.key("item-surface", build_graph.compound_key({"pentapod-egg", build_graph.compound_key({"planet", "gleba"})}))])
 local more_sort_info = top1.sort(build_graph.graph)
-log(serpent.block(build_graph.graph[build_graph.key("technology", "stronger-explosives-7")]))
 for _, tech in pairs(data.raw.technology) do
     if not more_sort_info.reachable[build_graph.key("technology", tech.name)] and tech.name ~= "research-productivity" then
         log(serpent.block(more_sort_info.reachable))
