@@ -27,8 +27,11 @@ top.sort = function(graph, state, new_conn, extra)
     local open = state.open or {}
     local in_open = state.in_open or {}
     local node_to_open_inds = state.node_to_open_inds or {}
+    -- A map of an ind to the previous ind of the node that added it
+    local ind_to_ind = state.ind_to_ind or {}
     -- Keep track of reachable CONTEXTS (not nodes)
     --local reachable = state.reachable or {}
+    local ind = state.ind or 1
 
     local function add_contexts_to_node(node, contexts)
         --[[if contexts ~= true then
@@ -71,6 +74,7 @@ top.sort = function(graph, state, new_conn, extra)
                 contexts = contexts,
                 incoming = incoming,
             })
+            ind_to_ind[#open] = ind
             -- in_open doesn't really matter
             -- Other things should be updated
         elseif node.op == "OR" then
@@ -94,6 +98,7 @@ top.sort = function(graph, state, new_conn, extra)
                     incoming = incoming,
                 })
                 in_open[key(node)] = #open
+                ind_to_ind[#open] = ind
             end
         end
     
@@ -216,6 +221,7 @@ top.sort = function(graph, state, new_conn, extra)
                 incoming = true,
             })
             in_open[source] = #open
+            ind_to_ind[#open] = 0
         end
     else
         --local stop = graph.edges[new_conn.edge].stop
@@ -285,7 +291,6 @@ top.sort = function(graph, state, new_conn, extra)
     -- Nodes in order that they got context added; includes duplicates so that we can see when they were reached again with new context
     --local sorted = {}
 
-    local ind = state.ind or 1
     while ind <= #open do
         local open_info = open[ind]
         local node = graph.nodes[open_info.node]
@@ -383,6 +388,7 @@ top.sort = function(graph, state, new_conn, extra)
         open = open,
         in_open = in_open,
         node_to_open_inds = node_to_open_inds,
+        ind_to_ind = ind_to_ind,
         ind = ind,
     }
         

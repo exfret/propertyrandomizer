@@ -123,4 +123,69 @@ gutils.remove_edge = function(graph, edge_key)
     end
 end
 
+gutils.subdivide = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    local node1 = graph.nodes[edge.start]
+    local node2 = graph.nodes[edge.stop]
+    local slot = gutils.add_node(graph, "slot", edge_key)
+    local traveler = gutils.add_node(graph, "traveler", edge_key)
+    slot.op = "AND"
+    traveler.op = "OR"
+    gutils.add_edge(graph, gutils.key(node1), gutils.key(slot))
+    gutils.add_edge(graph, gutils.key(traveler), gutils.key(node2))
+    -- Slot and traveler start connected
+    gutils.add_edge(graph, gutils.key(slot), gutils.key(traveler))
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the edge to the slot and traveler nodes
+    local normal_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_keys[k] then
+            slot[k] = v
+            traveler[k] = v
+        end
+    end
+
+    return {
+        slot = slot,
+        traveler = traveler,
+    }
+end
+
+-- Get a slot or traveler's base node
+gutils.get_conn_owner = function(graph, conn)
+    if conn.type == "slot" then
+        -- There should only be one prereq
+        for pre, _ in pairs(conn.pre) do
+            return graph.nodes[graph.edges[pre].start]
+        end
+    end
+    if conn.type == "traveler" then
+        -- There should only be one dependent
+        for dep, _ in pairs(conn.dep) do
+            return graph.nodes[graph.edges[dep].stop]
+        end
+    end
+end
+
+-- Get a slot or traveler's connected traveler/slot, if any
+gutils.get_conn_buddy = function(graph, conn)
+    if conn.type == "slot" then
+        -- There should only be one prereq
+        for dep, _ in pairs(conn.dep) do
+            return graph.nodes[graph.edges[dep].stop]
+        end
+    end
+    if conn.type == "traveler" then
+        -- There should only be one dependent
+        for pre, _ in pairs(conn.pre) do
+            return graph.nodes[graph.edges[pre].start]
+        end
+    end
+end
+
 return gutils
