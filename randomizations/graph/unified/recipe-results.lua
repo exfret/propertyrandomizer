@@ -22,11 +22,11 @@ recipe_results.execute = function(graph)
     -- Ad hoc list
     --[[for _, item in pairs({"atomic-bomb"}) do
         blacklist[item] = true
-    end
+    end]]
     for _, item in pairs(data.raw.tool) do
         blacklist[item.name] = true
-        data.raw.recipe[item.name].surface_conditions = nil
-    end]]
+        --data.raw.recipe[item.name].surface_conditions = nil
+    end
 
     local old_graph = table.deepcopy(graph)
     local initial_sort = top.sort(graph)
