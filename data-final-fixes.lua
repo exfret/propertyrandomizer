@@ -105,7 +105,7 @@ for i = #path, 1, -1 do
         num_nodes = num_nodes + 1
         if logic.graph.nodes[sort_info.open[path[i].ind].node].type == "item" then
             num_items = num_items + 1
-            log(sort_info.open[path[i].ind].node)
+            --log(sort_info.open[path[i].ind].node)
         end
     end
 end
@@ -118,14 +118,14 @@ for _, open_info in pairs(sort_info.open) do
         total_num_nodes = total_num_nodes + 1
         if logic.graph.nodes[open_info.node].type == "item" then
             total_num_items = total_num_items + 1
-            log(open_info.node)
+            --log(open_info.node)
         end
     end
 end
-log(num_items)
+--[[log(num_items)
 log(total_num_items)
 log(num_nodes)
-log(total_num_nodes)
+log(total_num_nodes)]]
 
 log("require")
 
@@ -135,8 +135,13 @@ require("randomizations/graph/recipe-tech-unlock")
 log("randomization")
 
 global_seed = 238597
+
+local unified = require("randomizations/graph/unified/new/execute")
+-- Unified builds its own graph
+unified.execute()
+
 local recipe_results = require("randomizations/graph/unified/recipe-results")
-recipe_results.execute(logic.graph)
+--recipe_results.execute(logic.graph)
 
 --[[randomizations.recipe_tech_unlock_new(logic.graph)
 
