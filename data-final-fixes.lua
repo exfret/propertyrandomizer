@@ -10,6 +10,7 @@ log("Normal build-graph")
 -- CRITICAL TODO: FIX CONTROL PHASE TOO (UNCOMMENT)
 
 local build_graph = require("lib/graph/build-graph")
+local old_ops = table.deepcopy(build_graph.ops)
 build_graph.add_dependents(build_graph.graph)
 
 log("Done")
@@ -90,22 +91,32 @@ require("randomizations/graph/recipe-tech-unlock")
 log("randomization")
 
 global_seed = 238597
-randomizations.recipe_tech_unlock_new(logic.graph)
+local recipe_results = require("randomizations/graph/unified/new/recipe-results")
+recipe_results.execute(logic.graph)
+
+--[[randomizations.recipe_tech_unlock_new(logic.graph)
 
 log("Did it work?")
 
 build_graph.load()
 build_graph.add_dependents(build_graph.graph)
+
+log("Actual rando")
 dep_graph = build_graph.graph
 randomizations.recipe_tech_unlock("recipe_tech_unlock")
 
-log("Okay how long did that take?")
+log("Okay how long did that take?")]]
 
+build_graph.ops = old_ops
 build_graph.load()
+local graph_utils = require("lib/graph/graph-utils")
 build_graph.add_dependents(build_graph.graph)
+graph_utils.add_prereq(build_graph.graph[build_graph.key("build-entity-surface-condition-true", "canonical")], build_graph.graph[build_graph.key("item-surface", build_graph.compound_key({"pentapod-egg", build_graph.compound_key({"planet", "gleba"})}))])
 local more_sort_info = top1.sort(build_graph.graph)
+log(serpent.block(build_graph.graph[build_graph.key("technology", "stronger-explosives-7")]))
 for _, tech in pairs(data.raw.technology) do
     if not more_sort_info.reachable[build_graph.key("technology", tech.name)] and tech.name ~= "research-productivity" then
+        log(serpent.block(more_sort_info.reachable))
         error(tech.name)
     end
 end

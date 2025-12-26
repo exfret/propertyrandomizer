@@ -2069,7 +2069,7 @@ logic.build = function()
 
     -- These virtual nodes are used mostly for internal logic by randomizers outside this file.
     -- They're usually constructed temporarily to make the randomizations work better.
-    -- I include sections for all types, though most won't have implementations in this file.
+    -- I include sections for all types, though most will just have the single canonical example here for type initialization.
 
     curr_class = "logic"
 
@@ -2086,26 +2086,26 @@ logic.build = function()
     -- OR with no inputs = never satisfied.
 
     ----------------------------------------
-    -- NODE: logic-and
+    add_node("logic-and", "AND", nil, "")
     ----------------------------------------
     -- Can we satisfy some AND condition that needed to be created ad-hoc?
 
     ----------------------------------------
-    -- NODE: logic-or
+    add_node("logic-or", "OR", nil, "")
     ----------------------------------------
     -- Can we satisfy some OR condition that needed to be created ad-hoc?
 
     ----------------------------------------
-    -- NODE: slot
+    add_node("slot", "AND", nil, "")
     ----------------------------------------
     -- Can we satisfy a slot that comes at the beginning of an edge?
     -- In some places, edges are broken by two additional nodes (i.e.- subdivided), the one near the start of the edge is the slot, and the other is the traveler.
     -- Rewiring edges then becomes a matter of connecting slots to travelers, which can be simpler to work out sometimes since there is only one edge that could be randomized.
 
     ----------------------------------------
-    -- NODE: traveler
+    add_node("traveler", "OR", nil, "")
     ----------------------------------------
-    -- Can we satisfy a traveler that comes at the beginning of an edge?
+    -- Can we satisfy a traveler that comes at the end of an edge?
 
     ----------------------------------------------------------------------
     -- Meta
