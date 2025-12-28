@@ -1,6 +1,24 @@
-1. Shotgun shells show -100% damage
+1. Shotgun shells show -100% damage (I think this is fixed)
 2. Assembling machines don't follow upgrade line randomization due to having different crafting categories, so need to be manually linked together
-3. Cliff sizes aren't randomized due to a startup crash
-4. Potential softlock reported by Malus
-5. Biter eggs are reported to be reachable when they aren't (probably a problem with logic/dependency graph)
-6. Getting amounts that are very large from item rando
+5. Biter eggs are reported to be reachable when they aren't (probably a problem with logic/dependency graph) (https://mods.factorio.com/mod/propertyrandomizer/discussion/6935501854f0ff3c23623425)
+6. Item rando is giving very large result amounts (got over 65k limit on result amount)
+7. Mining drill offsets can be inside machine
+8. Item rando doesn't properly update icons
+9. Solar panels require for space platform randomized to be too heavy to launch (might be fixed with new logic that accounts for weights)
+10. Compatibility issue involving item rando with wood fuel values and K2SO (https://mods.factorio.com/mod/propertyrandomizer/discussion/6949ca01f6fd1af9b2f36a03)
+11. Compatibility issue with merging chest mod and item_to_place sizes (https://mods.factorio.com/mod/propertyrandomizer/discussion/69430dcb60cb530c95eac2d2)
+12. Change corpse size doesn't check that there is a corpse first, resulting in mod incompatibilities (https://mods.factorio.com/mod/propertyrandomizer/discussion/69224af08e1629a0efaa7d67)
+13. Incompatibility with pacifist mod (https://mods.factorio.com/mod/propertyrandomizer/discussion/6921e8f843b1eb2c5cef559f)
+14. Duplicates crashes editor extensions (https://mods.factorio.com/mod/propertyrandomizer/discussion/6911fe1136382d1ea1ae0764)
+15. Asteroid resistances can result in softlocks
+16. Module effects should guarantee at least some prod/quality/etc./be more balanced in general
+17. Rocket launch time randomization was causing the silo to not build the rocket
+18. EdwardR reporting thrusters behind other planets' trigger techs
+19. Clamping needed on day length reduction randomization (-100% day length nauvis resulting in potential epilepsy risk)
+20. Return to nauvis giving control stage error in multiplayer
+21. Tree seed drop/recycle rates making them unsustainable
+
+Requests
+1. Regenerating seed more quickly (rerolling automatically)
+2. Blacklisting items/prototypes for certain randomizations
+3. Better clamps on the new numerical randomizations with lower than ultimate chaos

@@ -234,8 +234,6 @@ unified.execute = function()
     local random_graph = cut_graph
     cut_graph = table.deepcopy(cut_graph)
 
-    log(serpent.block(pool_info.ind_to_ind))
-
     -- Context reachability
     local function all_contexts_reachable(slot, trav)
         for context, _ in pairs(logic.contexts) do

@@ -82,6 +82,16 @@ log("top-sort new")
 local top = require("new-lib/graph/top-sort")
 sort_info = top.sort(logic.graph)
 
+log("block sort")
+
+local block_sort = require("new-lib/graph/block-sort")
+local blockify = require("new-lib/logic/blockify")
+blockify.get(logic.graph)
+local block_info = block_sort.sort_with_contexts(logic.graph, blockify)
+for _, node_key in pairs(block_info.sorted) do
+    log(node_key)
+end
+
 log("end sort")
 
 -- Try with new path algo
