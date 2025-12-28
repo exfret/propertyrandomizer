@@ -134,7 +134,6 @@ randomizations.mining_drill_offsets = function(id)
     
     -- Probability of randomizing the rotation of vector_to_place_result
     local randomize_place_rotation_p = 0.5
-    -- 
 
     for _, mining_drill in pairs(data.raw["mining-drill"]) do
         -- Don't randomize fluid output positions
