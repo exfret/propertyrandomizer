@@ -174,15 +174,32 @@ path.check_reachable_top_down = function (graph, dependent_node, removed_key, pa
     error()
 end
 
+-- O(n) Only usable on graphs where dependent node is reachable and prereqs of each node is in topological order
+path.quick_path = function (graph, dependent_node, reachable, path_set)
+
+    local dependent_key = graph_utils.get_node_key(dependent_node)
+    if path_set[dependent_key] ~= nil or reachable[dependent_key] ~= nil then
+        return
+    end
+
+    path_set[dependent_key] = true
+    if graph_utils.is_and_node(dependent_node) then
+        for _, prereq in pairs(dependent_node.prereqs) do
+            local prereq_key = graph_utils.get_node_key(prereq)
+            path.quick_path(graph, graph[prereq_key], reachable, path_set)
+        end
+    elseif graph_utils.is_or_node(dependent_node) then
+        assert(#dependent_node.prereqs > 0)
+        local prereq_key = graph_utils.get_node_key(dependent_node.prereqs[1])
+        path.quick_path(graph, graph[prereq_key], reachable, path_set)
+    end
+end
+
 -- Very important: sort the prereqs of each node in topological order before calling this.
 path.find_path = function (graph, target_node, node_types)
-    local target_key = graph_utils.get_node_key(target_node)
-    local required_nodes = { [target_key] = true }
 
-    local stats = path.get_empty_stats()
-    local path_reachability_cache = {}
-    local path_expr = path.check_reachable_top_down(graph, target_node, nil, {}, required_nodes, 0, path_reachability_cache, stats).path_expr
-    local path_set = evaluate_expr(path_expr, path_reachability_cache, {})
+    local path_set = {}
+    path.quick_path(graph, target_node, {}, path_set)
 
     if node_types ~= nil then
         for key, _ in pairs(path_set) do
