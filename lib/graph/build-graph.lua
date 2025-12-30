@@ -1144,17 +1144,17 @@ local function load()
     log("Adding: burn-item")
     -- Do we have all we need to use this item as fuel somewhere?
 
-    for _, fuels in pairs(burnt_result_to_fuels) do
+    for _, fuels in pairs(fuel_category_to_fuels) do
         for _, fuel in pairs(fuels) do
             prereqs = {}
-    
+
             for surface_key, _ in pairs(surfaces) do
                 table.insert(prereqs, {
                     type = "burn-item-surface",
                     name = compound_key({fuel.name, surface_key})
                 })
             end
-    
+
             add_to_graph("burn-item", fuel.name, prereqs)
         end
     end
@@ -1163,7 +1163,7 @@ local function load()
     log("Adding: burn-item-surface")
     -- Do we have all we need to use this item as fuel on this surface?
 
-    for _, fuels in pairs(burnt_result_to_fuels) do
+    for _, fuels in pairs(fuel_category_to_fuels) do
         for _, fuel in pairs(fuels) do
             for surface_key, surface in pairs(surfaces) do
                 prereqs = {}
@@ -1178,6 +1178,7 @@ local function load()
                 })
 
                 add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs, {
+                    item = fuel.name,
                     surface = surface_key
                 })
             end
