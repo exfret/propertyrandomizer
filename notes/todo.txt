@@ -51,12 +51,10 @@ Bigger things:
  - Misc. randomizations that I need to go back to, like cliffs
  - New randomizations
  - Space age randomizations
- - Maybe look over TODO's one last time
+ - Maybe look over TODO's scattered throughout code
  - Item-fluid randomization?
- - Make sure one of each "category" is good
  - Make default behavior less unhinged (and high chaos more unhinged)
  - Randomize things in groups: all ores lower stack size for example, one master roll, not just random for each
- - Topological sort with caveats
 
 Ideas from Nifyr (not necessarily good ones):
  - Randomize recipe crafting categories
@@ -97,13 +95,11 @@ Ideas from Nifyr (not necessarily good ones):
 20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
  - Nifyr commented out this fix under the impression that it wasn't necessary
 23. Automatability nodes
-24. Add build_graph_compat nodes to Obsidian spec
 25. Check if node-transport-item-to-surface actually needs to also rely on the corresponding planet-launch
 26. Double check thruster fuel always made on a space surface
 27. *** Make sure ammo is craftable on space platform
 28. Increase time cost for recipe randomization?
 29. Add more safeguards against bad accesses/nodes from mods in dependency graph
-30. Make sure spitters can't outrange *everything*
 31. Add space platform starter packs to list of not randomized
 32. Bullets blacklist from trees
 33. Rocket launch time bug (seems to get stuck with certain launch times? See mod page)
@@ -137,6 +133,7 @@ Ideas from Nifyr (not necessarily good ones):
 63. Allow backtracking/more attempts with item (maybe also recipe) randomization, add as a setting with note that load times may be slow
 64. Make a list of "physical" nodes (ones that aren't an abstract/logical requirement or whatever), which are the ones used for determining softlocks (for example, operate-entity for crafting machines, the item nodes themselves rather than surface-specific nodes)
 65. Add back short spoil time transport blacklist to build-graph-compat
+66. Collision masks?
 
 DONE:
 55. Make the topological sort random
@@ -155,5 +152,7 @@ DONE:
 6. Configuration code
 
 NOT DOING/NO LONGER APPLICABLE:
+24. Add build_graph_compat nodes to Obsidian spec
+?. Make sure one of each "category" is good
 11. Whether to randomize radar ranges of roboports/cargo landing pads along with radar range randomization
 14. Maybe print a note about flib being required now?

@@ -32,7 +32,7 @@ local function merge_nodes(node1, node2)
     merge_blocks(blockify.node_to_group[node1], blockify.node_to_group[node2])
 end
 
--- Segment a logic graph into "blocks", sections of nodes that serve a common game mechanic
+-- Segment a logic graph into "blocks", sections of nodes that serve a common game mechanic, with special emphasis on vanilla feature units
 -- For example: Steam power block has boiler, steam engine, offshore pump, with in-edges for the items to build these and fuel for boiler
 blockify.get = function(graph)
     blockify.group_node_set = {}

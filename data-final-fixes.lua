@@ -58,6 +58,7 @@ end
 for _, edge in pairs(logic.graph.edges) do
     edge_amount = edge_amount + 1
 end
+
 --[[log(node_amount)
 log(edge_amount)
 type_edges_list = {}
@@ -74,22 +75,21 @@ log(serpent.block(type_edges_list))]]
 
 log("top-sort original")
 
-local top1 = require("lib/graph/top-sort")
-local sort_info = top1.sort(build_graph.graph)
+--local top1 = require("lib/graph/top-sort")
+--local sort_info = top1.sort(build_graph.graph)
 
 log("top-sort new")
 
-local top = require("new-lib/graph/top-sort")
-sort_info = top.sort(logic.graph)
-
 log("block sort")
 
-local block_sort = require("new-lib/graph/block-sort")
+local top = require("new-lib/graph/top-sort")
+local sort_info = top.sort(logic.graph)
+local block = require("new-lib/graph/block-sort")
 local blockify = require("new-lib/logic/blockify")
 blockify.get(logic.graph)
-local block_info = block_sort.sort_with_contexts(logic.graph, blockify)
-for _, node_key in pairs(block_info.sorted) do
-    log(node_key)
+local block_info = block.sort(logic.graph, nil, nil, sort_info, blockify)
+for _, node_info in pairs(block_info.open) do
+    log(node_info.node)
 end
 
 log("end sort")
