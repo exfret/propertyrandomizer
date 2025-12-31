@@ -17,6 +17,9 @@
 19. Clamping needed on day length reduction randomization (-100% day length nauvis resulting in potential epilepsy risk)
 20. Return to nauvis giving control stage error in multiplayer
 21. Tree seed drop/recycle rates making them unsustainable
+22. Make sure spitters can't outrange everything
+      * Caused by all of recipe ingredient amounts and result amounts and probability rando, which I'd be fine disabling, but also could be caused by mining results rando, showing this is a deeper issue
+      * Essentially, we need to ignore planted entities just like we ignore built entities and resources for mining results, and I'm not even sure what to do about the recipe amounts rando
 
 Requests
 1. Regenerating seed more quickly (rerolling automatically)

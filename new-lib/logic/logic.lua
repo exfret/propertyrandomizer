@@ -90,6 +90,12 @@ local curr
 local curr_class
 local curr_prot
 -- context is nil (signalling default transmit), true (signalling all contexts, as in FORGET), or a string (signaling that specific context, as in ADD/room nodes)
+-- abilities is either nil (just transmits), or a list of ints to true/false (showing an ability being added or removed)
+-- I think that is all we need for now for abilities
+-- Note that being false isn't the same as being nil
+-- Here is a list and what they correspond to:
+--   1. Isolatability: Can be made without transporting other things in (can still use techs gotten by the time that room is reached)
+--   2. Automatability: Can be automated (not just mined from non-resource entities or handcrafted only, for example)
 local function add_node(node_type, op, context, node_name, extra)
     extra = extra or {}
 
@@ -97,6 +103,7 @@ local function add_node(node_type, op, context, node_name, extra)
         logic.type_info[node_type] = {
             op = op,
             context = context,
+            abilities = abilities,
             canonical = extra.canonical or curr_class,
         }
     end
@@ -160,7 +167,7 @@ logic.build = function()
                     add_edge("entity-operate", source_info.name)
                 elseif source_type == "gun" then
                     -- Guns: need the gun item + planet (player uses guns on planets only)
-                    add_edge("item-gun", source_info.name)
+                    add_edge("item-gun", source_info.name, nil, cat.name, { [2] = false })
                 end
             end
         end
@@ -1015,7 +1022,7 @@ logic.build = function()
 
         if corresponding_recipes ~= nil then
             ----------------------------------------
-            add_node("item-craft", "OR")
+            add_node("item-craft", "OR", nil, item.name, { canonical = "item-craft" }) -- Some recipes for items are way after the item (e.g.- recycling), so we don't want them connected
             ----------------------------------------
             -- Can we craft this item? (Separate node needed for tech triggers)
 
@@ -1030,7 +1037,7 @@ logic.build = function()
         local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
             ----------------------------------------
-            add_node("item-launch", "AND", true)
+            add_node("item-launch", "AND", true, item.name, { canonical = "item-launch" }) -- We must separate out item-launch when making blocks, or else many item blocks become "concave"
             ----------------------------------------
             -- Can we launch this item into space?
             -- This node FORGETS context: launching makes item available to all reachable rooms
