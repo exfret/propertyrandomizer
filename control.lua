@@ -19,8 +19,13 @@ script.on_event("return-to-nauvis", function(event)
 
     local all_empty = true
     for _, inv in pairs(inventories_to_be_empty) do
-        if not game.players[event.player_index].get_inventory(inv).is_empty() then
-            all_empty = false
+        -- Was getting nil error so double check this inventory exists
+        local player = game.players[event.player_index]
+        local inventory = game.players[event.player_index].get_inventory(inv)
+        if inventory ~= nil and inventory.valid then
+            if not inventory.is_empty() then
+                all_empty = false
+            end
         end
     end
 
