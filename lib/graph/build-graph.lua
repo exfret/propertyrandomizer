@@ -3784,9 +3784,15 @@ local function load()
                     name = trigger.entity
                 })
             elseif trigger.type == "craft-item" then
+                -- Account for tabular ItemIDFilters
+                -- Don't account for quality yet, just prevent immediate crashes
+                local item_name = trigger.item
+                if type(item_name) == "table" then
+                    item_name = item_name.name
+                end
                 table.insert(prereqs, {
                     type = "craft-material",
-                    name = "item-" .. trigger.item
+                    name = "item-" .. item_name
                 })
             elseif trigger.type == "craft-fluid" then
                 table.insert(prereqs, {
@@ -3794,9 +3800,13 @@ local function load()
                     name = "fluid-" .. trigger.fluid
                 })
             elseif trigger.type == "send-item-to-orbit" then
+                local item_name = trigger.item
+                if type(item_name) == "table" then
+                    item_name = item_name.name
+                end
                 table.insert(prereqs, {
                     type = "send-item-to-orbit",
-                    name = trigger.item
+                    name = item_name
                 })
             elseif trigger.type == "capture-spawner" then
                 table.insert(prereqs, {

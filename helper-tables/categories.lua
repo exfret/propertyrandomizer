@@ -31,6 +31,18 @@ categories.effect_receivers = {
     ["mining-drill"] = true
 }
 
+categories.enemy_health_classes = {
+    ["asteroid"] = true,
+    ["segment"] = true,
+    ["segmented-unit"] = true,
+    ["simple-entity"] = true,
+    ["spider-unit"] = true,
+    ["tree"] = true, -- They're standing in the way of my factory!
+    ["turret"] = true,
+    ["unit"] = true,
+    ["unit-spawner"] = true
+}
+
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {
     ["car"] = true,
