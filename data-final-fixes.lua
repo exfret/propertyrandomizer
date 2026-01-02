@@ -82,20 +82,13 @@ log("top-sort new")
 
 log("block sort")
 
-local top = require("new-lib/graph/top-sort")
-local sort_info = top.sort(logic.graph)
-local block = require("new-lib/graph/block-sort")
-local blockify = require("new-lib/logic/blockify")
-blockify.get(logic.graph)
-local block_info = block.sort(logic.graph, nil, nil, sort_info, blockify)
-for _, node_info in pairs(block_info.open) do
-    log(node_info.node)
-end
+local top2 = require("new-lib/graph/extended-sort")
+local sort_info2 = top2.sort(logic.graph)
 
 log("end sort")
 
 -- Try with new path algo
-local promethium_inds = sort_info.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
+--[[local promethium_inds = sort_info.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
 local earliest_ind
 for ind, _ in pairs(promethium_inds) do
     if earliest_ind == nil or ind < earliest_ind then
@@ -131,7 +124,7 @@ for _, open_info in pairs(sort_info.open) do
             --log(open_info.node)
         end
     end
-end
+end]]
 --[[log(num_items)
 log(total_num_items)
 log(num_nodes)
@@ -149,6 +142,8 @@ global_seed = 238597
 local unified = require("randomizations/graph/unified/new/execute")
 -- Unified builds its own graph
 unified.execute()
+
+if false then
 
 local recipe_results = require("randomizations/graph/unified/recipe-results")
 --recipe_results.execute(logic.graph)
@@ -177,6 +172,8 @@ for _, tech in pairs(data.raw.technology) do
         log(serpent.block(more_sort_info.reachable))
         error(tech.name)
     end
+end
+
 end
 
 --[[for _, node_info in pairs(sort_info.sorted) do

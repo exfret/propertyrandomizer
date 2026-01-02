@@ -34,6 +34,8 @@
 --   * add in some basic connections to force certain things earlier, like early automation
 --   * prereq/dependent "ID"s so we can figure out which prereqs correspond to which dependents
 
+-- Note: Canonical was for an idea that didn't quite work; I might change it later
+
 -- TERMINOLOGY
 
 -- GRAPH
@@ -103,7 +105,6 @@ local function add_node(node_type, op, context, node_name, extra)
         logic.type_info[node_type] = {
             op = op,
             context = context,
-            abilities = abilities,
             canonical = extra.canonical or curr_class,
         }
     end
@@ -167,7 +168,10 @@ logic.build = function()
                     add_edge("entity-operate", source_info.name)
                 elseif source_type == "gun" then
                     -- Guns: need the gun item + planet (player uses guns on planets only)
-                    add_edge("item-gun", source_info.name, nil, cat.name, { [2] = false })
+                    -- Guns can't be "automated"
+                    add_edge("item-gun", source_info.name, nil, cat.name, {
+                        abilities = { [2] = false },
+                    })
                 end
             end
         end
@@ -215,7 +219,10 @@ logic.build = function()
         -- Can we mine this asteroid chunk?
         -- Requires: chunk + asteroid collector
 
-        add_edge("asteroid-chunk")
+        -- Asteroid chunks can be mined automatically
+        add_edge("asteroid-chunk", chunk.name, {
+            abilities = { [2] = true },
+        })
         add_edge("asteroid-collector", "")
     end
 
@@ -253,11 +260,13 @@ logic.build = function()
                     -- Combat robots: come from capsules, entity must be creatable
                     add_edge("entity", source.name, {
                         damage_amount = source_info.amount,
+                        abilities = { [2] = false },
                     })
                 elseif source_info.source_type == "equipment" then
                     -- Equipment: need equipment-operate
                     add_edge("equipment-operate", source.name, {
                         damage_amount = source_info.amount,
+                        abilities = { [2] = false },
                     })
                 end
             end
@@ -278,6 +287,7 @@ logic.build = function()
         ----------------------------------------
         -- Can we encounter this entity? (Previously called spawn-entity)
 
+        -- TODO: Should any of these turn off automatability?
         local buildable = lu.buildables[key(entity)]
         if buildable ~= nil then
             add_edge("entity-build")
@@ -286,7 +296,9 @@ logic.build = function()
         for room_key, room in pairs(lu.rooms) do
             if lutils.check_in_room(room, entity) then
                 -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed somewhere
-                add_edge("room", room_key)
+                add_edge("room", room_key, {
+                    abilities = { [1] = true },
+                }) -- Being from a room leads to isolatability
             end
         end
         -- Check if entity could be the corpse of another entity
@@ -335,7 +347,9 @@ logic.build = function()
         end
         -- Check if we can get access this through it being our character
         if entity.type == "character" then
-            add_edge("entity-character", entity.name)
+            add_edge("entity-character", entity.name, {
+                abilities = { [1] = true } -- Characters are always "local"
+            })
         end
 
         if buildable ~= nil then
@@ -422,7 +436,9 @@ logic.build = function()
             ----------------------------------------
             -- Can we operate this entity (ensure it's heated, powered, etc.)?
 
-            add_edge("entity")
+            add_edge("entity", entity.name, {
+                abilities = { [2] = true } -- Automatic operation doesn't require automatic production
+            })
             if categories.energy_sources_input[entity.type] then
                 add_edge("entity-operate-energy")
             end
@@ -534,25 +550,33 @@ logic.build = function()
             add_edge("entity")
         end
 
-                if entity.minable ~= nil then
+        if entity.minable ~= nil then
             ----------------------------------------
             add_node("entity-mine", "AND")
             ----------------------------------------
             -- Can we mine this entity?
 
-            add_edge("entity")
             if entity.type == "resource" then
+                add_edge("entity", entity.name, {
+                    abilities = { [2] = true },
+                })
                 -- For resources requiring fluid: need the specific fluid + tech unlock
                 -- These are separate edges because different resources may need different fluids
                 -- Note that if we wanted to be especially careful, we'd check mining drill filters too, but we'll leave that for another time
                 if entity.minable.required_fluid ~= nil then
                     add_edge("fluid", entity.minable.required_fluid)
-                    add_edge("mining-with-fluid-unlock", "")
+                    add_edge("mining-with-fluid-unlock", "", {
+                        abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
+                    })
                 end
 
                 -- Resource category checks drill capability (right category + fluid boxes)
                 -- The mcat_name includes has_input/has_output flags
-                add_edge("resource-category", lutils.mcat_name(entity))
+                add_edge("resource-category", lutils.mcat_name(entity)) -- Need to be able to automatically operate the entity to automate the resources
+            else
+                add_edge("entity", entity.name, {
+                    abilities = { [2] = false },
+                })
             end
         end
 
@@ -988,7 +1012,9 @@ logic.build = function()
         -- can be launched to space, then delivered to a space surface, gaining that context
         local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
-            add_edge("item-launch")
+            add_edge("item-deliver", item.name, {
+                abilities = { [1] = false },
+            })
         end
         -- Edge from items that spoil into this item
         if lu.spoil_result_to_items[item.name] ~= nil then
@@ -1005,7 +1031,9 @@ logic.build = function()
         -- Edge from entity kills that drop this as loot
         if lu.loot_to_entities[item.name] ~= nil then
             for entity_name, _ in pairs(lu.loot_to_entities[item.name]) do
-                add_edge("entity-kill", entity_name)
+                add_edge("entity-kill", entity_name, {
+                    abilities = { [2] = false }, -- Even if we can automatically kill something, we can't automatically pick up its loot (at least in vanilla)
+                })
             end
         end
 
@@ -1036,6 +1064,8 @@ logic.build = function()
 
         local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
+            -- CRITICAL TODO: This if condition prevents deliveries of high-weight items from space platforms; fix this!
+
             ----------------------------------------
             add_node("item-launch", "AND", true, item.name, { canonical = "item-launch" }) -- We must separate out item-launch when making blocks, or else many item blocks become "concave"
             ----------------------------------------
@@ -1049,16 +1079,14 @@ logic.build = function()
             add_edge("item")
             add_edge("deliver", "")
 
-            --[[
             ----------------------------------------
             add_node("item-deliver", "AND")
             ----------------------------------------
-            -- Can we receive this item on a space platform?
-            -- Filters context to reachable space surfaces.
+            -- Can we receive this item in a room?
+            -- Filters context to reachable rooms
 
             add_edge("item-launch")
-            add_edge("space-surface", "")
-            ]]
+            add_edge("reachable-room", "")
         end
 
         if item.type == "ammo" then
@@ -1302,7 +1330,9 @@ logic.build = function()
             end
         end
         if loc.type == "planet" then
-            add_edge("room-launch", loc.name)
+            add_edge("room-launch", loc.name, {
+                abilities = { [1] = false },
+            })
         end
 
         ----------------------------------------
@@ -1345,10 +1375,21 @@ logic.build = function()
         -- This node FORGETS context: research makes tech available everywhere.
         -- Still needs at least one incoming context to match along all inputs.
 
+        -- Techs carry automatability contexts since one they're unlocked, they don't need continued effort
+        -- Thus, all prerequisites for a tech add automatability contexts
+
+        -- Techs via triggers can get planet-locked, but assuming this for unit techs might be too harsh
+        -- For now, we'll stick to all techs, but could change this in the future
+        local tech_abilities = {
+            [2] = true,
+        }
+
         -- Prerequisite technologies
         if tech.prerequisites ~= nil then
             for _, prereq in pairs(tech.prerequisites) do
-                add_edge("technology", prereq)
+                add_edge("technology", prereq, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             end
         end
 
@@ -1361,34 +1402,54 @@ logic.build = function()
             end
             table.sort(set)
             -- Need the science pack items
-            add_edge("science-pack-set-science", gutils.concat(set))
+            add_edge("science-pack-set-science", gutils.concat(set), {
+                abilities = table.deepcopy(tech_abilities),
+            })
             -- Need a lab that can accept all packs
-            add_edge("science-pack-set-lab", gutils.concat(set))
+            add_edge("science-pack-set-lab", gutils.concat(set), {
+                abilities = table.deepcopy(tech_abilities),
+            })
         elseif tech.research_trigger ~= nil then
             -- Trigger-based research
             local trigger = tech.research_trigger
 
             if trigger.type == "mine-entity" then
-                add_edge("entity-mine", trigger.entity)
+                add_edge("entity-mine", trigger.entity, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             elseif trigger.type == "craft-item" then
-                add_edge("item-craft", trigger.item)
+                add_edge("item-craft", trigger.item, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             elseif trigger.type == "craft-fluid" then
-                add_edge("fluid-craft", trigger.fluid)
+                add_edge("fluid-craft", trigger.fluid, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             elseif trigger.type == "send-item-to-orbit" then
                 -- Need to deliver the specified item (must have space surface to receive it)
-                add_edge("item-launch", trigger.item)
+                add_edge("item-launch", trigger.item, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             elseif trigger.type == "capture-spawner" then
                 -- Need to capture the specified spawner type
                 if trigger.entity ~= nil then
-                    add_edge("entity-capture-spawner", trigger.entity)
+                    add_edge("entity-capture-spawner", trigger.entity, {
+                        abilities = table.deepcopy(tech_abilities),
+                    })
                 else
                     -- Any spawner will do
-                    add_edge("capture-spawner", "")
+                    add_edge("capture-spawner", "", {
+                        abilities = table.deepcopy(tech_abilities),
+                    })
                 end
             elseif trigger.type == "build-entity" then
-                add_edge("entity-build", trigger.entity)
+                add_edge("entity-build", trigger.entity, {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             elseif trigger.type == "create-space-platform" then
-                add_edge("create-platform", "")
+                add_edge("create-platform", "", {
+                    abilities = table.deepcopy(tech_abilities),
+                })
             end
         end
     end
@@ -1411,7 +1472,9 @@ logic.build = function()
         local tile_rooms = lu.tiles_to_rooms[tile.name]
         if tile_rooms ~= nil then
             for room_key, _ in pairs(tile_rooms) do
-                add_edge("room", room_key)
+                add_edge("room", room_key, {
+                    abilities = { [1] = true },
+                })
             end
         end
 
@@ -1758,7 +1821,9 @@ logic.build = function()
     for room_key, room in pairs(lu.rooms) do
         if room.type == "planet" and data.raw.planet[room.name].lightning_properties ~= nil then
             -- Technically we should also check if at least one of the lightnings carries energy, but who makes lightning that doesn't give energy?
-            add_edge("room", room_key)
+            add_edge("room", room_key, {
+                abilities = { [1] = true },
+            })
         end
     end
 
@@ -1938,10 +2003,9 @@ logic.build = function()
     end
 
     ----------------------------------------
-    add_node("mining-with-fluid-unlock", "OR", true, "", { canonical = "mining-with-fluid-unlock" })
+    add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock" })
     ----------------------------------------
     -- Have we unlocked the ability to mine resources that require fluid?
-    -- This node FORGETS context: technology effects are global.
 
     for _, tech in pairs(lu.techs) do
         if tech.effects ~= nil then
@@ -2008,6 +2072,16 @@ logic.build = function()
     end
 
     ----------------------------------------
+    add_node("reachable-room", "OR", nil, "", { canonical = "room" })
+    ----------------------------------------
+    -- Can we reach some room?
+    -- Needed for item-launch to know what rooms can be delivered to.
+
+    for room_key, room in pairs(lu.rooms) do
+        add_edge("room", room_key)
+    end
+
+    ----------------------------------------
     add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock" })
     ----------------------------------------
     -- Have we researched the ability to send starter packs to space?
@@ -2064,8 +2138,12 @@ logic.build = function()
     -- Can we deliver items FROM this location?
     -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
 
-    add_edge("launch", "")
-    add_edge("space-surface", "")
+    add_edge("launch", "", {
+        abilities = { [1] = false }, -- Make sure deliverability doesn't carry isolatability with it
+    })
+    add_edge("space-surface", "", {
+        abilities = { [1] = false },
+    })
 
     ----------------------------------------------------------------------
     -- Starting
@@ -2184,7 +2262,9 @@ logic.build = function()
 
     -- TODO: Fix these
     -- Right now, we don't add the extra tiles from the starter pack
-    gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
+    if mods["space-age"] then
+        gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
+    end
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
