@@ -1,6 +1,9 @@
+local PRESERVE_ISOLATABILITY = true
+
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/top-sort")
+local top2 = require("new-lib/graph/extended-sort")
 local logic = require("new-lib/logic/logic")
 
 local unified = {}
@@ -188,21 +191,43 @@ unified.execute = function()
     -- Filling Pools
     ----------------------------------------------------------------------------------------------------
 
+    log("Filling pools")
+
     -- Since we use cut_graph later, we can't do the usual deepcopy
     -- So note: Our references from sorted_deps and such at this point are DEAD, they point to cut_graph
     -- This shouldn't cause issues here hopefully
     local pool_graph = table.deepcopy(cut_graph)
-    local pool_info = top.sort(pool_graph)
+    local pool_graph_planets = {}
+    -- TODO: Are planet specific graphs necessary?
+    --[[local middle_planets = {"fulgora", "gleba", "vulcanus"}
+    for _, planet in pairs(middle_planets) do
+        pool_graph_planets[planet] = table.deepcopy(cut_graph)
+        for _, other_planet in pairs(middle_planets) do
+            if other_planet ~= planet then
+
+                gutils.remove_edge(pool_graph_planets[planet], )
+            end
+        end
+    end]]
+    local sort_to_use = top.sort
+    if PRESERVE_ISOLATABILITY then
+        sort_to_use = top2.sort
+    end
+    local pool_info = sort_to_use(pool_graph)
 
     local trav_to_pool = {}
     for _, dep in pairs(sorted_deps) do
         local function reconnect(traveler)
             local edge_start = trav_to_old_slot[gutils.key(traveler)]
             local edge = gutils.add_edge(pool_graph, gutils.key(edge_start), gutils.key(traveler))
-            pool_info = top.sort(pool_graph, pool_info, {
-                edge = gutils.ekey(edge),
-                contexts = pool_info.node_to_contexts[edge.start],
-            })
+            if not PRESERVE_ISOLATABILITY then
+                pool_info = sort_to_use(pool_graph, pool_info, {
+                    edge = gutils.ekey(edge),
+                    contexts = pool_info.node_to_contexts[edge.start],
+                })
+            else
+                pool_info = sort_to_use(pool_graph, pool_info, gutils.ekey(edge))
+            end
         end
 
         for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
@@ -212,21 +237,52 @@ unified.execute = function()
     -- Let's still test pools via index in each context list
     -- Later, we could try with context pools
 
+    log("Calculating context reachability")
+
     -- Takes context and node to when the node first gets that context in open
     -- Might be able to add this to sort info
     -- This could still not catch things that only add an item to a surface where it's not needed but checking more rigorously could be a future task
     local context_node_to_ind = {}
-    for context, _ in pairs(logic.contexts) do
-        context_node_to_ind[context] = {}
-    end
-    for open_ind, node_info in pairs(pool_info.open) do
-        if node_info.contexts == true then
-            for context, _ in pairs(logic.contexts) do
-                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
+    if not PRESERVE_ISOLATABILITY then
+        for context, _ in pairs(logic.contexts) do
+            context_node_to_ind[context] = {}
+        end
+        for open_ind, node_info in pairs(pool_info.open) do
+            if node_info.contexts == true then
+                for context, _ in pairs(logic.contexts) do
+                    context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
+                end
+            else
+                for context, _ in pairs(node_info.contexts) do
+                    context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
+                end
             end
-        else
-            for context, _ in pairs(node_info.contexts) do
-                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
+        end
+    else
+        for context, _ in pairs(logic.contexts) do
+            for _, str_val in pairs({"0", "1"}) do
+                context_node_to_ind[context .. str_val] = {}
+            end
+        end
+        for open_ind, node_info in pairs(pool_info.open) do
+            if node_info.contexts == true then
+                for context, _ in pairs(logic.contexts) do
+                    for _, str_val in pairs({"0", "1"}) do
+                        context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
+                    end
+                end
+            else
+                for context, context_vals in pairs(node_info.contexts) do
+                    if context_vals == true then
+                        for _, str_val in pairs({"0", "1"}) do
+                            context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
+                        end
+                    else
+                        for bin_str, val in pairs(context_vals) do
+                            context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] = context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] or open_ind
+                        end
+                    end
+                end
             end
         end
     end
@@ -234,14 +290,26 @@ unified.execute = function()
     local random_graph = cut_graph
     cut_graph = table.deepcopy(cut_graph)
 
+    log("Calculating context reachability")
+
     -- Context reachability
     local function all_contexts_reachable(slot, trav)
-        for context, _ in pairs(logic.contexts) do
-            -- Let's try with "last prereq comes after"
-            -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
-            -- This actually didn't have an effect because of the way pool sort works
-            if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
-                return false
+        if not PRESERVE_ISOLATABILITY then
+            for context, _ in pairs(logic.contexts) do
+                -- Let's try with "last prereq comes after"
+                -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
+                -- This actually didn't have an effect because of the way pool sort works
+                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
+                    return false
+                end
+            end
+        else
+            for context, _ in pairs(logic.contexts) do
+                for _, str_val in pairs({"0", "1"}) do
+                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
+                        return false
+                    end
+                end
             end
         end
 
@@ -251,6 +319,8 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
     -- Do The Shuffle
     ----------------------------------------------------------------------------------------------------
+
+    log("Shuffle started")
 
     rng.shuffle(rng.key({id = "unified"}), shuffled_prereqs)
     rng.shuffle(rng.key({id = "unified"}), post_shuffled_prereqs)
@@ -285,6 +355,7 @@ unified.execute = function()
                     end
                 end
                 if not found_prereq then
+                    -- Try going through a second time with another shuffled list
                     error()
                 end
             end

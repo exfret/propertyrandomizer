@@ -20,6 +20,9 @@
 22. Make sure spitters can't outrange everything
       * Caused by all of recipe ingredient amounts and result amounts and probability rando, which I'd be fine disabling, but also could be caused by mining results rando, showing this is a deeper issue
       * Essentially, we need to ignore planted entities just like we ignore built entities and resources for mining results, and I'm not even sure what to do about the recipe amounts rando
+23. Account for tables for research triggers in building graph/logic
+24. Change name for "mining time" randomization to "pickup time"
+25. Mining drill radius too small (1x1 bleh)
 
 Requests
 1. Regenerating seed more quickly (rerolling automatically)

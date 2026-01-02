@@ -302,7 +302,7 @@ local function union(base, addon)
     local added = {}
     local all_true = true
     -- TODO: Make logic.contexts more general; it's now just the rooms
-    for room_contex, _ in pairs(logic.contexts) do
+    for room_context, _ in pairs(logic.contexts) do
         local room_added = room_union(base[room_context], room_addon[room_contex])
 
         if room_added == true then
@@ -331,6 +331,8 @@ local function union(base, addon)
 end
 
 top.sort_extended = function(graph, state, new_conn, extra)
+    -- TODO
+
     state = state or {}
     local node_to_contexts = state.node_to_contexts or {}
     local node_context_to_satisfied = state.node_context_to_satisfied or {}

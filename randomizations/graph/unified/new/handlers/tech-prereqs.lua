@@ -4,7 +4,7 @@ local tech_prereqs = {}
 
 -- Check if we've already added bonus prereqs to a technology
 local is_added_tech = {}
-local bonus_times = 0
+local bonus_times = 1
 
 tech_prereqs.claim = function(graph, prereq, dep, trav)
     if prereq.type == "technology" and dep.type == "technology" then
