@@ -315,4 +315,10 @@ randomizations.fixes = function()
             segment.max_health = unit.max_health
         end
     end
+
+    -- Set solar panel weight to what it is in vanilla
+    -- It sucks but this is the easiest hotfix to prevent them from not being launchable until the new logic is finished
+    -- (Note: item weight rando directly doesn't cause this, but item rando combined with automatic weight calculation can)
+    -- TODO: Remove this once I can do that
+    data.raw.item["solar-panel"].weight = 20000
 end

@@ -2113,18 +2113,6 @@ randomizations.machine_pollution = function(id)
     end
 end
 
-local enemy_health_classes = {
-    ["asteroid"] = true,
-    ["segment"] = true,
-    ["segmented-unit"] = true,
-    ["simple-entity"] = true,
-    ["spider-unit"] = true,
-    ["tree"] = true, -- They're standing in the way of my factory!
-    ["turret"] = true,
-    ["unit"] = true,
-    ["unit-spawner"] = true
-}
-
 randomizations.max_health = function(id)
     -- Entities with health where it's sensitive enough not to randomize, or where randomization doesn't make sense
     -- Allow turrets and other military items to be randomized, we'll just dupe those
@@ -2140,7 +2128,7 @@ randomizations.max_health = function(id)
                     local old_max_health = entity.max_health
 
                     local dir = 1
-                    if enemy_health_classes[entity_class] then
+                    if categories.enemy_health_classes[entity_class] then
                         dir = -1
                     end
 
@@ -2181,6 +2169,17 @@ randomizations.mining_drill_radius = function (id)
         radius = radius - 0.01
         if odd_size then
             radius = radius - 0.5
+            -- exfret: Someone got an electric mining drill with a 1x1 mining area
+            --   That seems like a bit much, so I implemented some very specific checks that result in ensuring this doesn't happen
+            --   If all the following are true, then the radius is just increased by one:
+            --     1) The number of tiles covered was originally strictly more than one tile
+            --     2) The mining drill covers at least nine tiles according to its collision radius
+            --     3) The radius would become 0.5 if we accepted it
+            --     4) Chaos isn't ultimate (level 4)
+            --   This should be minimally invasive, and prevent cases where someone has to mine and deconstruct all electric drills on their starter patch nine times just to finish it off
+            if mining_drill.resource_searching_radius > 0.5 and collision_radius > 1 and radius < 1 and global_chaos_idx < 4 then
+                radius = radius + 1
+            end
         end
         local factor = radius / mining_drill.resource_searching_radius
         mining_drill.resource_searching_radius = radius
@@ -2812,12 +2811,20 @@ randomizations.reactor_neighbour_bonus = function(id)
 end
 
 randomizations.resistances = function(id)
+    -- exfret: Don't randomize resistances on lower than ultimate chaos
+    -- I hate this hotfix, but it needs to be pushed out quickly since otherwise there will be unreported softlocks for people on normal settings (due to asteroids, which has already happened, and potentially "soft" softlocks due to biters) and that is not good
+    -- CRITICAL TODO: Simply build this into logic and turn this into a graph rando
+    -- TODO: Also should allow override to still trigger this, but I'm short on time now and this needs to get done
+    if chaos_string_to_idx < 4 then
+        return
+    end
+
     local damage_type_names = {}
     for name, _ in pairs(data.raw["damage-type"]) do
         table.insert(damage_type_names, name)
     end
     local apply_resistance_description = function (entity)
-        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Botched resistance)[/color]"}
+        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Random damage resistances)[/color]"}
     end
 
     -- In a cruel twist of fate, some entities share a reference to the same resistances table
@@ -2834,7 +2841,7 @@ randomizations.resistances = function(id)
                         local key = rng.key({id = id, prototype = entity})
                         rng.shuffle(key, shuffled_damage_type_names)
                         local dir = 1
-                        if enemy_health_classes[entity_class] then
+                        if categories.enemy_health_classes[entity_class] then
                             dir = -1
                             -- Normally the player doesn't have access to acid damage.
                             -- Thus, no enemies are resistant to it, always leaving one damage type without resistance.
