@@ -85,6 +85,8 @@ local logic = {}
 -- Contexts currently include rooms (i.e.- where things can be done)
 logic.contexts = {}
 logic.type_info = {}
+-- Needed for edge context info
+logic.edge_info = {}
 
 -- The following code is duplicated in logic-group, so if you update it also update that
 -- Unfortunately, I couldn't think of a better way to do this
@@ -118,6 +120,15 @@ local function add_node(node_type, op, context, node_name, extra)
 end
 local function add_edge(start_type, start_name, extra)
     start_name = start_name or curr_prot.name
+
+    local edge_type_key = gutils.concat({start_type, curr.type})
+    edge_info[edge_type_key] = edge_info[edge_type_key] or {}
+    -- Note that there can be two "types" of edges between the same node types, which maybe could introduce different contexts as well
+    -- We currently clobber the abilities to be whatever the last processed edge type had as its abilities, so we don't account for this
+    -- CRITICAL TODO: Account for this!
+    if extra.abilities ~= nil then
+        edge_info[edge_type_key].abilities = extra.abilities
+    end
     gutils.add_edge(logic.graph, key(start_type, start_name), key(curr), extra)
 end
 
