@@ -1,4 +1,5 @@
-local PRESERVE_ISOLATABILITY = true
+-- CRITICAL TODO: Turn back on when things are working with this off (one step at a time)
+local PRESERVE_ISOLATABILITY = false
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -219,6 +220,7 @@ unified.execute = function()
     for _, dep in pairs(sorted_deps) do
         local function reconnect(traveler)
             local edge_start = trav_to_old_slot[gutils.key(traveler)]
+            -- CRITICAL TODO: Need to figure out new abilities context for edge (might not be given by slot or traveler)
             local edge = gutils.add_edge(pool_graph, gutils.key(edge_start), gutils.key(traveler))
             if not PRESERVE_ISOLATABILITY then
                 pool_info = sort_to_use(pool_graph, pool_info, {

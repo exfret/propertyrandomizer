@@ -1,0 +1,51 @@
+Huge
+  * Recipe ingredients
+  * Recipe results
+  * Recipe categories (ignore multi-categories for now)
+  * Item rando (with fluids now)
+
+Big
+  * Item spoiling (spoofs so that which items spoil and what they spoil into are both changed)
+
+Medium
+  * Technology prerequisites
+  * Technology science pack sets
+  * Technology unlocks (not just recipes)
+  * Item to entity spoil result
+  * Item fuel categories
+  * Item burnt results (spoof so both source and destination can change)
+
+Small
+  * Tile to fluid produced (won't impact vanilla much until first pass is up and going)
+  * Machine input/output fluids (boiler, fusion reactor, etc.), this might be able to be done with two handlers
+  * Resource mining fluid (spoofs to allow more/fewer resources to need fluid too)
+
+Unsure about/not yet:
+  * Mining results
+    - Seems like it conflicts with item rando, and doesn't add too much for its level of balancing complexity
+    - I want to see if I can get it to work, but this is a later problem when I think of smarter ways to do this
+    - Includes plant/asteroid collector rando
+  * Item rando on buildings
+    - ex.- oil refineries could "take the place" of a centrifuge instead
+    - I need to think a lot about this to get it to work, but it could be great
+  * Room to entity surface conditions
+    - Can't change context yet I think
+  * Resources to resource categories
+    - Not a well-explored enough mechanic in vanilla to be worth my time yet
+  * Energy source types
+    - I can just go random but something feels unfulfilliing with that and there must be some better way
+  * Ammo categories
+    - Need to figure out way to do it and yet still ensure starting turrets without hardcoding
+  * Asteroid spawns
+    - High softlock potential and not many new combinations to experience
+  * Planet/space-connection map
+    - A small thing with lots of complexity that's not worth figuring out yet
+  * A bunch of planet --> X connections
+    - As already mentioned, not changing context yet
+  * A bunch of smaller/not worth right now things like equipment
+  * Entity loot
+    - Not really used in vanilla
+
+We can't change context yet (need more algorithmic development for that), which rules out a lot of planet-based rando
+Oh crap, this means no cross-planetary switches
+One step at a time, we'll worry about that later (can do a context switching step; will need to think about how that could work)
