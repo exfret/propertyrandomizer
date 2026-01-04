@@ -38,7 +38,7 @@ randomizations.ammo_damage_types = function (id)
     -- This is just damage type rando, but I still worry, so I'm not allowing it to be randomized right now unless chaos is ultimate
     -- This should at least allow for overrides to overcome it, but in reality this should just get done properly some other time
     -- Ammo from turrets and projectiles from rockets are the only things that *really* need to be blacklisted, so those are the only functions I've touched
-    if chaos_string_to_idx < 4 then
+    if global_chaos_idx < 4 then
         return
     end
 
@@ -108,7 +108,7 @@ end
 randomizations.projectile_damage_types = function (id)
     -- exfret: Disabled on non-ultimate chaos
     -- See comments in ammo_damage_types for more information
-    if chaos_string_to_idx < 4 then
+    if global_chaos_idx < 4 then
         return
     end
     
