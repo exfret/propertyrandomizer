@@ -187,6 +187,11 @@ local gather_equipment_name_structs = function (structs, equipment_name, stop_pr
     end
 end
 
+-- Export name-based gather functions for use by new-lib lookup system
+export.gather_item_name_structs = gather_item_name_structs
+export.gather_entity_name_structs = gather_entity_name_structs
+export.gather_equipment_name_structs = gather_equipment_name_structs
+
 local to_array = function (single_or_array)
     if type(single_or_array) ~= "table" or single_or_array[1] == nil then
         return { single_or_array }
