@@ -303,7 +303,7 @@ logic.build = function()
         if buildable ~= nil then
             add_edge("entity-build")
         end
-        -- Check if the entity is put automatically on a surface
+        -- Check if the entity is put automatically in a room (planet/space surface)
         for room_key, room in pairs(lu.rooms) do
             if lutils.check_in_room(room, entity) then
                 -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed somewhere
