@@ -7,7 +7,7 @@
 
 local gutils = require("new-lib/graph/graph-utils")
 local lu = require("new-lib/logic/lookup/init")
-local logic = require("new-lib/logic/logic")
+local logic = require("new-lib/logic/init")
 
 local blockify = {}
 

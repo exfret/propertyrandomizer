@@ -7,7 +7,7 @@
 -- Actually... that means I need to simulate a whole top sort here, not just order the dependents, right? Because I need at which points things got context, not just the order of first unlock
 
 local rng = require("lib/random/rng")
-local logic = require("new-lib/logic/logic")
+local logic = require("new-lib/logic/init")
 -- We use the extended contexts version here
 local top = require("new-lib/graph/extended-sort")
 

@@ -76,8 +76,6 @@ randomizations.all_sounds = function(id)
     -- Gather up all the sounds
     local sound_info = gather_sounds(data.raw)
 
-    log(serpent.block(sound_info))
-  
     -- Now mix them all together
     rng.shuffle(rng.key({id = id}), sound_info.sounds)
 

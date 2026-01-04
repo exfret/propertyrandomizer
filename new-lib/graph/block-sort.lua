@@ -9,7 +9,7 @@
 local lib_name = "new-lib" -- Use this until integration with "old" lib
 local gutils = require(lib_name .. "/graph/graph-utils")
 -- Used for gathering contexts, etc. not for the actual graph
-local logic = require(lib_name .. "/logic/logic")
+local logic = require(lib_name .. "/logic/init")
 
 local key = gutils.key
 

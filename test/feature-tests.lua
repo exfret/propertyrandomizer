@@ -64,7 +64,7 @@ end
 local function test_logic_build(lu)
     log("=== Testing Logic Graph Build ===")
 
-    local logic = require("new-lib/logic/logic")
+    local logic = require("new-lib/logic/init")
     logic.build()
 
     -- Count nodes and edges

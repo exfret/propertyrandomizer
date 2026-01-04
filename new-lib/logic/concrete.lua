@@ -1,57 +1,5 @@
--- IDEA/TODO: Cull many edges of the graph by deciding ahead of time what to randomize and not expanding nodes that don't matter
--- For example, if we don't care about whether we can kill certain entities, we can get rid of those entity-kill nodes
-
--- Note: Only asteroids are checked in entity-kill
-
--- TODO:
---   * Add note to allow input-output connections in place of pipes for "hold-fluid"
---   * Define ops in same place as node types, where "NODE: ___" currently is, then add an "add_type" function
---   * A use-character for rooms where we can drop stuff and other normal actions (doesn't apply in space)
---   * Construct node type metadata (ops, styles, and gates)
---   * Construct node to canonical function
---   * Add pre, dep keys to nodes
---   * Tables for accessing all nodes/edges of a certain type (precomputed) for niceness
---   * Potentially separate some parts into other files (particularly lookup)
---   * Nodes/edges to nice printable names
---   * Functions for deconstructing key/concat/edge keys
---   * Fun thing after this: randomize collision masks; group some similar masked things etc.
-
--- OLD TODO:
---   * create general "can be placed down on tile" function and use that in the offshore function
---   * deal with hidden recipes/techs, like recipe-unknown
---   * rocket-part-recipe should respect fixed-recipe (also double check it checks what the silo can do)
---   * code in that burner machines are inoperable in space (that might already just be part of a surface condition)
---   * add prototypes to graph information
---   * figure out why explosions are reachable
---   * add corpses (like stomper corpses)
---   * test for planets that are discovered from start, like nauvis, not just ones you start on
---   * check for ice melting (wait was that just someone trolling me?)
---   * check that surface condition checking works well
---   * minability tech nodes (like researching ability to mine uranium in base game)
---   * add dependence for solar that solar percent is >5% or so (aquilo has some but it shouldn't be relied on)
---   * min working temperatures?
---   * make technologies (and maybe some other things) use item-surface rather than item
---   * add in some basic connections to force certain things earlier, like early automation
---   * prereq/dependent "ID"s so we can figure out which prereqs correspond to which dependents
-
--- Note: Canonical was for an idea that didn't quite work; I might change it later
-
--- TERMINOLOGY
-
--- GRAPH
---   * logic: The underlying game logic, also refers to the dependency graph for the game
---   * key: A unique identifier for indexing into a graph/table; often combines a type and name using the key function
---   * type: A type of node
---   * name: A name for a node that, together with type, uniquely identifies it in the graph
---   * node: A vertex of the dependency graph
---   * edge: A directed connection from one node to another (distinct from a connection)
---   * in: the edges incoming to a node/the prereqs
---   * out: the edges outgoing from a node/the dependents
---   * op: The boolean connective for a node, either AND or OR
-
--- DATA.RAW
---   * prod: Short for "product"; any ingredient/result
---   * rcat/mcat: Short for recipe/mining category respectively, usually denotes a "spoofed" category which takes fluids into account as well
+-- Concrete node definitions for the dependency graph
+-- These represent "concrete" types of things - usually with a related prototype
 
 local collision_mask_util
 if not offline then
@@ -59,112 +7,34 @@ if not offline then
 else
     collision_mask_util = require("offline/lualib/collision-mask-util")
 end
-local lib_name = "new-lib" -- Use this until integration with "old" lib
+
+local lib_name = "new-lib"
 local categories = require("helper-tables/categories")
-local flow_cost = require("lib/graph/flow-cost")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
-local lu = require(lib_name .. "/logic/lookup/init")
-local logic_group = require(lib_name .. "/logic/logic-group")
--- We'll be using these a lot, so define shorthands
+local builder = require(lib_name .. "/logic/builder")
+
 local prots = dutils.prots
 local key = gutils.key
 local concat = gutils.concat
-local ekey = gutils.ekey
+local add_node = builder.add_node
+local add_edge = builder.add_edge
+local set_class = builder.set_class
+local set_prot = builder.set_prot
 
-local logic = {}
+local concrete = {}
 
--- Note: We used to have graph = {} here, but now it's only set during load
--- This way it doesn't autoload (which is slow) and also we can catch when it's used without loading first
-
-----------------------------------------------------------------------
--- Setup
-----------------------------------------------------------------------
-
--- Contexts currently include rooms (i.e.- where things can be done)
-logic.contexts = {}
-logic.type_info = {}
--- Needed for edge context info
-logic.edge_info = {}
-
--- The following code is duplicated in logic-group, so if you update it also update that
--- Unfortunately, I couldn't think of a better way to do this
-local curr
-local curr_class
-local curr_prot
--- context is nil (signalling default transmit), true (signalling all contexts, as in FORGET), or a string (signaling that specific context, as in ADD/room nodes)
--- abilities is either nil (just transmits), or a list of ints to true/false (showing an ability being added or removed)
--- I think that is all we need for now for abilities
--- Note that being false isn't the same as being nil
--- Here is a list and what they correspond to:
---   1. Isolatability: Can be made without transporting other things in (can still use techs gotten by the time that room is reached)
---   2. Automatability: Can be automated (not just mined from non-resource entities or handcrafted only, for example)
-local function add_node(node_type, op, context, node_name, extra)
-    extra = extra or {}
-
-    if logic.type_info[node_type] == nil then
-        logic.type_info[node_type] = {
-            op = op,
-            context = context,
-            canonical = extra.canonical or curr_class,
-        }
-    end
-
-    extra.class = extra.class or curr_class
-    if extra.prot == nil and curr_prot ~= nil then
-        extra.prot = key(curr_prot)
-    end
-    node_name = node_name or curr_prot.name
-    curr = gutils.add_node(logic.graph, node_type, node_name, extra)
-end
-local function add_edge(start_type, start_name, extra)
-    start_name = start_name or curr_prot.name
-    extra = extra or {}
-
-    local edge_type_key = gutils.concat({start_type, curr.type})
-    logic.edge_info[edge_type_key] = logic.edge_info[edge_type_key] or {}
-    -- Note that there can be two "types" of edges between the same node types, which maybe could introduce different contexts as well
-    -- We currently clobber the abilities to be whatever the last processed edge type had as its abilities, so we don't account for this
-    -- CRITICAL TODO: Account for this!
-    if extra.abilities ~= nil then
-        logic.edge_info[edge_type_key].abilities = extra.abilities
-    end
-    gutils.add_edge(logic.graph, key(start_type, start_name), key(curr), extra)
-end
-
-logic.build = function()
-    log("Loading lookups")
-    lu.load_lookups()
-
-    log("Lookups loaded")
-
-    -- Add contexts
-    for room_key, _ in pairs(lu.rooms) do
-        logic.contexts[room_key] = true
-    end
-
-    logic.graph = {}
-
-    -- Nodes are grouped into classes based off the top-level prototype class that best suits them, or a special class if applicable
-    -- See the class's section in the code for more info on it; also see each node type's section for more info about that node type
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Concrete
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- The following nodes represent "concrete" types of things; usually there is a related prototype to point to
+function concrete.build(lu)
 
     ----------------------------------------------------------------------
     -- Ammo Category
     ----------------------------------------------------------------------
 
-    curr_class = "ammo-category"
+    set_class("ammo-category")
 
     for _, cat in pairs(prots("ammo-category")) do
-        curr_prot = cat
+        set_prot(cat)
 
         ----------------------------------------
         add_node("ammo-category", "OR")
@@ -193,10 +63,10 @@ logic.build = function()
     -- Asteroid Chunk
     ----------------------------------------------------------------------
 
-    curr_class = "asteroid-chunk"
+    set_class("asteroid-chunk")
 
     for _, chunk in pairs(prots("asteroid-chunk")) do
-        curr_prot = chunk
+        set_prot(chunk)
 
         ----------------------------------------
         add_node("asteroid-chunk", "OR")
@@ -242,10 +112,10 @@ logic.build = function()
     -- Damage Type
     ----------------------------------------------------------------------
 
-    curr_class = "damage-type"
+    set_class("damage-type")
 
     for _, damage in pairs(prots("damage-type")) do
-        curr_prot = damage
+        set_prot(damage)
 
         ----------------------------------------
         add_node("damage-type", "OR")
@@ -289,10 +159,10 @@ logic.build = function()
     -- Entity
     ----------------------------------------------------------------------
 
-    curr_class = "entity"
+    set_class("entity")
 
     for _, entity in pairs(lu.entities) do
-        curr_prot = entity
+        set_prot(entity)
 
         ----------------------------------------
         add_node("entity", "OR")
@@ -639,10 +509,10 @@ logic.build = function()
     -- Grids have their own internal power pool.
     -- Note: Size constraints not checked (equipment might be too large for grid).
 
-    curr_class = "equipment"
+    set_class("equipment")
 
     for equip_name, equip in pairs(lu.equipment) do
-        curr_prot = equip
+        set_prot(equip)
 
         ----------------------------------------
         add_node("equipment", "AND")
@@ -752,7 +622,7 @@ logic.build = function()
     -- A category is "available" if any grid accepts it.
     -- A category is "powered" if any accepting grid can be powered.
 
-    curr_class = "equipment-category"
+    set_class("equipment-category")
 
     local seen_categories = {}
     for _, grid in pairs(prots("equipment-grid")) do
@@ -762,7 +632,7 @@ logic.build = function()
     end
 
     for cat, _ in pairs(seen_categories) do
-        curr_prot = data.raw["equipment-category"][cat]
+        set_prot(data.raw["equipment-category"][cat])
 
         ----------------------------------------
         add_node("equipment-category", "OR")
@@ -798,10 +668,10 @@ logic.build = function()
     -- Equipment grids are accessed via armors or vehicles.
     -- Nodes are by grid NAME, not category.
 
-    curr_class = "equipment-grid"
+    set_class("equipment-grid")
 
     for _, grid in pairs(prots("equipment-grid")) do
-        curr_prot = grid
+        set_prot(grid)
 
         ----------------------------------------
         add_node("equipment-grid", "OR")
@@ -848,10 +718,10 @@ logic.build = function()
     -- Fluid
     ----------------------------------------------------------------------
 
-    curr_class = "fluid"
+    set_class("fluid")
 
     for _, fluid in pairs(lu.fluids) do
-        curr_prot = fluid
+        set_prot(fluid)
 
         ----------------------------------------
         add_node("fluid", "AND")
@@ -956,10 +826,10 @@ logic.build = function()
     -- Uses spoofed categories similar to recipe-category: base name + burnt flag
     -- Node name is concat({fcat_name, burnt}) to match fcat_to_items keys
 
-    curr_class = "fuel-category"
+    set_class("fuel-category")
 
     for _, fcat in pairs(prots("fuel-category")) do
-        curr_prot = fcat
+        set_prot(fcat)
 
         -- Create nodes for both burnt=0 and burnt=1 variants if they have items
         for burnt = 0, 1 do
@@ -996,10 +866,10 @@ logic.build = function()
     -- Item
     ----------------------------------------------------------------------
 
-    curr_class = "item"
+    set_class("item")
 
     for _, item in pairs(lu.items) do
-        curr_prot = item
+        set_prot(item)
 
         ----------------------------------------
         add_node("item", "OR")
@@ -1138,10 +1008,10 @@ logic.build = function()
     -- Recipe
     ----------------------------------------------------------------------
 
-    curr_class = "recipe"
+    set_class("recipe")
 
     for _, recipe in pairs(lu.recipes) do
-        curr_prot = recipe
+        set_prot(recipe)
 
         local rcat_name = lutils.rcat_name(recipe)
         local unlocking_techs = lu.recipe_to_techs[recipe.name]
@@ -1200,10 +1070,10 @@ logic.build = function()
 
     -- Spoofed categories keyed by base category prototype, with nodes for each fluid count variant.
 
-    curr_class = "recipe-category"
+    set_class("recipe-category")
 
     for _, cat in pairs(data.raw["recipe-category"]) do
-        curr_prot = cat
+        set_prot(cat)
 
         local spoofed_cats = lu.cat_to_rcats[cat.name]
         if spoofed_cats ~= nil then
@@ -1231,10 +1101,10 @@ logic.build = function()
     -- has_input/has_output are 0 or 1, indicating fluid box requirements
     -- The specific input fluid is handled by entity-mine, not here
 
-    curr_class = "resource-category"
+    set_class("resource-category")
 
     for _, cat in pairs(data.raw["resource-category"]) do
-        curr_prot = cat
+        set_prot(cat)
 
         local spoofed_cats = lu.mcat_to_mcats[cat.name]
         if spoofed_cats ~= nil then
@@ -1259,10 +1129,10 @@ logic.build = function()
     -- Space Connection
     ----------------------------------------------------------------------
 
-    curr_class = "space-connection"
+    set_class("space-connection")
 
     for _, conn in pairs(prots("space-connection")) do
-        curr_prot = conn
+        set_prot(conn)
 
         ----------------------------------------
         add_node("space-connection", "AND")
@@ -1315,10 +1185,10 @@ logic.build = function()
     -- Space Location
     ----------------------------------------------------------------------
 
-    curr_class = "space-location"
+    set_class("space-location")
 
     for _, loc in pairs(dutils.get_all_prots("space-location")) do
-        curr_prot = loc
+        set_prot(loc)
 
         ----------------------------------------
         add_node("space-location", "AND")
@@ -1375,10 +1245,10 @@ logic.build = function()
     -- Technology
     ----------------------------------------------------------------------
 
-    curr_class = "technology"
+    set_class("technology")
 
     for _, tech in pairs(lu.techs) do
-        curr_prot = tech
+        set_prot(tech)
 
         ----------------------------------------
         add_node("technology", "AND", true)
@@ -1470,10 +1340,10 @@ logic.build = function()
     -- Tile
     ----------------------------------------------------------------------
 
-    curr_class = "tile"
+    set_class("tile")
 
     for _, tile in pairs(prots("tile")) do
-        curr_prot = tile
+        set_prot(tile)
 
         ----------------------------------------
         add_node("tile", "OR")
@@ -1622,713 +1492,6 @@ logic.build = function()
         end
     end
 
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Abstract
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- The following nodes represent "abstract" types of things, like electricity, for which there is usually no specific prototype involved
-
-    curr_prot = nil
-
-    ----------------------------------------------------------------------
-    -- Room
-    ----------------------------------------------------------------------
-
-    -- Rooms are abstract locations where the player can be (planets, space surfaces)
-    -- This replaces the old -surface node variants with a simpler model
-
-    curr_class = "room"
-
-    for room_key, room in pairs(lu.rooms) do
-        curr_prot = data.raw[room.type][room.name]
-
-        ----------------------------------------
-        add_node("room", "OR", room_key, room_key)
-        ----------------------------------------
-        -- Can we access this room/location?
-        -- This node ADDS context: outputs the room's own context.
-        -- For planets: depends on space-location (being in orbit allows descent)
-        -- For space surfaces: depends on room-create-platform
-
-        if room.type == "planet" then
-            -- If this is the starting planet, fulfill it with the starting planet node
-            if room.name == lutils.starting_planet_name then
-                add_edge("starting-planet", "")
-            end
-            -- Planet rooms depend on being able to reach orbit (space-location)
-            -- Planets ARE space-locations (they inherit), so use room.name directly
-            -- For starting planets, this creates a cycle broken by starting conditions (added elsewhere)
-            add_edge("space-location", room.name)
-
-            ----------------------------------------
-            add_node("room-launch", "AND")
-            ----------------------------------------
-            -- Can we launch from this specific planet?
-            -- Requires: room + launch capability
-
-            add_edge("room", room_key)
-            add_edge("launch", "")
-
-        elseif room.type == "surface" then
-            add_edge("room-create-platform", room_key)
-
-            ----------------------------------------
-            add_node("room-create-platform", "AND", nil, room_key)
-            ----------------------------------------
-            -- Can we create an instance of this space surface room via launch?
-            -- Requires: starter pack + launch capability + tech unlock
-
-            add_edge("room-create-platform-starter-pack", room_key)
-            add_edge("space-platform-unlock", "")
-            add_edge("launch", "")
-
-            ----------------------------------------
-            add_node("room-create-platform-starter-pack", "OR", nil, room_key)
-            ----------------------------------------
-            -- Can we get a starter pack that creates this space surface?
-            -- OR over all starter packs for this surface (with weight check)
-
-            local starter_packs = lu.surface_to_starter_packs[room.name]
-            local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
-            if starter_packs ~= nil then
-                for pack_name, _ in pairs(starter_packs) do
-                    if lu.weight[pack_name] <= rocket_lift_weight then
-                        add_edge("item", pack_name)
-                    end
-                end
-            end
-        end
-    end
-
-    curr_prot = nil
-
-    ----------------------------------------------------------------------
-    -- Combat
-    ----------------------------------------------------------------------
-
-    -- Nodes for use in evaluating combat abilities, like overcoming resistances
-    -- These are virtual, meaning that they don't correspond to real prototypes; for some of the physical combat nodes, see things like item-ammo and damage-type
-
-    curr_class = "combat"
-
-    for group_key, is_immune in pairs(lu.entity_resistance_groups.groups) do
-        ----------------------------------------
-        add_node("resistance-group", "OR", nil, group_key)
-        ----------------------------------------
-        -- Can we deal damage that bypasses this immunity group?
-
-        for _, damage_type in pairs(prots("damage-type")) do
-            if not is_immune[damage_type.name] then
-                add_edge("damage-type", damage_type.name)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------------
-    -- Energy Sources
-    ----------------------------------------------------------------------
-
-    -- Note that void and electric are AND's, while the others are OR's
-
-    curr_class = "energy-source"
-
-    ----------------------------------------
-    add_node("energy-source-void", "AND", nil, "", { canonical = "energy-source-void" })
-    ----------------------------------------
-    -- Can we power an entity that requires no power?
-    -- Trivially satisfied (AND with no inputs).
-
-    for fcat_combo, combo_info in pairs(lu.fcat_combos) do
-        ----------------------------------------
-        add_node("energy-source-burner", "OR", nil, fcat_combo, { canonical = "energy-source-burner" })
-        ----------------------------------------
-        -- Can we power an entity with this burner energy source?
-
-        for _, fuel_category in pairs(combo_info.fuel) do
-            -- Check fuels with burnt results only if curr.burnt == 1
-            for burnable = 0, combo_info.burnt do
-                local items_for_fuel = lu.fcat_to_items[concat({fuel_category, burnable})]
-                -- If items_for_fuel is nil, then there are no items that satisfy this fuel category and so we just don't have any prereqs
-                if items_for_fuel ~= nil then
-                    for item_name, _ in pairs(items_for_fuel) do
-                        add_edge("item", item_name)
-                    end
-                end
-            end
-        end
-    end
-
-    ----------------------------------------
-    add_node("energy-source-electric", "AND", nil, "", { canonical = "energy-source-electric" })
-    ----------------------------------------
-    -- Can we power an entity with an electric energy source?
-    -- Requires: distribution + production
-
-    add_edge("energy-source-electric-distribution", "")
-    add_edge("energy-source-electric-production", "")
-
-    ----------------------------------------
-    add_node("energy-source-electric-distribution", "OR", nil, "", { canonical = "energy-source-electric" })
-    ----------------------------------------
-    -- Can we distribute power?
-    -- OR over: electric poles, space surfaces (don't need poles)
-    -- Grouped with energy-source-electric via canonical name
-
-    add_edge("electric-pole", "")
-    for room_key, room in pairs(lu.rooms) do
-        -- Space surfaces don't need electric poles
-        if room.type == "surface" then
-            add_edge("room", room_key)
-        end
-    end
-
-    ----------------------------------------
-    add_node("electric-pole", "OR", nil, "", { canonical = "energy-source-electric" })
-    ----------------------------------------
-    -- Can we operate an electric pole?
-    -- Note that this grouping isn't necessarily accurate in case we start on a space platform (then electric poles are separate from distribution)
-    -- But starting on a space-platform sounds a bit crazy
-
-    for _, pole in pairs(prots("electric-pole")) do
-        add_edge("entity-operate", pole.name)
-    end
-
-    ----------------------------------------
-    add_node("energy-source-electric-production", "OR", nil, "", { canonical = "energy-source-electric" })
-    ----------------------------------------
-    -- Can we produce power?
-    -- Grouped with energy-source-electric via canonical name
-
-    for _, generator in pairs(prots("burner-generator")) do
-        add_edge("entity-operate", generator.name)
-    end
-    for _, generator in pairs(prots("generator")) do
-        add_edge("entity-operate", generator.name)
-    end
-    add_edge("energy-source-electric-production-lightning", "")
-    for _, solar_panel in pairs(prots("solar-panel")) do
-        add_edge("entity-operate", solar_panel.name)
-    end
-    for _, generator in pairs(prots("fusion-generator")) do
-        add_edge("entity-operate", generator.name)
-    end
-
-    ----------------------------------------
-    add_node("energy-source-electric-production-lightning", "AND", nil, "", { canonical = "energy-source-electric-production-lightning" })
-    ----------------------------------------
-    -- Can we produce power from lightning?
-    -- Requires: lightning existence + capture
-
-    add_edge("energy-source-electric-production-lightning-existence", "")
-    add_edge("energy-source-electric-production-lightning-capture", "")
-
-    ----------------------------------------
-    add_node("energy-source-electric-production-lightning-existence", "OR", nil, "", { canonical = "energy-source-electric-production-lightning" })
-    ----------------------------------------
-    -- Can we see lightning in the air?
-    -- Note that this has the same canonical and name as just production-lightning, so it will be blocked with that
-
-    for room_key, room in pairs(lu.rooms) do
-        if room.type == "planet" and data.raw.planet[room.name].lightning_properties ~= nil then
-            -- Technically we should also check if at least one of the lightnings carries energy, but who makes lightning that doesn't give energy?
-            add_edge("room", room_key, {
-                abilities = { [1] = true },
-            })
-        end
-    end
-
-    ----------------------------------------
-    add_node("energy-source-electric-production-lightning-capture", "OR", nil, "", { canonical = "energy-source-electric-production-lightning" })
-    ----------------------------------------
-    -- Can we capture lightning?
-    -- Also has the same canonical and name as production-lightning, so will be blocked with that
-
-    for _, attractor in pairs(prots("lightning-attractor")) do
-        if attractor.efficiency > 0 then
-            add_edge("entity-operate", attractor.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("energy-source-fluid", "OR", nil, "", { canonical = "energy-source-fluid" })
-    ----------------------------------------
-    -- Can we provide fluid fuel?
-
-    for _, fluid in pairs(lu.fluids) do
-        if fluid.fuel_value ~= nil and util.parse_energy(fluid.fuel_value) > 0 then
-            add_edge("fluid", fluid.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("energy-source-heat", "AND", nil, "", { canonical = "energy-source-heat" })
-    ----------------------------------------
-    -- Can we deliver heat to entities?
-
-    -- Technically, you can just attach entities to heat connections directly, but that sounds awful on aquilo
-    add_edge("energy-source-heat-distribution", "")
-    add_edge("energy-source-heat-production", "")
-
-    ----------------------------------------
-    add_node("energy-source-heat-distribution", "OR", nil, "", { canonical = "energy-source-heat" })
-    ----------------------------------------
-    -- Can we distribute produced heat to entities?
-    -- Same canonical name as heat
-
-    for _, pipe in pairs(prots("heat-pipe")) do
-        add_edge("entity-operate", pipe.name)
-    end
-
-    ----------------------------------------
-    add_node("energy-source-heat-production", "OR", nil, "", { canonical = "energy-source-heat" })
-    ----------------------------------------
-    -- Can we produce heat?
-    -- Same canonical name as heat
-
-    for class_name, _ in pairs(categories.heat_producers) do
-        for _, heater in pairs(prots(class_name)) do
-            add_edge("entity-operate", heater.name)
-        end
-    end
-
-    ----------------------------------------------------------------------
-    -- Science Pack Set
-    ----------------------------------------------------------------------
-    -- Virtual nodes for each unique combination of science packs.
-    -- Labs must accept ALL packs in a set simultaneously for research.
-
-    curr_class = "science-pack-set"
-
-    for set_name, set_packs in pairs(lu.science_sets) do
-        ----------------------------------------
-        add_node("science-pack-set-science", "AND", nil, set_name)
-        ----------------------------------------
-        -- Can we create all these science packs?
-
-        for _, pack in pairs(set_packs) do
-            add_edge("item", pack)
-        end
-
-        ----------------------------------------
-        add_node("science-pack-set-lab", "OR", nil, set_name)
-        ----------------------------------------
-        -- Can we research with this combination of science packs?
-        -- OR over labs that can hold all packs in the set.
-        -- Note that this and the sciences themselves are grouped together by canonical
-
-        -- Need a lab that accepts all packs
-        local labs = lu.science_set_to_labs[set_name]
-        if labs ~= nil then
-            for lab_name, _ in pairs(labs) do
-                add_edge("entity-operate", lab_name)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------------
-    -- Tile Collision Group
-    ----------------------------------------------------------------------
-
-    -- These group tiles by their collision layers for efficient entity placement checks.
-    -- entity-build-tile depends on entity collision group, which then depends on these groups rather than individual tiles.
-
-    curr_class = "tile-collision-group"
-
-    for layers_key, tiles_in_group in pairs(lu.tile_collision_groups) do
-        ----------------------------------------
-        add_node("tile-collision-group", "OR", nil, layers_key)
-        ----------------------------------------
-        -- Can we access a tile in this collision group?
-        -- OR over all tiles that share these collision layers.
-
-        for tile_name, _ in pairs(tiles_in_group) do
-            add_edge("tile", tile_name)
-        end
-    end
-
-    ----------------------------------------------------------------------
-    -- Entity Collision Group
-    ----------------------------------------------------------------------
-
-    curr_class = "entity-collision-group"
-
-    for layers_key, layers in pairs(lu.entity_collision_group_to_layers) do
-        ----------------------------------------
-        add_node("entity-collision-group", "OR", nil, layers_key)
-        ----------------------------------------
-
-        for tile_layers_key, tile_layers in pairs(lu.tile_collision_group_to_layers) do
-            if not collision_mask_util.masks_collide({layers = layers}, {layers = tile_layers}) then
-                add_edge("tile-collision-group", tile_layers_key)
-            end
-        end
-    end
-
-    ----------------------------------------------------------------------
-    -- Universal
-    ----------------------------------------------------------------------
-
-    -- These encapsulate universal abilities not tied to specific prototypes
-    -- Many were previously called only by their relevant room/"surface", or simply labeled "canonical"
-    -- Most of these should be their own canonical categories
-
-    curr_class = "universal"
-
-    ----------------------------------------
-    add_node("agricultural-tower", "OR", nil, "", { canonical = "agricultural-tower" })
-    ----------------------------------------
-    -- Can we use an agricultural tower?
-
-    for _, ag_tower in pairs(prots("agricultural-tower")) do
-        add_edge("entity-operate", ag_tower.name)
-    end
-
-    ----------------------------------------
-    add_node("asteroid-collector", "OR", nil, "", { canonical = "asteroid-collector" })
-    ----------------------------------------
-    -- Can we use an asteroid collector?
-
-    for _, collector in pairs(prots("asteroid-collector")) do
-        add_edge("entity-operate", collector.name)
-    end
-
-    ----------------------------------------
-    add_node("capture-robot", "OR", nil, "", { canonical = "capture-robot" })
-    ----------------------------------------
-    -- Can we use a capture robot?
-
-    for _, robot in pairs(prots("capture-robot")) do
-        add_edge("entity-operate", robot.name)
-    end
-
-    ----------------------------------------
-    add_node("capture-spawner", "OR", nil, "", { canonical = "capture-spawner" })
-    ----------------------------------------
-    -- Can we capture any spawner?
-
-    for _, entity in pairs(lu.entities) do
-        if entity.type == "unit-spawner" then
-            add_edge("entity-capture-spawner", entity.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock" })
-    ----------------------------------------
-    -- Have we unlocked the ability to mine resources that require fluid?
-
-    for _, tech in pairs(lu.techs) do
-        if tech.effects ~= nil then
-            for _, effect in pairs(tech.effects) do
-                if effect.type == "mining-with-fluid" and effect.modifier then
-                    add_edge("technology", tech.name)
-                end
-            end
-        end
-    end
-
-    ----------------------------------------
-    add_node("warmth", "OR", nil, "", { canonical = "warmth" })
-    ----------------------------------------
-    -- Can we keep entities warm?
-
-    for room_key, room in pairs(lu.rooms) do
-        if not data.raw[room.type][room.name].entities_require_heating then
-            add_edge("room", room_key)
-        end
-    end
-    add_edge("energy-source-heat", "")
-
-    ----------------------------------------
-    add_node("thruster", "OR", nil, "", { canonical = "spaceship" })
-    ----------------------------------------
-    -- Can we operate a thruster (needed for space travel)?
-    -- Tied to spaceship
-
-    for _, thruster in pairs(prots("thruster")) do
-        add_edge("entity-operate", thruster.name)
-    end
-
-    ----------------------------------------
-    add_node("spaceship", "AND", nil, "", { canonical = "spaceship" })
-    ----------------------------------------
-    -- Can we make a space surface into a spaceship?
-    -- Requires: space-surface (for context) + flight components
-
-    add_edge("space-surface", "")
-    add_edge("thruster", "")
-    -- TODO: Add other spaceship requirements (fuel, oxidizer, etc.) as needed
-
-    ----------------------------------------
-    add_node("planet", "OR", nil, "", { canonical = "planet" })
-    ----------------------------------------
-    -- Can we be on any planet? (Needed for launching)
-
-    for room_key, room in pairs(lu.rooms) do
-        if room.type == "planet" then
-            add_edge("room", room_key)
-        end
-    end
-
-    ----------------------------------------
-    add_node("space-surface", "OR", nil, "", { canonical = "space-surface" })
-    ----------------------------------------
-    -- Can we be on any space surface? (Needed for item delivery)
-
-    for room_key, room in pairs(lu.rooms) do
-        if room.type == "surface" then
-            add_edge("room", room_key)
-        end
-    end
-
-    ----------------------------------------
-    add_node("reachable-room", "OR", nil, "", { canonical = "room" })
-    ----------------------------------------
-    -- Can we reach some room?
-    -- Needed for item-launch to know what rooms can be delivered to.
-
-    for room_key, room in pairs(lu.rooms) do
-        add_edge("room", room_key)
-    end
-
-    ----------------------------------------
-    add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock" })
-    ----------------------------------------
-    -- Have we researched the ability to send starter packs to space?
-    -- OR over technologies with unlock-space-platforms effect
-
-    for tech_name, _ in pairs(lu.space_platform_unlock_techs) do
-        add_edge("technology", tech_name)
-    end
-
-    ----------------------------------------
-    add_node("create-platform", "OR", nil, "", { canonical = "create-platform" })
-    ----------------------------------------
-    -- Can we create any space platform?
-
-    for room_key, room in pairs(lu.rooms) do
-        if room.type == "surface" then
-            add_edge("room-create-platform", room_key)
-        end
-    end
-
-    ----------------------------------------
-    add_node("rocket-silo", "OR", nil, "", { canonical = "launch" })
-    ----------------------------------------
-    -- Can we use any rocket silo for launching?
-
-    for _, silo in pairs(prots("rocket-silo")) do
-        if lu.entities[silo.name] ~= nil then
-            add_edge("entity-rocket-silo", silo.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("cargo-landing-pad", "OR", nil, "", { canonical = "launch" })
-    ----------------------------------------
-    -- Can we operate some cargo landing pad?
-
-    for _, cargo_pad in pairs(prots("cargo-landing-pad")) do
-        add_edge("entity-operate", cargo_pad.name)
-    end
-
-    ----------------------------------------
-    add_node("launch", "AND", nil, "", { canonical = "launch" })
-    ----------------------------------------
-    -- Can we launch something into space?
-    -- Requires: planet + rocket silo + cargo landing pad
-
-    add_edge("planet", "")
-    add_edge("rocket-silo", "")
-    add_edge("cargo-landing-pad", "")
-
-    ----------------------------------------
-    add_node("deliver", "OR", nil, "", { canonical = "launch" })
-    ----------------------------------------
-    -- Can we deliver items FROM this location?
-    -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
-
-    add_edge("launch", "", {
-        abilities = { [1] = false }, -- Make sure deliverability doesn't carry isolatability with it
-    })
-    add_edge("space-surface", "", {
-        abilities = { [1] = false },
-    })
-
-    ----------------------------------------------------------------------
-    -- Starting
-    ----------------------------------------------------------------------
-
-    -- SOURCE nodes that bootstrap the game. These have no prerequisites
-    -- and break the circular dependencies that would otherwise make
-    -- the starting planet unreachable.
-    -- These are group together canonically.
-
-    curr_class = "starting"
-
-    ----------------------------------------
-    add_node("starting-character", "AND", nil, "")
-    ----------------------------------------
-    -- Do we have the starting character?
-    -- SOURCE: AND with no inputs = trivially satisfied.
-
-    ----------------------------------------
-    add_node("starting-planet", "AND", nil, "")
-    ----------------------------------------
-    -- Do we have access to the starting planet?
-    -- SOURCE: AND with no inputs = trivially satisfied.
-
-    ----------------------------------------------------------------------
-    -- Logic
-    ----------------------------------------------------------------------
-
-    -- These virtual nodes are used mostly for internal logic by randomizers outside this file.
-    -- They're usually constructed temporarily to make the randomizations work better.
-    -- I include sections for all types, though most will just have the single canonical example here for type initialization.
-
-    curr_class = "logic"
-
-    ----------------------------------------
-    add_node("true", "AND", nil, "", { canonical = "true" })
-    ----------------------------------------
-    -- Can we? Yes, we can.
-    -- Used for satisfying arbitrary logical connections when necessary.
-
-    ----------------------------------------
-    add_node("false", "OR", nil, "", { canonical = "false" })
-    ----------------------------------------
-    -- Can we? No, we can't.
-    -- OR with no inputs = never satisfied.
-
-    ----------------------------------------
-    add_node("logic-and", "AND", nil, "", { canonical = "logic-and" })
-    ----------------------------------------
-    -- Can we satisfy some AND condition that needed to be created ad-hoc?
-
-    ----------------------------------------
-    add_node("logic-or", "OR", nil, "", { canonical = "logic-or" })
-    ----------------------------------------
-    -- Can we satisfy some OR condition that needed to be created ad-hoc?
-
-    ----------------------------------------
-    add_node("slot", "AND", nil, "", { canonical = "slot" })
-    ----------------------------------------
-    -- Can we satisfy a slot that comes at the beginning of an edge?
-    -- In some places, edges are broken by two additional nodes (i.e.- subdivided), the one near the start of the edge is the slot, and the other is the traveler.
-    -- Rewiring edges then becomes a matter of connecting slots to travelers, which can be simpler to work out sometimes since there is only one edge that could be randomized.
-
-    ----------------------------------------
-    add_node("traveler", "OR", nil, "", { canonical = "traveler" })
-    ----------------------------------------
-    -- Can we satisfy a traveler that comes at the end of an edge?
-
-    ----------------------------------------------------------------------
-    -- Meta
-    ----------------------------------------------------------------------
-
-    -- Nodes that help with the creation of this graph, like satisfying connections that are WIP.
-
-    curr_class = "meta"
-
-    ----------------------------------------
-    add_node("satisfied", "AND", nil, "", { canonical = "satisfied" })
-    ----------------------------------------
-    -- Can we ignore that this edge hasn't been created yet and pretend we can?
-    -- Used to satisfy nodes for connections that haven't been coded yet.
-
-    ----------------------------------------
-    add_node("unsatisfied", "OR", nil, "", { canonical = "unsatisfied" })
-    ----------------------------------------
-    -- Can we ignore that this edge hasn't been created yet and pretend we can't?
-    -- OR with no inputs = never satisfied.
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Group
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- Nodes that group other nodes together, like a "boiler" node; useful for later blockification
-    -- Also included in a separate file, since this is mod-dependent (currently just implemented for vanilla)
-
-    -- Pass in graph and type_info for modification
-    logic_group.build(logic.graph, logic.type_info)
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Balancing
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- Nodes that code in requirements on the logic that aren't strictly necessary, but which are needed to make the game still pragmatically playable (like having inserters/basic automation)
-    -- These are included in a separate file to separate them out from the "real logic"
-    -- A lot of the time, this can just end up adding edges from nodes created by logic_group
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Hotfixes
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- TODO: Fix these
-    -- Right now, we don't add the extra tiles from the starter pack
-    if mods["space-age"] then
-        gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
-    end
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
--- Graph lookups
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- Add node and edge lookups
-    -- This stuff could probably go in graph-utils
-    logic.graph.nodes = {}
-    logic.graph.edges = {}
-    logic.graph.sources = {}
-    logic.graph.emitters = {}
-    logic.graph.context_sources = {}
-    for key, object in pairs(logic.graph) do
-        if object.object_type == "node" then
-            object.op = logic.type_info[object.type].op
-            if object.op == "AND" then
-                logic.graph.sources[key] = true
-            end
-            local node_context = logic.type_info[object.type].context
-            -- Check if not context transmitter
-            if node_context ~= nil then
-                logic.graph.emitters[key] = node_context
-            end
-            -- Check if this represents a context
-            if type(node_context) == "string" then
-                logic.graph.context_sources[key] = node_context
-            end
-            logic.graph.nodes[key] = object
-            object.pre = {}
-            object.dep = {}
-            object.num_pre = 0
-        elseif object.object_type == "edge" then
-            logic.graph.edges[key] = object
-        end
-    end
-
-    -- Add prereqs and depends to nodes
-    for edge_key, edge in pairs(logic.graph.edges) do
-        if logic.graph.nodes[edge.start] == nil then
-            log(serpent.block(edge))
-        end
-        if logic.graph.nodes[edge.stop] == nil then
-            log(serpent.block(edge))
-        end
-
-        logic.graph.sources[edge.stop] = nil
-        logic.graph.nodes[edge.start].dep[edge_key] = true
-        logic.graph.nodes[edge.stop].pre[edge_key] = true
-        logic.graph.nodes[edge.stop].num_pre = logic.graph.nodes[edge.stop].num_pre + 1
-    end
 end
 
-return logic
+return concrete
