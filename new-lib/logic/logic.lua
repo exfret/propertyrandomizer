@@ -65,7 +65,7 @@ local flow_cost = require("lib/graph/flow-cost")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
-local lu = require(lib_name .. "/logic/lookup")
+local lu = require(lib_name .. "/logic/lookup/init")
 local logic_group = require(lib_name .. "/logic/logic-group")
 -- We'll be using these a lot, so define shorthands
 local prots = dutils.prots
@@ -120,14 +120,15 @@ local function add_node(node_type, op, context, node_name, extra)
 end
 local function add_edge(start_type, start_name, extra)
     start_name = start_name or curr_prot.name
+    extra = extra or {}
 
     local edge_type_key = gutils.concat({start_type, curr.type})
-    edge_info[edge_type_key] = edge_info[edge_type_key] or {}
+    logic.edge_info[edge_type_key] = logic.edge_info[edge_type_key] or {}
     -- Note that there can be two "types" of edges between the same node types, which maybe could introduce different contexts as well
     -- We currently clobber the abilities to be whatever the last processed edge type had as its abilities, so we don't account for this
     -- CRITICAL TODO: Account for this!
     if extra.abilities ~= nil then
-        edge_info[edge_type_key].abilities = extra.abilities
+        logic.edge_info[edge_type_key].abilities = extra.abilities
     end
     gutils.add_edge(logic.graph, key(start_type, start_name), key(curr), extra)
 end
