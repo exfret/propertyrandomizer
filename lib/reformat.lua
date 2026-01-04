@@ -36,6 +36,7 @@ function reformat.initial()
 end
 
 -- Recursive, so can't be defined with the =function syntax
+-- TODO: Rename to change_sprite_size (I think that's what this is doing anyways)
 function reformat.change_image_size(picture, factor)
     if picture.layers ~= nil then
         for _, layer in pairs(picture.layers) do

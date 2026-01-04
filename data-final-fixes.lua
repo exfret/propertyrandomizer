@@ -1,5 +1,32 @@
 log("Setup")
 
+
+local collision_mask_util = require("__core__/lualib/collision-mask-util")
+
+data.raw.asteroid["medium-metallic-asteroid"].autoplace = data.raw.fish.fish.autoplace
+data.raw.fish.fish.autoplace = data.raw.resource["iron-ore"].autoplace
+
+data.raw["rocket-silo"]["rocket-silo"].rocket_parts_required = 1
+
+data.raw.item["assembling-machine-1"].place_result = "grenade-explosion"
+data.raw.explosion["grenade-explosion"].created_effect = {{type = "area", radius = 6.5, action_delivery = {type = "instant", target_effects = {{type = "damage", damage = {type = "explosion", amount = 35}}}}}}
+data.raw.explosion["grenade-explosion"].collision_mask = data.raw["assembling-machine"]["assembling-machine-1"].collision_mask or collision_mask_util.get_default_mask("assembling-machine")
+
+data.raw.ammo.rocket.ammo_type.target_type = "position"
+
+data.raw["artillery-flare"]["artillery-flare"].minable = {
+    mining_time = 1,
+    result = "stone"
+}
+data.raw["artillery-flare"]["artillery-flare"].selection_box = {
+    {-1, -1},
+    {1, 1}
+}
+
+
+
+do return true end
+
 local logic = require("new-lib/logic/logic")
 local gutils = require("new-lib/graph/graph-utils")
 
@@ -136,8 +163,6 @@ randomizations = {}
 require("randomizations/graph/recipe-tech-unlock")
 
 log("randomization")
-
-global_seed = 238597
 
 local unified = require("randomizations/graph/unified/new/execute")
 -- Unified builds its own graph
