@@ -20,6 +20,7 @@
 26. Add quality testing (mainly for ItemIDFilter types in trigger techs from mods)
 25. Some tooltip and description-y stuff should be moved to locale rather than hardcoded
 26. Allow asteroid resistances and all damage type randomizations again once softlocks are worked out
+27. Spent fuel results are an awful way to get things, but sometimes are the way you get them from, e.g.- item rando; investigate and balance
 
 Requests
 1. Regenerating seed more quickly (rerolling automatically)

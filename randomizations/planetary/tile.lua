@@ -6,20 +6,6 @@ local planetary_mechanics_spec = {
 
 randomizations.planetary_tiles = function(id)
 
-
-
-
-
-    log(serpent.block(data.raw["unit-spawner"]["gleba-spawner"].autoplace))
-    log(serpent.block(data.raw.planet.gleba.map_gen_settings.autoplace_controls.gleba_enemy_base))
-    log(serpent.block(data.raw["noise-expression"].gleba_spawner))
-
-
-
-
-
-
-
     local planets_list = {
         "aquilo",
         "fulgora",

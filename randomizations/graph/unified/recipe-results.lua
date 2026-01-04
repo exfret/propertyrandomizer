@@ -2,7 +2,7 @@ local path = require("lib/graph/path")
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/top-sort")
-local logic = require("new-lib/logic/logic")
+local logic = require("new-lib/logic/init")
 local dutils = require("new-lib/data-utils")
 
 -- Just for some ad hoc translation so path can work

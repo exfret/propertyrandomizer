@@ -56,7 +56,7 @@ end)
 
 script.on_nth_tick(1, function(event)
     -- Print warnings on 10th tick
-    --[[if event.tick == 10 then
+    if event.tick == 10 then
         if settings.startup["propertyrandomizer-seed"].value == 23 then
             --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
         end
@@ -85,5 +85,5 @@ script.on_nth_tick(1, function(event)
         for _, player in pairs(game.players) do
             player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
         end
-    end]]
+    end
 end)

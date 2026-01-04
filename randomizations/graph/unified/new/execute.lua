@@ -5,7 +5,7 @@ local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/top-sort")
 local top2 = require("new-lib/graph/extended-sort")
-local logic = require("new-lib/logic/logic")
+local logic = require("new-lib/logic/init")
 
 local unified = {}
 
