@@ -930,13 +930,13 @@ randomizations.item_new = function(id)
                             new_val = item_prototype.name
                         })
                     end
-                    --[[if item.burnt_result == old_item.name then
+                    if item.burnt_result == old_item.name then
                         table.insert(changes, {
                             tbl = item,
                             prop = "burnt_result",
                             new_val = item_prototype.name
                         })
-                    end]]
+                    end
                 end
             end
         end
