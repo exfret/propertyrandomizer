@@ -18,7 +18,8 @@ log("Gathering graph randomizations (if applicable)")
 
 require("randomizations/graph/core")
 
-require("randomizations/graph/unified/execute")
+-- DISABLED: unified/execute.lua requires missing helper module
+-- require("randomizations/graph/unified/execute")
 require("randomizations/graph/item")
 require("randomizations/graph/item-new")
 require("randomizations/graph/recipe")

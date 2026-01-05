@@ -246,18 +246,13 @@ unified.execute = function()
     -- This could still not catch things that only add an item to a surface where it's not needed but checking more rigorously could be a future task
     local context_node_to_ind = {}
     if not PRESERVE_ISOLATABILITY then
+        -- Uses simplified top.sort which always returns tables (never true)
         for context, _ in pairs(logic.contexts) do
             context_node_to_ind[context] = {}
         end
         for open_ind, node_info in pairs(pool_info.open) do
-            if node_info.contexts == true then
-                for context, _ in pairs(logic.contexts) do
-                    context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-                end
-            else
-                for context, _ in pairs(node_info.contexts) do
-                    context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-                end
+            for context, _ in pairs(node_info.contexts) do
+                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
             end
         end
     else

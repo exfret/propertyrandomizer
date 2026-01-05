@@ -541,6 +541,8 @@ randomizations.item = function(id)
                             end
 
                             -- Make trees like fruit trees
+                            -- DISABLED: Frame count mismatch causes errors (icons have 1 frame, trees expect 3+)
+                            --[[
                             if entity.type == "tree" then
                                 -- Assume tree graphics are defined a certain way
                                 -- TODO: Remove this assumption
@@ -582,16 +584,16 @@ randomizations.item = function(id)
                                             })
                                         end
                                         table.insert(variation.leaves.layers, 1, old_leaves)
-                                        --[[
                                         variation.leaves.layers[1].frame_count = 1
                                         variation.shadow.frame_count = 2
                                         if variation.normal ~= nil then
                                             variation.normal.frame_count = 1
                                         end
-                                        variation.trunk.frame_count = 2]]
+                                        variation.trunk.frame_count = 2
                                     end
                                 end
                             end
+                            ]]
 
                             -- Now for rocks and such
                             -- Assume graphics are a certain way

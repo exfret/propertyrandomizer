@@ -7,7 +7,7 @@
 local lib_name = "new-lib" -- Use this until integration with "old" lib
 local gutils = require(lib_name .. "/graph/graph-utils")
 -- Used for gathering contexts, etc. not for the actual graph
-local logic = require(lib_name .. "/logic/init")
+local logic = require(lib_name .. "/logic/logic")
 
 local key = gutils.key
 
@@ -19,7 +19,7 @@ local top = {}
 top.sort = function(graph, state, new_conn, extra)
     state = state or {}
     -- node_to_contexts goes node_key --> { context_name --> true/false }
-    -- There is also special case of node_key --> false (no contexts/unreachable) and node_key --> true (all contexts) for performance
+    -- SIMPLIFIED: No longer using true as special "all contexts" value
     local node_to_contexts = state.node_to_contexts or {}
     -- Counters for efficiently determining how many prereqs of a node have a given context
     -- To determine number that need that context, we'll just call a helper function for number of edges into a node
@@ -29,9 +29,13 @@ top.sort = function(graph, state, new_conn, extra)
     local node_to_open_inds = state.node_to_open_inds or {}
     -- A map of an ind to the previous ind of the node that added it
     local ind_to_ind = state.ind_to_ind or {}
-    -- Keep track of reachable CONTEXTS (not nodes)
-    --local reachable = state.reachable or {}
     local ind = state.ind or 1
+
+    -- Build all_contexts dict once for reuse
+    local all_contexts = {}
+    for context, _ in pairs(logic.contexts) do
+        all_contexts[context] = true
+    end
 
     local function add_contexts_to_node(node, contexts)
         -- incoming is used for seeing what the transmitted in context was in path
@@ -40,12 +44,12 @@ top.sort = function(graph, state, new_conn, extra)
             incoming = table.deepcopy(incoming)
         end
 
-        -- Check if contexts is overriden
+        -- Check if contexts is overriden (forgetters output all contexts, adders output specific room)
         if logic.type_info[node.type].context == true then
-            contexts = true
+            -- Forgetter: output all contexts (use explicit dict instead of true)
+            contexts = table.deepcopy(all_contexts)
         elseif type(logic.type_info[node.type].context) == "string" then
-            -- Since type_info is the same across all nodes of the same type, and since rooms are all the same type, the context in type_info is inaccurate
-            -- All type_info for rooms reports nauvis as the context, so we need to just rely on the node's name
+            -- Adder: output specific room context
             contexts = {
                 [node.name] = true
             }
@@ -53,30 +57,18 @@ top.sort = function(graph, state, new_conn, extra)
 
         if node.op == "AND" then
             -- We always go to open with AND nodes
-            -- TODO: Add to current node in_open for AND nodes (will require keeping track of number times each context added)
-            -- We also need to check for updates from this node again...
-            -- in_open is only needed for OR nodes and so is not updated here
             table.insert(open, {
                 node = key(node),
                 contexts = contexts,
                 incoming = incoming,
             })
             ind_to_ind[#open] = ind
-            -- in_open doesn't really matter
-            -- Other things should be updated
         elseif node.op == "OR" then
-            -- If it's already true, no change needed
             local open_ind = in_open[key(node)]
             if open_ind ~= nil then
-                -- If it's already true then no change needed
-                if open[open_ind].contexts ~= true then
-                    if contexts == true then
-                        open[open_ind].contexts = true
-                    else
-                        for context, _ in pairs(contexts) do
-                            open[open_ind].contexts[context] = true
-                        end
-                    end
+                -- Merge into existing open entry
+                for context, _ in pairs(contexts) do
+                    open[open_ind].contexts[context] = true
                 end
             else
                 table.insert(open, {
@@ -92,108 +84,74 @@ top.sort = function(graph, state, new_conn, extra)
 
     local function process_edge(dep, open_info, old_contexts)
         local edge = graph.edges[dep]
-        -- Check if the dependent already has all contexts for efficiency
-        if node_to_contexts[edge.stop] ~= true then
-            local end_node_key = edge.stop
-            local end_node = graph.nodes[end_node_key]
+        local end_node_key = edge.stop
+        local end_node = graph.nodes[end_node_key]
 
-            -- TODO: This table population would probably be more efficient in a general node loop
-            node_to_contexts[end_node_key] = node_to_contexts[end_node_key] or {}
+        -- node_to_contexts[end_node_key] already pre-allocated
 
-            -- TODO: If end_node has one prereq, we treat it specially for efficiency
-            if end_node.op == "AND" then
-                if node_to_contexts[open_info.node] == true then
-                    -- If we now carry all contexts, remove single contexts and add to all
-                    node_context_to_satisfied[end_node_key] = node_context_to_satisfied[end_node_key] or {}
-                    node_context_to_satisfied[end_node_key]["all"] = (node_context_to_satisfied[end_node_key]["all"] or 0) + 1
-                    for old_context, _ in pairs(old_contexts) do
-                        node_context_to_satisfied[end_node_key][old_context] = node_context_to_satisfied[end_node_key][old_context] - 1
-                    end
-                else
-                    -- Otherwise, just add to contexts
-                    node_context_to_satisfied[end_node_key] = node_context_to_satisfied[end_node_key] or {}
-                    for context, _ in pairs(open_info.contexts) do
-                        node_context_to_satisfied[end_node_key][context] = (node_context_to_satisfied[end_node_key][context] or 0) + 1
-                    end
-                end
+        if end_node.op == "AND" then
+            -- node_context_to_satisfied[end_node_key] already pre-allocated
+            -- Increment satisfaction and check for newly satisfied in single pass
+            local new_contexts = {}
+            local satisfied = node_context_to_satisfied[end_node_key]
+            local existing = node_to_contexts[end_node_key]
+            local num_pre = end_node.num_pre
 
-                -- Check if we've satisfied a new context
-                local new_contexts = {}
-                if open_info.contexts == true then
-                    -- If "all", check all contexts
-                    local add_all_contexts = true
-                    for context, _ in pairs(logic.contexts) do
-                        if not node_to_contexts[end_node_key][context] then
-                            if (node_context_to_satisfied[end_node_key][context] or 0) + (node_context_to_satisfied[end_node_key]["all"] or 0) == end_node.num_pre then
-                                new_contexts[context] = true
-                            else
-                                add_all_contexts = false
-                            end
-                        end
-                    end
-                else
-                    for context, _ in pairs(open_info.contexts) do
-                        -- The next check is probably redundant here
-                        if not node_to_contexts[end_node_key][context] then
-                            if (node_context_to_satisfied[end_node_key][context] or 0) + (node_context_to_satisfied[end_node_key]["all"] or 0) == end_node.num_pre then
-                                new_contexts[context] = true
-                            end
-                        end
-                    end
+            for context, _ in pairs(open_info.contexts) do
+                -- Increment satisfaction for NEW contexts only
+                if not old_contexts[context] then
+                    satisfied[context] = (satisfied[context] or 0) + 1
                 end
-
-                if next(new_contexts) ~= nil then
-                    if add_all_contexts then
-                        add_contexts_to_node(end_node, true)
-                    else
-                        add_contexts_to_node(end_node, new_contexts)
-                    end
+                -- Check if now fully satisfied and not already in node
+                if not existing[context] and satisfied[context] == num_pre then
+                    new_contexts[context] = true
                 end
-            -- For OR nodes, add contexts right away?
-            -- Nah, but we can treat one-indegree nodes as OR
-            elseif end_node.op == "OR" then
-                local new_contexts = {}
-                if node_to_contexts[open_info.node] == true then
-                    new_contexts = true
-                else
-                    for context, _ in pairs(open_info.contexts) do
-                        if not node_to_contexts[end_node_key][context] then
-                            new_contexts[context] = true
-                        end
-                    end
-                end
-                if new_contexts == true or next(new_contexts) ~= nil then
-                    add_contexts_to_node(end_node, new_contexts)
-                end
-            else
-                error("Node op not OR or AND")
             end
+
+            if next(new_contexts) ~= nil then
+                add_contexts_to_node(end_node, new_contexts)
+            end
+        elseif end_node.op == "OR" then
+            local new_contexts = {}
+            for context, _ in pairs(open_info.contexts) do
+                if not node_to_contexts[end_node_key][context] then
+                    new_contexts[context] = true
+                end
+            end
+            if next(new_contexts) ~= nil then
+                add_contexts_to_node(end_node, new_contexts)
+            end
+        else
+            error("Node op not OR or AND")
         end
     end
 
     if new_conn == nil then
-        -- Add sources
+        -- Pre-allocate tables for all nodes (avoids repeated or {} checks in hot path)
+        for node_key, node in pairs(graph.nodes) do
+            node_to_contexts[node_key] = node_to_contexts[node_key] or {}
+            if node.op == "AND" then
+                node_context_to_satisfied[node_key] = node_context_to_satisfied[node_key] or {}
+            end
+        end
+
+        -- Add sources with all contexts (share same table since sources don't modify it)
+        local source_contexts = table.deepcopy(all_contexts)
         for source, _ in pairs(graph.sources) do
-            -- These are added later!
-            --node_to_contexts[source] = true
-            --node_context_to_satisfied[source] = true
             table.insert(open, {
                 node = source,
-                contexts = true,
-                incoming = true,
+                contexts = source_contexts,
+                incoming = source_contexts,
             })
             in_open[source] = #open
             ind_to_ind[#open] = 0
         end
     else
-        --local stop = graph.edges[new_conn.edge].stop
-        -- Don't process if node already has all contexts
-        if node_to_contexts[stop] ~= true then
-            process_edge(new_conn.edge, {
-                node = graph.edges[new_conn.edge].start,
-                contexts = new_conn.contexts,
-            }, {}) -- Last table shows old contexts was nothing (no connection)
-        end
+        -- Process new connection
+        process_edge(new_conn.edge, {
+            node = graph.edges[new_conn.edge].start,
+            contexts = new_conn.contexts,
+        }, {}) -- Last table shows old contexts was nothing (no connection)
     end
 
     while ind <= #open do
@@ -205,35 +163,18 @@ top.sort = function(graph, state, new_conn, extra)
         node_to_open_inds[open_info.node] = node_to_open_inds[open_info.node] or {}
         node_to_open_inds[open_info.node][ind] = true
 
-        -- If old contexts is somehow already everything?? then we don't need to do anything (how is this happening?)
-        if node_to_contexts[open_info.node] ~= true then
-            -- Add new contexts
-            local old_contexts = table.deepcopy(node_to_contexts[open_info.node] or {})
-            if open_info.contexts == true then
-                node_to_contexts[open_info.node] = true
-            else
-                node_to_contexts[open_info.node] = node_to_contexts[open_info.node] or {}
-                for context, _ in pairs(open_info.contexts) do
-                    node_to_contexts[open_info.node][context] = true
-                end
-                -- Check if we now carry all contexts
-                local has_all = true
-                for context, _ in pairs(logic.contexts) do
-                    if not node_to_contexts[open_info.node][context] then
-                        has_all = false
-                    end
-                end
-                if has_all then
-                    node_to_contexts[open_info.node] = true
-                end
-            end
-
-            -- Check deps here and decide if any needs to be added to open
-            for dep, _ in pairs(node.dep) do
-                process_edge(dep, open_info, old_contexts)
-            end
+        -- Process edges BEFORE updating node_to_contexts (avoids deepcopy)
+        -- process_edge checks against current node_to_contexts to find new contexts
+        -- node_to_contexts[open_info.node] already pre-allocated
+        for dep, _ in pairs(node.dep) do
+            process_edge(dep, open_info, node_to_contexts[open_info.node])
         end
-        
+
+        -- Now add the new contexts
+        for context, _ in pairs(open_info.contexts) do
+            node_to_contexts[open_info.node][context] = true
+        end
+
         ind = ind + 1
     end
 
@@ -342,6 +283,12 @@ top.sort_extended = function(graph, state, new_conn, extra)
     local ind_to_ind = state.ind_to_ind or {}
     local ind = state.ind or 1
 
+    -- Build all_contexts dict once for reuse
+    local all_contexts = {}
+    for context, _ in pairs(logic.contexts) do
+        all_contexts[context] = true
+    end
+
     -- Push onto open to add the added contexts to node
     -- We can assume added ~= false
     local function add_contexts_to_node(node, added)
@@ -351,21 +298,20 @@ top.sort_extended = function(graph, state, new_conn, extra)
             incoming = table.deepcopy(added)
         end
 
-        -- Check if node mutates the outgoing contexts and if so change what the outgoing contexts are
-        local outgoing = added
+        -- Check if contexts is overriden (forgetters output all contexts, adders output specific room)
+        local contexts = added
         if logic.type_info[node.type].context == true then
-            contexts = true
+            -- Forgetter: output all contexts (use explicit dict instead of true)
+            contexts = table.deepcopy(all_contexts)
         elseif type(logic.type_info[node.type].context) == "string" then
-            -- Since type_info is the same across all nodes of the same type, and since rooms are all the same type, the context in type_info is inaccurate
-            -- All type_info for rooms reports nauvis as the context, so we need to just rely on the node's name
+            -- Adder: output specific room context
             contexts = {
                 [node.name] = true
             }
         end
 
         if node.op == "AND" then
-            -- To simplify for now, we always go to open with AND nodes
-            -- in_open is only needed for OR nodes and so is not updated here
+            -- We always go to open with AND nodes
             table.insert(open, {
                 node = key(node),
                 contexts = contexts,
@@ -373,18 +319,11 @@ top.sort_extended = function(graph, state, new_conn, extra)
             })
             ind_to_ind[#open] = ind
         elseif node.op == "OR" then
-            -- If it's already true, no change needed
             local open_ind = in_open[key(node)]
             if open_ind ~= nil then
-                -- If it's already true then no change needed
-                if open[open_ind].contexts ~= true then
-                    if contexts == true then
-                        open[open_ind].contexts = true
-                    else
-                        for context, _ in pairs(contexts) do
-                            open[open_ind].contexts[context] = true
-                        end
-                    end
+                -- Merge into existing open entry
+                for context, _ in pairs(contexts) do
+                    open[open_ind].contexts[context] = true
                 end
             else
                 table.insert(open, {
@@ -400,108 +339,74 @@ top.sort_extended = function(graph, state, new_conn, extra)
 
     local function process_edge(dep, open_info, old_contexts)
         local edge = graph.edges[dep]
-        -- Check if the dependent already has all contexts for efficiency
-        if node_to_contexts[edge.stop] ~= true then
-            local end_node_key = edge.stop
-            local end_node = graph.nodes[end_node_key]
+        local end_node_key = edge.stop
+        local end_node = graph.nodes[end_node_key]
 
-            -- TODO: This table population would probably be more efficient in a general node loop
-            node_to_contexts[end_node_key] = node_to_contexts[end_node_key] or {}
+        -- node_to_contexts[end_node_key] already pre-allocated
 
-            -- TODO: If end_node has one prereq, we treat it specially for efficiency
-            if end_node.op == "AND" then
-                if node_to_contexts[open_info.node] == true then
-                    -- If we now carry all contexts, remove single contexts and add to all
-                    node_context_to_satisfied[end_node_key] = node_context_to_satisfied[end_node_key] or {}
-                    node_context_to_satisfied[end_node_key]["all"] = (node_context_to_satisfied[end_node_key]["all"] or 0) + 1
-                    for old_context, _ in pairs(old_contexts) do
-                        node_context_to_satisfied[end_node_key][old_context] = node_context_to_satisfied[end_node_key][old_context] - 1
-                    end
-                else
-                    -- Otherwise, just add to contexts
-                    node_context_to_satisfied[end_node_key] = node_context_to_satisfied[end_node_key] or {}
-                    for context, _ in pairs(open_info.contexts) do
-                        node_context_to_satisfied[end_node_key][context] = (node_context_to_satisfied[end_node_key][context] or 0) + 1
-                    end
-                end
+        if end_node.op == "AND" then
+            -- node_context_to_satisfied[end_node_key] already pre-allocated
+            -- Increment satisfaction and check for newly satisfied in single pass
+            local new_contexts = {}
+            local satisfied = node_context_to_satisfied[end_node_key]
+            local existing = node_to_contexts[end_node_key]
+            local num_pre = end_node.num_pre
 
-                -- Check if we've satisfied a new context
-                local new_contexts = {}
-                if open_info.contexts == true then
-                    -- If "all", check all contexts
-                    local add_all_contexts = true
-                    for context, _ in pairs(logic.contexts) do
-                        if not node_to_contexts[end_node_key][context] then
-                            if (node_context_to_satisfied[end_node_key][context] or 0) + (node_context_to_satisfied[end_node_key]["all"] or 0) == end_node.num_pre then
-                                new_contexts[context] = true
-                            else
-                                add_all_contexts = false
-                            end
-                        end
-                    end
-                else
-                    for context, _ in pairs(open_info.contexts) do
-                        -- The next check is probably redundant here
-                        if not node_to_contexts[end_node_key][context] then
-                            if (node_context_to_satisfied[end_node_key][context] or 0) + (node_context_to_satisfied[end_node_key]["all"] or 0) == end_node.num_pre then
-                                new_contexts[context] = true
-                            end
-                        end
-                    end
+            for context, _ in pairs(open_info.contexts) do
+                -- Increment satisfaction for NEW contexts only
+                if not old_contexts[context] then
+                    satisfied[context] = (satisfied[context] or 0) + 1
                 end
-
-                if next(new_contexts) ~= nil then
-                    if add_all_contexts then
-                        add_contexts_to_node(end_node, true)
-                    else
-                        add_contexts_to_node(end_node, new_contexts)
-                    end
+                -- Check if now fully satisfied and not already in node
+                if not existing[context] and satisfied[context] == num_pre then
+                    new_contexts[context] = true
                 end
-            -- For OR nodes, add contexts right away?
-            -- Nah, but we can treat one-indegree nodes as OR
-            elseif end_node.op == "OR" then
-                local new_contexts = {}
-                if node_to_contexts[open_info.node] == true then
-                    new_contexts = true
-                else
-                    for context, _ in pairs(open_info.contexts) do
-                        if not node_to_contexts[end_node_key][context] then
-                            new_contexts[context] = true
-                        end
-                    end
-                end
-                if new_contexts == true or next(new_contexts) ~= nil then
-                    add_contexts_to_node(end_node, new_contexts)
-                end
-            else
-                error("Node op not OR or AND")
             end
+
+            if next(new_contexts) ~= nil then
+                add_contexts_to_node(end_node, new_contexts)
+            end
+        elseif end_node.op == "OR" then
+            local new_contexts = {}
+            for context, _ in pairs(open_info.contexts) do
+                if not node_to_contexts[end_node_key][context] then
+                    new_contexts[context] = true
+                end
+            end
+            if next(new_contexts) ~= nil then
+                add_contexts_to_node(end_node, new_contexts)
+            end
+        else
+            error("Node op not OR or AND")
         end
     end
 
     if new_conn == nil then
-        -- Add sources
+        -- Pre-allocate tables for all nodes (avoids repeated or {} checks in hot path)
+        for node_key, node in pairs(graph.nodes) do
+            node_to_contexts[node_key] = node_to_contexts[node_key] or {}
+            if node.op == "AND" then
+                node_context_to_satisfied[node_key] = node_context_to_satisfied[node_key] or {}
+            end
+        end
+
+        -- Add sources with all contexts (share same table since sources don't modify it)
+        local source_contexts = table.deepcopy(all_contexts)
         for source, _ in pairs(graph.sources) do
-            -- These are added later!
-            --node_to_contexts[source] = true
-            --node_context_to_satisfied[source] = true
             table.insert(open, {
                 node = source,
-                contexts = true,
-                incoming = true,
+                contexts = source_contexts,
+                incoming = source_contexts,
             })
             in_open[source] = #open
             ind_to_ind[#open] = 0
         end
     else
-        --local stop = graph.edges[new_conn.edge].stop
-        -- Don't process if node already has all contexts
-        if node_to_contexts[stop] ~= true then
-            process_edge(new_conn.edge, {
-                node = graph.edges[new_conn.edge].start,
-                contexts = new_conn.contexts,
-            }, {}) -- Last table shows old contexts was nothing (no connection)
-        end
+        -- Process new connection
+        process_edge(new_conn.edge, {
+            node = graph.edges[new_conn.edge].start,
+            contexts = new_conn.contexts,
+        }, {}) -- Last table shows old contexts was nothing (no connection)
     end
 
     while ind <= #open do
@@ -513,35 +418,18 @@ top.sort_extended = function(graph, state, new_conn, extra)
         node_to_open_inds[open_info.node] = node_to_open_inds[open_info.node] or {}
         node_to_open_inds[open_info.node][ind] = true
 
-        -- If old contexts is somehow already everything?? then we don't need to do anything (how is this happening?)
-        if node_to_contexts[open_info.node] ~= true then
-            -- Add new contexts
-            local old_contexts = table.deepcopy(node_to_contexts[open_info.node] or {})
-            if open_info.contexts == true then
-                node_to_contexts[open_info.node] = true
-            else
-                node_to_contexts[open_info.node] = node_to_contexts[open_info.node] or {}
-                for context, _ in pairs(open_info.contexts) do
-                    node_to_contexts[open_info.node][context] = true
-                end
-                -- Check if we now carry all contexts
-                local has_all = true
-                for context, _ in pairs(logic.contexts) do
-                    if not node_to_contexts[open_info.node][context] then
-                        has_all = false
-                    end
-                end
-                if has_all then
-                    node_to_contexts[open_info.node] = true
-                end
-            end
-
-            -- Check deps here and decide if any needs to be added to open
-            for dep, _ in pairs(node.dep) do
-                process_edge(dep, open_info, old_contexts)
-            end
+        -- Process edges BEFORE updating node_to_contexts (avoids deepcopy)
+        -- process_edge checks against current node_to_contexts to find new contexts
+        -- node_to_contexts[open_info.node] already pre-allocated
+        for dep, _ in pairs(node.dep) do
+            process_edge(dep, open_info, node_to_contexts[open_info.node])
         end
-        
+
+        -- Now add the new contexts
+        for context, _ in pairs(open_info.contexts) do
+            node_to_contexts[open_info.node][context] = true
+        end
+
         ind = ind + 1
     end
 
@@ -554,6 +442,20 @@ top.sort_extended = function(graph, state, new_conn, extra)
         ind_to_ind = ind_to_ind,
         ind = ind,
     }
+end
+
+-- Helper to find earliest open index with matching context
+local find_first_occurrence_with_context = function(node_key, context, node_to_open_inds, open)
+    local first
+    for open_ind, _ in pairs(node_to_open_inds[node_key] or {}) do
+        local ctxs = open[open_ind].contexts
+        if ctxs == true or ctxs[context] then
+            if first == nil or open_ind < first then
+                first = open_ind
+            end
+        end
+    end
+    return first
 end
 
 top.path = function(graph, goal, sort)
@@ -620,18 +522,9 @@ top.path = function(graph, goal, sort)
                 -- Add each of the prereq node's contexts
                 for pre, _ in pairs(curr_node.pre) do
                     local prenode = graph.nodes[graph.edges[pre].start]
-                    -- Get first occurrence with this context
-                    local first_occurrence
-                    for open_ind, _ in pairs(node_to_open_inds[key(prenode)]) do
-                        local occurrence_contexts = open[open_ind].contexts
-                        if occurrence_contexts == true or occurrence_contexts[goal_context] then
-                            if first_occurrence == nil or open_ind < first_occurrence then
-                                first_occurrence = open_ind
-                            end
-                        end
-                    end
-                    -- Add this occurrence
-                    if not in_path[goal_context][first_occurrence] then
+                    local first_occurrence = find_first_occurrence_with_context(
+                        key(prenode), goal_context, node_to_open_inds, open)
+                    if first_occurrence and not in_path[goal_context][first_occurrence] then
                         table.insert(path, {
                             ind = first_occurrence,
                             context = goal_context,
@@ -644,21 +537,16 @@ top.path = function(graph, goal, sort)
                 local first_occurrence
                 for pre, _ in pairs(curr_node.pre) do
                     local prenode = graph.nodes[graph.edges[pre].start]
-                    for open_ind, _ in pairs(node_to_open_inds[key(prenode)] or {}) do
-                        local occurrence_contexts = open[open_ind].contexts
-                        if occurrence_contexts == true or occurrence_contexts[goal_context] then
-                            if first_occurrence == nil or open_ind < first_occurrence then
-                                first_occurrence = open_ind
-                            end
-                        end
+                    local occ = find_first_occurrence_with_context(
+                        key(prenode), goal_context, node_to_open_inds, open)
+                    if occ and (first_occurrence == nil or occ < first_occurrence) then
+                        first_occurrence = occ
                     end
                 end
                 if first_occurrence == nil then
-                    log(serpent.block(curr_open))
-                    log(goal_context)
+                    log("Warning: no prereq with context " .. tostring(goal_context) .. " for OR node")
                     log(serpent.block(curr_node))
-                end
-                if not in_path[goal_context][first_occurrence] then
+                elseif not in_path[goal_context][first_occurrence] then
                     table.insert(path, {
                         ind = first_occurrence,
                         context = goal_context,
