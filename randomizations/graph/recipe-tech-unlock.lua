@@ -210,7 +210,9 @@ randomizations.recipe_tech_unlock_new = function(graph)
             local found_prereq = false
             for ind, prereq in pairs(shuffled_tech_prereqs) do
                 -- Reachable means by at least one context (not false or nil)
-                if not prereq_inds_used[ind] and sort_state.node_to_contexts[gutils.key(prereq)] ~= nil and (sort_state.node_to_contexts[gutils.key(prereq)] == true or next(sort_state.node_to_contexts[gutils.key(prereq)]) ~= nil) then
+                -- Contexts is always a table now (never true)
+                local contexts = sort_state.node_to_contexts[gutils.key(prereq)]
+                if not prereq_inds_used[ind] and contexts ~= nil and next(contexts) ~= nil then
                     log("Randomized to: " .. prereq.name)
 
                     prereq_inds_used[ind] = true

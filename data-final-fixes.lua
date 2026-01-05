@@ -2,7 +2,7 @@
 -- Property Randomizer - Data Final Fixes Stage
 
 -- Toggle between test mode and production mode
-local RUN_TESTS = true
+local RUN_TESTS = false
 
 if RUN_TESTS then
     require("test/feature-tests")
@@ -94,7 +94,7 @@ if settings.startup["propertyrandomizer-simultaneous"].value then
     build_graph.add_dependents(dep_graph)
 end
 
---if settings.startup["propertyrandomizer-unified"].value then
+if settings.startup["propertyrandomizer-unified"].value then
     randomizations.unified("unified")
 
     -- Rebuild graph
@@ -102,7 +102,7 @@ end
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
---end
+end
 
 if settings.startup["propertyrandomizer-technology"].value then
     -- We currently do tech randomization many times since one time isn't enough to get it that random

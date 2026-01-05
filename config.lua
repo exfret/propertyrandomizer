@@ -1,6 +1,17 @@
 local constants = require("helper-tables/constants")
 local spec = require("helper-tables/spec")
 
+-- Test settings override: if test/test-settings.lua exists, apply those settings
+-- This allows the test runner to configure settings before each test run
+pcall(function()
+    local test_settings = require("test/test-settings")
+    for setting_name, value in pairs(test_settings) do
+        if settings.startup[setting_name] then
+            settings.startup[setting_name].value = value
+        end
+    end
+end)
+
 global_seed = settings.startup["propertyrandomizer-seed"].value
 
 if settings.startup["propertyrandomizer-watch-the-world-burn"].value then

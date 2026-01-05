@@ -9,11 +9,15 @@
 
 -- Toggle individual features for testing
 local TEST_FEATURES = {
-    lookup = true,           -- Test new-lib lookup system (staged loading)
-    logic_build = true,      -- Test new-lib logic graph building
-    extended_sort = true,    -- Test context-aware topological sort
-    unified_tech = true,     -- Test unified tech prereq randomization
+    lookup = false,           -- Test new-lib lookup system (staged loading)
+    logic_build = false,      -- Test new-lib logic graph building
+    extended_sort = false,    -- Test context-aware topological sort
+    unified_tech = false,     -- Test unified tech prereq randomization
+    item_new = true,          -- Test item_new randomization (slot scramble)
 }
+
+-- Which implementation to test (set via TEST_IMPL: "item_new" or "item_simple")
+local TEST_IMPL = "item_simple"
 
 -- Verbose logging for debugging
 local VERBOSE = false
@@ -64,7 +68,7 @@ end
 local function test_logic_build(lu)
     log("=== Testing Logic Graph Build ===")
 
-    local logic = require("new-lib/logic/init")
+    local logic = require("new-lib/logic/logic")
     logic.build()
 
     -- Count nodes and edges
@@ -149,6 +153,75 @@ local function test_extended_sort(logic)
     log("Extended sort test: " .. (success and "PASSED" or "FAILED"))
 
     return sort_result, success
+end
+
+local function test_item_new()
+    log("=== Testing " .. TEST_IMPL .. " (Multi-Seed) ===")
+
+    local build_graph = require("lib/graph/build-graph")
+    local top_sort = require("lib/graph/top-sort")
+
+    randomizations = randomizations or {}
+    if TEST_IMPL == "item_new" then
+        require("randomizations/graph/item-new")
+    else
+        require("randomizations/graph/item-simple")
+    end
+
+    local seeds = {12345, 54321, 11111, 99999, 42, 7, 31415, 27182, 1, 100}
+    local results = {}
+
+    for _, seed in ipairs(seeds) do
+        build_graph.load()
+        build_graph.add_dependents(build_graph.graph)
+        dep_graph = build_graph.graph
+        global_seed = seed
+
+        local initial_sort = top_sort.sort(dep_graph)
+        local initial_count = #initial_sort.sorted
+
+        local result
+        if TEST_IMPL == "item_new" then
+            result = randomizations.item_new("seed-" .. seed)
+        else
+            result = randomizations.item_simple("seed-" .. seed)
+        end
+
+        local slot_count = 0
+        if result and result.slot_to_item then
+            for _ in pairs(result.slot_to_item) do
+                slot_count = slot_count + 1
+            end
+        end
+
+        local final_sort = top_sort.sort(dep_graph)
+        local final_count = #final_sort.sorted
+
+        table.insert(results, {
+            seed = seed,
+            assignments = slot_count,
+            initial = initial_count,
+            final = final_count,
+            gained = final_count - initial_count
+        })
+    end
+
+    -- Report results
+    log("=== " .. TEST_IMPL .. " RESULTS ===")
+    for _, r in ipairs(results) do
+        log(string.format("Seed %6d: %3d assignments, %5d->%5d nodes (gained %d)",
+            r.seed, r.assignments, r.initial, r.final, r.gained))
+    end
+
+    -- Summary
+    local total = 0
+    for _, r in ipairs(results) do
+        total = total + r.assignments
+    end
+    log("=== SUMMARY ===")
+    log(TEST_IMPL .. " avg assignments: " .. (total / #seeds))
+
+    return true
 end
 
 local function test_unified_tech()
@@ -240,6 +313,10 @@ end
 
 if TEST_FEATURES.unified_tech then
     results.unified_tech = test_unified_tech()
+end
+
+if TEST_FEATURES.item_new then
+    results.item_new = test_item_new()
 end
 
 -- Summary

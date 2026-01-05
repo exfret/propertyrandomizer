@@ -180,7 +180,9 @@ recipe_results.execute = function(graph)
     end
 
     local function is_context_reachable(sort_to_use, node)
-        return sort_to_use.node_to_contexts[gutils.key(node)] ~= nil and (sort_to_use.node_to_contexts[gutils.key(node)] == true or next(sort_to_use.node_to_contexts[gutils.key(node)]) ~= nil)
+        -- Contexts is always a table now (never true)
+        local contexts = sort_to_use.node_to_contexts[gutils.key(node)]
+        return contexts ~= nil and next(contexts) ~= nil
     end
 
     -- Now do a sort, but fill out prereqs first before adding new dep to figure out full pools
@@ -247,14 +249,9 @@ recipe_results.execute = function(graph)
         context_node_to_ind[context] = {}
     end
     for open_ind, node_info in pairs(pool_sort.open) do
-        if node_info.contexts == true then
-            for context, _ in pairs(logic.contexts) do
-                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-            end
-        else
-            for context, _ in pairs(node_info.contexts) do
-                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-            end
+        -- Contexts is always a table now (never true)
+        for context, _ in pairs(node_info.contexts) do
+            context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
         end
     end
 
@@ -330,7 +327,9 @@ recipe_results.execute = function(graph)
         
         if not found_prereq then
             for ind, prereq in pairs(shuffled_prereqs) do
-                if not prereq_inds_used[ind] and sort.node_to_contexts[gutils.key(prereq)] ~= nil and (sort.node_to_contexts[gutils.key(prereq)] == true or next(sort.node_to_contexts[gutils.key(prereq)]) ~= nil) then
+                -- Contexts is always a table now (never true)
+                local contexts = sort.node_to_contexts[gutils.key(prereq)]
+                if not prereq_inds_used[ind] and contexts ~= nil and next(contexts) ~= nil then
                     log(prereq.name)
                 end
             end

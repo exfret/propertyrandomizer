@@ -55,4 +55,20 @@ dutils.get_ammo_categories = function(attack_parameters)
     return cats
 end
 
+-- Check if an item prototype is stackable (not flagged as not-stackable)
+dutils.is_stackable = function(item_prototype)
+    -- Special case: armors with equipment grids are never stackable, even without not-stackable flag set
+    if item_prototype.type == "armor" and item_prototype.equipment_grid ~= nil then
+        return false
+    end
+    if item_prototype.flags ~= nil then
+        for _, flag in pairs(item_prototype.flags) do
+            if flag == "not-stackable" then
+                return false
+            end
+        end
+    end
+    return true
+end
+
 return dutils
