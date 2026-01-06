@@ -10,7 +10,11 @@ local logic = require("new-lib/logic/init")
 local unified = {}
 
 local handler_ids = {
-    "tech-prereqs"
+    "tech-prereqs",
+    "tech-science-packs",
+    "tech-unlocks",
+    "fuel-categories",
+    "tile-to-fluid",
 }
 
 unified.execute = function()
@@ -256,29 +260,16 @@ unified.execute = function()
             end
         end
     else
+        -- Uses extended-sort which always returns explicit dicts (never true)
         for context, _ in pairs(logic.contexts) do
             for _, str_val in pairs({"0", "1"}) do
                 context_node_to_ind[context .. str_val] = {}
             end
         end
         for open_ind, node_info in pairs(pool_info.open) do
-            if node_info.contexts == true then
-                for context, _ in pairs(logic.contexts) do
-                    for _, str_val in pairs({"0", "1"}) do
-                        context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                    end
-                end
-            else
-                for context, context_vals in pairs(node_info.contexts) do
-                    if context_vals == true then
-                        for _, str_val in pairs({"0", "1"}) do
-                            context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                        end
-                    else
-                        for bin_str, val in pairs(context_vals) do
-                            context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] = context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] or open_ind
-                        end
-                    end
+            for context, context_vals in pairs(node_info.contexts) do
+                for bin_str, _ in pairs(context_vals) do
+                    context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] = context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] or open_ind
                 end
             end
         end
@@ -290,20 +281,27 @@ unified.execute = function()
     log("Calculating context reachability")
 
     -- Context reachability
+    -- Use slot owner's index (earliest time this prereq type is available)
     local function all_contexts_reachable(slot, trav)
+        -- Get slot owner's key for index lookup
+        local slot_owner = gutils.get_conn_owner(pool_graph, pool_graph.nodes[gutils.key(slot)])
+        local slot_lookup_key = gutils.key(slot_owner)
+        local trav_lookup_key = gutils.key(trav)
+
         if not PRESERVE_ISOLATABILITY then
             for context, _ in pairs(logic.contexts) do
-                -- Let's try with "last prereq comes after"
-                -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
-                -- This actually didn't have an effect because of the way pool sort works
-                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
+                local trav_ind = pool_info.ind_to_ind[context_node_to_ind[context][trav_lookup_key]] or (#pool_info.open + 2)
+                local slot_ind = context_node_to_ind[context][slot_lookup_key] or (#pool_info.open + 1)
+                if trav_ind < slot_ind then
                     return false
                 end
             end
         else
             for context, _ in pairs(logic.contexts) do
                 for _, str_val in pairs({"0", "1"}) do
-                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
+                    local trav_ind = context_node_to_ind[context .. str_val][trav_lookup_key] or (#pool_info.open + 2)
+                    local slot_ind = context_node_to_ind[context .. str_val][slot_lookup_key] or (#pool_info.open + 1)
+                    if trav_ind < slot_ind then
                         return false
                     end
                 end
@@ -335,13 +333,18 @@ unified.execute = function()
             log("Randomizing " .. gutils.key(dep))
             for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
                 local found_prereq = false
+                local handler = trav_to_handler[gutils.key(trav)]
                 for ind, slot in pairs(shuffled_prereqs) do
-                    if not used_prereq_indices[ind] and all_contexts_reachable(slot, trav) then
+                    local context_ok = handler.skip_context_check or all_contexts_reachable(slot, trav)
+                    if not used_prereq_indices[ind] and context_ok then
                         -- Have traveler's handler validate this ind
-                        if trav_to_handler[gutils.key(trav)].validate(random_graph, slot, trav, {
-                            init_sort = init_sort, -- Needed for tech rando
+                        if handler.validate(random_graph, slot, trav, {
+                            init_sort = init_sort,
+                            trav_to_old_slot = trav_to_old_slot,
                         }) then
-                            log("Accepted prereq " .. gutils.key(gutils.get_conn_owner(cut_graph, slot)))
+                            local trav_owner = gutils.get_conn_owner(cut_graph, trav)
+                            local slot_owner = gutils.get_conn_owner(cut_graph, slot)
+                            log("ASSIGN: " .. trav_owner.type .. ":" .. trav_owner.name .. " <-- " .. slot_owner.type .. ":" .. slot_owner.name)
                             found_prereq = true
                             used_prereq_indices[ind] = true
                             trav_to_new_slot[gutils.key(trav)] = slot
@@ -364,7 +367,7 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     for _, handler in pairs(handlers) do
-        handler.reflect(random_graph, trav_to_new_slot)
+        handler.reflect(random_graph, trav_to_new_slot, trav_to_old_slot)
     end
 end
 

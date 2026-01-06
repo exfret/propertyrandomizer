@@ -54,6 +54,8 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
     end
 end)
 
+-- DISABLED for testing: warnings display on game start
+--[[
 script.on_nth_tick(1, function(event)
     -- Print warnings on 10th tick
     if event.tick == 10 then
@@ -87,3 +89,4 @@ script.on_nth_tick(1, function(event)
         end
     end
 end)
+]]

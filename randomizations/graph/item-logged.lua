@@ -40,10 +40,19 @@ local locale_utils = require("lib/locale")
 --------------------------------------------------------------------------------
 -- Helper Functions
 --------------------------------------------------------------------------------
--- Note: Most lookups now come from global `lu` (loaded in data-final-fixes.lua)
--- - lu.items: item_name -> item_prototype
--- - lu.entities: entity_name -> entity_prototype
--- - dutils.is_stackable(): check if item is stackable
+-- Lookups are built at runtime inside the randomization function from data.raw
+
+-- Check if an item prototype is stackable (doesn't have "not-stackable" flag)
+local function is_stackable(item_prototype)
+    if item_prototype.flags ~= nil then
+        for _, flag in pairs(item_prototype.flags) do
+            if flag == "not-stackable" then
+                return false
+            end
+        end
+    end
+    return true
+end
 
 -- Build set of items that come from raw resources (always randomized)
 -- Not in lookup tables, so we build it here
@@ -69,7 +78,7 @@ end
 -- Main Randomization Function
 --------------------------------------------------------------------------------
 
-randomizations.item_simple = function(id)
+randomizations.item_new = function(id)  -- Changed from item_simple for production use
     -- Items that should never be randomized
     local dont_randomize_item = {
         ["rocket-part"] = true,
@@ -77,12 +86,28 @@ randomizations.item_simple = function(id)
     }
 
     --------------------------------------------------------------------------
-    -- Phase 1: COLLECT - Use global lookups (loaded in data-final-fixes.lua)
+    -- Phase 1: COLLECT - Build lookups from data.raw
     --------------------------------------------------------------------------
-    -- lu.items and lu.entities come from new-lib lookup tables
-    -- Note: lu.entities is keyed by name (not a list), may filter some corpses
-    local items = lu.items
-    local entities = lu.entities  -- Renamed from lootable_entities for clarity
+    -- Build items lookup from all item prototype types
+    local items = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                items[item.name] = item
+            end
+        end
+    end
+
+    -- Build entities lookup (for loot drops)
+    local entities = {}
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                entities[entity.name] = entity
+            end
+        end
+    end
+
     local raw_resource_items = build_raw_resource_set()
     
     -- Special cost analysis for item randomization
@@ -174,7 +199,7 @@ randomizations.item_simple = function(id)
                 local item_prototype = items[node.item]
                 local cost = cost_as_traveler.material_to_cost[flow_cost.get_prot_id(item_prototype)]
                 -- Filter: stackable, no equipment grid, not science pack (tool), not blacklisted
-                if dutils.is_stackable(item_prototype) and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
+                if is_stackable(item_prototype) and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
                     -- Always randomize raw resources; others based on setting percentage
                     if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then
                         to_be_randomized[build_graph.key(node.type, node.name)] = true
@@ -294,11 +319,22 @@ randomizations.item_simple = function(id)
     local is_cancellable = {}
     local curr_sort_state = top_sort.sort(dep_graph, blacklist)
 
+    -- Event logging
+    local event_num = 0
+    local function log_event(event_type, slot_name, traveler_name, extra)
+        event_num = event_num + 1
+        local msg = string.format("[EVENT %3d] %-8s %s -> %s", event_num, event_type, slot_name, traveler_name)
+        if extra then
+            msg = msg .. " " .. extra
+        end
+        log(msg)
+    end
+
     -- Check if a slot is reachable (any prereq is reachable)
     local function is_slot_reachable(slot)
-        local slot_node = slot
-        if slot_node.prereqs == nil then
-            slot_node = dep_graph[build_graph.key(slot.type, slot.name)]
+        slot_node = slot
+        if slot.prereqs == nil then
+            local slot_node = dep_graph[build_graph.key(slot.type, slot.name)]
         end
         for _, prereq in pairs(slot_node.prereqs) do
             if curr_sort_state.reachable[build_graph.key(prereq.type, prereq.name)] then
@@ -343,8 +379,6 @@ randomizations.item_simple = function(id)
                             local slot_item = items[curr_slot.name]
 
                             -- Check that costs align
-                            local traveler_cost = cost_as_traveler.material_to_cost[flow_cost.get_prot_id(proposed_item_prot)]
-                            local slot_cost = cost_as_slot.material_to_cost[flow_cost.get_prot_id(slot_item)]
                             local worry_about_costs = false
                             if traveler_cost ~= nil and (slot_item.place_result ~= nil or slot_item.type ~= "item" or slot_item.fuel_value ~= nil or slot_item.place_as_tile ~= nil or slot_item.plant_result ~= nil) then
                                 worry_about_costs = true
@@ -411,6 +445,8 @@ randomizations.item_simple = function(id)
 
                             -- The variable names to come are a mess; I'm sorry
                             if booted_out_slot ~= nil then
+                                local booted_traveler = slot_to_traveler[booted_out_slot.name]
+                                log_event("CANCEL", booted_out_slot.name, booted_traveler.name, "(for " .. failed_traveler.name .. ")")
                                 log("Booting out " .. booted_out_slot.name .. " slot for " .. failed_traveler.name)
 
                                 -- Switch out slot/item tables
@@ -480,8 +516,13 @@ randomizations.item_simple = function(id)
                 error("Item randomization failed at " .. tostring(math.floor(100 * i / #slots)) .. "%. Perhaps try a different seed?")
             end
         else
-            log(old_slot.name)
-            log(new_item.name)
+            -- Log the assignment event
+            local is_terminal = is_terminal_slot(old_slot)
+            if is_terminal then
+                log_event("RESERVE", old_slot.name, new_item.name)
+            else
+                log_event("ASSIGN", old_slot.name, new_item.name)
+            end
 
             slot_to_traveler[old_slot.name] = new_item
             traveler_to_slot[new_item.name] = old_slot
@@ -508,12 +549,12 @@ randomizations.item_simple = function(id)
                 end
             end
 
-            -- See if any exciting connections have turned boring by turning reachable
+            -- See if any reservations have been fulfilled (traveler became reachable)
             local to_remove_from_exciting = {}
             for exciting_slot_name, _ in pairs(is_cancellable) do
-                local exciting_item_name = slot_to_traveler[exciting_slot_name].name
-                if curr_sort_state.reachable[build_graph.key("item-slot", exciting_item_name)] then
-                    log(exciting_item_name .. " is no longer exciting")
+                local exciting_traveler = slot_to_traveler[exciting_slot_name]
+                if curr_sort_state.reachable[build_graph.key("item-slot", exciting_traveler.name)] then
+                    log_event("FULFILL", exciting_slot_name, exciting_traveler.name)
                     table.insert(to_remove_from_exciting, exciting_slot_name)
                     local ind_to_remove
                     for ind, exciting_slot in pairs(cancellable_assignments) do
@@ -528,6 +569,113 @@ randomizations.item_simple = function(id)
                 is_cancellable[to_remove] = nil
             end
         end
+    end
+
+    --------------------------------------------------------------------------
+    -- Phase 7: VERIFY - Check event consistency and reachability
+    --------------------------------------------------------------------------
+    local verify_errors = {}
+
+    -- Count events by type
+    local event_counts = {RESERVE = 0, ASSIGN = 0, FULFILL = 0, CANCEL = 0}
+    local reserved_slots = {}  -- slot_name -> traveler_name
+    local fulfilled_slots = {}
+    local cancelled_slots = {}
+
+    -- Parse event log to track lifecycle
+    -- (We don't have a stored event log, so we'll verify from state)
+
+    -- 1. Check assignment counts
+    local assign_count = 0
+    local reserve_count = 0
+    for slot_name, traveler in pairs(slot_to_traveler) do
+        assign_count = assign_count + 1
+        if is_cancellable[slot_name] then
+            reserve_count = reserve_count + 1
+        end
+    end
+    log(string.format("[VERIFY] Total assignments: %d (reserves: %d, immediate: %d)",
+        assign_count, reserve_count, assign_count - reserve_count))
+
+    -- 2. Check all assigned travelers are reachable
+    local final_sort = top_sort.sort(dep_graph, blacklist)
+    local unreachable_travelers = {}
+    for slot_name, traveler in pairs(slot_to_traveler) do
+        local traveler_key = build_graph.key(traveler.type, traveler.name)
+        if not final_sort.reachable[traveler_key] then
+            table.insert(unreachable_travelers, traveler.name)
+        end
+    end
+    if #unreachable_travelers > 0 then
+        table.insert(verify_errors, string.format("Unreachable travelers after assignment: %s",
+            table.concat(unreachable_travelers, ", ")))
+    else
+        log("[VERIFY] All assigned travelers are reachable")
+    end
+
+    -- 3. Check all assigned slots are reachable
+    local unreachable_slots = {}
+    for slot_name, _ in pairs(slot_to_traveler) do
+        local slot_key = build_graph.key("item-slot", slot_name)
+        if not final_sort.reachable[slot_key] then
+            table.insert(unreachable_slots, slot_name)
+        end
+    end
+    if #unreachable_slots > 0 then
+        table.insert(verify_errors, string.format("Unreachable slots after assignment: %s",
+            table.concat(unreachable_slots, ", ")))
+    else
+        log("[VERIFY] All assigned slots are reachable")
+    end
+
+    -- 4. Check monotonicity (final reachable >= initial)
+    local final_reachable = #final_sort.sorted
+    local initial_reachable = #initial_sort_info.sorted
+    if final_reachable < initial_reachable then
+        table.insert(verify_errors, string.format("Monotonicity violated: %d -> %d (lost %d nodes)",
+            initial_reachable, final_reachable, initial_reachable - final_reachable))
+    else
+        log(string.format("[VERIFY] Monotonicity OK: %d -> %d (gained %d)",
+            initial_reachable, final_reachable, final_reachable - initial_reachable))
+    end
+
+    -- 5. Check no duplicate assignments
+    local seen_travelers = {}
+    for slot_name, traveler in pairs(slot_to_traveler) do
+        if seen_travelers[traveler.name] then
+            table.insert(verify_errors, string.format("Duplicate traveler: %s assigned to both %s and %s",
+                traveler.name, seen_travelers[traveler.name], slot_name))
+        end
+        seen_travelers[traveler.name] = slot_name
+    end
+    if not next(verify_errors) or #verify_errors == 0 then
+        log("[VERIFY] No duplicate traveler assignments")
+    end
+
+    -- 6. Check bijection: slot_to_traveler and traveler_to_slot are inverses
+    for slot_name, traveler in pairs(slot_to_traveler) do
+        local reverse_slot = traveler_to_slot[traveler.name]
+        if reverse_slot == nil then
+            table.insert(verify_errors, string.format("Missing reverse mapping for traveler %s", traveler.name))
+        elseif reverse_slot.name ~= slot_name then
+            table.insert(verify_errors, string.format("Bijection mismatch: slot %s -> traveler %s, but traveler -> slot %s",
+                slot_name, traveler.name, reverse_slot.name))
+        end
+    end
+    if not next(verify_errors) or #verify_errors == 0 then
+        log("[VERIFY] Bijection OK: slot_to_traveler and traveler_to_slot are consistent")
+    end
+
+    -- Report errors (as warnings, don't fail - we want to see all seeds)
+    if #verify_errors > 0 then
+        log("[VERIFY] === WARNINGS (" .. #verify_errors .. ") ===")
+        for _, err in ipairs(verify_errors) do
+            log("[VERIFY WARNING] " .. err)
+        end
+        -- Don't error - continue to see results from all seeds
+        -- error("Verification failed with " .. #verify_errors .. " errors")
+    else
+        log("[VERIFY] === ALL CHECKS PASSED ===")
     end
 
     --------------------------------------------------------------------------
@@ -743,8 +891,6 @@ randomizations.item_simple = function(id)
                             end
 
                             -- Make trees like fruit trees
-                            -- DISABLED: Frame count mismatch causes errors (icons have 1 frame, trees expect 3+)
-                            --[[
                             if entity.type == "tree" then
                                 -- Assume tree graphics are defined a certain way
                                 -- TODO: Remove this assumption
@@ -789,7 +935,6 @@ randomizations.item_simple = function(id)
                                     end
                                 end
                             end
-                            ]]
 
                             -- Now for rocks and such
                             -- Assume graphics are a certain way

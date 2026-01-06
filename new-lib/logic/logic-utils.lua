@@ -204,6 +204,7 @@ end
 
 -- Just checks whether it's a burner
 lutils.check_freezable = function(entity)
+    -- TODO: Cars and a few other things maybe shouldn't need heat even if they have void energy sources
     if entity.type == "heat-pipe" then
         return false
     end
