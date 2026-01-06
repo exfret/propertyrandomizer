@@ -7,7 +7,7 @@ local NUM_ABILITIES = 2
 local lib_name = "new-lib" -- Use this until integration with "old" lib
 local gutils = require(lib_name .. "/graph/graph-utils")
 -- Used for gathering contexts, etc. not for the actual graph
-local logic = require(lib_name .. "/logic/init")
+local logic = require(lib_name .. "/logic/logic")
 local dutils = require(lib_name .. "/data-utils")
 
 -- Commonly used function
@@ -82,51 +82,9 @@ for bin_str, _ in pairs(all_bin_strs) do
     end
 end
 
---[[local function cone_add(rcontext, bin_str)
-    if rcontext == true then
-        return {}
-    end
-    local added = {}
-    -- Already added
-    if rcontext[bin_str] then
-        return added
-    end
-    for substr, _ in pairs(down_cone[bin_str]) do
-        if not rcontext[substr] then
-            added[substr] = true
-            rcontext[substr] = true
-        end
-    end
-    return added
-end
-local function cone_remove(rcontext, bin_str)
-    if rcontext == true then
-        rcontext = table.deepcopy(all_bin_strs)
-    end
-    local removed = {}
-    -- Not there in the first place
-    if not rcontext[bin_str] then
-        return removed
-    end
-    for superstr, _ in pairs(down_cone[bin_str]) do
-        if rcontext[superstr] then
-            removed[superstr] = true
-            rcontext[superstr] = true
-        end
-    end
-    return removed
-end]]
-
 -- Returns union, difference, for just one room's context
--- For rooms, only true can merge to true
+-- No longer handles 'true' sentinel - always explicit dicts
 local function room_merge(rbase, raddon)
-    if rbase == true then
-        return {union = rbase, difference = {}}
-    end
-    if raddon == true then
-        return {union = true, difference = true}
-    end
-
     local union = table.deepcopy(rbase)
     local difference = {}
     for bin_str, _ in pairs(raddon) do
@@ -138,22 +96,9 @@ local function room_merge(rbase, raddon)
     return {union = union, difference = difference}
 end
 
--- CRITICAL TODO: This might conflict with a factorio core lib helper name; not an issue technically but might want to rename
 -- Returns union, difference
+-- No longer handles 'true' sentinel - always explicit dicts
 local function merge(base, addon)
-    -- Test if base is already everything
-    if base == true then
-        local difference = {}
-        for room, _ in pairs(logic.contexts) do
-            difference[room] = {}
-        end
-        return {union = base, difference = difference}
-    end
-    if addon == true then
-        return {union = true, difference = true}
-    end
-
-    local all_rooms_true = true
     local union = {}
     local difference = {}
     for room, _ in pairs(logic.contexts) do
@@ -162,16 +107,8 @@ local function merge(base, addon)
         local room_merge_info = room_merge(rbase, raddon)
         union[room] = room_merge_info.union
         difference[room] = room_merge_info.difference
-        if room_merge_info.union ~= true then
-            all_rooms_true = false
-        end
     end
-
-    if all_rooms_true then
-        return {union = true, difference = true}
-    else
-        return {union = union, difference = difference}
-    end
+    return {union = union, difference = difference}
 end
 
 -- We shouldn't need context_reachable
@@ -187,33 +124,24 @@ local function transmit_through_node(node, incoming_context)
         -- There are two current cases: item-launch and technology
         -- technology should be a source for automatability, but not necessarily item-launch
         -- However, we already add automatability to technology incoming-prerequisite edges, so it's enough to make this only forget over room contexts
-        if incoming_context == true then
-            return true
-        else
-            local rcombined_context = {}
-            for room, _ in pairs(logic.contexts) do
-                local incoming_context_without_true = incoming_context[room]
-                if incoming_context_without_true == true then
-                    -- TODO: Possible place for optimization when I get there
-                    -- (Although this isn't as consequential since it's just for techs/other true contexts)
-                    incoming_context_without_true = table.deepcopy(all_bin_strs)
+        -- No longer handles 'true' sentinel - always explicit dicts
+        local rcombined_context = {}
+        for room, _ in pairs(logic.contexts) do
+            -- Filter out isolatability (that's not shared)
+            local incoming_context_to_combine = {}
+            for bin_str, _ in pairs(incoming_context[room]) do
+                if string.sub(bin_str, 1, 1) == "0" then
+                    incoming_context_to_combine[bin_str] = true
                 end
-                -- Filter out isolatability (that's not shared)
-                local incoming_context_to_combine = {}
-                for bin_str, _ in pairs(incoming_context_without_true) do
-                    if string.sub(bin_str, 1, 1) == "0" then
-                        incoming_context_to_combine[bin_str] = true
-                    end
-                end
-                rcombined_context = room_merge(rcombined_context, incoming_context_to_combine).union
             end
-            local outgoing_context = {}
-            for room, _ in pairs(logic.contexts) do
-                -- Need to merge in case incoming_context had isolatability for that one room
-                outgoing_context[room] = room_merge(table.deepcopy(rcombined_context), incoming_context[room]).union
-            end
-            return outgoing_context
+            rcombined_context = room_merge(rcombined_context, incoming_context_to_combine).union
         end
+        local outgoing_context = {}
+        for room, _ in pairs(logic.contexts) do
+            -- Need to merge in case incoming_context had isolatability for that one room
+            outgoing_context[room] = room_merge(table.deepcopy(rcombined_context), incoming_context[room]).union
+        end
+        return outgoing_context
     elseif type(context_info) == "string" then
         -- Case of emitter of single context
         -- Since context_info is per-type, and room context transmission is per node name, we need to use the node.name for the specific context transmitted
@@ -235,75 +163,32 @@ local function transmit_through_edge(edge, incoming_context)
         return table.deepcopy(incoming_context)
     end
 
+    -- No longer handles 'true' sentinel - always explicit dicts
     local outgoing_context = table.deepcopy(incoming_context)
     for ability, new_val in pairs(edge.abilities) do
-        local min_ability_str = ""
-        for i = 1, NUM_ABILITIES do
-            if i == ability then
-                min_ability_str = min_ability_str .. "1"
-            else
-                min_ability_str = min_ability_str .. "0"
-            end
-        end
-
-        -- If outgoing_context == true, then we already have all contexts and can safely skip
-        if outgoing_context ~= true and new_val == true then
-            -- We will still have to check here if anything collapses to true
-            -- This is because we do a translate-and-union, unlike the false case which is a simple removal
+        if new_val == true then
+            -- Granting ability: for each bin_str, also add version with ability bit = 1
             for room, _ in pairs(logic.contexts) do
-                -- Again, only need to check for unfulfilled rooms
-                if outgoing_context[room] ~= true then
-                    local bin_str_to_add = {}
-                    for bin_str, _ in pairs(outgoing_context[room]) do
-                        local new_bin_str = ""
-                        for i = 1, NUM_ABILITIES do
-                            if i == ability then
-                                new_bin_str = new_bin_str .. "1"
-                            else
-                                new_bin_str = new_bin_str .. string.sub(bin_str, i, i)
-                            end
+                local bin_str_to_add = {}
+                for bin_str, _ in pairs(outgoing_context[room]) do
+                    local new_bin_str = ""
+                    for i = 1, NUM_ABILITIES do
+                        if i == ability then
+                            new_bin_str = new_bin_str .. "1"
+                        else
+                            new_bin_str = new_bin_str .. string.sub(bin_str, i, i)
                         end
-                        table.insert(bin_str_to_add, new_bin_str)
                     end
-                    for _, bin_str in pairs(bin_str_to_add) do
-                        outgoing_context[room][bin_str] = true
-                    end
-                    -- Test if we now have all bin str's by testing if we have all-ones
-                    if outgoing_context[room][all_ones] then
-                        outgoing_context[room] = true
-                    end
+                    table.insert(bin_str_to_add, new_bin_str)
                 end
-            end
-            -- Check if every room is true
-            local all_true = true
-            for room, _ in pairs(logic.contexts) do
-                if outgoing_context[room] ~= true then
-                    all_true = false
+                for _, bin_str in pairs(bin_str_to_add) do
+                    outgoing_context[room][bin_str] = true
                 end
-            end
-            if all_true then
-                outgoing_context = true
             end
         elseif new_val == false then
-            -- Now, we're taking away contexts
-            -- We just remove anything with a "1" in the ability-th place
-            if outgoing_context == true then
-                outgoing_context = {}
-                for room, _ in pairs(logic.contexts) do
-                    outgoing_context[room] = {}
-                    for bin_str, _ in pairs(all_bin_strs) do
-                        outgoing_context[room][bin_str] = true
-                    end
-                end
-            end
+            -- Removing ability: remove bin_strs with ability bit = 1
             for room, _ in pairs(logic.contexts) do
                 local bin_str_to_remove = {}
-                if outgoing_context[room] == true then
-                    outgoing_context[room] = {}
-                    for bin_str, _ in pairs(all_bin_strs) do
-                        outgoing_context[room][bin_str] = true
-                    end
-                end
                 for bin_str, _ in pairs(outgoing_context[room]) do
                     if string.sub(bin_str, ability, ability) == "1" then
                         table.insert(bin_str_to_remove, bin_str)
@@ -433,11 +318,9 @@ top.sort = function(graph, state, new_conn, extra)
     end
 
     local function has_new_context(difference_context)
-        if difference_context == true then
-            return true
-        end
+        -- No longer handles 'true' sentinel - always explicit dicts
         for room, _ in pairs(logic.contexts) do
-            if difference_context[room] == true or next(difference_context[room]) ~= nil then
+            if next(difference_context[room]) ~= nil then
                 return true
             end
         end
@@ -459,55 +342,23 @@ top.sort = function(graph, state, new_conn, extra)
                 -- outgoing is NEW outgoing, so we add up all the contexts added to node_context_to_amount
                 local old_incoming = transmit_through_edge(graph.edges[dep], old_contexts)
                 local new_incoming = transmit_through_edge(graph.edges[dep], new_contexts)
-                -- Because of stuff with edge context changes, old_incoming and new_incoming could overlap despcite old_contexts and new_contexts not overlapping, so check
+                -- Because of stuff with edge context changes, old_incoming and new_incoming could overlap despite old_contexts and new_contexts not overlapping, so check
                 -- It's enough to shave the base old_incoming stuff from new_incoming
+                -- No longer handles 'true' sentinel - difference is always explicit dict
                 local difference = merge(old_incoming, new_incoming).difference
-                local difference_without_trues = {}
-                -- On trues, we have to manually compute the new contexts again
-                -- CRITICAL TODO: Without the "all" index this makes things substantially slower, so I'll have to add that back in
-                -- TODO: The following case checking has some duplicate code, so it could be rewritten to be neater
-                if difference == true then
-                    for room, _ in pairs(logic.contexts) do
-                        difference_without_trues[room] = {}
-                        if old_incoming[room] ~= true then
-                            for bin_str, _ in pairs(all_bin_strs) do
-                                if not old_incoming[room][bin_str] then
-                                    difference_without_trues[room][bin_str] = true
-                                end
-                            end
-                        end
-                    end
-                else
-                    for room, _ in pairs(logic.contexts) do
-                        difference_without_trues[room] = difference[room]
-                        if difference_without_trues[room] == true then
-                            difference_without_trues[room] = {}
-                            for bin_str, _ in pairs(all_bin_strs) do
-                                if not old_incoming[room][bin_str] then
-                                    difference_without_trues[room][bin_str] = true
-                                end
-                            end
-                        -- Otherwise, difference shoul completely hold what difference_without_trues is (there are already no trues in that room)
-                        end
-                    end
-                end
-                -- Okay, now that we finally have the new contexts, let's add them
+
+                -- Add new contexts and check satisfaction
                 local newly_satisfied = {}
                 for room, _ in pairs(logic.contexts) do
                     newly_satisfied[room] = {}
-                    local all_true_room = true
-                    for bin_str, _ in pairs(all_bin_strs) do
-                        if difference_without_trues[room][bin_str] then
-                            node_context_to_amount[end_node_key][room][bin_str] = node_context_to_amount[end_node_key][room][bin_str] + 1
-                            if node_context_to_amount[end_node_key][room][bin_str] == end_node.num_pre then
-                                newly_satisfied[room][bin_str] = true
-                            end
+                    for bin_str, _ in pairs(difference[room]) do
+                        node_context_to_amount[end_node_key][room][bin_str] = node_context_to_amount[end_node_key][room][bin_str] + 1
+                        if node_context_to_amount[end_node_key][room][bin_str] == end_node.num_pre then
+                            newly_satisfied[room][bin_str] = true
                         end
                     end
                 end
-                -- Okay, node_to_contexts might actually have to be incoming things, because now I need to add "trues" back to newly_satisfied and I don't know what the originally satisfied INPUT contexts were
-                -- I'm just going to not add trues and pray that this doesn't mess things up (it's a table of everything still)
-                -- CRITICAL TODO: Go back and rewrite later
+
                 -- Double check that we actually end up transmitting a new thing afterward
                 local accurate_outgoing = transmit_through_node(end_node, newly_satisfied)
                 local accurate_merge_info = merge(node_to_contexts[end_node_key], accurate_outgoing)

@@ -26,7 +26,7 @@ default.validate = function(graph, slot, trav, extra)
 end
 
 -- Mandatory
-default.reflect = function(graph, trav_to_new_slot)
+default.reflect = function(graph, trav_to_new_slot, trav_to_old_slot)
 end
 
 return default

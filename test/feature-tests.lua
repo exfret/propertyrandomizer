@@ -13,7 +13,7 @@ local TEST_FEATURES = {
     logic_build = false,      -- Test new-lib logic graph building
     extended_sort = false,    -- Test context-aware topological sort
     unified_tech = false,     -- Test unified tech prereq randomization
-    item_new = true,          -- Test item_new randomization (slot scramble)
+    item_new = false,         -- Test item_new randomization (slot scramble)
 }
 
 -- Which implementation to test (set via TEST_IMPL: "item_new" or "item_simple")
