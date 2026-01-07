@@ -1,11 +1,16 @@
--- data-final-fixes.lua
--- Property Randomizer - Data Final Fixes Stage
+global_seed = 123456
+randomizations = {}
+
+local unified = require("randomizations/graph/unified/new/execute")
+unified.execute()
+
+do return true end
 
 -- Toggle between test mode and production mode
 local RUN_TESTS = false
 
 if RUN_TESTS then
-    require("test/feature-tests")
+    -- TODO: Redo tests
     do return true end
 end
 
