@@ -26,6 +26,7 @@ Requests
 1. Regenerating seed more quickly (rerolling automatically)
 2. Blacklisting items/prototypes for certain randomizations
 3. Better clamps on the new numerical randomizations with lower than ultimate chaos
+4. Way to save settings
 
 Fixed?
 12. Change corpse size doesn't check that there is a corpse first, resulting in mod incompatibilities (https://mods.factorio.com/mod/propertyrandomizer/discussion/69224af08e1629a0efaa7d67)

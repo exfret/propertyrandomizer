@@ -60,7 +60,6 @@ local lib_name = "new-lib"
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lu = require(lib_name .. "/logic/lookup/init")
 local logic_group = require(lib_name .. "/logic/logic-group")
-local logic_balancing = require(lib_name .. "/logic/logic-balancing")
 local builder = require(lib_name .. "/logic/builder")
 local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
@@ -139,7 +138,7 @@ logic.build = function()
     -- These are included in a separate file to separate them out from the "real logic"
     -- A lot of the time, this can just end up adding edges from nodes created by logic_group
 
-    logic_balancing.build(logic.graph, logic.type_info)
+    -- TODO
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
