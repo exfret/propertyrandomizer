@@ -2,6 +2,8 @@ local gutils = require("new-lib/graph/graph-utils")
 
 local tech_prereqs = {}
 
+tech_prereqs.id = "tech_prereqs"
+
 -- Check if we've already added bonus prereqs to a technology
 local is_added_tech = {}
 local bonus_times = 1
@@ -41,7 +43,7 @@ tech_prereqs.validate = function(graph, slot, trav, extra)
     end
 end
 
-tech_prereqs.reflect = function(graph, trav_to_new_slot)
+tech_prereqs.reflect = function(graph, trav_to_new_slot, trav_to_handler)
     -- First, remove .upgrade property so that techs don't become hidden unnecessarily
     for _, tech in pairs(data.raw.technology) do
         tech.upgrade = false
@@ -53,16 +55,19 @@ tech_prereqs.reflect = function(graph, trav_to_new_slot)
     end
 
     -- Finally, add prerequisites corresponding to slot for each traveler
-    -- already_added just safeguards us against accidentally adding a prereq twice, which isn't checked for now
+    -- already_added just safeguards us against accidentally adding a prereq twice, which isn't checked in validate right now
+    -- CRITICAL TODO: Need to double check trav_to_new_slot just does travs with this handler
     local already_added = {}
     for trav_key, slot in pairs(trav_to_new_slot) do
-        local dep_tech = gutils.get_conn_owner(graph, graph.nodes[trav_key]).name
-        local pre_tech = gutils.get_conn_owner(graph, slot).name
-        already_added[dep_tech] = already_added[dep_tech] or {}
-        if not already_added[dep_tech][pre_tech] then
-            already_added[dep_tech][pre_tech] = true
-            local tech_prot = data.raw.technology[dep_tech]
-            table.insert(tech_prot.prerequisites, pre_tech)
+        if trav_to_handler[trav_key].id == "tech_prereqs" then
+            local dep_tech = gutils.get_conn_owner(graph, graph.nodes[trav_key]).name
+            local pre_tech = gutils.get_conn_owner(graph, slot).name
+            already_added[dep_tech] = already_added[dep_tech] or {}
+            if not already_added[dep_tech][pre_tech] then
+                already_added[dep_tech][pre_tech] = true
+                local tech_prot = data.raw.technology[dep_tech]
+                table.insert(tech_prot.prerequisites, pre_tech)
+            end
         end
     end
 end

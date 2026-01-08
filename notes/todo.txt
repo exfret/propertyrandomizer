@@ -134,6 +134,8 @@ Ideas from Nifyr (not necessarily good ones):
 64. Make a list of "physical" nodes (ones that aren't an abstract/logical requirement or whatever), which are the ones used for determining softlocks (for example, operate-entity for crafting machines, the item nodes themselves rather than surface-specific nodes)
 65. Add back short spoil time transport blacklist to build-graph-compat
 66. Collision masks?
+67. Rewrite this todo list; make better for random side todos
+68. Idea: Don't randomize tech unlocks, just recipe results?
 
 DONE:
 55. Make the topological sort random

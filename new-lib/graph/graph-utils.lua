@@ -131,6 +131,8 @@ gutils.subdivide = function(graph, edge_key)
     local traveler = gutils.add_node(graph, "traveler", edge_key)
     slot.op = "AND"
     traveler.op = "OR"
+    slot.old_trav = gutils.key(traveler)
+    traveler.old_slot = gutils.key(slot)
     gutils.add_edge(graph, gutils.key(node1), gutils.key(slot))
     gutils.add_edge(graph, gutils.key(traveler), gutils.key(node2))
     -- Slot and traveler start connected
