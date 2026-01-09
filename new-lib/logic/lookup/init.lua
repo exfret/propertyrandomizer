@@ -23,6 +23,8 @@ local req = stage0.init_requires(lib_name)
 local lu = {}
 
 -- Stage definitions with names for profiling
+-- TODO: Undo this ugly table
+-- TODO: No wait the whole code is horrifyingly ugly, need to clean this up too... ugh
 local stages = {
     [1] = {
         {"rooms", stage1.rooms},

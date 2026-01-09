@@ -69,15 +69,14 @@ local key = gutils.key
 
 local logic = {}
 
--- Note: We used to have graph = {} here, but now it's only set during load
--- This way it doesn't autoload (which is slow) and also we can catch when it's used without loading first
-
 ----------------------------------------------------------------------
 -- Setup
 ----------------------------------------------------------------------
 
 -- Contexts currently include rooms (i.e.- where things can be done)
 logic.contexts = {}
+
+logic.graph = {}
 logic.type_info = {}
 -- Needed for edge context info
 logic.edge_info = {}
@@ -94,6 +93,8 @@ logic.build = function()
     end
 
     logic.graph = {}
+    logic.type_info = {}
+    logic.edge_info = {}
 
     -- Initialize helpers with references to our tables
     builder.init(logic.graph, logic.type_info, logic.edge_info)

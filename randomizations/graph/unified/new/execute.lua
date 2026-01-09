@@ -20,6 +20,7 @@ local handler_ids = {
     "tech-unlocks",
     "recipe-ingredients",
     "tech-prereqs",
+    --"starting-planet",
 }
 
 unified.execute = function()
@@ -55,45 +56,47 @@ unified.execute = function()
 
     -- Logic building
     logic.build()
+    local old_graph = table.deepcopy(logic.graph)
     local graph = logic.graph
 
     -- Change structure to couple tech unlocks with recipes
-    local old_tech_unlock = {}
-    logic.type_info["recipe-tech-unlock"].op = "AND"
-    for _, node in pairs(graph.nodes) do
-        if node.type == "recipe" and data.raw.recipe[node.name].enabled == false then
-            local edges_to_remove = {}
-            local recipe_final_node = gutils.add_node(graph, "logic-or", "recipe-final-" .. node.name)
-            recipe_final_node.op = "OR"
-            for pre, _ in pairs(node.pre) do
-                local prenode = graph.nodes[graph.edges[pre].start]
-                if prenode.type == "recipe-tech-unlock" then
-                    old_tech_unlock[gutils.key(prenode)] = true
-                    -- TODO: Some more basic graph navigation would be great
-                    local prenode_tech = graph.nodes[graph.edges[next(prenode.pre)].start]
-                    table.insert(edges_to_remove, pre)
-                    -- TODO: I should probably use a compound key rather than normal key here
-                    local unlock_recipe_tech_node = gutils.add_node(graph, "recipe-tech-unlock", gutils.key(node.name, prenode_tech.name))
-                    unlock_recipe_tech_node.op = "AND"
-                    gutils.add_edge(graph, gutils.key(node), gutils.key(unlock_recipe_tech_node))
-                    gutils.add_edge(graph, gutils.key(prenode_tech), gutils.key(unlock_recipe_tech_node))
-                    gutils.add_edge(graph, gutils.key(unlock_recipe_tech_node), gutils.key(recipe_final_node))
+    if COMBINE_TECH_UNLOCK_RECIPE_TWO then
+        local old_tech_unlock = {}
+        logic.type_info["recipe-tech-unlock"].op = "AND"
+        for _, node in pairs(graph.nodes) do
+            if node.type == "recipe" and data.raw.recipe[node.name].enabled == false then
+                local edges_to_remove = {}
+                local recipe_final_node = gutils.add_node(graph, "logic-or", "recipe-final-" .. node.name)
+                recipe_final_node.op = "OR"
+                for pre, _ in pairs(node.pre) do
+                    local prenode = graph.nodes[graph.edges[pre].start]
+                    if prenode.type == "recipe-tech-unlock" then
+                        old_tech_unlock[gutils.key(prenode)] = true
+                        -- TODO: Some more basic graph navigation would be great
+                        local prenode_tech = graph.nodes[graph.edges[next(prenode.pre)].start]
+                        table.insert(edges_to_remove, pre)
+                        -- TODO: I should probably use a compound key rather than normal key here
+                        local unlock_recipe_tech_node = gutils.add_node(graph, "recipe-tech-unlock", gutils.key(node.name, prenode_tech.name))
+                        unlock_recipe_tech_node.op = "AND"
+                        gutils.add_edge(graph, gutils.key(node), gutils.key(unlock_recipe_tech_node))
+                        gutils.add_edge(graph, gutils.key(prenode_tech), gutils.key(unlock_recipe_tech_node))
+                        gutils.add_edge(graph, gutils.key(unlock_recipe_tech_node), gutils.key(recipe_final_node))
+                    end
                 end
-            end
-            for dep, _ in pairs(node.dep) do
-                -- Filter out the node we just added to recipe-tech-unlock
-                local stop_node_key = graph.edges[dep].stop
-                if graph.nodes[stop_node_key].type ~= "recipe-tech-unlock" then
-                    -- deps transferred to recipe-final
-                    gutils.add_edge(graph, gutils.key(recipe_final_node), stop_node_key)
-                    table.insert(edges_to_remove, dep)
+                for dep, _ in pairs(node.dep) do
+                    -- Filter out the node we just added to recipe-tech-unlock
+                    local stop_node_key = graph.edges[dep].stop
+                    if graph.nodes[stop_node_key].type ~= "recipe-tech-unlock" then
+                        -- deps transferred to recipe-final
+                        gutils.add_edge(graph, gutils.key(recipe_final_node), stop_node_key)
+                        table.insert(edges_to_remove, dep)
+                    end
                 end
-            end
-            for _, edge_key in pairs(edges_to_remove) do
-                gutils.remove_edge(graph, edge_key)
+                for _, edge_key in pairs(edges_to_remove) do
+                    gutils.remove_edge(graph, edge_key)
+                end
             end
         end
-        -- TODO: Then check recipe tech unlock randomizers to see compatbility
     end
 
     -- Spoofing
@@ -121,8 +124,18 @@ unified.execute = function()
         trav_to_old_slot[gutils.key(conn.traveler)] = conn.slot
     end
 
-    local subdiv_sort = top.sort(subdiv_graph)
-    log(serpent.block(subdiv_sort.open))
+    local path_graph = table.deepcopy(old_graph)
+    local pre_to_subdivide_2 = {}
+    for _, node in pairs(path_graph.nodes) do
+        for pre,  _ in pairs(node.pre) do
+            table.insert(pre_to_subdivide_2, pre)
+        end
+    end
+    for _, pre in pairs(pre_to_subdivide_2) do
+        gutils.subdivide(path_graph, pre)
+    end
+
+    local subdiv_sort = top.sort(path_graph)
     -- Path to promethium science item
     local prom_science = graph.nodes[gutils.key("item", "promethium-science-pack")]
     local path_goal
@@ -135,12 +148,14 @@ unified.execute = function()
             break
         end
     end
-    local short_path_info = top.path(subdiv_graph, path_goal, subdiv_sort)
+    local short_path_info = top.path(path_graph, path_goal, subdiv_sort)
     -- Get nodes that appear at all (with any context)
     local short_path = {}
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
     end
+
+    short_path = {}
 
     ----------------------------------------------------------------------------------------------------
     -- Claiming
@@ -149,13 +164,15 @@ unified.execute = function()
     -- We'll also be cutting the slot-traveler connections later
     local cut_graph = subdiv_graph
     subdiv_graph = table.deepcopy(subdiv_graph)
+    -- Don't ever update this one for new planet
+    old_subdiv_graph = table.deepcopy(subdiv_graph)
 
     -- Initial top sort
     local init_sort = top.sort(cut_graph)
 
     -- Find critical nodes; put those first
     -- Let promethium science be hardcoded as the win condition for the vanilla sort
-    local promethium_inds = init_sort.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
+    --[[local promethium_inds = init_sort.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
     local earliest_ind
     for ind, _ in pairs(promethium_inds) do
         if earliest_ind == nil or ind < earliest_ind then
@@ -182,10 +199,21 @@ unified.execute = function()
     end
     for _, open_info in pairs(unimportant_open) do
         table.insert(open_sorted, open_info)
-    end
+    end]]
     -- CRITICAL TODO: Decide whether I actually want to keep the critical path stuff; the following line actually undoes it
     -- Note: This is different from the critical path stuff used for the first pass sort
     open_sorted = init_sort.open
+
+    -- TODO: Dunno if I actually will use this I thought of another idea halfway through
+    local graph_with_cuts = table.deepcopy(cut_graph)
+    -- Initially empty
+    local graph_with_cuts_edges_to_remove = {}
+    for edge_key, _ in pairs(graph_with_cuts.edges) do
+        table.insert(graph_with_cuts_edges_to_remove, edge_key)
+    end
+    for _, edge_key in pairs(graph_with_cuts_edges_to_remove) do
+        gutils.remove_edge(graph_with_cuts, edge_key)
+    end
 
     -- Now for the actual gathering
     local added_to_deps = {}
@@ -202,7 +230,7 @@ unified.execute = function()
 
         -- Do OR node's corresponding travelers, and the AND nodes themselves
         -- Tack on a condition that it's not an old tech unlock
-        if node.type ~= "slot" and ((node.type ~= "traveler" and node.op == "AND") or (node.type == "traveler" and gutils.get_conn_owner(cut_graph, node).op == "OR" and not (COMBINE_TECH_UNLOCK_RECIPE_TWO and old_tech_unlock[gutils.key(node)]))) then
+        if node.type ~= "slot" and ((node.type ~= "traveler" and node.op == "AND") or (node.type == "traveler" and gutils.get_conn_owner(cut_graph, node).op == "OR" and not (COMBINE_TECH_UNLOCK_RECIPE_TWO and old_tech_unlock[gutils.key(gutils.get_conn_owner(cut_graph, node))]))) then
             if not added_to_deps[gutils.key(node)] then
                 node_to_random_travs[gutils.key(node)] = {}
 
@@ -254,6 +282,8 @@ unified.execute = function()
                 end
 
                 for _, edge_key in pairs(edges_to_remove) do
+                    local edge = cut_graph.edges[edge_key]
+                    gutils.add_edge(graph_with_cuts, edge.start, edge.stop)
                     gutils.remove_edge(cut_graph, edge_key)
                 end
                 -- Add everything to dependents (most of them just won't do anything but it's fine)
@@ -273,6 +303,7 @@ unified.execute = function()
     -- So note: Our references from sorted_deps and such at this point are DEAD, they point to cut_graph
     -- This shouldn't cause issues here hopefully
     local pool_graph = table.deepcopy(cut_graph)
+
     local sort_to_use = top.sort
     if PRESERVE_ISOLATABILITY then
         sort_to_use = top2.sort
@@ -301,7 +332,7 @@ unified.execute = function()
     -- Let's still test pools via index in each context list
     -- Later, we could try with context pools
 
-    log("Calculating context reachability")
+    log("Calculating pools")
 
     -- Takes context and node to when the node first gets that context in open
     -- Might be able to add this to sort info
@@ -384,14 +415,124 @@ unified.execute = function()
     -- First Pass (if applicable)
     ----------------------------------------------------------------------------------------------------
 
+
+
+
+
+
+        -- Gleba here we come
+        -- Since we're adding this as fixed and we have no randomized room connections yet, we don't need to worry about graph_with_cuts
+        for _, graph_var in pairs({graph, pool_graph, pass_graph, cut_graph, random_graph, subdiv_graph}) do
+            if graph_var ~= nil then
+                -- It's much better algorithmically (and closer to reflection reality) to just switch dependents of gleba and nauvis
+                local nauvis_node = graph_var.nodes[gutils.key("room", gutils.key("planet", "nauvis"))]
+                local gleba_node = graph_var.nodes[gutils.key("room", gutils.key("planet", "gleba"))]
+                local function leads_to_room_launch(node)
+                    if node.type == "room-launch" then
+                        return true
+                    elseif node.type ~= "slot" and node.type ~= "traveler" then
+                        return false
+                    else
+                        local next_edge
+                        for dep, _ in pairs(node.dep) do
+                            next_edge = graph.edges[dep]
+                            break
+                        end
+                        if next_edge == nil then
+                            return false
+                        else
+                            return leads_to_room_launch(graph.nodes[next_edge.stop])
+                        end
+                    end
+                end
+                local nauvis_deps = {}
+                for dep, _ in pairs(nauvis_node.dep) do
+                    local dep_node = graph_var.nodes[graph_var.edges[dep].stop]
+                    -- room-launch's are intrinsic to the room
+                    if not leads_to_room_launch(dep_node) then
+                        if dep_node.type == "slot" then
+                            local dep_node_dep
+                            for dep2, _ in pairs(dep_node.dep) do
+                                dep_node_dep = dep2
+                                break
+                            end
+                            if dep_node_dep ~= nil then
+                                table.insert(nauvis_deps, dep_node_dep)
+                            end
+                        else
+                            table.insert(nauvis_deps, dep)
+                        end
+                    end
+                end
+                local gleba_deps = {}
+                for dep, _ in pairs(gleba_node.dep) do
+                    local dep_node = graph_var.nodes[graph_var.edges[dep].stop]
+                    if not leads_to_room_launch(dep_node) then
+                        if dep_node.type == "slot" then
+                            local dep_node_dep
+                            for dep2, _ in pairs(dep_node.dep) do
+                                dep_node_dep = dep2
+                                break
+                            end
+                            if dep_node_dep ~= nil then
+                                table.insert(gleba_deps, dep_node_dep)
+                            end
+                        else
+                            table.insert(gleba_deps, dep)
+                        end
+                    end
+                end
+                -- We add edges directly to the nodes, but skipping slots is fine; skipping travelers is what you have to watch out for
+                for _, dep in pairs(nauvis_deps) do
+                    local edge = graph_var.edges[dep]
+                    gutils.add_edge(graph_var, gutils.key(gleba_node), edge.stop)
+                    gutils.remove_edge(graph_var, dep)
+                end
+                for _, dep in pairs(gleba_deps) do
+                    local edge = graph_var.edges[dep]
+                    gutils.add_edge(graph_var, gutils.key(nauvis_node), edge.stop)
+                    gutils.remove_edge(graph_var, dep)
+                end
+
+                --[[local starting_node = graph_var.nodes[gutils.key("starting-planet", "")]
+                local next_edge
+                for dep, _ in pairs(starting_node.dep) do
+                    next_edge = dep
+                    break
+                end
+                while true do
+                    local next_node = graph_var.nodes[graph_var.edges[next_edge].stop]
+                    if next_node.type ~= "slot" and next_node.type ~= "traveler" then
+                        break
+                    else
+                        for dep, _ in pairs(next_node.dep) do
+                            next_edge = dep
+                            break
+                        end
+                    end
+                end
+                gutils.remove_edge(graph_var, next_edge)
+                -- Just a direction connection; too lazy to subdivide
+                gutils.add_edge(graph_var, gutils.key(starting_node), gutils.key("room", gutils.key("planet", "gleba")))]]
+            end
+        end
+        log("Done injecting gleba")
+
+
+
+
+
+
+
     if CONDUCT_FIRST_PASS then
         -- base dep to pool of prereqs it has available
         -- Note that "base" is a misnomer within this context; in first pass there are base deps and head deps, but both of those are on the trav side from this file's perspective
         -- Do NOT check validity here; that is the responsibility of the first_pass algorithm
         -- Doing validity checks here artificially decreases the prereq pool, leading to potentially more failures and instability
-        local base_to_pool = {}
+        --local base_to_pool = {}
 
-        for _, dep in pairs(sorted_deps) do
+        -- base_to_pool I don't think is used anymore
+        --[[for _, dep in pairs(sorted_deps) do
             base_to_pool[gutils.key(dep)] = {}
             -- TODO: Account for all travelers at once rather than assuming they all have the same requirements
             local example_trav = node_to_random_travs[gutils.key(dep)][1]
@@ -404,7 +545,7 @@ unified.execute = function()
                     end
                 end
             end
-        end
+        end]]
 
         local pass_graph = table.deepcopy(subdiv_graph)
 
@@ -496,11 +637,69 @@ unified.execute = function()
             end
         end
 
+        -- TODO: Should I keep this?
+        -- Extended sort to prioritize things reachable in isolations from larger VANILLA sort, then put other things after
+        local planet_specific_sort = top2.sort(old_subdiv_graph)
+        local reachable_isolation_deps = {}
+        local not_reachable_isolation_deps = {}
+        for _, dep in pairs(sorted_deps) do
+            local gleba_context = gutils.key("planet", "gleba")
+            -- 1 is isolatability
+            if planet_specific_sort.node_to_contexts[gutils.key(dep)] == true or planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context] == true then
+                table.insert(reachable_isolation_deps, dep)
+            else
+                local has_isolatability_context = false
+                for bin_str, _ in pairs(planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context]) do
+                    if string.sub(bin_str, 1, 1) == "1" then
+                        has_isolatability_context = true
+                    end
+                end
+                if has_isolatability_context then
+                    table.insert(reachable_isolation_deps, dep)
+                else
+                    table.insert(not_reachable_isolation_deps, dep)
+                end
+            end
+        end
+        sorted_deps = {}
+        for _, dep in pairs(reachable_isolation_deps) do
+            table.insert(sorted_deps, dep)
+        end
+        for _, dep in pairs(not_reachable_isolation_deps) do
+            table.insert(sorted_deps, dep)
+        end
+        -- CRITICAL TODO: Next level of desperation would be to start ignoring some of those blacklisted edges that we add
+        -- Find ordering of the (potentially few) things we can reach in this specific context, then resort to the larger path
+        -- extraplanetary doesn't mean off-planet per se, just that it wasn't found in planet_specific_sort
+        --[[local sorted_deps_extraplanetary = {}
+        local is_a_dependent = {}
+        for _, dep in pairs(sorted_deps) do
+            if planet_specific_sort.node_to_contexts[gutils.key(dep)] == nil or (planet_specific_sort.node_to_contexts[gutils.key(dep)] ~= true and next(planet_specific_sort.node_to_contexts[gutils.key(dep)]) == nil) then
+                table.insert(sorted_deps_extraplanetary, dep)
+            end
+            is_a_dependent[gutils.key(dep)] = true
+        end
+        sorted_deps = {}
+        local added_to_planet_specific = {}
+        for _, open_info in pairs(planet_specific_sort.open) do
+            if not added_to_planet_specific[open_info.node] and is_a_dependent[open_info.node] then
+                added_to_planet_specific[open_info.node] = true
+                table.insert(sorted_deps, subdiv_graph.nodes[open_info.node])
+            end
+        end
+        for _, dep in pairs(sorted_deps_extraplanetary) do
+            table.insert(sorted_deps, dep)
+        end
+        for _, node in pairs(planet_specific_sort.open) do
+            log(serpent.block(node))
+        end]]
+
         local base_deps = {}
         local head_deps = {}
         local head_to_trav = {}
         local base_to_slot = {}
-        for _, dep in pairs(sorted_deps) do
+        for _, dep_in_sorted in pairs(sorted_deps) do
+            local dep = pass_graph.nodes[gutils.key(dep_in_sorted)]
             -- Only add deps if they had some travelers/were going to have something randomized
             -- A long stream of checks with COMBINE_TECH_UNLOCK_RECIPE, probably some are only needed because of bugs
             -- TODO: Fix!
@@ -513,11 +712,10 @@ unified.execute = function()
                 local dep_in_subdiv = subdiv_graph.nodes[gutils.key(dep)]
                 if dep_in_subdiv then
                     local owner = gutils.get_conn_owner(subdiv_graph, dep_in_subdiv)
-                    is_tech_unlock_trav = owner and owner.type == "recipe-tech-unlock"
+                    is_tech_unlock_trav = (owner ~= nil) and (owner.type == "recipe-tech-unlock")
                 end
             end
             if next(node_to_random_travs[gutils.key(dep)]) ~= nil and not is_tech_unlock_trav then
-                
                 table.insert(base_deps, dep)
                 local head_node = gutils.add_node(pass_graph, dep.type, dep.name .. "-head")
                 head_node.op = "AND"
@@ -531,7 +729,7 @@ unified.execute = function()
                 local deps_to_remove = {}
                 for base_dep, _ in pairs(dep.dep) do
                     -- TODO: Another nil edges?
-                    if pass_graph.edges[base_dep] ~= nil then
+                    if pass_graph.edges[base_dep] ~= nil and base_dep ~= gutils.ekey(base_head_edge) then
                         gutils.add_edge(pass_graph, gutils.key(head_node), pass_graph.edges[base_dep].stop)
                         table.insert(deps_to_remove, base_dep)
                     end
@@ -574,7 +772,9 @@ unified.execute = function()
             end
         end
 
-        local first_pass_info = first_pass.shuffle(pass_graph, short_path, base_deps, head_deps, base_to_pool, node_to_random_travs, head_to_trav, base_to_slot)
+        log("Calling first-pass")
+        local first_pass_info = first_pass.shuffle(pass_graph, short_path, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, trav_to_handler)
+        log("Call successful")
 
         if COMBINE_TECH_UNLOCK_RECIPE then
             -- Uncombine recipe and recipe-tech-unlock
@@ -721,6 +921,42 @@ unified.execute = function()
         table.insert(shuffled_prereqs, prereq)
     end
 
+    -- Take out techs and put them back in order to encourage recipe unlocks to be in order
+    -- Order techs according to new sort
+    -- This still seems not to be working
+    --[[if COMBINE_TECH_UNLOCK_RECIPE_TWO then
+        local techs_in_order = {}
+        local tech_to_pos = {}
+        for _, dep in pairs(sorted_deps) do
+            if dep.type == "technology" then
+                table.insert(techs_in_order, {})
+                tech_to_pos[string.sub(dep.name, 1, -6)] = #techs_in_order
+            end
+        end
+        for _, prereq in pairs(shuffled_prereqs) do
+            local prereq_owner = gutils.get_conn_owner(pool_graph, prereq)
+            if prereq_owner.type == "technology" and tech_to_pos[prereq_owner.name] ~= nil then
+                table.insert(techs_in_order[tech_to_pos[prereq_owner.name] ], prereq)
+            end
+        end
+        local outer_ind = 1
+        local inner_ind = 1
+        for ind, prereq in pairs(shuffled_prereqs) do
+            local prereq_owner = gutils.get_conn_owner(pool_graph, prereq)
+            if prereq_owner.type == "technology" and outer_ind <= #techs_in_order then
+                if inner_ind > #techs_in_order[outer_ind] then
+                    outer_ind = outer_ind + 1
+                    inner_ind = 1
+                end
+                if outer_ind <= #techs_in_order then
+                    local replacement_prereq = techs_in_order[outer_ind][inner_ind]
+                    shuffled_prereqs[ind] = replacement_prereq
+                    inner_ind = inner_ind + 1
+                end
+            end
+        end
+    end]]
+
     -- Note that we don't technically need to go in dependent order anymore
     local used_prereq_indices = {}
     -- We actually should keep dep-prereq map since some prereqs are there multiple times
@@ -749,7 +985,11 @@ unified.execute = function()
                 end
                 if not found_prereq then
                     -- Future idea: try going through a second time with another shuffled list
-                    error()
+                    local percentage = math.floor(100 * dep_ind / #sorted_deps)
+                    -- Prereq shuffle can "keep failing", making its failures only an isolated subset (that's cool!)
+                    log("Prereq shuffle failed at " .. percentage .. "%")
+                    -- CRITICAL TODO: Uncomment this out! No softlocks allowed!
+                    --error()
                 end
             end
         end
@@ -762,6 +1002,20 @@ unified.execute = function()
     for _, handler in pairs(handlers) do
         handler.reflect(random_graph, trav_to_new_slot, trav_to_handler)
     end
+
+
+
+
+    -- CRITICAL TODO: Remove when done!
+    local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
+    data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+    data.raw.planet.nauvis.name = "nauvis"
+    data.raw.planet.gleba = old_nauvis
+    data.raw.planet.gleba.name = "gleba"
+
+
+
+
 end
 
 return unified

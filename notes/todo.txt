@@ -136,6 +136,7 @@ Ideas from Nifyr (not necessarily good ones):
 66. Collision masks?
 67. Rewrite this todo list; make better for random side todos
 68. Idea: Don't randomize tech unlocks, just recipe results?
+69. Bubbling approach for recipe tech unlocks
 
 DONE:
 55. Make the topological sort random

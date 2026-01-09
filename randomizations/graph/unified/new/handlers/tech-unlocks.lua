@@ -8,7 +8,7 @@ tech_unlocks.id = "tech_unlocks"
 
 tech_unlocks.claim = function(graph, prereq, dep, trav)
     if prereq.type == "technology" and dep.type == "recipe-tech-unlock" then
-        return 2
+        return 4
     end
 end
 
@@ -45,26 +45,31 @@ tech_unlocks.reflect = function(graph, trav_to_new_slot, trav_to_handler)
             local recipe_name
             if node.type == "recipe-tech-unlock" then
                 -- Hacky COMBINE path: the "trav" is the recipe-tech-unlock node itself
+                -- This should no longer be used unless I resurrect the tech unlock combiner
+                error()
                 recipe_name = node.name
             else
                 -- Normal path: trav is a traveler, get the owner (recipe-tech-unlock)
                 local dep = gutils.get_conn_owner(graph, node)
                 recipe_name = dep.name
             end
-            -- If this is not the name of a recipe, we probably are combining tech unlocks, so just look at dependent's name
-            if data.raw.recipe[recipe_name] == nil then
-                local slot_before_recipe = graph.nodes[graph.edges[next(gutils.get_conn_owner(graph, node).dep)].stop]
-                recipe_name = gutils.get_conn_owner(graph, gutils.get_conn_buddy(graph, slot_before_recipe)).name
-                -- Remove the "recipe-final" prefix
-                recipe_name = string.sub(recipe_name, 14, -1)
-            end
-            local tech_name = gutils.get_conn_owner(graph, slot).name
-            local tech = data.raw.technology[tech_name]
-            tech.effects = tech.effects or {}
-            table.insert(tech.effects, {
-                type = "unlock-recipe",
-                recipe = recipe_name,
-            })
+            -- Only look at head travelers
+            --if string.find(node.name, "-head") ~= nil then
+                -- If this is not the name of a recipe, we probably are combining tech unlocks, so just look at dependent's name
+                if data.raw.recipe[recipe_name] == nil then
+                    local slot_before_recipe = graph.nodes[graph.edges[next(gutils.get_conn_owner(graph, node).dep)].stop]
+                    recipe_name = gutils.get_conn_owner(graph, gutils.get_conn_buddy(graph, slot_before_recipe)).name
+                    -- Remove the "recipe-final" prefix
+                    recipe_name = string.sub(recipe_name, 14, -1)
+                end
+                local tech_name = gutils.get_conn_owner(graph, slot).name
+                local tech = data.raw.technology[tech_name]
+                tech.effects = tech.effects or {}
+                table.insert(tech.effects, {
+                    type = "unlock-recipe",
+                    recipe = recipe_name,
+                })
+            --end
         end
     end
 end
