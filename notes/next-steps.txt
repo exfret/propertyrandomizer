@@ -47,7 +47,7 @@ II. FEATURE: Duplicates, group unlocks (Into mid-February)
         1. Prototype definitions
             i. Brainstorm duplicates needed, modify duplicates library as needed
             ii. Prototype definitions, custom graphics implementations, custom places in tech tree (with fallbacks for mods when techs don't exist, time permitting)
-        2. Testing impact of duplicates (goal to other planet)
+        2. (Move to later potentially) Testing impact of duplicates (goal to other planet)
             i. Start space age game, "more" on non-graph rando/no high chaos/default seed (no biters), high resources, get to small mall
             ii. Finish mall, automate green science, work toward oil
             iii. Research and find oil, begin processing, oil intermediates

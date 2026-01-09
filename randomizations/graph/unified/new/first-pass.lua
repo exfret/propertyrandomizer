@@ -1,9 +1,6 @@
 -- Next steps:
---   * Finish tests on prereq pools
---   * Integration with main execute loop and tests
--- Note: If this doesn't work, I'll have to revert to a dynamic context re-evaluation loop
---   If that doesn't work either, I may have to live with a prereq shuffle, with side-integrations for item/entity rando
---   That would be really sad, but not the end of the world
+--   * Figure out why this is putting things after unreachable things, like crude oil processing (it should just be failing in those cases)
+--   * Needs to build context pools so that this doesn't happen
 
 -- The following musings are outdated
 --   This file currently does an extremely basic proposed sort order through the graph with randomized edges removed

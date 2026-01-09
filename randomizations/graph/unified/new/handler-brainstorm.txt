@@ -20,6 +20,7 @@ Small
   * Machine input/output fluids (boiler, fusion reactor, etc.), this might be able to be done with two handlers
   * Resource mining fluid (spoofs to allow more/fewer resources to need fluid too)
 
+
 Unsure about/not yet:
   * Mining results
     - Seems like it conflicts with item rando, and doesn't add too much for its level of balancing complexity
@@ -42,10 +43,13 @@ Unsure about/not yet:
     - A small thing with lots of complexity that's not worth figuring out yet
   * A bunch of planet --> X connections
     - As already mentioned, not changing context yet
+    - Things like lightning, heatings, tiles, surface conditions
   * A bunch of smaller/not worth right now things like equipment
   * Entity loot
     - Not really used in vanilla
-
-We can't change context yet (need more algorithmic development for that), which rules out a lot of planet-based rando
-Oh crap, this means no cross-planetary switches
-One step at a time, we'll worry about that later (can do a context switching step; will need to think about how that could work)
+  * Machine recipe categories
+  * Which resources require fluids (not many possibilities yet)
+  * Plant results
+  * Resources per planet/autoplace in general?
+  * Silly: Item launched? You launch something and it turns into something else on the way down
+  * On that note, base game rocket launch results
