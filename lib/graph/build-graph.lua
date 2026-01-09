@@ -1144,17 +1144,17 @@ local function load()
     log("Adding: burn-item")
     -- Do we have all we need to use this item as fuel somewhere?
 
-    for _, fuels in pairs(burnt_result_to_fuels) do
+    for _, fuels in pairs(fuel_category_to_fuels) do
         for _, fuel in pairs(fuels) do
             prereqs = {}
-    
+
             for surface_key, _ in pairs(surfaces) do
                 table.insert(prereqs, {
                     type = "burn-item-surface",
                     name = compound_key({fuel.name, surface_key})
                 })
             end
-    
+
             add_to_graph("burn-item", fuel.name, prereqs)
         end
     end
@@ -1163,7 +1163,7 @@ local function load()
     log("Adding: burn-item-surface")
     -- Do we have all we need to use this item as fuel on this surface?
 
-    for _, fuels in pairs(burnt_result_to_fuels) do
+    for _, fuels in pairs(fuel_category_to_fuels) do
         for _, fuel in pairs(fuels) do
             for surface_key, surface in pairs(surfaces) do
                 prereqs = {}
@@ -1178,6 +1178,7 @@ local function load()
                 })
 
                 add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs, {
+                    item = fuel.name,
                     surface = surface_key
                 })
             end
@@ -3783,9 +3784,15 @@ local function load()
                     name = trigger.entity
                 })
             elseif trigger.type == "craft-item" then
+                -- Account for tabular ItemIDFilters
+                -- Don't account for quality yet, just prevent immediate crashes
+                local item_name = trigger.item
+                if type(item_name) == "table" then
+                    item_name = item_name.name
+                end
                 table.insert(prereqs, {
                     type = "craft-material",
-                    name = "item-" .. trigger.item
+                    name = "item-" .. item_name
                 })
             elseif trigger.type == "craft-fluid" then
                 table.insert(prereqs, {
@@ -3793,9 +3800,13 @@ local function load()
                     name = "fluid-" .. trigger.fluid
                 })
             elseif trigger.type == "send-item-to-orbit" then
+                local item_name = trigger.item
+                if type(item_name) == "table" then
+                    item_name = item_name.name
+                end
                 table.insert(prereqs, {
                     type = "send-item-to-orbit",
-                    name = trigger.item
+                    name = item_name
                 })
             elseif trigger.type == "capture-spawner" then
                 table.insert(prereqs, {

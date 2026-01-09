@@ -34,6 +34,14 @@ end
 
 -- New
 randomizations.ammo_damage_types = function (id)
+    -- exfret: This is clobbering the issue with an unnecessarily large hammer, but there have been asteroid softlocks without warnings from the randomizer due to resistance randomization
+    -- This is just damage type rando, but I still worry, so I'm not allowing it to be randomized right now unless chaos is ultimate
+    -- This should at least allow for overrides to overcome it, but in reality this should just get done properly some other time
+    -- Ammo from turrets and projectiles from rockets are the only things that *really* need to be blacklisted, so those are the only functions I've touched
+    if global_chaos_idx < 4 then
+        return
+    end
+
     for _, ammo in pairs(data.raw.ammo) do
         local structs = {}
         trigger_utils.gather_ammo_structs(structs, ammo, true)
@@ -98,6 +106,12 @@ end
 
 -- New
 randomizations.projectile_damage_types = function (id)
+    -- exfret: Disabled on non-ultimate chaos
+    -- See comments in ammo_damage_types for more information
+    if global_chaos_idx < 4 then
+        return
+    end
+    
     indirect.iterate_child_prototypes("projectile", function (prototype, parents, structs, is_enemy)
         damage_type_randomization(prototype, parents, structs, id)
     end)

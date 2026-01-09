@@ -58,7 +58,7 @@ local to_ticks = function (unit, value)
         value = value * ticks_per_second * seconds_per_minute * minutes_per_hour
     end
 
-    return math.min(math.max(round(value), 1), 4000000000)
+    return math.min(math.max(round(value), 10 * ticks_per_second), 4000000000)
 end
 
 randomizations.asteroid_spawns = function (id)

@@ -81,7 +81,7 @@ randomizations.item_new = function(id)
     end
     for _, node in pairs(initial_sort_info.sorted) do
         table.sort(node.prereqs, function(prereq1, prereq2)
-            return (node_to_ind_in_sorted[build_graph.key(prereq1.type, prereq1.name)] or 0) < (node_to_ind_in_sorted[build_graph.key(prereq2.type, prereq2.name)] or 0)
+            return (node_to_ind_in_sorted[build_graph.key(prereq1.type, prereq1.name)] or (#initial_sort_info.sorted + 1)) < (node_to_ind_in_sorted[build_graph.key(prereq2.type, prereq2.name)] or (#initial_sort_info.sorted + 1))
         end)
     end
     local short_path = {}
@@ -932,13 +932,13 @@ randomizations.item_new = function(id)
                             new_val = item_prototype.name
                         })
                     end
-                    --[[if item.burnt_result == old_item.name then
+                    if item.burnt_result == old_item.name then
                         table.insert(changes, {
                             tbl = item,
                             prop = "burnt_result",
                             new_val = item_prototype.name
                         })
-                    end]]
+                    end
                 end
             end
         end

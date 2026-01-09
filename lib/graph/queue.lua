@@ -4,7 +4,7 @@ local rng = require("lib/random/rng")
 local queue_export = {}
 
 -- O(1)
-queue_export.new_queue = function ()
+queue_export.new = function ()
     return {
         list = {},
         front = 1,
@@ -32,17 +32,24 @@ queue_export.is_empty = function (queue)
     return queue.back <= queue.front
 end
 
-local swap = function (list, idx1, idx2)
-    local t = list[idx1]
-    list[idx1] = list[idx2]
-    list[idx2] = t
-end
+-- O(n) - removes all elements where filter(element) returns true
+queue_export.remove = function (queue, filter)
+    local new_list = {}
+    local new_back = 1
 
--- O(1) Swaps a random item with the front item and pops it.
-queue_export.pop_random = function (queue, rng_key)
-    local swap_idx = rng.range(rng_key, queue.front, queue.back - 1)
-    swap(queue.list, queue.front, swap_idx)
-    return queue_export.pop(queue)
+    for i = queue.front, queue.back - 1 do
+        if queue.list[i] ~= nil then
+            local item = queue.list[i]
+            if not filter(item) then
+                new_list[new_back] = item
+                new_back = new_back + 1
+            end
+        end
+    end
+
+    queue.list = new_list
+    queue.front = 1
+    queue.back = new_back
 end
 
 return queue_export
