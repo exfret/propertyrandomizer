@@ -20,9 +20,11 @@ logic.build()
 local sort_info_shiny = top2.sort(logic.graph)
 local old_num_techs_reachable_shiny = 0
 local prev_reachable_tech = {}
+local added_tech_old = {}
 for _, node_info in pairs(sort_info_shiny.open) do
     local node = logic.graph.nodes[node_info.node]
-    if node.type == "technology" then
+    if node.type == "technology" and not added_tech_old[node_info.node] then
+        added_tech_old[node_info.node] = true
         old_num_techs_reachable_shiny = old_num_techs_reachable_shiny + 1
         prev_reachable_tech[node.name] = true
     end
@@ -31,13 +33,17 @@ end
 local unified = require("randomizations/graph/unified/new/execute")
 unified.execute()
 
+do return true end
+
 logic.build()
 local new_sort_info_shiny = top2.sort(logic.graph)
 local new_num_techs_reachable_shiny = 0
 local newly_reachable_tech = {}
+local added_tech_new = {}
 for _, node_info in pairs(new_sort_info_shiny.open) do
     local node = logic.graph.nodes[node_info.node]
-    if node.type == "technology" then
+    if node.type == "technology" and not added_tech_new[node_info.node] then
+        added_tech_new[node_info.node] = true
         new_num_techs_reachable_shiny = new_num_techs_reachable_shiny + 1
         newly_reachable_tech[node.name] = true
     end
@@ -52,7 +58,7 @@ for tech, _ in pairs(prev_reachable_tech) do
         log(tech)
     end
 end
-log(serpent.block(new_sort_info_shiny.node_to_contexts))
+--log(serpent.block(new_sort_info_shiny.node_to_contexts))
 
 build_graph.load()
 --build_graph_compat.load(build_graph.graph)

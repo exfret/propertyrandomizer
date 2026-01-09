@@ -26,7 +26,6 @@ local set_prot = builder.set_prot
 local concrete = {}
 
 function concrete.build(lu)
-
     ----------------------------------------------------------------------
     -- Ammo Category
     ----------------------------------------------------------------------

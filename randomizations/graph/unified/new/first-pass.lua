@@ -28,7 +28,7 @@ local function head_to_vanilla_base(graph, head)
 end
 
 -- Later will probably need prereqs passed for pool management
-first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_pool, dep_to_travs, head_to_trav, base_to_slot)
+first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_travs, head_to_trav, base_to_slot, trav_to_handler)
     -- Permutation to attempt on deps_sorted
     local perm = {}
     for i = 1, #base_deps do
@@ -36,8 +36,33 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
     end
     rng.shuffle(rng.key({id = "unified"}), perm)
 
+
+
+    -- CRITICAL TODO: Remove this when done with it
+    -- Put nauvis at end of order so we get new planets maybe
+    --[=[local nauvis_indices = {}
+    for ind, dep in pairs(head_deps) do
+        if dep.type == "traveler" and (string.find(gutils.get_conn_owner(graph, dep).name, "nauvis") ~= nil or string.find(gutils.get_conn_owner(graph, dep).name, "space") ~= nil) then
+            nauvis_indices[ind] = true
+        end
+    end
+    local new_perm = {}
+    for i, j in pairs(perm) do
+        if not nauvis_indices[j] then
+            table.insert(new_perm, j)
+        end
+    end
+    -- Or just remove nuvis altogether
+    --[[for ind, _ in pairs(nauvis_indices) do
+        table.insert(new_perm, ind)
+    end]]
+    perm = new_perm]=]
+
+
+
     local old_graph = table.deepcopy(graph)
     local pass_sort = top.sort(graph)
+    --log(serpent.block(pass_sort.open))
 
     local function base_reachable(base)
         -- Again, just check for any context
@@ -52,28 +77,34 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
     end
 
     local function head_vanilla_reachable(head)
+        -- Note: the incoming edges to a base are different from those incoming to a head
         -- Wait, base already is an AND over the previous travelers, so we can just check if it has a context
         local vanilla_base = head_to_vanilla_base(graph, head)
         if base_reachable(vanilla_base) then
             return true
         end
         return false
-        -- Check if there is a common context among the vanilla slots of head's travelers (heads are AND's over their travelers)
-        --[[for context, _ in pairs(logic.contexts) do
+    end
+
+    local function head_absolute_reachable(head)
+        for context, _ in pairs(logic.contexts) do
             local has_context = true
-            for _, trav in pairs(dep_to_travs[gutils.key(head)]) do
-                -- We can't just check base_reachable here because the context needs to be consistent across bases
-                local base_contexts = pass_sort.node_to_contexts[trav.old_slot]
-                if base_contexts ~= true and not base_contexts[context] then
-                    has_context = false
-                    break
+            for pre, _ in pairs(head.pre) do
+                local prenode = graph.nodes[graph.edges[pre].start]
+                -- Check that this isn't the connection we're trying to assign
+                if gutils.key(prenode) ~= gutils.key(head_to_trav[gutils.key(head)]) then
+                    local prenode_contexts = pass_sort.node_to_contexts[gutils.key(prenode)]
+                    if prenode_contexts == nil or (prenode_contexts ~= true and prenode_contexts[context] ~= true) then
+                        has_context = false
+                        break
+                    end
                 end
             end
             if has_context then
                 return true
             end
         end
-        return false]]
+        return false
     end
 
     local is_reserved_base = {}
@@ -84,11 +115,16 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
     local base_unlock_order = {}
 
     local function connect_head(base, head)
-        local new_edge = gutils.add_edge(graph, gutils.key(base_to_slot[gutils.key(base)]), gutils.key(head_to_trav[gutils.key(head)]))
+        local new_edge = gutils.add_edge(graph, gutils.key(base_to_slot[gutils.key(base)]), gutils.key(head_to_trav[gutils.key(head)]), trav_to_handler)
+        local all_contexts = {}
+        for context, _ in pairs(logic.contexts) do
+            all_contexts[context] = true
+        end
         pass_sort = top.sort(graph, pass_sort, {
             edge = gutils.ekey(new_edge),
             -- CRITICAL TODO: Make sure this accounts for edge context changes later (in general our subdivisions need to get fixed for that)
             -- Currently none of my randomizations occur at context change edges though so I can ignore this for now
+            -- CRITICAL TODO: I turned off HAVING to have slot reachable but... is that the right way? Now I have to make this true
             contexts = pass_sort.node_to_contexts[gutils.key(base)],
         })
     end
@@ -102,7 +138,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
         end
         table.remove(reserved_bases, ind_to_remove)
         connect_head(base, head)
-        log("\n\nFULFILLED:\n" .. gutils.key(base) .. " BY " .. gutils.key(head) .. "\n")
+        log("\n\nFULFILLED:\n" .. gutils.key(base) .. " INTO " .. gutils.key(head) .. "\n")
     end
 
     local function update_reservations()
@@ -128,19 +164,42 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
         end
     end
 
+    local function is_compatible(base, head)
+        if head.type == base.type then
+            if head.type == "traveler" then
+                if trav_to_handler[gutils.key(head.type, string.sub(head.name, 1, -6))].id == trav_to_handler[gutils.key(base)].id then
+                    return true
+                end
+            else
+                return true
+            end
+        end
+        return false
+    end
+
     for i = 1, #base_deps do
         local old_base
         local new_head
 
         -- Reservation cancellation loop
         -- TODO: Just for safety, add a max iteration in constants.lua for this
+        local iterations = 1
         while true do
-            for base_ind, base in pairs(base_deps) do
+            if iterations % 100 == 0 then
+                log(tostring(iterations))
+            end
+            if iterations >= 10000 then
+                break
+            end
+            iterations = iterations + 1
+            for _, base in pairs(base_deps) do
+                base = graph.nodes[gutils.key(base)]
                 if base_to_head[gutils.key(base)] == nil and base_reachable(base) then
                     for perm_ind, head_ind in pairs(perm) do
                         local head = head_deps[head_ind]
+                        head = graph.nodes[gutils.key(head)]
 
-                        if head_to_base[gutils.key(head)] == nil then
+                        if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
                             -- Test if prereq pools are agreeable according to vanilla pools; filter valid prereqs
                             local valid_matching
 
@@ -150,7 +209,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
                             -- The number of prereqs needed is actually on base, since that has the randomized edges
                             -- trav is needed to check for validity conditions, which we skip over right now
                             -- CRITICAL TODO: Better validation check
-                            valid_matching = (head.type == base.type)
+                            
                             --[[local num_prereqs_needed = #dep_to_travs[gutils.key(base)]
                             local num_prereqs_found = 0
                             for _, prereq_slot in pairs(base_to_pool[gutils.key(base)]) do
@@ -167,7 +226,9 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
                                 valid_matching = true
                             end]]
 
-                            if valid_matching then
+                            -- No ability to make atm
+                            -- CRITICAL TODO: Rework
+                            if is_compatible(base, head) then
                                 -- TODO: Permanent reservations (right now results aren't randomized, so recipes basically all do something, making them pointless to implement now)
                                 -- Test if this is a reservation
                                 if not head_vanilla_reachable(head) then
@@ -194,17 +255,17 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
                 -- TODO: Consider third pass with arbitrary travelers
                 -- TODO: Should I iterate over reservations then heads?
                 local found_cancellation = false
-                for priority_level = 1, 2 do
+                for priority_level = 1, 3 do
                     for perm_ind, head_ind in pairs(perm) do
                         local head = head_deps[head_ind]
-                        if head_to_base[gutils.key(head)] == nil and head_vanilla_reachable(head) then
-                            if short_path[gutils.key(head)] or priority_level == 2 then
+                        if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
+                            if (priority_level == 1 and short_path[gutils.key(head)]) or (priority_level == 2 and head_vanilla_reachable(head)) or priority_level == 3 then
                                 if #reserved_bases >= 1 then
                                     for i = #reserved_bases, 1, -1 do
                                         local res_base = reserved_bases[i]
 
                                         -- CRITICAL TODO: More proper check compatibility/validity between head and base
-                                        if res_base.type == head.type then
+                                        if is_compatible(res_base, head) then
                                             table.remove(reserved_bases, i)
                                             is_reserved_base[gutils.key(res_base)] = nil
                                             
@@ -225,7 +286,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
                                         end
                                     end
                                 else
-                                    error()
+                                    break
                                 end
                             end
                         end
@@ -238,10 +299,38 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
                     end
                 end
                 if not found_cancellation then
-                    error()
+                    if #reserved_bases == 0 then
+                        break
+                    else
+                        local first_res_base = reserved_bases[1]
+                        fulfill_reservation(first_res_base, base_to_head[gutils.key(first_res_base)])
+                        is_reserved_base[gutils.key(first_res_base)] = nil
+                    end
                 end
             end
         end
+        if new_head == nil then
+            -- Log first base that couldn't find a head
+            for _, base in pairs(base_deps) do
+                if base_to_head[gutils.key(base)] == nil and base_reachable(base) then
+                    log(serpent.block(base))
+                    break
+                end
+            end
+            -- Log first head that couldn't find a base
+            for perm_ind, head_ind in pairs(perm) do
+                head = head_deps[head_ind]
+                if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
+                    log(serpent.block(head))
+                    break
+                end
+            end
+            local percentage = math.floor(100 * i / #base_deps)
+            log("Success percentage: " .. percentage .. "%")
+            --error("Randomization errored at " .. percentage .. "% of the way through.")
+            break
+        end
+
         log("\n\nBASE: " .. gutils.key(old_base) .. "\nHEAD: " .. gutils.key(new_head) .. "\n")
         if is_reserved_base[gutils.key(old_base)] then
             log("RESERVED\n")
@@ -260,7 +349,8 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
 
     -- If there are reservations left, those bases are unreachable, an error
     if #reserved_bases >= 1 then
-        error("Reservations left")
+        log(tostring(#reserved_bases) .. " reservations left")
+        -- CRITICAL TODO: fulfill!
     end
 
     local new_dep_order = {}
@@ -279,7 +369,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
             if old_edge_key ~= nil then
                 local old_slot_key = old_graph.edges[old_edge_key].stop
                 trav_to_old_slot_in_old_graph[gutils.key(trav)] = old_slot_key
-                gutils.remove_key(old_graph, old_edge_key)
+                gutils.remove_edge(old_graph, old_edge_key)
             end
         end
     end
@@ -301,6 +391,10 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, base_to_p
         local edge_start = gutils.key(base_to_slot[edge_start_slot])
         local edge_end = gutils.key(head_to_trav[dep_key])
         local new_edge = gutils.add_edge(old_graph, edge_start, edge_end)
+        local all_contexts = {}
+        for context, _ in pairs(logic.contexts) do
+            all_contexts[context] = true
+        end
         so_many_sorts = top.sort(old_graph, so_many_sorts, {
             edge = gutils.ekey(new_edge),
             -- CRITICAL TODO: Make sure this accounts for edge context changes later (in general our subdivisions need to get fixed for that)

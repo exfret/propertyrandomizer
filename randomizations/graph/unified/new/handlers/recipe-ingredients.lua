@@ -6,6 +6,8 @@ local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
 
+-- Include 10 copies first dupe, 3 copies each one after
+local already_duped = {}
 recipe_ingredients.claim = function(graph, prereq, dep, trav)
     if (prereq.type == "item" or prereq.type == "fluid") and dep.type == "recipe" then
         local recipe = data.raw.recipe[dep.name]
@@ -15,7 +17,12 @@ recipe_ingredients.claim = function(graph, prereq, dep, trav)
         -- TODO: Other checks
         -- TODO: Better claim logic (not sure what that would entail yet)
         -- TODO: Things are delicate right now... I should really decrease this from 6 or at least add ways to encourage lesser-used intermediates
-        return 6
+        if already_duped[gutils.key(prereq)] then
+            return 2
+        else
+            already_duped[gutils.key(prereq)] = true
+            return 5
+        end
     end
 end
 

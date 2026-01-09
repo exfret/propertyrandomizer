@@ -1,5 +1,7 @@
 local default = {}
 
+default.id = "default"
+
 default.required = {
     ["claim"] = true,
     ["validate"] = true,
