@@ -50,7 +50,7 @@ data:extend({
             "ultimate"
         },
         default_value = "default",
-        order = "b-a[chaos]"
+        order = "b-ba[chaos]"
     },
     {
         setting_type = "startup",
