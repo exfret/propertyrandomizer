@@ -1,0 +1,98 @@
+A plan of when to complete new features I think of, along with the stages of the randomizer I've completed (see next-steps.txt).
+
+I. Unified rando
+    A. DONE
+    B. In progress
+        * Entity randomization (in master branch first)
+        * Prereq shuffle versions of item/entity rando to fit into prereq rando
+        * Unified randomizations:
+            1. (DONE) Tech prereqs
+            2. (DONE) Recipe tech unlocks
+            3. Recipe categories
+            4. Spoiling (what spoils and into what)
+            5. Fuel categories
+            6. Entity rando
+            7. Tile fluids, machine input/output fluids, mining fluids
+            8. Technology science pack sets
+        * Basic spoofing, plan in when/what other spoofing to do later
+        * Flow cost checks
+        * Build graph compat nodes added to new logic
+        (No working surface rando yet, to be done in IV)
+        (No ingredient/result rando, was just for testing with surfaces, no official/balanced item rando since already done)
+        (No burnt result rando yet due to payoff/reward)
+        (No surface randomizations, do those when finishing isolatability)
+II. Dupes/group unlocks
+    A.
+        * Dupes with better graphics (might need to ping Osmo)
+        * Reorganize logic and lookup
+        * Testing script for releases and seed testing
+    B.
+        * Bundled randomizations (brainstorm and prototype), maybe do with numerical too?
+        * Remove hardcoding, move the rest of this to later as needed
+III. Brainstorm
+    A.
+        * Contexts writeup (short), slot scramble writeup (others optional; they seem clear enough)
+        * General reorganization/refactoring
+    B.
+        * Finish isolatability, check ammo only in space and spaceship nodes from other planets as goal (not balancing yet, just partial)
+        * Basic performance improvements
+        * Prereq pool basic preservation
+    C.
+        * Scoured numerical randomizations list
+        * Misc. bonus randomizations
+            1. Item/fluid switching rando
+            2. Energy source rando
+            3. Re-add some military randomizations, separate into new setting?
+IV. Full pass improvements
+    A.
+        * Extra limits based on chaos (maybe tied to config rather than a direct chaos check within code)
+    B.
+        * Full recipe ingredient rando import
+        * Flow cost coproduct split (comparison with simplex)
+        * The big merge
+    C.
+        * Chaos factors into unified randomizations (displacement shuffle)
+    D.
+        * Pass through TODO's, address critical ones
+        * Graphics and localisation/UI improvements for reflections
+V. Limited configuration
+    A.
+        * Prototype-wise blacklists
+        * Better/configurable logging, profiling
+    B.
+        * "Balance level" setting
+        * Retries setting
+        * Way to save settings (not full data.raw, just mod settings)
+VI. Limited compatibility
+    A.
+        * Light guaranteed compatibility with certain QOL mods
+    B.
+        * Add automatic tests for compat to release testing script
+VII. Completeness
+    A.
+        * Create roadmap to 1.0, assuming I'm still going (hopefully here by end of spring quarter?)
+    B.
+        * More bonus randomizations
+            1. Collision mask rando
+            2. Evolution levels/biter spawns
+    C.
+        * Watch the world burn mode
+        * Planetary duplication, creation of new randomized planets
+VIII. Polish
+    A.
+    B.
+        * Final pass through TODO's, remove outdated ones
+        * Github README/summaries
+    C.
+        * Tool for generating override settings in-game
+    D.
+        * Overhaul compatibility
+    E.
+    F. (Testing playthrough)
+    G. (Tweaks)
+IX. Release
+    A. (Slot for extras)
+    B. (Slot for extras)
+    C. (Slot for extras)
+    D. (Slot for extras)
+X. Maintenance

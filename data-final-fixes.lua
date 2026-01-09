@@ -33,8 +33,6 @@ end
 local unified = require("randomizations/graph/unified/new/execute")
 unified.execute()
 
-do return true end
-
 logic.build()
 local new_sort_info_shiny = top2.sort(logic.graph)
 local new_num_techs_reachable_shiny = 0

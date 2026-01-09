@@ -1,161 +1,17 @@
-WORKING ON:
- - Unified randomization
-    - Note for AND/OR:
-       - If we take our blacklisted/to-be-randomized edges, and see what happens when randomizing the next one in the top sort, see if that node is an AND node
-       - If it is, then we do all its unrandomized connections to unlock it, then see what's reachable; only unrandomized AND nodes and possibly to-be-randomized OR nodes will become reachable; AND nodes with randomized connections only become reachable after fixing those connections
-       - See if you make any randomized *connections* to OR's reachable...
-       - To make things easier, assume AND-OR, then when you randomize an AND... look at dual graph (ANDs/ORs flipped, randomized edges removed but unrandomized kept; this represents vanilla game and what's unreachable in it)
-       - Dual graph is unreachability in vanilla game because AND nodes need at least one prereq not to be decided yet, and OR nodes need all, and also the fixed edges already encode unreachability since the sources now give off opposite info
-       - Then, when you randomize an AND, its OR outconnections become unreachable AND nodes in the dual graph, so we get to pick for this purpose things that were previously unreachable and send connections to them
-       - Oh, so when you randomize an AND's prereqs, do a prereq shuffle with reachable and a dependent shuffle with unreachable, then for an OR, a prereq shuffle with unreachable and a dependent shuffle with reachable
-       - Prereqs of OR into unreachable makes sense since we can assume to have randomized an in-connection from some AND for it or smth, well at least in AND-OR case since then OR has only become reachable if the AND's have built into it with some sort of prereqs yet
-       - I guess the only special case is OR to OR nodes with forward edges, and we can just separate only those edges with AND's in the middle to treat it as such; this effectively treats it as depending on an AND node
-       - I guess we could also... wait, we could also do unreachable stuff this way! Oh, but the topological sort wouldn't be there to guide us then.
+A file for smaller todos (see next-steps.txt for master plan and features.txt for bigger plans)
+For bugs/fixes rather than features, see bugs.txt
 
- - Nifyr's simultaneous rando...
-    - Have fallback for when path.lua is exponential time (make sure it's only used as a heuristic)
-    - Add ability for nodes to switch surfaces
-       - Need way to test if a node has become surface locked (either it now depends on a surface-locked node or a locked edge in the future requires it to be from a specific surface)
-    - Don't remove unreachable edges and allow for cross-node-type randomization (like craft-material to item)
-
- - Speed up find_valid_prereq_list in recipe ings randomization by not checking items/fluids multiple times if necessary
- - Add tooltip info for new randomizations (check diffs to confirm which ones are new)
- - Back to ammo preservation
- - Then, maybe recipe rando changes based on chaos
- - Also maybe "bundled" randomization where some things get randomized together for a consistent "story"
- - Planetary randomization
-   * Check if game is possible after planetary randomization and print to console
-   * Fix localisation with dupe and item randomization
- - Allow item randomization to apply to some fluids? If it does, just give the item's effects to the barrel
- - Dupes with better graphics (use artisinal reskins?)
-
- - Look into rocket launch time bug
-
-Bigger things:
- - Unified randomization
- - Dupes
- - Figure out how to integrate other graph randomizations into unified randomization
- - Smooth out some edges:
-    * Ammo automatability in space
-    * Ensure softlocks less common
-    * Ensure crashes not common
-    * Preserve ability to build a silo from any surface without leaving
-    * Make loading faster
- - Customizability, custom blacklists of items to not be randomized, etc. (and a tool to generate override strings in-game)
- - Light mod compatibility
- - Watch the world burn mode
-
- - Various numerical/space age especially randomizations need adding
- - Tech packs required randomization
- - Dupes
- - Misc. randomizations that I need to go back to, like cliffs
- - New randomizations
- - Space age randomizations
- - Maybe look over TODO's scattered throughout code
- - Item-fluid randomization?
- - Make default behavior less unhinged (and high chaos more unhinged)
- - Randomize things in groups: all ores lower stack size for example, one master roll, not just random for each
-
-Ideas from Nifyr (not necessarily good ones):
- - Randomize recipe crafting categories
- - Randomize crafting machine crafting categories
- - Randomize energy source type for agricultural towers, boilers, crafting machines, inserters, labs, mining drills
-    offshore pumps, pumps, radars and reactors
- - Randomize energy source type for ammo turrets, asteroid collectors, beacons, combinators, electric turrets,
-    inventory bonus equipment, lamps, programmable speakers and roboports (can be electric or void/nil)
- - Randomize energy source type for cars, generator equipment, locomotives, roboport equipment and spider vehicles
-    (can be burner or void/nil)
- - Randomize fuel categories for burners
- - Randomize ammo categories per ammo, gun and ammo turret prototypes
- - Randomize input and output fluids of boiler prototypes, perhaps by treating it as a recipe in recipe randomizer?
- - Randomize input fluid of generator prototypes
- - Randomize input fluid of fusion reactor prototypes + output fluid of fusion generator prototypes
- - Randomize output fluid of fusion reactor prototypes + input fluid of fusion generator prototypes? Treat them like recipes?
-    Make plasma part of recipe randomization?
- - Randomize which resources require fluid to mine + which fluid per resource. Treat as recipes?
- - Randomize which items spoil + spoil results. Treat as recipes?
- - Randomize which fuels have burnt results and which burnt result per fuel. Treat as recipes?
- - Randomize mining results of plants. Treat seed -> plant result as recipe?
- - Randomize fuel and oxidizer fluids for thrusters
- - Randomize asteroid spawns per space location and space connection
- - Randomize the planet-space connection graph (the space map)
- - Randomize which item and fluid resources appear on each planet
- - Randomize which entities appear on each planet
- - Randomize which planets have lightning
- - Randomize fluid tiles per planet or fluid per fluid tile
-
-3. Rounding after rescalings
-8. Blacklists?
-12. Combat robot damage?
-13. Evolution levels?
-15. Worm sticker slowdown and yumako speedup (separate?)
-17. Roboport input buffer recharge rate
-18. Clamp end result to the hard min/max range in case it escaped outside
-19. Why is supply area for electric poles only working for substations?
-20. Make sure to set localised string for power pole reach in the fixes due to it being modified there
- - Nifyr commented out this fix under the impression that it wasn't necessary
-23. Automatability nodes
-25. Check if node-transport-item-to-surface actually needs to also rely on the corresponding planet-launch
-26. Double check thruster fuel always made on a space surface
-27. *** Make sure ammo is craftable on space platform
-28. Increase time cost for recipe randomization?
-29. Add more safeguards against bad accesses/nodes from mods in dependency graph
-31. Add space platform starter packs to list of not randomized
-32. Bullets blacklist from trees
-33. Rocket launch time bug (seems to get stuck with certain launch times? See mod page)
-34. Biter pathing bad when they're large
-35. Lots of things behind military science - tech randomization
-36. Clarify dropdowns for logistics etc. are number of different randomizations, not amount of randomization
-37. Check fulgorite possible softlock (or maybe it has to do with scrap recycling)
-38. Randomize trigger effects?
-39. Fallback recipes approach? With recycling? Like in autotech
-40. Buildings don't spoil quickly
-41. Value-aware coproduct split... use already-determined costs for things to distribute value among recipe results when there's more than one result
-42. Fix localised keys for technologies with -number format
-43. Fix rocket capacity propagating and making everything hard to fill a rocket
-44. Look up "broken new capsule" bug
-45. Require planetary science pack recipes to use space resources
-46. Critical TODO
-47. Prevent wood on trees, or at least make less likely since it's boring
-48. More limits by default
-49. Things unlocked in groups? Like, things for bots unlocked all at once
-50. Icon bugs (seems to just be with dupes mode)
-51. Electric mining drill fluid softlock (need to check that there is a mining drill that *can* mine with fluid)
-52. Allow different sort of topological sort orders? Right now it's just arbitrary right?
-53. Rename +pollution tooltip to "emissions"
-56. Less scattered unlocks (so you don't have to hunt a hundred different places for the components of something that you've already unlocked)
-57. Think of ways to do non-rectangular buildings
-58. Allow for nonlinear sorts (limits randomization, but also prevents progression blocking)
-59. Figure out a way to randomize past "required" nodes
-60. Forward fill could put solar panels first, so use that perhaps for item randomization
-61. Surface condition randomization
-62. Randomized settings setting
-63. Allow backtracking/more attempts with item (maybe also recipe) randomization, add as a setting with note that load times may be slow
-64. Make a list of "physical" nodes (ones that aren't an abstract/logical requirement or whatever), which are the ones used for determining softlocks (for example, operate-entity for crafting machines, the item nodes themselves rather than surface-specific nodes)
-65. Add back short spoil time transport blacklist to build-graph-compat
-66. Collision masks?
-67. Rewrite this todo list; make better for random side todos
-68. Idea: Don't randomize tech unlocks, just recipe results?
-69. Bubbling approach for recipe tech unlocks
-
-DONE:
-55. Make the topological sort random
-10. Beacon profiles
-54. No infinite load times with recipe randomization
-16. Work on recipe randomization more
-21. Ore swap randomization
-22. Make rocket turrets an aquilo dependency in build-graph-compat
-24. Items keep fuel value in item randomization (add random fuels later mayhaps)
-2. Check that only allowed settings are passed into randnum
-9. Retrieve projectiles to randomize damage on those
-7. Pollutant types for pollution randomization
-5. Finish linked randomization on certain randomizations that I need to finish it on
-4. Round cooldowns correctly (need to specify rounding none property as well)
-1. Check over balancing params again
-6. Configuration code
-
-NOT DOING/NO LONGER APPLICABLE:
-24. Add build_graph_compat nodes to Obsidian spec
-?. Make sure one of each "category" is good
-11. Whether to randomize radar ranges of roboports/cargo landing pads along with radar range randomization
-14. Maybe print a note about flib being required now?
+ * Check on tooltips for new randomizations
+ * Re-implement color randomization
+ * Misc. rando for starting gun, starting ammo (and amount), and crashed spacheship contents/starting inventory
+ * Account for ability to move around on planets in logic (need ice platforms on Aquilo), maybe just a compat on ice platforms etc.?
+ * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
+ * Add fulgorite to logic
+ * Spoiling checks on buildings (make sure it's not too quick)
+ * Fill in weights before graph randos
+ * Force space resources in appropriate places (like planetary science packs)
+ * Randomized top sorts in new sorts (make random preferred order and sort according to that?)
+ * Address recipe tech unlock scattering with bubbling
+ * Randomized settings setting
+ * Think about possibility/helpfulness of backtracking?
+ * Softlock checking based on "concrete" nodes, better error messages for softlocks

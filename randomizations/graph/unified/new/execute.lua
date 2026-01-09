@@ -6,6 +6,7 @@ local COMBINE_TECH_UNLOCK_RECIPE = false
 -- Second perhaps better try at tech unlock coupling; modify graph so that recipe --> unlock-recipe-technology (AND over recipe and a single tech) --> recipe-fina
 -- This also doesn't work actually, but not for awful reasons; I'll just need to be more careful about how I do this
 local COMBINE_TECH_UNLOCK_RECIPE_TWO = false
+local SWITCH_TO_PLANET = false
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -415,11 +416,7 @@ unified.execute = function()
     -- First Pass (if applicable)
     ----------------------------------------------------------------------------------------------------
 
-
-
-
-
-
+    if SWITCH_TO_PLANET then
         -- Gleba here we come
         -- Since we're adding this as fixed and we have no randomized room connections yet, we don't need to worry about graph_with_cuts
         for _, graph_var in pairs({graph, pool_graph, pass_graph, cut_graph, random_graph, subdiv_graph}) do
@@ -493,60 +490,12 @@ unified.execute = function()
                     gutils.add_edge(graph_var, gutils.key(nauvis_node), edge.stop)
                     gutils.remove_edge(graph_var, dep)
                 end
-
-                --[[local starting_node = graph_var.nodes[gutils.key("starting-planet", "")]
-                local next_edge
-                for dep, _ in pairs(starting_node.dep) do
-                    next_edge = dep
-                    break
-                end
-                while true do
-                    local next_node = graph_var.nodes[graph_var.edges[next_edge].stop]
-                    if next_node.type ~= "slot" and next_node.type ~= "traveler" then
-                        break
-                    else
-                        for dep, _ in pairs(next_node.dep) do
-                            next_edge = dep
-                            break
-                        end
-                    end
-                end
-                gutils.remove_edge(graph_var, next_edge)
-                -- Just a direction connection; too lazy to subdivide
-                gutils.add_edge(graph_var, gutils.key(starting_node), gutils.key("room", gutils.key("planet", "gleba")))]]
             end
         end
         log("Done injecting gleba")
-
-
-
-
-
-
+    end
 
     if CONDUCT_FIRST_PASS then
-        -- base dep to pool of prereqs it has available
-        -- Note that "base" is a misnomer within this context; in first pass there are base deps and head deps, but both of those are on the trav side from this file's perspective
-        -- Do NOT check validity here; that is the responsibility of the first_pass algorithm
-        -- Doing validity checks here artificially decreases the prereq pool, leading to potentially more failures and instability
-        --local base_to_pool = {}
-
-        -- base_to_pool I don't think is used anymore
-        --[[for _, dep in pairs(sorted_deps) do
-            base_to_pool[gutils.key(dep)] = {}
-            -- TODO: Account for all travelers at once rather than assuming they all have the same requirements
-            local example_trav = node_to_random_travs[gutils.key(dep)][1]
-            -- The ordering doesn't matter, so let's just use shuffled_prereqs
-            if example_trav ~= nil then
-                for _, slot in pairs(shuffled_prereqs) do
-                    if all_contexts_reachable(slot, example_trav) then
-                        -- Deepcopying shouldn't be necessary; we only read
-                        table.insert(base_to_pool[gutils.key(dep)], slot)
-                    end
-                end
-            end
-        end]]
-
         local pass_graph = table.deepcopy(subdiv_graph)
 
         if COMBINE_TECH_UNLOCK_RECIPE then
@@ -637,62 +586,40 @@ unified.execute = function()
             end
         end
 
-        -- TODO: Should I keep this?
-        -- Extended sort to prioritize things reachable in isolations from larger VANILLA sort, then put other things after
-        local planet_specific_sort = top2.sort(old_subdiv_graph)
-        local reachable_isolation_deps = {}
-        local not_reachable_isolation_deps = {}
-        for _, dep in pairs(sorted_deps) do
-            local gleba_context = gutils.key("planet", "gleba")
-            -- 1 is isolatability
-            if planet_specific_sort.node_to_contexts[gutils.key(dep)] == true or planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context] == true then
-                table.insert(reachable_isolation_deps, dep)
-            else
-                local has_isolatability_context = false
-                for bin_str, _ in pairs(planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context]) do
-                    if string.sub(bin_str, 1, 1) == "1" then
-                        has_isolatability_context = true
-                    end
-                end
-                if has_isolatability_context then
+        if SWITCH_TO_PLANET then
+            -- TODO: Should I keep this?
+            -- Extended sort to prioritize things reachable in isolations from larger VANILLA sort, then put other things after
+            local planet_specific_sort = top2.sort(old_subdiv_graph)
+            local reachable_isolation_deps = {}
+            local not_reachable_isolation_deps = {}
+            for _, dep in pairs(sorted_deps) do
+                local gleba_context = gutils.key("planet", "gleba")
+                -- 1 is isolatability
+                if planet_specific_sort.node_to_contexts[gutils.key(dep)] == true or planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context] == true then
                     table.insert(reachable_isolation_deps, dep)
                 else
-                    table.insert(not_reachable_isolation_deps, dep)
+                    local has_isolatability_context = false
+                    for bin_str, _ in pairs(planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context]) do
+                        if string.sub(bin_str, 1, 1) == "1" then
+                            has_isolatability_context = true
+                        end
+                    end
+                    if has_isolatability_context then
+                        table.insert(reachable_isolation_deps, dep)
+                    else
+                        table.insert(not_reachable_isolation_deps, dep)
+                    end
                 end
             end
-        end
-        sorted_deps = {}
-        for _, dep in pairs(reachable_isolation_deps) do
-            table.insert(sorted_deps, dep)
-        end
-        for _, dep in pairs(not_reachable_isolation_deps) do
-            table.insert(sorted_deps, dep)
+            sorted_deps = {}
+            for _, dep in pairs(reachable_isolation_deps) do
+                table.insert(sorted_deps, dep)
+            end
+            for _, dep in pairs(not_reachable_isolation_deps) do
+                table.insert(sorted_deps, dep)
+            end
         end
         -- CRITICAL TODO: Next level of desperation would be to start ignoring some of those blacklisted edges that we add
-        -- Find ordering of the (potentially few) things we can reach in this specific context, then resort to the larger path
-        -- extraplanetary doesn't mean off-planet per se, just that it wasn't found in planet_specific_sort
-        --[[local sorted_deps_extraplanetary = {}
-        local is_a_dependent = {}
-        for _, dep in pairs(sorted_deps) do
-            if planet_specific_sort.node_to_contexts[gutils.key(dep)] == nil or (planet_specific_sort.node_to_contexts[gutils.key(dep)] ~= true and next(planet_specific_sort.node_to_contexts[gutils.key(dep)]) == nil) then
-                table.insert(sorted_deps_extraplanetary, dep)
-            end
-            is_a_dependent[gutils.key(dep)] = true
-        end
-        sorted_deps = {}
-        local added_to_planet_specific = {}
-        for _, open_info in pairs(planet_specific_sort.open) do
-            if not added_to_planet_specific[open_info.node] and is_a_dependent[open_info.node] then
-                added_to_planet_specific[open_info.node] = true
-                table.insert(sorted_deps, subdiv_graph.nodes[open_info.node])
-            end
-        end
-        for _, dep in pairs(sorted_deps_extraplanetary) do
-            table.insert(sorted_deps, dep)
-        end
-        for _, node in pairs(planet_specific_sort.open) do
-            log(serpent.block(node))
-        end]]
 
         local base_deps = {}
         local head_deps = {}
@@ -1003,19 +930,13 @@ unified.execute = function()
         handler.reflect(random_graph, trav_to_new_slot, trav_to_handler)
     end
 
-
-
-
-    -- CRITICAL TODO: Remove when done!
-    local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-    data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
-    data.raw.planet.nauvis.name = "nauvis"
-    data.raw.planet.gleba = old_nauvis
-    data.raw.planet.gleba.name = "gleba"
-
-
-
-
+    if SWITCH_TO_PLANET then
+        local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+        data.raw.planet.nauvis.name = "nauvis"
+        data.raw.planet.gleba = old_nauvis
+        data.raw.planet.gleba.name = "gleba"
+    end
 end
 
 return unified

@@ -1,0 +1,24 @@
+Questions to ask Nifyr
+
+Put here so that I only ask one at a time and I don't spam him too much
+Also some are future questions/depend on me checking certain things first, so don't make too much sense to ask now (but I still want to remember them)
+
+(If you see this Nifyr, hi! Feel free to message me with any answers)
+
+1. Note that I made some basic changes/limitations to some of the new randomizations (very light things, like making sure day length doesn't cause a genuine seizure risk)
+    I did make a big change in basically disabling resistance and damage type rando on chaos below ultimate; I don't want this to be a permanent fix, but wanted to stop softlocks happening sooner rather than later
+2. Ask about issues with bias: global bias doesn't seem to impact the results consistently enough. People are getting extremely good seeds on default, and very bad seeds on better bias.
+    It shouldn't be completely predictable, but it seems that the global bias setting has barely any impact with the new algorithm; maybe investigate to see why.
+3. I was thinking of adding an extra "limits" setting (not sure what to name it), which would disable certain balancing measures to be done in a lot of randomizations
+    This makes it extra clear to the player that things could get bad on max settings, just in case it wasn't clear before, and allows for wide ranges without breaking things too much
+    This would be a future thing though; I'd need to go through and add those limits back in for the new numerical rando and there are other priorities now
+4. Mention that non-linked resources rando is tabled for now, and that prereq pool preservation methods are probably more important to think about
+    I need to code the second pass of unified rando first to see exactly what is needed for the first pass first
+5. Is -100% shotgun damage tooltip fixed? Maybe I can take it off the bug list.
+7. After the recent merge I did, is there anything I should be aware of before pushing an update to portal?
+8. Top of bugs.txt has some relevant notes to code he wrote that I wanted to ask about
+9. If his core involves planetary isolation, maybe plan to integrate ASAP in place of mine to limit planet jumping
+
+Currently:
+6. A burner mining drill had offset so that it was pointing into itself; need to ensure this doesn't happen
+    I tried taking a look at offsets.lua myself, but I couldn't identify the issue
