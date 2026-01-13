@@ -30,7 +30,7 @@ for _, node_info in pairs(sort_info_shiny.open) do
     end
 end
 
-local unified = require("randomizations/graph/unified/new/execute")
+local unified = require("randomizations/graph/unified/execute")
 unified.execute()
 
 logic.build()

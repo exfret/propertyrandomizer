@@ -58,7 +58,7 @@
 
 local lib_name = "new-lib"
 local gutils = require(lib_name .. "/graph/graph-utils")
-local lu = require(lib_name .. "/logic/lookup/init")
+local lu = require(lib_name .. "/lookup/init")
 local logic_group = require(lib_name .. "/logic/logic-group")
 local builder = require(lib_name .. "/logic/builder")
 local concrete = require(lib_name .. "/logic/concrete")

@@ -1,16 +1,18 @@
--- Stage 3: Complex lookups (depends on stage 2)
--- These are computationally expensive or have complex dependencies
+local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("new-lib/data-utils")
 
-local stage0 = require("new-lib/logic/lookup/stage0")
-local pairs = stage0.pairs
+local prots = dutils.prots
 
-local stage3 = {}
+local stage = {}
+
+local lu
+stage.link = function(lu_to_link)
+    lu = lu_to_link
+end
 
 -- Maps asteroid entity names to their resistance group key
--- NOTE: Fixed duplicate definition bug - this now appears only once
-stage3.asteroid_resistance_groups = function(lu, req)
+stage.asteroid_resistance_groups = function()
     local asteroid_resistance_groups = {}
-    local prots = req.prots
 
     for _, asteroid in pairs(prots("asteroid")) do
         -- Only include if asteroid is in lu.entities
@@ -26,11 +28,8 @@ stage3.asteroid_resistance_groups = function(lu, req)
 end
 
 -- Maps spoofed recipe categories (rcat names) to entities that can craft them
--- OPTIMIZED: Inverted loop structure for ~25x speedup
--- Instead of O(rcats × machines), we do O(machines) with hash lookups
-stage3.rcat_to_crafters = function(lu, req)
+stage.rcat_to_crafters = function()
     local rcat_to_crafters = {}
-    local prots = req.prots
 
     -- Initialize for all rcats
     for rcat_name, _ in pairs(lu.rcats) do
@@ -47,11 +46,11 @@ stage3.rcat_to_crafters = function(lu, req)
         rcats_by_cat[rcat.cat][rcat_name] = rcat
     end
 
-    -- Iterate machines ONCE, find all compatible rcats per machine
+    -- Iterate machines once, find all compatible rcats per machine
     for _, class in pairs({"assembling-machine", "furnace", "rocket-silo", "character"}) do
         for _, machine in pairs(prots(class)) do
             if machine.crafting_categories ~= nil then
-                -- Count machine fluid boxes ONCE per machine (not per rcat!)
+                -- Count machine fluid boxes once per machine (not per rcat!)
                 local machine_fluids = {input = 0, output = 0}
                 if machine.fluid_boxes ~= nil then
                     for _, fluid_box in pairs(machine.fluid_boxes) do
@@ -82,12 +81,11 @@ stage3.rcat_to_crafters = function(lu, req)
 end
 
 -- Bidirectional material-recipe mapping
-stage3.mat_recipe_map = function(lu, req)
+stage.mat_recipe_map = function()
     local mat_recipe_map = {
         material = {},
         recipe = {},
     }
-    local gutils = req.gutils
 
     for mat_key, mat in pairs(lu.materials) do
         mat_recipe_map.material[mat_key] = {
@@ -128,13 +126,11 @@ stage3.mat_recipe_map = function(lu, req)
 end
 
 -- Material to minable thing mapping
-stage3.mat_mining_map = function(lu, req)
+stage.mat_mining_map = function()
     local mat_mining_map = {
         to_minable = {},
         to_material = {},
     }
-    local prots = req.prots
-    local gutils = req.gutils
 
     for mat_key, mat in pairs(lu.materials) do
         mat_mining_map.to_minable[mat_key] = {}
@@ -181,4 +177,54 @@ stage3.mat_mining_map = function(lu, req)
     lu.mat_mining_map = mat_mining_map
 end
 
-return stage3
+-- Recipes made in some furnace prototype
+stage.smelting_recipes = function()
+    local smelting_recipes = {}
+
+    for _, furnace in pairs(prots("furnace")) do
+        for _, category in pairs(furnace.crafting_categories) do
+            for rcat, _ in pairs(lu.vanilla_to_rcats[category]) do
+                smelting_recipes[rcat] = true
+            end
+        end
+    end
+
+    lu.smelting_recipes = smelting_recipes
+end
+
+-- Maps science pack set names to labs that can accept ALL packs in the set
+stage.science_set_to_labs = function()
+    local science_set_to_labs = {}
+
+    local lab_inputs_sets = {}
+    for _, lab in pairs(prots("lab")) do
+        lab_inputs_sets[lab.name] = {}
+        for _, input in pairs(lab.inputs) do
+            lab_inputs_sets[lab.name][input] = true
+        end
+    end
+
+    for set_name, set_packs in pairs(lu.science_sets) do
+        science_set_to_labs[set_name] = {}
+
+        for _, lab in pairs(prots("lab")) do
+            local lab_inputs_set = lab_inputs_sets[lab.name]
+
+            local lab_can_hold_all = true
+            for _, pack in pairs(set_packs) do
+                if not lab_inputs_set[pack] then
+                    lab_can_hold_all = false
+                    break
+                end
+            end
+
+            if lab_can_hold_all then
+                science_set_to_labs[set_name][lab.name] = true
+            end
+        end
+    end
+
+    lu.science_set_to_labs = science_set_to_labs
+end
+
+return stage
