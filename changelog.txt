@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.5.0
+Date: ?
+  Features:
+    - Major new "unified" randomization algorithm that bundles all randomizations together
+    - (Unified) Technology prerequisites randomization (done before, but now integrated in unified)
+    - (Unified) Technology recipe unlocks randomization (also done before, but now in integrated)
+---------------------------------------------------------------------------------------------------
 Version: 0.4.11
 Date: ?
   Bugfixes:

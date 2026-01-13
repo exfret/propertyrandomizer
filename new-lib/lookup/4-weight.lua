@@ -1,20 +1,16 @@
--- Stage 4: Derived calculations (depends on stage 3)
--- Currently just the weight calculation, which is complex enough to warrant its own file
+local gutils = require("new-lib/graph/graph-utils")
+local flow_cost = require("lib/graph/flow-cost")
 
-local stage0 = require("new-lib/logic/lookup/stage0")
-local pairs = stage0.pairs
-local table_insert = stage0.table_insert
-local table_sort = stage0.table_sort
-local math_floor = stage0.math_floor
+local stage = {}
 
-local stage4 = {}
+stage.link = function(lu_to_link)
+    lu = lu_to_link
+end
 
 -- Calculates item weights using Factorio's algorithm
 -- Reference: https://lua-api.factorio.com/2.0.72/auxiliary/item-weight.html
-stage4.weight = function(lu, req)
+stage.weight = function()
     local weight = {}
-    local gutils = req.gutils
-    local flow_cost = req.flow_cost
 
     local default_weight = data.raw["utility-constants"].default.default_item_weight
     local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
@@ -50,7 +46,7 @@ stage4.weight = function(lu, req)
                     local recipe = data.raw.recipe[recipe_name]
                     -- Recipes that don't allow decomposition are not considered
                     if recipe.allow_decomposition or recipe.allow_decomposition == nil then
-                        table_insert(valid_recipes, recipe)
+                        table.insert(valid_recipes, recipe)
                     end
                 end
 
@@ -98,7 +94,7 @@ stage4.weight = function(lu, req)
                     local checkers = {check_name, using_as_catalyst, usable_in_handcrafting,
                                       category_order, subgroup_order, recipe_order}
 
-                    table_sort(valid_recipes, function(r1, r2)
+                    table.sort(valid_recipes, function(r1, r2)
                         for _, checker in pairs(checkers) do
                             local order1 = checker(r1)
                             local order2 = checker(r2)
@@ -152,7 +148,7 @@ stage4.weight = function(lu, req)
 
         -- Add items with no prereqs to open list
         if reqs_total[item_name] == 0 then
-            table_insert(open, item_name)
+            table.insert(open, item_name)
             in_open[item_name] = true
         end
     end
@@ -160,7 +156,7 @@ stage4.weight = function(lu, req)
     -- Add items with pre-assigned weights (they're sources in the graph)
     for _, item in pairs(lu.items) do
         if item_to_first_recipe[item.name] == nil and weight[item.name] ~= nil then
-            table_insert(open, item.name)
+            table.insert(open, item.name)
             in_open[item.name] = true
         end
     end
@@ -234,7 +230,7 @@ stage4.weight = function(lu, req)
                         if stack_amount <= 1 then
                             weight[curr_item] = intermediate_result
                         else
-                            weight[curr_item] = rocket_lift_weight / math_floor(stack_amount) / curr_item_prot.stack_size
+                            weight[curr_item] = rocket_lift_weight / math.floor(stack_amount) / curr_item_prot.stack_size
                         end
                     end
                 end
@@ -246,7 +242,7 @@ stage4.weight = function(lu, req)
             reqs_satisfied[dep] = reqs_satisfied[dep] + 1
             if reqs_satisfied[dep] == reqs_total[dep] then
                 if not in_open[dep] then
-                    table_insert(open, dep)
+                    table.insert(open, dep)
                     in_open[dep] = true
                 end
             end
@@ -265,4 +261,4 @@ stage4.weight = function(lu, req)
     lu.weight = weight
 end
 
-return stage4
+return stage

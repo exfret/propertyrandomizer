@@ -1,7 +1,7 @@
 local lib_name = "new-lib"
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
-local lu = require(lib_name .. "/logic/lookup/init")
+local lu = require(lib_name .. "/lookup/init")
 
 local prots = dutils.prots
 local key = gutils.key

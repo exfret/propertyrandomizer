@@ -6,7 +6,7 @@
 -- Basically just coding in the very basic game mechanics that I can't change anyways
 
 local gutils = require("new-lib/graph/graph-utils")
-local lu = require("new-lib/logic/lookup/init")
+local lu = require("new-lib/lookup/init")
 local logic = require("new-lib/logic/init")
 
 local blockify = {}

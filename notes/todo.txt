@@ -1,4 +1,9 @@
-A file for smaller todos (see next-steps.txt for master plan and features.txt for bigger plans)
+CURRENTLY ON:
+ * (30min) Refactoring lookups (then push commit about refactoring)
+ * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
+ * (more hours) Finish I.B, finish by the 25th
+
+This is a file for smaller todos (see next-steps.txt for master plan and features.txt for bigger plans)
 For bugs/fixes rather than features, see bugs.txt
 
  * Check on tooltips for new randomizations
@@ -15,3 +20,5 @@ For bugs/fixes rather than features, see bugs.txt
  * Randomized settings setting
  * Think about possibility/helpfulness of backtracking?
  * Softlock checking based on "concrete" nodes, better error messages for softlocks
+ * Add recipetweaker to list of recommended mods, and consider other "tweaker" mods
+ * Think about secondary sort rando (doing a second sort and taking intersection to reduce linearity)

@@ -5,7 +5,7 @@
 
 2. Assembling machines don't follow upgrade line randomization due to having different crafting categories, so need to be manually linked together
 5. Biter eggs are reported to be reachable when they aren't (probably a problem with logic/dependency graph) (https://mods.factorio.com/mod/propertyrandomizer/discussion/6935501854f0ff3c23623425)
-6. Item rando is giving very large result amounts (got over 65k limit on result amount)
+6. Item rando is giving very large result amounts (got over 65k limit on result amount, including in recipes and mining results)
 8. Item rando doesn't properly update icons
 10. Compatibility issue involving item rando with wood fuel values and K2SO (https://mods.factorio.com/mod/propertyrandomizer/discussion/6949ca01f6fd1af9b2f36a03)
 11. Compatibility issue with merging chest mod and item_to_place sizes (https://mods.factorio.com/mod/propertyrandomizer/discussion/69430dcb60cb530c95eac2d2)
