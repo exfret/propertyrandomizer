@@ -177,19 +177,19 @@ stage.mat_mining_map = function()
     lu.mat_mining_map = mat_mining_map
 end
 
--- Recipes made in some furnace prototype
-stage.smelting_recipes = function()
-    local smelting_recipes = {}
+-- Recipe cats made in some furnace prototype
+stage.smelting_rcats = function()
+    local smelting_rcats = {}
 
     for _, furnace in pairs(prots("furnace")) do
         for _, category in pairs(furnace.crafting_categories) do
-            for rcat, _ in pairs(lu.vanilla_to_rcats[category]) do
-                smelting_recipes[rcat] = true
+            for rcat, _ in pairs(lu.vanilla_to_rcats[category] or {}) do
+                smelting_rcats[rcat] = true
             end
         end
     end
 
-    lu.smelting_recipes = smelting_recipes
+    lu.smelting_rcats = smelting_rcats
 end
 
 -- Maps science pack set names to labs that can accept ALL packs in the set

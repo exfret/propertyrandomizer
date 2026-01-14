@@ -32,7 +32,7 @@ starting_planets.validate = function(graph, slot, trav, extra)
     return false
 end
 
-starting_planets.reflect = function(graph, trav_to_new_slot, trav_to_old_slot)
+starting_planets.reflect = function(graph, trav_to_new_slot, trav_to_handler)
     -- Let's just do starting planet for now to see if this even works
     -- CRITICAL TODO: Expand/do space locations too
     -- TODO: Iterating over this whole thing each time is probably not efficient, should speed up and not pass all of trav_to_new_slot or smth

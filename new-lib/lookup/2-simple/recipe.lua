@@ -101,20 +101,6 @@ stage.rcats = function()
     lu.vanilla_to_rcats = vanilla_to_rcats
 end
 
--- Maps base recipe category names to their spoofed rcat names
-stage.cat_to_rcats = function()
-    local cat_to_rcats = {}
-
-    for rcat_name, rcat in pairs(lu.rcats) do
-        if cat_to_rcats[rcat.cat] == nil then
-            cat_to_rcats[rcat.cat] = {}
-        end
-        cat_to_rcats[rcat.cat][rcat_name] = true
-    end
-
-    lu.cat_to_rcats = cat_to_rcats
-end
-
 stage.fixed_recipes = function()
     local fixed_recipes = {}
 

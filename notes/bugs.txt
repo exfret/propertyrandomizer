@@ -22,6 +22,7 @@
 26. Allow asteroid resistances and all damage type randomizations again once softlocks are worked out
 27. Spent fuel results are an awful way to get things, but sometimes are the way you get them from, e.g.- item rando; investigate and balance
 28. Fix localisations when dupe and item randos are together
+29. First pass is proceeding in basically a vanilla order (might be related to recipe tech unlocks, but it's also leading to softlocks meaning contexts are not calculated correctly either)
 
 Fixed?
 12. Change corpse size doesn't check that there is a corpse first, resulting in mod incompatibilities (https://mods.factorio.com/mod/propertyrandomizer/discussion/69224af08e1629a0efaa7d67)
