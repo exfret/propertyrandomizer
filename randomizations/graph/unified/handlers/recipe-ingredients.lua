@@ -78,6 +78,14 @@ recipe_ingredients.reflect = function(graph, trav_to_new_slot, trav_to_handler)
         end
         recipe.ingredients = new_ings
     end
+
+    
+
+
+
+    -- HOTFIX
+    -- CRITICAL TODO: Remove!
+    data.raw.recipe["advanced-oil-processing"].ingredients[2] = nil
 end
 
 return recipe_ingredients

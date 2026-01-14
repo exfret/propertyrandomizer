@@ -1,5 +1,6 @@
 -- CRITICAL TODO: Turn back on when things are working with this off (one step at a time)
 local PRESERVE_ISOLATABILITY = false
+-- First pass is broken now; I need to figure out what's wrong and fix it later
 local CONDUCT_FIRST_PASS = true
 -- Ad hoc test for grouping; put tech unlock with recipe
 local COMBINE_TECH_UNLOCK_RECIPE = false
@@ -18,10 +19,10 @@ local first_pass = require("randomizations/graph/unified/first-pass")
 local unified = {}
 
 local handler_ids = {
-    "tech-unlocks",
+    "recipe-category",
     "recipe-ingredients",
     "tech-prereqs",
-    --"starting-planet",
+    "tech-unlocks",
 }
 
 unified.execute = function()
@@ -625,6 +626,7 @@ unified.execute = function()
         local head_deps = {}
         local head_to_trav = {}
         local base_to_slot = {}
+        local base_to_vanilla_slots = {}
         for _, dep_in_sorted in pairs(sorted_deps) do
             local dep = pass_graph.nodes[gutils.key(dep_in_sorted)]
             -- Only add deps if they had some travelers/were going to have something randomized
@@ -664,10 +666,18 @@ unified.execute = function()
                 for _, base_dep in pairs(deps_to_remove) do
                     gutils.remove_edge(pass_graph, base_dep)
                 end
+                base_to_vanilla_slots[gutils.key(dep)] = {}
                 -- Randomized pres stay with base
                 -- For OR nodes/traveler deps everything (the only thing) is randomized
                 if dep.type == "traveler" then
-                    -- Do nothing; everything already points at base, and everything is randomized
+                    -- Base pre still needs to be broken
+                    local slot_trav_edge
+                    for pre, _ in pairs(dep.pre) do
+                        slot_trav_edge = pre
+                        break
+                    end
+                    table.insert(base_to_vanilla_slots[gutils.key(dep)], pass_graph.nodes[pass_graph.edges[slot_trav_edge].start])
+                    gutils.remove_edge(pass_graph, slot_trav_edge)
                 else
                     local stays_with_base = {}
                     for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
@@ -680,6 +690,17 @@ unified.execute = function()
                             if not stays_with_base[pass_graph.edges[base_pre].start] then
                                 gutils.add_edge(pass_graph, pass_graph.edges[base_pre].start, gutils.key(head_node))
                                 table.insert(pres_to_remove, base_pre)
+                            else
+                                -- Base pres must be broken so that they can be reassembled to the new head
+                                local prenode = pass_graph.nodes[pass_graph.edges[base_pre].start]
+                                -- Get unique edge from slot
+                                local prenode_pre
+                                for pre, _ in pairs(prenode.pre) do
+                                    prenode_pre = pre
+                                    break
+                                end
+                                table.insert(base_to_vanilla_slots[gutils.key(dep)], pass_graph.nodes[pass_graph.edges[prenode_pre].start])
+                                table.insert(pres_to_remove, prenode_pre)
                             end
                         end
                     end
@@ -700,7 +721,7 @@ unified.execute = function()
         end
 
         log("Calling first-pass")
-        local first_pass_info = first_pass.shuffle(pass_graph, short_path, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, trav_to_handler)
+        local first_pass_info = first_pass.shuffle(pass_graph, short_path, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
         log("Call successful")
 
         if COMBINE_TECH_UNLOCK_RECIPE then
@@ -808,25 +829,31 @@ unified.execute = function()
                 end
             end
         end
+
+        log(serpent.block(context_node_to_ind))
     end
 
     -- Context reachability
     -- Testing if putting another here fixes a bug
     -- CRITICAL TODO: Remove when resolved
     local function all_contexts_reachable_new(slot, trav)
+        -- I did some direct connections, which I probably shouldn't have, so we'll need to check the actual owners
+        local slot_owner = gutils.get_conn_owner(random_graph, slot)
+        local trav_owner = gutils.get_conn_owner(random_graph, trav)
+
         if not PRESERVE_ISOLATABILITY then
             for context, _ in pairs(logic.contexts) do
                 -- Let's try with "last prereq comes after"
                 -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
                 -- This actually didn't have an effect because of the way pool sort works
-                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
+                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav_owner)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot_owner)] or (#pool_info.open + 1)) then
                     return false
                 end
             end
         else
             for context, _ in pairs(logic.contexts) do
                 for _, str_val in pairs({"0", "1"}) do
-                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
+                    if (context_node_to_ind[context .. str_val][gutils.key(trav_owner)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot_owner)] or (#pool_info.open + 1)) then
                         return false
                     end
                 end
@@ -901,6 +928,7 @@ unified.execute = function()
                             init_sort = init_sort, -- Needed for tech rando
                         }) then
                             log("Accepted prereq " .. gutils.key(gutils.get_conn_owner(cut_graph, slot)))
+                            trav_to_handler[gutils.key(trav)].process(random_graph, slot, trav)
                             found_prereq = true
                             used_prereq_indices[ind] = true
                             trav_to_new_slot[gutils.key(trav)] = slot

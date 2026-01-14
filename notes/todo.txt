@@ -1,4 +1,6 @@
 CURRENTLY ON:
+ * Science pack sets!
+
  * (30min) Refactoring lookups (then push commit about refactoring)
  * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
  * (more hours) Finish I.B, finish by the 25th

@@ -8,8 +8,8 @@ I. Unified rando
         * Unified randomizations:
             1. (DONE) Tech prereqs
             2. (DONE) Recipe tech unlocks
-            3. Recipe categories
-            4. Spoiling (what spoils and into what)
+            3. (In Progress) Recipe categories
+            4. (In Progress) Spoiling (what spoils and into what)
             5. Fuel categories
             6. Entity rando
             7. Tile fluids, machine input/output fluids, mining fluids

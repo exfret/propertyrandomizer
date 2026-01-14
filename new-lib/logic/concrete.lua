@@ -1074,7 +1074,7 @@ function concrete.build(lu)
     for _, cat in pairs(data.raw["recipe-category"]) do
         set_prot(cat)
 
-        local spoofed_cats = lu.cat_to_rcats[cat.name]
+        local spoofed_cats = lu.vanilla_to_rcats[cat.name]
         if spoofed_cats ~= nil then
             for rcat_name, _ in pairs(spoofed_cats) do
                 ----------------------------------------

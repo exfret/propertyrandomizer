@@ -1,4 +1,5 @@
 -- Utilities specific to logic
+-- TODO: This should probably get renamed to lookup-utils
 
 local lib_name = "new-lib" -- Use this until integration with "old" lib
 local categories = require("helper-tables/categories")

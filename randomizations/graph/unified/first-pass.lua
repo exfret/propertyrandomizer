@@ -11,7 +11,9 @@
 
 local rng = require("lib/random/rng")
 local logic = require("new-lib/logic/init")
+local lutils = require("new-lib/logic/logic-utils")
 local gutils = require("new-lib/graph/graph-utils")
+local lu = require("new-lib/lookup/init")
 -- We use the extended contexts version here
 --local top = require("new-lib/graph/extended-sort")
 -- Actually let's do that later
@@ -25,7 +27,7 @@ local function head_to_vanilla_base(graph, head)
 end
 
 -- Later will probably need prereqs passed for pool management
-first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_travs, head_to_trav, base_to_slot, trav_to_handler)
+first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
     -- Permutation to attempt on deps_sorted
     local perm = {}
     for i = 1, #base_deps do
@@ -33,44 +35,31 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
     end
     rng.shuffle(rng.key({id = "unified"}), perm)
 
-
-
-    -- CRITICAL TODO: Remove this when done with it
-    -- Put nauvis at end of order so we get new planets maybe
-    --[=[local nauvis_indices = {}
-    for ind, dep in pairs(head_deps) do
-        if dep.type == "traveler" and (string.find(gutils.get_conn_owner(graph, dep).name, "nauvis") ~= nil or string.find(gutils.get_conn_owner(graph, dep).name, "space") ~= nil) then
-            nauvis_indices[ind] = true
-        end
-    end
-    local new_perm = {}
-    for i, j in pairs(perm) do
-        if not nauvis_indices[j] then
-            table.insert(new_perm, j)
-        end
-    end
-    -- Or just remove nuvis altogether
-    --[[for ind, _ in pairs(nauvis_indices) do
-        table.insert(new_perm, ind)
-    end]]
-    perm = new_perm]=]
-
-
-
     local old_graph = table.deepcopy(graph)
     local pass_sort = top.sort(graph)
-    --log(serpent.block(pass_sort.open))
 
     local function base_reachable(base)
+        -- Check if all vanilla connections have been assigned, thus getting contexts
+        for _, slot in pairs(base_to_vanilla_slots[gutils.key(base)]) do
+            local slot_contexts = pass_sort.node_to_contexts[gutils.key(slot)]
+            if slot_contexts == nil then
+                return false
+            end
+            if not (slot_contexts == true or next(slot_contexts) ~= nil) then
+                return false
+            end
+        end
+        return true
+
         -- Again, just check for any context
-        local base_contexts = pass_sort.node_to_contexts[gutils.key(base)]
+        --[[local base_contexts = pass_sort.node_to_contexts[gutils.key(base)]
         if base_contexts == nil then
             return false
         end
         if base_contexts == true or next(base_contexts) ~= nil then
             return true
         end
-        return false
+        return false]]
     end
 
     local function head_vanilla_reachable(head)
@@ -111,19 +100,43 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
     -- Bases never get cancelled, so we only need to keep track of this one thing
     local base_unlock_order = {}
 
-    local function connect_head(base, head)
-        local new_edge = gutils.add_edge(graph, gutils.key(base_to_slot[gutils.key(base)]), gutils.key(head_to_trav[gutils.key(head)]), trav_to_handler)
+    local function connect_head(graph_to_connect, sort_to_use, base, head)
+        -- First connect base to the vanilla base heads
+        -- Get rid of old edges and just connect to the heads
+        local to_remove = {}
+        for pre, _ in pairs(base.pre) do
+            table.insert(to_remove, pre)
+        end
+        for _, pre in pairs(to_remove) do
+            gutils.remove_edge(graph_to_connect, pre)
+        end
+        -- Now add edges from vanilla slot heads
+        for _, slot in pairs(base_to_vanilla_slots[gutils.key(base)]) do
+            local slot_base = gutils.get_conn_owner(graph_to_connect, slot)
+            local new_head = base_to_head[gutils.key(slot_base)]
+            -- If new_head was nil, this maybe wasn't a dep, so wouldn't have a corresponding edge anyways
+            -- If it was a base, then it should always have a head
+            local new_slot_edge = gutils.add_edge(graph_to_connect, gutils.key(new_head or slot_base), gutils.key(base))
+            sort_to_use = top.sort(graph_to_connect, sort_to_use, {
+                edge = gutils.ekey(new_slot_edge),
+                contexts = sort_to_use.node_to_contexts[gutils.key(new_head or slot_base)],
+            })
+        end
+
+        local new_edge = gutils.add_edge(graph_to_connect, gutils.key(base_to_slot[gutils.key(base)]), gutils.key(head_to_trav[gutils.key(head)]), trav_to_handler)
         local all_contexts = {}
         for context, _ in pairs(logic.contexts) do
             all_contexts[context] = true
         end
-        pass_sort = top.sort(graph, pass_sort, {
+        sort_to_use = top.sort(graph_to_connect, sort_to_use, {
             edge = gutils.ekey(new_edge),
             -- CRITICAL TODO: Make sure this accounts for edge context changes later (in general our subdivisions need to get fixed for that)
             -- Currently none of my randomizations occur at context change edges though so I can ignore this for now
             -- CRITICAL TODO: I turned off HAVING to have slot reachable but... is that the right way? Now I have to make this true
-            contexts = pass_sort.node_to_contexts[gutils.key(base)],
+            contexts = sort_to_use.node_to_contexts[gutils.key(base)],
         })
+
+        return sort_to_use
     end
 
     local function fulfill_reservation(base, head)
@@ -134,7 +147,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
             end
         end
         table.remove(reserved_bases, ind_to_remove)
-        connect_head(base, head)
+        pass_sort = connect_head(graph, pass_sort, base, head)
         log("\n\nFULFILLED:\n" .. gutils.key(base) .. " INTO " .. gutils.key(head) .. "\n")
     end
 
@@ -258,12 +271,12 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
                         if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
                             if (priority_level == 1 and short_path[gutils.key(head)]) or (priority_level == 2 and head_vanilla_reachable(head)) or priority_level == 3 then
                                 if #reserved_bases >= 1 then
-                                    for i = #reserved_bases, 1, -1 do
-                                        local res_base = reserved_bases[i]
+                                    for j = #reserved_bases, 1, -1 do
+                                        local res_base = reserved_bases[j]
 
                                         -- CRITICAL TODO: More proper check compatibility/validity between head and base
                                         if is_compatible(res_base, head) then
-                                            table.remove(reserved_bases, i)
+                                            table.remove(reserved_bases, j)
                                             is_reserved_base[gutils.key(res_base)] = nil
                                             
                                             local res_head = base_to_head[gutils.key(res_base)]
@@ -274,7 +287,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
                                             log("\n\nCancelling\n" .. gutils.key(res_head) .. "\nin\n" .. gutils.key(res_base) .. "\nfor\n" .. gutils.key(head) .. "\n")
 
                                             -- Update reachability
-                                            connect_head(res_base, head)
+                                            pass_sort = connect_head(graph, pass_sort, res_base, head)
 
                                             update_reservations()
 
@@ -316,7 +329,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
             end
             -- Log first head that couldn't find a base
             for perm_ind, head_ind in pairs(perm) do
-                head = head_deps[head_ind]
+                local head = head_deps[head_ind]
                 if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
                     log(serpent.block(head))
                     break
@@ -338,7 +351,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
         head_to_base[gutils.key(new_head)] = old_base
         -- If not a reservation, update reachability
         if not is_reserved_base[gutils.key(old_base)] then
-            connect_head(old_base, new_head)
+            pass_sort = connect_head(graph, pass_sort, old_base, new_head)
         end
 
         update_reservations()
@@ -355,7 +368,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
         table.insert(new_dep_order, base_to_head[gutils.key(dep)])
     end
 
-    local so_many_sorts = top.sort(old_graph)
+    --[[local so_many_sorts = top.sort(old_graph)
     -- Also make travelers unreachable
     local trav_to_old_slot_in_old_graph = {}
     for _, dep in pairs(new_dep_order) do
@@ -398,99 +411,47 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
             -- Currently none of my randomizations occur at context change edges though so I can ignore this for now
             contexts = so_many_sorts.node_to_contexts[edge_start],
         })
+    end]]
+    
+    -- Need to use another sort because reservations cause being out of order
+    local so_many_sorts = top.sort(old_graph)
+    for _, dep in pairs(base_unlock_order) do
+        so_many_sorts = connect_head(old_graph, so_many_sorts, old_graph.nodes[gutils.key(dep)], old_graph.nodes[gutils.key(base_to_head[gutils.key(dep)])])
     end
+    -- Contexts are transferred from bases to heads later
+
+    -- We just need to change it so the head contexts are what's considered
+    --[[local new_context_assignments = {}
+    for _, dep in pairs(base_unlock_order) do
+        new_context_assignments[gutils.key(base_to_head[gutils.key(dep)])] = so_many_sorts.node_to_contexts[gutils.key(dep)]
+    end
+    for node_key, contexts in pairs(new_context_assignments) do
+        so_many_sorts.node_to_contexts[node_key] = contexts
+    end
+    -- Oh, and we need to change open
+    -- TODO: Maybe be more careful to switch base's sort information onto head?
+    local new_open = {}
+    for _, open_info in pairs(so_many_sorts.open) do
+        if base_to_head[open_info.node] == nil then
+            -- Transfer base contexts to heads
+            if head_to_base[open_info.node] ~= nil then
+                log(gutils.key(head_to_base[open_info.node]))
+                open_info.node = gutils.key(head_to_base[open_info.node])
+            end
+            table.insert(new_open, open_info)
+        -- Read the bases, but with the head's name just so ind_to_inds is happy
+        else
+            open_info.node = open_info.node .. "-head"
+            table.insert(new_open, open_info)
+        end
+    end
+    so_many_sorts.open = new_open
+    log(serpent.block(so_many_sorts.open))]]
 
     return {
         new_dep_order = new_dep_order,
         pass_sort = so_many_sorts,
     }
-end
-
-do return first_pass end
--- Below this is old code
-
--- Extra number of estimated prereqs required in each pool past 1
-local PREREQ_REQUIREMENT_BONUS = 0
-
--- Shuffle the open list of the sort info given in sort from the graph while attempting to keep prereq pool healthy
--- Need to check "reachability" of an element of open... what does that mean?
--- I guess we activate the contexts we've been given along the edges
--- Wait, we just need to shuffle the deps, the others will follow naturally
--- Wait no, we shuffle open, then pick out the deps
--- dep_map should not be a list, but a map from dep node key to dependent
--- I think sort needs to be with the extended contexts version
-
--- graph should be cut_graph
--- node_to_random_travs is mostly for convenience; takes our dep node and produces the travs to check
--- prereqs is just a list of node_key for slots; it can have duplicates if a slot is allowed to be used multiple times
-first_pass.shuffle = function(graph, sort, dep_map, prereqs, node_to_random_travs)
-    local dep_to_context_sequence = {}
-    for _, open_info in pairs(sort.open) do
-        local node_key = open_info.node
-        if dep_map[node_key] ~= nil then
-            dep_to_context_sequence[node_key] = dep_to_context_sequence[node_key] or {}
-            table.insert(dep_to_context_sequence[node_key], table.deepcopy(open_info.contexts))
-        end
-    end
-
-    local shuffled_open = rng.shuffle(rng.key({id = "unified"}), table.deepcopy(sort.open))
-    local deps_shuffled = {}
-    local dep_to_inds_in_shuffled = {}
-    for open_ind, open_info in pairs(shuffled_open) do
-        local node_key = open_info.node
-        if dep_map[node_key] ~= nil then
-            -- Contexts need to be decided by deck method, so just insert node_key
-            table.insert(deps_shuffled, node_key)
-            dep_to_inds_in_shuffled[node_key] = dep_to_inds_in_shuffled[node_key] or {}
-            dep_to_inds_in_shuffled[node_key][open_ind] = true
-        end
-    end
-
-    -- dep --> number representing how many times it's been put in new_order
-    -- This is used to determine which context from dep_to_context_sequence to use
-    local num_times_dep_used = {}
-    for dep_key, _ in pairs(dep_map) do
-        num_times_dep_used[dep_key] = 0
-    end
-    -- node_type --> number of times that node type was used
-    local node_type_to_consumed = {}
-    for node_type, type_info in pairs(logic.type_info) do
-        node_type_to_consumed[node_type] = 0
-    end
-
-    -- This is for finding what slots/prereqs are currently reachable
-    local slot_sort = top.sort(graph)
-
-    local ind_to_used = {}
-    local new_order = {}
-
-    for i = 1, #deps_shuffled do
-        local found_next_dep = false
-        for dep_ind, dep_key in pairs(deps_shuffled) do
-            -- An immediate check for ind used is efficient and gets that out of the way
-            -- TODO: Need to check dep reachable too
-            if not ind_to_used[dep_ind] then
-                -- Check prereq pools with respect to context (then propagate with new reachable - will need to deal with "edge still not being there")
-                -- I think the edge not being there problem can be solved by just using the traveler --> owner connection
-                local context_to_use = dep_to_context_sequence[dep_key][num_times_dep_used[dep_key] + 1]
-
-                local all_travs_satisfied = false
-                for _, trav in pairs(node_to_random_travs[dep_key]) do
-                    -- Strategy: Find number of slots that transmit at least context_to_use on a transmit_dep (need to do this in case the edge modifies context)
-                    --   And also check validity for each one
-                    --   Then, multiply by the the fraction of the total number of slots reachable by some context that are not consumed
-                    --   Finally, check if the final result is at least 1 + PREREQ_REQUIREMENT_BONUS
-
-                    local total_num_reachable_slots = 0
-                    local total_num_valid_slots = 0
-                    -- It's really slow to keep iterating over every slot each time, but this is good enough for now
-                    for _, slot_key in pairs(prereqs) do
-                        -- Check dep context transmission
-                    end
-                end
-            end
-        end
-    end
 end
 
 return first_pass

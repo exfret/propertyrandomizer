@@ -25,8 +25,12 @@ end
 default.validate = function(graph, slot, trav, extra)
 end
 
+-- Called when a prereq is claimed
+default.process = function(graph, slot, trav)
+end
+
 -- Mandatory
-default.reflect = function(graph, trav_to_new_slot, trav_to_old_slot)
+default.reflect = function(graph, trav_to_new_slot, trav_to_handler)
 end
 
 return default
