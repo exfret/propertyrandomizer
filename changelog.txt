@@ -1,6 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.11
 Date: ?
+  Features:
+    - Option for color randomization
+  Changes:
+    - The default seed is now displayed as 0 (but 23 is added to the seed in the code because 23 is my favorite number)
   Bugfixes:
     - Spent fuel result now updated in item-new to prevent softlocks
 ---------------------------------------------------------------------------------------------------
