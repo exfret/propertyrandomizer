@@ -281,6 +281,20 @@ randomizations.all_sprites = function(id, key)
     end
 end
 
+randomizations.colors = function(id)
+    local lut_path
+    if settings.startup["propertyrandomizer-colors"].value == "little" then
+        lut_path = "__propertyrandomizer__/graphics/lut-less-randomized.png"
+    elseif settings.startup["propertyrandomizer-colors"].value == "crazy" then
+        lut_path = "__propertyrandomizer__/graphics/lut-randomized.png"
+    end
+
+    local uconsts = data.raw["utility-constants"].default
+    uconsts.daytime_color_lookup = {{1, lut_path}}
+    uconsts.zoom_to_world_daytime_color_lookup = {{1, lut_path}}
+    uconsts.frozen_color_lookup = lut_path
+end
+
 randomizations.map_colors = function(id)
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then

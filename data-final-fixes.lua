@@ -225,6 +225,9 @@ end
 if settings.startup["propertyrandomizer-locale"].value then
     randomizations.all_names("all_names")
 end
+if settings.startup["propertyrandomizer-colors"].value ~= "no" then
+    randomizations.colors("colors")
+end
 
 log("Done applying extra randomizations")
 

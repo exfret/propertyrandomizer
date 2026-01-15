@@ -1,7 +1,8 @@
 local constants = require("helper-tables/constants")
 local spec = require("helper-tables/spec")
 
-global_seed = settings.startup["propertyrandomizer-seed"].value
+-- Make default 23 since that's my favorite number
+global_seed = 23 + settings.startup["propertyrandomizer-seed"].value
 
 if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
     settings.startup["propertyrandomizer-bias"].value = "worst"

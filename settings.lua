@@ -5,7 +5,7 @@ data:extend({
         name = "propertyrandomizer-seed",
         localised_name = "Random seed",
         localised_description = "Changing this will change how everything is randomized.",
-        default_value = 23,
+        default_value = 0,
         minimum_value = -9007199254740992,
         maximum_value = 9007199254740992,
         order = "a[seed]"
@@ -223,6 +223,20 @@ data:extend({
         localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
         order = "e-d[locale]"
+    },
+    {
+        setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-colors",
+        localised_name = "Colors",
+        localised_description = "Each color value is randomized. How?..",
+        allowed_values = {
+            "no",
+            "little",
+            "crazy",
+        },
+        default_value = "no",
+        order = "e-e[colors]"
     },
     {
         setting_type = "startup",
