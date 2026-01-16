@@ -9,6 +9,7 @@ randomization_info = {
     -- Options communicated from config or elsewhere
     options = {}
 }
+old_data_raw = table.deepcopy(data.raw)
 
 log("Gathering config")
 
@@ -235,6 +236,7 @@ log("Applying fixes")
 
 -- Any fixes needed
 randomizations.fixes()
+do_overrides_postfixes()
 
 -- Final check for completability
 
