@@ -36,6 +36,14 @@ if settings.startup["propertyrandomizer-dupes"].value then
     dupe.execute()
 end
 
+
+
+local entity_rando = require("randomizations/graph/entity")
+entity_rando.reflect()
+
+
+
+
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
 log("Building dependency graph (if applicable)")

@@ -59,7 +59,48 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
     end
 end)
 
+script.on_event(defines.events.on_built_entity, function(event)
+    -- I used to make built biters etc. into enemies but actually I think I prefer them as on the player force
+end)
+
+script.on_event(defines.events.on_script_trigger_effect, function(event)
+    if event.effect_id == "randomizer-follower-robot-created" then
+        local nearest_player
+        local nearest_player_dist
+        for _, player in pairs(game.players) do
+            if player.character ~= nil then
+                local player_pos = player.character.position
+                local offset_x = player_pos.x - event.source_entity.position.x
+                local offset_y = player_pos.y - event.source_entity.position.y
+                local player_dist = offset_x * offset_x + offset_y * offset_y
+                if nearest_player_dist == nil or player_dist < nearest_player_dist then
+                    nearest_player = player
+                    nearest_player_dist = player_dist
+                end
+            end
+        end
+        storage.combat_robot_entity_to_assign = storage.entity_to_assign or {}
+        table.insert(storage.combat_robot_entity_to_assign, {event.source_entity, nearest_player.character})
+        --event.source_entity.combat_robot_owner = nearest_player.character
+    end
+end)
+
+script.on_event(defines.events.on_post_entity_died, function(event)
+    if string.find(event.prototype.name, "exfret%-unit") ~= nil then
+        for _, corpse in pairs(event.corpses) do
+            corpse.force = "player"
+        end
+    end
+end)
+
 script.on_nth_tick(1, function(event)
+    if storage.combat_robot_entity_to_assign ~= nil then
+        for _, spec in pairs(storage.combat_robot_entity_to_assign) do
+            spec[1].combat_robot_owner = spec[2]
+        end
+        storage.combat_robot_entity_to_assign = nil
+    end
+
     -- Print warnings on 10th tick
     if event.tick == 10 then
         if settings.startup["propertyrandomizer-seed"].value == 23 then

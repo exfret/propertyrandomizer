@@ -1,12 +1,17 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.4.11
+Version: 0.4.12
 Date: ?
+---------------------------------------------------------------------------------------------------
+Version: 0.4.11
+Date: 2026.01.16
   Features:
+    - Ability to reset or set property values with overrides post-randomization
     - Option for color randomization
   Changes:
     - The default seed is now displayed as 0 (but 23 is added to the seed in the code because 23 is my favorite number)
   Bugfixes:
     - Spent fuel result now updated in item-new to prevent softlocks
+    - (Hopefully) stopped hidden technologies from becoming prerequisites to other technologies (causing softlocks)
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.10
 Date: 2026.01.03
@@ -92,7 +97,7 @@ Date: 2025.12.07
   Changes:
     - (Nifyr) Trying out new numerical randomization algorithm
     - (Nifyr) New rounding algorithm
-    - (Nifyr) Reworked randomization of fuel items, modules, electric poles, inserter/drill offsets, and unit sizes, and more
+    - (Nifyr) Reworked randomization of fuel items, modules, electric poles, inserter/drill offsets, unit sizes, and more
   Bugfixes:
     - Removed occasional infinite loop in recipe randomization
     - (Nifyr) Recycling recipes are now regenerated following vanilla rules
