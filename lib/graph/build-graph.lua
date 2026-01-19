@@ -3828,6 +3828,14 @@ local function load()
             end
         end
 
+        -- If this is a hidden tech, add a connection from a falsey node
+        if tech.hidden then
+            table.insert(prereqs, {
+                type = "build-entity-surface-condition-false",
+                name = "canonical"
+            })
+        end
+
         add_to_graph("technology", tech.name, prereqs)
     end
 

@@ -14,7 +14,8 @@ data:extend({
         localised_description = "FUN!",
         stack_size = 23,
         icon = "__propertyrandomizer__/graphics/gear-icon.png",
-        icon_size = 127
+        icon_size = 127,
+        hidden = true,
     }
 })
 
