@@ -1,7 +1,7 @@
 -- CRITICAL TODO: Turn back on when things are working with this off (one step at a time)
 local PRESERVE_ISOLATABILITY = false
 -- First pass is broken now; I need to figure out what's wrong and fix it later
-local CONDUCT_FIRST_PASS = true
+local CONDUCT_FIRST_PASS = false
 -- Ad hoc test for grouping; put tech unlock with recipe
 local COMBINE_TECH_UNLOCK_RECIPE = false
 -- Second perhaps better try at tech unlock coupling; modify graph so that recipe --> unlock-recipe-technology (AND over recipe and a single tech) --> recipe-fina
@@ -22,10 +22,17 @@ local handler_ids = {
     "recipe-category",
     "recipe-ingredients",
     "tech-prereqs",
-    "tech-unlocks",
+    "recipe-tech-unlocks",
+    --"tech-unlocks",
+    "spoiling",
 }
 
 unified.execute = function()
+    -- CRITICAL TODO: Fix up to be base game compatible before release
+    if not mods["space-age"] then
+        error("exfret, you forgot to enable Space Age you doofus.")
+    end
+
     -- Load handlers
     local default_handler = require("randomizations/graph/unified/handlers/default")
     local handlers = {}
@@ -156,8 +163,6 @@ unified.execute = function()
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
     end
-
-    short_path = {}
 
     ----------------------------------------------------------------------------------------------------
     -- Claiming
@@ -721,7 +726,7 @@ unified.execute = function()
         end
 
         log("Calling first-pass")
-        local first_pass_info = first_pass.shuffle(pass_graph, short_path, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
+        local first_pass_info = first_pass.shuffle(pass_graph, short_path, shuffled_prereqs, init_sort, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
         log("Call successful")
 
         if COMBINE_TECH_UNLOCK_RECIPE then
@@ -829,8 +834,6 @@ unified.execute = function()
                 end
             end
         end
-
-        log(serpent.block(context_node_to_ind))
     end
 
     -- Context reachability
@@ -922,6 +925,11 @@ unified.execute = function()
             for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
                 local found_prereq = false
                 for ind, slot in pairs(shuffled_prereqs) do
+                    if trav_to_handler[gutils.key(trav)].id == "spoiling" and gutils.get_conn_owner(random_graph, slot).type == "item" then
+                        log(slot.name)
+                        log(trav.name)
+                        log(all_contexts_reachable_new(slot, trav))
+                    end
                     if not used_prereq_indices[ind] and all_contexts_reachable_new(slot, trav) then
                         -- Have traveler's handler validate this ind
                         if trav_to_handler[gutils.key(trav)].validate(random_graph, slot, trav, {

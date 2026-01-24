@@ -1,5 +1,12 @@
 CURRENTLY ON:
- * Science pack sets!
+ * Entity rando in main branch
+    * Refactoring out into multiple files
+    * Add any new node types needed
+    * The algorithm proper
+ * Tests! I'm tired of not knowing if things are working
+ * Spoilage handler
+    - It's saying raw fish --> spoilage slot is not before the trav, need to fix (maybe consider some sort of tests)
+ * Science pack sets
 
  * (30min) Refactoring lookups (then push commit about refactoring)
  * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
@@ -24,3 +31,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Softlock checking based on "concrete" nodes, better error messages for softlocks
  * Add recipetweaker to list of recommended mods, and consider other "tweaker" mods
  * Think about secondary sort rando (doing a second sort and taking intersection to reduce linearity)
+ * Check heating_energy when checking whether things can freeze (zero means it can't freeze)

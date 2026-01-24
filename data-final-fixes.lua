@@ -1,3 +1,24 @@
+local logic = require("new-lib/logic/init")
+logic.build()
+randomization_info = {}
+randomization_info.warnings = {}
+randomization_info.graph = logic.graph
+
+local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+warnings_selection_tool.type = "selection-tool"
+warnings_selection_tool.name = "propertyrandomizer-warnings"
+warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
+local graph_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+graph_selection_tool.type = "selection-tool"
+graph_selection_tool.name = "propertyrandomizer-graph"
+graph_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.graph)}
+data:extend({
+    warnings_selection_tool,
+    graph_selection_tool,
+})
+
+do return true end
+
 global_seed = 123456
 randomizations = {}
 

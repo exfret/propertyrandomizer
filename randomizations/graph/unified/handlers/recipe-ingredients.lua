@@ -6,7 +6,7 @@ local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
 
--- Include 10 copies first dupe, 3 copies each one after
+-- Include 10 copies first time, 3 copies each one after
 local already_duped = {}
 recipe_ingredients.claim = function(graph, prereq, dep, trav)
     if (prereq.type == "item" or prereq.type == "fluid") and dep.type == "recipe" then

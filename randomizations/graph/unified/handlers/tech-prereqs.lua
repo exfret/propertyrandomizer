@@ -21,6 +21,9 @@ end
 tech_prereqs.validate = function(graph, slot, trav, extra)
     -- Any tech-tech connection is fine
     if gutils.get_conn_owner(graph, slot).type == "technology" then
+        return true
+        -- This was causing problems and I have another idea for solving linearity issue
+        --[[
         -- Actually, let's also check that the tech is definitely before in vanilla
         local tech1 = gutils.get_conn_owner(graph, slot)
         local tech2 = gutils.get_conn_owner(graph, trav)
@@ -39,7 +42,7 @@ tech_prereqs.validate = function(graph, slot, trav, extra)
         end
         if init_sort.ind_to_ind[earliest_ind2] >= earliest_ind1 then
             return true
-        end
+        end]]
     end
 end
 

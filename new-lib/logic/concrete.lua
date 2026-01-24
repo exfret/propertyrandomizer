@@ -847,14 +847,12 @@ function concrete.build(lu)
             end
         end
 
+        ----------------------------------------
+        add_node("fuel-category-burn", "OR")
+        ----------------------------------------
+        -- Can we burn fuel of this category?
+        -- OR over burner entities with burnt_inventory_size > 0 for this category.
         if lu.fcat_to_burners[fcat.name] ~= nil then
-            ----------------------------------------
-            add_node("fuel-category-burn", "OR")
-            ----------------------------------------
-            -- Can we burn fuel of this category (i.e., access burnt_result)?
-            -- OR over burner entities with burnt_inventory_size > 0 for this category.
-            -- Uses base category name since any burner accepting this category works.
-
             for burner_name, _ in pairs(lu.fcat_to_burners[fcat.name]) do
                 add_edge("entity-operate", burner_name)
             end
@@ -900,7 +898,10 @@ function concrete.build(lu)
         -- Edge from items that spoil into this item
         if lu.spoil_result_to_items[item.name] ~= nil then
             for spoiling_item, _ in pairs(lu.spoil_result_to_items[item.name]) do
-                add_edge("item", spoiling_item)
+                local item_prot = dutils.get_prot("item", spoiling_item)
+                add_edge("item", spoiling_item, {
+                    spoil_ticks = item_prot.spoil_ticks,
+                })
             end
         end
         -- Edge from fuels that burn into this item
@@ -931,7 +932,7 @@ function concrete.build(lu)
 
         if corresponding_recipes ~= nil then
             ----------------------------------------
-            add_node("item-craft", "OR", nil, item.name, { canonical = "item-craft" }) -- Some recipes for items are way after the item (e.g.- recycling), so we don't want them connected
+            add_node("item-craft", "OR")
             ----------------------------------------
             -- Can we craft this item? (Separate node needed for tech triggers)
 
@@ -945,10 +946,10 @@ function concrete.build(lu)
 
         local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
-            -- CRITICAL TODO: This if condition prevents deliveries of high-weight items from space platforms; fix this!
+            -- CRITICAL TODO: This if condition prevents deliveries of high-weight items *from* space platforms; fix this!
 
             ----------------------------------------
-            add_node("item-launch", "AND", true, item.name, { canonical = "item-launch" }) -- We must separate out item-launch when making blocks, or else many item blocks become "concave"
+            add_node("item-launch", "AND", true)
             ----------------------------------------
             -- Can we launch this item into space?
             -- This node FORGETS context: launching makes item available to all reachable rooms

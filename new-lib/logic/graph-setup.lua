@@ -53,6 +53,9 @@ function graph_setup.build(logic)
         graph.nodes[edge.stop].pre[edge_key] = true
         graph.nodes[edge.stop].num_pre = graph.nodes[edge.stop].num_pre + 1
     end
+
+    -- Link node_info and such
+    graph.type_info = logic.type_info
 end
 
 return graph_setup
