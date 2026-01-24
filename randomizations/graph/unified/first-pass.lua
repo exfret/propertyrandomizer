@@ -27,7 +27,7 @@ local function head_to_vanilla_base(graph, head)
 end
 
 -- Later will probably need prereqs passed for pool management
-first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
+first_pass.shuffle = function(graph, short_path, shuffled_prereqs, init_sort, base_deps, head_deps, dep_to_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
     -- Permutation to attempt on deps_sorted
     local perm = {}
     for i = 1, #base_deps do
@@ -187,6 +187,34 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
         return false
     end
 
+    -- Check if there are enough prereqs for head to make a reservation
+    -- We want each traveler to have at least some number of choices choices
+    local function can_reserve(head)
+        for _, head_trav in pairs(dep_to_travs[string.sub(gutils.key(head), 1, -6)]) do
+            local num_prereqs = 0
+            for _, prereq in pairs(shuffled_prereqs) do
+                -- Just in case there are reference problems
+                head_trav = old_graph.nodes[gutils.key(head_trav)]
+                prereq = old_graph.nodes[gutils.key(prereq)]
+                -- Just check for existence of any context so far
+                local prereq_contexts = pass_sort.node_to_contexts[gutils.key(prereq)]
+                if prereq_contexts ~= nil and (prereq_contexts == true or next(prereq_contexts) ~= nil) then
+                    if trav_to_handler[gutils.key(head_trav)].validate(old_graph, prereq, head_trav, {init_sort = init_sort}) then
+                        num_prereqs = num_prereqs + 1
+                    end
+                end
+
+                if num_prereqs >= 0 then
+                    break
+                end
+            end
+            if num_prereqs < 0 then
+                return false
+            end
+        end
+        return true
+    end
+
     for i = 1, #base_deps do
         local old_base
         local new_head
@@ -210,35 +238,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
                         head = graph.nodes[gutils.key(head)]
 
                         if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
-                            -- Test if prereq pools are agreeable according to vanilla pools; filter valid prereqs
-                            local valid_matching
-
-                            -- Just treat each traveler of dep like it needs the same prereqs
-                            local example_traveler = dep_to_travs[gutils.key(head_to_vanilla_base(graph, head))][1]
-                            local trav_owner = gutils.get_conn_owner(graph, graph.nodes[gutils.key(example_traveler)])
-                            -- The number of prereqs needed is actually on base, since that has the randomized edges
-                            -- trav is needed to check for validity conditions, which we skip over right now
-                            -- CRITICAL TODO: Better validation check
-                            
-                            --[[local num_prereqs_needed = #dep_to_travs[gutils.key(base)]
-                            local num_prereqs_found = 0
-                            for _, prereq_slot in pairs(base_to_pool[gutils.key(base)]) do
-                                local prereq = gutils.get_conn_owner(graph, graph.nodes[gutils.key(prereq_slot)])
-
-                                -- CRITICAL TODO: Write proper validate function as well
-
-                                -- For now check if types are the same
-                                if prereq.type == trav_owner.type then
-                                    num_prereqs_found = num_prereqs_found + 1
-                                end
-                            end
-                            if num_prereqs_found >= num_prereqs_needed then
-                                valid_matching = true
-                            end]]
-
-                            -- No ability to make atm
-                            -- CRITICAL TODO: Rework
-                            if is_compatible(base, head) then
+                            if is_compatible(base, head) and (can_reserve(head) or head_vanilla_reachable(head)) then
                                 -- TODO: Permanent reservations (right now results aren't randomized, so recipes basically all do something, making them pointless to implement now)
                                 -- Test if this is a reservation
                                 if not head_vanilla_reachable(head) then
@@ -269,7 +269,7 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
                     for perm_ind, head_ind in pairs(perm) do
                         local head = head_deps[head_ind]
                         if head_to_base[gutils.key(head)] == nil and head_absolute_reachable(head) then
-                            if (priority_level == 1 and short_path[gutils.key(head)]) or (priority_level == 2 and head_vanilla_reachable(head)) or priority_level == 3 then
+                            if (priority_level == 1 and short_path[gutils.key(head)] and head_vanilla_reachable(head)) or (priority_level == 2 and head_vanilla_reachable(head)) or priority_level == 3 then
                                 if #reserved_bases >= 1 then
                                     for j = #reserved_bases, 1, -1 do
                                         local res_base = reserved_bases[j]
@@ -320,6 +320,8 @@ first_pass.shuffle = function(graph, short_path, base_deps, head_deps, dep_to_tr
             end
         end
         if new_head == nil then
+            -- Log number reservations left
+            log(#reserved_bases)
             -- Log first base that couldn't find a head
             for _, base in pairs(base_deps) do
                 if base_to_head[gutils.key(base)] == nil and base_reachable(base) then

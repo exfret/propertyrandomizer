@@ -5,6 +5,7 @@
 -- TODO: Do a quick look through item subgroups/spawnables just to see anything that might need to be blacklisted
 
 local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("new-lib/data-utils")
 
 local spoiling = {}
 
@@ -17,7 +18,7 @@ end
 spoiling.claim = function(graph, prereq, dep, trav)
     -- Spoiling is the only item --> item connection right now
     if prereq.type == "item" and dep.type == "item" then
-        return true
+        return 1
     end
 end
 
@@ -32,9 +33,40 @@ spoiling.validate = function(graph, slot, trav, extra)
 end
 
 spoiling.reflect = function(graph, trav_to_new_slot, trav_to_handler)
+    -- Remove old spoil effects
+    for _, item in pairs(dutils.get_all_prots("item")) do
+        if item.spoil_result ~= nil then
+            item.spoil_result = nil
+            item.spoil_ticks = nil
+        end
+    end
+
+    -- A map from items to their new spoil results (if any)
+    local item_new_spoil = {}
+
     for trav_key, slot in pairs(trav_to_new_slot) do
         if trav_to_handler[trav_key].id == "spoiling" then
+            local trav = graph.nodes[trav_key]
+            local trav_owner = gutils.get_conn_owner(graph, trav)
+            local slot_owner = gutils.get_conn_owner(graph, slot)
+            local item = dutils.get_prot("item", slot_owner.name)
+            local spoil_result = trav_owner.name
+            log(serpent.block({
+                item = item,
+                spoil_result = spoil_result,
+                spoil_ticks = trav.spoil_ticks
+            }))
+            table.insert(item_new_spoil, {
+                item = item,
+                spoil_result = spoil_result,
+                spoil_ticks = trav.spoil_ticks
+            })
         end
+    end
+
+    for _, spoil_info in pairs(item_new_spoil) do
+        spoil_info.item.spoil_result = spoil_info.spoil_result
+        spoil_info.item.spoil_ticks = spoil_info.spoil_ticks
     end
 end
 

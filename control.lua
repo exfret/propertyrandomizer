@@ -1,12 +1,26 @@
+local gui = require("gui")
+
 local constants = require("helper-tables/constants")
+
+local function load_dep_graph()
+    for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
+        local _, graph = serpent.load(data)
+        storage.graph = graph
+        break
+    end
+end
 
 script.on_init(function(event)
     storage.printed_change_surface_message = false
     storage.player_ind_to_last_return_attempt_ticks = {}
+
+    load_dep_graph()
 end)
 
 script.on_configuration_changed(function(event)
     game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Mod configuration was changed; keep in mind that updates may break pre-existing runs.\nOlder versions of mods can be found on the factorio mod website (mods.factorio.com) if needed.\nIf you need any help, message exfret on discord or on the mod's website - mods.factorio.com/mod/propertyrandomizer")
+
+    load_dep_graph()
 end)
 
 script.on_event("return-to-nauvis", function(event)

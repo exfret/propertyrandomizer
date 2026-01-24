@@ -30,7 +30,7 @@ end
 flow_cost.find_amount_in_entry = function(ing_or_prod)
     local amount_expected = ing_or_prod.amount
     if ing_or_prod.amount == nil then
-        amount_expected = (ing_or_prod.amount_min + max(ing_or_prod.amount_min, ing_or_prod.amount_max)) / 2
+        amount_expected = (ing_or_prod.amount_min + math.max(ing_or_prod.amount_min, ing_or_prod.amount_max)) / 2
     end
 
     local probability = ing_or_prod.probability or 1

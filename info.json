@@ -1,12 +1,13 @@
 {
 	"name": "propertyrandomizer",
-	"version": "0.4.11",
+	"version": "0.4.12",
 	"title": "exfret's Randomizer",
 	"author": "exfret",
 	"factorio_version": "2.0",
 	"description": "Randomizes every aspect of the game, including recipes, technologies, machines, and more. Download for the ultimate randomization experience that will force you to think in different new ways!",
 	"dependencies": [
 		"base >= 2.0.0",
+		"flib",
 		"(?) space-age",
 		"(?) all-the-overhaul-modpack",
 		"(?) angelssmelting",
