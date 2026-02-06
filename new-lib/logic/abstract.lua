@@ -293,6 +293,8 @@ function abstract.build(lu)
     -- Virtual nodes for each unique combination of science packs.
     -- Labs must accept ALL packs in a set simultaneously for research.
 
+    -- TODO: Ability to support mods with techs which take different amounts of each science pack (like in py)
+
     set_class("science-pack-set")
 
     for set_name, set_packs in pairs(lu.science_sets) do

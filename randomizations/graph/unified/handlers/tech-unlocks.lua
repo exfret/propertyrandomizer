@@ -6,29 +6,6 @@ local tech_unlocks = {}
 
 tech_unlocks.id = "tech_unlocks"
 
-
-
-
--- CRITICAL TODO: Remove when done testing!
-tech_unlocks.spoof = function(graph)
-    --[[local edges_to_remove = {}
-    for _, edge in pairs(graph.edges) do
-        local start_node = graph.nodes[edge.start]
-        local stop_node = graph.nodes[edge.stop]
-        if start_node.type == "recipe-tech-unlock" and stop_node.type == "recipe" then
-            table.insert(edges_to_remove, edge)
-        end
-    end
-    for _, edge in pairs(edges_to_remove) do
-        gutils.remove_edge(graph, gutils.ekey(edge))
-    end]]
-end
-
-
-
-
-
-
 tech_unlocks.claim = function(graph, prereq, dep, trav)
     if prereq.type == "technology" and dep.type == "recipe-tech-unlock" then
         return 4

@@ -13,8 +13,6 @@ local key = gutils.key
 
 local top = {}
 
--- We'll just do basic top sort without blacklists or state saving for now
--- Okay, now we have state saving
 -- new_conn should carry edge AND new contexts (contexts from old node)
 top.sort = function(graph, state, new_conn, extra)
     state = state or {}

@@ -2,7 +2,7 @@
 local PRESERVE_ISOLATABILITY = false
 -- First pass is broken now; I need to figure out what's wrong and fix it later
 local CONDUCT_FIRST_PASS = false
--- Ad hoc test for grouping; put tech unlock with recipe
+-- Ad hoc attempt for grouping; put tech unlock with recipe
 local COMBINE_TECH_UNLOCK_RECIPE = false
 -- Second perhaps better try at tech unlock coupling; modify graph so that recipe --> unlock-recipe-technology (AND over recipe and a single tech) --> recipe-fina
 -- This also doesn't work actually, but not for awful reasons; I'll just need to be more careful about how I do this
@@ -19,12 +19,13 @@ local first_pass = require("randomizations/graph/unified/first-pass")
 local unified = {}
 
 local handler_ids = {
-    "recipe-category",
-    "recipe-ingredients",
-    "tech-prereqs",
-    "recipe-tech-unlocks",
+    --"recipe-category",
+    --"recipe-ingredients",
+    --"tech-prereqs",
+    --"recipe-tech-unlocks",
     --"tech-unlocks",
-    "spoiling",
+    --"spoiling",
+    "tech-science-packs",
 }
 
 unified.execute = function()
@@ -840,23 +841,25 @@ unified.execute = function()
     -- Testing if putting another here fixes a bug
     -- CRITICAL TODO: Remove when resolved
     local function all_contexts_reachable_new(slot, trav)
+        -- Actually, this breaks things to do the direct connection way (which is kinda obvious in hindsight)
+        -- CRITICAL TODO: Don't do that stupid direct connection thing (I think this was in "first pass" where I was doing this thing)
         -- I did some direct connections, which I probably shouldn't have, so we'll need to check the actual owners
-        local slot_owner = gutils.get_conn_owner(random_graph, slot)
-        local trav_owner = gutils.get_conn_owner(random_graph, trav)
+        --local slot_owner = gutils.get_conn_owner(random_graph, slot)
+        --local trav_owner = gutils.get_conn_owner(random_graph, trav)
 
         if not PRESERVE_ISOLATABILITY then
             for context, _ in pairs(logic.contexts) do
                 -- Let's try with "last prereq comes after"
                 -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
                 -- This actually didn't have an effect because of the way pool sort works
-                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav_owner)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot_owner)] or (#pool_info.open + 1)) then
+                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
                     return false
                 end
             end
         else
             for context, _ in pairs(logic.contexts) do
                 for _, str_val in pairs({"0", "1"}) do
-                    if (context_node_to_ind[context .. str_val][gutils.key(trav_owner)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot_owner)] or (#pool_info.open + 1)) then
+                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
                         return false
                     end
                 end
@@ -864,6 +867,21 @@ unified.execute = function()
         end
 
         return true
+    end
+
+    -- TEST: Make sure each trav is after its corresponding slot
+    for _, dep in pairs(sorted_deps) do
+        for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
+            local subdiv_trav = subdiv_graph.nodes[gutils.key(trav)]
+            local subdiv_slot = gutils.get_conn_buddy(subdiv_graph, subdiv_trav)
+            local slot = random_graph.nodes[gutils.key(subdiv_slot)]
+            if slot.name ~= trav.name then
+                log(serpent.block(slot.name))
+                log(serpent.block(trav.name))
+                error("Randomization assertion failed! Tell exfret he's a dumbo.")
+            end
+            assert(all_contexts_reachable(slot, trav))
+        end
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -926,7 +944,9 @@ unified.execute = function()
                 local found_prereq = false
                 for ind, slot in pairs(shuffled_prereqs) do
                     if trav_to_handler[gutils.key(trav)].id == "spoiling" and gutils.get_conn_owner(random_graph, slot).type == "item" then
+                        log(slot.type)
                         log(slot.name)
+                        log(trav.type)
                         log(trav.name)
                         log(all_contexts_reachable_new(slot, trav))
                     end

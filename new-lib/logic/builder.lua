@@ -56,7 +56,7 @@ function helpers.add_node(node_type, op, context, node_name, extra)
             op = op,
             context = context,
             canonical = extra.canonical or curr_class,
-            -- We can't include this here because then the table doesn't get smuggled correctly to control stage; it'll need to be done then
+            -- We can't include this here because then the table doesn't get smuggled correctly to control stage (can't smuggle functions); it'll need to be done then
             --[[localiser = extra.localiser or function(node)
                 local deconstructed = gutils.deconstruct(node.prot)
                 local localised_type = extra.loctype or string.upper(string.sub(node.type, 1, 1)) .. string.sub(node.type, 2, -1)
