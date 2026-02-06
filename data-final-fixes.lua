@@ -17,8 +17,6 @@ data:extend({
     graph_selection_tool,
 })
 
-do return true end
-
 global_seed = 123456
 randomizations = {}
 
