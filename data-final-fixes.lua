@@ -4,6 +4,11 @@ randomization_info = {}
 randomization_info.warnings = {}
 randomization_info.graph = logic.graph
 
+local test = require("tests/graph-operations")
+test.init(logic.graph)
+test.pre_depnode()
+test.pre_depnodes()
+
 local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
 warnings_selection_tool.type = "selection-tool"
 warnings_selection_tool.name = "propertyrandomizer-warnings"
