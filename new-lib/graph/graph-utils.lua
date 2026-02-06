@@ -44,6 +44,49 @@ gutils.ekey = function(edge)
 end
 
 -- TODO: Key deconstruct function for concat and ekey (basically a .split())
+-- Could call this deconcat
+
+gutils.prenode = function(graph, pre)
+    return graph.nodes[graph.edges[pre].start]
+end
+
+gutils.depnode = function(graph, dep)
+    return graph.nodes[graph.edges[dep].stop]
+end
+
+-- Untested
+gutils.pres = function(graph, node)
+    local edges = {}
+    for pre, _ in pairs(node.pre) do
+        table.insert(edges, graph.edges[pre])
+    end
+    return edges
+end
+
+-- Untested
+gutils.deps = function(graph, node)
+    local edges = {}
+    for dep, _ in pairs(node.dep) do
+        table.insert(edges, graph.edges[dep])
+    end
+    return edges
+end
+
+gutils.prenodes = function(graph, node)
+    local nodes = {}
+    for pre, _ in pairs(node.pre) do
+        table.insert(nodes, gutils.prenode(graph, pre))
+    end
+    return nodes
+end
+
+gutils.depnodes = function(graph, node)
+    local nodes = {}
+    for dep, _ in pairs(node.dep) do
+        table.insert(nodes, gutils.depnode(graph, dep))
+    end
+    return nodes
+end
 
 -- Does not add to sources or add op property
 gutils.add_node = function(graph, node_type, node_name, extra)
@@ -74,6 +117,13 @@ gutils.add_node = function(graph, node_type, node_name, extra)
 end
 
 gutils.add_edge = function(graph, start, stop, extra)
+    if type(start) == "table" then
+        start = gutils.key(start)
+    end
+    if type(stop) == "table" then
+        stop = gutils.key(stop)
+    end
+
     local edge = {
         object_type = "edge",
         start = start,
