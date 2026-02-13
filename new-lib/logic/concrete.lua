@@ -367,7 +367,7 @@ function concrete.build(lu)
                     end
                 elseif entity.type == "generator" then
                     -- Generators can have filtered fluid_box or burn any fuel fluid
-                    if entity.fluid_box ~= nil and entity.fluid_box.filter ~= nil then
+                    if entity.fluid_box.filter ~= nil then
                         add_edge("fluid", entity.fluid_box.filter)
                     elseif entity.burns_fluid then
                         -- Any fluid with fuel_value works
@@ -382,8 +382,10 @@ function concrete.build(lu)
                 elseif entity.type == "fluid-turret" then
                     -- Fluid turrets specify fluids in attack_parameters.fluids
                     if entity.attack_parameters ~= nil and entity.attack_parameters.fluids ~= nil then
-                        for _, stream_fluid in pairs(entity.attack_parameters.fluids) do
-                            add_edge("fluid", stream_fluid.type)
+                        for ind, stream_fluid in pairs(entity.attack_parameters.fluids) do
+                            add_edge("fluid", stream_fluid.type, {
+                                ind = ind,
+                            })
                         end
                     end
                 end

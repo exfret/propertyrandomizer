@@ -15,6 +15,7 @@ local top = require("new-lib/graph/top-sort")
 local top2 = require("new-lib/graph/extended-sort")
 local logic = require("new-lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
+local test_graph_invariants = require("tests/graph-invariants")
 
 local unified = {}
 
@@ -25,7 +26,8 @@ local handler_ids = {
     --"recipe-tech-unlocks",
     --"tech-unlocks",
     --"spoiling",
-    "tech-science-packs",
+    --"tech-science-packs",
+    "entity-operation-fluid",
 }
 
 unified.execute = function()
@@ -52,6 +54,8 @@ unified.execute = function()
 
         handlers[handler_id] = handler
     end
+
+    test_graph_invariants.test(logic.graph)
 
     ----------------------------------------------------------------------------------------------------
     -- GRAPH PREP
@@ -114,6 +118,8 @@ unified.execute = function()
         handler.spoof(graph)
     end
 
+    test_graph_invariants.test(graph)
+
     ----------------------------------------------------------------------------------------------------
     -- Subdivision and Path finding
     ----------------------------------------------------------------------------------------------------
@@ -164,6 +170,8 @@ unified.execute = function()
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
     end
+
+    test_graph_invariants.test(subdiv_graph)
 
     ----------------------------------------------------------------------------------------------------
     -- Claiming
@@ -301,6 +309,8 @@ unified.execute = function()
         end
     end
 
+    test_graph_invariants.test(cut_graph)
+
     ----------------------------------------------------------------------------------------------------
     -- Filling Pools
     ----------------------------------------------------------------------------------------------------
@@ -418,6 +428,9 @@ unified.execute = function()
 
         return true
     end
+
+    test_graph_invariants.test(pool_graph)
+    test_graph_invariants.test(random_graph)
 
     ----------------------------------------------------------------------------------------------------
     -- First Pass (if applicable)
@@ -884,6 +897,8 @@ unified.execute = function()
         end
     end
 
+    test_graph_invariants.test(random_graph)
+
     ----------------------------------------------------------------------------------------------------
     -- Do The Shuffle
     ----------------------------------------------------------------------------------------------------
@@ -943,10 +958,8 @@ unified.execute = function()
             for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
                 local found_prereq = false
                 for ind, slot in pairs(shuffled_prereqs) do
-                    if trav_to_handler[gutils.key(trav)].id == "spoiling" and gutils.get_conn_owner(random_graph, slot).type == "item" then
-                        log(slot.type)
+                    if trav_to_handler[gutils.key(trav)].id == "entity_operation_fluid" and gutils.get_conn_owner(random_graph, slot).type == "fluid" then
                         log(slot.name)
-                        log(trav.type)
                         log(trav.name)
                         log(all_contexts_reachable_new(slot, trav))
                     end
@@ -977,6 +990,8 @@ unified.execute = function()
             end
         end
     end
+
+    test_graph_invariants.test(random_graph)
 
     ----------------------------------------------------------------------------------------------------
     -- Reflection

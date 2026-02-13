@@ -5,6 +5,7 @@ Date: ?
     - Major new "unified" randomization algorithm that bundles all randomizations together
     - (Unified) Technology prerequisites randomization (done before, but now integrated in unified)
     - (Unified) Technology recipe unlocks randomization (also done before, but now in integrated)
+    - WIP randomizer panel with ability to see what's needed to get anything in the game
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.11
 Date: ?
