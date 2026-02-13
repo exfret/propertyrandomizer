@@ -58,6 +58,11 @@ end
 gutils.pres = function(graph, node)
     local edges = {}
     for pre, _ in pairs(node.pre) do
+        if graph.edges[pre] == nil then
+            log(serpent.block(node))
+            log(pre)
+            error("Randomization assertion failed! Tell exfret he's a dumbo.")
+        end
         table.insert(edges, graph.edges[pre])
     end
     return edges
@@ -67,8 +72,14 @@ end
 gutils.deps = function(graph, node)
     local edges = {}
     for dep, _ in pairs(node.dep) do
+        if graph.edges[dep] == nil then
+            log(serpent.block(node))
+            log(dep)
+            error("Randomization assertion failed! Tell exfret he's a dumbo.")
+        end
         table.insert(edges, graph.edges[dep])
     end
+    log(serpent.block(edges))
     return edges
 end
 
@@ -86,6 +97,62 @@ gutils.depnodes = function(graph, node)
         table.insert(nodes, gutils.depnode(graph, dep))
     end
     return nodes
+end
+
+-- Untested
+-- Gets unique pre (edge) (only works if it is unique)
+gutils.unique_pre = function(graph, node)
+    -- Check both num_pre and actual number prereqs for safety
+    if node.num_pre ~= 1 then
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    local pres = gutils.pres(graph, node)
+    if #pres ~= 1 then
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return pres[1]
+end
+
+-- Untested
+-- Gets unique dep (edge) (only works if it is unique)
+gutils.unique_dep = function(graph, node)
+    local deps = gutils.deps(graph, node)
+    if #deps ~= 1 then
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return deps[1]
+end
+
+-- Untested
+-- Gets unique prenode (only works if it is unique)
+gutils.unique_prenode = function(graph, node)
+    return gutils.prenode(graph, gutils.ekey(gutils.unique_pre(graph, node)))
+end
+
+-- Untested
+-- Gets unique depnode (only works if it is unique)
+gutils.unique_depnode = function(graph, node)
+    return gutils.depnode(graph, gutils.ekey(gutils.unique_dep(graph, node)))
+end
+
+local connector_types = {
+    ["slot"] = true,
+    ["traveler"] = true,
+}
+
+-- Same as above, but goes through slots/travs until reaching a "proper" node
+gutils.unique_preconn = function(graph, node)
+    repeat
+        node = gutils.unique_prenode(graph, node)
+    until not connector_types[node.type]
+    return node
+end
+
+gutils.unique_depconn = function(graph, node)
+    repeat
+        node = gutils.unique_depnode(graph, node)
+    until not connector_types[node.type]
+    return node
 end
 
 -- Does not add to sources or add op property
@@ -208,6 +275,7 @@ gutils.subdivide = function(graph, edge_key)
     }
 end
 
+-- TODO: The following could be rewritten in terms of the new traversal functions once I feel confident about them
 -- Get a slot or traveler's base node
 gutils.get_conn_owner = function(graph, conn)
     if conn.type == "slot" then

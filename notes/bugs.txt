@@ -24,6 +24,7 @@
 28. Fix localisations when dupe and item randos are together
 29. First pass is proceeding in basically a vanilla order (might be related to recipe tech unlocks, but it's also leading to softlocks meaning contexts are not calculated correctly either)
 30. Hidden technologies might be getting used in tech randomization
+31. Startup crash on safeguarded: https://discord.com/channels/139677590393716737/231518135231053825/1471202778217971742
 
 Fixed?
 12. Change corpse size doesn't check that there is a corpse first, resulting in mod incompatibilities (https://mods.factorio.com/mod/propertyrandomizer/discussion/69224af08e1629a0efaa7d67)

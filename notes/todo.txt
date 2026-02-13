@@ -1,11 +1,12 @@
 CURRENTLY ON:
+ * entity-operation-fluid handler (keep a test-centered focus)
+    * Add some invariants for node deps always being an edge!
  * Tests! I'm tired of not knowing if things are working
-    - Maybe work on concurrently with spoilage handler to help with diagnosis of the issue
+    * Work on concurrently with spoilage handler to help with diagnosis of the issue
  * Entity rando in main branch
     * Refactoring out into multiple files
     * Add any new node types needed
     * The algorithm proper
- * Science pack sets
 
  * (30min) Refactoring lookups (then push commit about refactoring)
  * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
