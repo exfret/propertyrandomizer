@@ -18,62 +18,19 @@ if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
     settings.startup["propertyrandomizer-item-percent"].value = 100
 end
 
-local bias_string_to_num = {
-    ["worst"] = -0.05,
-    ["worse"] = -0.025,
-    ["default"] = 0,
-    ["better"] = 0.025,
-    ["best"] = 0.05
-}
-
-local bias_string_to_idx = {
-    ["worst"] = 0,
-    ["worse"] = 1,
-    ["default"] = 2,
-    ["better"] = 3,
-    ["best"] = 4,
-}
-
+local bias_string_to_num = constants.bias_string_to_num
+local bias_string_to_idx = constants.bias_string_to_idx
 global_bias = bias_string_to_num[settings.startup["propertyrandomizer-bias"].value]
 global_bias_idx = bias_string_to_idx[settings.startup["propertyrandomizer-bias"].value]
 
-local chaos_string_to_idx = {
-    ["light"] = 0,
-    ["less"] = 1,
-    ["default"] = 2,
-    ["more"] = 3,
-    ["ultimate"] = 4
-}
-
-global_chaos_idx = chaos_string_to_idx[settings.startup["propertyrandomizer-chaos"].value]
-
-local chaos_string_to_num = {
-    ["light"] = 0.3,
-    ["less"] = 0.7,
-    ["default"] = 1,
-    ["more"] = 1.75,
-    ["ultimate"] = 3.5
-}
-
+local chaos_string_to_num = constants.chaos_string_to_num
+local chaos_string_to_idx = constants.chaos_string_to_idx
+local chaos_string_to_range_num = constants.chaos_string_to_range_num
 global_chaos = chaos_string_to_num[settings.startup["propertyrandomizer-chaos"].value]
-
-local chaos_string_to_range_num = {
-    ["light"] = 0.75,
-    ["less"] = 0.875,
-    ["default"] = 1,
-    ["more"] = 1.3,
-    ["ultimate"] = 1.7
-}
-
+global_chaos_idx = chaos_string_to_idx[settings.startup["propertyrandomizer-chaos"].value]
 global_chaos_range = chaos_string_to_range_num[settings.startup["propertyrandomizer-chaos"].value]
 
-local setting_values = {
-    none = 0,
-    less = 1,
-    default = 2,
-    more = 3,
-    most = 4
-}
+local setting_values = constants.setting_values
 
 randomizations_to_perform = {}
 for id, rand_info in pairs(spec) do
