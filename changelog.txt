@@ -5,12 +5,21 @@ Date: ?
     - Major new "unified" randomization algorithm that bundles all randomizations together
     - (Unified) Technology prerequisites randomization (done before, but now integrated in unified)
     - (Unified) Technology recipe unlocks randomization (also done before, but now in integrated)
+    - (Unified) Spoiling randomization that randomizes what spoils (but preserves the things that are spoiled into)
+    - (Unified) The science packs to be used in technologies
+    - (Unified) Fluids that are used for the operation of machines
     - WIP randomizer panel with ability to see what's needed to get anything in the game
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.11
-Date: ?
+Date: 2026.01.16
+  Features:
+    - Ability to reset or set property values with overrides post-randomization
+    - Option for color randomization
+  Changes:
+    - The default seed is now displayed as 0 (but 23 is added to the seed in the code because 23 is my favorite number)
   Bugfixes:
     - Spent fuel result now updated in item-new to prevent softlocks
+    - (Hopefully) stopped hidden technologies from becoming prerequisites to other technologies (causing softlocks)
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.10
 Date: 2026.01.03

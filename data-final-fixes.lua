@@ -1,112 +1,4 @@
-local logic = require("new-lib/logic/init")
-logic.build()
-randomization_info = {}
-randomization_info.warnings = {}
-randomization_info.graph = logic.graph
-
-local test = require("tests/graph-operations")
-test.init(logic.graph)
-test.pre_depnode()
-test.pre_depnodes()
-
-local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
-warnings_selection_tool.type = "selection-tool"
-warnings_selection_tool.name = "propertyrandomizer-warnings"
-warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
-local graph_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
-graph_selection_tool.type = "selection-tool"
-graph_selection_tool.name = "propertyrandomizer-graph"
-graph_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.graph)}
-data:extend({
-    warnings_selection_tool,
-    graph_selection_tool,
-})
-
-global_seed = 123456
-randomizations = {}
-
-local top = require("lib/graph/top-sort")
-local build_graph = require("lib/graph/build-graph")
-dep_graph = build_graph.graph
---local build_graph_compat = require("lib/graph/build-graph-compat")
-build_graph.add_dependents(dep_graph)
-local sort_info = top.sort(build_graph.graph)
-local old_num_techs_reachable = 0
-for _, node in pairs(sort_info.open) do
-    if node.type == "technology" then
-        old_num_techs_reachable = old_num_techs_reachable + 1
-    end
-end
-
-local top2 = require("new-lib/graph/top-sort")
-local logic = require("new-lib/logic/init")
-logic.build()
-local sort_info_shiny = top2.sort(logic.graph)
-local old_num_techs_reachable_shiny = 0
-local prev_reachable_tech = {}
-local added_tech_old = {}
-for _, node_info in pairs(sort_info_shiny.open) do
-    local node = logic.graph.nodes[node_info.node]
-    if node.type == "technology" and not added_tech_old[node_info.node] then
-        added_tech_old[node_info.node] = true
-        old_num_techs_reachable_shiny = old_num_techs_reachable_shiny + 1
-        prev_reachable_tech[node.name] = true
-    end
-end
-
-local unified = require("randomizations/graph/unified/execute")
-unified.execute()
-
-logic.build()
-local new_sort_info_shiny = top2.sort(logic.graph)
-local new_num_techs_reachable_shiny = 0
-local newly_reachable_tech = {}
-local added_tech_new = {}
-for _, node_info in pairs(new_sort_info_shiny.open) do
-    local node = logic.graph.nodes[node_info.node]
-    if node.type == "technology" and not added_tech_new[node_info.node] then
-        added_tech_new[node_info.node] = true
-        new_num_techs_reachable_shiny = new_num_techs_reachable_shiny + 1
-        newly_reachable_tech[node.name] = true
-    end
-end
-log(serpent.block(new_num_techs_reachable_shiny))
-log(serpent.block(old_num_techs_reachable_shiny))
-if new_num_techs_reachable_shiny < old_num_techs_reachable_shiny then
-    --error()
-end
-for tech, _ in pairs(prev_reachable_tech) do
-    if not newly_reachable_tech[tech] then
-        log(tech)
-    end
-end
---log(serpent.block(new_sort_info_shiny.node_to_contexts))
-
-build_graph.load()
---build_graph_compat.load(build_graph.graph)
-build_graph.add_dependents(build_graph.graph)
-local new_sort_info = top.sort(build_graph.graph)
-local new_num_techs_reachable = 0
-for _, node in pairs(new_sort_info.open) do
-    if node.type == "technology" then
-        new_num_techs_reachable = new_num_techs_reachable + 1
-    end
-end
-if new_num_techs_reachable < old_num_techs_reachable then
-    log(serpent.block(new_num_techs_reachable))
-    log(serpent.block(old_num_techs_reachable))
-    --error()
-end
-
-do return true end
-
--- Toggle between test mode and production mode
-local RUN_TESTS = false
-
-if RUN_TESTS then
-    -- TODO: Redo tests
-    do return true end
-end
+local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
 randomization_info = {
@@ -115,7 +7,7 @@ randomization_info = {
     -- Useful for references to other prototypes, like projectiles and spider legs
     touched = {},
     -- Options communicated from config or elsewhere
-    options = {}
+    options = {},
 }
 
 log("Gathering config")
@@ -142,6 +34,45 @@ if settings.startup["propertyrandomizer-dupes"].value then
 
     dupe.execute()
 end
+
+log("Loading in new dependency graph file")
+
+local new_logic = require("new-lib/logic/init")
+
+local function smuggle_info()
+    log("Smuggling control info")
+
+    new_logic.build()
+
+    local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    warnings_selection_tool.type = "selection-tool"
+    warnings_selection_tool.name = "propertyrandomizer-warnings"
+    warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
+    local graph_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    graph_selection_tool.type = "selection-tool"
+    graph_selection_tool.name = "propertyrandomizer-graph"
+    graph_selection_tool.select.entity_type_filters = {serpent.dump(new_logic.graph)}
+    data:extend({
+        warnings_selection_tool,
+        graph_selection_tool,
+    })
+end
+
+-- If unit testing is on, do only those
+if settings.startup["propertyrandomizer-test-unit"].value == true then
+    require("tests/execute")
+    smuggle_info()
+    return
+end
+
+----------------------------------------------------------------------
+-- Setup done!
+----------------------------------------------------------------------
+
+-- Do unified randomizations first
+
+local unified = require("randomizations/graph/unified/execute")
+unified.execute()
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
@@ -399,15 +330,7 @@ end
 
 -- Add warnings for control stage
 if not offline then
-    log("Smuggling control info")
-
-    local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
-    warnings_selection_tool.type = "selection-tool"
-    warnings_selection_tool.name = "propertyrandomizer-warnings"
-    warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
-    data:extend({
-        warnings_selection_tool
-    })
+    smuggle_info()
 end
 
 log("Done!")

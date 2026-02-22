@@ -27,14 +27,20 @@ local handler_ids = {
     --"tech-unlocks",
     --"spoiling",
     --"tech-science-packs",
-    "entity-operation-fluid",
+    --"entity-operation-fluid",
 }
+
+for _, id in pairs({"tech-prereqs", "recipe-tech-unlocks", "spoiling", "tech-science-packs", "entity-operation-fluid"}) do
+    if settings.startup["propertyrandomizer-unified-" .. id].value == true then
+        table.insert(handler_ids, id)
+    end
+end
 
 unified.execute = function()
     -- CRITICAL TODO: Fix up to be base game compatible before release
-    if not mods["space-age"] then
+    --[[if not mods["space-age"] then
         error("exfret, you forgot to enable Space Age you doofus.")
-    end
+    end]]
 
     -- Load handlers
     local default_handler = require("randomizations/graph/unified/handlers/default")
@@ -55,6 +61,7 @@ unified.execute = function()
         handlers[handler_id] = handler
     end
 
+    logic.build()
     test_graph_invariants.test(logic.graph)
 
     ----------------------------------------------------------------------------------------------------

@@ -33,14 +33,12 @@ local function load(graph)
     build_graph.ops["mining-drill"] = "OR"
 
     for _, technology in pairs(data.raw.technology) do
-        if technology.unit ~= nil then
-            local tech_node = graph[build_graph.key("technology", technology.name)]
+        local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
-                type = "mining-drill",
-                name = "canonical"
-            })
-        end
+        table.insert(tech_node.prereqs, {
+            type = "mining-drill",
+            name = "canonical"
+        })
     end
 
     -- Require an assembling machine with crafting as a category before all techs with unit other than automation

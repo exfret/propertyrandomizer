@@ -1,4 +1,48 @@
 local constants = {
+    -- Config stuffs
+    bias_string_to_num = {
+        ["worst"] = -0.05,
+        ["worse"] = -0.025,
+        ["default"] = 0,
+        ["better"] = 0.025,
+        ["best"] = 0.05
+    },
+    bias_string_to_idx = {
+        ["worst"] = 0,
+        ["worse"] = 1,
+        ["default"] = 2,
+        ["better"] = 3,
+        ["best"] = 4,
+    },
+    chaos_string_to_num = {
+        ["light"] = 0.3,
+        ["less"] = 0.7,
+        ["default"] = 1,
+        ["more"] = 1.75,
+        ["ultimate"] = 3.5
+    },
+    chaos_string_to_idx = {
+        ["light"] = 0,
+        ["less"] = 1,
+        ["default"] = 2,
+        ["more"] = 3,
+        ["ultimate"] = 4
+    },
+    chaos_string_to_range_num = {
+        ["light"] = 0.75,
+        ["less"] = 0.875,
+        ["default"] = 1,
+        ["more"] = 1.3,
+        ["ultimate"] = 1.7
+    },
+    setting_values = {
+        none = 0,
+        less = 1,
+        default = 2,
+        more = 3,
+        most = 4
+    },
+
     left_digits_to_keep = 3,
     num_rolls = 25,
     reasonably_large_number = 1000000000,

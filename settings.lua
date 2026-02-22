@@ -18,7 +18,8 @@ data:extend({
         localised_description = "Sets bias to worst, chaos to ultimate, adds tons of duplicates for a longer game, and turns on every randomization. Also includes a couple... \"tweaks\". Takes precedence over all below settings. Not necessarily compatible with mods other than Space Age, or with those who are faint of heart.",
         default_value = false,
         order = "az[burn]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -186,7 +187,52 @@ data:extend({
         default_value = 30,
         minimum_value = 0,
         maximum_value = 100,
-        order = "d-ga[item]"
+        order = "d-fa[item]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-tech-prereqs",
+        localised_name = "(Unified) Tech prereqs",
+        localised_description = "Does the same thing as non-unified technology randomization, but with a new unified algorithm. The unified algorithm runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-a[tech-prereqs]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-recipe-tech-unlocks",
+        localised_name = "(Unified) Recipe tech unlocks",
+        localised_description = "Does the same thing as non-unified recipe unlock randomization, but with a new unified algorithm. The unified algorithm runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-b[recipe-tech-unlocks]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-spoiling",
+        localised_name = "(Unified) Spoiling",
+        localised_description = "Randomizes what spoils, but not the things they spoil into (so spoilage is still a common spoil result). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-c[spoiling]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-tech-science-packs",
+        localised_name = "(Unified) Tech science packs",
+        localised_description = "Randomizes the science packs that technologies require. Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-d[tech-science-packs]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-entity-operation-fluid",
+        localised_name = "(Unified) Machine fluids needed",
+        localised_description = "Randomizes the fluids needed to operate a machine (steam in steam engine, thruster fluid, fusion reactor fluid, etc.). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-e[entity-operation-fluid]"
     },
     {
         setting_type = "startup",
@@ -195,7 +241,7 @@ data:extend({
         localised_name = "Icons",
         localised_description = "Every icon in the game is randomized. Are you crazy?",
         default_value = false,
-        order = "e-a[icon]"
+        order = "f-a[icon]"
     },
     {
         setting_type = "startup",
@@ -204,7 +250,7 @@ data:extend({
         localised_name = "Sounds",
         localised_description = "Every sound in the game is randomized. Who are you?",
         default_value = false,
-        order = "e-b[sound]"
+        order = "f-b[sound]"
     },
     {
         setting_type = "startup",
@@ -213,7 +259,7 @@ data:extend({
         localised_name = "GUI",
         localised_description = "Positions of recipes in the GUI are randomized. What the heck?",
         default_value = false,
-        order = "e-c[gui]"
+        order = "f-c[gui]"
     },
     {
         setting_type = "startup",
@@ -222,7 +268,7 @@ data:extend({
         localised_name = "Names",
         localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
-        order = "e-d[locale]"
+        order = "f-d[locale]"
     },
     {
         setting_type = "startup",
@@ -235,7 +281,7 @@ data:extend({
             "exfret-random-walk"
         },
         default_value = "fleishman",
-        order = "f-a[algorithm]"
+        order = "g-a[algorithm]"
     },
     {
         setting_type = "startup",
@@ -245,11 +291,11 @@ data:extend({
         localised_description = "How strict to be about error-ing on application startup if potential softlocks are found. Errors are always reported when starting a new game.",
         allowed_values = {
             "control-only",
-            "critical",
+            --"critical",
             --"all"
         },
         default_value = "control-only",
-        order = "f-b[softlock]",
+        order = "g-b[softlock]",
         hidden = true
     },
     {
@@ -261,5 +307,13 @@ data:extend({
         default_value = "",
         allow_blank = true,
         order = "z-custom-override"
-    }
+    },
+    -- Hidden settings for testing purposes
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-test-unit",
+        default_value = false,
+        hidden = true
+    },
 })
