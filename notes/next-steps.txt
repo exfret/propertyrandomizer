@@ -1,7 +1,15 @@
 CURRENTLY ON:
+ * System for configuring handlers better, flag which ones I needed to make assumptions for
+    * This is motivated by the need for seeing which randomizations are vanilla-specific
+    * Test that the blacklist I set up is working
  * Spoofs for spoilage handler
+    * Spoofs for fluid operation too!
  * Make unified things more user friendly (final pass)
+ * Test for hidden items/recipes in logic (I think it doesn't do tests now)
 
  * (30min) Refactoring lookups (then push commit about refactoring)
  * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
  * (more hours) Finish I.B, finish by the 25th
+
+Big picture is working with 0.5.0 and unified randomization migration first. Then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
+Not sure whether to keep pushing with unified and first pass sort right after that.

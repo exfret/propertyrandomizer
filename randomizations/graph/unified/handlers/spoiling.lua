@@ -6,13 +6,38 @@
 
 local gutils = require("new-lib/graph/graph-utils")
 local dutils = require("new-lib/data-utils")
+local top = require("new-lib/graph/top-sort")
 
 local spoiling = {}
 
 spoiling.id = "spoiling"
 
+local function shouldnt_spoil(item)
+    if item.hidden == true then
+        return true
+    end
+
+    -- TODO: Check that it doesn't already spoil
+
+    -- Problem: The iron bacteria --> iron ore connection seems extremely undesirable to mess with
+end
+
 -- We'll probably need spoofing? I'll leave it here because it might become relevant sooner rather than later.
 spoiling.spoof = function(graph)
+    local spoof_node = gutils.add_node(graph, "item", "everything-could-spoil-spoof")
+
+    -- Do a sort so we only consider reachable nodes
+    local sort_info = top.sort(graph)
+
+    for _, node_info in pairs(sort_info.open) do
+        local node = graph.nodes[node_info.node]
+        if node.type == "item" then
+            local node_prot = gutils.deconstruct(node.prot)
+            local item_prot = data.raw[node_prot.type][node_prot.name]
+
+            -- CRITICAL TODO
+        end
+    end
 end
 
 spoiling.claim = function(graph, prereq, dep, trav)
@@ -35,7 +60,9 @@ end
 spoiling.reflect = function(graph, trav_to_new_slot, trav_to_handler)
     -- Remove old spoil effects
     for _, item in pairs(dutils.get_all_prots("item")) do
-        if item.spoil_result ~= nil then
+        -- Make sure not to clear blacklisted spoil results
+        local is_blacklisted = randomization_info.options.unified["spoiling"].blacklisted_pre[gutils.key("item", item.name)]
+        if item.spoil_result ~= nil and not is_blacklisted then
             item.spoil_result = nil
             item.spoil_ticks = nil
         end
