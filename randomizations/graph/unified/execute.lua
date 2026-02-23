@@ -34,6 +34,9 @@ for _, id in pairs({"tech-prereqs", "recipe-tech-unlocks", "spoiling", "tech-sci
     if settings.startup["propertyrandomizer-unified-" .. id].value == true then
         table.insert(handler_ids, id)
     end
+    randomization_info.options.unified[id] = {
+        blacklisted_pre = {},
+    }
 end
 
 unified.execute = function()
@@ -160,7 +163,7 @@ unified.execute = function()
 
     local subdiv_sort = top.sort(path_graph)
     -- Path to promethium science item
-    local prom_science = path_graph.nodes[gutils.key("item", "promethium-science-pack")]
+    --[[local prom_science = path_graph.nodes[gutils.key("item", "promethium-science-pack")]
     local path_goal
     for open_ind, open_info in pairs(subdiv_sort.open) do
         if open_info.node == gutils.key(prom_science) then
@@ -176,7 +179,7 @@ unified.execute = function()
     local short_path = {}
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
-    end
+    end]]
 
     test_graph_invariants.test(subdiv_graph)
 
@@ -274,10 +277,14 @@ unified.execute = function()
                     end
 
                     local claimed = false
-                    for _, handler in pairs(handlers) do
+                    for handler_id, handler in pairs(handlers) do
                         -- Pass corresponding_trav in since it holds the edge's extra_info
                         -- num_copies says how many extra times the prereq should be added to the pool for flexibility
                         local num_copies = handler.claim(cut_graph, start_node, end_node, corresponding_trav) or 0
+                        -- Make sure this connection isn't blacklisted for this handler
+                        if randomization_info.options.unified[handler_id].blacklisted_pre[gutils.key(start_node)] then
+                            num_copies = 0
+                        end
                         if num_copies > 0 then
                             if claimed then
                                 error("Multiple handlers claiming the same edge")

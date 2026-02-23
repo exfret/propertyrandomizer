@@ -1,8 +1,8 @@
 Roughly 1-hour chunks at deepest level
 
 Critical bugfixes as needed (1hr for following - complete ASAP except for Nifyr needed ones)
-    1. Mining drill offsets inside machines (ping Nifyr in early January after break for help fixing)
-    2. Asteroid resistances softlock (ping Nifyr about disabling temporarily as well)
+    1. Mining drill offsets inside machines
+    2. Asteroid resistances softlock
     3. Manual compat connection for solar panels before space
 
 I. ALGORITHM: Unified randomization (Most of January)

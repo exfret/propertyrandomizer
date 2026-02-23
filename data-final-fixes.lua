@@ -7,7 +7,9 @@ randomization_info = {
     -- Useful for references to other prototypes, like projectiles and spider legs
     touched = {},
     -- Options communicated from config or elsewhere
-    options = {},
+    options = {
+        unified = {}
+    },
 }
 
 log("Gathering config")
@@ -38,6 +40,10 @@ end
 log("Loading in new dependency graph file")
 
 local new_logic = require("new-lib/logic/init")
+local unified = require("randomizations/graph/unified/execute")
+
+-- Load compat code
+require("compat/master")
 
 local function smuggle_info()
     log("Smuggling control info")
@@ -71,7 +77,6 @@ end
 
 -- Do unified randomizations first
 
-local unified = require("randomizations/graph/unified/execute")
 unified.execute()
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
