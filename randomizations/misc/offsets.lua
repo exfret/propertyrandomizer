@@ -33,7 +33,6 @@ end
 
 -- Inserter offsets are NO LONGER randomized by just choosing from a list
 randomizations.inserter_offsets = function(id)
-
     -- Probability of randomizing the pickup and insert distances separately
     local randomize_stretch_p = 0.5
     -- Probability of randomizing the rotation of the pickup and insert vectors
@@ -131,7 +130,6 @@ local modify_coords = function(v, func)
 end
 
 randomizations.mining_drill_offsets = function(id)
-    
     -- Probability of randomizing the rotation of vector_to_place_result
     local randomize_place_rotation_p = 0.5
 

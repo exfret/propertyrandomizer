@@ -10,6 +10,7 @@ test_graph_invariants.test = function(graph)
             num_pre = num_pre + 1
         end
         if node.num_pre ~= num_pre then
+            log(serpent.block(node))
             error("Randomization assertion failed! Tell exfret he's a dumbo.")
         end
     end
@@ -18,6 +19,7 @@ test_graph_invariants.test = function(graph)
     for _, node in pairs(graph.nodes) do
         for pre, _ in pairs(node.pre) do
             if graph.edges[pre] == nil then
+                log(serpent.block(node))
                 error("Randomization assertion failed! Tell exfret he's a dumbo.")
             end
             if gutils.key(node) ~= graph.edges[pre].stop then
@@ -28,6 +30,7 @@ test_graph_invariants.test = function(graph)
         end
         for dep, _ in pairs(node.dep) do
             if graph.edges[dep] == nil then
+                log(serpent.block(node))
                 error("Randomization assertion failed! Tell exfret he's a dumbo.")
             end
             if gutils.key(node) ~= graph.edges[dep].start then
@@ -41,6 +44,7 @@ test_graph_invariants.test = function(graph)
     -- Test that the start and stop of an edge exists
     for _, edge in pairs(graph.edges) do
         if graph.nodes[edge.start] == nil or graph.nodes[edge.stop] == nil then
+            log(serpent.block(edge))
             error("Randomization assertion failed! Tell exfret he's a dumbo.")
         end
     end

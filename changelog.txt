@@ -9,6 +9,8 @@ Date: ?
     - (Unified) The science packs to be used in technologies
     - (Unified) Fluids that are used for the operation of machines
     - WIP randomizer panel with ability to see what's needed to get anything in the game
+  Changes:
+    - Completely removed some troublesome randomizations like resistances for now
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.11
 Date: 2026.01.16

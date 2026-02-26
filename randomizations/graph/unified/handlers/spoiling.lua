@@ -17,25 +17,33 @@ local function shouldnt_spoil(item)
         return true
     end
 
-    -- TODO: Check that it doesn't already spoil
+    if item.spoil_result ~= nil then
+        return true
+    end
 
     -- Problem: The iron bacteria --> iron ore connection seems extremely undesirable to mess with
+    -- Solution: Added to blacklist
 end
 
 -- We'll probably need spoofing? I'll leave it here because it might become relevant sooner rather than later.
 spoiling.spoof = function(graph)
-    local spoof_node = gutils.add_node(graph, "item", "everything-could-spoil-spoof")
+    local spoof_node = gutils.add_node(graph, "item", "anything-could-spoil-spoof")
+    spoof_node.op = "OR"
 
     -- Do a sort so we only consider reachable nodes
     local sort_info = top.sort(graph)
 
+    local already_checked = {}
     for _, node_info in pairs(sort_info.open) do
         local node = graph.nodes[node_info.node]
-        if node.type == "item" then
+        if node.type == "item" and not already_checked[node.name] then
+            already_checked[node.name] = true
             local node_prot = gutils.deconstruct(node.prot)
             local item_prot = data.raw[node_prot.type][node_prot.name]
 
-            -- CRITICAL TODO
+            if not shouldnt_spoil(item_prot) then
+                gutils.add_edge(graph, node, spoof_node)
+            end
         end
     end
 end
@@ -75,19 +83,22 @@ spoiling.reflect = function(graph, trav_to_new_slot, trav_to_handler)
         if trav_to_handler[trav_key].id == "spoiling" then
             local trav = graph.nodes[trav_key]
             local trav_owner = gutils.get_conn_owner(graph, trav)
-            local slot_owner = gutils.get_conn_owner(graph, slot)
-            local item = dutils.get_prot("item", slot_owner.name)
-            local spoil_result = trav_owner.name
-            log(serpent.block({
-                item = item,
-                spoil_result = spoil_result,
-                spoil_ticks = trav.spoil_ticks
-            }))
-            table.insert(item_new_spoil, {
-                item = item,
-                spoil_result = spoil_result,
-                spoil_ticks = trav.spoil_ticks
-            })
+            -- Check that the spoil result is not a spoof
+            if not string.find(trav_owner.name, "spoof") then
+                local slot_owner = gutils.get_conn_owner(graph, slot)
+                local item = dutils.get_prot("item", slot_owner.name)
+                local spoil_result = trav_owner.name
+                log(serpent.block({
+                    item = item,
+                    spoil_result = spoil_result,
+                    spoil_ticks = trav.spoil_ticks
+                }))
+                table.insert(item_new_spoil, {
+                    item = item,
+                    spoil_result = spoil_result,
+                    spoil_ticks = trav.spoil_ticks
+                })
+            end
         end
     end
 

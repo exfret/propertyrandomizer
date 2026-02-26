@@ -1,3 +1,5 @@
+-- TODO: Technologies are still too linear
+
 local gutils = require("new-lib/graph/graph-utils")
 
 local tech_prereqs = {}
@@ -23,6 +25,7 @@ tech_prereqs.validate = function(graph, slot, trav, extra)
     if gutils.get_conn_owner(graph, slot).type == "technology" then
         return true
         -- This was causing problems and I have another idea for solving linearity issue
+        -- That idea is to do several sorts and take intersection
         --[[
         -- Actually, let's also check that the tech is definitely before in vanilla
         local tech1 = gutils.get_conn_owner(graph, slot)

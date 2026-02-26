@@ -79,7 +79,6 @@ gutils.deps = function(graph, node)
         end
         table.insert(edges, graph.edges[dep])
     end
-    log(serpent.block(edges))
     return edges
 end
 

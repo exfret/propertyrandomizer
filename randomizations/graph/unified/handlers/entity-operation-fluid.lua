@@ -1,5 +1,6 @@
 local gutils = require("new-lib/graph/graph-utils")
 local dutils = require("new-lib/data-utils")
+local top = require("new-lib/graph/top-sort")
 
 local entity_operation_fluid = {}
 
@@ -7,13 +8,43 @@ entity_operation_fluid.id = "entity_operation_fluid"
 
 local already_added_extra = {}
 
+entity_operation_fluid.spoof = function(graph)
+    local spoof_node = gutils.add_node(graph, "entity-operate-fluid", "any-fluids-spoof")
+    spoof_node.op = "OR"
+
+    -- Do a sort so we only consider reachable nodes
+    local sort_info = top.sort(graph)
+
+    local already_checked = {}
+    for _, node_info in pairs(sort_info.open) do
+        local node = graph.nodes[node_info.node]
+        if node.type == "fluid" and not already_checked[node.name] then
+            already_checked[node.name] = true
+            local node_prot = gutils.deconstruct(node.prot)
+            local fluid_prot = data.raw[node_prot.type][node_prot.name]
+
+            gutils.add_edge(graph, node, spoof_node)
+        end
+    end
+end
+
 entity_operation_fluid.claim = function(graph, prereq, dep, trav)
     if prereq.type == "fluid" and dep.type == "entity-operate-fluid" then
+        -- Check for being a spoof
+        if string.find(dep.name, "spoof") ~= nil then
+            return 1
+        end
+
         local entity_key = gutils.deconstruct(dep.prot)
         local entity = data.raw[entity_key.type][entity_key.name]
         if entity.type == "generator" and (entity.fluid_box.filter == nil or entity.burns_fluid) then
             -- Don't randomize fuel-powered generators
             -- TODO: Support for fluid burning (not just heating) generators
+            return false
+        end
+        if entity.type == "generator" and (entity.fluid_box.filter == nil or not entity.burns_fluid) then
+            -- Don't randomize temperature-based generators either
+            -- TODO: We might need to somehow consider heating pipeline all at once
             return false
         end
         if not already_added_extra[prereq.name] then
