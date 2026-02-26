@@ -318,7 +318,11 @@ unified.execute = function()
                 end
                 -- Add everything to dependents (most of them just won't do anything but it's fine)
                 added_to_deps[gutils.key(node)] = true
-                table.insert(sorted_deps, node)
+                -- node.name will contain spoof if node is just a corresponding traveler as well
+                -- We don't want spoof deps claiming things; they're just shortcuts to adding prereqs
+                if not string.find(node.name, "spoof") then
+                    table.insert(sorted_deps, node)
+                end
             end
         end
     end
@@ -972,11 +976,6 @@ unified.execute = function()
             for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
                 local found_prereq = false
                 for ind, slot in pairs(shuffled_prereqs) do
-                    if trav_to_handler[gutils.key(trav)].id == "entity_operation_fluid" and gutils.get_conn_owner(random_graph, slot).type == "fluid" then
-                        log(slot.name)
-                        log(trav.name)
-                        log(all_contexts_reachable_new(slot, trav))
-                    end
                     if not used_prereq_indices[ind] and all_contexts_reachable_new(slot, trav) then
                         -- Have traveler's handler validate this ind
                         if trav_to_handler[gutils.key(trav)].validate(random_graph, slot, trav, {

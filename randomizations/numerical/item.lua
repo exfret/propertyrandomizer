@@ -608,6 +608,7 @@ randomizations.item_weights = function(id)
     end
 end
 
+-- TODO: Fix and add back in a better version (maybe use old version)
 randomizations.module_effects = function(id)
     local effect_names = {
         "consumption",

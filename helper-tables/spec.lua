@@ -144,24 +144,27 @@ local spec = {
             val = "more"
         }
     },
-    asteroid_mass = {
+    -- Disabled until there is a workable version
+    --[[asteroid_mass = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
-    asteroid_spawns = {
+    },]]
+    -- Disabled until there is a workable version
+    --[[asteroid_spawns = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
-    asteroid_yields = {
+    },]]
+    -- Disabled until there is a workable version
+    --[[asteroid_yields = {
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     base_effect = {
         setting = {
             name = "propertyrandomizer-production",
@@ -812,12 +815,13 @@ local spec = {
             val = "more"
         }
     },
-    module_effects = {
+    -- Disabled until there is a workable version
+    --[[ module_effects = {
         setting = {
             name = "propertyrandomizer-production",
             val = "default"
         }
-    },
+    },]]
     machine_energy_usage = {
         setting = {
             name = "propertyrandomizer-production",
@@ -850,12 +854,13 @@ local spec = {
         }
     },
     -- Where mining drills put their items
-    mining_drill_offsets = {
+    -- TODO: Figure out why offsets are appearing inside the machine then re-enable
+    --[[mining_drill_offsets = {
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
+    },]]
     mining_drill_radius = {
         setting = {
             name = "propertyrandomizer-logistic",
@@ -891,7 +896,7 @@ local spec = {
     },
     mining_times = {
         setting = {
-            name = "propertyrandomizer-production",
+            name = "propertyrandomizer-misc",
             val = "more"
         }
     },
@@ -1074,12 +1079,13 @@ local spec = {
             val = "more"
         }
     },
-    resistances = {
+    -- Disabled until there is a workable version
+    --[[resistances = {
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     -- How fast a roboport uses energy to charge bots
     roboport_charging_energy = {
         setting = {
