@@ -972,6 +972,27 @@ unified.execute = function()
         end
     end]]
 
+    -- Switch order of techs in sorted_deps so that the tree is less linear
+    if settings.startup["propertyrandomizer-unified-technology-delinearization"].value ~= "none" then
+        local curr_tech_order = {}
+        for _, dep in pairs(sorted_deps) do
+            if dep.type == "technology" then
+                table.insert(curr_tech_order, dep)
+            end
+        end
+        -- Random shuffle in the case of "some"
+        if settings.startup["propertyrandomizer-unified-technology-delinearization"].value == "some" then
+            rng.shuffle(rng.key({id = "unified"}), curr_tech_order)
+        end
+        local curr_tech_order_ind = #curr_tech_order
+        for dep_ind, dep in pairs(sorted_deps) do
+            if dep.type == "technology" then
+                sorted_deps[dep_ind] = curr_tech_order[curr_tech_order_ind]
+                curr_tech_order_ind = curr_tech_order_ind - 1
+            end
+        end
+    end
+
     -- Note that we don't technically need to go in dependent order anymore
     local used_prereq_indices = {}
     -- We actually should keep dep-prereq map since some prereqs are there multiple times

@@ -18,3 +18,5 @@ For bugs/fixes rather than features, see bugs.txt
  * Think about secondary sort rando (doing a second sort and taking intersection to reduce linearity)
  * Check heating_energy when checking whether things can freeze (zero means it can't freeze)
  * Document that ability to mine fluid ("uranium mining") is researched from start
+ * Limits setting
+ * Lead player toward more normal presets

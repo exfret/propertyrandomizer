@@ -9,6 +9,7 @@ Date: ?
     - (Unified) The science packs to be used in technologies
     - (Unified) Fluids that are used for the operation of machines
     - WIP randomizer panel with ability to see what's needed to get anything in the game
+    - New derandomization methods to create prettier tech trees
   Changes:
     - Completely removed some troublesome randomizations like resistances for now
     - Mining drills are all given input fluidboxes to make randomization easier and prevent potential softlocks
