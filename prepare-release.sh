@@ -15,7 +15,6 @@ IGNORE_ITEMS=(
     "offline"
     "notes"
     "node-docs"
-    "tests"
     "run-tests.sh"
     "prepare-release.sh"
 )

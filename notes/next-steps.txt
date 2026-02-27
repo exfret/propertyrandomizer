@@ -1,11 +1,6 @@
 CURRENTLY ON:
- * Make unified things more user friendly (final pass)
-    * Figure out why technologies are getting only early science packs (especially when things are delinearized)
- * Test for hidden items/recipes in logic (I think it doesn't do tests now)
- * Add full tests for with unified handlers
- * More safeguards
-    * Go through orb and dosh run to see what needs to be changed
- * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
+ * Limits/presets
+    * Decide whether I should keep the old or new algorithm
 
 Big picture is working with 0.5.0 and unified randomization migration first. Then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
 Not sure whether to keep pushing with unified and first pass sort right after that.
