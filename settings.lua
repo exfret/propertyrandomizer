@@ -251,9 +251,9 @@ data:extend({
         localised_name = "(Unified) Technology Delinearization",
         localised_description = "Technology randomization creates very linear tech trees. This option modifies the randomization process in the case of technologies specifically so that the tree becomes less linear. Only applies to unified tech prereq randomization.",
         allowed_values = {
-            "lots",
-            "some",
             "none",
+            "some",
+            "lots",
         },
         default_value = "some",
         order = "f-a[tech-delinearization]",

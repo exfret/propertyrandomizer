@@ -11,6 +11,7 @@ Medium
   * Technology prerequisites
   * Technology science pack sets
   * Technology unlocks (not just recipes)
+  * Technology triggers (things can become triggers or become science-pack based, also spoof new triggers)
   * Item to entity spoil result
   * Item fuel categories
   * Item burnt results (spoof so both source and destination can change)

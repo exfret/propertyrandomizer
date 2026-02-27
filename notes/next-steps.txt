@@ -1,5 +1,4 @@
 CURRENTLY ON:
- * Tech trigger handler
  * Make unified things more user friendly (final pass)
     * Figure out why technologies are getting only early science packs (especially when things are delinearized)
  * Test for hidden items/recipes in logic (I think it doesn't do tests now)
@@ -7,11 +6,6 @@ CURRENTLY ON:
  * More safeguards
     * Go through orb and dosh run to see what needs to be changed
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
- * Check for spoil_trigger_result when randomizing spoil results
-
- * (30min) Refactoring lookups (then push commit about refactoring)
- * (a few hours?) Handlers, I.B.1, probably will take at least this week, entity randomization as a bonus
- * (more hours) Finish I.B, finish by the 25th
 
 Big picture is working with 0.5.0 and unified randomization migration first. Then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
 Not sure whether to keep pushing with unified and first pass sort right after that.

@@ -17,7 +17,7 @@ local function shouldnt_spoil(item)
         return true
     end
 
-    if item.spoil_result ~= nil then
+    if item.spoil_result ~= nil or item.spoil_to_trigger_result ~= nil then
         return true
     end
 
