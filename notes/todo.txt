@@ -19,5 +19,9 @@ For bugs/fixes rather than features, see bugs.txt
  * Check heating_energy when checking whether things can freeze (zero means it can't freeze)
  * Document that ability to mine fluid ("uranium mining") is researched from start
  * Limits setting
+    * Go through orb and dosh run to see what needs to be changed with regards to limitation
  * Lead player toward more normal presets
  * Tech trigger handler
+ * Presets to guide player away from "ultimate chaos"
+ * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
+ * Add full tests for with unified handlers

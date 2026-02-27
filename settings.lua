@@ -230,7 +230,7 @@ data:extend({
         type = "bool-setting",
         name = "propertyrandomizer-unified-entity-operation-fluid",
         localised_name = "(Unified) Machine fluids needed",
-        localised_description = "Randomizes the fluids needed to operate a machine (steam in steam engine, thruster fluid, fusion reactor fluid, etc.). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
+        localised_description = "Randomizes the fluids needed to operate a machine (flamethrower fuel, fusion reactor fluid, etc.). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
         default_value = false,
         order = "e-e[entity-operation-fluid]"
     },
@@ -306,7 +306,7 @@ data:extend({
             "crazy",
         },
         default_value = "no",
-        order = "e-e[colors]"
+        order = "g-e[colors]"
     },
     {
         setting_type = "startup",

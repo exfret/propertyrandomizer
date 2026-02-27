@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.5.0
+Version: 0.5.1
 Date: ?
+  Bugfixes:
+    - Deployment script no longer deletes critical file, resulting in mod not being able to start
+---------------------------------------------------------------------------------------------------
+Version: 0.5.0
+Date: 2026.02.26
   Features:
     - Major new "unified" randomization algorithm that bundles all randomizations together
     - (Unified) Technology prerequisites randomization (done before, but now integrated in unified)
