@@ -327,12 +327,12 @@ randomizations.item_new = function(id)
                     if new_item ~= nil then
                         break
                     else
-                        log("No valid traveling items")
-                        log(curr_slot.name)
+                        --log("No valid traveling items")
+                        --log(curr_slot.name)
                     end
                 elseif not is_slot_reachable(curr_slot) then
-                    log("Unreachable slot")
-                    log(curr_slot.name)
+                    --log("Unreachable slot")
+                    --log(curr_slot.name)
                 end
             end
 

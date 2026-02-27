@@ -297,6 +297,20 @@ data:extend({
     {
         setting_type = "startup",
         type = "string-setting",
+        name = "propertyrandomizer-colors",
+        localised_name = "Colors",
+        localised_description = "Each color value is randomized. How?..",
+        allowed_values = {
+            "no",
+            "little",
+            "crazy",
+        },
+        default_value = "no",
+        order = "e-e[colors]"
+    },
+    {
+        setting_type = "startup",
+        type = "string-setting",
         name = "propertyrandomizer-numerical-algorithm",
         localised_name = "Algorithm",
         localised_description = "I'm trying out a new randomization algorithm for numerical randomizations; switch to 'Safeguarded' for the old version, and be sure to provide feedback on the change!",
