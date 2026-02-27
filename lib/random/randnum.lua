@@ -111,14 +111,14 @@ randnum.fill_in_defaults = function(params)
     if params.range_min == "same" then
         min_key = "range"
     end
-    params.soft_min = 1 / (str_to_cap[params[min_key]][1] * global_chaos_range) * params.val
-    params.hard_min = 1 / (str_to_cap[params[min_key]][2] * global_chaos_range) * params.val
+    params.soft_min = 1 / (str_to_cap[params[min_key]][1] * config.chaos_range) * params.val
+    params.hard_min = 1 / (str_to_cap[params[min_key]][2] * config.chaos_range) * params.val
     local max_key = "range_max"
     if params.range_max == "same" then
         max_key = "range"
     end
-    params.soft_max = (str_to_cap[params[max_key]][1] * global_chaos_range) * params.val
-    params.hard_max = (str_to_cap[params[max_key]][2] * global_chaos_range) * params.val
+    params.soft_max = (str_to_cap[params[max_key]][1] * config.chaos_range) * params.val
+    params.hard_max = (str_to_cap[params[max_key]][2] * config.chaos_range) * params.val
 
     local str_to_step_size = {
         very_small = 1.5,
@@ -140,7 +140,7 @@ randnum.fill_in_defaults = function(params)
 
     -- Returns either negative or positive the split bias
     local real_split_bias = constants.split_bias * (2 * rng.range(params.key, 0, 1) - 1)
-    params.real_bias = 0.5 + params.bias + real_split_bias + global_bias
+    params.real_bias = 0.5 + params.bias + real_split_bias + config.bias
 
     local str_to_abs_boundaries = {
         effect_value = { -300, 300 },
@@ -349,10 +349,10 @@ randnum.rand = function(params)
     local tbl, property, key = params.tbl, params.property, params.key
     local real_bias, dir, step_size = params.real_bias, params.dir, params.step_size
     local val, soft_min, hard_min, soft_max, hard_max = params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max
-    local mul_std, bias_idx, chaos_val = params.mul_std, global_bias_idx, global_chaos
+    local mul_std, bias_idx, chaos_val = params.mul_std, config.bias_idx, config.chaos
 
     -- exfret's Homebrewed random walk algorithm
-    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "exfret-random-walk" then
+    if config.numerical_algorithm == "exfret-random-walk" then
         for i = 1, constants.num_rolls do
             local sign = dir
             if rng.value(key) >= real_bias then
@@ -369,7 +369,7 @@ randnum.rand = function(params)
                     forces = -1 + (hard_max - val) / (hard_max - soft_max)
                 end
 
-                val = val + constants.step_size_modifier * val * global_chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
+                val = val + constants.step_size_modifier * val * config.chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
 
                 -- Reset t_val if it passed hard_max or hard_min due to too high forces
                 if val > hard_max then
@@ -382,7 +382,7 @@ randnum.rand = function(params)
         end
     end
 
-    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "fleishman" then
+    if config.numerical_algorithm == "fleishman" then
         if dir < 0 then
             -- assuming 5 bias options: 0 (strong negative) to 4 (strong positive) with 2 as no bias
             bias_idx = (5 - 1) - bias_idx
@@ -394,7 +394,7 @@ randnum.rand = function(params)
     end
 
 
-    if settings.startup["propertyrandomizer-numerical-algorithm"].value == "exfret-random-walk" then
+    if config.numerical_algorithm == "exfret-random-walk" then
         if val > hard_max then
             val = hard_max
         end

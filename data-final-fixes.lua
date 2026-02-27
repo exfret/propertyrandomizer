@@ -1,6 +1,7 @@
 local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
+-- TODO: Reorganize globals?
 randomization_info = {
     warnings = {},
     -- Whether this prototype has been randomized
@@ -24,13 +25,13 @@ local reformat = require("lib/reformat")
 reformat.initial()
 
 -- Special changes for watch the world burn mode
-if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+if config.watch_the_world_burn then
     require("watch-the-world-burn")
 end
 
 -- Duplicates (if applicable)
 
-if settings.startup["propertyrandomizer-dupes"].value then
+if config.dupes then
     log("Adding duplicates")
 
     local dupe = require("lib/dupe")
@@ -69,7 +70,7 @@ local function smuggle_info()
 end
 
 -- If unit testing is on, do only those
-if settings.startup["propertyrandomizer-test-unit"].value == true then
+if config.unit_test then
     require("tests/execute")
     smuggle_info()
     return
@@ -123,8 +124,7 @@ dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
 
-if settings.startup["propertyrandomizer-simultaneous"].value then
-
+if config.simultaneous then
     -- Include these to toggle individual randomizers
     --require("randomizations/graph/core/randomizers/burnt-result-source")
     --require("randomizations/graph/core/randomizers/recipe-ingredients")
@@ -139,17 +139,7 @@ if settings.startup["propertyrandomizer-simultaneous"].value then
     build_graph.add_dependents(dep_graph)
 end
 
-if settings.startup["propertyrandomizer-unified"].value then
-    randomizations.unified("unified")
-
-    -- Rebuild graph
-    build_graph.load()
-    dep_graph = build_graph.graph
-    build_graph_compat.load(dep_graph)
-    build_graph.add_dependents(dep_graph)
-end
-
-if settings.startup["propertyrandomizer-technology"].value then
+if config.graph.technology then
     -- We currently do tech randomization many times since one time isn't enough to get it that random
     -- Nifyr's new algorithm (see randomizations/graph/core.lua) works a lot better though, so we'll probably end up using that instead
     log("Applying technology tree randomization")
@@ -195,7 +185,7 @@ if settings.startup["propertyrandomizer-technology"].value then
     build_graph.add_dependents(dep_graph)
 end
 
-if settings.startup["propertyrandomizer-recipe"].value then
+if config.graph.recipe then
     log("Applying recipe ingredients randomization")
 
     randomizations.recipe_ingredients("recipe_ingredients")
@@ -206,7 +196,7 @@ if settings.startup["propertyrandomizer-recipe"].value then
     build_graph.add_dependents(dep_graph)
 end
 
-if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
+if config.recipe_tech_unlock then
     log("Applying recipe tech unlock randomization")
 
     randomizations.recipe_tech_unlock("recipe_tech_unlock")
@@ -218,7 +208,7 @@ if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
 end
 
 local item_slot_info = {}
-if settings.startup["propertyrandomizer-item"].value then
+if config.graph.item then
     log("Applying item randomization")
 
     item_slot_info = randomizations.item_new("item-new")
@@ -258,22 +248,22 @@ log("Done applying numerical/misc randomizations")
 
 log("Applying extra randomizations")
 
-if settings.startup["propertyrandomizer-icon"].value then
+if config.misc.icon then
     randomizations.all_icons("all_icons")
 end
-if settings.startup["propertyrandomizer-sound"].value then
+if config.misc.sound then
     randomizations.all_sounds("all_sounds")
 end
-if settings.startup["propertyrandomizer-gui"].value then
+if config.misc.gui then
     randomizations.group_order("group_order")
     randomizations.recipe_order("recipe_order")
     randomizations.recipe_subgroup("recipe_subgroup")
     randomizations.subgroup_group("subgroup_group")
 end
-if settings.startup["propertyrandomizer-locale"].value then
+if config.misc.locale then
     randomizations.all_names("all_names")
 end
-if settings.startup["propertyrandomizer-colors"].value ~= "no" then
+if config.misc.colors ~= "no" then
     randomizations.colors("colors")
 end
 
@@ -295,23 +285,12 @@ end]]
 
 local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
-    log(serpent.block(final_sort_info.reachable))
-
     local first_node_unreachable
     for _, node in pairs(initial_sort_info.sorted) do
         if not final_sort_info.reachable[build_graph.key(node.type, node.name)] and first_node_unreachable == nil then
             first_node_unreachable = node
         end
     end
-    log("First unreachable...")
-    log(serpent.block(first_node_unreachable))
-
-    -- It's legitimately possible for some nodes to be no longer possible, like crafting impossible if something is a resource
-    --[[if settings.startup["propertyrandomizer-softlock-prevention"].value == "all" then
-        error("Softlock encountered, only " .. tostring(#final_sort_info.sorted) .. " / " .. tostring(#initial_sort_info.sorted) .. " nodes reachable.")
-    else
-        reachability_warning_to_insert = "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Potential softlock encountered, only " .. tostring(#final_sort_info.sorted) .. " / " .. tostring(#initial_sort_info.sorted) .. " game pieces reachable."
-    end]]
 
     local first_tech_unreachable
     local old_reachable_technologies = 0
@@ -332,7 +311,7 @@ if #final_sort_info.sorted < #initial_sort_info.sorted then
     end
     if new_reachable_technologies < old_reachable_technologies then
         reachability_warning_to_insert = "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Potential critical softlock; only " .. tostring(new_reachable_technologies) .. " / " .. tostring(old_reachable_technologies) .. " technologies found reachable. First unreachable found: " .. first_tech_unreachable
-        if settings.startup["propertyrandomizer-softlock-prevention"].value == "critical" then
+        if config.critical_errors then
             error("Critical softlock encountered, only " .. tostring(new_reachable_technologies) .. " / " .. tostring(old_reachable_technologies) .. " technologies reachable.")
         end
     end
@@ -347,3 +326,6 @@ if not offline then
 end
 
 log("Done!")
+
+-- Set config back to nil so that globals aren't floating around
+config = nil

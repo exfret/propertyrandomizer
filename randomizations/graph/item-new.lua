@@ -152,7 +152,7 @@ randomizations.item_new = function(id)
                 -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
                 if stackable and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
                     -- Some randomness to determine whether to randomize it (always randomize raw resources)
-                    if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= settings.startup["propertyrandomizer-item-percent"].value / 100 then                        
+                    if raw_resource_items[item_prototype.name] or rng.value(rng.key({id = id})) <= config.item_percent_randomized then                        
                         to_be_randomized[build_graph.key(node.type, node.name)] = true
                     end
                 end

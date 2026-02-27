@@ -12,7 +12,7 @@ local D40 = 1099511627776
 rng.seed = function(key)
     local state_tbl = {}
 
-    local state_seed = global_seed + (hash.hash(key) % D20)
+    local state_seed = config.seed + (hash.hash(key) % D20)
 
     state_tbl["X1"] = (state_seed * 2 + 11111) % D20
     state_tbl["X2"] = (state_seed * 4 + 1) % D20

@@ -81,12 +81,12 @@ for class, amount in pairs(per_entity_class) do
 end]]
 
 --[[
-global_seed = 767614037
-global_seed = 3991075545
-global_chaos_range = 1
-global_chaos = 1
-global_bias = 0
-global_bias_idx = 2
+config.seed = 767614037
+config.seed = 3991075545
+config.chaos_range = 1
+config.chaos = 1
+config.bias = 0
+config.bias_idx = 2
 
 local build_graph = require("lib/graph/build-graph")
 dep_graph = build_graph.graph

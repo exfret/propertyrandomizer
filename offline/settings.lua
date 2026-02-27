@@ -1,3 +1,5 @@
+-- NOTE: This is out of date since it was created!
+
 settings = {}
 settings.startup = {
     ["propertyrandomizer-seed"] = {value = 3171988},

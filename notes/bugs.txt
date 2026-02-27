@@ -4,6 +4,8 @@
 27. Some items show the "combustible" tooltip twice in their description (probably the fault of graph item rando combining with item fuel rando?)
 36. Planetary science packs unused by tech prereq randomization on high delinearization settings
 37. No tests for hidden items/recipes in logic (I think it doesn't do tests now)
+38. Unified is incompatible with build_graph, especially in terms of compat nodes, but runs first and therefore can cause that old logic to fail
+39. New logic doesn't have softlock testing
 
 2. Assembling machines don't follow upgrade line randomization due to having different crafting categories, so need to be manually linked together
 5. Biter eggs are reported to be reachable when they aren't (probably a problem with logic/dependency graph) (https://mods.factorio.com/mod/propertyrandomizer/discussion/6935501854f0ff3c23623425)

@@ -1,5 +1,7 @@
 CURRENTLY ON:
- * Limits/presets
+ * Settings
+    * Change welcome message when "no graph randomizations" are on
+ * Limits
     * Decide whether I should keep the old or new algorithm
 
 Big picture is working with 0.5.0 and unified randomization migration first. Then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).

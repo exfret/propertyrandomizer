@@ -664,7 +664,7 @@ randomizations.recipe_ingredients = function(id)
                                     table.insert(shuffled_prereqs, prereq)
                                 end
                                 -- With watch the world burn mode, we add more; this helps the algorithm out and makes things more chaotic
-                                if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+                                if config.watch_the_world_burn then
                                     table.insert(shuffled_prereqs, prereq)
                                 end
                                 -- Also, if it's expensive, add more for the algorithm since those things are hard to come by
@@ -928,7 +928,7 @@ randomizations.recipe_ingredients = function(id)
         end
 
         -- Don't worry about doing this for dupes or on watch-the-world-burn
-        if string.find(dependent.name, "exfret") == nil and not settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+        if string.find(dependent.name, "exfret") == nil and not config.watch_the_world_burn then
             for reachable_node_name, _ in pairs(to_remove_from_reachable) do
                 --log(reachable_node_name)
                 reachable[reachable_node_name] = nil

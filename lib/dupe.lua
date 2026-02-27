@@ -812,7 +812,7 @@ end
 
 -- Create the duplicates
 dupe.execute = function()
-    if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    if config.watch_the_world_burn then
         -- Tech tree
         local techs_to_dupe = {}
         for _, tech in pairs(data.raw.technology) do
@@ -831,7 +831,7 @@ dupe.execute = function()
 
     local num_dupes = 2
     -- Dupe some things extra times in watch the world burn mode
-    if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    if config.watch_the_world_burn then
         num_dupes = 3
     end
 
@@ -1008,7 +1008,7 @@ dupe.execute = function()
         end
     end
 
-    if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    if config.watch_the_world_burn then
         local resources_to_dupe = {}
         for _, resource_name in pairs({"coal", "stone", "iron-ore", "copper-ore", "uranium-ore", "tungsten-ore"}) do
             if data.raw.resource[resource_name] ~= nil then

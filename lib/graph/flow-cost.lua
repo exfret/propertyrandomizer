@@ -189,7 +189,7 @@ flow_cost.get_default_raw_resource_table = function()
             normal_resources[material_id] = cost
         end
     end
-    if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
+    if config.watch_the_world_burn then
         for material_id, cost in pairs(duped_resources) do
             normal_resources[material_id] = cost
         end

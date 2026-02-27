@@ -30,7 +30,6 @@ tech_science_packs.reflect = function(graph, trav_to_new_slot, trav_to_handler)
             local packs = {}
             for pack_prereq_key, _ in pairs(gutils.get_conn_owner(graph, slot).pre) do
                 local pack_prereq = graph.nodes[graph.edges[pack_prereq_key].start]
-                log(serpent.block(pack_prereq))
                 -- Need to cross all across the edge from this (should-be) trav
                 table.insert(packs, gutils.get_conn_owner(graph, gutils.get_conn_buddy(graph, pack_prereq)))
             end

@@ -90,7 +90,7 @@ randomizations.map_gen_preset = function (id)
         variance = "medium",
         rounding = "none",
     })
-    pen["control:moisture:bias"] = fleish.randomize(rng_key, 0, 0.2, global_bias_idx, global_chaos)
+    pen["control:moisture:bias"] = fleish.randomize(rng_key, 0, 0.2, config.bias_idx, config.chaos)
     pen["control:aux:frequency"] = randnum.rand({
         key = rng_key,
         dummy = 1,
@@ -98,7 +98,7 @@ randomizations.map_gen_preset = function (id)
         variance = "medium",
         rounding = "none",
     })
-    pen["control:aux:bias"] = fleish.randomize(rng_key, 0, 0.2, 2, global_chaos)
+    pen["control:aux:bias"] = fleish.randomize(rng_key, 0, 0.2, 2, config.chaos)
 
     preset.basic_settings.starting_area = randnum.rand({
         key = rng_key,

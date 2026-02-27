@@ -133,8 +133,8 @@ randomizations.item = function(id)
                                         end
                                     end
 
-                                    -- If it's a very commonly used item, include it with a 100% chance, otherwise only do so with 30% chance
-                                    if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= constants.item_randomization_probability_high) or rng.value(rng.key({id = id})) <= constants.item_randomization_probability_low then
+                                    -- If it's a very commonly used item, include it with a 100% chance, otherwise only do so with 30% chance (default)
+                                    if is_raw_resource or (num_corresponding_recipes >= 10 and rng.value(rng.key({id = id})) <= 1) or rng.value(rng.key({id = id})) <= config.item_percent_randomized then
                                         table.insert(old_order, item_node)
                                         if is_raw_resource then
                                             table.insert(post_shuffled_order, item_node)
