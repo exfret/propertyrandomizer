@@ -246,12 +246,26 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-unified-technology-delinearization",
+        localised_name = "(Unified) Technology Delinearization",
+        localised_description = "Technology randomization creates very linear tech trees. This option modifies the randomization process in the case of technologies specifically so that the tree becomes less linear. Only applies to unified tech prereq randomization.",
+        allowed_values = {
+            "lots",
+            "some",
+            "none",
+        },
+        default_value = "some",
+        order = "f-a[tech-delinearization]",
+    },
+    {
+        setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-icon",
         localised_name = "Icons",
         localised_description = "Every icon in the game is randomized. Are you crazy?",
         default_value = false,
-        order = "f-a[icon]"
+        order = "g-a[icon]"
     },
     {
         setting_type = "startup",
@@ -260,7 +274,7 @@ data:extend({
         localised_name = "Sounds",
         localised_description = "Every sound in the game is randomized. Who are you?",
         default_value = false,
-        order = "f-b[sound]"
+        order = "g-b[sound]"
     },
     {
         setting_type = "startup",
@@ -269,7 +283,7 @@ data:extend({
         localised_name = "GUI",
         localised_description = "Positions of recipes in the GUI are randomized. What the heck?",
         default_value = false,
-        order = "f-c[gui]"
+        order = "g-c[gui]"
     },
     {
         setting_type = "startup",
@@ -278,7 +292,7 @@ data:extend({
         localised_name = "Names",
         localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
-        order = "f-d[locale]"
+        order = "g-d[locale]"
     },
     {
         setting_type = "startup",
@@ -291,7 +305,7 @@ data:extend({
             "exfret-random-walk"
         },
         default_value = "fleishman",
-        order = "g-a[algorithm]"
+        order = "h-a[algorithm]"
     },
     {
         setting_type = "startup",
@@ -305,7 +319,7 @@ data:extend({
             --"all"
         },
         default_value = "control-only",
-        order = "g-b[softlock]",
+        order = "h-b[softlock]",
         hidden = true
     },
     {
