@@ -1,35 +1,88 @@
 local constants = require("helper-tables/constants")
 local spec = require("helper-tables/spec")
 
+config = {}
+
+----------------------------------------------------------------------
+-- Manual config
+----------------------------------------------------------------------
+
+-- Valid levels are "none", "minimal", "default", and "verbose"
+-- Currently not implemented yet
+randomization_info.options.logging = "default"
+
+----------------------------------------------------------------------
+-- Extracting from settings
+----------------------------------------------------------------------
+
 -- Make default 23 since that's my favorite number
-global_seed = 23 + settings.startup["propertyrandomizer-seed"].value
+config.seed = 23 + settings.startup["propertyrandomizer-seed"].value
 
 if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
-    settings.startup["propertyrandomizer-bias"].value = "worst"
-    settings.startup["propertyrandomizer-chaos"].value = "ultimate"
-    settings.startup["propertyrandomizer-dupes"].value = true
-    settings.startup["propertyrandomizer-logistic"].value = "more"
-    settings.startup["propertyrandomizer-production"].value = "more"
-    settings.startup["propertyrandomizer-military"].value = "more"
-    settings.startup["propertyrandomizer-misc"].value = "more"
-    settings.startup["propertyrandomizer-technology"].value = true
-    settings.startup["propertyrandomizer-recipe"].value = true
-    settings.startup["propertyrandomizer-recipe-tech-unlock"].value = true
-    settings.startup["propertyrandomizer-item"].value = true
-    settings.startup["propertyrandomizer-item-percent"].value = 100
+    config.watch_the_world_burn = true
+    -- TODO: Preset for watch the world burn
+end
+if settings.startup["propertyrandomizer-dupes"].value then
+    config.dupes = true
+end
+if settings.startup["propertyrandomizer-test-unit"].value then
+    config.unit_test = true
+end
+if settings.startup["propertyrandomizer-simultaneous"].value then
+    config.simultaneous = true
 end
 
-local bias_string_to_num = constants.bias_string_to_num
-local bias_string_to_idx = constants.bias_string_to_idx
-global_bias = bias_string_to_num[settings.startup["propertyrandomizer-bias"].value]
-global_bias_idx = bias_string_to_idx[settings.startup["propertyrandomizer-bias"].value]
+config.graph = {}
+if settings.startup["propertyrandomizer-technology"].value then
+    config.graph.technology = true
+end
+if settings.startup["propertyrandomizer-recipe"].value then
+    config.graph.recipe = true
+end
+if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
+    config.graph.recipe_tech_unlock = true
+end
+if settings.startup["propertyrandomizer-item"].value then
+    config.graph.item = true
+end
 
-local chaos_string_to_num = constants.chaos_string_to_num
-local chaos_string_to_idx = constants.chaos_string_to_idx
-local chaos_string_to_range_num = constants.chaos_string_to_range_num
-global_chaos = chaos_string_to_num[settings.startup["propertyrandomizer-chaos"].value]
-global_chaos_idx = chaos_string_to_idx[settings.startup["propertyrandomizer-chaos"].value]
-global_chaos_range = chaos_string_to_range_num[settings.startup["propertyrandomizer-chaos"].value]
+local handler_ids = require("helper-tables/handler-ids")
+config.unified = {}
+for _, id in pairs(handler_ids) do
+    config.unified[id] = settings.startup["propertyrandomizer-unified-" .. id].value
+end
+
+config.misc = {}
+if settings.startup["propertyrandomizer-icon"].value then
+    config.misc.icon = true
+end
+if settings.startup["propertyrandomizer-sound"].value then
+    config.misc.sound = true
+end
+if settings.startup["propertyrandomizer-gui"].value then
+    config.misc.gui = true
+end
+if settings.startup["propertyrandomizer-locale"].value then
+    config.misc.locale = true
+end
+config.misc.colors = settings.startup["propertyrandomizer-colors"].value
+
+config.critical_errors = (settings.startup["propertyrandomizer-softlock-prevention"].value == "critical")
+config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
+config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
+
+config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
+
+config.bias_setting = settings.startup["propertyrandomizer-bias"].value
+config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value
+
+----------------------------------------------------------------------
+-- Presets
+----------------------------------------------------------------------
+
+----------------------------------------------------------------------
+-- Parsing
+----------------------------------------------------------------------
 
 local setting_values = constants.setting_values
 
@@ -370,26 +423,18 @@ do_overrides_postfixes = function()
     end
 end
 
--- Overrides (old)
---[[for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].value, "([^;]+)") do
-    local new_val = true
-    if string.sub(override, 1, 1) == "!" then
-        new_val = false
-        override = string.sub(override, 2, -1)
-    end
+----------------------------------------------------------------------
+-- Setting remaining values
+----------------------------------------------------------------------
 
-    -- Check if the override was in the spec
-    if spec[override] ~= nil then
-        for _, order_group in pairs(randomizations_to_perform) do
-            if order_group[override] ~= nil then
-                order_group[override] = new_val
-            end
-        end
-    else
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Override randomization with ID \"[color=blue]" .. override .. "[/color]\" does not exist; this override was skipped.\nMake sure the overrides are spelled and formatted correctly without spaces and separated by semicolons ;")
-    end
-end]]
+local bias_string_to_num = constants.bias_string_to_num
+local bias_string_to_idx = constants.bias_string_to_idx
+config.bias = bias_string_to_num[config.bias_setting]
+config.bias_idx = bias_string_to_idx[config.bias_setting]
 
--- Valid levels are "none", "minimal", "default", and "verbose"
--- Currently not implemented yet
-randomization_info.options.logging = "default"
+local chaos_string_to_num = constants.chaos_string_to_num
+local chaos_string_to_idx = constants.chaos_string_to_idx
+local chaos_string_to_range_num = constants.chaos_string_to_range_num
+config.chaos = chaos_string_to_num[config.chaos_setting]
+config.chaos_idx = chaos_string_to_idx[config.chaos_setting]
+config.chaos_range = chaos_string_to_range_num[config.chaos_setting]

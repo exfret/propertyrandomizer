@@ -283,9 +283,9 @@ end
 
 randomizations.colors = function(id)
     local lut_path
-    if settings.startup["propertyrandomizer-colors"].value == "little" then
+    if config.colors == "little" then
         lut_path = "__propertyrandomizer__/graphics/lut-less-randomized.png"
-    elseif settings.startup["propertyrandomizer-colors"].value == "crazy" then
+    elseif config.colors == "crazy" then
         lut_path = "__propertyrandomizer__/graphics/lut-randomized.png"
     end
 

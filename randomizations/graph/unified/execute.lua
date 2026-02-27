@@ -19,26 +19,11 @@ local test_graph_invariants = require("tests/graph-invariants")
 
 local unified = {}
 
-local handler_ids = {
-    --"recipe-category",
-    --"recipe-ingredients",
-    --"tech-prereqs",
-    --"recipe-tech-unlocks",
-    --"tech-unlocks",
-    --"spoiling",
-    --"tech-science-packs",
-    --"entity-operation-fluid",
-}
+local all_handler_ids = require("helper-tables/handler-ids")
+local handler_ids = {}
 
-for _, id in pairs({ -- Finished randomizations
-        "tech-prereqs",
-        "recipe-tech-unlocks",
-        "spoiling",
-        "tech-science-packs",
-        "entity-operation-fluid",
-        "mining-fluid-required",
-    }) do
-    if settings.startup["propertyrandomizer-unified-" .. id].value == true then
+for _, id in pairs(all_handler_ids) do
+    if config.unified[id] then
         table.insert(handler_ids, id)
     end
     randomization_info.options.unified[id] = {
@@ -973,7 +958,7 @@ unified.execute = function()
     end]]
 
     -- Switch order of techs in sorted_deps so that the tree is less linear
-    if settings.startup["propertyrandomizer-unified-technology-delinearization"].value ~= "none" then
+    if config.technology_delinearization ~= "none" then
         local curr_tech_order = {}
         for _, dep in pairs(sorted_deps) do
             if dep.type == "technology" then
@@ -981,7 +966,7 @@ unified.execute = function()
             end
         end
         -- Random shuffle in the case of "some"
-        if settings.startup["propertyrandomizer-unified-technology-delinearization"].value == "some" then
+        if config.technology_delinearization == "some" then
             rng.shuffle(rng.key({id = "unified"}), curr_tech_order)
         end
         local curr_tech_order_ind = #curr_tech_order

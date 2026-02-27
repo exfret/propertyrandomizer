@@ -12,6 +12,19 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-preset",
+        localised_name = {"mod-setting-name.propertyrandomizer-preset"},
+        localised_description = {"mod-setting-description.propertyrandomizer-preset"},
+        allowed_values = {
+            "default",
+        },
+        default_value = "default",
+        order = "ab[preset]",
+        hidden = true
+    },
+    {
+        setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-watch-the-world-burn",
         localised_name = "Watch the world burn",
@@ -130,16 +143,6 @@ data:extend({
         localised_description = "Performs randomizations simultaneously rather than all at once. Currently a WIP.",
         default_value = false,
         order = "d-a[simultaneous]",
-        hidden = true
-    },
-    {
-        setting_type = "startup",
-        type = "bool-setting",
-        name = "propertyrandomizer-unified",
-        localised_name = "Unified (beta)",
-        localised_description = "Randomizes everything all at once. Not recommended with the other major randomizations below.",
-        default_value = false,
-        order = "d-b[unified]",
         hidden = true
     },
     {
@@ -329,8 +332,7 @@ data:extend({
         localised_description = "How strict to be about error-ing on application startup if potential softlocks are found. Errors are always reported when starting a new game.",
         allowed_values = {
             "control-only",
-            --"critical",
-            --"all"
+            "critical"
         },
         default_value = "control-only",
         order = "h-b[softlock]",

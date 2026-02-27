@@ -8,20 +8,20 @@ randbool.converge = function(key, p)
     return rng.value(key) < p
 end
 
---- randomly returns true or false, high global_chaos increases likelyhood of true
+--- randomly returns true or false, high config.chaos increases likelyhood of true
 randbool.rand_chaos = function(key, base_probability)
-    local p = randprob.scale_odds(base_probability, global_chaos)
+    local p = randprob.scale_odds(base_probability, config.chaos)
     return randbool.converge(key, p)
 end
 
 local bias_idx_to_factor = { 0.8, 0.9, 1, 1.1, 1.2 }
 
---- randomly returns true or false, affected by global_bias
+--- randomly returns true or false, affected by config.bias
 randbool.rand_bias = function (key, base_probability, dir)
     if dir == 0 then
         return randbool.converge(key, base_probability)
     end
-    local factor = bias_idx_to_factor[global_bias_idx + 1]
+    local factor = bias_idx_to_factor[config.bias_idx + 1]
     if dir < 0 then
         factor = 1 / factor
     end
@@ -29,7 +29,7 @@ randbool.rand_bias = function (key, base_probability, dir)
     return randbool.converge(key, p)
 end
 
---- randomly returns true or false, affected by both global_chaos and global_bias
+--- randomly returns true or false, affected by both config.chaos and config.bias
 randbool.rand_bias_chaos = function (key, base_probability, dir)
     local half = math.sqrt(base_probability)
     return randbool.rand_bias(key, half, dir) and randbool.rand_chaos(key, half)

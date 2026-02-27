@@ -2177,7 +2177,7 @@ randomizations.mining_drill_radius = function (id)
             --     3) The radius would become 0.5 if we accepted it
             --     4) Chaos isn't ultimate (level 4)
             --   This should be minimally invasive, and prevent cases where someone has to mine and deconstruct all electric drills on their starter patch nine times just to finish it off
-            if mining_drill.resource_searching_radius > 0.5 and collision_radius > 1 and radius < 1 and global_chaos_idx < 4 then
+            if mining_drill.resource_searching_radius > 0.5 and collision_radius > 1 and radius < 1 and config.chaos_idx < 4 then
                 radius = radius + 1
             end
         end
@@ -2815,7 +2815,7 @@ randomizations.resistances = function(id)
     -- I hate this hotfix, but it needs to be pushed out quickly since otherwise there will be unreported softlocks for people on normal settings (due to asteroids, which has already happened, and potentially "soft" softlocks due to biters) and that is not good
     -- CRITICAL TODO: Simply build this into logic and turn this into a graph rando
     -- TODO: Also should allow override to still trigger this, but I'm short on time now and this needs to get done
-    if global_chaos_idx < 4 then
+    if config.chaos_idx < 4 then
         return
     end
 
