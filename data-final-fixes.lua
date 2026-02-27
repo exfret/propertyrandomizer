@@ -37,6 +37,9 @@ if settings.startup["propertyrandomizer-dupes"].value then
     dupe.execute()
 end
 
+-- Special prototype fixes
+require("randomizations/prefixes")
+
 log("Loading in new dependency graph file")
 
 local new_logic = require("new-lib/logic/init")

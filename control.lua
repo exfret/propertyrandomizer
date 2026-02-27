@@ -14,6 +14,9 @@ script.on_init(function(event)
     storage.printed_change_surface_message = false
     storage.player_ind_to_last_return_attempt_ticks = {}
 
+    -- Give ability to mine fluid immediately to make things easier
+    game.forces.player.mining_with_fluid = true
+
     load_dep_graph()
 end)
 

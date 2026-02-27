@@ -5,7 +5,7 @@ data:extend({
         name = "propertyrandomizer-seed",
         localised_name = "Random seed",
         localised_description = "Changing this will change how everything is randomized.",
-        default_value = 23,
+        default_value = 0,
         minimum_value = -9007199254740992,
         maximum_value = 9007199254740992,
         order = "a[seed]"
@@ -233,6 +233,16 @@ data:extend({
         localised_description = "Randomizes the fluids needed to operate a machine (steam in steam engine, thruster fluid, fusion reactor fluid, etc.). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
         default_value = false,
         order = "e-e[entity-operation-fluid]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-mining-fluid-required",
+        localised_name = "(Unified) Mining fluids",
+        localised_description = "Randomizes the fluid needed to mine a resource, and whether a fluid is needed at all. Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
+        default_value = false,
+        order = "e-f[mining-fluid-required]",
+        hidden = true
     },
     {
         setting_type = "startup",

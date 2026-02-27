@@ -448,9 +448,10 @@ function concrete.build(lu)
                 -- Note that if we wanted to be especially careful, we'd check mining drill filters too, but we'll leave that for another time
                 if entity.minable.required_fluid ~= nil then
                     add_edge("fluid", entity.minable.required_fluid)
-                    add_edge("mining-with-fluid-unlock", "", {
+                    -- Mining with fluid unlock triggered automatically at start of game now
+                    --[[add_edge("mining-with-fluid-unlock", "", {
                         abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
-                    })
+                    })]]
                 end
 
                 -- Resource category checks drill capability (right category + fluid boxes)

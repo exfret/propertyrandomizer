@@ -11,6 +11,8 @@ Date: ?
     - WIP randomizer panel with ability to see what's needed to get anything in the game
   Changes:
     - Completely removed some troublesome randomizations like resistances for now
+    - Mining drills are all given input fluidboxes to make randomization easier and prevent potential softlocks
+    - Mining with fluid is unlocked from the start for similar reasons
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.11
 Date: 2026.01.16

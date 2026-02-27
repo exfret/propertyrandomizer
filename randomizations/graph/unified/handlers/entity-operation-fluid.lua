@@ -1,3 +1,5 @@
+-- TODO: This is too inflexible in the way it assigns fluid required, but I'm not too sure how to fix that.
+
 local gutils = require("new-lib/graph/graph-utils")
 local dutils = require("new-lib/data-utils")
 local top = require("new-lib/graph/top-sort")
@@ -5,8 +7,6 @@ local top = require("new-lib/graph/top-sort")
 local entity_operation_fluid = {}
 
 entity_operation_fluid.id = "entity_operation_fluid"
-
-local already_added_extra = {}
 
 entity_operation_fluid.spoof = function(graph)
     local spoof_node = gutils.add_node(graph, "entity-operate-fluid", "any-fluids-spoof")
@@ -27,6 +27,8 @@ entity_operation_fluid.spoof = function(graph)
         end
     end
 end
+
+local already_added_extra = {}
 
 entity_operation_fluid.claim = function(graph, prereq, dep, trav)
     if prereq.type == "fluid" and dep.type == "entity-operate-fluid" then
@@ -57,9 +59,20 @@ entity_operation_fluid.claim = function(graph, prereq, dep, trav)
 end
 
 entity_operation_fluid.validate = function(graph, slot, trav, extra)
-    if gutils.get_conn_owner(graph, slot).type == "fluid" then
-        return true
+    local slot_owner = gutils.get_conn_owner(graph, slot)
+
+    if slot_owner.type ~= "fluid" then
+        return false
     end
+
+    local fluid = data.raw.fluid[slot_owner.name]
+
+    -- Don't accept spoofed fluids
+    if fluid == nil then
+        return false
+    end
+
+    return true
 end
 
 entity_operation_fluid.reflect = function(graph, trav_to_new_slot, trav_to_handler)
