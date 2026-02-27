@@ -20,3 +20,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Document that ability to mine fluid ("uranium mining") is researched from start
  * Limits setting
  * Lead player toward more normal presets
+ * Tech trigger handler

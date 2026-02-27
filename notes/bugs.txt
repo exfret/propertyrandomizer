@@ -30,6 +30,7 @@
 34. Softlock with scrap recycling: https://discord.com/channels/1073100511454175253/1078087661270597792/1473578786489630740
       * Happens due to recycling production stats ignored, need to add into build graph
 35. Blueprint parameters on recipes not working
+36. Planetary science packs unused by tech prereq randomization on high delinearization settings
 
 Fixed?
 12. Change corpse size doesn't check that there is a corpse first, resulting in mod incompatibilities (https://mods.factorio.com/mod/propertyrandomizer/discussion/69224af08e1629a0efaa7d67)

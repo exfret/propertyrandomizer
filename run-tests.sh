@@ -15,7 +15,7 @@ for file1 in ./tests/mod-configs/*; do
             --create "./tests/test-save.zip" \
             > "./tests/current.log" 2>&1 || FACTORIO_EXIT=$?
         if [ $FACTORIO_EXIT -ne 0 ]; then
-            echo "TEST FAILED"
+            echo "TEST FAILED (Did you exit Factorio first?)"
             exit 1
         fi
     done
