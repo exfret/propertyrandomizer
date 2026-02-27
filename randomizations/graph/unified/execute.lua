@@ -30,7 +30,14 @@ local handler_ids = {
     --"entity-operation-fluid",
 }
 
-for _, id in pairs({"tech-prereqs", "recipe-tech-unlocks", "spoiling", "tech-science-packs", "entity-operation-fluid"}) do
+for _, id in pairs({ -- Finished randomizations
+        "tech-prereqs",
+        "recipe-tech-unlocks",
+        "spoiling",
+        "tech-science-packs",
+        "entity-operation-fluid",
+        "mining-fluid-required",
+    }) do
     if settings.startup["propertyrandomizer-unified-" .. id].value == true then
         table.insert(handler_ids, id)
     end

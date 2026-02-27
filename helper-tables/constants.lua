@@ -86,6 +86,7 @@ local constants = {
     unified_randomization_bootings_until_dummy_slot = 9,
     unified_randomization_max_num_reservations = 20,
     
+    unified_mining_fluid_required_default_fluid_amount = 10,
     unified_recipe_results_dummy_fraction = 1,
 
     -- Randomizations to build dependency graph for

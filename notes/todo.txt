@@ -17,3 +17,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Add recipetweaker to list of recommended mods, and consider other "tweaker" mods
  * Think about secondary sort rando (doing a second sort and taking intersection to reduce linearity)
  * Check heating_energy when checking whether things can freeze (zero means it can't freeze)
+ * Document that ability to mine fluid ("uranium mining") is researched from start
