@@ -11,6 +11,7 @@ randomization_info = {
         unified = {}
     },
 }
+old_data_raw = table.deepcopy(data.raw)
 
 log("Gathering config")
 
@@ -272,6 +273,9 @@ end
 if settings.startup["propertyrandomizer-locale"].value then
     randomizations.all_names("all_names")
 end
+if settings.startup["propertyrandomizer-colors"].value ~= "no" then
+    randomizations.colors("colors")
+end
 
 log("Done applying extra randomizations")
 
@@ -279,6 +283,7 @@ log("Applying fixes")
 
 -- Any fixes needed
 randomizations.fixes()
+do_overrides_postfixes()
 
 -- Final check for completability
 
