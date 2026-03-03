@@ -8,6 +8,7 @@
 	"dependencies": [
 		"base >= 2.0.0",
 		"flib",
+		"reskins-assets-bobs",
 		"(?) space-age",
 		"(?) all-the-overhaul-modpack",
 		"(?) angelssmelting",

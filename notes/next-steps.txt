@@ -2,6 +2,7 @@ CURRENTLY ON:
  * Customizer tab!
     * Overhaul spec (add graph/misc randomizations)
     * Ability to actually export/import settings
+ * Duplicates
  * Settings
     * Change welcome message when "no graph randomizations" are on
  * Limits
@@ -15,5 +16,5 @@ CURRENTLY ON:
        * Compile from current notes
        * Team Macintyre run
 
-Big picture is working with 0.5.0 and unified randomization migration first. Then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
+Next settings customization to guide away from bad presets, then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
 Not sure whether to keep pushing with unified and first pass sort right after that.
