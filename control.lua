@@ -1,4 +1,6 @@
-local gui = require("gui")
+-- TODO: Split off explorer panel into seperate file.
+
+local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 
 local function load_dep_graph()
