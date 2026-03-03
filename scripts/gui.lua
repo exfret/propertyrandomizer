@@ -102,7 +102,7 @@ script.on_event("randomizer-panel", function(event)
     main_tabbed_pane.add_tab(home_tab, home_flow)
     local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = "Welcome to the randomizer panel!"})
 
-    local customizer_tab = customizer.create(main_tabbed_pane, event.player_index)
+    --local customizer_tab = customizer.create(main_tabbed_pane, event.player_index)
 
     local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = "Explorer"})
     local explorer_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-explorer-flow", direction = "vertical"})

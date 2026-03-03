@@ -1025,4 +1025,90 @@ dupe.execute = function()
     end
 end
 
+local function change_graphics_dupes(tbl, old_graphics, new_folder)
+    if type(tbl) ~= "table" then
+        return
+    end
+    for k, v in pairs(tbl) do
+        change_graphics_dupes(v, old_graphics, new_folder)
+        if type(v) == "string" then
+            local last_part = string.match(v, "([^/]+)$")
+            if old_graphics[last_part] then
+                tbl[k] = new_folder .. "/" .. last_part
+            end
+        end
+    end
+end
+
+-- Dupes manually chosen special entities with special graphics
+dupe.execute_vanilla = function()
+    local old_folder
+    local new_folder
+    -- Only contains the replaced files
+    local old_filenames_to_new
+
+    local function replace_with_new_graphics(tbl)
+        for k, v in pairs(tbl) do
+            if type(v) == "table" then
+                replace_with_new_graphics(v)
+            elseif type(v) == "string" then
+                if string.find(v, old_folder, 1, true) ~= nil then
+                    local filename = string.sub(v, #old_folder + 1, -1)
+                    if old_filenames_to_new[filename] then
+                        tbl[k] = new_folder .. old_filenames_to_new[filename]
+                    end
+                end
+            end
+        end
+    end
+
+    -- Extra transport belt tier between yellow and red
+    -- TODO: Can't find graphics!
+
+    -- Extra bulk inserter (uses filter inserter graphics)
+    local bulk_inserter = table.deepcopy(data.raw.inserter["bulk-inserter"])
+    bulk_inserter.name = "bulk-inserter-2"
+    old_folder = "__base__/graphics/entity/bulk-inserter/"
+    new_folder = "__reskins-assets-bobs__/graphics/entity/inserters/inserter-express-filter/"
+    old_filenames_to_new = {
+        ["bulk-inserter-hand-base.png"] = "inserter-express-filter-arm.png",
+        ["bulk-inserter-hand-closed.png"] = "inserter-express-filter-hand-closed.png",
+        ["bulk-inserter-hand-open.png"] = "inserter-express-filter-hand-open.png",
+        ["bulk-inserter-platform.png"] = "inserter-express-filter-platform.png",
+        ["bulk-inserter-remnants.png"] = "inserter-express-filter-remnants.png",
+    }
+    replace_with_new_graphics(bulk_inserter)
+    data.raw.inserter[bulk_inserter.name] = bulk_inserter
+    -- TODO: Icon, item, etc.
+
+    -- Extra stack inserter (uses Bob's express filter inserter graphics)
+
+    -- TODO: Extra locomotive?
+
+    -- Big mining drill
+    if mods["space-age"] then
+        --[[local big_mining_drill = table.deepcopy(data.raw["mining-drill"]["big-mining-drill"])
+        big_mining_drill.name = "big-mining-drill-2"
+        local big_mining_drill_graphics = {
+            ["big-mining-drill-E-still-front.png"] = true,
+            ["big-mining-drill-E-support.png"] = true,
+            ["big-mining-drill-E-top.png"] = true,
+            ["big-mining-drill-N-still-front.png"] = true,
+            ["big-mining-drill-N-support.png"] = true,
+            ["big-mining-drill-N-top.png"] = true,
+            ["big-mining-drill-W-still-front.png"] = true,
+            ["big-mining-drill-W-support.png"] = true,
+            ["big-mining-drill-W-top.png"] = true,
+            ["big-mining-drill-S-still-front.png"] = true,
+            ["big-mining-drill-S-support.png"] = true,
+            ["big-mining-drill-S-top.png"] = true,
+            ["big-mining-drill-remnants.png"] = true,
+            ["big-mining-drill.png"] = true,
+        }
+        change_graphics_dupes(big_mining_drill, big_mining_drill_graphics, "__propertyrandomizer__/graphics/duplicates/big-mining-drill")
+        data.raw["mining-drill"]["big-mining-drill-2"] = big_mining_drill
+        -- TODO: item etc.]]
+    end
+end
+
 return dupe
