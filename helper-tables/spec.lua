@@ -8,6 +8,12 @@
 -- They are all toggleable directly from the settings rather than using overrides
 
 local spec = {
+----------------------------------------------------------------------
+-- Graph randomizations
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+-- Numerical randomizations
+----------------------------------------------------------------------
     -- How much power accumulators store
     accumulator_buffer = {
         setting = {
@@ -1460,6 +1466,9 @@ local spec = {
             val = "more"
         }
     },
+----------------------------------------------------------------------
+-- Misc randomizations
+----------------------------------------------------------------------
 }
 
 return spec

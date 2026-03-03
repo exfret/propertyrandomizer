@@ -14,8 +14,6 @@ data:extend({
         setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-preset",
-        localised_name = {"mod-setting-name.propertyrandomizer-preset"},
-        localised_description = {"mod-setting-description.propertyrandomizer-preset"},
         allowed_values = {
             "default",
         },

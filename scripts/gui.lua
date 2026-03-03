@@ -23,6 +23,7 @@
 local locale = require("lib/locale")
 local flow_cost = require("lib/graph/flow-cost")
 local gutils = require("new-lib/graph/graph-utils")
+local customizer = require("scripts/customizer")
 
 local selected_ind_to_elem_type = {
     "entity",
@@ -85,9 +86,11 @@ script.on_event("randomizer-panel", function(event)
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
 
     local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = "Home"})
-    local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow"})
+    local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow", direction = "vertical"})
     main_tabbed_pane.add_tab(home_tab, home_flow)
     local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = "Welcome to the randomizer panel!"})
+
+    local customizer_tab = customizer.create(main_tabbed_pane, event.player_index)
 
     local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = "Explorer"})
     local explorer_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-explorer-flow", direction = "vertical"})
@@ -102,6 +105,9 @@ script.on_event("randomizer-panel", function(event)
 end)
 
 script.on_event(defines.events.on_gui_selection_state_changed, function(event)
+    customizer.update_selector(event)
+    customizer.update_configuration_event(event)
+
     if string.find(event.element.name, "randomizer%-explorer") then
         local should_update = update_explorer_choice(event.player_index, event.element)
         if should_update ~= false then
@@ -261,7 +267,6 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
         checkbox = hor_flow.add({type = "checkbox", name = new_name .. "-checkbox", state = false})
     end
     local right_flow = hor_flow.add({type = "flow", name = flow_name, direction = "vertical"})
-
 
     -- TODO: Working on this part
     local description = right_flow.add({type = "flow", direction = "horizontal"})
