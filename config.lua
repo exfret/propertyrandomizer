@@ -88,34 +88,36 @@ local setting_values = constants.setting_values
 
 randomizations_to_perform = {}
 for id, rand_info in pairs(spec) do
-    local order = 10
-    if rand_info.order ~= nil then
-        order = rand_info.order
-    end
-
-    if randomizations_to_perform[order] == nil then
-        randomizations_to_perform[order] = {}
-    end
-    local order_group = randomizations_to_perform[order]
-
-    if rand_info.setting == "none" then
-        order_group[id] = false
-    elseif type(rand_info.setting) == "table" then
-
-        if setting_values[settings.startup[rand_info.setting.name].value] >= setting_values[rand_info.setting.val] then
-            order_group[id] = true
-        else
-            order_group[id] = false
+    if rand_info.category == "numerical" then
+        local order = 10
+        if rand_info.order ~= nil then
+            order = rand_info.order
         end
-    elseif type(rand_info.setting) == "string" then
-        if settings.startup[rand_info.setting].value then
-            order_group[id] = true
-        else
-            order_group[id] = false
+
+        if randomizations_to_perform[order] == nil then
+            randomizations_to_perform[order] = {}
         end
-    else
-        -- Setting key not set by mistake
-        error()
+        local order_group = randomizations_to_perform[order]
+
+        if rand_info.setting == "none" then
+            order_group[id] = false
+        elseif type(rand_info.setting) == "table" then
+
+            if setting_values[settings.startup[rand_info.setting.name].value] >= setting_values[rand_info.setting.val] then
+                order_group[id] = true
+            else
+                order_group[id] = false
+            end
+        elseif type(rand_info.setting) == "string" then
+            if settings.startup[rand_info.setting].value then
+                order_group[id] = true
+            else
+                order_group[id] = false
+            end
+        else
+            -- Setting key not set by mistake
+            error()
+        end
     end
 end
 

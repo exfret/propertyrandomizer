@@ -25,6 +25,13 @@ local flow_cost = require("lib/graph/flow-cost")
 local gutils = require("new-lib/graph/graph-utils")
 local customizer = require("scripts/customizer")
 
+local function set_width_height(element, player, width_frac, height_frac)
+    element.style.minimal_width = player.display_resolution.width * width_frac
+    element.style.maximal_width = player.display_resolution.width * width_frac
+    element.style.minimal_height = player.display_resolution.height * height_frac
+    element.style.maximal_height = player.display_resolution.height * height_frac
+end
+
 local selected_ind_to_elem_type = {
     "entity",
     "fluid",
@@ -78,10 +85,15 @@ script.on_event("randomizer-panel", function(event)
     if gui["randomizer-main-panel"] ~= nil then
         --gui["randomizer-main-panel"].destroy()
         gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
+        if gui["randomizer-main-panel"].visible then
+            gui["randomizer-main-panel"].force_auto_center()
+        end
         return
     end
 
     local main_frame = gui.add({type = "frame", name = "randomizer-main-panel", caption = "Randomizer Panel"})
+    local player = game.players[event.player_index]
+    set_width_height(main_frame, player, 1 / 2.5, 1 / 2.5)
     main_frame.force_auto_center()
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
 
@@ -100,6 +112,7 @@ script.on_event("randomizer-panel", function(event)
     local explorer_flow_choice = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
     local explorer_type_choice = explorer_flow_choice.add({type = "list-box", name = "randomizer-explorer-type-choice", selected_index = 1, items = {"Entity", "Fluid", "Item", "Recipe", "Technology", "Tile", "Asteroid Chunk"}})
     update_explorer_choice(event.player_index, explorer_type_choice)
+    explorer_type_choice.style.maximal_width = player.display_resolution.width / 8
     local explorer_dropdowns_scroll = explorer_flow_main.add({type = "scroll-pane", name = "randomizer-explorer-dropdowns-scroll", vertical_scroll_policy = "dont-show-but-allow-scrolling", horizontal_scroll_policy = "dont-show-but-allow-scrolling"})
     local explorer_dropdowns = explorer_dropdowns_scroll.add({type = "flow", name = "randomizer-explorer-dropdowns", direction = "vertical"})
 end)
@@ -469,6 +482,12 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
             amount = 1
         end
         local root_checkbox = expand_prereq_dropdown(root_flow, event.player_index, node, {amount = amount})
+
+        -- Return in case root_checkbox is nil due to it being a weird entity like half-diagonal rails
+        -- We should fix this bug in a better way in the future
+        if root_checkbox == nil then
+            return
+        end
 
         -- Do an initial expansion to reveal first prereqs, though we'll need to spoof the event
         root_checkbox.state = true
