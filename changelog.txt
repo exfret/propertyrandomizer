@@ -1,6 +1,10 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.2
 Date: ?
+  Changes:
+    - Hid the duplicates feature while it's broken and being worked on
+  Bugfixes:
+    - Properly account for recipes hidden from production stats not counting toward crafting triggers
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.1
 Date: 2026.02.26

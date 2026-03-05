@@ -37,7 +37,7 @@ if config.dupes then
     local dupe = require("lib/dupe")
 
     --dupe.execute()
-    dupe.execute_vanilla()
+    --dupe.execute_vanilla()
 end
 
 -- Special prototype fixes
