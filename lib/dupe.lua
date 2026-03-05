@@ -1066,24 +1066,95 @@ dupe.execute_vanilla = function()
     -- TODO: Can't find graphics!
 
     -- Extra bulk inserter (uses filter inserter graphics)
-    local bulk_inserter = table.deepcopy(data.raw.inserter["bulk-inserter"])
-    bulk_inserter.name = "bulk-inserter-2"
-    old_folder = "__base__/graphics/entity/bulk-inserter/"
-    new_folder = "__reskins-assets-bobs__/graphics/entity/inserters/inserter-express-filter/"
-    old_filenames_to_new = {
-        ["bulk-inserter-hand-base.png"] = "inserter-express-filter-arm.png",
-        ["bulk-inserter-hand-closed.png"] = "inserter-express-filter-hand-closed.png",
-        ["bulk-inserter-hand-open.png"] = "inserter-express-filter-hand-open.png",
-        ["bulk-inserter-platform.png"] = "inserter-express-filter-platform.png",
-        ["bulk-inserter-remnants.png"] = "inserter-express-filter-remnants.png",
-    }
-    replace_with_new_graphics(bulk_inserter)
-    data.raw.inserter[bulk_inserter.name] = bulk_inserter
-    -- TODO: Icon, item, etc.
+    -- Has long-handedness but twice as expensive
+    -- TODO: Corpse
+    do
+        local bulk_inserter = table.deepcopy(data.raw.inserter["bulk-inserter"])
+        bulk_inserter.name = "bulk-inserter-2"
+        old_folder = "__base__/graphics/entity/bulk-inserter/"
+        new_folder = "__reskins-assets-bobs__/graphics/entity/inserters/inserter-express-filter/"
+        old_filenames_to_new = {
+            ["bulk-inserter-hand-base.png"] = "inserter-express-filter-arm.png",
+            ["bulk-inserter-hand-closed.png"] = "inserter-express-filter-hand-closed.png",
+            ["bulk-inserter-hand-open.png"] = "inserter-express-filter-hand-open.png",
+            ["bulk-inserter-platform.png"] = "inserter-express-filter-platform.png",
+        }
+        replace_with_new_graphics(bulk_inserter)
+        bulk_inserter.icon = "__reskins-assets-bobs__/graphics/icons/inserters/express-filter-inserter-icon.png"
+        bulk_inserter.insert_position = data.raw.inserter["long-handed-inserter"].insert_position
+        bulk_inserter.pickup_position = data.raw.inserter["long-handed-inserter"].pickup_position
+        local bulk_inserter_item = table.deepcopy(data.raw.item["bulk-inserter"])
+        bulk_inserter_item.name = bulk_inserter.name
+        bulk_inserter_item.icon = "__reskins-assets-bobs__/graphics/icons/inserters/express-filter-inserter-icon.png"
+        bulk_inserter_item.place_result = bulk_inserter.name
+        bulk_inserter.minable.result = bulk_inserter_item.name
+        bulk_inserter_recipe = table.deepcopy(data.raw.recipe["bulk-inserter"])
+        bulk_inserter_recipe.name = bulk_inserter.name
+        for _, ing in pairs(bulk_inserter_recipe.ingredients) do
+            ing.amount = ing.amount * 2
+        end
+        bulk_inserter_recipe.results[1].name = bulk_inserter_item.name
+        table.insert(data.raw.technology["bulk-inserter"].effects, {
+            type = "unlock-recipe",
+            recipe = bulk_inserter_recipe.name
+        })
+        data.raw.inserter[bulk_inserter.name] = bulk_inserter
+        data.raw.item[bulk_inserter_item.name] = bulk_inserter_item
+        data.raw.recipe[bulk_inserter_recipe.name] = bulk_inserter_recipe
+    end
 
-    -- Extra stack inserter (uses Bob's express filter inserter graphics)
+    -- Extra stack inserter (uses Bob's express bulk inserter graphics)
+    -- Half as expensive and corners
+    -- TODO: Remnants
+    do
+        if mods["space-age"] then
+            local stack_inserter = table.deepcopy(data.raw.inserter["stack-inserter"])
+            stack_inserter.name = "stack-inserter-2"
+            old_folder = "__space-age__/graphics/entity/stack-inserter/"
+            -- The png's needed slight resizings because frickin stack inserters need to have special graphics sizes for some reason
+            new_folder = "__propertyrandomizer__/graphics/duplicates/stack-inserter/"
+            old_filenames_to_new = {
+                ["stack-inserter-hand-base.png"] = "inserter-express-bulk-arm.png",
+                ["stack-inserter-hand-closed.png"] = "inserter-express-bulk-hand-closed.png",
+                ["stack-inserter-hand-open.png"] = "inserter-express-bulk-hand-open.png",
+                ["stack-inserter-platform.png"] = "inserter-express-bulk-platform.png",
+            }
+            replace_with_new_graphics(stack_inserter)
+            stack_inserter.icon = "__reskins-assets-bobs__/graphics/icons/inserters/express-inserter-icon.png"
+            stack_inserter.insert_position = {
+                -stack_inserter.insert_position[2],
+                stack_inserter.insert_position[1]
+            }
+            -- Allow inserter to be flipped
+            stack_inserter.allow_custom_vectors = true
+            local stack_inserter_item = table.deepcopy(data.raw.item["stack-inserter"])
+            stack_inserter_item.name = stack_inserter.name
+            stack_inserter_item.icon = "__reskins-assets-bobs__/graphics/icons/inserters/express-inserter-icon.png"
+            stack_inserter_item.place_result = stack_inserter.name
+            stack_inserter.minable.result = stack_inserter_item.name
+            stack_inserter_recipe = table.deepcopy(data.raw.recipe["stack-inserter"])
+            stack_inserter_recipe.name = stack_inserter.name
+            for _, ing in pairs(stack_inserter_recipe.ingredients) do
+                ing.amount = math.ceil(ing.amount * 0.5)
+            end
+            stack_inserter_recipe.results[1].name = stack_inserter_item.name
+            table.insert(data.raw.technology["stack-inserter"].effects, {
+                type = "unlock-recipe",
+                recipe = stack_inserter_recipe.name
+            })
+            data.raw.inserter[stack_inserter.name] = stack_inserter
+            data.raw.item[stack_inserter_item.name] = stack_inserter_item
+            data.raw.recipe[stack_inserter_recipe.name] = stack_inserter_recipe
+        end
+    end
 
-    -- TODO: Extra locomotive?
+    -- TODO: Extra locomotive (need graphics)
+
+    -- TODO: Car (need graphics)
+
+    -- TODO: Spidertron (need graphics)
+
+    -- TODO: Logistic/construction robots (need graphics - could try with mask like what reskins does in main mod)
 
     -- Big mining drill
     if mods["space-age"] then
