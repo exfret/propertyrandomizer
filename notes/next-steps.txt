@@ -1,20 +1,7 @@
 CURRENTLY ON:
- * Customizer tab!
-    * Overhaul spec (add graph/misc randomizations)
-    * Ability to actually export/import settings
- * Duplicates
- * Settings
-    * Change welcome message when "no graph randomizations" are on
- * Limits
-    * Decide whether I should keep the old or new algorithm
-       * Either way, need to add limits back in
-    * Smooth out rough edges, consult:
-       * Reddit post: https://www.reddit.com/r/Factoriohno/comments/1rfjge0/my_experience_with_exfrets_randomizer_mod/
-       * Orb of meat run
-       * Dosh run
-       * Discord thread a while back
-       * Compile from current notes
-       * Team Macintyre run
+ * Hotfixes
+    * Fix recycling softlock
+    * Compile issues on github
 
-Next settings customization to guide away from bad presets, then going on to dupes, possibly brainstorming ways to reduce the roughness (potentially adding more limits/a limits setting).
+Need to return to settings customization/limits/dupes, but working on lower-hanging fruit first.
 Not sure whether to keep pushing with unified and first pass sort right after that.

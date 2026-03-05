@@ -71,7 +71,9 @@ data:extend({
         localised_name = "Duplicates (beta)",
         localised_description = "Whether to include duplicates of important recipes/entities/etc.",
         default_value = false,
-        order = "b-z[dupes]"
+        order = "b-z[dupes]",
+        -- Hidden while broken
+        hidden = true
     },
     {
         setting_type = "startup",

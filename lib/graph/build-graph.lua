@@ -1310,10 +1310,13 @@ local function load()
             prereqs = {}
 
             for _, recipe in pairs(mtm_lookup(result_material_to_recipes, material_name)) do
-                table.insert(prereqs, {
-                    type = "recipe-surface",
-                    name = compound_key({recipe.name, surface_key})
-                })
+                -- Recipes hidden from stats don't satisfy crafting triggers
+                if not recipe.hide_from_stats then
+                    table.insert(prereqs, {
+                        type = "recipe-surface",
+                        name = compound_key({recipe.name, surface_key})
+                    })
+                end
             end
 
             add_to_graph("craft-material-surface", compound_key({material_name, surface_key}), prereqs, {

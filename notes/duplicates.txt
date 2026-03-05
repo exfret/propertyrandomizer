@@ -1,0 +1,12 @@
+Transport belt set
+  * Waiting on response from author of https://mods.factorio.com/mod/matts-logistics
+
+Bulk inserter
+  * Uses bob's artisinal
+
+Stack inserter
+  * Graphics taken from bob's artisinal, needed slight modifications so included here
+
+Locomotive
+  * Use graphics from here: https://mods.factorio.com/mod/steamtrain-redux
+

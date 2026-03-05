@@ -776,9 +776,13 @@ function concrete.build(lu)
             -- Can we produce this fluid via recipe?
 
             for recipe_name, inds in pairs(corresponding_recipes) do
-                add_edge("recipe", recipe_name, {
-                    inds = inds,
-                })
+                local recipe = data.raw.recipe[recipe_name]
+                -- Recipes hidden from stats don't satisfy crafting triggers
+                if not recipe.hide_from_stats then
+                    add_edge("recipe", recipe_name, {
+                        inds = inds,
+                    })
+                end
             end
         end
 
@@ -940,10 +944,14 @@ function concrete.build(lu)
             -- Can we craft this item? (Separate node needed for tech triggers)
 
             for recipe_name, inds in pairs(corresponding_recipes) do
-                add_edge("recipe", recipe_name, {
-                    -- The indices of where in the results this item is (it could be in multiple spots)
-                    inds = inds,
-                })
+                local recipe = data.raw.recipe[recipe_name]
+                -- Recipes hidden from stats don't satisfy crafting triggers
+                if not recipe.hide_from_stats then
+                    add_edge("recipe", recipe_name, {
+                        -- The indices of where in the results this item is (it could be in multiple spots)
+                        inds = inds,
+                    })
+                end
             end
         end
 
