@@ -1,7 +1,13 @@
 CURRENTLY ON:
- * Hotfixes
-    * Fix recycling softlock
-    * Compile issues on github
+ * Fusion reactors blacklist fluid used
+ * Work on explorer?
+    * Explain the square to select prototypes
+    * More gaps/padding
+    * Resize home/explorer tab main flows to take up whole window
+    * Right clicking on prototype causes crash
+    * Close button
+    * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
 
 Need to return to settings customization/limits/dupes, but working on lower-hanging fruit first.
+ - I couldn't find anything with particularly high payoff per effort, hrm
 Not sure whether to keep pushing with unified and first pass sort right after that.
