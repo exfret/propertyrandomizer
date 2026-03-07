@@ -36,14 +36,6 @@ if settings.startup["propertyrandomizer-dupes"].value then
     dupe.execute()
 end
 
-
-
-local entity_rando = require("randomizations/graph/entity")
-entity_rando.reflect()
-
-
-
-
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
 log("Building dependency graph (if applicable)")
@@ -62,6 +54,19 @@ build_graph_compat = require("lib/graph/build-graph-compat")
 -- Build dependents
 log("Adding dependents")
 build_graph.add_dependents(dep_graph)
+
+
+
+
+local entity_rando = require("randomizations/graph/entity/execute")
+entity_rando.preprocess()
+entity_rando.shuffle()
+entity_rando.reflect()
+
+
+
+
+
 
 log("Finding initially reachable nodes")
 local top_sort = require("lib/graph/top-sort")
