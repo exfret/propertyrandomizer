@@ -339,6 +339,7 @@ randomizations.item_new = function(id)
             if new_item == nil then
                 -- Try to find a traveler to switch earlier
                 -- NOTE/CRITICAL TODO: This is broken because the switches can violate reachability of later nodes!
+                -- Note: The above comment might be outdated
                 local succeeded_in_traveler_switch = false
                 for should_check_on_short_path = 1, 2 do
                     for _, failed_traveler in pairs(item_travelers) do

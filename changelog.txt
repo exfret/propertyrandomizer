@@ -122,7 +122,7 @@ Date: 2025.12.07
   Changes:
     - (Nifyr) Trying out new numerical randomization algorithm
     - (Nifyr) New rounding algorithm
-    - (Nifyr) Reworked randomization of fuel items, modules, electric poles, inserter/drill offsets, and unit sizes, and more
+    - (Nifyr) Reworked randomization of fuel items, modules, electric poles, inserter/drill offsets, unit sizes, and more
   Bugfixes:
     - Removed occasional infinite loop in recipe randomization
     - (Nifyr) Recycling recipes are now regenerated following vanilla rules
