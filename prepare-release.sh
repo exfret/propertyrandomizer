@@ -17,6 +17,7 @@ IGNORE_ITEMS=(
     "node-docs"
     "run-tests.sh"
     "prepare-release.sh"
+    "docs"
 )
 
 PROJECT_DIR="$(pwd)"
