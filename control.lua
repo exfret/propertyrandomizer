@@ -103,7 +103,7 @@ script.on_nth_tick(1, function(event)
 
     -- Print warnings on 10th tick
     if event.tick == 10 then
-        if settings.startup["propertyrandomizer-seed"].value == 23 then
+        if settings.startup["propertyrandomizer-seed"].value == 0 then
             --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
         end
         local has_no_graph_randomizations = true
@@ -112,7 +112,8 @@ script.on_nth_tick(1, function(event)
                 has_no_graph_randomizations = false
             end
         end
-        if has_no_graph_randomizations then
+        -- Also check if seed is changed since if it is that means they did actually look at the settings
+        if has_no_graph_randomizations and settings.startup["propertyrandomizer-seed"].value == 0 then
             game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Due to slow load times, recipe and other randomizations are off by default, but highly recommended. See mod settings to turn them on. Also consider turning on prototype caching for faster load times for future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
         end
 
