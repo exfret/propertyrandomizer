@@ -1,0 +1,4 @@
+---
+type: AND
+---
+[[spawn-entity]]

@@ -342,6 +342,7 @@ entity_rando.shuffle = function()
                     if #reserved_slots >= 1 then
                         local canceled_slot = reserved_slots[#reserved_slots]
                         
+                        -- CRITICAL TODO
                     else
                         break
                     end

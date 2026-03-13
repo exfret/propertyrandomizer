@@ -10,11 +10,11 @@ I. Unified rando
             2. (DONE) Recipe tech unlocks
             3. (In Progress) Recipe categories
             4. (DONE) Spoiling (what spoils and into what)
-            5. Fuel categories
+            5. (In progress) Fuel categories
             6. Entity rando
             7. Tile fluids, machine input/output fluids, mining fluids
             8. (DONE) Technology science pack sets
-        * Basic spoofing, plan in when/what other spoofing to do later
+        * (DONE) Basic spoofing, plan in when/what other spoofing to do later
         * Flow cost checks
         * Build graph compat nodes added to new logic
         (No working surface rando yet, to be done in IV)
@@ -25,7 +25,7 @@ II. Dupes/group unlocks
     A.
         * Dupes with better graphics (might need to ping Osmo)
         * Reorganize logic and lookup
-        * Testing script for releases and seed testing
+        * (DONE) Testing script for releases and seed testing
     B.
         * Bundled randomizations (brainstorm and prototype), maybe do with numerical too?
         * Remove hardcoding, move the rest of this to later as needed
@@ -47,7 +47,7 @@ IV. Full pass improvements
     A.
         * Extra limits based on chaos (maybe tied to config rather than a direct chaos check within code)
     B.
-        * Full recipe ingredient rando import
+        * Full recipe ingredient rando support
         * Flow cost coproduct split (comparison with simplex)
         * The big merge
     C.

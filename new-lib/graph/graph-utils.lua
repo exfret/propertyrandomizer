@@ -154,6 +154,34 @@ gutils.unique_depconn = function(graph, node)
     return node
 end
 
+-- Untested
+gutils.is_source = function(graph, node)
+    if node.op ~= "AND" then
+        return false
+    end
+    
+    if node.num_pre == 0 then
+        if next(node.pre) ~= nil then
+            error("Graph invariant failed. Tell exfret he's a dumbo!")
+        end
+        return true
+    elseif next(node.pre) == nil then
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return false
+end
+
+-- Untested
+gutils.sources = function(graph)
+    local sources = {}
+    for _, node in pairs(graph.nodes) do
+        if gutils.is_source(graph, node) then
+            table.insert(sources, node)
+        end
+    end
+    return sources
+end
+
 -- Does not add to sources or add op property
 gutils.add_node = function(graph, node_type, node_name, extra)
     local node = {
@@ -272,6 +300,14 @@ gutils.subdivide = function(graph, edge_key)
         slot = slot,
         traveler = traveler,
     }
+end
+
+-- Untested
+-- Subdivides then remove the middle of the subdivided edge
+gutils.sever = function(graph, edge_key)
+    local slot_trav = gutils.subdivide(graph, edge_key)
+    gutils.remove_edge(graph, gutils.ekey(gutils.unique_pre(graph, slot_trav.traveler)))
+    return slot_trav
 end
 
 -- TODO: The following could be rewritten in terms of the new traversal functions once I feel confident about them

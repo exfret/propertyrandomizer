@@ -5,3 +5,7 @@ local graph_op_test = require("tests/graph-operations")
 graph_op_test.init(logic.graph)
 graph_op_test.pre_depnode()
 graph_op_test.pre_depnodes()
+
+local consistent_sort = require("tests/consistent-sort")
+consistent_sort.init(logic.graph)
+consistent_sort.validate_all_techs_reachable()
