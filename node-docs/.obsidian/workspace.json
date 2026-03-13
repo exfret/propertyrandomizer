@@ -4,17 +4,31 @@
     "type": "split",
     "children": [
       {
-        "id": "a18a360ec3015f04",
+        "id": "5009ea553e9fb745",
         "type": "tabs",
         "children": [
           {
-            "id": "a94bf5f893310c43",
+            "id": "98ed42fcfc08dada",
             "type": "leaf",
             "state": {
               "type": "graph",
               "state": {},
               "icon": "lucide-git-fork",
               "title": "Graph view"
+            }
+          },
+          {
+            "id": "f395ef482e8c339d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Primary Nodes/technology.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "technology"
             }
           }
         ]
@@ -161,10 +175,22 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "a94bf5f893310c43",
+  "active": "98ed42fcfc08dada",
   "lastOpenFiles": [
+    "Primary Nodes/technology.md",
+    "Primary Nodes/surface.md",
+    "Primary Nodes/spawn-entity.md",
+    "Primary Nodes/recipe-category.md",
+    "Primary Nodes/recipe.md",
+    "Primary Nodes/operate-entity.md",
+    "Primary Nodes/mine-entity.md",
+    "Primary Nodes/item.md",
+    "Primary Nodes/fluid.md",
+    "Primary Nodes/build-entity.md",
     "Main Nodes/node-agricultural-tower-surface.md",
+    "Primary Nodes/Untitled.canvas",
     "Untitled.canvas",
+    "Primary Nodes",
     "Main Nodes/node-build-tile-item.md",
     "transport-item-surface.md",
     "node-transport-set.md",
@@ -181,16 +207,6 @@
     "Mechanics Nodes",
     "Main Nodes/node-void-energy.md",
     "Main Nodes/node-valid-tile-placement-surface.md",
-    "Main Nodes/node-transport-item.md",
-    "Main Nodes/node-transport-item-to-surface.md",
-    "Main Nodes/node-technology.md",
-    "Main Nodes/node-surface.md",
-    "Main Nodes/node-starting-planet.md",
-    "Main Nodes/node-starting-character.md",
-    "Main Nodes/node-spawner-capturability.md",
-    "Main Nodes/node-spawn-tile.md",
-    "Main Nodes/node-spawn-tile-surface.md",
-    "Main Nodes/node-spawn-rail-surface.md",
     "Compat Nodes",
     "Nodes/Electricity",
     "Nodes/Technology",
@@ -199,7 +215,6 @@
     "Nodes/Fluid",
     "Nodes/Item",
     "Nodes/Entity",
-    "Nodes",
     "Pasted image 20250421003153.png",
     "Pasted image 20250420223700.png",
     "space-nodes.canvas"

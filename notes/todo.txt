@@ -28,3 +28,5 @@ For bugs/fixes rather than features, see bugs.txt
  * Randomize background music
  * Listen for GUI changes and change randomizer panel scale based on that (and clean up GUI code in general)
  * Localise properly
+ * Move contexts to logic utils
+ * Implement rocket launch products in logic

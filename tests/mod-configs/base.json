@@ -23,6 +23,10 @@
     {
       "name": "propertyrandomizer",
       "enabled": true
+    },
+    {
+      "name": "reskins-assets-bobs",
+      "enabled": true
     }
   ]
 }

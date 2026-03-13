@@ -32,11 +32,6 @@ for _, id in pairs(all_handler_ids) do
 end
 
 unified.execute = function()
-    -- CRITICAL TODO: Fix up to be base game compatible before release
-    --[[if not mods["space-age"] then
-        error("exfret, you forgot to enable Space Age you doofus.")
-    end]]
-
     -- Load handlers
     local default_handler = require("randomizations/graph/unified/handlers/default")
     local handlers = {}
@@ -867,8 +862,8 @@ unified.execute = function()
         -- Actually, this breaks things to do the direct connection way (which is kinda obvious in hindsight)
         -- CRITICAL TODO: Don't do that stupid direct connection thing (I think this was in "first pass" where I was doing this thing)
         -- I did some direct connections, which I probably shouldn't have, so we'll need to check the actual owners
-        --local slot_owner = gutils.get_conn_owner(random_graph, slot)
-        --local trav_owner = gutils.get_conn_owner(random_graph, trav)
+        local slot_owner = gutils.get_conn_owner(random_graph, slot)
+        local trav_owner = gutils.get_conn_owner(random_graph, trav)
 
         if not PRESERVE_ISOLATABILITY then
             for context, _ in pairs(logic.contexts) do
