@@ -310,6 +310,12 @@ gutils.sever = function(graph, edge_key)
     return slot_trav
 end
 
+gutils.sever_node = function(graph, node_key)
+    for _, edge in pairs(gutils.pres(graph, graph.nodes[node_key])) do
+        gutils.sever(graph, gutils.ekey(edge))
+    end
+end
+
 -- TODO: The following could be rewritten in terms of the new traversal functions once I feel confident about them
 -- Get a slot or traveler's base node
 gutils.get_conn_owner = function(graph, conn)

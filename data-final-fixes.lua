@@ -9,7 +9,8 @@ randomization_info = {
     touched = {},
     -- Options communicated from config or elsewhere
     options = {
-        unified = {}
+        logic = {},
+        unified = {},
     },
 }
 old_data_raw = table.deepcopy(data.raw)
@@ -76,6 +77,18 @@ if config.unit_test then
     smuggle_info()
     return
 end
+
+
+
+local blop = require("tests/consistent-sort")
+new_logic.build()
+blop.init(new_logic.graph)
+blop.profile_num_switches()
+
+do return end
+
+
+
 
 ----------------------------------------------------------------------
 -- Setup done!
