@@ -1,11 +1,13 @@
 CURRENTLY ON:
  * Consistent sort
-    * Testing
+    * More tests
+    * Profiling?
  * First pass sort
     * More clearly define goals and revisit
     * Add testing/logging
  * Fusion reactors blacklist fluid used
  * Documentation
+    * Roadmap?
  * Work on explorer?
     * Explain the square to select prototypes
     * More gaps/padding
