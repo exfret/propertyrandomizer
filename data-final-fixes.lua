@@ -78,18 +78,6 @@ if config.unit_test then
     return
 end
 
-
-
-local blop = require("tests/consistent-sort")
-new_logic.build()
-blop.init(new_logic.graph)
-blop.profile_num_switches()
-
-do return end
-
-
-
-
 ----------------------------------------------------------------------
 -- Setup done!
 ----------------------------------------------------------------------

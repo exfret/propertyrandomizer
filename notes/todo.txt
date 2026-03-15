@@ -5,7 +5,6 @@ For bugs/fixes rather than features, see bugs.txt
  * Misc. rando for starting gun, starting ammo (and amount), and crashed spacheship contents/starting inventory
  * Account for ability to move around on planets in logic (need ice platforms on Aquilo), maybe just a compat on ice platforms etc.?
  * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
- * Add fulgorite to logic
  * Spoiling checks on buildings (make sure it's not too quick)
  * Fill in weights before graph randos
  * Force space resources in appropriate places (like planetary science packs)
@@ -13,22 +12,18 @@ For bugs/fixes rather than features, see bugs.txt
  * Address recipe tech unlock scattering with bubbling
  * Randomized settings setting
  * Think about possibility/helpfulness of backtracking?
- * Softlock checking based on "concrete" nodes, better error messages for softlocks
+ * Softlock checking based on concrete canonical nodes, better error messages for softlocks
  * Add recipetweaker to list of recommended mods, and consider other "tweaker" mods
  * Think about secondary sort rando (doing a second sort and taking intersection to reduce linearity)
  * Check heating_energy when checking whether things can freeze (zero means it can't freeze)
  * Document that ability to mine fluid ("uranium mining") is researched from start
  * Limits setting
     * Go through orb and dosh run to see what needs to be changed with regards to limitation
- * Lead player toward more normal presets
  * Tech trigger handler
  * Presets to guide player away from "ultimate chaos"
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
  * Add full tests for with unified handlers
- * Randomize background music
  * Listen for GUI changes and change randomizer panel scale based on that (and clean up GUI code in general)
- * Localise properly
  * Move contexts to logic utils
- * Implement rocket launch products in logic
  * Reorganize new-lib better, in particular separate graph lib and sort lib as that part is growing too large (and maybe figure out where an "important node decider"/other graph logical analysis would go)
  * Progression nodes/ability to decide when a node/pebble is important

@@ -158,12 +158,12 @@ end
 
 -- This is taken mainly from top-sort.lua
 -- Creates a path of inds within sort_info.sorted starting from the goal and going backwards for how to get there
--- goal_ind is the index in sort_info.sorted of the pebble we are hoping to achieve
-top.path = function(graph, goal_ind, sort_info)
+-- goal_inds is a list of inds in sort_info.sorted of the pebbles we are hoping to achieve
+top.path = function(graph, goal_inds, sort_info)
     local sorted = sort_info.sorted
     local node_to_context_inds = sort_info.node_to_context_inds
 
-    local path = { goal_ind }
+    local path = goal_inds
     -- Whether an index is in the path yet
     local in_path = {}
 
@@ -189,27 +189,30 @@ top.path = function(graph, goal_ind, sort_info)
                 -- Start at curr_ind to more easily do error checking on indeed getting an earlier pebble
                 local first_occurrence_ind = curr_ind
                 for _, prenode in pairs(gutils.prenodes(graph, node)) do
-                    if node_to_context_inds[key(prenode)][context] < first_occurrence_ind then
+                    -- Need to check that context is non-nil since OR nodes can depend on later things/with different contexts
+                    if node_to_context_inds[key(prenode)][context] ~= nil and node_to_context_inds[key(prenode)][context] < first_occurrence_ind then
                         first_occurrence_ind = node_to_context_inds[key(prenode)][context]
                     end
                 end
                 -- Make sure we found something/didn't loop
                 if first_occurrence_ind == curr_ind then
-                    log_error()
+                    return false
+                    --log_error()
                 end
-                if not in_path[first_occurrence_ind] then
-                    table.insert(preinds, first_occurrence_ind)
-                end
+                table.insert(preinds, first_occurrence_ind)
             elseif node.op == "AND" then
                 -- Add all previous pebbles to the path
                 for _, prenode in pairs(gutils.prenodes(graph, node)) do
                     local prev_ind = node_to_context_inds[key(prenode)][context]
+                    -- If this is nil, then not satisfiable, so abandon this context
+                    if prev_ind == nil then
+                        return false
+                    end
                     if prev_ind >= curr_ind then
-                        log_error()
+                        -- This can happen in a valid manner, it just means this is an invalid context
+                        --log_error()
                     end
-                    if not in_path[prev_ind] then
-                        table.insert(preinds, prev_ind)
-                    end
+                    table.insert(preinds, prev_ind)
                 end
             end
 
@@ -223,35 +226,48 @@ top.path = function(graph, goal_ind, sort_info)
             local earliest_context_ind = curr_ind
             for context, _ in pairs(logic.contexts) do
                 local preinds = find_preinds(curr_node, context)
-                local latest_ind
-                for _, ind in pairs(preinds) do
-                    if latest_ind == nil or ind > latest_ind then
-                        latest_ind = ind
+                if preinds ~= false then
+                    local latest_ind
+                    for _, ind in pairs(preinds) do
+                        if latest_ind == nil or ind > latest_ind then
+                            latest_ind = ind
+                        end
                     end
-                end
-                if latest_ind == nil then
-                    if curr_node.op == "OR" then
-                        -- This means no prereqs and it's an OR, so shouldn't have been found in the first place
-                        log(serpent.block(curr_pebble))
-                        error("Unreachable pebble.")
+                    if latest_ind == nil then
+                        if curr_node.op == "OR" then
+                            -- This means no prereqs and it's an OR, so shouldn't have been found in the first place
+                            --log(serpent.block(curr_pebble))
+                            --error("Unreachable pebble.")
+                            -- Oh that's fine we just ignore the context
+                        else
+                            -- In this case, we're satisfiable immediately anyways due to having no prereqs, and the exact context doesn't matter
+                            -- Give earliest_context_ind a 0 so that later sanity checks don't complain
+                            earliest_context_ind = 0
+                            curr_context = context
+                            break
+                        end
+                    else
+                        if latest_ind < earliest_context_ind then
+                            earliest_context_ind = latest_ind
+                            curr_context = context
+                        end
                     end
-                    -- In this case, we're satisfiable immediately anyways due to having no prereqs, and the exact context doesn't matter
-                    curr_context = context
-                    break
-                end
-                if latest_ind < earliest_context_ind then
-                    earliest_context_ind = latest_ind
-                    curr_context = context
                 end
             end
             -- If nothing was earlier, that's a contradiction
             if earliest_context_ind == curr_ind then
+                log(serpent.block(curr_node))
                 error("No earlier contexts possible.")
             end
         end
 
         -- Now, either way, we go from curr_context
         local preinds = find_preinds(curr_node, curr_context)
+        -- preinds should always be valid by here
+        if preinds == false then
+            log(serpent.block(curr_pebble))
+            error()
+        end
         for _, ind in pairs(preinds) do
             if not in_path[ind] then
                 in_path[ind] = true
@@ -261,9 +277,15 @@ top.path = function(graph, goal_ind, sort_info)
 
         path_ind = path_ind + 1
     end
+
+    return {
+        path = path,
+        in_path = in_path,
+    }
 end
 
 -- Trims unnecessary contexts out of state's sorted list, starting from the back
+-- Might not be necessary with top.path now
 top.trim = function(graph, state)
     -- TODO
 end
