@@ -102,9 +102,74 @@ test.lava_only_on_vulcanus = function()
     end
 end
 
+test.path_contains_chemical_science = function()
+    local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
+    local nauvis_context = gutils.key("planet", "nauvis")
+    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][nauvis_context]
+    local path_info = top.path(test_graph, { silo_ind }, sort_info)
+
+    local science_node = test_graph.nodes[gutils.key("item", "chemical-science-pack")]
+    local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
+    if not path_info.in_path[science_ind] then
+        error()
+    end
+end
+
+test.path_not_contains_defender = function()
+    local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
+    local nauvis_context = gutils.key("planet", "nauvis")
+    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][nauvis_context]
+    local path_info = top.path(test_graph, { silo_ind }, sort_info)
+
+    local capsule_node = test_graph.nodes[gutils.key("item", "defender-capsule")]
+    local capsule_ind = sort_info.node_to_context_inds[gutils.key(capsule_node)][nauvis_context]
+    if path_info.in_path[capsule_ind] then
+        error()
+    end
+end
+
+test.path_contains_gleba_biochamber = function()
+    if mods["space-age"] then
+        local science_node = test_graph.nodes[gutils.key("item", "promethium-science-pack")]
+        local nauvis_context = gutils.key("planet", "nauvis")
+        local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
+        local path_info = top.path(test_graph, { science_ind }, sort_info)
+
+        for _, ind in pairs(path_info.path) do
+            log(serpent.block(sort_info.sorted[ind]))
+        end
+
+        local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]
+        local gleba_context = gutils.key("planet", "gleba")
+        local chamber_ind = sort_info.node_to_context_inds[gutils.key(chamber_node)][gleba_context]
+        if not path_info.in_path[chamber_ind] then
+            error()
+        end
+    end
+end
+
+test.path_not_contains_nauvis_biochamber = function()
+    if mods["space-age"] then
+        local science_node = test_graph.nodes[gutils.key("item", "promethium-science-pack")]
+        local nauvis_context = gutils.key("planet", "nauvis")
+        local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
+        local path_info = top.path(test_graph, { science_ind }, sort_info)
+
+        for _, ind in pairs(path_info.path) do
+            log(serpent.block(sort_info.sorted[ind]))
+        end
+
+        local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]
+        local chamber_ind = sort_info.node_to_context_inds[gutils.key(chamber_node)][nauvis_context]
+        if path_info.in_path[chamber_ind] then
+            error()
+        end
+    end
+end
+
 -- Finds number of pairs of nodes X,Y in sort_info where X is before Y in one context and vice versa in the other
 test.profile_num_switches = function()
-    local function find_num_switches(sort_info_to_use)
+    local function find_num_switches(sort_info_to_use, path_info_to_use)
         local num_switches = 0
         local switch_counted = {}
 
@@ -128,11 +193,42 @@ test.profile_num_switches = function()
         local function node_context_a_cant_rely_on_b(node_key_a, node_key_b, context)
             local ind_a = sort_info_to_use.node_to_context_inds[node_key_a][context]
             local ind_b = sort_info_to_use.node_to_context_inds[node_key_b][context]
+            --[[if ind_a == nil or ind_b == nil then
+                return false
+            end
+            return ind_b > ind_a]]
+            if path_info_to_use ~= nil and not (path_info_to_use.in_path[ind_a] and path_info_to_use.in_path[ind_b]) then
+                return false
+            end
             return (ind_b or (#sort_info_to_use.sorted + 1)) >= (ind_a or (#sort_info_to_use.sorted + 2))
         end
 
         local progress = 0
-        for i, pebble1 in pairs(sort_info_to_use.sorted) do
+        local all_nodes = {}
+        for _, node in pairs(test_graph.nodes) do
+            table.insert(all_nodes, node)
+        end
+        for i, node1 in pairs(all_nodes) do
+            if 100 * i / #all_nodes >= progress + 1 then
+                progress = progress + 1
+                log(tostring(progress) .. "% Done")
+            end
+            for _, node2 in pairs(all_nodes) do
+                local imply = false
+                local impliedby = false
+                for context, _ in pairs(logic.contexts) do
+                    if node_context_a_cant_rely_on_b(gutils.key(node1), gutils.key(node2), context) then
+                        imply = true
+                    elseif node_context_a_cant_rely_on_b(gutils.key(node2), gutils.key(node1), context) then
+                        impliedby = true
+                    end
+                end
+                if imply and impliedby then
+                    num_switches = num_switches + 1
+                end
+            end
+        end
+        --[[for i, pebble1 in pairs(sort_info_to_use.sorted) do
             if 100 * i / #sort_info_to_use.sorted >= progress + 1 then
                 progress = progress + 1
                 log(tostring(progress) .. "% Done")
@@ -154,15 +250,35 @@ test.profile_num_switches = function()
                     end
                 end
             end
-        end
+        end]]
 
         return num_switches
     end
 
-    log("Optimized: " .. tostring(find_num_switches(sort_info)) .. "\n")
-    log("Unoptimized: " .. tostring(find_num_switches(sort_info_unoptimized)) .. "\n")
-end
+    --log("Optimized: " .. tostring(find_num_switches(sort_info)) .. "\n")
+    --log("Unoptimized: " .. tostring(find_num_switches(sort_info_unoptimized)) .. "\n")
 
--- TODO: Profiling/testing how well it puts things in a consistent manner
+    -- Just do all items on nauvis
+    local goal_inds = {}
+    for ind, pebble in pairs(sort_info.sorted) do
+        local node = test_graph.nodes[pebble.node_key]
+        if node.type == "item" and pebble.context == gutils.key("planet", "vulcanus") then
+            table.insert(goal_inds, ind)
+        end
+    end
+    local path_info = top.path(test_graph, goal_inds, sort_info)
+
+    local goal_inds_unoptimized = {}
+    for ind, pebble in pairs(sort_info_unoptimized.sorted) do
+        local node = test_graph.nodes[pebble.node_key]
+        if node.type == "item" and pebble.context == gutils.key("planet", "vulcanus") then
+            table.insert(goal_inds_unoptimized, ind)
+        end
+    end
+    local path_info_unoptimized = top.path(test_graph, goal_inds_unoptimized, sort_info_unoptimized)
+
+    log("Optimized w/ path: " .. tostring(find_num_switches(sort_info, path_info)) .. "\n")
+    log("Unoptimized w/ path: " .. tostring(find_num_switches(sort_info_unoptimized, path_info_unoptimized)) .. "\n")
+end
 
 return test

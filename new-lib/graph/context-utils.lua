@@ -28,7 +28,9 @@ contutils.transmit = function(node, context)
         return contutils.context_list()
     elseif type(context_type) == "string" then
         -- Case of a room/set type context
-        return { context_type }
+        -- Since type_info is the same across all nodes of the same type, and since rooms are all the same type, the context in type_info is inaccurate
+        -- All type_info for rooms reports nauvis as the context, so we need to just rely on the node's name
+        return { node.name }
     else
         -- Unhandled
         error()

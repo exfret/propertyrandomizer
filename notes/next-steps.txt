@@ -5,7 +5,6 @@ CURRENTLY ON:
  * First pass sort
     * More clearly define goals and revisit
     * Add testing/logging
- * Fusion reactors blacklist fluid used
  * Documentation
     * Roadmap?
  * Work on explorer?

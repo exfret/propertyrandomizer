@@ -49,6 +49,10 @@ entity_operation_fluid.claim = function(graph, prereq, dep, trav)
             -- TODO: We might need to somehow consider heating pipeline all at once
             return false
         end
+        if entity.type == "fusion-generator" then
+            -- We have similar issues for fusion generators as for generators
+            return false
+        end
         if not already_added_extra[prereq.name] then
             already_added_extra[prereq.name] = true
             return 2

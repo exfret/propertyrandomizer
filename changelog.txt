@@ -6,6 +6,7 @@ Date: ?
   Bugfixes:
     - Properly account for recipes hidden from production stats not counting toward crafting triggers
     - Ignore hidden technologies in old logic
+    - Fusion generators don't have their operation fluids randomized (usually leading to them being useless, since other fluids don't have fuel values)
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.1
 Date: 2026.02.26
