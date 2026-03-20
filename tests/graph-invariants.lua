@@ -3,6 +3,9 @@ local gutils = require("new-lib/graph/graph-utils")
 local test_graph_invariants = {}
 
 test_graph_invariants.test = function(graph)
+    -- Make sure we aren't modifying graph
+    graph = table.deepcopy(graph)
+
     -- Test that num_pre is actual number of prerequisites
     for _, node in pairs(graph.nodes) do
         local num_pre = 0

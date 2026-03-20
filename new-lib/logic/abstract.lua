@@ -620,6 +620,23 @@ function abstract.build(lu)
     ----------------------------------------
     -- Can we satisfy a traveler that comes at the end of an edge?
 
+    ----------------------------------------
+    add_node("base", "AND", nil, "", { canonical = "base" })
+    ----------------------------------------
+    -- Can we satisfy a base that comes at the beginning of an edge? (New name)
+    -- This is the same as slot above, but transitioning to a new naming for things
+
+    ----------------------------------------
+    add_node("head", "OR", nil, "", { canonical = "head" })
+    ----------------------------------------
+    -- Can we satisfy a head that comes at the end of an edge? (New name)
+    -- This is the same as traveler above, but transitioning to a new naming for things
+
+    ----------------------------------------
+    add_node("orand", "AND", nil, "", { canonical = "orand" })
+    ----------------------------------------
+    -- Can we satisfy this AND node that comes right before an OR?
+
     ----------------------------------------------------------------------
     -- Meta
     ----------------------------------------------------------------------

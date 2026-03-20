@@ -16,6 +16,12 @@ local severed_sort_info
 local no_platform_graph
 local no_platform_info
 
+-- Things that are NOT tests to be ran
+test.non_test_names = {
+    ["init"] = true,
+    ["profile_num_switches"] = true,
+}
+
 test.init = function(graph)
     test_graph = table.deepcopy(graph)
     sort_info = top.sort(test_graph)
@@ -135,10 +141,6 @@ test.path_contains_gleba_biochamber = function()
         local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
         local path_info = top.path(test_graph, { science_ind }, sort_info)
 
-        for _, ind in pairs(path_info.path) do
-            log(serpent.block(sort_info.sorted[ind]))
-        end
-
         local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]
         local gleba_context = gutils.key("planet", "gleba")
         local chamber_ind = sort_info.node_to_context_inds[gutils.key(chamber_node)][gleba_context]
@@ -154,10 +156,6 @@ test.path_not_contains_nauvis_biochamber = function()
         local nauvis_context = gutils.key("planet", "nauvis")
         local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
         local path_info = top.path(test_graph, { science_ind }, sort_info)
-
-        for _, ind in pairs(path_info.path) do
-            log(serpent.block(sort_info.sorted[ind]))
-        end
 
         local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]
         local chamber_ind = sort_info.node_to_context_inds[gutils.key(chamber_node)][nauvis_context]

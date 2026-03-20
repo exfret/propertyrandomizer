@@ -8,11 +8,8 @@ graph_op_test.pre_depnodes()
 
 local consistent_sort = require("tests/consistent-sort")
 consistent_sort.init(logic.graph)
-consistent_sort.validate_all_techs_reachable()
-consistent_sort.validate_no_techs_reachable()
-consistent_sort.validate_launch_first()
-consistent_sort.lava_only_on_vulcanus()
-consistent_sort.path_contains_chemical_science()
-consistent_sort.path_not_contains_defender()
-consistent_sort.path_contains_gleba_biochamber()
-consistent_sort.path_not_contains_nauvis_biochamber()
+for test_name, test in pairs(consistent_sort) do
+    if type(test) == "function" and not consistent_sort.non_test_names[test_name] then
+        test()
+    end
+end
