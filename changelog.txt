@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.5.2
+Version: 0.5.3
 Date: ?
+  Changes:
+    - Commented out fluid box randomization because of problems; an issue was created on the github if someone else wants to tackle this: https://github.com/exfret/propertyrandomizer/issues/25
+---------------------------------------------------------------------------------------------------
+Version: 0.5.2
+Date: 2026.03.19
   Features:
     - Option to repeat unified and item randomization until success
   Changes:

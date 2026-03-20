@@ -55,6 +55,7 @@ gutils.depnode = function(graph, dep)
 end
 
 -- Untested
+-- Note: This returns the ACTUAL edges, not the keys!
 gutils.pres = function(graph, node)
     local edges = {}
     for pre, _ in pairs(node.pre) do
@@ -69,6 +70,7 @@ gutils.pres = function(graph, node)
 end
 
 -- Untested
+-- Note: This returns the ACTUAL edges, not the keys!
 gutils.deps = function(graph, node)
     local edges = {}
     for dep, _ in pairs(node.dep) do
@@ -103,10 +105,12 @@ end
 gutils.unique_pre = function(graph, node)
     -- Check both num_pre and actual number prereqs for safety
     if node.num_pre ~= 1 then
+        log(serpent.block(node))
         error("Graph invariant failed. Tell exfret he's a dumbo!")
     end
     local pres = gutils.pres(graph, node)
     if #pres ~= 1 then
+        log(serpent.block(node))
         error("Graph invariant failed. Tell exfret he's a dumbo!")
     end
     return pres[1]
@@ -117,6 +121,7 @@ end
 gutils.unique_dep = function(graph, node)
     local deps = gutils.deps(graph, node)
     if #deps ~= 1 then
+        log(serpent.block(node))
         error("Graph invariant failed. Tell exfret he's a dumbo!")
     end
     return deps[1]
@@ -137,6 +142,8 @@ end
 local connector_types = {
     ["slot"] = true,
     ["traveler"] = true,
+    ["base"] = true,
+    ["head"] = true,
 }
 
 -- Same as above, but goes through slots/travs until reaching a "proper" node
@@ -267,7 +274,8 @@ gutils.remove_edge = function(graph, edge_key)
     end
 end
 
-gutils.subdivide = function(graph, edge_key)
+-- Uses old terminology
+gutils.subdivide_old = function(graph, edge_key)
     local edge = graph.edges[edge_key]
     local node1 = graph.nodes[edge.start]
     local node2 = graph.nodes[edge.stop]
@@ -305,7 +313,7 @@ end
 -- Untested
 -- Subdivides then remove the middle of the subdivided edge
 gutils.sever = function(graph, edge_key)
-    local slot_trav = gutils.subdivide(graph, edge_key)
+    local slot_trav = gutils.subdivide_old(graph, edge_key)
     gutils.remove_edge(graph, gutils.ekey(gutils.unique_pre(graph, slot_trav.traveler)))
     return slot_trav
 end
@@ -347,6 +355,136 @@ gutils.get_conn_buddy = function(graph, conn)
             return graph.nodes[graph.edges[pre].start]
         end
     end
+end
+
+gutils.make_orand = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    
+    local or_node = graph.nodes[edge.stop]
+    if not or_node.op == "OR" then
+        error("Attempt to create orand for non-OR node")
+    end
+
+    local orand = gutils.add_node(graph, "orand", edge_key)
+    orand.op = "AND"
+    graph.node_to_orands[gutils.key(or_node)][gutils.key(orand)] = true
+    graph.orand_to_parent[gutils.key(orand)] = gutils.key(or_node)
+
+    local new_edge = gutils.add_edge(graph, edge.start, gutils.key(orand))
+    gutils.add_edge(graph, gutils.key(orand), edge.stop)
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the old edge to the new one from the start to the orand
+    local normal_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_keys[k] then
+            new_edge[k] = v
+        end
+    end
+
+    return orand
+end
+
+gutils.make_orands = function(graph)
+    local edges_to_subdivide = {}
+    graph.node_to_orands = {}
+    graph.orand_to_parent = {}
+    for _, node in pairs(graph.nodes) do
+        if node.op == "OR" then
+            graph.node_to_orands[gutils.key(node)] = {}
+            for pre, _ in pairs(node.pre) do
+                table.insert(edges_to_subdivide, pre)
+            end
+        else
+            -- Treat AND nodes as their own ORAND
+            graph.node_to_orands[gutils.key(node)] = { gutils.key(node) }
+            graph.orand_to_parent[gutils.key(node)] = gutils.key(node)
+        end
+    end
+    for _, edge_key in pairs(edges_to_subdivide) do
+        gutils.make_orand(graph, edge_key)
+    end
+end
+
+-- Divide an edge into a head and a base
+gutils.subdivide_base_head = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    local node1 = graph.nodes[edge.start]
+    local node2 = graph.nodes[edge.stop]
+    local base = gutils.add_node(graph, "base", edge_key)
+    local head = gutils.add_node(graph, "head", edge_key)
+    base.op = "AND"
+    head.op = "OR"
+    base.old_head = gutils.key(head)
+    head.old_base = gutils.key(base)
+    gutils.add_edge(graph, gutils.key(node1), gutils.key(base))
+    gutils.add_edge(graph, gutils.key(head), gutils.key(node2))
+    -- base and head begin connected
+    gutils.add_edge(graph, gutils.key(base), gutils.key(head))
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the edge to the base and head nodes themselves
+    local normal_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_keys[k] then
+            base[k] = v
+            head[k] = v
+        end
+    end
+
+    return {
+        base = base,
+        head = head,
+    }
+end
+
+-- I actually decided to gradually subdivide rather than all at once, so I think this is unused
+gutils.subdivide_ands = function(graph)
+    local edges_to_subdivide = {}
+    graph.old_pres = {}
+    for _, node in pairs(graph.nodes) do
+        if node.op == "AND" then
+            for pre, _ in pairs(node.pre) do
+                table.insert(edges_to_subdivide, pre)
+            end
+        end
+        graph.old_pres[gutils.key(node)] = {}
+        for pre, _ in pairs(node.pre) do
+            graph.old_pres[gutils.key(node)][graph.edges[pre].start] = graph.edges[pre]
+        end
+    end
+    graph.old_edge_to_conns = {}
+    for _, edge_key in pairs(edges_to_subdivide) do
+        graph.old_edge_to_conns[edge_key] = gutils.subdivide_base_head(graph, edge_key)
+    end
+end
+
+gutils.get_buddy = function(graph, conn_node)
+    if conn.type == "base" then
+        return gutils.unique_depnode(graph, conn_node)
+    end
+    if conn.type == "head" then
+        return gutils.unique_prenode(graph, conn_node)
+    end
+    error("Invalid conn type")
+end
+
+gutils.get_owner = function(graph, conn_node)
+    if conn_node.type == "base" then
+        return gutils.unique_prenode(graph, conn_node)
+    end
+    if conn_node.type == "head" then
+        return gutils.unique_depnode(graph, conn_node)
+    end
+    error("Invalid conn type")
 end
 
 return gutils

@@ -121,7 +121,7 @@ unified.execute = function()
     -- Subdivision and Path finding
     ----------------------------------------------------------------------------------------------------
 
-    -- Subdivide edges into slots and travelers (but don't disrupt connections yet
+    -- Subdivide edges into slots and travelers (but don't disrupt connections yet)
     local subdiv_graph = graph
     -- Deepcopy the old version so that references don't become dead
     graph = table.deepcopy(graph)
@@ -133,7 +133,7 @@ unified.execute = function()
         end
     end
     for _, pre in pairs(pre_to_subdivide) do
-        local conn = gutils.subdivide(subdiv_graph, pre)
+        local conn = gutils.subdivide_old(subdiv_graph, pre)
         trav_to_old_slot[gutils.key(conn.traveler)] = conn.slot
     end
 
@@ -145,12 +145,12 @@ unified.execute = function()
         end
     end
     for _, pre in pairs(pre_to_subdivide_2) do
-        gutils.subdivide(path_graph, pre)
+        gutils.subdivide_old(path_graph, pre)
     end
 
     local subdiv_sort = top.sort(path_graph)
     -- Path to promethium science item
-    --[[local prom_science = path_graph.nodes[gutils.key("item", "promethium-science-pack")]
+    local prom_science = path_graph.nodes[gutils.key("item", "promethium-science-pack")]
     local path_goal
     for open_ind, open_info in pairs(subdiv_sort.open) do
         if open_info.node == gutils.key(prom_science) then
@@ -166,7 +166,7 @@ unified.execute = function()
     local short_path = {}
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
-    end]]
+    end
 
     test_graph_invariants.test(subdiv_graph)
 
@@ -597,7 +597,7 @@ unified.execute = function()
                         for pre, _ in pairs(node.pre) do
                             local start = pass_graph.edges[pre].start
                             local rerouted_edge = gutils.add_edge(pass_graph, start, gutils.key(corresponding_recipe_node))
-                            gutils.subdivide(pass_graph, gutils.ekey(rerouted_edge))
+                            gutils.subdivide_old(pass_graph, gutils.ekey(rerouted_edge))
                             table.insert(edges_to_remove, pre)
                         end
                         for dep, _ in pairs(upstream_node.dep) do
@@ -732,7 +732,7 @@ unified.execute = function()
                         gutils.remove_edge(pass_graph, base_pre)
                     end
                 end
-                local subdivide_info = gutils.subdivide(pass_graph, gutils.ekey(base_head_edge))
+                local subdivide_info = gutils.subdivide_old(pass_graph, gutils.ekey(base_head_edge))
                 local sub_trav = subdivide_info.traveler
                 head_to_trav[gutils.key(head_node)] = sub_trav
                 base_to_slot[gutils.key(dep)] = subdivide_info.slot
@@ -898,7 +898,11 @@ unified.execute = function()
                 log(serpent.block(trav.name))
                 error("Randomization assertion failed! Tell exfret he's a dumbo.")
             end
-            assert(all_contexts_reachable(slot, trav))
+            if not all_contexts_reachable(slot, trav) then
+                log(serpent.block(slot.name))
+                log(serpent.block(trav.name))
+                error("Randomization assertion failed! Tell exfret he's a dumbo.")
+            end
         end
     end
 
