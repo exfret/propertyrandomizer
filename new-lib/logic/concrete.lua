@@ -50,7 +50,7 @@ function concrete.build(lu)
                 elseif source_type == "gun" then
                     -- Guns: need the gun item + planet (player uses guns on planets only)
                     -- Guns can't be "automated"
-                    add_edge("item-gun", source_info.name, nil, cat.name, {
+                    add_edge("item-gun", source_info.name, {
                         abilities = { [2] = false },
                     })
                 end

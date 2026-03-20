@@ -63,6 +63,7 @@ local logic_group = require(lib_name .. "/logic/logic-group")
 local builder = require(lib_name .. "/logic/builder")
 local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
+local balance = require(lib_name .. "/logic/balance")
 local graph_setup = require(lib_name .. "/logic/graph-setup")
 
 local key = gutils.key
@@ -116,6 +117,15 @@ logic.build = function()
 
     -- The following nodes represent "abstract" types of things, like electricity, for which there is usually no specific prototype involved
     abstract.build(lu)
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- Balance
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+    -- The following nodes are for balancing purposes
+    balance.build(lu)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

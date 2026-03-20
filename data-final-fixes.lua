@@ -84,7 +84,16 @@ end
 
 -- Do unified randomizations first
 
-unified.execute()
+for i = 1, config.unified_num_retries do
+    if not unified.execute() then
+        data.raw = table.deepcopy(old_data_raw)
+        if i == config.unified_num_retries then
+            error("Unified randomization failed. Perhaps try a new seed?")
+        end
+    else
+        break
+    end
+end
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 

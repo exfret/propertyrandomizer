@@ -71,7 +71,10 @@ config.critical_errors = (settings.startup["propertyrandomizer-softlock-preventi
 config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
 
+config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
+
+config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 
 config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value

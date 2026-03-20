@@ -1005,8 +1005,8 @@ unified.execute = function()
                     local percentage = math.floor(100 * dep_ind / #sorted_deps)
                     -- Prereq shuffle can "keep failing", making its failures only an isolated subset (that's cool!)
                     log("Prereq shuffle failed at " .. percentage .. "%")
-                    -- CRITICAL TODO: Uncomment this out! No softlocks allowed!
-                    --error()
+                    -- Report failure
+                    return false
                 end
             end
         end
@@ -1029,6 +1029,9 @@ unified.execute = function()
         data.raw.planet.gleba = old_nauvis
         data.raw.planet.gleba.name = "gleba"
     end
+
+    -- Report success
+    return true
 end
 
 return unified

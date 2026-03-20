@@ -73,11 +73,13 @@ function helpers.add_node(node_type, op, context, node_name, extra)
     curr = gutils.add_node(graph, node_type, node_name, extra)
 end
 
-function helpers.add_edge(start_type, start_name, extra)
+function helpers.add_edge(start_type, start_name, extra, stop_type, stop_name)
     start_name = start_name or curr_prot.name
     extra = extra or {}
+    stop_type = stop_type or curr.type
+    stop_name = stop_name or curr.name
 
-    local edge_type_key = gutils.concat({start_type, curr.type})
+    local edge_type_key = gutils.concat({start_type, stop_type})
     edge_info[edge_type_key] = edge_info[edge_type_key] or {}
     -- Note that there can be two "types" of edges between the same node types, which maybe could introduce different contexts as well
     -- We currently clobber the abilities to be whatever the last processed edge type had as its abilities, so we don't account for this
@@ -85,7 +87,11 @@ function helpers.add_edge(start_type, start_name, extra)
     if extra.abilities ~= nil then
         edge_info[edge_type_key].abilities = extra.abilities
     end
-    gutils.add_edge(graph, key(start_type, start_name), key(curr), extra)
+    gutils.add_edge(graph, key(start_type, start_name), key(stop_type, stop_name), extra)
+end
+
+function helpers.add_edge_reversed(stop_type, stop_name, extra)
+    helpers.add_edge(curr.type, curr.name, extra, stop_type, stop_name)
 end
 
 return helpers
