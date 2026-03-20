@@ -1,12 +1,16 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.2
 Date: ?
+  Features:
+    - Option to repeat unified and item randomization until success
   Changes:
     - Hid the duplicates feature while it's broken and being worked on
   Bugfixes:
     - Properly account for recipes hidden from production stats not counting toward crafting triggers
     - Ignore hidden technologies in old logic
     - Fusion generators don't have their operation fluids randomized (usually leading to them being useless, since other fluids don't have fuel values)
+    - Fluid box connections are now in the center of the tile
+    - Unified randomizations now respect compatibility/balancing nodes so that old randomizations don't silently fail
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.1
 Date: 2026.02.26

@@ -18,3 +18,4 @@ This lists bugs/issues before they're moved to their own issues on the github re
 37. Where did upgrade line preservation setting go?
 38. Also for assembling machine upgrade line preservation issue, give assembling machine 1's fluid connection
 39. Weights accounted for in softlock etc. prevention? Is that done now?
+40. Configuration changed message is reported on base game version change, which could be over-reporting and cause people to ignore it

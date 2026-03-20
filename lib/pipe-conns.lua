@@ -73,21 +73,21 @@ pipe_conns.add_dummy_pipe_conns = function(prototype, fluid_box_properties)
     local vert_shift = 0.5 - 0.5 * (math.ceil(prototype.collision_box[2][2] - prototype.collision_box[1][2]) % 2)
     for y_side = 1, 2 do
         local direction
-        local left_offset = 0
-        local right_offset = 0
+        local left_offset = 0.5 - horiz_shift
+        local right_offset = 0.5 - horiz_shift
         local y_pos
         if y_side == 1 then
             direction = 0 -- North
-            left_offset = 1
-            y_pos = prototype.collision_box[y_side][2] + 0.1
+            --left_offset = 1.5
+            y_pos = math.ceil(prototype.collision_box[y_side][2]) + 0.5
         else
             direction = 8 -- South
-            right_offset = 1
-            y_pos = prototype.collision_box[y_side][2] - 0.1
+            --right_offset = 1.5
+            y_pos = math.floor(prototype.collision_box[y_side][2]) - 0.5
         end
 
-        for x_pos = math.ceil(prototype.collision_box[1][1] - horiz_shift) + horiz_shift + left_offset, math.floor(prototype.collision_box[2][1] - horiz_shift) + horiz_shift - right_offset do
-            local proposed_position = {x_pos, y_pos}
+        for x_pos = math.ceil(prototype.collision_box[1][1] - horiz_shift) + horiz_shift + left_offset, math.floor(prototype.collision_box[2][1] - horiz_shift) + horiz_shift - right_offset, 1 do
+            local proposed_position = {x_pos + 0.5 - horiz_shift, y_pos + 0.5 - vert_shift}
 
             if check_collision(proposed_position, pipe_conn_info.positions) then
                 table.insert(prototype.dummy_pipe_conns, {
@@ -99,21 +99,21 @@ pipe_conns.add_dummy_pipe_conns = function(prototype, fluid_box_properties)
     end
     for x_side = 1, 2 do
         local direction
-        local up_offset = 0
-        local down_offset = 0
+        local up_offset = 0.5 - vert_shift
+        local down_offset = 0.5 - vert_shift
         local x_pos
         if x_side == 1 then
             direction = 12 -- West
-            up_offset = 1
-            x_pos = prototype.collision_box[x_side][1] + 0.1
+            --up_offset = 1.5
+            x_pos = math.ceil(prototype.collision_box[x_side][1]) + 0.5
         else
             direction = 4 -- East
-            down_offset = 1
-            x_pos = prototype.collision_box[x_side][1] - 0.1
+            --down_offset = 1.5
+            x_pos = math.floor(prototype.collision_box[x_side][1]) - 0.5
         end
 
-        for y_pos = math.ceil(prototype.collision_box[1][2] - vert_shift) + vert_shift + up_offset, math.floor(prototype.collision_box[2][2] - vert_shift) + vert_shift - down_offset do
-            local proposed_position = {x_pos, y_pos}
+        for y_pos = math.ceil(prototype.collision_box[1][2] - vert_shift) + vert_shift + up_offset, math.floor(prototype.collision_box[2][2] - vert_shift) + vert_shift - down_offset, 1 do
+            local proposed_position = {x_pos + 0.5 - horiz_shift, y_pos + 0.5 - vert_shift}
 
             if check_collision(proposed_position, pipe_conn_info.positions) then
                 table.insert(prototype.dummy_pipe_conns, {

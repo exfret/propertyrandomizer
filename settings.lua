@@ -194,6 +194,26 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "int-setting",
+        name = "propertyrandomizer-item-retries",
+        localised_name = "Item randomization attempts",
+        localised_description = "Item randomization is finnicky, so multiple attempts are made in case one fails. This could drastically prolong loading time, but hey, at least you don't have to reset the settings all over?",
+        default_value = 10,
+        minimum_value = 1,
+        order = "d-fb[item]"
+    },
+    {
+        setting_type = "startup",
+        type = "int-setting",
+        name = "propertyrandomizer-unified-retries",
+        localised_name = "Unified randomization attempts",
+        localised_description = "Unified randomization fails occasionally too, so multiple attempts can be made to prevent startup errors. This also can prolong loading time if many failures occur.",
+        default_value = 10,
+        minimum_value = 1,
+        order = "e-[unified]"
+    },
+    {
+        setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-tech-prereqs",
         localised_name = "(Unified) Tech prereqs",

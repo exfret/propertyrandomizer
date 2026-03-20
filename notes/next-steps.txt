@@ -1,12 +1,10 @@
 CURRENTLY ON:
- * Consistent sort
-    * More tests
-    * Profiling?
+ * Add compat nodes for new logic (seems urgent)
  * First pass sort
     * More clearly define goals and revisit
     * Add testing/logging
  * Documentation
-    * Roadmap?
+    * Finish "Multipass methods"
  * Work on explorer?
     * Explain the square to select prototypes
     * More gaps/padding
