@@ -217,6 +217,15 @@ gutils.add_node = function(graph, node_type, node_name, extra)
     return node
 end
 
+gutils.update_pre_info = function(graph, node, change)
+    node.num_pre = node.num_pre + change
+    if node.num_pre == 0 and node.op == "AND" then
+        graph.sources[gutils.key(node)] = true
+    else
+        graph.sources[gutils.key(node)] = nil
+    end
+end
+
 gutils.add_edge = function(graph, start, stop, extra)
     if type(start) == "table" then
         start = gutils.key(start)
@@ -247,10 +256,7 @@ gutils.add_edge = function(graph, start, stop, extra)
         end
         if graph.nodes[edge.stop] ~= nil then
             graph.nodes[edge.stop].pre[edge_key] = true
-            graph.nodes[edge.stop].num_pre = graph.nodes[edge.stop].num_pre + 1
-            if graph.sources[edge.stop] then
-                graph.sources[edge.stop] = nil
-            end
+            gutils.update_pre_info(graph, graph.nodes[edge.stop], 1)
         end
     end
     -- Only add to edges if we've constructed it
@@ -261,17 +267,35 @@ gutils.add_edge = function(graph, start, stop, extra)
     return edge
 end
 
+gutils.redirect_edge_start = function(graph, edge_key, new_start)
+    local edge = graph.edges[edge_key]
+
+    local old_start_node = graph.nodes[edge.stop]
+    old_start_node.dep[edge_key] = nil
+    local new_end_node = graph.nodes[new_start]
+    new_end_node.dep[edge_key] = true
+    edge.start = new_end
+end
+
+gutils.redirect_edge_stop = function(graph, edge_key, new_end)
+    local edge = graph.edges[edge_key]
+
+    local old_end_node = graph.nodes[edge.stop]
+    old_end_node.pre[edge_key] = nil
+    gutils.update_pre_info(graph, old_end_node, -1)
+    local new_end_node = graph.nodes[new_end]
+    new_end_node.pre[edge_key] = true
+    gutils.update_pre_info(graph, new_end_node, 1)
+    edge.stop = new_end
+end
+
 gutils.remove_edge = function(graph, edge_key)
     local edge = graph.edges[edge_key]
     
     graph.edges[edge_key] = nil
     graph.nodes[edge.start].dep[edge_key] = nil
     graph.nodes[edge.stop].pre[edge_key] = nil
-    graph.nodes[edge.stop].num_pre = graph.nodes[edge.stop].num_pre - 1
-    -- Recompute sources
-    if graph.nodes[edge.stop].op == "AND" and graph.nodes[edge.stop].num_pre == 0 then
-        graph.sources[edge.stop] = true
-    end
+    gutils.update_pre_info(graph, graph.nodes[edge.stop], -1)
 end
 
 -- Uses old terminology

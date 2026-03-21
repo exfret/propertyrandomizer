@@ -1,10 +1,11 @@
 local rng = require("lib/random/rng")
+local lu = require("new-lib/lookup/init")
 
 local reformat = {}
 
 -- Reformattings that need to happen at the very beginning of the randomization process
 function reformat.initial()
-    -- Right now this just populates all the class names to avoid space age errors
+    -- Populate all the class names to avoid space age errors
     for _, class_names in pairs(defines.prototypes) do
         for class_name, _ in pairs(class_names) do
             if data.raw[class_name] == nil then
@@ -33,6 +34,12 @@ function reformat.initial()
             data.raw[class_name] = {}
         end
     end]]
+
+    -- Fill in all item weights
+    lu.load_lookups()
+    for _, item in pairs(lu.items) do
+        item.weight = lu.weight[item.name]
+    end
 end
 
 -- Recursive, so can't be defined with the =function syntax

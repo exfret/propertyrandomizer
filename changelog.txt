@@ -1,8 +1,16 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.3
 Date: ?
+  Features:
+    - Item weights are filled in beforehand to prevent key items from getting a horribly larger weight due to the game's automatic weight calculation
   Changes:
+    - Changed default numerical randomization algorithm back to "safeguarded"
     - Commented out fluid box randomization because of problems; an issue was created on the github if someone else wants to tackle this: https://github.com/exfret/propertyrandomizer/issues/25
+    - Hid fluid operation unified randomization since it's not working well
+    - Commented out a very large range of more questionable randomizations
+    - Firearm magazine ingredients are not randomized with space age (so that ammo can still be made in space)
+  Bugfixes:
+    - Items don't get weights so low that more than twenty stacks would be needed to fill a rocket, preventing automatic launches
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.2
 Date: 2026.03.19

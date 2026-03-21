@@ -137,7 +137,7 @@ unified.execute = function()
         trav_to_old_slot[gutils.key(conn.traveler)] = conn.slot
     end
 
-    local path_graph = table.deepcopy(old_graph)
+    --[[local path_graph = table.deepcopy(old_graph)
     local pre_to_subdivide_2 = {}
     for _, node in pairs(path_graph.nodes) do
         for pre,  _ in pairs(node.pre) do
@@ -166,7 +166,7 @@ unified.execute = function()
     local short_path = {}
     for _, open_info in pairs(short_path_info) do
         short_path[subdiv_sort.open[open_info.ind].node] = true
-    end
+    end]]
 
     test_graph_invariants.test(subdiv_graph)
 

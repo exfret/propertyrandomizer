@@ -5,3 +5,4 @@ Small notes/feedback on how to improve the wiki
  * Something in the index for dependencies of what to read in what order
  * Discuss dummies somewhere
  * More pictures/better explanation for slot scramble
+ * Cover reachability-doability correspondence

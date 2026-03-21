@@ -26,7 +26,7 @@ top.sort = function(graph, state, new_conn, extra)
 
     -- Initialize state vars
     state = state or {}
-    -- node_to_context_inds goes node_key --> { context --> index }, where index is when the node_key/context combo was added in sorted
+    -- node_to_context_inds goes node_key --> { context --> index | nil }, where index is when the node_key/context combo was added in sorted, nil if nonexistent
     -- Represents the OUTGOING contexts
     -- To check incoming, check node_to_context_inds on the prerequisite nodes
     -- This is updated when processed from open (not when added to it)

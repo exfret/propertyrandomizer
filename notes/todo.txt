@@ -6,7 +6,6 @@ For bugs/fixes rather than features, see bugs.txt
  * Account for ability to move around on planets in logic (need ice platforms on Aquilo), maybe just a compat on ice platforms etc.?
  * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
  * Spoiling checks on buildings (make sure it's not too quick)
- * Fill in weights before graph randos
  * Force space resources in appropriate places (like planetary science packs)
  * Randomized top sorts in new sorts (make random preferred order and sort according to that?)
  * Address recipe tech unlock scattering with bubbling
@@ -22,7 +21,6 @@ For bugs/fixes rather than features, see bugs.txt
  * Tech trigger handler
  * Presets to guide player away from "ultimate chaos"
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
- * Add full tests for with unified handlers
  * Listen for GUI changes and change randomizer panel scale based on that (and clean up GUI code in general)
  * Move contexts to logic utils
  * Reorganize new-lib better, in particular separate graph lib and sort lib as that part is growing too large (and maybe figure out where an "important node decider"/other graph logical analysis would go)

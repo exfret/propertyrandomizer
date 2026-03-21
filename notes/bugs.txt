@@ -3,8 +3,6 @@ This lists bugs/issues before they're moved to their own issues on the github re
 13. Incompatibility with pacifist mod (https://mods.factorio.com/mod/propertyrandomizer/discussion/6921e8f843b1eb2c5cef559f)
 14. Duplicates crashes editor extensions (https://mods.factorio.com/mod/propertyrandomizer/discussion/6911fe1136382d1ea1ae0764)
 
-18. EdwardR reporting thrusters behind other planets' trigger techs
-
 26. Add quality testing (mainly for ItemIDFilter types in trigger techs from mods)
 27. Spent fuel results are an awful way to get things, but sometimes are the way you get them from, e.g.- item rando; investigate and balance
 28. Fix localisations when dupe and item randos are together

@@ -106,7 +106,9 @@ local space_age_sensitive_recipes = {
     ["ice-melting"] = true,
     ["holmium-solution"] = true,
     ["holmium-plate"] = true,
-    ["lithium-plate"] = true
+    ["lithium-plate"] = true,
+    -- For space
+    ["firearm-magazine"] = true,
 }
 if mods["space-age"] then
     for recipe_name, bool in pairs(space_age_sensitive_recipes) do

@@ -3,8 +3,7 @@
 --  * Use the new graph library functions
 --  * Use correct terminology
 
--- TODO: Handlers also use slot/trav convention... need to change
---       Also make them indicate spoofs with new .spoof = true property
+-- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
 local rng = require("lib/random/rng")
