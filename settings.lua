@@ -255,7 +255,9 @@ data:extend({
         localised_name = "(Unified) Machine fluids needed",
         localised_description = "Randomizes the fluids needed to operate a machine (flamethrower fuel, fusion reactor fluid, etc.). Uses a new unified algorithm that runs randomizations simultaneously and will be the default in future versions.",
         default_value = false,
-        order = "e-e[entity-operation-fluid]"
+        order = "e-e[entity-operation-fluid]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -336,12 +338,12 @@ data:extend({
         type = "string-setting",
         name = "propertyrandomizer-numerical-algorithm",
         localised_name = "Algorithm",
-        localised_description = "I'm trying out a new randomization algorithm for numerical randomizations; switch to 'Safeguarded' for the old version, and be sure to provide feedback on the change!",
+        localised_description = "Choose between two algorithms for randomizing the numerical values up or down. One produces a bell curve without cutoffs, while the other performs a more safeguarded random walk.",
         allowed_values = {
             "fleishman",
-            "exfret-random-walk"
+            "exfret-random-walk",
         },
-        default_value = "fleishman",
+        default_value = "exfret-random-walk",
         order = "h-a[algorithm]"
     },
     {

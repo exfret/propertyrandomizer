@@ -106,13 +106,13 @@ local spec = {
             val = "less"
         }
     },
-    ammo_damage_types = {
+    --[[ammo_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     ammo_magazine_size = {
         category = "numerical",
         setting = {
@@ -235,13 +235,13 @@ local spec = {
             val = "more"
         }
     },]]
-    base_effect = {
+    --[[base_effect = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     beacon_distribution_effectivity = {
         category = "numerical",
         setting = {
@@ -395,13 +395,13 @@ local spec = {
             val = "more"
         }
     },
-    car_rotation_speed = {
+    --[[car_rotation_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },
+    },]]
     cargo_bay_inventory_bonus = {
         category = "numerical",
         setting = {
@@ -430,13 +430,13 @@ local spec = {
             val = "more"
         }
     },
-    character_crafting_speed = {
+    --[[character_crafting_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     -- A classic
     cliff_sizes = {
         category = "numerical",
@@ -567,13 +567,13 @@ local spec = {
             val = "default"
         }
     },
-    equipment_grid_sizes = {
+    --[[equipment_grid_sizes = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "default"
         }
-    },
+    },]]
     equipment_inventory_bonus = {
         category = "numerical",
         setting = {
@@ -645,13 +645,13 @@ local spec = {
             val = "more"
         }
     },
-    fire_damage_types = {
+    --[[fire_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     fire_lifetime = {
         category = "numerical",
         setting = {
@@ -685,13 +685,13 @@ local spec = {
         }
     },
     -- In vanilla, this would change how much water is needed to convert to steam for the same amount of energy
-    fluid_heat_capacity = {
+    --[[fluid_heat_capacity = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     fluid_stream_damage = {
         category = "numerical",
         setting = {
@@ -699,13 +699,13 @@ local spec = {
             val = "more"
         }
     },
-    fluid_stream_damage_types = {
+    --[[fluid_stream_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     fluid_stream_effect_radius = {
         category = "numerical",
         setting = {
@@ -759,13 +759,13 @@ local spec = {
             val = "more"
         }
     },
-    gate_opening_speed = {
+    --[[gate_opening_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "default"
         }
-    },
+    },]]
     -- How much steam do steam engines use
     generator_fluid_usage = {
         category = "numerical",
@@ -826,20 +826,20 @@ local spec = {
             val = "more"
         }
     },
-    inserter_base_hand_size = {
+    --[[inserter_base_hand_size = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
-    inserter_filter = {
+    },]]
+    --[[inserter_filter = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
+    },]]
     inserter_speed = {
         category = "numerical",
         setting = {
@@ -876,7 +876,7 @@ local spec = {
             val = "more"
         }
     },
-    item_fuels = {
+    --[[item_fuels = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
@@ -884,7 +884,7 @@ local spec = {
         },
         -- Needs to be done before fuel stats randomizations
         order = 1,
-    },
+    },]]
     item_stack_sizes = {
         category = "numerical",
         setting = {
@@ -893,13 +893,13 @@ local spec = {
         }
     },
     -- Affects rocket capacity
-    item_weights = {
+    --[[item_weights = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
+    },]]
     lab_research_speed = {
         category = "numerical",
         setting = {
@@ -907,13 +907,13 @@ local spec = {
             val = "default"
         }
     },
-    lab_science_pack_drain = {
+    --[[lab_science_pack_drain = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     landmine_damage = {
         category = "numerical",
         setting = {
@@ -921,13 +921,13 @@ local spec = {
             val = "default"
         }
     },
-    landmine_damage_types = {
+    --[[landmine_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     landmine_effect_radius = {
         category = "numerical",
         setting = {
@@ -984,13 +984,13 @@ local spec = {
             val = "more"
         }
     },
-    locomotive_max_speed = {
+    --[[locomotive_max_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     -- Disabled until there is a workable version
     --[[ module_effects = {
         category = "numerical",
@@ -1020,13 +1020,13 @@ local spec = {
             val = "more"
         }
     },
-    map_gen_preset = {
+    --[[map_gen_preset = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     -- Affects everything, including enemy HP
     max_health = {
         category = "numerical",
@@ -1044,20 +1044,20 @@ local spec = {
             val = "more"
         }
     },]]
-    mining_drill_radius = {
+    --[[mining_drill_radius = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
-    mining_drill_resource_drain = {
+    },]]
+    --[[mining_drill_resource_drain = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
+    },]]
     mining_fluid_amount_needed = {
         category = "numerical",
         setting = {
@@ -1067,13 +1067,13 @@ local spec = {
     },
     -- Includes anything with a defined results field
     -- That's rocks, plants and fluid resouces in vanilla
-    mining_results = {
+    --[[mining_results = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     -- Mining drill speeds
     mining_speeds = {
         category = "numerical",
@@ -1082,20 +1082,20 @@ local spec = {
             val = "less"
         }
     },
-    mining_times = {
+    --[[mining_times = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
-    mining_times_resource = {
+    },]]
+    --[[mining_times_resource = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     module_slots = {
         category = "numerical",
         setting = {
@@ -1174,13 +1174,13 @@ local spec = {
             val = "more"
         }
     },
-    projectile_damage_types = {
+    --[[projectile_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     projectile_effect_radius = {
         category = "numerical",
         setting = {
@@ -1210,13 +1210,13 @@ local spec = {
             val = "default"
         }
     },
-    radar_reveal_area = {
+    --[[radar_reveal_area = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     radar_search_area = {
         category = "numerical",
         setting = {
@@ -1254,49 +1254,49 @@ local spec = {
     },
     -- exfret Note: I specifically didn't touch the next few recipe randomizations due to exponential cascading issues, but let's see how they go
     -- If someone enables "More" on a randomization, they deserve pain anyways
-    recipe_ingredients_numerical = {
+    --[[recipe_ingredients_numerical = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     -- Also inversely affects recycling yields
-    recipe_maximum_productivity = {
+    --[[recipe_maximum_productivity = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
-    recipe_result_percent_spoiled = {
+    },]]
+    --[[recipe_result_percent_spoiled = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
-    recipe_result_probabilities = {
+    },]]
+    --[[recipe_result_probabilities = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
-    recipe_results_numerical = {
+    },]]
+    --[[recipe_results_numerical = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
-    repair_speed = {
+    },]]
+    --[[repair_speed = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     -- Disabled until there is a workable version
     --[[resistances = {
         category = "numerical",
@@ -1343,20 +1343,20 @@ local spec = {
             val = "more"
         }
     },
-    roboport_radar_range = {
+    --[[roboport_radar_range = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },
-    rocket_parts_required = {
+    },]]
+    --[[rocket_parts_required = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-production",
             val = "more"
         }
-    },
+    },]]
     -- How long it takes to launch a rocket
     --[[rocket_silo_launch_time = {
         category = "numerical",
@@ -1400,13 +1400,13 @@ local spec = {
             val = "more"
         }
     },
-    smoke_damage_types = {
+    --[[smoke_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     smoke_effect_radius = {
         category = "numerical",
         setting = {
@@ -1442,13 +1442,13 @@ local spec = {
             val = "more"
         }
     },
-    space_platform_initial_items = {
+    --[[space_platform_initial_items = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     spider_unit_projectile_range = {
         category = "numerical",
         setting = {
@@ -1570,13 +1570,13 @@ local spec = {
             val = "more"
         }
     },
-    tile_walking_speed_modifier = {
+    --[[tile_walking_speed_modifier = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     -- Affects science capacity
     tool_durability = {
         category = "numerical",
@@ -1641,13 +1641,13 @@ local spec = {
             val = "more"
         }
     },
-    unit_damage_types = {
+    --[[unit_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     -- Doesn't include gleba spider-units (those move in different ways)
     -- Also doesn't include demolishers
     unit_movement_speed = {
@@ -1681,20 +1681,20 @@ local spec = {
             val = "more"
         }
     },
-    unit_spawner_loot = {
+    --[[unit_spawner_loot = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
-    unit_spawner_yields = {
+    },]]
+    --[[unit_spawner_yields = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     -- How much damage crashing into things with a given vehicle does
     vehicle_crash_damage = {
         category = "numerical",
@@ -1703,13 +1703,13 @@ local spec = {
             val = "more"
         }
     },
-    vehicle_effectivity = {
+    --[[vehicle_effectivity = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     -- How fast vehicles accelerate
     vehicle_power = {
         category = "numerical",
@@ -1718,13 +1718,13 @@ local spec = {
             val = "less"
         }
     },
-    vehicle_weight = {
+    --[[vehicle_weight = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     worm_range = {
         category = "numerical",
         setting = {

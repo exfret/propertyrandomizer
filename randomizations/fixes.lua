@@ -321,4 +321,19 @@ randomizations.fixes = function()
     -- (Note: item weight rando directly doesn't cause this, but item rando combined with automatic weight calculation can)
     -- TODO: Remove this once I can do that
     data.raw.item["solar-panel"].weight = 20000
+
+    -- Set weights so that you can't have more than 20 stacks of something needed for launch
+    local rocket_silo_inventory_size = 20
+    if data.raw["rocket-silo"]["rocket-silo"] ~= nil then
+        rocket_silo_inventory_size = data.raw["rocket-silo"]["rocket-silo"].to_be_inserted_to_rocket_inventory_size or 20
+    end
+    for class_name, _ in pairs(defines.prototypes.item) do
+        if data.raw[class_name] ~= nil then
+            for _, item in pairs(data.raw[class_name]) do
+                if item.weight < data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size) then
+                    item.weight = math.ceil(data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size))
+                end
+            end
+        end
+    end
 end
