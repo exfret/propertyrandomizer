@@ -283,14 +283,14 @@ end
 
 randomizations.colors = function(id)
     local lut_path
-    if config.colors == "little" then
+    if config.misc.colors == "little" then
         lut_path = "__propertyrandomizer__/graphics/lut-less-randomized.png"
-    elseif config.colors == "crazy" then
+    elseif config.misc.colors == "crazy" then
         lut_path = "__propertyrandomizer__/graphics/lut-randomized.png"
     end
 
     local uconsts = data.raw["utility-constants"].default
-    uconsts.daytime_color_lookup = {{1, lut_path}}
+    uconsts.daytime_color_lookup = {{0, lut_path}}
     uconsts.zoom_to_world_daytime_color_lookup = {{1, lut_path}}
     uconsts.frozen_color_lookup = lut_path
 end

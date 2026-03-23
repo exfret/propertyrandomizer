@@ -21,7 +21,7 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
             return 2
         else
             already_duped[gutils.key(prereq)] = true
-            return 5
+            return 50
         end
     end
 end
@@ -34,7 +34,7 @@ recipe_ingredients.validate = function(graph, base, head, extra)
 
     -- Only allow fluids in fluid bases and items in item bases for now
     local old_prereq = gutils.get_owner(graph, graph.nodes[head.old_base])
-    if old_prereq.type ~= slot_owner.type then
+    if old_prereq.type ~= base_owner.type then
         return false
     end
 

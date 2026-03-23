@@ -65,7 +65,7 @@ top.sort = function(graph, state, new_conn, extra)
             -- AND is true until proven false
             check = true
         else
-            error("Invalid node op: " .. tostring(node.op))
+            error("Invalid node op: " .. tostring(depnode.op))
         end
         for _, prenode in pairs(gutils.prenodes(graph, depnode)) do
             local prenode_key = key(prenode)
@@ -166,6 +166,9 @@ top.path = function(graph, goal_inds, sort_info)
     local path = goal_inds
     -- Whether an index is in the path yet
     local in_path = {}
+    for _, ind in pairs(path) do
+        in_path[ind] = true
+    end
 
     local path_ind = 1
     while path_ind <= #path do

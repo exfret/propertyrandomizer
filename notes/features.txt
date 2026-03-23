@@ -31,7 +31,7 @@ II. Dupes/group unlocks
         * Remove hardcoding, move the rest of this to later as needed
 III. Brainstorm
     A.
-        * Contexts writeup (short), slot scramble writeup (others optional; they seem clear enough)
+        * (DONE) Contexts writeup (short), slot scramble writeup (others optional; they seem clear enough)
         * General reorganization/refactoring
     B.
         * Finish isolatability, check ammo only in space and spaceship nodes from other planets as goal (not balancing yet, just partial)

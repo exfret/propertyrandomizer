@@ -137,12 +137,11 @@ end
 flow_cost.get_default_raw_resource_table = function()
     -- TODO: Resource auto-sensing for mods
     local normal_resources = {
-        -- Higher cost for iron so it doesn't appear as often
-        ["item-iron-ore"] = 1.1,
+        ["item-iron-ore"] = 1,
         ["item-copper-ore"] = 1,
         ["item-coal"] = 1,
-        -- Lower cost for stone so that it's more common
-        ["item-stone"] = 0.9,
+        -- Higher cost for stone since its patches are smaller/rarer
+        ["item-stone"] = 1.2,
         ["fluid-crude-oil"] = 0.15,
         ["item-uranium-ore"] = 1.5,
         -- Include this so that uranium-235 isn't too expensive
