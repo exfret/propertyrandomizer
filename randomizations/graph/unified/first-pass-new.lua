@@ -5,7 +5,7 @@
 --   * Bring loop subroutines out
 -- TODO: Logging levels
 --
--- Current issue: Getting lost on recipe tech unlocks (with recipes completely detached)
+-- (SOLVED) Current issue: Getting lost on recipe tech unlocks (with recipes completely detached)
 --     My guess at what's happening is that it assumes these recipes are therefore immediately satisfiable, but they still need a technology beforehand
 --     Thus, we need to check for prereq slots of the right type/enough prereqs first
 -- Okay, I did that but now...
@@ -14,11 +14,16 @@
 --     c) The issue isn't fixed (light oil barrels need a particular crafting category and we only check prereq types)
 -- Idea:
 --     Ways to get unstuck in the beginning are often different from what you need mid-game. Gun turrets are eventually needed in spage, but not initially, so can be put off even if they're on the critical path
+-- NOW: Things coming before on nauvis but after on other places
+--      I tried a solution but it seems logistic science packs now aren't being put after hand crafting
 
 local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 0.9
 -- TODO: This could be set with a startup settings
 local DO_TESTS = true
+-- Disabled because it was slow
+local DO_PREREQ_POOL_CHECK = false
+local CHECK_SAME_MECHANICS = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
@@ -28,6 +33,7 @@ local REPORT_FAILED_CANCELLATIONS = true
 local rng = require("lib/random/rng")
 -- Used for contexts
 local logic = require("new-lib/logic/init")
+local lutils = require("new-lib/logic/logic-utils")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/consistent-sort")
 local test_graph_invariants = require("tests/graph-invariants")
@@ -36,6 +42,7 @@ local key = gutils.key
 
 -- Ad hoc node blacklist to help with testing
 local NODE_BLACKLIST = {
+--[[
     [key("recipe", "stone-furnace")] = true,
     [key("recipe", "iron-plate")] = true,
     [key("recipe", "copper-plate")] = true,
@@ -54,6 +61,7 @@ local NODE_BLACKLIST = {
     [key("recipe-tech-unlock", "boiler")] = true,
     [key("recipe-tech-unlock", "steam-engine")] = true,
     [key("recipe-tech-unlock", "offshore-pump")] = true,
+]]
 }
 
 local first_pass = {}
@@ -305,6 +313,10 @@ first_pass.execute = function(params)
 
     -- Just checks if there are enough prereq slots for trav of each type
     local function trav_acceptable(trav)
+        if not DO_PREREQ_POOL_CHECK then
+            return true
+        end
+
         local type_to_nums = {}
         local slot_in_subdiv_graph = subdiv_graph.nodes[trav.old_slot]
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, slot_in_subdiv_graph)) do
@@ -378,21 +390,85 @@ first_pass.execute = function(params)
         return slot_to_trav[trav.old_slot] ~= nil
     end
 
+    local trav_to_mechanics = {}
+    for perm_ind, sorted_node_ptr in pairs(perm) do
+        local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+        trav_to_mechanics[key(trav)] = {}
+        local open = { trav }
+        local in_open = {}
+        local ind = 1
+        while ind <= #open do
+            local next_node = open[ind]
+            if next_node.mechanic or (next_node.old_slot and split_graph.nodes[next_node.old_slot].mechanic) then
+                trav_to_mechanics[key(trav)][key(next_node)] = true
+            end
+            for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
+                if not in_open[key(depnode)] then
+                    in_open[key(depnode)] = true
+                    table.insert(open, depnode)
+                end
+            end
+            ind = ind + 1
+        end
+    end
+
     -- Not strictly necessary; this check makes sure the node replacing another is of the same type, increasing probability that valid previous prereqs can be found
     local function is_compatible(slot, trav)
-        -- Just check that slot and trav are of the same type
+        -- Check that slot and trav are of the same type
+        local same_type = false
         if slot.type == "orand" and trav.type == "orand" then
             -- subdiv_graph is technically semantically correct since that's where the orand connections are correct
             local orand_parent1 = subdiv_graph.nodes[subdiv_graph.orand_to_parent[key(slot)]]
             -- Need to go to trav's old slot to get orand parent type
             local orand_parent2 = subdiv_graph.nodes[subdiv_graph.orand_to_parent[trav.old_slot]]
             if orand_parent1.type == orand_parent2.type then
-                return true
+                same_type = true
             end
         elseif slot.type == trav.type then
-            return true
+            same_type = true
         end
-        return false
+        if not same_type then
+            return false
+        end
+        
+        if CHECK_SAME_MECHANICS then
+            for mechanic, _ in pairs(trav_to_mechanics[slot.old_trav]) do
+                if not trav_to_mechanics[key(trav)][mechanic] then
+                    return false
+                end
+            end
+            for mechanic, _ in pairs(trav_to_mechanics[key(trav)]) do
+                if not trav_to_mechanics[slot.old_trav][mechanic] then
+                    return false
+                end
+            end
+        end
+
+        -- TODO: Check tech unlock; crafting with fluid
+        if slot.type == "recipe" and trav.type == "recipe" then
+            -- Check that two recipes are both enabled or both disabled
+            local slot_recipe = data.raw.recipe[slot.name]
+            local trav_recipe = data.raw.recipe[split_graph.nodes[trav.old_slot].name]
+            if (slot_recipe.enabled or slot_recipe.enabled == nil) ~= (trav_recipe.enabled or trav_recipe.enabled == nil) then
+                return false
+            end
+
+            -- Also check that both are crafting or not crafting
+            if (slot_recipe.category == "crafting" or slot_recipe.category == nil) ~= (trav_recipe.category == "crafting" or trav_recipe.category == nil) then
+                return false
+            end
+
+            -- Also check fluid match
+            local fluids1 = lutils.find_recipe_fluids(slot_recipe)
+            local fluids2 = lutils.find_recipe_fluids(trav_recipe)
+            if fluids1.input ~= fluids2.input then
+                return false
+            elseif fluids1.output ~= fluids2.output then
+                return false
+            end
+        end
+
+        return true
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -436,8 +512,9 @@ first_pass.execute = function(params)
             error("Trav from incorrect graph")
         end
 
-        -- Connect true to slot edges to satisfy it, then connect slot to trav
-        local true_node = graph[key("true", "")]
+        -- Connect reachable-room to slot edges to satisfy it, then connect slot to trav
+        -- We need to connect to reachable-room so that it still gets contexts in a valid way
+        local true_node = graph[key("reachable-room", "")]
 
         for _, prenode in pairs(gutils.prenodes(graph, slot)) do
             gutils.add_edge(graph, true_node, prenode)
@@ -688,9 +765,8 @@ first_pass.execute = function(params)
     return {
         slot_to_trav = slot_to_trav,
         trav_to_slot = trav_to_slot,
-        -- CRITICAL TODO: Decide on sort after heuristics
-        sort = split_sort,
-        --sort = ordered_sort,
+        -- CRITICAL TODO: Decide on sort after heuristics (ordered_sort or split_sort or init_sort)
+        sort = ordered_sort,
         graph = old_split_graph,
     }
 end

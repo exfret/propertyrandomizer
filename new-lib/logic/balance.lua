@@ -26,7 +26,7 @@ balance.build = function(lu)
     add_edge("technology", "automation", nil, "recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-mining-drill", "OR", nil, "")
+    add_node("balance-mining-drill", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Do we have access to some mining drill?
 
@@ -49,7 +49,7 @@ balance.build = function(lu)
     end
 
     ----------------------------------------
-    add_node("balance-crafting-automation", "OR", nil, "")
+    add_node("balance-crafting-automation", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we operate an assembling machine with crafting as a category?
 
@@ -75,7 +75,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-starter-gun", "OR", nil, "")
+    add_node("balance-starter-gun", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use a reasonable gun of some sort?
     
@@ -94,7 +94,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-starter-ammo", "OR", nil, "")
+    add_node("balance-starter-ammo", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use ammo that works with a reasonable gun?
     
@@ -114,7 +114,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-gun-turret", "OR", nil, "")
+    add_node("balance-gun-turret", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use gun turrets? (Currently just tests base gun turret)
     
@@ -130,7 +130,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-inserter", "OR", nil, "")
+    add_node("balance-inserter", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use some sort of inserter?
 
@@ -147,7 +147,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-transport-belt", "OR", nil, "")
+    add_node("balance-transport-belt", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use some sort of transport belt?
 
@@ -163,7 +163,7 @@ balance.build = function(lu)
     end
 
     ----------------------------------------
-    add_node("balance-underground-belt", "OR", nil, "")
+    add_node("balance-underground-belt", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use some sort of underground belt?
 
@@ -179,7 +179,7 @@ balance.build = function(lu)
     end
 
     ----------------------------------------
-    add_node("balance-underground-belt", "OR", nil, "")
+    add_node("balance-underground-belt", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use some sort of splitter?
 
@@ -195,7 +195,7 @@ balance.build = function(lu)
     end
 
     ----------------------------------------
-    add_node("balance-repair-pack", "OR", nil, "")
+    add_node("balance-repair-pack", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we get some sort of repair pack?
 
@@ -212,7 +212,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-storage", "OR", nil, "")
+    add_node("balance-storage", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we get some sort of storage
 
@@ -229,7 +229,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "logistic-science-pack")
 
     ----------------------------------------
-    add_node("balance-construction-robot", "OR", nil, "")
+    add_node("balance-construction-robot", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use a construction robot?
 
@@ -267,7 +267,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "production-science-pack")
 
     ----------------------------------------
-    add_node("balance-roboport", "OR", nil, "")
+    add_node("balance-roboport", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use a roboport?
 
@@ -305,7 +305,7 @@ balance.build = function(lu)
     add_edge_reversed("recipe", "production-science-pack")
 
     ----------------------------------------
-    add_node("balance-pump", "OR", nil, "")
+    add_node("balance-pump", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use a pump
 
@@ -339,7 +339,7 @@ balance.build = function(lu)
     -- Space age particular things
     if mods["space-age"] then
         ----------------------------------------
-        add_node("balance-rocket-turret", "OR", nil, "")
+        add_node("balance-rocket-turret", "OR", nil, "", { mechanic = true })
         ----------------------------------------
         -- Can we get the rocket turret?
 
@@ -350,7 +350,7 @@ balance.build = function(lu)
         add_edge_reversed("space-connection", "fulgora-aquilo")
 
         ----------------------------------------
-        add_node("balance-rocket", "OR", nil, "")
+        add_node("balance-rocket", "OR", nil, "", { mechanic = true })
         ----------------------------------------
         -- Can we get the rocket ammo?
 

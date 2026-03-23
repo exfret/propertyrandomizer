@@ -1,0 +1,1 @@
+-- A cheaper roboport with larger logistic range, but smaller construction radius and much lower charging capabilities and no radar coverage

@@ -1,0 +1,2 @@
+-- Waiting on information for possible source of graphics: https://mods.factorio.com/mod/gearball-lab
+-- Slower lab with only one module slot but with no energy requirements and unlocked from start

@@ -255,6 +255,32 @@ randomizations.fixes = function()
                         local recycle_product_yield = amount_expected_value(ingredient) * recycling_yield_factor
                         local consistent_amount = math.floor(recycle_product_yield)
                         local extra_count_fraction = recycle_product_yield - consistent_amount
+                        -- I added this checking for stackability, but then realized it's only really needed if there was an oopsie in the ingredients
+                        -- So, it can probably get taken down at a later date
+                        local ing_as_item
+                        for item_class, _ in pairs(defines.prototypes.item) do
+                            if data.raw[item_class] ~= nil then
+                                if data.raw[item_class][ingredient.name] ~= nil then
+                                    ing_as_item = data.raw[item_class][ingredient.name]
+                                    break
+                                end
+                            end
+                        end
+                        local not_stackable = false
+                        if ing_as_item.flags ~= nil then
+                            for _, flag in pairs(ing_as_item) do
+                                if flag == "not-stackable" then
+                                    not_stackable = true
+                                    break
+                                end
+                            end
+                        end
+                        if ing_as_item.type == "armor" and ing_as_item.equipment_grid ~= nil then
+                            not_stackable = true
+                        end
+                        if consistent_amount > 0 and not_stackable then
+                            extra_count_fraction = 0
+                        end
                         local new_recycling_result = {
                             type = type_item,
                             name = ingredient.name,

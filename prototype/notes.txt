@@ -1,0 +1,13 @@
+- Steam mining drill
+- Void lab
+- Logistic roboport
+- Energetic construction bot
+- Bulk logistic bit
+- Lonely reactors (can't be placed next to each other)
+- Chemical refinery (can do both refinery and chemistry recipes, but is slower at both)
+- Nuclear locomotive (late to unlock, requires uranium fuel cells but is fast)
+- Car that requires tons of fuel (so that it's a real cost), and is a glass cannon
+
+Also: gun turret
+
+Also, remove uranium mining technology now that mining with fluids is unlocked from start

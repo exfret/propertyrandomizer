@@ -1,6 +1,7 @@
 -- No cost preservation for now, just enough to get it loading
 
 local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("new-lib/data-utils")
 
 local recipe_ingredients = {}
 
@@ -78,6 +79,34 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
             end
         end
         recipe.ingredients = new_ings
+    end
+
+    -- Final check to remove duplicate ingredients
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.ingredients ~= nil then
+            local already_seen = {}
+            for i = #recipe.ingredients, 1, -1 do
+                local ing = recipe.ingredients[i]
+                if already_seen[ing.type .. "-" .. ing.name] then
+                    table.remove(recipe.ingredients, i)
+                else
+                    already_seen[ing.type .. "-" .. ing.name] = true
+                end
+            end
+        end
+    end
+    -- Now go through and make ingredient amounts 1 if thing isn't stackable
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.ingredients ~= nil then
+            for _, ing in pairs(recipe.ingredients) do
+                if ing.type == "item" then
+                    local item = dutils.get_prot("item", ing.name)
+                    if not dutils.is_stackable(item) then
+                        ing.amount = 1
+                    end
+                end
+            end
+        end
     end
 end
 
