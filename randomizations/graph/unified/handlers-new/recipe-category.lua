@@ -94,7 +94,7 @@ recipe_category.process = function(graph, base, head)
         return
     end
 
-    local base_owner = gutils.get_conn_owner(graph, base)
+    local base_owner = gutils.get_owner(graph, base)
 
     if lu.smelting_rcats[base_owner.name] then
         local vanilla_rcat = lu.rcats[base_owner.name].cat

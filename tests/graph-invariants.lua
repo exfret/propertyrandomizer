@@ -53,4 +53,28 @@ test_graph_invariants.test = function(graph)
     end
 end
 
+-- Just tests for equality of key/val pairs at shallow level, nothing fancy
+test_graph_invariants.check_from_graph = function(graph, node)
+    local graph_node = graph.nodes[gutils.key(node)]
+
+    if graph_node == nil then
+        return false
+    end
+
+    for k, v in pairs(graph_node) do
+        if node[k] == nil then
+            return false
+        elseif type(v) ~= "table" and type(v) ~= "function" and node[k] ~= v then
+            return false
+        end
+    end
+    for k, v in pairs(node) do
+        if graph_node[k] == nil then
+            return false
+        end
+    end
+
+    return true
+end
+
 return test_graph_invariants

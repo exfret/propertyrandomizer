@@ -330,8 +330,13 @@ randomizations.fixes = function()
     for class_name, _ in pairs(defines.prototypes.item) do
         if data.raw[class_name] ~= nil then
             for _, item in pairs(data.raw[class_name]) do
-                if item.weight < data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size) then
-                    item.weight = math.ceil(data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size))
+                if item.weight == nil then
+                    -- CRITICAL TODO: ERROR!
+                    --log(item.name)
+                else
+                    if item.weight < data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size) then
+                        item.weight = math.ceil(data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size))
+                    end
                 end
             end
         end

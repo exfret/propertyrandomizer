@@ -13,6 +13,13 @@ local edge_separator = " --> "
 gutils.key = function(node_type, node_name)
     -- If just one argument was passed, view node_type as the node
     if node_name == nil then
+        if node_type == nil then
+            error("Nil node type for key")
+        end
+        if type(node_type) ~= "table" then
+            log(node_type)
+            log("Node passed for key not a table")
+        end
         return gutils.key(node_type.type, node_type.name)
     end
     return node_type .. node_key_separator .. node_name
@@ -189,7 +196,7 @@ gutils.sources = function(graph)
     return sources
 end
 
--- Does not add to sources or add op property
+-- Does not add to sources or add op property, or orand child-parent connections
 gutils.add_node = function(graph, node_type, node_name, extra)
     local node = {
         object_type = "node",
@@ -267,28 +274,6 @@ gutils.add_edge = function(graph, start, stop, extra)
     return edge
 end
 
-gutils.redirect_edge_start = function(graph, edge_key, new_start)
-    local edge = graph.edges[edge_key]
-
-    local old_start_node = graph.nodes[edge.stop]
-    old_start_node.dep[edge_key] = nil
-    local new_end_node = graph.nodes[new_start]
-    new_end_node.dep[edge_key] = true
-    edge.start = new_end
-end
-
-gutils.redirect_edge_stop = function(graph, edge_key, new_end)
-    local edge = graph.edges[edge_key]
-
-    local old_end_node = graph.nodes[edge.stop]
-    old_end_node.pre[edge_key] = nil
-    gutils.update_pre_info(graph, old_end_node, -1)
-    local new_end_node = graph.nodes[new_end]
-    new_end_node.pre[edge_key] = true
-    gutils.update_pre_info(graph, new_end_node, 1)
-    edge.stop = new_end
-end
-
 gutils.remove_edge = function(graph, edge_key)
     local edge = graph.edges[edge_key]
     
@@ -296,6 +281,22 @@ gutils.remove_edge = function(graph, edge_key)
     graph.nodes[edge.start].dep[edge_key] = nil
     graph.nodes[edge.stop].pre[edge_key] = nil
     gutils.update_pre_info(graph, graph.nodes[edge.stop], -1)
+end
+
+-- Doesn't keep extras on edge
+gutils.redirect_edge_start = function(graph, edge_key, new_start)
+    local edge = graph.edges[edge_key]
+
+    gutils.remove_edge(graph, edge_key)
+    gutils.add_edge(graph, new_start, edge.stop)
+end
+
+-- Doesn't keep extras on edge
+gutils.redirect_edge_stop = function(graph, edge_key, new_end)
+    local edge = graph.edges[edge_key]
+
+    gutils.remove_edge(graph, edge_key)
+    gutils.add_edge(graph, edge.start, new_end)
 end
 
 -- Uses old terminology
@@ -399,14 +400,28 @@ gutils.make_orand = function(graph, edge_key)
     gutils.remove_edge(graph, edge_key)
 
     -- Add any extra info that was on the old edge to the new one from the start to the orand
-    local normal_keys = {
+    local normal_edge_keys = {
         ["start"] = true,
         ["stop"] = true,
         ["object_type"] = true,
     }
     for k, v in pairs(edge) do
-        if not normal_keys[k] then
+        if not normal_edge_keys[k] then
             new_edge[k] = v
+        end
+    end
+    -- Also add info from the node to the orand
+    local normal_node_keys = {
+        ["type"] = true,
+        ["name"] = true,
+        ["pre"] = true,
+        ["dep"] = true,
+        ["num_pre"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(or_node) do
+        if not normal_node_keys[k] then
+            orand[k] = v
         end
     end
 

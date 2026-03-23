@@ -278,7 +278,7 @@ data:extend({
         allowed_values = {
             "none",
             "some",
-            "lots",
+            --"lots",
         },
         default_value = "some",
         order = "f-a[tech-delinearization]",

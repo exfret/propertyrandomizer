@@ -6,6 +6,8 @@
 -- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
+local DO_FIRST_PASS = true
+
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/consistent-sort")
@@ -21,7 +23,18 @@ local unified = {}
 local all_handler_ids = require("helper-tables/handler-ids")
 local handler_ids = {}
 
-for _, id in pairs(all_handler_ids) do
+-- CRITICAL TODO: REMOVE!
+config.unified = {
+    ["recipe-category"] = true,
+    ["recipe-ingredients"] = true,
+    ["recipe-tech-unlocks"] = true,
+    ["spoiling"] = true,
+    ["tech-prereqs"] = true,
+    ["tech-science-packs"] = true,
+}
+
+-- for _, id in pairs(all_handler_ids) do
+for id, _ in pairs(config.unified) do
     if config.unified[id] then
         table.insert(handler_ids, id)
     end
@@ -182,8 +195,25 @@ unified.execute = function()
         end
     end
 
+    local first_pass_info
+    if DO_FIRST_PASS then
+        first_pass_info = first_pass.execute({
+            spoofed_graph = spoofed_graph,
+            subdiv_graph = subdiv_graph,
+        })
+        sort_for_pool = first_pass_info.sort
+    end
+
     -- Check if all of key1 node's context inds are before all of key2 node's
     local function all_contexts_reachable(key1, key2)
+        if sort_for_pool.node_to_context_inds[key1] == nil then
+            log(key1)
+            error("Key invalid")
+        elseif sort_for_pool.node_to_context_inds[key2] == nil then
+            log(key2)
+            error("Key invalid")
+        end
+
         for context, _ in pairs(logic.contexts) do
             local index1 = sort_for_pool.node_to_context_inds[key1][context] or (#sort_for_pool.sorted + 1)
             local index2 = sort_for_pool.node_to_context_inds[key2][context] or (#sort_for_pool.sorted + 2)
@@ -198,20 +228,24 @@ unified.execute = function()
     test_graph_invariants.test(pool_graph)
 
     -- TEST: Make sure each head is after its corresponding base
-    for _, dep in pairs(sorted_deps) do
-        for _, head_key in pairs(dep_to_heads[dep]) do
-            local head = subdiv_graph.nodes[head_key]
-            local base_key = head.old_base
-            local base = pool_graph.nodes[base_key]
-            if base.name ~= head.name then
-                log(serpent.block(base))
-                log(serpent.block(head))
-                error("Randomization assertion failed! Tell exfret he's a dumbo.")
-            end
-            if not all_contexts_reachable(base_key, head_key) then
-                log(serpent.block(base))
-                log(serpent.block(head))
-                error("Randomization assertion failed! Tell exfret he's a dumbo.")
+    -- TODO: Make this check compatible with first pass
+    if not DO_FIRST_PASS then
+        for _, dep in pairs(sorted_deps) do
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                local head = subdiv_graph.nodes[head_key]
+                local base_key = head.old_base
+                local base = pool_graph.nodes[base_key]
+
+                if base.name ~= head.name then
+                    log(serpent.block(base))
+                    log(serpent.block(head))
+                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                end
+                if not all_contexts_reachable(base_key, head_key) then
+                    log(serpent.block(base))
+                    log(serpent.block(head))
+                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                end
             end
         end
     end
@@ -239,18 +273,40 @@ unified.execute = function()
         for _, head_key in pairs(dep_to_heads[dep]) do
             local found_prereq = false
             for ind, base_key in pairs(shuffled_prereqs) do
-                if not used_prereq_inds[ind] and all_contexts_reachable(base_key, head_key) then
-                    -- Have head's handler validate this base
-                    local base = random_graph.nodes[base_key]
-                    local head = random_graph.nodes[head_key]
+                local is_context_reachable = false
+                local base = random_graph.nodes[base_key]
+                local head = random_graph.nodes[head_key]
 
-                    -- TEST: Check for nil base or head
-                    if base == nil or head == nil then
-                        log(base_key)
-                        log(head_key)
-                        error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                -- TEST: Check for nil base or head
+                if base == nil or head == nil then
+                    log(base_key)
+                    log(head_key)
+                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                end
+
+                if not DO_FIRST_PASS then
+                    is_context_reachable = all_contexts_reachable(base_key, head_key)
+                else
+                    -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
+                    local function node_to_first_pass_slot(node)
+                        local trav_node_key = key(node.type, first_pass.make_trav_name(node.name))
+
+                        if first_pass_info.trav_to_slot[trav_node_key] ~= nil then
+                            -- In this case, we return the corresponding slot
+                            return first_pass_info.trav_to_slot[trav_node_key]
+                        else
+                            -- Otherwise, there isn't a slot/trav distinction so just return the node
+                            return key(node)
+                        end
                     end
 
+                    local base_owner = gutils.get_owner(random_graph, base)
+                    local head_owner = gutils.get_owner(random_graph, head)
+                    is_context_reachable = all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner))
+                end
+
+                if not used_prereq_inds[ind] and is_context_reachable then
+                    -- Have head's handler validate this base
 
                     if head_to_handler[head_key].validate(random_graph, base, head, {
                         init_sort = sort_for_claiming, -- Needed for tech rando

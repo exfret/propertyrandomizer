@@ -3,17 +3,12 @@ This lists bugs/issues before they're moved to their own issues on the github re
 13. Incompatibility with pacifist mod (https://mods.factorio.com/mod/propertyrandomizer/discussion/6921e8f843b1eb2c5cef559f)
 14. Duplicates crashes editor extensions (https://mods.factorio.com/mod/propertyrandomizer/discussion/6911fe1136382d1ea1ae0764)
 
-26. Add quality testing (mainly for ItemIDFilter types in trigger techs from mods)
-27. Spent fuel results are an awful way to get things, but sometimes are the way you get them from, e.g.- item rando; investigate and balance
-28. Fix localisations when dupe and item randos are together
 29. First pass is proceeding in basically a vanilla order (might be related to recipe tech unlocks, but it's also leading to softlocks meaning contexts are not calculated correctly either)
-31. Startup crash on safeguarded: https://discord.com/channels/139677590393716737/231518135231053825/1471202778217971742
-32. Attempts to randomize energy usage even without an energy source
 33. Recycling recipe not properly fixed? https://discord.com/channels/1073100511454175253/1078087661270597792/1474213608199295172
-35. Blueprint parameters on recipes not working
 36. Explorer errors on some invalid prototypes like rails
       * These should just get excluded from the explorer if possible
 37. Where did upgrade line preservation setting go?
 38. Also for assembling machine upgrade line preservation issue, give assembling machine 1's fluid connection
 39. Weights accounted for in softlock etc. prevention? Is that done now?
 40. Configuration changed message is reported on base game version change, which could be over-reporting and cause people to ignore it
+41. Item weights were sometimes nil after doing first pass

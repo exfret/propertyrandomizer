@@ -8,6 +8,10 @@ tech_science_packs.claim = function(graph, prereq, dep, edge)
     if prereq.type == "science-pack-set-science" and dep.type == "technology" then
         local tech = data.raw.technology[dep.name]
         if tech.unit ~= nil then
+            -- TODO: Better logic!
+            if math.random(1, 4) == 1 then
+                return 1
+            end
             return 2
         end
     end

@@ -1,6 +1,7 @@
 CURRENTLY ON:
  * First pass sort
-    * More clearly define goals and revisit
+    * can_reserve subroutine
+    * Continue with mirror of first-pass.lua
     * Add testing/logging
  * Work on explorer?
     * Explain the square to select prototypes
