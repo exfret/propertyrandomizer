@@ -1176,10 +1176,11 @@ function concrete.build(lu)
         end
 
         ----------------------------------------
-        add_node("space-connection-asteroids", "AND")
+        add_node("space-connection-asteroids", "AND", nil, nil, { mechanic = true })
         ----------------------------------------
         -- Can we destroy the asteroids on this space connection?
         -- Requires being able to overcome each asteroid type's resistance group.
+        -- Made a mechanic so that the big scary asteroids aren't switched in for the small ones
 
         local asteroids = lu.connection_asteroids[conn.name]
         if asteroids ~= nil then

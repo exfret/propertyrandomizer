@@ -1,0 +1,2 @@
+-- A very expensive form of the electric mining drill (unlocked with a lot of red science, and also costs a lot of raw resources)
+-- Faster and more energy efficient, but no module slots and fueled by steam

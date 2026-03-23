@@ -39,7 +39,7 @@ function abstract.build(lu)
         set_prot(data.raw[room.type][room.name])
 
         ----------------------------------------
-        add_node("room", "OR", room_key, room_key)
+        add_node("room", "OR", room_key, room_key, { mechanic = true })
         ----------------------------------------
         -- Can we access this room/location?
         -- This node ADDS context: outputs the room's own context.
@@ -57,7 +57,7 @@ function abstract.build(lu)
             add_edge("space-location", room.name)
 
             ----------------------------------------
-            add_node("room-launch", "AND")
+            add_node("room-launch", "AND", nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we launch from this specific planet?
             -- Requires: room + launch capability
@@ -69,7 +69,7 @@ function abstract.build(lu)
             add_edge("room-create-platform", room_key)
 
             ----------------------------------------
-            add_node("room-create-platform", "AND", nil, room_key)
+            add_node("room-create-platform", "AND", nil, room_key, nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we create an instance of this space surface room via launch?
             -- Requires: starter pack + launch capability + tech unlock
@@ -79,7 +79,7 @@ function abstract.build(lu)
             add_edge("launch", "")
 
             ----------------------------------------
-            add_node("room-create-platform-starter-pack", "OR", nil, room_key)
+            add_node("room-create-platform-starter-pack", "OR", nil, room_key, { mechanic = true })
             ----------------------------------------
             -- Can we get a starter pack that creates this space surface?
             -- OR over all starter packs for this surface (with weight check)
@@ -129,14 +129,14 @@ function abstract.build(lu)
     set_class("energy-source")
 
     ----------------------------------------
-    add_node("energy-source-void", "AND", nil, "", { canonical = "energy-source-void" })
+    add_node("energy-source-void", "AND", nil, "", { canonical = "energy-source-void", mechanic = true })
     ----------------------------------------
     -- Can we power an entity that requires no power?
     -- Trivially satisfied (AND with no inputs).
 
     for fcat_combo, combo_info in pairs(lu.fcat_combos) do
         ----------------------------------------
-        add_node("energy-source-burner", "OR", nil, fcat_combo, { canonical = "energy-source-burner" })
+        add_node("energy-source-burner", "OR", nil, fcat_combo, { canonical = "energy-source-burner", mechanic = true })
         ----------------------------------------
         -- Can we power an entity with this burner energy source?
 
@@ -155,7 +155,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric", "AND", nil, "", { canonical = "energy-source-electric" })
+    add_node("energy-source-electric", "AND", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we power an entity with an electric energy source?
     -- Requires: distribution + production
@@ -164,7 +164,7 @@ function abstract.build(lu)
     add_edge("energy-source-electric-production", "")
 
     ----------------------------------------
-    add_node("energy-source-electric-distribution", "OR", nil, "", { canonical = "energy-source-electric" })
+    add_node("energy-source-electric-distribution", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we distribute power?
     -- OR over: electric poles, space surfaces (don't need poles)
@@ -179,7 +179,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("electric-pole", "OR", nil, "", { canonical = "energy-source-electric" })
+    add_node("electric-pole", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we operate an electric pole?
     -- Note that this grouping isn't necessarily accurate in case we start on a space platform (then electric poles are separate from distribution)
@@ -190,7 +190,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production", "OR", nil, "", { canonical = "energy-source-electric" })
+    add_node("energy-source-electric-production", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we produce power?
     -- Grouped with energy-source-electric via canonical name
@@ -210,7 +210,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning", "AND", nil, "", { canonical = "energy-source-electric-production-lightning" })
+    add_node("energy-source-electric-production-lightning", "AND", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
     ----------------------------------------
     -- Can we produce power from lightning?
     -- Requires: lightning existence + capture
@@ -219,7 +219,7 @@ function abstract.build(lu)
     add_edge("energy-source-electric-production-lightning-capture", "")
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning-existence", "OR", nil, "", { canonical = "energy-source-electric-production-lightning" })
+    add_node("energy-source-electric-production-lightning-existence", "OR", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
     ----------------------------------------
     -- Can we see lightning in the air?
     -- Note that this has the same canonical and name as just production-lightning, so it will be blocked with that
@@ -234,7 +234,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning-capture", "OR", nil, "", { canonical = "energy-source-electric-production-lightning" })
+    add_node("energy-source-electric-production-lightning-capture", "OR", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
     ----------------------------------------
     -- Can we capture lightning?
     -- Also has the same canonical and name as production-lightning, so will be blocked with that
@@ -246,7 +246,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-fluid", "OR", nil, "", { canonical = "energy-source-fluid" })
+    add_node("energy-source-fluid", "OR", nil, "", { canonical = "energy-source-fluid", mechanic = true })
     ----------------------------------------
     -- Can we provide fluid fuel?
 
@@ -257,7 +257,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-heat", "AND", nil, "", { canonical = "energy-source-heat" })
+    add_node("energy-source-heat", "AND", nil, "", { canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we deliver heat to entities?
 
@@ -266,7 +266,7 @@ function abstract.build(lu)
     add_edge("energy-source-heat-production", "")
 
     ----------------------------------------
-    add_node("energy-source-heat-distribution", "OR", nil, "", { canonical = "energy-source-heat" })
+    add_node("energy-source-heat-distribution", "OR", nil, "", { canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we distribute produced heat to entities?
     -- Same canonical name as heat
@@ -276,7 +276,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-heat-production", "OR", nil, "", { canonical = "energy-source-heat" })
+    add_node("energy-source-heat-production", "OR", nil, "", { canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we produce heat?
     -- Same canonical name as heat
@@ -299,7 +299,7 @@ function abstract.build(lu)
 
     for set_name, set_packs in pairs(lu.science_sets) do
         ----------------------------------------
-        add_node("science-pack-set-science", "AND", nil, set_name)
+        add_node("science-pack-set-science", "AND", nil, set_name, { mechanic = true })
         ----------------------------------------
         -- Can we create all these science packs?
 
@@ -308,7 +308,7 @@ function abstract.build(lu)
         end
 
         ----------------------------------------
-        add_node("science-pack-set-lab", "OR", nil, set_name)
+        add_node("science-pack-set-lab", "OR", nil, set_name, { mechanic = true })
         ----------------------------------------
         -- Can we research with this combination of science packs?
         -- OR over labs that can hold all packs in the set.
@@ -334,7 +334,7 @@ function abstract.build(lu)
 
     for layers_key, tiles_in_group in pairs(lu.tile_collision_groups) do
         ----------------------------------------
-        add_node("tile-collision-group", "OR", nil, layers_key)
+        add_node("tile-collision-group", "OR", nil, layers_key, { mechanic = true })
         ----------------------------------------
         -- Can we access a tile in this collision group?
         -- OR over all tiles that share these collision layers.
@@ -352,7 +352,7 @@ function abstract.build(lu)
 
     for layers_key, layers in pairs(lu.entity_collision_group_to_layers) do
         ----------------------------------------
-        add_node("entity-collision-group", "OR", nil, layers_key)
+        add_node("entity-collision-group", "OR", nil, layers_key, { mechanic = true })
         ----------------------------------------
 
         for tile_layers_key, tile_layers in pairs(lu.tile_collision_group_to_layers) do
@@ -373,7 +373,7 @@ function abstract.build(lu)
     set_class("universal")
 
     ----------------------------------------
-    add_node("agricultural-tower", "OR", nil, "", { canonical = "agricultural-tower" })
+    add_node("agricultural-tower", "OR", nil, "", { canonical = "agricultural-tower", mechanic = true })
     ----------------------------------------
     -- Can we use an agricultural tower?
 
@@ -382,7 +382,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("asteroid-collector", "OR", nil, "", { canonical = "asteroid-collector" })
+    add_node("asteroid-collector", "OR", nil, "", { canonical = "asteroid-collector", mechanic = true })
     ----------------------------------------
     -- Can we use an asteroid collector?
 
@@ -391,7 +391,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("capture-robot", "OR", nil, "", { canonical = "capture-robot" })
+    add_node("capture-robot", "OR", nil, "", { canonical = "capture-robot", mechanic = true })
     ----------------------------------------
     -- Can we use a capture robot?
 
@@ -400,7 +400,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("capture-spawner", "OR", nil, "", { canonical = "capture-spawner" })
+    add_node("capture-spawner", "OR", nil, "", { canonical = "capture-spawner", mechanic = true })
     ----------------------------------------
     -- Can we capture any spawner?
 
@@ -411,7 +411,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock" })
+    add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock", mechanic = true })
     ----------------------------------------
     -- Have we unlocked the ability to mine resources that require fluid?
 
@@ -426,7 +426,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("warmth", "OR", nil, "", { canonical = "warmth" })
+    add_node("warmth", "OR", nil, "", { canonical = "warmth", mechanic = true })
     ----------------------------------------
     -- Can we keep entities warm?
 
@@ -438,7 +438,7 @@ function abstract.build(lu)
     add_edge("energy-source-heat", "")
 
     ----------------------------------------
-    add_node("thruster", "OR", nil, "", { canonical = "spaceship" })
+    add_node("thruster", "OR", nil, "", { canonical = "spaceship", mechanic = true })
     ----------------------------------------
     -- Can we operate a thruster (needed for space travel)?
     -- Tied to spaceship
@@ -448,7 +448,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("spaceship", "AND", nil, "", { canonical = "spaceship" })
+    add_node("spaceship", "AND", nil, "", { canonical = "spaceship", mechanic = true })
     ----------------------------------------
     -- Can we make a space surface into a spaceship?
     -- Requires: space-surface (for context) + flight components
@@ -458,7 +458,7 @@ function abstract.build(lu)
     -- TODO: Add other spaceship requirements (fuel, oxidizer, etc.) as needed
 
     ----------------------------------------
-    add_node("planet", "OR", nil, "", { canonical = "planet" })
+    add_node("planet", "OR", nil, "", { canonical = "planet", mechanic = true })
     ----------------------------------------
     -- Can we be on any planet? (Needed for launching)
 
@@ -469,7 +469,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("space-surface", "OR", nil, "", { canonical = "space-surface" })
+    add_node("space-surface", "OR", nil, "", { canonical = "space-surface", mechanic = true })
     ----------------------------------------
     -- Can we be on any space surface? (Needed for item delivery)
 
@@ -480,7 +480,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("reachable-room", "OR", nil, "", { canonical = "room" })
+    add_node("reachable-room", "OR", nil, "", { canonical = "room", mechanic = true })
     ----------------------------------------
     -- Can we reach some room?
     -- Needed for item-launch to know what rooms can be delivered to.
@@ -490,7 +490,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock" })
+    add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock", mechanic = true })
     ----------------------------------------
     -- Have we researched the ability to send starter packs to space?
     -- OR over technologies with unlock-space-platforms effect
@@ -500,7 +500,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("create-platform", "OR", nil, "", { canonical = "create-platform" })
+    add_node("create-platform", "OR", nil, "", { canonical = "create-platform", mechanic = true })
     ----------------------------------------
     -- Can we create any space platform?
 
@@ -511,7 +511,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("rocket-silo", "OR", nil, "", { canonical = "launch" })
+    add_node("rocket-silo", "OR", nil, "", { canonical = "launch", mechanic = true })
     ----------------------------------------
     -- Can we use any rocket silo for launching?
 
@@ -522,7 +522,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("cargo-landing-pad", "OR", nil, "", { canonical = "launch" })
+    add_node("cargo-landing-pad", "OR", nil, "", { canonical = "launch", mechanic = true })
     ----------------------------------------
     -- Can we operate some cargo landing pad?
 
@@ -531,7 +531,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("launch", "AND", nil, "", { canonical = "launch" })
+    add_node("launch", "AND", nil, "", { canonical = "launch", mechanic = true })
     ----------------------------------------
     -- Can we launch something into space?
     -- Requires: planet + rocket silo + cargo landing pad
@@ -541,7 +541,7 @@ function abstract.build(lu)
     add_edge("cargo-landing-pad", "")
 
     ----------------------------------------
-    add_node("deliver", "OR", nil, "", { canonical = "launch" })
+    add_node("deliver", "OR", nil, "", { canonical = "launch", mechanic = true })
     ----------------------------------------
     -- Can we deliver items FROM this location?
     -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
@@ -565,13 +565,13 @@ function abstract.build(lu)
     set_class("starting")
 
     ----------------------------------------
-    add_node("starting-character", "AND", nil, "")
+    add_node("starting-character", "AND", nil, "", { mechanic = true })
     ----------------------------------------
     -- Do we have the starting character?
     -- SOURCE: AND with no inputs = trivially satisfied.
 
     ----------------------------------------
-    add_node("starting-planet", "AND", nil, "")
+    add_node("starting-planet", "AND", nil, "", { mechanic = true })
     ----------------------------------------
     -- Do we have access to the starting planet?
     -- SOURCE: AND with no inputs = trivially satisfied.

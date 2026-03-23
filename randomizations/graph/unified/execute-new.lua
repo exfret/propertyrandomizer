@@ -7,6 +7,10 @@
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
 local DO_FIRST_PASS = true
+-- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
+-- Maybe could cause softlocks?
+-- CRITICAL TODO: Think about this more!
+local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -227,6 +231,31 @@ unified.execute = function()
             error("Key invalid")
         end
 
+        if ONLY_TEST_FIRST_CONTEXT_ORDER then
+            local smallest_ind1
+            local smallest_ind2
+
+            for context, _ in pairs(logic.contexts) do
+                local index1 = sort_for_pool.node_to_context_inds[key1][context]
+                local index2 = sort_for_pool.node_to_context_inds[key2][context]
+                if index1 == nil and index2 ~= nil then
+                    return false
+                end
+                if smallest_ind1 == nil or (index1 ~= nil and index1 < smallest_ind1) then
+                    smallest_ind1 = index1
+                end
+                if smallest_ind2 == nil or (index2 ~= nil and index2 < smallest_ind2) then
+                    smallest_ind2 = index2
+                end
+            end
+
+            if smallest_ind1 < smallest_ind2 then
+                return true
+            else
+                return false
+            end
+        end
+
         for context, _ in pairs(logic.contexts) do
             local index1 = sort_for_pool.node_to_context_inds[key1][context] or (#sort_for_pool.sorted + 1)
             local index2 = sort_for_pool.node_to_context_inds[key2][context] or (#sort_for_pool.sorted + 2)
@@ -303,14 +332,21 @@ unified.execute = function()
                     -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
                     local function node_to_first_pass_slot(node)
                         local trav_node_key = key(node.type, first_pass.make_trav_name(node.name))
+                        
+                        if first_pass_info.graph.nodes[trav_node_key] ~= nil then
+                            return trav_node_key
+                        else
+                            return key(node)
+                        end
 
+                        --[[
                         if first_pass_info.trav_to_slot[trav_node_key] ~= nil then
                             -- In this case, we return the corresponding slot
                             return first_pass_info.trav_to_slot[trav_node_key]
                         else
                             -- Otherwise, there isn't a slot/trav distinction so just return the node
                             return key(node)
-                        end
+                        end]]
                     end
 
                     local base_owner = gutils.get_owner(random_graph, base)
@@ -335,8 +371,10 @@ unified.execute = function()
                 end
             end
             if not found_prereq then
+                log(head_key)
                 local percentage = math.floor(100 * dep_ind / #sorted_deps)
                 log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
+
                 return false
             end
         end
