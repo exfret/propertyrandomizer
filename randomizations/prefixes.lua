@@ -21,3 +21,16 @@ for _, drill in pairs(data.raw["mining-drill"]) do
         drill.input_fluid_box.filter = nil
     end
 end
+
+-- Add fluid box connections to assembling machine 1, if it doesn't already have some added by another mod
+local assm1 = data.raw["assembling-machine"]["assembling-machine-1"]
+local assm2 = data.raw["assembling-machine"]["assembling-machine-2"]
+if assm1 ~= nil and assm2 ~= nil then
+    if assm1.fluid_boxes == nil or #assm1.fluid_boxes == 0 then
+        if assm2.fluid_boxes ~= nil and #assm2.fluid_boxes > 0 then
+            assm1.fluid_boxes_off_when_no_fluid_recipe = true
+            assm1.fluid_boxes = table.deepcopy(assm2.fluid_boxes)
+            table.insert(assm1.crafting_categories, "crafting-with-fluid")
+        end
+    end
+end

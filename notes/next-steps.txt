@@ -1,8 +1,8 @@
 CURRENTLY ON:
  * First pass sort
-    * can_reserve subroutine
-    * Continue with mirror of first-pass.lua
-    * Add testing/logging
+    * Write context switching wiki page
+    * Define mechanics nodes in logic
+    * Add more testing/logging?
  * Work on explorer?
     * Explain the square to select prototypes
     * More gaps/padding
