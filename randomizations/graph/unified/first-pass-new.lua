@@ -4,9 +4,19 @@
 -- TODO: Tests for loop subroutines
 --   * Bring loop subroutines out
 -- TODO: Logging levels
--- TODO: electric pole is not booting anything
+--
+-- Current issue: Getting lost on recipe tech unlocks (with recipes completely detached)
+--     My guess at what's happening is that it assumes these recipes are therefore immediately satisfiable, but they still need a technology beforehand
+--     Thus, we need to check for prereq slots of the right type/enough prereqs first
+-- Okay, I did that but now...
+--     a) It's super duper slow
+--     b) The ordering is super vanilla
+--     c) The issue isn't fixed (light oil barrels need a particular crafting category and we only check prereq types)
+-- Idea:
+--     Ways to get unstuck in the beginning are often different from what you need mid-game. Gun turrets are eventually needed in spage, but not initially, so can be put off even if they're on the critical path
 
 local MAX_ITERATIONS = 10000
+local FAILURE_ACCEPTANCE = 0.9
 -- TODO: This could be set with a startup settings
 local DO_TESTS = true
 local REPORT_PATH = false
@@ -23,6 +33,28 @@ local top = require("new-lib/graph/consistent-sort")
 local test_graph_invariants = require("tests/graph-invariants")
 
 local key = gutils.key
+
+-- Ad hoc node blacklist to help with testing
+local NODE_BLACKLIST = {
+    [key("recipe", "stone-furnace")] = true,
+    [key("recipe", "iron-plate")] = true,
+    [key("recipe", "copper-plate")] = true,
+    [key("recipe", "automation-science-pack")] = true,
+    [key("recipe", "lab")] = true,
+    [key("recipe", "boiler")] = true,
+    [key("recipe", "steam-engine")] = true,
+    [key("recipe", "small-electric-pole")] = true,
+    [key("recipe", "offshore-pump")] = true,
+    [key("technology", "automation-science-pack")] = true,
+    [key("technology", "steam-power")] = true,
+    [key("technology", "electronics")] = true,
+    [key("recipe-tech-unlock", "automation-science-pack")] = true,
+    [key("recipe-tech-unlock", "small-electric-pole")] = true,
+    [key("recipe-tech-unlock", "lab")] = true,
+    [key("recipe-tech-unlock", "boiler")] = true,
+    [key("recipe-tech-unlock", "steam-engine")] = true,
+    [key("recipe-tech-unlock", "offshore-pump")] = true,
+}
 
 local first_pass = {}
 
@@ -44,6 +76,9 @@ first_pass.execute = function(params)
     local init_sort = top.sort(spoofed_graph)
 
     local function valid_node_for_first_pass(node_key)
+        if NODE_BLACKLIST[node_key] then
+            return false
+        end
         -- Just check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
         local subdiv_node = subdiv_graph.nodes[node_key]
         if subdiv_node.dummy then
@@ -173,9 +208,6 @@ first_pass.execute = function(params)
     local old_split_graph = table.deepcopy(split_graph)
     local split_sort = top.sort(split_graph)
 
-    -- CRITICAL TODO: REMOVE
-    log(serpent.block(old_split_graph.nodes[key("recipe", "copper-cable-trav")]))
-
     ----------------------------------------------------------------------------------------------------
     -- HELPER FUNCTIONS
     ----------------------------------------------------------------------------------------------------
@@ -192,6 +224,27 @@ first_pass.execute = function(params)
         local trav_type = slot_node.type
         local trav_name = make_trav_name(slot_node.name)
         return split_graph.nodes[key(trav_type, trav_name)]
+    end
+
+    -- Tests if the graph prenodes of node have a shared context in the *split sort* (regardless of the graph)
+    local function node_prenodes_share_context(graph, node)
+        for context, _ in pairs(logic.contexts) do
+            local has_context = true
+            for _, prenode in pairs(gutils.prenodes(graph, node)) do
+                -- Don't involve the dangling connections for trav nodes
+                if not node.trav or key(prenode) ~= key(trav_to_head[key(node)]) then
+                    if split_sort.node_to_context_inds[key(prenode)][context] == nil then
+                        has_context = false
+                        break
+                    end
+                end
+            end
+            if has_context then
+                return true
+            end
+        end
+        -- No valid context found
+        return false
     end
 
     -- Checks that the slots that another slot would have depended on in vanilla (so fixed + randomized edges) are assigned
@@ -212,6 +265,12 @@ first_pass.execute = function(params)
             log(key(slot))
             error("slot doesn't exist in spoofed graph")
         end
+
+        -- CRITICAL TODO: Make decision of how to do this/profiling
+        -- Right now I'm deciding between prereqs assigned and checking contexts
+
+        -- Actually, this approach doesn't work, since slot
+        --node_prenodes_share_context(spoofed_graph, spoofed_node)
 
         for _, prenode in pairs(gutils.prenodes(spoofed_graph, spoofed_node)) do
             local prenode_in_split_graph = split_graph.nodes[key(prenode)]
@@ -244,6 +303,40 @@ first_pass.execute = function(params)
         return slot_vanilla_prereqs_assigned(slot)
     end
 
+    -- Just checks if there are enough prereq slots for trav of each type
+    local function trav_acceptable(trav)
+        local type_to_nums = {}
+        local slot_in_subdiv_graph = subdiv_graph.nodes[trav.old_slot]
+        for _, prenode in pairs(gutils.prenodes(subdiv_graph, slot_in_subdiv_graph)) do
+            if prenode.type == "head" then
+                local prereq_type = gutils.get_owner(subdiv_graph, gutils.get_buddy(subdiv_graph, prenode)).type
+                type_to_nums[prereq_type] = type_to_nums[prereq_type] or 0
+                type_to_nums[prereq_type] = 1 + type_to_nums[prereq_type]
+            end
+        end
+        local prereq_pool_sizes = {}
+        for _, pebble in pairs(split_sort.sorted) do
+            -- Check if this has at least one base depnode that could connect
+            local node_in_subdiv = subdiv_graph.nodes[pebble.node_key]
+            if node_in_subdiv ~= nil then
+                for _, depnode in pairs(gutils.depnodes(subdiv_graph, node_in_subdiv)) do
+                    if depnode.type == "base" then
+                        if gutils.get_owner(subdiv_graph, gutils.get_buddy(subdiv_graph, depnode)).type == trav.type then
+                            prereq_pool_sizes[node_in_subdiv.type] = prereq_pool_sizes[node_in_subdiv.type] or 0
+                            prereq_pool_sizes[node_in_subdiv.type] = 1 + prereq_pool_sizes[node_in_subdiv.type]
+                        end
+                    end
+                end
+            end
+        end
+        for node_type, num_req in pairs(type_to_nums) do
+            if prereq_pool_sizes[node_type] == nil or prereq_pool_sizes[node_type] < num_req then
+                return false
+            end
+        end
+        return true
+    end
+
     local function trav_absolute_reachable(trav)
         -- TEST: Make sure this is a trav
         if not trav.trav then
@@ -254,22 +347,7 @@ first_pass.execute = function(params)
 
         -- This part is mandatory since it involves fixed edges
         -- Check that there is a common context among trav's fixed edge prereqs (excluding the dangling connection for a slot)
-        for context, _ in pairs(logic.contexts) do
-            local has_context = true
-            for _, prenode in pairs(gutils.prenodes(split_graph, trav)) do
-                if key(prenode) ~= key(trav_to_head[key(trav)]) then
-                    if split_sort.node_to_context_inds[key(prenode)][context] == nil then
-                        has_context = false
-                        break
-                    end
-                end
-            end
-            if has_context then
-                return true
-            end
-        end
-        -- No valid context found
-        return false
+        return node_prenodes_share_context(split_graph, trav)
     end
     if DO_TESTS then
         -- Assert that some traveler is not reachable from the start
@@ -432,7 +510,7 @@ first_pass.execute = function(params)
         local slot = reserved_slots[res_ind]
         local old_trav_key = slot_to_trav[key(slot)]
 
-        log("\n\nReplacing\n" .. key(old_trav) .. "\nin\n" .. key(slot) .. "\nfor\n" .. gutils.key(new_trav) .. "\n")
+        log("\n\nReplacing\n" .. old_trav_key .. "\nin\n" .. key(slot) .. "\nfor\n" .. key(new_trav) .. "\n")
 
         trav_to_slot[old_trav_key] = nil
         trav_to_slot[key(new_trav)] = key(slot)
@@ -448,91 +526,130 @@ first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
 
     local function print_failure_message(i)
-        error("First pass failed at " .. tostring(math.floor(100 * i / #sorted_node_inds)) .. "%")
+        log("\nUnassigned slots...")
+        for _, slot_ind in pairs(sorted_node_inds) do
+            local slot = ind_to_slot(slot_ind)
+            local slot_key = key(slot)
+            if slot_to_trav[slot_key] == nil then
+                log(slot_key)
+            end
+        end
+        log("\nUnassigned travs...")
+        for perm_ind, sorted_node_ptr in pairs(perm) do
+            local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+            local trav_key = key(trav)
+            if trav_to_slot[trav_key] == nil then
+                log(trav_key)
+            end
+        end
+        log("\nFirst pass failed at " .. tostring(math.floor(100 * i / #sorted_node_inds)) .. "%\n")
     end
 
     for i = 1, #sorted_node_inds do
         local found_slot
         local found_trav
 
-        for iteration = 1, MAX_ITERATIONS do
-            if iteration % 100 == 0 then
-                log("ITERATION #" .. tostring(iteration))
-            end
+        -- Outer desperation loop
+        local disable_reachability_check = false
+        while true do
+            for iteration = 1, MAX_ITERATIONS do
+                if iteration % 100 == 0 then
+                    log("ITERATION #" .. tostring(iteration))
+                end
 
-            for _, slot_ind in pairs(sorted_node_inds) do
-                local slot = ind_to_slot(slot_ind)
-                local slot_key = key(slot)
-                if slot_to_trav[slot_key] == nil and slot_acceptable(slot) then
-                    for perm_ind, sorted_node_ptr in pairs(perm) do
-                        local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+                for _, slot_ind in pairs(sorted_node_inds) do
+                    local slot = ind_to_slot(slot_ind)
+                    local slot_key = key(slot)
+                    if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
+                        for perm_ind, sorted_node_ptr in pairs(perm) do
+                            local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
 
-                        if trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) then
-                            if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
-                                if to_be_reserved(trav) then
-                                    is_reserved[key(slot)] = true
-                                    table.insert(reserved_slots, slot)
+                            if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
+                                if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
+                                    if to_be_reserved(trav) then
+                                        is_reserved[key(slot)] = true
+                                        table.insert(reserved_slots, slot)
+                                    end
+                                    found_slot = slot
+                                    found_trav = trav
+                                    break
                                 end
-                                found_slot = slot
-                                found_trav = trav
-                                break
                             end
                         end
+                        if found_trav == nil and REPORT_SLOTS_FAILED then
+                            log("SLOT FAILURE: " .. key(slot))
+                        end
                     end
-                    if found_trav == nil and REPORT_SLOTS_FAILED then
-                        log("SLOT FAILURE: " .. key(slot))
+                    if found_trav ~= nil then
+                        break
+                    end
+
+                    -- CRITICAL TODO: Remove!
+                    -- Let's try out with forcing an in order slot traversal
+                    if slot_to_trav[slot_key] == nil then
+                        break
                     end
                 end
                 if found_trav ~= nil then
                     break
+                else
+                    -- Reservation loop
+                    if #reserved_slots == 0 then
+                        break
+                    end
+
+                    local found_reservation = false
+                    for p = 1, #perm do
+                        -- Going in order is more likely to produce a newly reachable thing
+                        local trav = ind_to_trav(sorted_node_inds[p])
+
+                        if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) then
+                            for j = #reserved_slots, 1, -1 do
+                                local slot = reserved_slots[j]
+
+                                -- TODO: Should we check vanilla reachable for trav here?
+                                if is_compatible(slot, trav) and is_important[trav.old_slot] and trav_vanilla_reachable(trav) then
+                                    replace_reservation(j, trav)
+                                    found_reservation = true
+                                    break
+                                end
+                            end
+                        end
+                        if found_reservation then
+                            break
+                        end
+                    end
+
+                    if not found_reservation then
+                        if REPORT_FAILED_CANCELLATIONS then
+                            for _, slot in pairs(reserved_slots) do
+                                log(key(slot))
+                                log(slot_to_trav[key(slot)])
+                            end
+                            log("FAILED CANCELLATION")
+                        end
+
+                        fulfill_reservation(1)
+                        update_reservations()
+                    end
                 end
             end
+
             if found_trav ~= nil then
                 break
             else
-                -- Reservation loop
-                if #reserved_slots == 0 then
-                    print_failure_message(i)
-                end
-
-                local found_reservation = false
-                for perm_ind, sorted_node_ptr in pairs(perm) do
-                    local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
-
-                    if trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) then
-                        for j = #reserved_slots, 1, -1 do
-                            local slot = reserved_slots[j]
-
-                            -- TODO: Should we check vanilla reachable for trav here?
-                            if is_compatible(slot, trav) and is_important[trav.old_slot] then
-                                replace_reservation(j, trav)
-                                found_reservation = true
-                                break
-                            end
-                        end
+                print_failure_message(i)
+                -- For debugging, ability to ignore last bit of unassigned slots/travs
+                if i / #sorted_node_inds < FAILURE_ACCEPTANCE then
+                    return false
+                else
+                    if disable_reachability_check == true then
+                        return false
+                    else
+                        disable_reachability_check = true
                     end
-                    if found_reservation then
-                        break
-                    end
-                end
-
-                if not found_reservation then
-                    if REPORT_FAILED_CANCELLATIONS then
-                        for _, slot in pairs(reserved_slots) do
-                            log(key(slot))
-                            log(slot_to_trav[key(slot)])
-                        end
-                        log("FAILED CANCELLATION")
-                    end
-
-                    fulfill_reservation(1)
-                    update_reservations()
                 end
             end
-        end
-
-        if found_trav == nil then
-            print_failure_message(i)
         end
 
         slot_to_trav[key(found_slot)] = key(found_trav)
@@ -556,7 +673,8 @@ first_pass.execute = function(params)
             log(key(slot))
             log(slot_to_trav[key(slot)])
         end
-        error("There are " .. tostring(#reserved_slots) .. " reservations left!")
+        log("There are " .. tostring(#reserved_slots) .. " reservations left!")
+        return false
     end
 
     -- Need to do a new sort since the reservations can make it out of order

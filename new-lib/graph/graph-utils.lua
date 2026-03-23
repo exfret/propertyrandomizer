@@ -507,10 +507,10 @@ gutils.subdivide_ands = function(graph)
 end
 
 gutils.get_buddy = function(graph, conn_node)
-    if conn.type == "base" then
+    if conn_node.type == "base" then
         return gutils.unique_depnode(graph, conn_node)
     end
-    if conn.type == "head" then
+    if conn_node.type == "head" then
         return gutils.unique_prenode(graph, conn_node)
     end
     error("Invalid conn type")

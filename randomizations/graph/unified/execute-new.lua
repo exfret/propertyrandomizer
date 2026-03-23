@@ -201,7 +201,20 @@ unified.execute = function()
             spoofed_graph = spoofed_graph,
             subdiv_graph = subdiv_graph,
         })
+        if first_pass_info == false then
+            return false
+        end
         sort_for_pool = first_pass_info.sort
+
+        -- Replace deps in sorted_deps by travs
+        for dep_ind, dep in pairs(sorted_deps) do
+            local trav_key = first_pass_info.slot_to_trav[dep]
+            -- Dep might not have been a slot, in which case it stays the same
+            if trav_key ~= nil then
+                local trav = first_pass_info.graph.nodes[trav_key]
+                sorted_deps[dep_ind] = trav.old_slot
+            end
+        end
     end
 
     -- Check if all of key1 node's context inds are before all of key2 node's
