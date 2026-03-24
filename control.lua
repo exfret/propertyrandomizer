@@ -2,6 +2,7 @@
 
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
+local top = require("new-lib/graph/consistent-sort")
 
 local function load_dep_graph()
     for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
@@ -19,6 +20,7 @@ script.on_init(function(event)
     game.forces.player.mining_with_fluid = true
 
     load_dep_graph()
+    storage.sort_info = top.sort(storage.graph)
 end)
 
 script.on_configuration_changed(function(event)

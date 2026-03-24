@@ -40,6 +40,32 @@ function reformat.initial()
     for _, item in pairs(lu.items) do
         item.weight = lu.weight[item.name]
     end
+
+    -- Propagate hidden-ness
+    -- We can do this inefficiently; everything is inefficient anyways
+    while true do
+        local found_non_hidden = false
+        for _, tech in pairs(data.raw.technology) do
+            if not tech.hidden then
+                local should_be_hidden = false
+                for _, prereq in pairs(tech.prerequisites or {}) do
+                    local prereq_tech = data.raw.technology[prereq]
+                    if prereq_tech.hidden then
+                        should_be_hidden = true
+                        tech.hidden = true
+                        break
+                    end
+                end
+                if should_be_hidden then
+                    found_non_hidden = true
+                    break
+                end
+            end
+        end
+        if not found_non_hidden then
+            break
+        end
+    end
 end
 
 -- Recursive, so can't be defined with the =function syntax

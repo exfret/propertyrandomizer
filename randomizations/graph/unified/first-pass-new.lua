@@ -24,6 +24,7 @@ local FAILURE_ACCEPTANCE = 0.9
 local DO_TESTS = true
 -- Disabled because it was slow
 local DO_PREREQ_POOL_CHECK = false
+local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
@@ -662,9 +663,8 @@ first_pass.execute = function(params)
                         break
                     end
 
-                    -- CRITICAL TODO: Remove!
-                    -- Let's try out with forcing an in order slot traversal
-                    if slot_to_trav[slot_key] == nil then
+                    -- Should we do a completely ordered traversal?
+                    if DO_SLOTS_IN_ORDER and slot_to_trav[slot_key] == nil then
                         break
                     end
                 end

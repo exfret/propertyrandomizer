@@ -13,6 +13,11 @@ randomization_info = {
         unified = {},
     },
 }
+
+-- Initial reformats to smooth along everything else
+local reformat = require("lib/reformat")
+reformat.initial()
+
 old_data_raw = table.deepcopy(data.raw)
 
 log("Gathering config")
@@ -20,10 +25,6 @@ log("Gathering config")
 -- Find randomizations to perform
 -- Must be loaded first because it also loads settings
 require("config")
-
--- Initial reformats to smooth along everything else
-local reformat = require("lib/reformat")
-reformat.initial()
 
 -- Special changes for watch the world burn mode
 if config.watch_the_world_burn then
@@ -65,9 +66,14 @@ local function smuggle_info()
     graph_selection_tool.type = "selection-tool"
     graph_selection_tool.name = "propertyrandomizer-graph"
     graph_selection_tool.select.entity_type_filters = {serpent.dump(new_logic.graph)}
+    local logic_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    logic_selection_tool.type = "selection-tool"
+    logic_selection_tool.name = "propertyrandomizer-logic"
+    logic_selection_tool.select.entity_type_filters = {serpent.dump(new_logic.type_info)}
     data:extend({
         warnings_selection_tool,
         graph_selection_tool,
+        logic_selection_tool,
     })
 end
 

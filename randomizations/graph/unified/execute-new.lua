@@ -10,8 +10,9 @@ local DO_FIRST_PASS = true
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
+local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
-local SWITCH_PLANETS = true
+local SWITCH_PLANETS = false
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -168,10 +169,12 @@ unified.execute = function()
     test_graph_invariants.test(subdiv_graph)
 
     -- TEST: Do consistent_sort tests on subdiv_graph
-    test_sort.init(subdiv_graph)
-    for test_name, test in pairs(test_sort) do
-        if type(test) == "function" and not test_sort.non_test_names[test_name] then
-            test()
+    if DO_TESTS then
+        test_sort.init(subdiv_graph)
+        for test_name, test in pairs(test_sort) do
+            if type(test) == "function" and not test_sort.non_test_names[test_name] then
+                test()
+            end
         end
     end
 

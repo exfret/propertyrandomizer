@@ -56,6 +56,32 @@
 --   * prod: Short for "product"; any ingredient/result
 --   * rcat/mcat: Short for recipe/mining category respectively, usually denotes a "spoofed" category which takes fluids into account as well
 
+-- If this is control stage, just get the contexts and type info
+if data == nil then
+    local gutils = require("new-lib/graph/graph-utils")
+
+    local logic = {}
+    logic.contexts = {}
+
+    -- Add contexts
+    for _, planet in pairs(prototypes.space_location) do
+        if planet.type == "planet" then
+            logic.contexts[gutils.key(planet)] = true
+        end
+    end
+    for _, surface in pairs(prototypes.surface) do
+        logic.contexts[gutils.key(surface)] = true
+    end
+
+    for data, _ in pairs(prototypes.item["propertyrandomizer-logic"].get_entity_type_filters(defines.selection_mode.select)) do
+        local _, logic_type_info = serpent.load(data)
+        logic.type_info = logic_type_info
+        break
+    end
+
+    return logic
+end
+
 local lib_name = "new-lib"
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lu = require(lib_name .. "/lookup/init")
@@ -120,15 +146,6 @@ logic.build = function()
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
--- Balance
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-
-    -- The following nodes are for balancing purposes
-    balance.build(lu)
-
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
 -- Group
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -148,8 +165,8 @@ logic.build = function()
     -- Nodes that code in requirements on the logic that aren't strictly necessary, but which are needed to make the game still pragmatically playable (like having inserters/basic automation)
     -- These are included in a separate file to separate them out from the "real logic"
     -- A lot of the time, this can just end up adding edges from nodes created by logic_group
-
-    -- TODO
+    
+    --balance.build(lu)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

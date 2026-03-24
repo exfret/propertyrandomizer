@@ -283,7 +283,11 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
 
     -- TODO: Working on this part
     local description = right_flow.add({type = "flow", direction = "horizontal"})
-    local reachability_button = description.add({type = "button", style = "randomizer_slot_button_red"})
+    local style_to_use = "randomizer_slot_button_red"
+    if next(storage.sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
+        style_to_use = "randomizer_slot_button_green"
+    end
+    local reachability_button = description.add({type = "button", style = style_to_use})
     local description_label_amount
     if amount ~= nil then
         -- Ignore recipe nodes since their amounts might cause confusion
