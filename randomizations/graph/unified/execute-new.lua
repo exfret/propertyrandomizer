@@ -11,6 +11,7 @@ local DO_FIRST_PASS = true
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
+local SWITCH_PLANETS = true
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -199,11 +200,63 @@ unified.execute = function()
         end
     end
 
+    ----------------------------------------------------------------------------------------------------
+    -- FIRST PASS
+    ----------------------------------------------------------------------------------------------------
+
     local first_pass_info
     if DO_FIRST_PASS then
+        local function switch_gleba_nauvis(graph)
+            local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
+            local gleba_node = graph.nodes[key("room", key("planet", "gleba"))]
+
+            -- room-launch's are intrinsic to the room
+            local function leads_to_room_launch(node)
+                if node.type == "room-launch" then
+                    return true
+                elseif node.type ~= "base" and node.type ~= "head" then
+                    return false
+                else
+                    return leads_to_room_launch(gutils.unique_depnode(graph, node))
+                end
+            end
+
+            local function gather_deps(node)
+                local deps_tbl = {}
+                for dep, _ in pairs(node.dep) do
+                    local depnode = graph.nodes[graph.edges[dep].stop]
+                    if not leads_to_room_launch(depnode) then
+                        if depnode.type == "base" then
+                            table.insert(deps_tbl, gutils.unique_dep(graph, depnode))
+                        else
+                            table.insert(deps_tbl, graph.edges[dep])
+                        end
+                    end
+                end
+                return deps_tbl
+            end
+
+            local nauvis_deps = gather_deps(nauvis_node)
+            local gleba_deps = gather_deps(gleba_node)
+            for _, edge in pairs(nauvis_deps) do
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(gleba_node))
+            end
+            for _, edge in pairs(gleba_deps) do
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
+            end
+        end
+
+        local spoofed_graph_to_pass = table.deepcopy(spoofed_graph)
+        local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
+        if SWITCH_PLANETS then
+            -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
+            --switch_gleba_nauvis(spoofed_graph_to_pass)
+            switch_gleba_nauvis(subdiv_graph_to_pass)
+        end
+
         first_pass_info = first_pass.execute({
-            spoofed_graph = spoofed_graph,
-            subdiv_graph = subdiv_graph,
+            spoofed_graph = spoofed_graph_to_pass,
+            subdiv_graph = subdiv_graph_to_pass,
         })
         if first_pass_info == false then
             return false
@@ -220,6 +273,10 @@ unified.execute = function()
             end
         end
     end
+
+    ----------------------------------------------------------------------------------------------------
+    -- CONTEXT REACHABILITY
+    ----------------------------------------------------------------------------------------------------
 
     -- Check if all of key1 node's context inds are before all of key2 node's
     local function all_contexts_reachable(key1, key2)
@@ -386,6 +443,14 @@ unified.execute = function()
 
     for _, handler in pairs(handlers) do
         handler.reflect(random_graph, head_to_base, head_to_handler)
+    end
+
+    if SWITCH_PLANETS then
+        local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+        data.raw.planet.nauvis.name = "nauvis"
+        data.raw.planet.gleba = old_nauvis
+        data.raw.planet.gleba.name = "gleba"
     end
 
     return true

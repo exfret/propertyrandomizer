@@ -14,8 +14,9 @@
 --     c) The issue isn't fixed (light oil barrels need a particular crafting category and we only check prereq types)
 -- Idea:
 --     Ways to get unstuck in the beginning are often different from what you need mid-game. Gun turrets are eventually needed in spage, but not initially, so can be put off even if they're on the critical path
--- NOW: Things coming before on nauvis but after on other places
+-- (SOLVED-ISH) NOW: Things coming before on nauvis but after on other places
 --      I tried a solution but it seems logistic science packs now aren't being put after hand crafting
+-- NEXT: Gleba things that arenaturally early aren't used early (like biochambers)
 
 local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 0.9
