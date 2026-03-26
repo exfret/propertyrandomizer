@@ -27,3 +27,6 @@ For bugs/fixes rather than features, see bugs.txt
  * Progression nodes/ability to decide when a node/pebble is important
  * Starting "windmill" to get over initial problematic power hump; maybe something for space hump as well?
  * Support additional_categories for recipes in logic
+ * Logic for not being able to handcraft in space (if not already there)
+ * Check that agri towers are counted as automatable on gleba
+ * Only add automatable for resource mining if it's by a mining drill

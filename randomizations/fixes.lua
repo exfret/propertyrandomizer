@@ -122,8 +122,6 @@ randomizations.fixes = function()
     -- Fix recycling recipes
     ----------------------------------------------------------------------
 
-    -- TODO: UNCOMMENT!
-    --[[
     -- First, some constants
     local recycling_category_name = "recycling"
     local type_item = "item"
@@ -334,7 +332,7 @@ randomizations.fixes = function()
                 end
             end
         end
-    end]]
+    end
 
     -- Make all segments of a segmented unit have the same max health
     for _, unit in pairs(data.raw["segmented-unit"] or {}) do

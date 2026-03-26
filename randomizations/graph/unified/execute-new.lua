@@ -14,8 +14,6 @@ local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 -- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
 local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
--- Add fewer extra unlocks (let's do a better solution later)
-local SPECIAL_RECIPE_TECH_UNLOCK_FAST = true
 local SWITCH_PLANETS = false
 local REPORT_NUM_TECH_PREREQS = true
 
@@ -387,9 +385,6 @@ unified.execute = function()
                 if add_to_tech_unlock_list then
                     -- Bias toward later unlocks by adding more of them
                     local bias_num = 4
-                    if SPECIAL_RECIPE_TECH_UNLOCK_FAST then
-                        bias_num = 1
-                    end
                     for j = 1, bias_num * math.ceil(i / #shuffled_prereqs) do
                         table.insert(not_shuffled_post_shuffled_prereqs, key(prereq_node))
                     end
@@ -403,6 +398,7 @@ unified.execute = function()
     for _, prereq in pairs(post_shuffled_prereqs) do
         table.insert(shuffled_prereqs, prereq)
     end
+    local not_shuffled_post_shuffled_prereqs_start = #shuffled_prereqs + 1
     if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
         rng.shuffle(rng.key({id = "unified"}), not_shuffled_post_shuffled_prereqs)
         for _, prereq in pairs(not_shuffled_post_shuffled_prereqs) do
@@ -446,7 +442,13 @@ unified.execute = function()
         end
         for _, head_key in pairs(dep_to_heads[dep]) do
             local found_prereq = false
-            for ind, base_key in pairs(shuffled_prereqs) do
+            local starting_ind = 1
+            if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks" then
+                starting_ind = not_shuffled_post_shuffled_prereqs_start
+            end
+            for ind = starting_ind, #shuffled_prereqs do
+                local base_key = shuffled_prereqs[ind]
+            --for ind, base_key in pairs(shuffled_prereqs) do
                 -- CRITICAL TODO: Just delete this if it turns out not to be relevant in the future
                 --    It didn't really work out to do what I wanted to do anyways
                 -- If first pass is chosen and the setting is on, switch out prereqs for the new head attached to their slot

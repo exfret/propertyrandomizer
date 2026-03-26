@@ -113,9 +113,11 @@ stage.operable_entities = function()
     for _, entity in pairs(lu.entities) do
         if entity.flags ~= nil then
             for _, flag in pairs(entity.flags) do
-                if flag == "player-creation" or flag == "placeable-player" then
+                -- CRITICAL TODO: REMOVE (commented out temporarily to see if it would work with pyanodons)
+                -- Actually, a more general solution would be good?
+                --if flag == "player-creation" or flag == "placeable-player" then
                     operable_entities[entity.name] = true
-                end
+                --end
             end
         end
         if entity.type == "character" then
