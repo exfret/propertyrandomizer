@@ -4,9 +4,21 @@ local recipe_tech_unlocks = {}
 
 recipe_tech_unlocks.id = "recipe_tech_unlocks"
 
+local tech_to_claimed = {}
 recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
     if prereq.type == "recipe-tech-unlock" and dep.type == "recipe" then
-        return 4
+        -- Just get a random tech
+        if prereq.num_pre > 1 then
+            return 1
+        end
+        local random_edge = gutils.unique_pre(graph, prereq)
+        local tech_node = graph.nodes[random_edge.start]
+        if not tech_to_claimed[tech_node.name] then
+            tech_to_claimed[tech_node.name] = true
+            return 1
+        else
+            return 1
+        end
     end
 end
 

@@ -109,10 +109,10 @@ logic.type_info = {}
 logic.edge_info = {}
 
 logic.build = function()
-    log("Loading lookups")
+    --log("Loading lookups")
     lu.load_lookups()
 
-    log("Lookups loaded")
+    --log("Lookups loaded")
 
     -- Add contexts
     for room_key, _ in pairs(lu.rooms) do

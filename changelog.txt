@@ -3,6 +3,7 @@ Version: 0.5.3
 Date: ?
   Features:
     - Item weights are filled in beforehand to prevent key items from getting a horribly larger weight due to the game's automatic weight calculation
+    - Reformatting so that techs that depend on hidden techs get hidden as well for mods (*cough* periodic madness *cough*) that do this by accident
   Changes:
     - Changed default numerical randomization algorithm back to "safeguarded"
     - Commented out fluid box randomization because of problems; an issue was created on the github if someone else wants to tackle this: https://github.com/exfret/propertyrandomizer/issues/25

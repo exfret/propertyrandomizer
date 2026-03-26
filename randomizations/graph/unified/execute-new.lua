@@ -12,7 +12,12 @@ local DO_FIRST_PASS = true
 -- CRITICAL TODO: Think about this more!
 local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
+-- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
+local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
+-- Add fewer extra unlocks (let's do a better solution later)
+local SPECIAL_RECIPE_TECH_UNLOCK_FAST = true
 local SWITCH_PLANETS = false
+local REPORT_NUM_TECH_PREREQS = true
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -208,10 +213,11 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     local first_pass_info
+    local old_sorted_deps
     if DO_FIRST_PASS then
-        local function switch_gleba_nauvis(graph)
+        local function switch_vulcanus_nauvis(graph)
             local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
-            local gleba_node = graph.nodes[key("room", key("planet", "gleba"))]
+            local vulcanus_node = graph.nodes[key("room", key("planet", "vulcanus"))]
 
             -- room-launch's are intrinsic to the room
             local function leads_to_room_launch(node)
@@ -240,11 +246,11 @@ unified.execute = function()
             end
 
             local nauvis_deps = gather_deps(nauvis_node)
-            local gleba_deps = gather_deps(gleba_node)
+            local vulcanus_deps = gather_deps(vulcanus_node)
             for _, edge in pairs(nauvis_deps) do
-                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(gleba_node))
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(vulcanus_node))
             end
-            for _, edge in pairs(gleba_deps) do
+            for _, edge in pairs(vulcanus_deps) do
                 gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
             end
         end
@@ -253,8 +259,8 @@ unified.execute = function()
         local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
-            --switch_gleba_nauvis(spoofed_graph_to_pass)
-            switch_gleba_nauvis(subdiv_graph_to_pass)
+            --switch_vulcanus_nauvis(spoofed_graph_to_pass)
+            switch_vulcanus_nauvis(subdiv_graph_to_pass)
         end
 
         first_pass_info = first_pass.execute({
@@ -267,6 +273,7 @@ unified.execute = function()
         sort_for_pool = first_pass_info.sort
 
         -- Replace deps in sorted_deps by travs
+        old_sorted_deps = table.deepcopy(sorted_deps)
         for dep_ind, dep in pairs(sorted_deps) do
             local trav_key = first_pass_info.slot_to_trav[dep]
             -- Dep might not have been a slot, in which case it stays the same
@@ -358,23 +365,107 @@ unified.execute = function()
 
     local random_graph = table.deepcopy(cut_graph)
 
+    -- With special tech unlock validation, put them in reverse order
+    local not_shuffled_post_shuffled_prereqs = {}
+    local techs_with_tech_unlock_added = {}
+    if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
+        for i = #shuffled_prereqs, 1, -1 do
+            local prereq_node = subdiv_graph.nodes[shuffled_prereqs[i]]
+            local prereq_owner = gutils.get_owner(subdiv_graph, prereq_node)
+            if prereq_owner.type == "recipe-tech-unlock" then
+                -- Make each tech equally likely-ish to unlock a recipe now
+                local add_to_tech_unlock_list = true
+                if prereq_owner.num_pre == 1 then
+                    -- Need to do twice to get past orand
+                    local tech_node = gutils.unique_prenode(subdiv_graph, gutils.unique_prenode(subdiv_graph, prereq_owner))
+                    if techs_with_tech_unlock_added[tech_node.name] then
+                        add_to_tech_unlock_list = false
+                    else
+                        techs_with_tech_unlock_added[tech_node.name] = true
+                    end
+                end
+                if add_to_tech_unlock_list then
+                    -- Bias toward later unlocks by adding more of them
+                    local bias_num = 4
+                    if SPECIAL_RECIPE_TECH_UNLOCK_FAST then
+                        bias_num = 1
+                    end
+                    for j = 1, bias_num * math.ceil(i / #shuffled_prereqs) do
+                        table.insert(not_shuffled_post_shuffled_prereqs, key(prereq_node))
+                    end
+                end
+                table.remove(shuffled_prereqs, i)
+            end
+        end
+    end
     rng.shuffle(rng.key({id = "unified"}), shuffled_prereqs)
     rng.shuffle(rng.key({id = "unified"}), post_shuffled_prereqs)
     for _, prereq in pairs(post_shuffled_prereqs) do
         table.insert(shuffled_prereqs, prereq)
     end
+    if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
+        rng.shuffle(rng.key({id = "unified"}), not_shuffled_post_shuffled_prereqs)
+        for _, prereq in pairs(not_shuffled_post_shuffled_prereqs) do
+            table.insert(shuffled_prereqs, prereq)
+        end
+    end
 
     -- CRITICAL TODO: Tech delinearization (pull out to a helper)
+
+    -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
+    local function node_to_first_pass_slot(node)
+        -- Trav should get the right context from its slot
+        local trav_node_key = key(node.type, first_pass.make_trav_name(node.name))
+        
+        if first_pass_info.graph.nodes[trav_node_key] ~= nil then
+            return trav_node_key
+        else
+            return key(node)
+        end
+    end
+
+    local function get_context_reachable(base, head)
+        if not DO_FIRST_PASS then
+            return all_contexts_reachable(key(base), key(head))
+        else
+            local base_owner = gutils.get_owner(random_graph, base)
+            local head_owner = gutils.get_owner(random_graph, head)
+            return all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner))
+        end
+    end
 
     local head_to_base = {}
     local used_prereq_inds = {}
     for dep_ind, dep in pairs(sorted_deps) do
         if #dep_to_heads[dep] > 0 then
-            log("Randomizing " .. dep)
+            local context_str = ""
+            if DO_FIRST_PASS then
+                context_str = old_sorted_deps[dep_ind]
+            end
+            log("\nRandomizing " .. dep .. " (" .. context_str .. ")")
         end
         for _, head_key in pairs(dep_to_heads[dep]) do
             local found_prereq = false
             for ind, base_key in pairs(shuffled_prereqs) do
+                -- CRITICAL TODO: Just delete this if it turns out not to be relevant in the future
+                --    It didn't really work out to do what I wanted to do anyways
+                -- If first pass is chosen and the setting is on, switch out prereqs for the new head attached to their slot
+                -- This doesn't preserve the edge info well, but I trust we only need the head's edge info anyways
+                -- CRITICAL TODO: Investigate/add test to make sure I don't get this confused
+                --[=[if DO_FIRST_PASS and SWITCH_PREREQS_TO_TRAV then
+                    local old_base = random_graph.nodes[base_key]
+                    local slot = gutils.get_owner(random_graph, old_base)
+                    local trav = first_pass_info.graph.nodes[first_pass_info.slot_to_trav[key(slot)]]
+                    local new_base_owner = random_graph.nodes[trav.old_slot]
+                    -- Make base an arbitrary base for this
+                    for _, depnode in pairs(gutils.depnodes(random_graph, new_base_owner)) do
+                        if depnode.type == "base" then
+                            base_key = key(depnode)
+                            break
+                        end
+                    end
+                end]=]
+
                 local is_context_reachable = false
                 local base = random_graph.nodes[base_key]
                 local head = random_graph.nodes[head_key]
@@ -386,35 +477,10 @@ unified.execute = function()
                     error("Randomization assertion failed! Tell exfret he's a dumbo.")
                 end
 
-                if not DO_FIRST_PASS then
-                    is_context_reachable = all_contexts_reachable(base_key, head_key)
-                else
-                    -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
-                    local function node_to_first_pass_slot(node)
-                        local trav_node_key = key(node.type, first_pass.make_trav_name(node.name))
-                        
-                        if first_pass_info.graph.nodes[trav_node_key] ~= nil then
-                            return trav_node_key
-                        else
-                            return key(node)
-                        end
+                is_context_reachable = get_context_reachable(base, head)
 
-                        --[[
-                        if first_pass_info.trav_to_slot[trav_node_key] ~= nil then
-                            -- In this case, we return the corresponding slot
-                            return first_pass_info.trav_to_slot[trav_node_key]
-                        else
-                            -- Otherwise, there isn't a slot/trav distinction so just return the node
-                            return key(node)
-                        end]]
-                    end
-
-                    local base_owner = gutils.get_owner(random_graph, base)
-                    local head_owner = gutils.get_owner(random_graph, head)
-                    is_context_reachable = all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner))
-                end
-
-                if not used_prereq_inds[ind] and is_context_reachable then
+                local check_not_used = true--not (SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks")
+                if not (check_not_used and used_prereq_inds[ind]) and is_context_reachable then
                     -- Have head's handler validate this base
 
                     if head_to_handler[head_key].validate(random_graph, base, head, {
@@ -426,6 +492,10 @@ unified.execute = function()
                         used_prereq_inds[ind] = true
                         head_to_base[head_key] = base_key
 
+                        if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
+                            table.insert(shuffled_prereqs, base_key)
+                        end
+
                         break
                     end
                 end
@@ -434,6 +504,35 @@ unified.execute = function()
                 log(head_key)
                 local percentage = math.floor(100 * dep_ind / #sorted_deps)
                 log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
+
+                if REPORT_NUM_TECH_PREREQS then
+                    local num_reachable = 0
+                    local num_reachable_context = 0
+                    for dep_ind2, dep2 in pairs(sorted_deps) do
+                        for ind2, base_key2 in pairs(shuffled_prereqs) do
+                            local subdiv_base = subdiv_graph.nodes[base_key2]
+                            local subdiv_opposite = gutils.get_owner(subdiv_graph, gutils.get_buddy(subdiv_graph, subdiv_base))
+                            if dep2 == key(subdiv_opposite) then
+                                local subdiv_base_owner = gutils.get_owner(subdiv_graph, subdiv_base)
+                                if subdiv_base_owner.type == "recipe-tech-unlock" then
+                                    -- Check unusued
+                                    if not used_prereq_inds[ind2] then
+                                        local base = random_graph.nodes[base_key2]
+                                        local head = random_graph.nodes[head_key]
+                                        if get_context_reachable(base, head) then
+                                            num_reachable_context = 1 + num_reachable_context
+                                        end
+                                        if dep_ind2 < dep_ind then
+                                            num_reachable = 1 + num_reachable
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    log("Num context recipe tech prereqs: " .. tostring(num_reachable_context))
+                    log("Num previous recipe tech prereqs: " .. tostring(num_reachable))
+                end
 
                 return false
             end
@@ -450,10 +549,10 @@ unified.execute = function()
 
     if SWITCH_PLANETS then
         local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.vulcanus)
         data.raw.planet.nauvis.name = "nauvis"
-        data.raw.planet.gleba = old_nauvis
-        data.raw.planet.gleba.name = "gleba"
+        data.raw.planet.vulcanus = old_nauvis
+        data.raw.planet.vulcanus.name = "vulcanus"
     end
 
     return true

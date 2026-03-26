@@ -75,6 +75,7 @@ recipe_category.validate = function(graph, base, head, extra)
         end
 
         -- Check if there are the appropriate fluid connections
+        -- We don't need to check equality exactly because we have a lot of duplicates
         local recipe_fluids = lutils.find_recipe_fluids(recipe_prot)
         if recipe_fluids.input > base_rcat.input or recipe_fluids.output > base_rcat.output then
             return false
