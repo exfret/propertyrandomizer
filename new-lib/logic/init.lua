@@ -166,7 +166,7 @@ logic.build = function()
     -- These are included in a separate file to separate them out from the "real logic"
     -- A lot of the time, this can just end up adding edges from nodes created by logic_group
     
-    --balance.build(lu)
+    balance.build(lu)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

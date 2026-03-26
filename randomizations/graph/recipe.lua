@@ -15,6 +15,11 @@ local flow_cost = require("lib/graph/flow-cost")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 
+local DO_SURFACE_PRESERVATION = true
+local gutils = require("new-lib/graph/graph-utils")
+local logic = require("new-lib/logic/init")
+local extended_sort = require("new-lib/graph/extended-sort")
+
 local major_raw_resources = {
     "item-iron-ore",
     "item-copper-ore",
@@ -621,6 +626,10 @@ randomizations.recipe_ingredients = function(id)
         return node_to_index_in_sort[build_graph.key(node2.type, node2.name)] < node_to_index_in_sort[build_graph.key(node1.type, node1.name)]
     end
 
+    -- Find previously reachable
+    logic.build()
+    local extended_info = extended_sort.sort(logic.graph)
+
     ----------------------------------------------------------------------
     -- Prereq shuffle
     ----------------------------------------------------------------------
@@ -866,6 +875,53 @@ randomizations.recipe_ingredients = function(id)
         log("Starting on dependent: " .. dependent_recipe.name)
 
         local reachable = table.deepcopy(sort_state.reachable)
+
+        if DO_SURFACE_PRESERVATION then
+            local new_logic_node_key = gutils.key("recipe", dependent.recipe)
+            local node_in_new_logic = logic.graph.nodes[new_logic_node_key]
+            local dep_surface = build_graph.surfaces[dependent.surface]
+            local this_context = gutils.key(dep_surface.prototype.type, dep_surface.prototype.name)
+            local function new_logic_node_isolatable(node, context)
+                local node_key = gutils.key(node)
+                local node_to_contexts = extended_info.node_to_contexts
+                if node_to_contexts[node_key] == true then
+                    return true
+                elseif node_to_contexts[node_key] ~= nil and node_to_contexts[node_key][context] ~= nil then
+                    local contexts = node_to_contexts[node_key][context]
+                    if contexts == true or contexts["10"] or contexts["11"] then
+                        return true
+                    end
+                end
+                return false
+            end
+            if new_logic_node_isolatable(node_in_new_logic, this_context) then
+                log("Preserving isolatability of " .. dependent.recipe .. " on " .. this_context)
+                local to_remove_from_reachable = {}
+                for reachable_node_key, _ in pairs(reachable) do
+                    local node_in_old = dep_graph[reachable_node_key]
+                    local new_type
+                    local new_name
+                    if node_in_old.type == "item-surface" then
+                        new_type = "item"
+                        new_name = node_in_old.item
+                    elseif node_in_old.type == "fluid-surface" then
+                        new_type = "fluid"
+                        new_name = node_in_old.fluid
+                    end
+                    if new_type ~= nil then
+                        local node_in_new = logic.graph.nodes[gutils.key(new_type, new_name)]
+                        if node_in_new ~= nil then
+                            if not new_logic_node_isolatable(node_in_new, this_context) then
+                                to_remove_from_reachable[reachable_node_key] = true
+                            end
+                        end
+                    end
+                end
+                for reachable_node_key, _ in pairs(to_remove_from_reachable) do
+                    reachable[reachable_node_key] = nil
+                end
+            end
+        end
 
         -- Refine reachable to exclude items not reachable from a single planet if applicable
         local to_remove_from_reachable = {}

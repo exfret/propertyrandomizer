@@ -623,7 +623,9 @@ randomizations.beacon_distribution_effectivity = function(id)
         })
 
         local factor = beacon.distribution_effectivity / old_distribution_effectivity
-        beacon.distribution_effectivity_bonus_per_quality_level = beacon.distribution_effectivity_bonus_per_quality_level * factor
+        if beacon.distribution_effectivity_bonus_per_quality_level ~= nil then
+            beacon.distribution_effectivity_bonus_per_quality_level = beacon.distribution_effectivity_bonus_per_quality_level * factor
+        end
         locale_utils.create_localised_description(beacon, factor, id, { variance = "big" })
     end
 end

@@ -484,7 +484,10 @@ function concrete.build(lu)
             -- TODO: Decide if I want to keep this
 
             if entity.name == lutils.starting_character_name then
-                add_edge("starting-character", "")
+                -- Starting character can visit the planet, so is isolatable
+                add_edge("starting-character", "", {
+                    abilities = { [1] = true },
+                })
             end
         end
 
@@ -1052,7 +1055,7 @@ function concrete.build(lu)
         -- Can we perform this recipe?
 
         add_edge("recipe-category", rcat_name)
-        if unlocking_techs ~= nil then
+        if recipe.enabled == false then
             add_edge("recipe-tech-unlock")
         end
         -- Ingredients with inds for trigger technology support
@@ -1066,7 +1069,7 @@ function concrete.build(lu)
             add_edge("recipe-surface-condition")
         end
 
-        if unlocking_techs ~= nil then
+        if recipe.enabled == false then
             ----------------------------------------
             add_node("recipe-tech-unlock", "OR")
             ----------------------------------------
@@ -1074,8 +1077,10 @@ function concrete.build(lu)
             -- This could have itself as canonical because it is technically sensible to randomize the unlock --> recipe edge
             -- However, this is not too much different from randomizing the tech --> unlock edge in most cases
 
-            for tech_name, _ in pairs(unlocking_techs) do
-                add_edge("technology", tech_name)
+            if unlocking_techs ~= nil then
+                for tech_name, _ in pairs(unlocking_techs) do
+                    add_edge("technology", tech_name)
+                end
             end
         end
 

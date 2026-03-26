@@ -1,20 +1,26 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.5.3
+Version: 0.5.4
 Date: ?
+---------------------------------------------------------------------------------------------------
+Version: 0.5.3
+Date: 2026.03.26
   Features:
     - Item weights are filled in beforehand to prevent key items from getting a horribly larger weight due to the game's automatic weight calculation
     - Reformatting so that techs that depend on hidden techs get hidden as well for mods (*cough* periodic madness *cough*) that do this by accident
+    - Recipe randomization now requires much less interplanetary travel
   Changes:
     - Changed default numerical randomization algorithm back to "safeguarded"
     - Commented out fluid box randomization because of problems; an issue was created on the github if someone else wants to tackle this: https://github.com/exfret/propertyrandomizer/issues/25
     - Hid fluid operation unified randomization since it's not working well
     - Disabled high tech delinearization for now due to issues with it
-    - Commented out a very large range of more questionable randomizations
+    - Commented out a large range of other randomizations I was worried about
     - Firearm magazine ingredients are not randomized with space age (so that ammo can always still be made in space)
     - Rebalanced recipe randomization base recipe costs to disfavor stone, which has smaller patches on the map
     - Assembling machine 1's automatically get fluid connections to make randomization easier (this is justified by Archipelago randomizer doing the same thing)
   Bugfixes:
     - Items don't get weights so low that more than twenty stacks would be needed to fill a rocket, preventing automatic launches
+    - Properly account for recipes that are unlocked by a technology but already enabled from start of game anyways
+    - Check for if beacon quality bonus is nil
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.2
 Date: 2026.03.19
