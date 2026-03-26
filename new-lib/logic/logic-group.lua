@@ -74,7 +74,7 @@ logic_group.build = function(graph, type_info)
     ----------------------------------------------------------------------
 
     ----------------------------------------
-    add_node("steam-power", "AND")
+    add_node("steam-power", "AND", nil, nil, { mechanic = true })
     ----------------------------------------
     -- Can we produce steam power?
     -- With blockification, these will return to items or recipes, making them easier to satisfy
@@ -119,7 +119,7 @@ logic_group.build = function(graph, type_info)
     end
 
     ----------------------------------------
-    add_node("chemical-fuel", "OR")
+    add_node("chemical-fuel", "OR", nil, nil, { mechanic = true })
     ----------------------------------------
     -- Can we get a chemical fuel without a burnt fuel result?
     

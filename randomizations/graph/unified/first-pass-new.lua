@@ -19,10 +19,11 @@
 -- NEXT: Gleba things that arenaturally early aren't used early (like biochambers)
 
 local MAX_ITERATIONS = 10000
-local FAILURE_ACCEPTANCE = 0.9
+local FAILURE_ACCEPTANCE = 1--0.9
 -- TODO: This could be set with a startup settings
 local DO_TESTS = true
 -- Disabled because it was slow
+local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
@@ -145,6 +146,27 @@ first_pass.execute = function(params)
     end
     if REPORT_PATH then
         log(serpent.block(is_important))
+    end
+    
+    local slot_inds = {}
+    if PUT_PATH_SLOTS_FIRST then
+        local in_path_in_order = {}
+        local not_in_path_in_order = {}
+        for _, ind in pairs(sorted_node_inds) do
+            if path_info.in_path[ind] then
+                table.insert(in_path_in_order, ind)
+            else
+                table.insert(not_in_path_in_order, ind)
+            end
+        end
+        for _, ind in pairs(in_path_in_order) do
+            table.insert(slot_inds, ind)
+        end
+        for _, ind in pairs(not_in_path_in_order) do
+            table.insert(slot_inds, ind)
+        end
+    else
+        slot_inds = sorted_node_inds
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -367,7 +389,7 @@ first_pass.execute = function(params)
         -- Assert that some traveler is not reachable from the start
         local some_trav_not_reachable = false
         for perm_ind, sorted_node_ptr in pairs(perm) do
-            local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
             if not trav_absolute_reachable(trav) then
                 some_trav_not_reachable = true
             elseif REPORT_STARTING_TRAVS then
@@ -394,7 +416,7 @@ first_pass.execute = function(params)
 
     local trav_to_mechanics = {}
     for perm_ind, sorted_node_ptr in pairs(perm) do
-        local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+        local trav = ind_to_trav(slot_inds[sorted_node_ptr])
         trav_to_mechanics[key(trav)] = {}
         local open = { trav }
         local in_open = {}
@@ -403,11 +425,13 @@ first_pass.execute = function(params)
             local next_node = open[ind]
             if next_node.mechanic or (next_node.old_slot and split_graph.nodes[next_node.old_slot].mechanic) then
                 trav_to_mechanics[key(trav)][key(next_node)] = true
-            end
-            for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
-                if not in_open[key(depnode)] then
-                    in_open[key(depnode)] = true
-                    table.insert(open, depnode)
+            else
+                -- Don't propagate through mechanics
+                for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
+                    if not in_open[key(depnode)] then
+                        in_open[key(depnode)] = true
+                        table.insert(open, depnode)
+                    end
                 end
             end
             ind = ind + 1
@@ -606,7 +630,7 @@ first_pass.execute = function(params)
 
     local function print_failure_message(i)
         log("\nUnassigned slots...")
-        for _, slot_ind in pairs(sorted_node_inds) do
+        for _, slot_ind in pairs(slot_inds) do
             local slot = ind_to_slot(slot_ind)
             local slot_key = key(slot)
             if slot_to_trav[slot_key] == nil then
@@ -615,16 +639,16 @@ first_pass.execute = function(params)
         end
         log("\nUnassigned travs...")
         for perm_ind, sorted_node_ptr in pairs(perm) do
-            local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
             local trav_key = key(trav)
             if trav_to_slot[trav_key] == nil then
                 log(trav_key)
             end
         end
-        log("\nFirst pass failed at " .. tostring(math.floor(100 * i / #sorted_node_inds)) .. "%\n")
+        log("\nFirst pass failed at " .. tostring(math.floor(100 * i / #slot_inds)) .. "%\n")
     end
 
-    for i = 1, #sorted_node_inds do
+    for i = 1, #slot_inds do
         local found_slot
         local found_trav
 
@@ -636,12 +660,12 @@ first_pass.execute = function(params)
                     log("ITERATION #" .. tostring(iteration))
                 end
 
-                for _, slot_ind in pairs(sorted_node_inds) do
+                for _, slot_ind in pairs(slot_inds) do
                     local slot = ind_to_slot(slot_ind)
                     local slot_key = key(slot)
                     if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
                         for perm_ind, sorted_node_ptr in pairs(perm) do
-                            local trav = ind_to_trav(sorted_node_inds[sorted_node_ptr])
+                            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
 
                             if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
                                 if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
@@ -679,7 +703,7 @@ first_pass.execute = function(params)
                     local found_reservation = false
                     for p = 1, #perm do
                         -- Going in order is more likely to produce a newly reachable thing
-                        local trav = ind_to_trav(sorted_node_inds[p])
+                        local trav = ind_to_trav(slot_inds[p])
 
                         if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) then
                             for j = #reserved_slots, 1, -1 do
@@ -718,7 +742,7 @@ first_pass.execute = function(params)
             else
                 print_failure_message(i)
                 -- For debugging, ability to ignore last bit of unassigned slots/travs
-                if i / #sorted_node_inds < FAILURE_ACCEPTANCE then
+                if i / #slot_inds < FAILURE_ACCEPTANCE then
                     return false
                 else
                     if disable_reachability_check == true then

@@ -768,6 +768,15 @@ function concrete.build(lu)
                 end
             end
         end
+        -- Check for recipes that should skip over fluid-craft
+        for recipe_name, inds in pairs(corresponding_recipes) do
+            local recipe = data.raw.recipe[recipe_name]
+            if recipe.hide_from_stats then
+                add_edge("recipe", recipe_name, {
+                    inds = inds,
+                })
+            end
+        end
 
         if corresponding_recipes ~= nil then
             ----------------------------------------
@@ -777,7 +786,7 @@ function concrete.build(lu)
 
             for recipe_name, inds in pairs(corresponding_recipes) do
                 local recipe = data.raw.recipe[recipe_name]
-                -- Recipes hidden from stats don't satisfy crafting triggers
+                -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
                 if not recipe.hide_from_stats then
                     add_edge("recipe", recipe_name, {
                         inds = inds,
@@ -925,6 +934,15 @@ function concrete.build(lu)
                 })
             end
         end
+        -- Check if there is a recipe that should link directly to this item (doesn't set off crafting triggers)
+        for recipe_name, inds in pairs(corresponding_recipes) do
+            local recipe = data.raw.recipe[recipe_name]
+            if recipe.hide_from_stats then
+                add_edge("recipe", recipe_name, {
+                    inds = inds,
+                })
+            end
+        end
 
         if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
             ----------------------------------------
@@ -945,7 +963,7 @@ function concrete.build(lu)
 
             for recipe_name, inds in pairs(corresponding_recipes) do
                 local recipe = data.raw.recipe[recipe_name]
-                -- Recipes hidden from stats don't satisfy crafting triggers
+                -- Recipes hidden from stats don't satisfy crafting triggers; those edges go directly to the item
                 if not recipe.hide_from_stats then
                     add_edge("recipe", recipe_name, {
                         -- The indices of where in the results this item is (it could be in multiple spots)
@@ -1090,7 +1108,7 @@ function concrete.build(lu)
         if spoofed_cats ~= nil then
             for rcat_name, _ in pairs(spoofed_cats) do
                 ----------------------------------------
-                add_node("recipe-category", "OR", nil, rcat_name)
+                add_node("recipe-category", "OR", nil, rcat_name, { mechanic = true })
                 ----------------------------------------
                 -- Can we craft recipes in this spoofed category?
                 -- OR over all entities that support this category with sufficient fluid boxes.
