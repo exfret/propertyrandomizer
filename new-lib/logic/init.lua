@@ -111,6 +111,8 @@ logic.edge_info = {}
 logic.build = function()
     --log("Loading lookups")
     lu.load_lookups()
+    -- Just make it a global
+    lookups = lu
 
     --log("Lookups loaded")
 

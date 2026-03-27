@@ -48,7 +48,7 @@ require("randomizations/prefixes")
 log("Loading in new dependency graph file")
 
 local new_logic = require("new-lib/logic/init")
-local unified = require("randomizations/graph/unified/execute")
+local unified = require("randomizations/graph/unified/execute-new")
 
 -- Load compat code
 require("compat/master")

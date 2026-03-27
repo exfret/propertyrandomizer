@@ -177,7 +177,8 @@ function concrete.build(lu)
         for room_key, room in pairs(lu.rooms) do
             if lutils.check_in_room(room, entity) then
                 -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed somewhere
-                add_edge("room", room_key, {
+                add_edge("room-autoplace", room_key, {
+                    entity = entity.name,
                     abilities = { [1] = true },
                 }) -- Being from a room leads to isolatability
             end
@@ -1389,7 +1390,7 @@ function concrete.build(lu)
         local tile_rooms = lu.tiles_to_rooms[tile.name]
         if tile_rooms ~= nil then
             for room_key, _ in pairs(tile_rooms) do
-                add_edge("room", room_key, {
+                add_edge("room-autoplace", room_key, {
                     abilities = { [1] = true },
                 })
             end

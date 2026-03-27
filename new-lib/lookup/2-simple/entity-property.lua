@@ -128,4 +128,18 @@ stage.operable_entities = function()
     lu.operable_entities = operable_entities
 end
 
+stage.entities_with_mine_tech_unlocks = function()
+    local entities_with_mine_tech_unlocks = {}
+
+    for _, tech in pairs(lu.techs) do
+        if tech.research_trigger ~= nil then
+            if tech.research_trigger.type == "mine-entity" then
+                entities_with_mine_tech_unlocks[tech.research_trigger.entity] = true
+            end
+        end
+    end
+
+    lu.entities_with_mine_tech_unlocks = entities_with_mine_tech_unlocks
+end
+
 return stage

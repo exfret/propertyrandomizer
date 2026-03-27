@@ -8,6 +8,10 @@ default.required = {
     ["reflect"] = true,
 }
 
+-- Whether to only check non-nil contexts when deciding context reachability
+-- Mostly a hotfix for autoplace randomization due to connection logic in new first pass being broken
+default.ignore_nil_contexts = false
+
 default.preprocess = function()
 end
 

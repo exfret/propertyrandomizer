@@ -5,4 +5,5 @@ return { -- Finished unified randomizations
     "tech-science-packs",
     "entity-operation-fluid",
     "mining-fluid-required",
+    "entity-autoplace",
 }

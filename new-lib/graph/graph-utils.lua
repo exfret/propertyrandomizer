@@ -414,6 +414,7 @@ gutils.make_orand = function(graph, edge_key)
     local normal_node_keys = {
         ["type"] = true,
         ["name"] = true,
+        ["op"] = true,
         ["pre"] = true,
         ["dep"] = true,
         ["num_pre"] = true,
