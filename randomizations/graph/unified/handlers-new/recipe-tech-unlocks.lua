@@ -15,7 +15,7 @@ recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
         local tech_node = graph.nodes[random_edge.start]
         if not tech_to_claimed[tech_node.name] then
             tech_to_claimed[tech_node.name] = true
-            return 4
+            return 1
         else
             return 1
         end

@@ -90,11 +90,6 @@ spoiling.reflect = function(graph, head_to_base, head_to_handler)
                 local base_owner = gutils.get_owner(graph, base)
                 local item = dutils.get_prot("item", base_owner.name)
                 local spoil_result = head_owner.name
-                log(serpent.block({
-                    item = item,
-                    spoil_result = spoil_result,
-                    spoil_ticks = head.spoil_ticks
-                }))
                 table.insert(item_new_spoil, {
                     item = item,
                     spoil_result = spoil_result,

@@ -40,6 +40,7 @@ config.unified = {
     ["spoiling"] = true,
     ["tech-prereqs"] = true,
     ["tech-science-packs"] = true,
+    ["entity-autoplace"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -49,6 +50,7 @@ for id, _ in pairs(config.unified) do
     end
     randomization_info.options.unified[id] = {
         blacklisted_pre = {},
+        blacklisted_dep = {},
     }
 end
 
@@ -79,6 +81,11 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
     -- GRAPH PREP
     ----------------------------------------------------------------------------------------------------
+
+    -- First, save old data
+    -- We can't call this old_data_raw because that's for the *very* initial data
+    -- Make it a global so we don't have to pass it everywhere
+    unified_starting_data_raw = table.deepcopy(data.raw)
 
     -- data.raw preprocessing if necessary
     for _, handler in pairs(handlers) do
@@ -139,6 +146,9 @@ unified.execute = function()
                         local num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre]) or 0
                         -- Make sure this connection isn't blacklisted for this handler
                         if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
+                            num_copies = 0
+                        end
+                        if randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] then
                             num_copies = 0
                         end
 
@@ -287,7 +297,7 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     -- Check if all of key1 node's context inds are before all of key2 node's
-    local function all_contexts_reachable(key1, key2)
+    local function all_contexts_reachable(key1, key2, ignore_nil_contexts)
         if sort_for_pool.node_to_context_inds[key1] == nil then
             log(key1)
             error("Key invalid")
@@ -303,6 +313,9 @@ unified.execute = function()
             for context, _ in pairs(logic.contexts) do
                 local index1 = sort_for_pool.node_to_context_inds[key1][context]
                 local index2 = sort_for_pool.node_to_context_inds[key2][context]
+                if ignore_nil_contexts and (index1 == nil or index2 == nil) then
+                    return true
+                end
                 if index1 == nil and index2 ~= nil then
                     return false
                 end
@@ -322,8 +335,13 @@ unified.execute = function()
         end
 
         for context, _ in pairs(logic.contexts) do
-            local index1 = sort_for_pool.node_to_context_inds[key1][context] or (#sort_for_pool.sorted + 1)
-            local index2 = sort_for_pool.node_to_context_inds[key2][context] or (#sort_for_pool.sorted + 2)
+            local index1 = sort_for_pool.node_to_context_inds[key1][context]
+            local index2 = sort_for_pool.node_to_context_inds[key2][context]
+            if ignore_nil_contexts and (index1 == nil or index2 == nil) then
+                return true
+            end
+            index1 = index1 or (#sort_for_pool.sorted + 1)
+            index2 = index2 or (#sort_for_pool.sorted + 2)
             if not (index1 < index2) then
                 return false
             end
@@ -421,12 +439,14 @@ unified.execute = function()
     end
 
     local function get_context_reachable(base, head)
+        local ignore_nil_contexts = head_to_handler[key(head)].ignore_nil_contexts
+
         if not DO_FIRST_PASS then
-            return all_contexts_reachable(key(base), key(head))
+            return all_contexts_reachable(key(base), key(head), ignore_nil_contexts)
         else
             local base_owner = gutils.get_owner(random_graph, base)
             local head_owner = gutils.get_owner(random_graph, head)
-            return all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner))
+            return all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner), ignore_nil_contexts)
         end
     end
 
@@ -481,14 +501,13 @@ unified.execute = function()
 
                 is_context_reachable = get_context_reachable(base, head)
 
-                local check_not_used = true--not (SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks")
-                if not (check_not_used and used_prereq_inds[ind]) and is_context_reachable then
+                if not used_prereq_inds[ind] and is_context_reachable then
                     -- Have head's handler validate this base
 
                     if head_to_handler[head_key].validate(random_graph, base, head, {
                         init_sort = sort_for_claiming, -- Needed for tech rando
                     }) then
-                        log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)))
+                        log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
                         head_to_handler[head_key].process(random_graph, base, head)
                         found_prereq = true
                         used_prereq_inds[ind] = true
