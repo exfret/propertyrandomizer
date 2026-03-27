@@ -164,6 +164,12 @@ stage.weight = function()
     -- Build dependent edges (reverse of prereq edges)
     for item_name, node in pairs(item_graph) do
         for pre, _ in pairs(node.pre) do
+            if item_graph[pre] == nil then
+                log(item_name)
+                log(pre)
+                error("Item with nonexistent ingredient.")
+            end
+
             item_graph[pre].dep[item_name] = true
         end
     end
