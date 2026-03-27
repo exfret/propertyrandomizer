@@ -112,7 +112,7 @@ local space_age_sensitive_recipes = {
     ["holmium-solution"] = true,
     ["holmium-plate"] = true,
     ["lithium-plate"] = true,
-    -- For space
+    -- For asteroids
     ["firearm-magazine"] = true,
 }
 if mods["space-age"] then

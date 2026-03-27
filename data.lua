@@ -1,3 +1,6 @@
+--require("prototype/steam-drill")
+--require("prototype/void-lab")
+
 data:extend({
     -- Key sequence for returning to nauvis
     {
