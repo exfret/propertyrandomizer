@@ -9,6 +9,7 @@ randomization_info = {
     touched = {},
     -- Options communicated from config or elsewhere
     options = {
+        cost = {},
         logic = {},
         unified = {},
     },

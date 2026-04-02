@@ -1,13 +1,9 @@
 CURRENTLY ON:
- * First pass sort
+ * execute-new handler options
+    * Decide on options for prereqs that handlers can opt in and out of
+    * Don't share prereq pools
+ * Extracting dependency graph library
+ * First pass sort improvements
     * Better compatibility tests (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)
     * Write context switching wiki page
-    * Define mechanics nodes in logic
     * Add more testing/logging?
- * Work on explorer?
-    * Explain the square to select prototypes
-    * More gaps/padding
-    * Resize home/explorer tab main flows to take up whole window
-    * Right clicking on prototype causes crash
-    * Close button
-    * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172

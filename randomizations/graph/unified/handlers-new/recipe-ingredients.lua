@@ -7,6 +7,20 @@ local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
 
+-- Don't randomize if the ing is in the results, or if it's already specified not to be randomized
+-- TODO: Need to figure out how to signal not randomizing a specific ing, and how to do multiple ings at once in general
+--[[local function is_unrandomized_ing(ing, is_result_of_this_recipe)
+    -- If this is special in any way, don't randomize
+    if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
+        return true
+    end
+    if dont_randomize_ings[ing.type .. "-" .. ing.name] then
+        return true
+    end
+
+    return false
+end]]
+
 -- Include 10 copies first time, 3 copies each one after
 local already_duped = {}
 recipe_ingredients.claim = function(graph, prereq, dep, edge)

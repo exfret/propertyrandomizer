@@ -276,7 +276,17 @@ data:extend({
         localised_name = "",
         localised_description = "",
         default_value = false,
-        order = "e-g[entity-with-autoplace]",
+        order = "e-g[entity-autoplace]",
+        hidden = true
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-recipe-ingredients",
+        localised_name = "",
+        localised_description = "",
+        default_value = false,
+        order = "e-h[recipe-ingredients]",
         hidden = true
     },
     {

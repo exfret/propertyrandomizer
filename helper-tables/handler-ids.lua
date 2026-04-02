@@ -6,4 +6,5 @@ return { -- Finished unified randomizations
     "entity-operation-fluid",
     "mining-fluid-required",
     "entity-autoplace",
+    "recipe-ingredients",
 }
