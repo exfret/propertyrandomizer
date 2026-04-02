@@ -16,9 +16,11 @@ gutils.key = function(node_type, node_name)
         if node_type == nil then
             error("Nil node type for key")
         end
-        if type(node_type) ~= "table" then
+        -- We need to test for userdata in the case of API objects during control stage
+        if type(node_type) ~= "table" and type(node_type) ~= "userdata" then
+            log(type(node_type))
             log(node_type)
-            log("Node passed for key not a table")
+            error("Node passed for key not a table")
         end
         return gutils.key(node_type.type, node_type.name)
     end

@@ -479,23 +479,25 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
         explorer_dropdowns = prot_choice.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
         explorer_dropdowns.clear()
 
-        local node = graph.nodes[gutils.key(prot_choice.elem_type, prot_choice.elem_value)]
-        local root_flow = explorer_dropdowns.add({type = "flow", name = "randomizer-explorer-dropdowns-root", direction = "horizontal"})
-        local amount
-        if node.type == "recipe" or node.type == "item" or node.type == "fluid" then
-            amount = 1
-        end
-        local root_checkbox = expand_prereq_dropdown(root_flow, event.player_index, node, {amount = amount})
+        if prot_choice.elem_value ~= nil then
+            local node = graph.nodes[gutils.key(prot_choice.elem_type, prot_choice.elem_value)]
+            local root_flow = explorer_dropdowns.add({type = "flow", name = "randomizer-explorer-dropdowns-root", direction = "horizontal"})
+            local amount
+            if node.type == "recipe" or node.type == "item" or node.type == "fluid" then
+                amount = 1
+            end
+            local root_checkbox = expand_prereq_dropdown(root_flow, event.player_index, node, {amount = amount})
 
-        -- Return in case root_checkbox is nil due to it being a weird entity like half-diagonal rails
-        -- We should fix this bug in a better way in the future
-        if root_checkbox == nil then
-            return
-        end
+            -- Return in case root_checkbox is nil due to it being a weird entity like half-diagonal rails
+            -- We should fix this bug in a better way in the future
+            if root_checkbox == nil then
+                return
+            end
 
-        -- Do an initial expansion to reveal first prereqs, though we'll need to spoof the event
-        root_checkbox.state = true
-        expand_node_dropdown({player_index = event.player_index, element = root_checkbox}, node)
+            -- Do an initial expansion to reveal first prereqs, though we'll need to spoof the event
+            root_checkbox.state = true
+            expand_node_dropdown({player_index = event.player_index, element = root_checkbox}, node)
+        end
     end
 end)
 

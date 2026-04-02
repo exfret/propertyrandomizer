@@ -18,13 +18,13 @@ For bugs/fixes rather than features, see bugs.txt
  * Document that ability to mine fluid ("uranium mining") is researched from start
  * Limits setting
     * Go through orb and dosh run to see what needs to be changed with regards to limitation
- * Tech trigger handler
+ * Tech trigger handler randomization
  * Presets to guide player away from "ultimate chaos"
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
  * Listen for GUI changes and change randomizer panel scale based on that (and clean up GUI code in general)
- * Move contexts to logic utils
+ * Move contexts to logic utils (or even context-utils?)
  * Reorganize new-lib better, in particular separate graph lib and sort lib as that part is growing too large (and maybe figure out where an "important node decider"/other graph logical analysis would go)
- * Progression nodes/ability to decide when a node/pebble is important
+ * Progression nodes/ability to decide when a node/pebble is "important"
  * Starting "windmill" to get over initial problematic power hump; maybe something for space hump as well?
  * Support additional_categories for recipes in logic
  * Logic for not being able to handcraft in space (if not already there)
@@ -32,3 +32,10 @@ For bugs/fixes rather than features, see bugs.txt
  * Only add automatable for resource mining if it's by a mining drill
  * Fix connection logic that adds contexts to a node once it's connected in first pass (not quite correct)
  * Don't use balance nodes in control phase reachability checks
+ * Work on explorer:
+    * Explain the square to select prototypes
+    * More gaps/padding
+    * Resize home/explorer tab main flows to take up whole window
+    * Right clicking on prototype causes crash
+    * Close button
+    * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172

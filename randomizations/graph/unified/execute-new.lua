@@ -468,25 +468,6 @@ unified.execute = function()
             end
             for ind = starting_ind, #shuffled_prereqs do
                 local base_key = shuffled_prereqs[ind]
-            --for ind, base_key in pairs(shuffled_prereqs) do
-                -- CRITICAL TODO: Just delete this if it turns out not to be relevant in the future
-                --    It didn't really work out to do what I wanted to do anyways
-                -- If first pass is chosen and the setting is on, switch out prereqs for the new head attached to their slot
-                -- This doesn't preserve the edge info well, but I trust we only need the head's edge info anyways
-                -- CRITICAL TODO: Investigate/add test to make sure I don't get this confused
-                --[=[if DO_FIRST_PASS and SWITCH_PREREQS_TO_TRAV then
-                    local old_base = random_graph.nodes[base_key]
-                    local slot = gutils.get_owner(random_graph, old_base)
-                    local trav = first_pass_info.graph.nodes[first_pass_info.slot_to_trav[key(slot)]]
-                    local new_base_owner = random_graph.nodes[trav.old_slot]
-                    -- Make base an arbitrary base for this
-                    for _, depnode in pairs(gutils.depnodes(random_graph, new_base_owner)) do
-                        if depnode.type == "base" then
-                            base_key = key(depnode)
-                            break
-                        end
-                    end
-                end]=]
 
                 local is_context_reachable = false
                 local base = random_graph.nodes[base_key]

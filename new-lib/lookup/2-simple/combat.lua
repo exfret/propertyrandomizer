@@ -37,8 +37,7 @@ stage.damage_type_sources = function()
         if damage_type_sources[damage_type] == nil then
             damage_type_sources[damage_type] = {}
         end
-        if damage_type_sources[damage_type][source_key] == nil or
-           damage_type_sources[damage_type][source_key].amount < amount then
+        if damage_type_sources[damage_type][source_key] == nil or damage_type_sources[damage_type][source_key].amount < amount then
             damage_type_sources[damage_type][source_key] = {
                 amount = amount,
                 source_type = source_type,
