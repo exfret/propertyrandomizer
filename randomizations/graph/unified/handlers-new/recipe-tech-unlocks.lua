@@ -19,7 +19,7 @@ recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
             tech_to_claimed[tech_node.name] = true
             return 1
         else
-            return 1
+            return 0
         end
     end
 end

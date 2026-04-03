@@ -18,7 +18,7 @@ local autoplace_blacklist_types = {
 
 entity_autoplace.id = "entity_autoplace"
 
-entity_autoplace.with_replacement = true
+entity_autoplace.with_replacement = false
 
 entity_autoplace.ignore_nil_contexts = true
 
@@ -32,14 +32,14 @@ entity_autoplace.claim = function(graph, prereq, dep_node, edge)
         local entity = dutils.get_prot("entity", dep_node.name)
         -- If autoplace is mysteriously nil, return
         if entity.autoplace == nil then
-            return 0
+            return false
         end
         if autoplace_blacklist_types[entity.type] then
-            return 0
+            return false
         end
         -- Don't allow sensitive things that unlock techs from being mined to be randomized, since we can't guarantee they'll actually show up due to collision box issues
         if lookups.entities_with_mine_tech_unlocks[entity.name] then
-            return 0
+            return false
         end
 
         -- Prereq limited rando
