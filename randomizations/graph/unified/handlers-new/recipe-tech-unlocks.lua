@@ -4,6 +4,8 @@ local recipe_tech_unlocks = {}
 
 recipe_tech_unlocks.id = "recipe_tech_unlocks"
 
+recipe_tech_unlocks.with_replacement = true
+
 local tech_to_claimed = {}
 recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
     if prereq.type == "recipe-tech-unlock" and dep.type == "recipe" then

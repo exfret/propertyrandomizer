@@ -7,6 +7,8 @@ local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
 
+recipe_ingredients.with_replacement = true
+
 -- Don't randomize if the ing is in the results, or if it's already specified not to be randomized
 -- TODO: Need to figure out how to signal not randomizing a specific ing, and how to do multiple ings at once in general
 --[[local function is_unrandomized_ing(ing, is_result_of_this_recipe)

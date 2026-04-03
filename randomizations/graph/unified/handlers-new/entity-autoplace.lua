@@ -18,6 +18,8 @@ local autoplace_blacklist_types = {
 
 entity_autoplace.id = "entity_autoplace"
 
+entity_autoplace.with_replacement = true
+
 entity_autoplace.ignore_nil_contexts = true
 
 entity_autoplace.spoof = function(graph)
