@@ -1,9 +1,11 @@
 -- No overlapping ingredients for smelting categories
 -- Account for limited fluidboxes
 -- CRITICAL TODO: Later, also account for costs maybe
--- This is currently very sensitive for some reason
+-- CRITICAL TODO: Figure out things that should stick to crafting category, if any (ask discord maybe)
+-- CRITICAL TODO: Blacklist some categories, like rocket part (be generic; so rocket silo categories in general)
 
 -- Furnaces don't get many recipes; I tried fixing but was unsuccessful
+-- NOTE: Furnaces fixed! I did it! I'm so great!
 -- TODO: Maybe weird context things are happening based on when something is available on another planet...
 
 local gutils = require("new-lib/graph/graph-utils")
@@ -22,8 +24,6 @@ recipe_category.with_replacement = true
 
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
 local claimed_category = {}
-local normal_claims = 3
-local bonus_claims_first_time = 20
 recipe_category.claim = function(graph, prereq, dep, edge)
     -- Just don't claim fixed recipes, or hidden recipes
 
@@ -35,11 +35,10 @@ recipe_category.claim = function(graph, prereq, dep, edge)
             local recipe_prot = lu.recipes[dep.name]
             if not recipe_prot.hidden then
                 if claimed_category[prereq.name] then
-                    -- I didn't like 3 claims each time, but it was failing a lot before then for some reason
-                    return normal_claims
+                    return 0
                 else
                     claimed_category[prereq.name] = true
-                    return normal_claims + bonus_claims_first_time
+                    return 1
                 end
             end
         end

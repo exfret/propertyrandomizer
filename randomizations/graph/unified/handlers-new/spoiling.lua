@@ -12,7 +12,8 @@ local spoiling = {}
 
 spoiling.id = "spoiling"
 
-spoiling.with_replacement = true
+-- One prereq can't spoil into multiple things
+spoiling.with_replacement = false
 
 local function shouldnt_spoil(item)
     if item.hidden == true then

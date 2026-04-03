@@ -145,23 +145,23 @@ unified.execute = function()
                     local prereq_node = gutils.prenode(subdiv_graph, pre)
                     -- Get the "true" node in case node is an orand
                     local orand_parent = subdiv_graph.nodes[subdiv_graph.orand_to_parent[node_key]]
-                    local claimed = false
+                    local claimed_by
 
                     for handler_id, handler in pairs(handlers) do
-                        local num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre]) or 0
+                        local num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
                         -- Make sure this connection isn't blacklisted for this handler
                         if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
-                            num_copies = 0
+                            num_copies = false
                         end
                         if randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] then
-                            num_copies = 0
+                            num_copies = false
                         end
 
-                        if num_copies > 0 then
-                            if claimed then
-                                error("Multiple handlers claiming the same edge")
+                        if num_copies then
+                            if claimed_by ~= nil then
+                                error("Multiple handlers claiming the same edge: " .. claimed_by .. " AND " .. handler_id)
                             end
-                            claimed = true
+                            claimed_by = handler_id
                             table.insert(subdivide_info, {
                                 edge_key = pre,
                                 handler = handler,
@@ -176,9 +176,11 @@ unified.execute = function()
                     table.insert(dep_to_heads[node_key], key(conns.head))
                     head_to_handler[key(conns.head)] = info.handler
                     -- Add the base as the "prereqs"
-                    table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
-                    for i = 2, info.num_copies do
-                        table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
+                    if info.num_copies > 0 then
+                        table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
+                        for i = 2, info.num_copies do
+                            table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
+                        end
                     end
                 end
             end
