@@ -6,7 +6,11 @@ recipe_tech_unlocks.id = "recipe_tech_unlocks"
 
 recipe_tech_unlocks.with_replacement = true
 
-local tech_to_claimed = {}
+local tech_to_claimed
+recipe_tech_unlocks.initialize = function()
+    tech_to_claimed = {}
+end
+
 recipe_tech_unlocks.claim = function(graph, prereq, dep, edge)
     if prereq.type == "recipe-tech-unlock" and dep.type == "recipe" then
         -- Just get a random tech

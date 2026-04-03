@@ -7,8 +7,12 @@ tech_prereqs.id = "tech_prereqs"
 tech_prereqs.with_replacement = true
 
 -- Check if we've already added bonus prereqs to a technology
-local is_added_tech = {}
-local bonus_times = 1
+local is_added_tech
+local bonus_times
+tech_prereqs.initialize = function()
+    is_added_tech = {}
+    bonus_times = 1
+end
 
 tech_prereqs.claim = function(graph, prereq, dep, edge)
     if prereq.type == "technology" and dep.type == "technology" then

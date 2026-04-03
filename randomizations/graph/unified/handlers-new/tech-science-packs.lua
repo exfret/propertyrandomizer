@@ -6,6 +6,11 @@ tech_science_packs.id = "tech_science_packs"
 
 tech_science_packs.with_replacement = true
 
+tech_science_packs.initialize = function()
+    is_added_tech = {}
+    bonus_times = 1
+end
+
 tech_science_packs.claim = function(graph, prereq, dep, edge)
     if prereq.type == "science-pack-set-science" and dep.type == "technology" then
         local tech = data.raw.technology[dep.name]

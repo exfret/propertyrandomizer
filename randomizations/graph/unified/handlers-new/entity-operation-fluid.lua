@@ -10,6 +10,11 @@ entity_operation_fluid.id = "entity_operation_fluid"
 
 entity_operation_fluid.with_replacement = true
 
+local already_added_extra
+entity_operation_fluid.initialize = function()
+    already_added_extra = {}
+end
+
 entity_operation_fluid.spoof = function(graph)
     local spoof_node = gutils.add_node(graph, "entity-operate-fluid", "any-fluids-spoof")
     spoof_node.op = "OR"
@@ -30,8 +35,6 @@ entity_operation_fluid.spoof = function(graph)
         end
     end
 end
-
-local already_added_extra = {}
 
 entity_operation_fluid.claim = function(graph, prereq, dep, edge)
     if prereq.type == "fluid" and dep.type == "entity-operate-fluid" then

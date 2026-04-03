@@ -39,6 +39,10 @@ flow_cost.find_amount_in_entry = function(ing_or_prod)
 end
 
 flow_cost.find_amount_in_ing_or_prod = function(ing_or_prod_list, material)
+    if type(material) ~= "table" then
+        error("Actual material expected; material ID or something else passed.")
+    end
+
     local material_type = "item"
     if material.type == "fluid" then
         material_type = "fluid"

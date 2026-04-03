@@ -4,6 +4,7 @@ default.id = "default"
 
 default.required = {
     ["with_replacement"] = true,
+    ["initialize"] = true,
     ["claim"] = true,
     ["validate"] = true,
     ["reflect"] = true,
@@ -23,6 +24,10 @@ default.with_replacement = true
 -- NOTE: I forget how it was "broken" but I think it was something to do with direct connections to rooms
 default.ignore_nil_contexts = false
 
+-- For setting local module vars back to defaults
+default.initialize = function()
+end
+
 default.preprocess = function()
 end
 
@@ -33,12 +38,16 @@ end
 -- Returns a num_copies of each prereq/base to add (usually 1); falsey returns mean "not claimed"
 -- Having num_copies more than one adds more prereqs to the pool for flexibility or to bias the pool one way
 -- These extra copies are currently just added to the end rather than mixed in uniformly
--- The number 0 can be returned, in which case a new prereq won't be added, but the dep_node will still be counted as claimed/randomizable
+-- The number 0 can be returned, in which case a new prereq won't be added, but dep will still be counted as claimed/randomizable
 -- The edge parameter is just to carry the edge's extra_info, if any
-default.claim = function(graph, prereq, dep_node, edge)
+default.claim = function(graph, prereq, dep, edge)
 end
 
--- Mandatory
+-- Allows for defining a function for the handler to do the prereq search on a dependent themselves
+-- Required for more advanced handlers like the one for recipe ingredients
+default.custom_prereq_search = false
+
+-- Mandatory (though can be empty for handlers with custom prereq searches)
 default.validate = function(graph, base, head, extra)
 end
 

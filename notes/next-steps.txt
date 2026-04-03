@@ -1,6 +1,9 @@
 CURRENTLY ON:
  * execute-new handler options
+    * Write context switching to describe problems I'm having to others better
+    * Support for recipe blacklisted pre again
     * Move recipe tech unlock node rando back so that prereqs are actual techs
+    * First pass specific blacklist
  * Extracting dependency graph library
  * First pass sort improvements
     * Better compatibility tests (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)

@@ -32,6 +32,7 @@ For bugs/fixes rather than features, see bugs.txt
  * Only add automatable for resource mining if it's by a mining drill
  * Fix connection logic that adds contexts to a node once it's connected in first pass (not quite correct)
  * Don't use balance nodes in control phase reachability checks
+ * Enforce .nodes and .edges access?
  * Work on explorer:
     * Explain the square to select prototypes
     * More gaps/padding
