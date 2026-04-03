@@ -31,7 +31,6 @@ local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
 local REPORT_SLOTS_FAILED = false
-local REPORT_FAILED_CANCELLATIONS = true
 
 local rng = require("lib/random/rng")
 -- Used for contexts
@@ -42,30 +41,6 @@ local top = require("new-lib/graph/consistent-sort")
 local test_graph_invariants = require("tests/graph-invariants")
 
 local key = gutils.key
-
--- Ad hoc node blacklist to help with testing
-local NODE_BLACKLIST = {
---[[
-    [key("recipe", "stone-furnace")] = true,
-    [key("recipe", "iron-plate")] = true,
-    [key("recipe", "copper-plate")] = true,
-    [key("recipe", "automation-science-pack")] = true,
-    [key("recipe", "lab")] = true,
-    [key("recipe", "boiler")] = true,
-    [key("recipe", "steam-engine")] = true,
-    [key("recipe", "small-electric-pole")] = true,
-    [key("recipe", "offshore-pump")] = true,
-    [key("technology", "automation-science-pack")] = true,
-    [key("technology", "steam-power")] = true,
-    [key("technology", "electronics")] = true,
-    [key("recipe-tech-unlock", "automation-science-pack")] = true,
-    [key("recipe-tech-unlock", "small-electric-pole")] = true,
-    [key("recipe-tech-unlock", "lab")] = true,
-    [key("recipe-tech-unlock", "boiler")] = true,
-    [key("recipe-tech-unlock", "steam-engine")] = true,
-    [key("recipe-tech-unlock", "offshore-pump")] = true,
-]]
-}
 
 local first_pass = {}
 
@@ -87,9 +62,6 @@ first_pass.execute = function(params)
     local init_sort = top.sort(spoofed_graph)
 
     local function valid_node_for_first_pass(node_key)
-        if NODE_BLACKLIST[node_key] then
-            return false
-        end
         -- Just check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
         local subdiv_node = subdiv_graph.nodes[node_key]
         if subdiv_node.spoof then
@@ -643,6 +615,8 @@ first_pass.execute = function(params)
             local trav_key = key(trav)
             if trav_to_slot[trav_key] == nil then
                 log(trav_key)
+                log(trav_absolute_reachable(trav))
+                log(trav_vanilla_reachable(trav))
             end
         end
         log("\nFirst pass failed at " .. tostring(math.floor(100 * i / #slot_inds)) .. "%\n")
@@ -689,6 +663,7 @@ first_pass.execute = function(params)
 
                     -- Should we do a completely ordered traversal?
                     if DO_SLOTS_IN_ORDER and slot_to_trav[slot_key] == nil then
+                        log("COULD NOT FIND TRAV FOR " .. slot_key)
                         break
                     end
                 end
@@ -723,14 +698,7 @@ first_pass.execute = function(params)
                     end
 
                     if not found_reservation then
-                        if REPORT_FAILED_CANCELLATIONS then
-                            for _, slot in pairs(reserved_slots) do
-                                log(key(slot))
-                                log(slot_to_trav[key(slot)])
-                            end
-                            log("FAILED CANCELLATION")
-                        end
-
+                        log("FAILED CANCELLATION")
                         fulfill_reservation(1)
                         update_reservations()
                     end

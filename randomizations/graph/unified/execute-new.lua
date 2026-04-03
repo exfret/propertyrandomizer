@@ -10,11 +10,20 @@ local DO_FIRST_PASS = true
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
-local DO_TESTS = true
+-- TODO: Speed up tests! Currently they take a long time
+local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 -- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
 local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
 local SWITCH_PLANETS = false
+
+-- 0 means nothing except on errors (in case I decide to stop polluting log in the future), 1 means default/important things, 2 means lots
+local LOGGING_LEVEL = 2
+local function log_info(level, info)
+    if LOGGING_LEVEL >= level then
+        log(info)
+    end
+end
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -55,7 +64,7 @@ end
 
 unified.execute = function()
     ----------------------------------------------------------------------------------------------------
-    -- HANDLER LOADING
+    log_info(2, "HANDLER LOADING")
     ----------------------------------------------------------------------------------------------------
 
     -- Load handlers
@@ -63,6 +72,7 @@ unified.execute = function()
     local handlers = {}
     for _, handler_id in pairs(handler_ids) do
         local handler = require("randomizations/graph/unified/handlers-new/" .. handler_id)
+        handler.initialize()
 
         for prop, val in pairs(default_handler) do
             if handler[prop] == nil then
@@ -78,7 +88,7 @@ unified.execute = function()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- GRAPH PREP
+    log_info(2, "GRAPH PREP")
     ----------------------------------------------------------------------------------------------------
 
     -- First, save old data
@@ -107,10 +117,11 @@ unified.execute = function()
     test_graph_invariants.test(spoofed_graph)
 
     ----------------------------------------------------------------------------------------------------
-    -- CLAIMING
+    log_info(2, "CLAIMING")
     ----------------------------------------------------------------------------------------------------
 
     local sort_for_claiming = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
+    log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.sorted))
     local subdiv_graph = table.deepcopy(spoofed_graph)
 
     local added_to_deps = {}
@@ -122,6 +133,11 @@ unified.execute = function()
         -- handler.id can actually be gotten from the handler alone though, which is why we use it
         handler_to_shuffled_prereqs[handler.id] = {}
         handler_to_post_shuffled_prereqs[handler.id] = {}
+    end
+    -- To help the aforementioned discrepancy, create a way to get the handler from handler.id
+    local handler_id_to_handler = {}
+    for _, handler in pairs(handlers) do
+        handler_id_to_handler[handler.id] = handler
     end
     local dep_to_heads = {}
     local head_to_handler = {}
@@ -209,7 +225,7 @@ unified.execute = function()
     test_graph_invariants.test(cut_graph)
 
     ----------------------------------------------------------------------------------------------------
-    -- CALCULATE POOLS
+    log_info(2, "CALCULATE POOLS")
     ----------------------------------------------------------------------------------------------------
 
     local pool_graph = table.deepcopy(cut_graph)
@@ -224,7 +240,7 @@ unified.execute = function()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- FIRST PASS
+    log_info(2, "FIRST PASS")
     ----------------------------------------------------------------------------------------------------
 
     local first_pass_info
@@ -300,7 +316,7 @@ unified.execute = function()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- CONTEXT REACHABILITY
+    log_info(2, "CONTEXT REACHABILITY")
     ----------------------------------------------------------------------------------------------------
 
     -- Check if all of key1 node's context inds are before all of key2 node's
@@ -383,56 +399,21 @@ unified.execute = function()
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- SHUFFLE
+    log_info(2, "SHUFFLE")
     ----------------------------------------------------------------------------------------------------
 
     local random_graph = table.deepcopy(cut_graph)
 
-    -- With special tech unlock validation, put them in reverse order
-    --[[ local not_shuffled_post_shuffled_prereqs = {}
-    local techs_with_tech_unlock_added = {}
-    if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
-        for i = #shuffled_prereqs, 1, -1 do
-            local prereq_node = subdiv_graph.nodes[shuffled_prereqs[i] ]
-            local prereq_owner = gutils.get_owner(subdiv_graph, prereq_node)
-            if prereq_owner.type == "recipe-tech-unlock" then
-                -- Make each tech equally likely-ish to unlock a recipe now
-                local add_to_tech_unlock_list = true
-                if prereq_owner.num_pre == 1 then
-                    -- Need to do twice to get past orand
-                    local tech_node = gutils.unique_prenode(subdiv_graph, gutils.unique_prenode(subdiv_graph, prereq_owner))
-                    if techs_with_tech_unlock_added[tech_node.name] then
-                        add_to_tech_unlock_list = false
-                    else
-                        techs_with_tech_unlock_added[tech_node.name] = true
-                    end
-                end
-                if add_to_tech_unlock_list then
-                    -- Bias toward later unlocks by adding more of them
-                    local bias_num = 4
-                    for j = 1, bias_num * math.ceil(i / #shuffled_prereqs) do
-                        table.insert(not_shuffled_post_shuffled_prereqs, key(prereq_node))
-                    end
-                end
-                table.remove(shuffled_prereqs, i)
-            end
-        end
-    end]]
     for _, handler in pairs(handlers) do
         rng.shuffle(rng.key({id = "unified"}), handler_to_shuffled_prereqs[handler.id])
         rng.shuffle(rng.key({id = "unified"}), handler_to_post_shuffled_prereqs[handler.id])
         for _, prereq in pairs(handler_to_post_shuffled_prereqs[handler.id]) do
             -- CRITICAL TODO: Might need to add back; currently disables adding a prereq multiple times
-            --table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
+            if handler.with_replacement == false then
+                --table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
+            end
         end
     end
-    --[[local not_shuffled_post_shuffled_prereqs_start = #shuffled_prereqs + 1
-    if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
-        rng.shuffle(rng.key({id = "unified"}), not_shuffled_post_shuffled_prereqs)
-        for _, prereq in pairs(not_shuffled_post_shuffled_prereqs) do
-            table.insert(shuffled_prereqs, prereq)
-        end
-    end]]
 
     -- CRITICAL TODO: Tech delinearization (pull out to a helper)
 
@@ -473,61 +454,75 @@ unified.execute = function()
             end
             log("\nRandomizing " .. dep .. " (" .. context_str .. ")")
         end
+
+        local handler_to_heads = {}
+
         for _, head_key in pairs(dep_to_heads[dep]) do
+            local head = random_graph.nodes[head_key]
             local found_prereq = false
-            local starting_ind = 1
-            --[[if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks" then
-                starting_ind = not_shuffled_post_shuffled_prereqs_start
-            end]]
             local handler_id = head_to_handler[head_key].id
             local shuffled_prereqs = handler_to_shuffled_prereqs[handler_id]
-            for ind = starting_ind, #shuffled_prereqs do
-                local base_key = shuffled_prereqs[ind]
 
-                local is_context_reachable = false
-                local base = random_graph.nodes[base_key]
-                local head = random_graph.nodes[head_key]
+            -- Check for custom handling, which will be done later
+            if head_to_handler[head_key].custom_prereq_search ~= false then
+                handler_to_heads[handler_id] = handler_to_heads[handler_id] or {}
+                table.insert(handler_to_heads[handler_id], head_key)
+            else
+                for ind = 1, #shuffled_prereqs do
+                    local base_key = shuffled_prereqs[ind]
+                    local base = random_graph.nodes[base_key]
 
-                -- TEST: Check for nil base or head
-                if base == nil or head == nil then
-                    log(base_key)
-                    log(head_key)
-                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
-                end
+                    -- TEST: Check for nil base or head
+                    if base == nil or head == nil then
+                        log(base_key)
+                        log(head_key)
+                        error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                    end
 
-                is_context_reachable = get_context_reachable(base, head)
+                    local is_context_reachable = get_context_reachable(base, head)
 
-                if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
-                    -- Have head's handler validate this base
+                    if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
+                        -- Have head's handler validate this base
 
-                    if head_to_handler[head_key].validate(random_graph, base, head, {
-                        init_sort = sort_for_claiming, -- Needed for tech rando
-                    }) then
-                        log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
-                        head_to_handler[head_key].process(random_graph, base, head)
-                        found_prereq = true
-                        handler_to_used_prereq_inds[handler_id][ind] = true
-                        head_to_base[head_key] = base_key
+                        if head_to_handler[head_key].validate(random_graph, base, head, {
+                            init_sort = sort_for_claiming, -- Needed for tech rando
+                        }) then
+                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
+                            head_to_handler[head_key].process(random_graph, base, head)
+                            found_prereq = true
+                            handler_to_used_prereq_inds[handler_id][ind] = true
+                            head_to_base[head_key] = base_key
 
-                        if head_to_handler[head_key].with_replacement then
-                            table.insert(shuffled_prereqs, base_key)
+                            if head_to_handler[head_key].with_replacement then
+                                table.insert(shuffled_prereqs, base_key)
+                            end
+
+                            break
                         end
-
-                        break
                     end
                 end
+                if not found_prereq then
+                    --log_info(2, serpent.block(shuffled_prereqs))
+                    log(head_key)
+                    local percentage = math.floor(100 * dep_ind / #sorted_deps)
+                    log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
+                    return false
+                end
             end
-            if not found_prereq then
-                log(head_key)
-                local percentage = math.floor(100 * dep_ind / #sorted_deps)
-                log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
-                return false
-            end
+        end
+
+        for handler_id, head_list in pairs(handler_to_heads) do
+            handler_id_to_handler[handler_id].custom_prereq_search({
+                split_graph = first_pass_info.graph,
+                slot_to_trav = first_pass_info.slot_to_trav,
+                trav_to_slot = first_pass_info.trav_to_slot,
+                dep = dep,
+            })
         end
     end
 
     ----------------------------------------------------------------------------------------------------
-    -- REFLECT
+    log_info(2, "REFLECT")
     ----------------------------------------------------------------------------------------------------
 
     for _, handler in pairs(handlers) do

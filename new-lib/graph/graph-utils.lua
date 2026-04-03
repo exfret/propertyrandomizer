@@ -396,6 +396,7 @@ gutils.make_orand = function(graph, edge_key)
     orand.op = "AND"
     graph.node_to_orands[gutils.key(or_node)][gutils.key(orand)] = true
     graph.orand_to_parent[gutils.key(orand)] = gutils.key(or_node)
+    graph.orand_to_child[gutils.key(orand)] = edge.start
 
     local new_edge = gutils.add_edge(graph, edge.start, gutils.key(orand))
     gutils.add_edge(graph, gutils.key(orand), edge.stop)
@@ -435,6 +436,7 @@ gutils.make_orands = function(graph)
     local edges_to_subdivide = {}
     graph.node_to_orands = {}
     graph.orand_to_parent = {}
+    graph.orand_to_child = {}
     for _, node in pairs(graph.nodes) do
         if node.op == "OR" then
             graph.node_to_orands[gutils.key(node)] = {}
@@ -445,6 +447,7 @@ gutils.make_orands = function(graph)
             -- Treat AND nodes as their own ORAND
             graph.node_to_orands[gutils.key(node)] = { gutils.key(node) }
             graph.orand_to_parent[gutils.key(node)] = gutils.key(node)
+            graph.orand_to_child[gutils.key(node)] = gutils.key(node)
         end
     end
     for _, edge_key in pairs(edges_to_subdivide) do

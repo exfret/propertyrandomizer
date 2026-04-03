@@ -3,6 +3,10 @@
 local gutils = require("new-lib/graph/graph-utils")
 local dutils = require("new-lib/data-utils")
 
+-- Used for getting trav name
+local first_pass = require("randomizations/graph/unified/first-pass-new")
+local flow_cost = require("lib/graph/flow-cost")
+
 local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
@@ -23,8 +27,14 @@ recipe_ingredients.with_replacement = true
     return false
 end]]
 
+local recipe_to_new_ings
 -- Include 10 copies first time, 3 copies each one after
-local already_duped = {}
+local already_duped
+recipe_ingredients.initialize = function()
+    recipe_to_new_ings = {}
+    already_duped = {}
+end
+
 recipe_ingredients.claim = function(graph, prereq, dep, edge)
     if (prereq.type == "item" or prereq.type == "fluid") and dep.type == "recipe" then
         local recipe = data.raw.recipe[dep.name]
@@ -43,6 +53,71 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
     end
 end
 
+recipe_ingredients.custom_prereq_search = false --[[= function(params)
+    local split_graph = params.split_graph
+    local slot_to_trav = params.slot_to_trav
+    local trav_to_slot = params.trav_to_slot
+    local dep = params.dep
+
+    local dep_as_slot = split_graph.nodes[dep]
+    recipe_to_new_ings[dep_as_slot.name] = {}
+    local dep_as_trav = split_graph.nodes[dep_as_slot.old_trav]
+    local init_slot = split_graph.nodes[trav_to_slot[gutils.key(dep_as_trav)] ]
+    for _, prenode in pairs(gutils.prenodes(split_graph, init_slot)) do
+        local base = split_graph.nodes[prenode.old_base]
+        local pre_slot = gutils.get_owner(split_graph, base)
+        if pre_slot.type == "fluid" or pre_slot.type == "item" then
+            local create_node = pre_slot
+            if pre_slot.type == "fluid" then
+                for _, prenode2 in pairs(gutils.prenodes(split_graph, pre_slot)) do
+                    if prenode2.type == "fluid-create" then
+                        create_node = prenode2
+                        break
+                    end
+                end
+                if create_node.type ~= "fluid-create" then
+                    error("Could not find create node for fluid")
+                end
+            end
+            local pre_orand
+            for _, prenode2 in pairs(gutils.prenodes(split_graph, create_node)) do
+                if prenode2.type == "orand" then
+                    if prenode2.trav then
+                        prenode2 = split_graph.nodes[prenode2.old_slot]
+                    end
+                    if split_graph.orand_to_child[gutils.key(prenode2)] == nil then
+                        log(gutils.key(prenode2))
+                        error("orand node without child.")
+                    end
+                    local craft_node = split_graph.nodes[split_graph.orand_to_child[gutils.key(prenode2)] ]
+                    if craft_node.type == "item-craft" or craft_node.type == "fluid-craft" then
+                        pre_orand = prenode2
+                        break
+                    end
+                end
+            end
+            if pre_orand == nil then
+                log(gutils.key(pre_slot))
+            else
+                if slot_to_trav[gutils.key(pre_orand)] ~= nil then
+                    local final_node = split_graph.nodes[split_graph.nodes[slot_to_trav[gutils.key(pre_orand)] ].old_slot]
+                    final_node = split_graph.nodes[split_graph.orand_to_parent[gutils.key(final_node)] ]
+                    local amount = flow_cost.find_amount_in_ing_or_prod(data.raw.recipe[init_slot.name].ingredients, pre_slot)
+                    table.insert(recipe_to_new_ings[dep_as_slot.name], {
+                        type = pre_slot.type,
+                        name = final_node.name,
+                        amount = amount,
+                    })
+                    log(gutils.key(final_node))
+                else
+                    log(gutils.key(pre_orand))
+                    log(gutils.key(pre_slot))
+                end
+            end
+        end
+    end
+end]]
+
 recipe_ingredients.validate = function(graph, base, head, extra)
     local base_owner = gutils.get_owner(graph, base)
     if base_owner.type ~= "fluid" and base_owner.type ~= "item" then
@@ -60,6 +135,13 @@ recipe_ingredients.validate = function(graph, base, head, extra)
 end
 
 recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
+    -- Now with the context switching recipe rando, we just set the ingredients
+    --[[for _, recipe in pairs(data.raw.recipe) do
+        if recipe_to_new_ings[recipe.name] ~= nil then
+            recipe.ingredients = recipe_to_new_ings[recipe.name]
+        end
+    end]]
+
     -- Hotfix for now: don't add an ing if it's already been added
     local added_ings = {}
 
@@ -86,6 +168,8 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
 
+    -- Add back unrandomized ings
+    -- CRITICAL TODO: Do we actually need to do this? We might be able to accomplish ingredient restrictions by being careful in first pass
     for recipe_name, inds in pairs(recipe_inds_to_remove) do
         local recipe = data.raw.recipe[recipe_name]
         local new_ings = {}

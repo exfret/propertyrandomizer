@@ -28,6 +28,9 @@ local function shouldnt_spoil(item)
     -- Solution: Added to blacklist
 end
 
+spoiling.initialize = function()
+end
+
 -- We'll probably need spoofing? I'll leave it here because it might become relevant sooner rather than later.
 spoiling.spoof = function(graph)
     local spoof_node = gutils.add_node(graph, "item", "anything-could-spoil-spoof")

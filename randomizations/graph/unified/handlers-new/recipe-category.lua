@@ -2,7 +2,9 @@
 -- Account for limited fluidboxes
 -- CRITICAL TODO: Later, also account for costs maybe
 -- CRITICAL TODO: Figure out things that should stick to crafting category, if any (ask discord maybe)
--- CRITICAL TODO: Blacklist some categories, like rocket part (be generic; so rocket silo categories in general)
+-- CRITICAL TODO: Blacklist some categories, like rocket parts (be generic; so rocket silo categories in general)
+-- CRITICAL TODO: Blacklist recycler from claiming anything? (Also the smelting categories checks maybe aren't checking for non-randomized recipes?)
+-- I think we capture the rocket parts with the fixed recipe check
 
 -- Furnaces don't get many recipes; I tried fixing but was unsuccessful
 -- NOTE: Furnaces fixed! I did it! I'm so great!
@@ -14,24 +16,25 @@ local lu = require("new-lib/lookup/init")
 
 local recipe_category = {}
 
--- TODO: In the future, maybe consider machines with multiple categories
--- For now, let's just check each vanilla category doesn't get multiple of the same single ingredient
-local smelting_cat_to_ings = {}
-
 recipe_category.id = "recipe_category"
 
 recipe_category.with_replacement = true
 
+-- TODO: In the future, maybe consider machines with multiple categories
+-- For now, let's just check each vanilla category doesn't get multiple of the same single ingredient
+local smelting_cat_to_ings
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
-local claimed_category = {}
+local claimed_category
+recipe_category.initialize = function()
+    smelting_cat_to_ings = {}
+    claimed_category = {}
+end
+
 recipe_category.claim = function(graph, prereq, dep, edge)
     -- Just don't claim fixed recipes, or hidden recipes
 
     if prereq.type == "recipe-category" and dep.type == "recipe" then
-        -- If this is a spoof, add it always
-        if dep.spoof then
-            return normal_claims
-        elseif not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
+        if not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
             local recipe_prot = lu.recipes[dep.name]
             if not recipe_prot.hidden then
                 if claimed_category[prereq.name] then

@@ -22,14 +22,22 @@ entity_autoplace.with_replacement = false
 
 entity_autoplace.ignore_nil_contexts = true
 
+-- Used to make sure we only zero out an autoplace once
+local processed_autoplaces
+local processed_entity_autoplace
+entity_autoplace.initialize = function()
+    processed_autoplaces = {}
+    processed_entity_autoplace = {}
+end
+
 entity_autoplace.spoof = function(graph)
     -- TODO? (So that more things can be autoplaced)
 end
 
-entity_autoplace.claim = function(graph, prereq, dep_node, edge)
+entity_autoplace.claim = function(graph, prereq, dep, edge)
     -- TODO: Should there be spoofs?
-    if prereq.type == "room-autoplace" and dep_node.type == "entity" then
-        local entity = dutils.get_prot("entity", dep_node.name)
+    if prereq.type == "room-autoplace" and dep.type == "entity" then
+        local entity = dutils.get_prot("entity", dep.name)
         -- If autoplace is mysteriously nil, return
         if entity.autoplace == nil then
             return false
@@ -57,9 +65,6 @@ entity_autoplace.validate = function(graph, base, head, extra)
     return true
 end
 
--- Used to make sure we only zero out an autoplace once
-local processed_autoplaces = {}
-local processed_entity_autoplace = {}
 entity_autoplace.reflect = function(graph, head_to_base, head_to_handler)
     for head_key, base_key in pairs(head_to_base) do
         if head_to_handler[head_key].id == "entity_autoplace" then
