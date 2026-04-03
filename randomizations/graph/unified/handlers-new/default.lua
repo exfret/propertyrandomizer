@@ -3,14 +3,20 @@ local default = {}
 default.id = "default"
 
 default.required = {
+    ["with_replacement"] = true,
     ["claim"] = true,
     ["validate"] = true,
     ["reflect"] = true,
 }
 
--- Whether to only check non-nil contexts when deciding context reachability
--- Mostly a hotfix for autoplace randomization due to connection logic in new first pass being broken
-default.ignore_nil_contexts = false
+-- Whether to add a prereq back to the end of the list when it's used
+default.with_replacement = true
+
+-- How much later prereqs should be repeated to combat bias toward earlier ones
+-- Makes prereqs in first quartile added once, in second quartile added twice, etc.
+-- CRITICAL TODO: Unimplemented, seeing if needed
+-- Seems like not needed, maybe don't do
+--default.ending_bias = false
 
 default.preprocess = function()
 end

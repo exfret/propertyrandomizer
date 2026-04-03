@@ -10,12 +10,11 @@ local DO_FIRST_PASS = true
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
-local DO_TESTS = false
+local DO_TESTS = true
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 -- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
 local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
 local SWITCH_PLANETS = false
-local REPORT_NUM_TECH_PREREQS = true
 
 local rng = require("lib/random/rng")
 local gutils = require("new-lib/graph/graph-utils")
@@ -116,8 +115,14 @@ unified.execute = function()
 
     local added_to_deps = {}
     local sorted_deps = {}
-    local shuffled_prereqs = {}
-    local post_shuffled_prereqs = {}
+    local handler_to_shuffled_prereqs = {}
+    local handler_to_post_shuffled_prereqs = {}
+    for _, handler in pairs(handlers) do
+        -- Be careful that handler.id is different from handler's key in handlers (one uses underscores the other dashes)
+        -- handler.id can actually be gotten from the handler alone though, which is why we use it
+        handler_to_shuffled_prereqs[handler.id] = {}
+        handler_to_post_shuffled_prereqs[handler.id] = {}
+    end
     local dep_to_heads = {}
     local head_to_handler = {}
     for ind, pebble in pairs(sort_for_claiming.sorted) do
@@ -171,9 +176,9 @@ unified.execute = function()
                     table.insert(dep_to_heads[node_key], key(conns.head))
                     head_to_handler[key(conns.head)] = info.handler
                     -- Add the base as the "prereqs"
-                    table.insert(shuffled_prereqs, key(conns.base))
+                    table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
                     for i = 2, info.num_copies do
-                        table.insert(post_shuffled_prereqs, key(conns.base))
+                        table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
                     end
                 end
             end
@@ -382,11 +387,11 @@ unified.execute = function()
     local random_graph = table.deepcopy(cut_graph)
 
     -- With special tech unlock validation, put them in reverse order
-    local not_shuffled_post_shuffled_prereqs = {}
+    --[[ local not_shuffled_post_shuffled_prereqs = {}
     local techs_with_tech_unlock_added = {}
     if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
         for i = #shuffled_prereqs, 1, -1 do
-            local prereq_node = subdiv_graph.nodes[shuffled_prereqs[i]]
+            local prereq_node = subdiv_graph.nodes[shuffled_prereqs[i] ]
             local prereq_owner = gutils.get_owner(subdiv_graph, prereq_node)
             if prereq_owner.type == "recipe-tech-unlock" then
                 -- Make each tech equally likely-ish to unlock a recipe now
@@ -410,19 +415,22 @@ unified.execute = function()
                 table.remove(shuffled_prereqs, i)
             end
         end
+    end]]
+    for _, handler in pairs(handlers) do
+        rng.shuffle(rng.key({id = "unified"}), handler_to_shuffled_prereqs[handler.id])
+        rng.shuffle(rng.key({id = "unified"}), handler_to_post_shuffled_prereqs[handler.id])
+        for _, prereq in pairs(handler_to_post_shuffled_prereqs[handler.id]) do
+            -- CRITICAL TODO: Might need to add back; currently disables adding a prereq multiple times
+            --table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
+        end
     end
-    rng.shuffle(rng.key({id = "unified"}), shuffled_prereqs)
-    rng.shuffle(rng.key({id = "unified"}), post_shuffled_prereqs)
-    for _, prereq in pairs(post_shuffled_prereqs) do
-        table.insert(shuffled_prereqs, prereq)
-    end
-    local not_shuffled_post_shuffled_prereqs_start = #shuffled_prereqs + 1
+    --[[local not_shuffled_post_shuffled_prereqs_start = #shuffled_prereqs + 1
     if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
         rng.shuffle(rng.key({id = "unified"}), not_shuffled_post_shuffled_prereqs)
         for _, prereq in pairs(not_shuffled_post_shuffled_prereqs) do
             table.insert(shuffled_prereqs, prereq)
         end
-    end
+    end]]
 
     -- CRITICAL TODO: Tech delinearization (pull out to a helper)
 
@@ -451,7 +459,10 @@ unified.execute = function()
     end
 
     local head_to_base = {}
-    local used_prereq_inds = {}
+    local handler_to_used_prereq_inds = {}
+    for _, handler in pairs(handlers) do
+        handler_to_used_prereq_inds[handler.id] = {}
+    end
     for dep_ind, dep in pairs(sorted_deps) do
         if #dep_to_heads[dep] > 0 then
             local context_str = ""
@@ -463,9 +474,11 @@ unified.execute = function()
         for _, head_key in pairs(dep_to_heads[dep]) do
             local found_prereq = false
             local starting_ind = 1
-            if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks" then
+            --[[if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION and head_to_handler[head_key].id == "recipe_tech_unlocks" then
                 starting_ind = not_shuffled_post_shuffled_prereqs_start
-            end
+            end]]
+            local handler_id = head_to_handler[head_key].id
+            local shuffled_prereqs = handler_to_shuffled_prereqs[handler_id]
             for ind = starting_ind, #shuffled_prereqs do
                 local base_key = shuffled_prereqs[ind]
 
@@ -482,7 +495,7 @@ unified.execute = function()
 
                 is_context_reachable = get_context_reachable(base, head)
 
-                if not used_prereq_inds[ind] and is_context_reachable then
+                if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
                     -- Have head's handler validate this base
 
                     if head_to_handler[head_key].validate(random_graph, base, head, {
@@ -491,10 +504,10 @@ unified.execute = function()
                         log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
                         head_to_handler[head_key].process(random_graph, base, head)
                         found_prereq = true
-                        used_prereq_inds[ind] = true
+                        handler_to_used_prereq_inds[handler_id][ind] = true
                         head_to_base[head_key] = base_key
 
-                        if SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION then
+                        if head_to_handler[head_key].with_replacement then
                             table.insert(shuffled_prereqs, base_key)
                         end
 
@@ -506,36 +519,6 @@ unified.execute = function()
                 log(head_key)
                 local percentage = math.floor(100 * dep_ind / #sorted_deps)
                 log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
-
-                if REPORT_NUM_TECH_PREREQS then
-                    local num_reachable = 0
-                    local num_reachable_context = 0
-                    for dep_ind2, dep2 in pairs(sorted_deps) do
-                        for ind2, base_key2 in pairs(shuffled_prereqs) do
-                            local subdiv_base = subdiv_graph.nodes[base_key2]
-                            local subdiv_opposite = gutils.get_owner(subdiv_graph, gutils.get_buddy(subdiv_graph, subdiv_base))
-                            if dep2 == key(subdiv_opposite) then
-                                local subdiv_base_owner = gutils.get_owner(subdiv_graph, subdiv_base)
-                                if subdiv_base_owner.type == "recipe-tech-unlock" then
-                                    -- Check unusued
-                                    if not used_prereq_inds[ind2] then
-                                        local base = random_graph.nodes[base_key2]
-                                        local head = random_graph.nodes[head_key]
-                                        if get_context_reachable(base, head) then
-                                            num_reachable_context = 1 + num_reachable_context
-                                        end
-                                        if dep_ind2 < dep_ind then
-                                            num_reachable = 1 + num_reachable
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    log("Num context recipe tech prereqs: " .. tostring(num_reachable_context))
-                    log("Num previous recipe tech prereqs: " .. tostring(num_reachable))
-                end
-
                 return false
             end
         end

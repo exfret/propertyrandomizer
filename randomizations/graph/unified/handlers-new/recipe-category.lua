@@ -18,6 +18,8 @@ local smelting_cat_to_ings = {}
 
 recipe_category.id = "recipe_category"
 
+recipe_category.with_replacement = true
+
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
 local claimed_category = {}
 local normal_claims = 3

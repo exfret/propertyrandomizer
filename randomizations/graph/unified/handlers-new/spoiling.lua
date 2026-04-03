@@ -12,6 +12,8 @@ local spoiling = {}
 
 spoiling.id = "spoiling"
 
+spoiling.with_replacement = true
+
 local function shouldnt_spoil(item)
     if item.hidden == true then
         return true

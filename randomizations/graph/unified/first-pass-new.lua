@@ -92,7 +92,7 @@ first_pass.execute = function(params)
         end
         -- Just check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
         local subdiv_node = subdiv_graph.nodes[node_key]
-        if subdiv_node.dummy then
+        if subdiv_node.spoof then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do

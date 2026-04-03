@@ -1,7 +1,6 @@
 CURRENTLY ON:
  * execute-new handler options
-    * Decide on options for prereqs that handlers can opt in and out of
-    * Don't share prereq pools
+    * Move recipe tech unlock node rando back so that prereqs are actual techs
  * Extracting dependency graph library
  * First pass sort improvements
     * Better compatibility tests (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)

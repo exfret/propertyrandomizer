@@ -8,6 +8,8 @@ local mining_fluid_required = {}
 
 mining_fluid_required.id = "mining_fluid_required"
 
+mining_fluid_required.with_replacement = true
+
 mining_fluid_required.spoof = function(graph)
     -- Dummy fluid so that resources can gain required fluids
     local spoof_node_fluid = gutils.add_node(graph, "fluid", "entity-mine-fluid-spoofed-fluid")
