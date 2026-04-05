@@ -108,7 +108,7 @@ logic.type_info = {}
 -- Needed for edge context info
 logic.edge_info = {}
 
-logic.build = function()
+logic.build = function(ignore_compat)
     --log("Loading lookups")
     lu.load_lookups()
     -- Just make it a global
@@ -168,7 +168,9 @@ logic.build = function()
     -- These are included in a separate file to separate them out from the "real logic"
     -- A lot of the time, this can just end up adding edges from nodes created by logic_group
     
-    balance.build(lu)
+    if not ignore_compat then
+        balance.build(lu)
+    end
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

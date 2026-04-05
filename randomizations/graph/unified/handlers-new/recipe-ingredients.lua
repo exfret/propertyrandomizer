@@ -53,8 +53,10 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
     end
 end
 
-recipe_ingredients.custom_prereq_search = false --[[= function(params)
-    local split_graph = params.split_graph
+recipe_ingredients.custom_prereq_search = false = function(params)
+    
+
+    --[[local split_graph = params.split_graph
     local slot_to_trav = params.slot_to_trav
     local trav_to_slot = params.trav_to_slot
     local dep = params.dep
@@ -115,8 +117,8 @@ recipe_ingredients.custom_prereq_search = false --[[= function(params)
                 end
             end
         end
-    end
-end]]
+    end]]
+end
 
 recipe_ingredients.validate = function(graph, base, head, extra)
     local base_owner = gutils.get_owner(graph, base)
