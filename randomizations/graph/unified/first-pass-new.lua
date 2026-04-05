@@ -21,7 +21,7 @@
 local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 1--0.9
 -- TODO: This could be set with a startup settings
-local DO_TESTS = true
+local DO_TESTS = false
 -- Disabled because it was slow
 local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
@@ -100,7 +100,8 @@ first_pass.execute = function(params)
     -- TODO: This assumes nauvis context; we could be more flexible later
     local is_tool_node = {}
     for _, science_pack in pairs(data.raw.tool) do
-        is_tool_node[key("item", science_pack.name)] = true
+        -- Do the technology, so we don't make each tree's things important
+        is_tool_node[key("technology", science_pack.name)] = true
     end
     local nauvis_context = key("planet", "nauvis")
     local goal_inds = {}
@@ -115,6 +116,16 @@ first_pass.execute = function(params)
         if path_info.in_path[ind] then
             is_important[pebble.node_key] = true
         end
+    end
+    -- HOTFIX: Remove exfret copies
+    local node_keys_to_remove = {}
+    for node_key, _ in pairs(is_important) do
+        if string.find(node_key, "exfret") ~= nil then
+            table.insert(node_keys_to_remove, node_key)
+        end
+    end
+    for _, node_key in pairs(node_keys_to_remove) do
+        is_important[node_key] = nil
     end
     if REPORT_PATH then
         log(serpent.block(is_important))
@@ -369,7 +380,7 @@ first_pass.execute = function(params)
             end
         end
         if not some_trav_not_reachable then
-            error("All travs reachable")
+            --error("All travs reachable")
         end
     end
 

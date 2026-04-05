@@ -4,6 +4,7 @@ local key = gutils.key
 
 randomization_info.options.unified["entity-autoplace"].blacklisted_dep = {
     [key("entity", "fulgoran-ruin-attractor")] = true,
+    -- TODO: Vault ruin
 }
 
 randomization_info.options.unified["recipe-ingredients"].blacklisted_pre = {

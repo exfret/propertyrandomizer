@@ -21,7 +21,7 @@ local SWITCH_PLANETS = false
 local LOGGING_LEVEL = 2
 local function log_info(level, info)
     if LOGGING_LEVEL >= level then
-        log(info)
+        --log(info)
     end
 end
 
@@ -42,13 +42,13 @@ local handler_ids = {}
 
 -- CRITICAL TODO: REMOVE!
 config.unified = {
-    ["recipe-category"] = true,
-    ["recipe-ingredients"] = true,
-    ["recipe-tech-unlocks"] = true,
-    ["spoiling"] = true,
+    ["recipe-category"] = false,
+    ["recipe-ingredients"] = false,
+    ["recipe-tech-unlocks"] = false,
+    ["spoiling"] = false,
     ["tech-prereqs"] = true,
     ["tech-science-packs"] = true,
-    ["entity-autoplace"] = true,
+    ["entity-autoplace"] = false,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -305,6 +305,7 @@ unified.execute = function()
 
         -- Replace deps in sorted_deps by travs
         old_sorted_deps = table.deepcopy(sorted_deps)
+        log_info(2, "OLD SORTED DEPS: " .. serpent.block(sorted_deps))
         for dep_ind, dep in pairs(sorted_deps) do
             local trav_key = first_pass_info.slot_to_trav[dep]
             -- Dep might not have been a slot, in which case it stays the same
@@ -313,6 +314,7 @@ unified.execute = function()
                 sorted_deps[dep_ind] = trav.old_slot
             end
         end
+        log_info(2, "NEW SORTED DEPS: " .. serpent.block(sorted_deps))
     end
 
     ----------------------------------------------------------------------------------------------------

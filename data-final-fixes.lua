@@ -43,6 +43,8 @@ if config.dupes then
     --dupe.execute_vanilla()
 end
 
+post_dupe_data_raw = table.deepcopy(data.raw)
+
 -- Special prototype fixes
 require("randomizations/prefixes")
 
@@ -57,7 +59,7 @@ require("compat/master")
 local function smuggle_info()
     log("Smuggling control info")
 
-    new_logic.build()
+    new_logic.build(true)
 
     local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     warnings_selection_tool.type = "selection-tool"
@@ -78,6 +80,9 @@ local function smuggle_info()
     })
 end
 
+smuggle_info()
+do return end
+
 -- If unit testing is on, do only those
 if config.unit_test then
     require("tests/execute")
@@ -93,7 +98,7 @@ end
 
 for i = 1, config.unified_num_retries do
     if not unified.execute() then
-        data.raw = table.deepcopy(old_data_raw)
+        data.raw = table.deepcopy(post_dupe_data_raw)
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
         end
@@ -101,6 +106,8 @@ for i = 1, config.unified_num_retries do
         break
     end
 end
+
+--[=[
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
@@ -336,6 +343,122 @@ if #final_sort_info.sorted < #initial_sort_info.sorted then
 end
 if reachability_warning_to_insert ~= nil then
     table.insert(randomization_info.warnings, reachability_warning_to_insert)
+end]=]
+
+for _, tech in pairs(data.raw.technology) do
+    if tech.unit ~= nil then
+        tech.unit.ingredients = {}
+    end
+    local new_effects = {}
+    if tech.effects ~= nil then
+        for _, effect in pairs(tech.effects) do
+            if not (effect.recipe ~= nil and string.find(effect.recipe, "science-pack") ~= nil) then
+                table.insert(new_effects, effect)
+            end
+        end
+    end
+    tech.effects = new_effects
+end
+for _, tool in pairs(data.raw.tool) do
+    tool.hidden = true
+    tool.hidden_in_factoriopedia = true
+end
+for _, recipe in pairs(data.raw.recipe) do
+    if string.find(recipe.name, "science-pack") ~= nil then
+        recipe.hidden = true
+        recipe.hidden_in_factoriopedia = true
+    end
+end
+
+TECH_TO_REACHABLE_NAME = {}
+local consistent_sort = require("new-lib/graph/consistent-sort")
+new_logic.build(true)
+local graph = table.deepcopy(new_logic.graph)
+local init_sort = consistent_sort.sort(graph)
+local gutils = require("new-lib/graph/graph-utils")
+local total_techs = 1
+for _, technology in pairs(data.raw.technology) do
+    total_techs = total_techs + 1
+end
+local techs_done = 1
+for _, tech in pairs(data.raw.technology) do
+    local is_okay = {}
+    --[[local queue = {tech.name}
+    local ind = 1
+    while true do
+        if ind <= #queue then
+            local curr = queue[ind]
+            local curr_tech = data.raw.technology[curr]
+            if curr_tech.prerequisites ~= nil then
+                for _, prereq in pairs(curr_tech.prerequisites) do
+                    if not is_okay[prereq] then
+                        table.insert(queue, prereq)
+                        is_okay[prereq] = true
+                    end
+                end
+            end
+        else
+            break
+        end
+        ind = ind + 1
+    end]]
+    local goal_inds = {}
+    for ind, pebble in pairs(init_sort.sorted) do
+        local node_key = pebble.node_key
+        local node = graph.nodes[node_key]
+        if node.type == "technology" and node.name == tech.name then
+            table.insert(goal_inds, ind)
+        end
+    end
+    local short_path = consistent_sort.path(graph, goal_inds, init_sort)
+    for ind = 1, #init_sort.sorted do
+        local pebble = init_sort.sorted[ind]
+        local node_key = pebble.node_key
+        local node = graph.nodes[node_key]
+        if node.type == "technology" and short_path.in_path[ind] then
+            is_okay[node.name] = true
+        end
+    end
+    log(serpent.block(is_okay))
+    local reachable_in_order = {}
+    for ind = 1, #init_sort.sorted do
+        local pebble = init_sort.sorted[ind]
+        local node_key = pebble.node_key
+        local node = graph.nodes[node_key]
+        if (node.type == "item" or node.type == "fluid") and node.name ~= "water" and node.name ~= "steam" then
+            local is_reachable = false
+            for _, tech2 in pairs(data.raw.technology) do
+                if is_okay[tech2.name] then
+                    if tech2.effects ~= nil then
+                        for _, effect in pairs(tech2.effects) do
+                            if effect.type == "unlock-recipe" then
+                                local recipe = data.raw.recipe[effect.recipe]
+                                if recipe.results ~= nil then
+                                    for _, result in pairs(recipe.results) do
+                                        if result.name == node.name then
+                                            is_reachable = true
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if is_reachable then
+                table.insert(reachable_in_order, node.name)
+            end
+        end
+    end
+    TECH_TO_REACHABLE_NAME[tech.name] = {}
+    for i = math.max(1, math.floor(#reachable_in_order / 2)), #reachable_in_order do
+        TECH_TO_REACHABLE_NAME[tech.name][reachable_in_order[i]] = false
+    end
+    TECH_TO_REACHABLE_NAME[tech.name][#reachable_in_order] = true
+    log(tostring(math.floor(100 * techs_done / total_techs)) .. "% DONE")
+    log(tech.name)
+    log(serpent.block(TECH_TO_REACHABLE_NAME[tech.name]))
+    techs_done = techs_done + 1
 end
 
 -- Add warnings for control stage

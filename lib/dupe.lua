@@ -226,7 +226,8 @@ dupe.technology = function(tech, dupe_number)
     if new_tech.prerequisites ~= nil then
         for _, prereq in pairs(new_tech.prerequisites) do
             local prereq_prefix, prereq_suffix = prereq:match("^(.*)%-(%d+)$")
-            if prereq_suffix ~= nil and tonumber(prereq_suffix) ~= nil then
+            local prereq_tech = data.raw.technology[prereq]
+            if (prereq_suffix ~= nil and tonumber(prereq_suffix) ~= nil) or prereq_tech.unit == nil then
                 -- Ignore leveled techs for now
                 -- CRITICAL TODO: just fix the issues
                 --table.insert(new_prerequisites, prereq_prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. prereq_suffix)
@@ -812,6 +813,23 @@ end
 
 -- Create the duplicates
 dupe.execute = function()
+    local techs_to_dupe = {}
+    for _, tech in pairs(data.raw.technology) do
+        -- Don't do trigger techs because those don't randomize well without extra work
+        if tech.unit ~= nil then
+            local prefix, suffix = tech.name:match("^(.*)%-(%d+)$")
+            if suffix == nil or tonumber(suffix) == nil then
+                table.insert(techs_to_dupe, tech)
+            end
+        end
+    end
+    for _, tech in pairs(techs_to_dupe) do
+        for i = 2, 4 do
+            dupe.technology(tech, i)
+        end
+    end
+    do return end
+
     if config.watch_the_world_burn then
         -- Tech tree
         local techs_to_dupe = {}
