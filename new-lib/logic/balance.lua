@@ -55,7 +55,7 @@ balance.build = function(lu)
     end
 
     -- Require this before any technology
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         add_edge_reversed("technology", tech.name, {
             abilities = table.deepcopy(balance_abilities),
         })
@@ -82,7 +82,7 @@ balance.build = function(lu)
     end
 
     -- Require this before all techs with unit other than the technology automation
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and tech.name ~= "automation" then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -110,7 +110,7 @@ balance.build = function(lu)
 
     -- Require this before non-gun-turret, non-military techs needing more than 15 science packs, or more than one science pack (presumably automation science)
     -- EDIT: Needed to remove the non-gun-turret, non-military clause for technical reasons
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         -- TODO: Test for automation science directly; also check trigger effects
         if --[[tech.name ~= "gun-turret" and tech.name ~= "military" and]] tech.unit ~= nil and (#tech.unit.ingredients > 1 or tech.unit.count_formula ~= nil or tech.unit.count > 15) then
             add_edge_reversed("technology", tech.name, {
@@ -134,7 +134,7 @@ balance.build = function(lu)
     end
 
     -- Requirement same as last
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         -- TODO: Test for automation science directly; also check trigger effects
         if --[[tech.name ~= "gun-turret" and tech.name ~= "military" and]] tech.unit ~= nil and (#tech.unit.ingredients > 1 or tech.unit.count_formula ~= nil or tech.unit.count > 15) then
             add_edge_reversed("technology", tech.name, {
@@ -156,7 +156,7 @@ balance.build = function(lu)
     })
 
     -- Requirement same as last, again
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         -- TODO: Test for automation science directly; also check trigger effects
         if --[[tech.name ~= "gun-turret" and tech.name ~= "military" and]] tech.unit ~= nil and (#tech.unit.ingredients > 1 or tech.unit.count_formula ~= nil or tech.unit.count > 15) then
             add_edge_reversed("technology", tech.name, {
@@ -180,7 +180,7 @@ balance.build = function(lu)
     end
 
     -- Require this before any tech with unit other than the technology automation (just like assembling machines)
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and tech.name ~= "automation" then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -203,7 +203,7 @@ balance.build = function(lu)
     end
 
     -- Require this before any tech with unit
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -223,7 +223,7 @@ balance.build = function(lu)
     end
 
     -- Require this before any tech costing 50+ science
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and (tech.unit.count_formula ~= nil or tech.unit.count >= 50) then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -243,7 +243,7 @@ balance.build = function(lu)
     end
 
     -- Same requirement as last one
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and (tech.unit.count_formula ~= nil or tech.unit.count >= 50) then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -263,7 +263,7 @@ balance.build = function(lu)
     end
 
     -- Require before any technology with more than one science pack (presumably meaning more than just automation science packs)
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and #tech.unit.ingredients > 1 then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -286,7 +286,7 @@ balance.build = function(lu)
     end
 
     -- Requirement same as last one
-    for _, tech in pairs(data.raw.technology) do
+    for _, tech in pairs(lu.techs) do
         if tech.unit ~= nil and #tech.unit.ingredients > 1 then
             add_edge_reversed("technology", tech.name, {
                 abilities = table.deepcopy(balance_abilities),
@@ -310,7 +310,7 @@ balance.build = function(lu)
 
     -- Require before any post-chemical science tech
     -- Just copy-pasted from build-graph-compat, could probably be refactored for less code repetition
-    for _, technology in pairs(data.raw.technology) do
+    for _, technology in pairs(lu.techs) do
         local is_chemical_science_ings = {
             ["automation-science-pack"] = true,
             ["logistic-science-pack"] = true,
@@ -356,7 +356,7 @@ balance.build = function(lu)
 
     -- Require before any post-chemical science tech
     -- Just copy-pasted from build-graph-compat, could probably be refactored for less code repetition
-    for _, technology in pairs(data.raw.technology) do
+    for _, technology in pairs(lu.techs) do
         local is_chemical_science_ings = {
             ["automation-science-pack"] = true,
             ["logistic-science-pack"] = true,
@@ -400,7 +400,7 @@ balance.build = function(lu)
 
     -- Require before any post-logistic science tech
     -- Just copy-pasted from build-graph-compat, could probably be refactored for less code repetition
-    for _, technology in pairs(data.raw.technology) do
+    for _, technology in pairs(lu.techs) do
         local is_logistic_science_ings = {
             ["automation-science-pack"] = true,
             ["logistic-science-pack"] = true,
