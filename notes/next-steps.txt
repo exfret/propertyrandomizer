@@ -1,4 +1,17 @@
 CURRENTLY ON:
+ * Recipe ingredients unified (basic version first?)
+    * Cost implementations
+       * (DONE) Factor out cost functions to recipe-cost.lua
+       * Add major raw resource table and raw resource cost table to compat/vanilla.lua
+       * Calculate vanilla material-recipe costs on recipe-ingredients.lua init
+       * Filter out prereqs without any cost
+       * Calculate vanilla staged costs at beginning of custom prereq search (actually, might make more sense along with randomized costs)
+       * Calculate randomized staged costs as we go (might need to wait until next step)
+    * Search loop
+       * Adapt execute-new loop
+       * Reachability subroutine
+ * Option to at least dupe tech unlocks
+ * Rerolls feature!
  * execute-new handler options
     * Write context switching to describe problems I'm having to others better
     * Support for recipe blacklisted pre again
