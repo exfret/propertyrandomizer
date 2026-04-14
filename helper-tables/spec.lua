@@ -660,14 +660,13 @@ local spec = {
         }
     },
     -- Was causing too many issues
-    --[[
     fluid_box_locations = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },]]
+    },
     -- Doesn't change anything in vanilla
     fluid_emissions_multiplier = {
         category = "numerical",
