@@ -48,11 +48,11 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
     local top_left = prototype.collision_box.top_left or prototype.collision_box[1]
     local bottom_right = prototype.collision_box.bottom_right or prototype.collision_box[2]
     local shift = {
-      x = math.round((top_left.x or top_left[1]) * 2) / 2,
-      y = math.round((top_left.y or top_left[2]) * 2) / 2,
+      x = (math.floor((top_left.x or top_left[1]) * 2 + 0.5) - 0.5) / 2,
+      y = (math.floor((top_left.y or top_left[2]) * 2 + 0.5) - 0.5) / 2,
     }
-    local width = math.round((bottom_right.x or bottom_right[1]) - (top_left.x or top_left[1])) - 1
-    local height = math.round((bottom_right.y or bottom_right[2]) - (top_left.y or top_left[2])) - 1
+    local width = math.floor((bottom_right.x or bottom_right[1]) - (top_left.x or top_left[1]) + 0.5) - 1.5
+    local height = math.floor((bottom_right.y or bottom_right[2]) - (top_left.y or top_left[2]) + 0.5) - 1.5
     for x = 0, width do
       connections[#connections+1] = {position = {x + shift.x,  shift.y}, direction = defines.direction.north}
       connections[#connections+1] = {position = {x + shift.x, -shift.y}, direction = defines.direction.south}
