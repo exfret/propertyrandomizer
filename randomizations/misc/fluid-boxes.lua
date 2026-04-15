@@ -37,6 +37,8 @@ randomizations.fluid_box_locations = function(id)
         -- "pipe", -- fluid_box (not recommended, but technically possible, but also doesnt do anything most of the time. will break certain mods)
         -- "infinity-pipe", -- fluid_box (not recommended, but technically possible, but also doesnt do anything most of the time. will break certain mods)
         -- "pipe-to-ground", -- fluid_box (may break other mods)
+        -- "heat-pipe", -- heat_buffer (not recommended, but technically possible, but also doesnt do anything most of the time)
+        -- "heat-interface", -- heat_buffer (not recommended, but technically possible, but also doesnt do anything most of the time)
 
         -- only energy_source.fluid_box if a FluidEnergySource 
         "inserter",
@@ -51,6 +53,7 @@ randomizations.fluid_box_locations = function(id)
     for _, class in pairs(prot_fluid_box_props) do
         for _, prototype in pairs(data.raw[class] or {}) do
             local fluid_boxes = {}
+            local heat_connections = {}
             -- multiple fluid_boxes
             for _, fluid_box in pairs(prototype.fluid_boxes or {}) do fluid_boxes[#fluid_boxes + 1] = fluid_box end
             -- single fluid_box
@@ -65,6 +68,10 @@ randomizations.fluid_box_locations = function(id)
             if prototype.oxidizer_fluid_box then fluid_boxes[#fluid_boxes + 1] = prototype.oxidizer_fluid_box end
             -- energy source fluid_box
             if prototype.energy_source and prototype.energy_source.type == "fluid" then fluid_boxes[#fluid_boxes + 1] = prototype.energy_source.fluid_box end
+            -- energy source heat connections
+            if prototype.energy_source and prototype.energy_source.type == "heat" then heat_connections[#heat_connections + 1] = prototype.energy_source.connections end
+            -- energy source heat connections
+            if prototype.heat_buffer then heat_connections[#heat_connections + 1] = prototype.heat_buffer.connections end
 
             -- First, test if this is appropriate to randomize
             local to_randomize = true
@@ -94,6 +101,13 @@ randomizations.fluid_box_locations = function(id)
                             pipe_connection.direction = possible_underground_connections[j].direction
                             j = j + 1
                         end
+                    end
+                end
+                for _, connections in pairs(heat_connections) do
+                    for _, connection in pairs(connections) do
+                        connection.position =  possible_connections[i].position
+                        connection.direction = possible_connections[i].direction
+                        i = i + 1
                     end
                 end
             end
