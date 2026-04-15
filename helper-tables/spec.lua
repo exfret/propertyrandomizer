@@ -659,7 +659,7 @@ local spec = {
             val = "more"
         }
     },
-    -- Was causing too many issues
+    -- Also randomizes heat connections (helps with pipe connections not overlapping)
     fluid_box_locations = {
         category = "numerical",
         setting = {

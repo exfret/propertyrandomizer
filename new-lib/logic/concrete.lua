@@ -239,8 +239,7 @@ function concrete.build(lu)
             add_node("entity-build", "AND")
             ----------------------------------------
             -- Can we build this entity using an item?
-            -- Entities that can be planted are counted as being built, though later during
-            -- randomization we might have to condition on it being a planted or built entity
+            -- Entities that can be planted are counted as being built, though later during randomization we might have to condition on it being a planted or built entity
 
             add_edge("entity-build-item")
             add_edge("entity-build-tile")

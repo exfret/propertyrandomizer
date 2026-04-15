@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.4
 Date: ?
+  Features:
+    - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).
   Bugfixes:
     - Stop crash when right clicking prototype choice in explorer
 ---------------------------------------------------------------------------------------------------

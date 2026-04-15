@@ -4,3 +4,20 @@ Need more ability for progression skips.
 Planet isolatability complaints
 Things felt same-y?
 Did present new and interesting challenges
+
+Hoefnix
+Grind toward productivity modules was the worst part (there was only one with positive productivity)
+Described transport of EM plants ("biter eggs") to vulcanus
+Also roboport mk2 (too heavy for rocket but ingredient for a rocket)
+  * Makes sense since this isn't accounted for in cost
+Lots of crude oil requirements, which can't be gotten on other planets
+Too easy was also not good
+  * One supporting coal liquefaction did 10k a second
+With Keniras, bias was a number, which was nice
+Mod informs about softlocks
+The bonus info in the description is really good
+Lot of dead items (again, not a huge issue, but still bothered by it)
+Long boot-up times
+
+Expensiveness?
+One issue I've had with trying to make it not feel pain-like is the cost. Whenever I actually investigate, recipe costs are actually normal, but they feel very expensive for some reason.

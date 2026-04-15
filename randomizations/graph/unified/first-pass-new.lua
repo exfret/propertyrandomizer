@@ -67,6 +67,9 @@ first_pass.execute = function(params)
         if subdiv_node.spoof then
             return false
         end
+        if randomization_info.options.first_pass.blacklist[node_key] then
+            return false
+        end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
             if prenode.type == "head" then
                 return true
