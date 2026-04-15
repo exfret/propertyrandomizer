@@ -22,6 +22,8 @@ local extended_sort = require("new-lib/graph/extended-sort")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
 
+-- NOTE: These tables are also set in compat/vanilla.lua
+
 -- Don't randomize water
 local dont_randomize_ings = {
     ["fluid-water"] = true

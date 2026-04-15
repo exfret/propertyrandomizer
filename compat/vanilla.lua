@@ -2,6 +2,13 @@ local gutils = require("new-lib/graph/graph-utils")
 
 local key = gutils.key
 
+randomization_info.options.first_pass.blacklist = {}
+for _, recipe in pairs(data.raw.recipe) do
+    if string.sub(recipe.name, -6, -1) == "barrel" then
+        randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
+    end
+end
+
 randomization_info.options.unified["entity-autoplace"].blacklisted_dep = {
     [key("entity", "fulgoran-ruin-attractor")] = true,
 }
@@ -83,6 +90,51 @@ randomization_info.options.logic.contexts_in_order = {
     key({type = "planet", name = "aquilo"}),
 }
 
+-- TODO: Make these into node format
+randomization_info.options.cost.default_cost_table = {
+    ["item-iron-ore"] = 1,
+    ["item-copper-ore"] = 1,
+    ["item-coal"] = 1,
+    -- Higher cost for stone since its patches are smaller/rarer
+    ["item-stone"] = 1.2,
+    ["fluid-crude-oil"] = 0.15,
+    ["item-uranium-ore"] = 1.5,
+    -- Include this so that uranium-235 isn't too expensive
+    -- TODO: Maybe just require kovarex earlier?
+    ["item-uranium-235"] = 100,
+    ["fluid-water"] = 0.001,
+    ["fluid-steam"] = 0.05,
+}
+local space_age_cost_table_additions = {
+    -- Adding the asteroid chunks actually tricks the randomizer into thinking iron is cheap and putting it everywhere
+    -- NOTE: Actually the issue seems to be elsewhere... not sure what it is though
+    --["item-metallic-asteroid-chunk"] = 1,
+    --["item-carbonic-asteroid-chunk"] = 1,
+    --["item-oxide-asteroid-chunk"] = 1,
+    ["item-carbon"] = 1, -- Add this instead of the asteroid chunks
+    ["item-ice"] = 1,
+    ["fluid-ammoniacal-solution"] = 0.6,
+    ["fluid-fluorine"] = 0.6,
+    ["item-lithium"] = 2,
+    -- Set scrap cost high to prevent it from interfering with cost assignments of iron and the like
+    -- This makes it unlikely to appear elsewhere besides scrap recycling but whatever
+    ["item-scrap"] = 10,
+    ["item-pentapod-egg"] = 2,
+    ["item-jellynut"] = 1,
+    ["item-yumako"] = 1,
+    ["item-spoilage"] = 0.5,
+    ["fluid-lava"] = 0.05,
+    ["item-tungsten-ore"] = 3,
+    ["item-calcite"] = 1,
+    ["item-iron-bacteria"] = 5,
+    ["item-copper-bacteria"] = 5,
+    ["item-biter-egg"] = 1,
+}
+if mods["space-age"] then
+    for k, v in pairs(space_age_cost_table_additions) do
+        randomization_info.options.cost.default_cost_table[k] = v
+    end
+end
 randomization_info.options.cost.major_raw_resources = {
     "item-iron-ore",
     "item-copper-ore",

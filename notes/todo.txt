@@ -2,7 +2,6 @@ This is a file for smaller todos (see next-steps.txt for master plan and feature
 For bugs/fixes rather than features, see bugs.txt
 
  * Check on tooltips for new randomizations
- * Misc. rando for starting gun, starting ammo (and amount), and crashed spacheship contents/starting inventory
  * Account for ability to move around on planets in logic (need ice platforms on Aquilo), maybe just a compat on ice platforms etc.?
  * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
  * Spoiling checks on buildings (make sure it's not too quick)
@@ -40,3 +39,5 @@ For bugs/fixes rather than features, see bugs.txt
     * Right clicking on prototype causes crash
     * Close button
     * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
+ * Make sure to return "not stackable" on vehicles with equipment grid defined, not just armor
+ * Change formula so infinite researches can become exponential or become linear cost scaling
