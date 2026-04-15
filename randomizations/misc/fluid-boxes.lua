@@ -22,28 +22,29 @@ randomizations.fluid_box_locations = function(id)
         "assembling-machine", -- fluid_boxes, energy_source
         "furnace", -- fluid_boxes, energy_source
         "rocket-silo", -- fluid_boxes, energy_source (note, rocket silos cannot be rotated)
+        "pump", -- fluid_box, energy_source
+        "fluid-turret", -- fluid_box
+        "generator", -- fluid_box, energy_source
+        "fusion-generator", -- input_fluid_box, output_fluid_box
+        "fusion-reactor", -- input_fluid_box, output_fluid_box
 
         -- additional possible fluidbox randomization
-        -- "pump", -- fluid_box, energy_source
         -- "storage-tank", -- fluid_box
-        -- "fluid-turret", -- fluid_box
+        -- "offshore-pump", -- fluid_box, energy_source (needs support to not put connections on water)
         -- "mining-drill", -- input_fluid_box, output_fluid_box, energy_source (would need support to not overlap with vector_to_place_result)
-        -- "offshore-pump", -- fluid_box, energy_source
-        -- "generator", -- fluid_box, energy_source
-        -- "fusion-generator", -- input_fluid_box, output_fluid_box
-        -- "fusion-reactor", -- input_fluid_box, output_fluid_box
         -- "thruster", -- fuel_fluid_box, oxidizer_fluid_box (would need support to not put pipe connections on back)
         -- "valve", -- fluid_box
         -- "pipe", -- fluid_box (not recommended, but technically possible, but also doesnt do anything most of the time. will break certain mods)
-        -- "pipe-to-ground" -- fluid_box (may break other mods)
+        -- "infinity-pipe", -- fluid_box (not recommended, but technically possible, but also doesnt do anything most of the time. will break certain mods)
+        -- "pipe-to-ground", -- fluid_box (may break other mods)
 
         -- only energy_source.fluid_box if a FluidEnergySource 
-        -- "inserter",
-        -- "agricultural-tower",
-        -- "lab",
-        -- "radar",
-        -- "reactor"
-        -- "loader",
+        "inserter",
+        "agricultural-tower",
+        "lab",
+        "radar",
+        "reactor",
+        "loader",
     }
 
     -- Randomize input and output locations on boilers
@@ -84,11 +85,11 @@ randomizations.fluid_box_locations = function(id)
                 local i, j = 1, 1
                 for _, fluid_box in pairs(fluid_boxes) do
                     for _, pipe_connection in pairs(fluid_box.pipe_connections) do
-                        if pipe_connection.type == "normal" then
+                        if pipe_connection.connection_type == "normal" or not pipe_connection.connection_type then
                             pipe_connection.position =  possible_connections[i].position
                             pipe_connection.direction = possible_connections[i].direction
                             i = i + 1
-                        elseif pipe_connection.type == "underground" then
+                        elseif pipe_connection.connection_type == "underground" then
                             pipe_connection.position =  possible_underground_connections[j].position
                             pipe_connection.direction = possible_underground_connections[j].direction
                             j = j + 1
