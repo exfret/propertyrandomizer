@@ -41,6 +41,29 @@ pipe_conns.get_pipe_conns = function(prototype, fluid_box_properties)
     return {conns = pipe_conns, positions = fluid_box_positions, directions = fluid_box_directions}
 end
 
+-- returns a table of all possible pipe connecitons
+pipe_conns.get_possible_pipe_connections = function (prototype)
+    if not prototype.collision_box then return {} end
+    local connections = {}
+    local top_left = prototype.collision_box.top_left or prototype.collision_box[1]
+    local bottom_right = prototype.collision_box.bottom_right or prototype.collision_box[2]
+    local width = math.ceil((bottom_right.x or bottom_right[1]) - (top_left.x or top_left[1])) - 1
+    local height = math.ceil((bottom_right.y or bottom_right[2]) - (top_left.y or top_left[2])) - 1
+    local shift = {
+      x = -width / 2,
+      y = -height / 2,
+    }
+    for x = 0, width do
+      connections[#connections+1] = {position = {x + shift.x,  shift.y}, direction = defines.direction.north}
+      connections[#connections+1] = {position = {x + shift.x, -shift.y}, direction = defines.direction.south}
+    end
+    for y = 0, height do
+      connections[#connections+1] = {position = { shift.x, y + shift.y}, direction = defines.direction.west}
+      connections[#connections+1] = {position = {-shift.x, y + shift.y}, direction = defines.direction.east}
+    end
+    return connections
+end
+
 pipe_conns.add_dummy_pipe_conns = function(prototype, fluid_box_properties)
     local pipe_conn_info = pipe_conns.get_pipe_conns(prototype, fluid_box_properties)
 
