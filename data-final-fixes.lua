@@ -43,6 +43,10 @@ if config.dupes then
     --dupe.execute()
     --dupe.execute_vanilla()
 end
+if config.duplicate_recipe_tech_unlocks then
+    local dupe = require("lib/dupe")
+    dupe.recipe_tech_unlocks()
+end
 
 -- Special prototype fixes
 require("randomizations/prefixes")

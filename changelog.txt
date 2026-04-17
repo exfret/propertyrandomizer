@@ -3,8 +3,10 @@ Version: 0.5.4
 Date: ?
   Features:
     - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).
+    - Added ability to duplicate recipe tech unlocks for a smoother experience
   Bugfixes:
     - Stop crash when right clicking prototype choice in explorer
+    - Recipe crafting times now come with a description of relative change
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.3
 Date: 2026.03.26

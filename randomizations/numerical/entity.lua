@@ -656,6 +656,7 @@ randomizations.beam_damage = function (id)
     end)
 end
 
+-- TODO: Localised description on any creators
 randomizations.beam_damage_interval = function(id)
     for _, beam in pairs(data.raw.beam) do
         randomize({
@@ -668,6 +669,7 @@ randomizations.beam_damage_interval = function(id)
     end
 end
 
+-- TODO: Localised description on any creators
 randomizations.beam_width = function(id)
     for _, beam in pairs(data.raw.beam) do
         randomize({
@@ -2394,6 +2396,7 @@ randomizations.mining_times_resource = function(id)
     end
 end
 
+-- TODO: Remove hardcoding
 randomizations.module_slots = function(id)
 
     -- Chance of considering toggling between modules/no modules
