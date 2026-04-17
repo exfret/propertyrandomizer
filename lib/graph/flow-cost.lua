@@ -130,8 +130,8 @@ flow_cost.update_item_recipe_maps = function(old_maps, updated_recipes, ing_over
         -- Recalculate the mappings for this recipe
 
         for material_id, amount in pairs(old_maps.recipe_to_material[recipe.name]) do
-            old_maps.recipe_to_material[recipe.name][material_id] = 0
-            old_maps.material_to_recipe[material_id][recipe.name] = 0
+            old_maps.recipe_to_material[recipe.name][material_id] = nil
+            old_maps.material_to_recipe[material_id][recipe.name] = nil
         end
 
         flow_cost.calculate_individual_recipe_map(recipe, old_maps, ing_overrides, use_data)
@@ -242,7 +242,6 @@ flow_cost.eval_recipe_cost = function(params)
         if ing_overrides[recipe_name] ~= nil then
             if ing_overrides[recipe_name][1] == "blacklisted" then
                 ings_to_use = {}
-        
                 reachable = false
             -- Check that use_data isn't set for whether we use the overrides
             elseif not use_data then
@@ -254,7 +253,6 @@ flow_cost.eval_recipe_cost = function(params)
             end
         else
             ings_to_use = {}
-
             reachable = false
         end
     end

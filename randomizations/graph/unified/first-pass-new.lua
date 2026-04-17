@@ -32,11 +32,15 @@ local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
 local REPORT_SLOTS_FAILED = false
 
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
+-- TODO: Better flow cost library!
+local flow_cost = require("lib/graph/flow-cost")
 -- Used for contexts
 local logic = require("new-lib/logic/init")
 local lutils = require("new-lib/logic/logic-utils")
 local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("new-lib/data-utils")
 local top = require("new-lib/graph/consistent-sort")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -413,6 +417,9 @@ first_pass.execute = function(params)
         end
     end
 
+    -- Calculate costs; needed just a bit for compatibility check
+    local vanilla_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
+
     -- Not strictly necessary; this check makes sure the node replacing another is of the same type, increasing probability that valid previous prereqs can be found
     local function is_compatible(slot, trav)
         -- Check that slot and trav are of the same type
@@ -465,6 +472,35 @@ first_pass.execute = function(params)
             if fluids1.input ~= fluids2.input then
                 return false
             elseif fluids1.output ~= fluids2.output then
+                return false
+            end
+
+            -- Also check both have costs or both don't have costs
+            local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
+            local trav_cost = vanilla_costs.recipe_to_cost[trav_recipe.name]
+            if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
+                return false
+            end
+
+            -- Check that costs aren't wildly different
+            if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
+                return false
+            end
+        end
+
+        if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
+            local slot_prot = dutils.get_prot(slot.type, slot.name)
+            local trav_prot = dutils.get_prot(trav.type, trav.name)
+
+            -- Check that both have costs, or both don't have costs
+            local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
+            local trav_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(trav)]
+            if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
+                return false
+            end
+
+            -- Check that costs aren't wildly different
+            if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
                 return false
             end
         end

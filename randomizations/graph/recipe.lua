@@ -969,6 +969,7 @@ randomizations.recipe_ingredients = function(id)
 
         -- Finally, search for the best ingredients
         -- Do a while loop so we can restart if there are recipe loops
+        -- TODO: I don't see a while loop here, maybe the last comment is outdated? Consider whether while loop is needed!
         local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
         
         log("Found ings with total points " .. best_search_info.points)

@@ -70,6 +70,9 @@ local constants = {
     item_randomization_cost_factor_threshold = 100,
     item_randomization_max_fallbacks = 100,
 
+    -- First pass constants
+    first_pass_max_cost_log_difference = 4,
+
     -- Unified randomizations constants
     unified_randomization_bonus_priority_criticality = {
         -- The bonus priority for a traveler being on the critical path
