@@ -41,3 +41,5 @@ For bugs/fixes rather than features, see bugs.txt
     * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
  * Make sure to return "not stackable" on vehicles with equipment grid defined, not just armor
  * Change formula so infinite researches can become exponential or become linear cost scaling
+ * Randomizations localised descriptions for created entities, such as a laser turret's beam, should also go with the laser turret, for example
+ * Remove hardcoding in module randomizations

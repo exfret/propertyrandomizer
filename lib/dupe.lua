@@ -1182,4 +1182,34 @@ dupe.execute_vanilla = function()
     end
 end
 
+dupe.recipe_tech_unlocks = function()
+    -- We need to add tech unlocks to different techs due to how they work
+    local all_recipe_effects = {}
+    local all_techs = {}
+    local unlock_to_tech = {}
+    for _, tech in pairs(data.raw.technology) do
+        table.insert(all_techs, tech)
+        if tech.effects ~= nil then
+            for _, effect in pairs(tech.effects) do
+                if effect.type == "unlock-recipe" then
+                    unlock_to_tech[effect.recipe] = unlock_to_tech[effect.recipe] or {}
+                    unlock_to_tech[effect.recipe][tech.name] = true
+                    table.insert(all_recipe_effects, table.deepcopy(effect))
+                end
+            end
+        end
+    end
+    for _, effect in pairs(all_recipe_effects) do
+        local tech
+        while true do
+            tech = all_techs[rng.int(rng.key({id = "recipe-tech-unlock-dupes"}), #all_techs)]
+            if not unlock_to_tech[effect.recipe][tech.name] then
+                break
+            end
+        end
+        tech.effects = tech.effects or {}
+        table.insert(tech.effects, effect)
+    end
+end
+
 return dupe

@@ -23,6 +23,8 @@ randomizations.recipe_crafting_times = function(id)
         if recipe.energy_required == nil then
             recipe.energy_required = 0.5
         end
+        local old_energy_required = recipe.energy_required
+
         randomize({
             id = id,
             prototype = recipe,
@@ -31,6 +33,8 @@ randomizations.recipe_crafting_times = function(id)
             abs_min = 0.01,
             dir = -1
         })
+
+        locale_utils.create_localised_description(recipe, recipe.energy_required / old_energy_required, id, { flipped = true })
     end
 end
 

@@ -42,6 +42,9 @@ end
 if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
     config.graph.recipe_tech_unlock = true
 end
+if settings.startup["propertyrandomizer-recipe-tech-unlock-duplicates"].value then
+    config.duplicate_recipe_tech_unlocks = true
+end
 if settings.startup["propertyrandomizer-item"].value then
     config.graph.item = true
 end
