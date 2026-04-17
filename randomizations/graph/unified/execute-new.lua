@@ -511,12 +511,23 @@ unified.execute = function()
             end
         end
 
-        for handler_id, head_list in pairs(handler_to_heads) do
+        --[[for handler_id, head_list in pairs(handler_to_heads) do
             handler_id_to_handler[handler_id].custom_prereq_search({
                 split_graph = first_pass_info.graph,
                 slot_to_trav = first_pass_info.slot_to_trav,
                 trav_to_slot = first_pass_info.trav_to_slot,
                 dep = dep,
+            })
+        end]]
+    end
+    for _, handler in pairs(handlers) do
+        if handler.custom_prereq_search ~= false then
+            handler.custom_prereq_search({
+                random_graph = random_graph,
+                sorted_deps = sorted_deps,
+                shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],
+                sort_for_pool = sort_for_pool,
+                trav_to_slot = first_pass_info.trav_to_slot,
             })
         end
     end

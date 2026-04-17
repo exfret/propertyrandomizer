@@ -43,3 +43,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Change formula so infinite researches can become exponential or become linear cost scaling
  * Randomizations localised descriptions for created entities, such as a laser turret's beam, should also go with the laser turret, for example
  * Remove hardcoding in module randomizations
+ * Just make furnaces into assembling machine prototypes to avoid issues (most things that would break in mods like voiding machines need manual compat for their recipes anyways)

@@ -53,10 +53,10 @@ local function get_costs_from_ings(material_to_costs, ings)
 
     -- complexity cost
     costs.complexity_cost = 0
-    for _, ing in pairs(ings) do
+    --[[for _, ing in pairs(ings) do
         costs.complexity_cost = costs.complexity_cost + material_to_costs.complexity_cost[ing.type .. "-" .. ing.name]
     end
-    costs.complexity_cost = costs.complexity_cost / #ings
+    costs.complexity_cost = costs.complexity_cost / #ings]]
 
     -- resource costs
     costs.resource_costs = {}
