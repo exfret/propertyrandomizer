@@ -300,6 +300,16 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-item-ingredients",
+        localised_name = "",
+        localised_description = "",
+        default_value = false,
+        order = "e-i[item-ingredients]",
+        hidden = true
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-unified-technology-delinearization",
         localised_name = "(Unified) Technology Delinearization",

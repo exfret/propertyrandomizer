@@ -1,4 +1,7 @@
 CURRENTLY ON:
+
+ * Before next release, rocket launch products and node adding API
+
  * Recipe ingredients unified (basic version first?)
     * Cost implementations
        * (DONE) Factor out cost functions to recipe-cost.lua
@@ -13,6 +16,9 @@ CURRENTLY ON:
     * Search loop
        * (DONE) Adapt execute-new loop
        * (DONE) Reachability subroutine
+    * Fixes
+       * Increase complexity of ings
+       * Decrease amounts (Idea: prefer just decreasing amounts and making the thing just naturally cheaper)
  * Rerolls feature!
  * execute-new handler options
     * Write context switching to describe problems I'm having to others better

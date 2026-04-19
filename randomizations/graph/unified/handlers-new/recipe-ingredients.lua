@@ -89,6 +89,7 @@ recipe_ingredients.custom_prereq_search = function(params)
     local shuffled_prereqs = params.shuffled_prereqs
     local sort_for_pool = params.sort_for_pool
     local trav_to_slot = params.trav_to_slot
+    local do_first_pass = params.do_first_pass
 
     -- Helper function to determine if a recipe is used in any other recipes
     -- I think we might not need this so commenting out for now
@@ -124,7 +125,7 @@ recipe_ingredients.custom_prereq_search = function(params)
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
             -- For old ings, we are considering the slot recipes
-            local slot_node = random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]
+            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
             local slot_recipe = data.raw.recipe[slot_node.name]
             assert(slot_recipe ~= nil)
 
@@ -142,7 +143,7 @@ recipe_ingredients.custom_prereq_search = function(params)
             dependent_to_new_ings[recipe_name] = {}
 
             -- For old ings, we are considering the slot recipes
-            local slot_node = random_graph.nodes[trav_to_slot[key("recipe", first_pass.make_trav_name(recipe_name))] or node_key]
+            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key("recipe", first_pass.make_trav_name(recipe_name))] or node_key]) or random_graph.nodes[node_key]
             local slot_recipe = data.raw.recipe[slot_node.name]
             assert(slot_recipe ~= nil)
             dependent_to_old_ings[slot_recipe.name] = {}
@@ -199,7 +200,7 @@ recipe_ingredients.custom_prereq_search = function(params)
 
             -- Old cost update
             -- Update costs for old recipe (transitioning to slot from trav)
-            local slot_node = random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]
+            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
             local slot_recipe = data.raw.recipe[slot_node.name]
             assert(slot_recipe ~= nil)
             log("Old context: " .. slot_node.name)
@@ -300,13 +301,19 @@ recipe_ingredients.custom_prereq_search = function(params)
                             return false
                         end
 
-                        -- Make sure the ingredient isn't too cheap
-                        local largeness_okay_multiplier = 1
-                        if prereq_owner.type == "fluid" then
-                            largeness_okay_multiplier = 0.1
+                        -- Make sure the ingredient isn't too cheap, but don't worry about it for very expensive recipes
+                        local should_check_costs = true
+                        if constants.unified_recipe_ingredients_cost_threshold < vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                            should_check_costs = false
                         end
-                        if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
-                            return false
+                        if should_check_costs then
+                            local largeness_okay_multiplier = 1
+                            if prereq_owner.type == "fluid" then
+                                largeness_okay_multiplier = 0.1
+                            end
+                            if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                                return false
+                            end
                         end
 
                         return true
