@@ -209,7 +209,7 @@ local function parse_value(val_spec, old_val, new_val)
         if type(new_val) == "number" then
             Y_val = new_val
         end
-        return helpers.evaluate_expression(val_spec, { X = X_val, Y = Y_val })
+        return helpers.evaluate_expression(val_spec, { X = X_val, Y = Y_val, x = X_val, y = Y_val })
     end
 
     local parsed_tbl = {}

@@ -219,7 +219,7 @@ if config.graph.recipe then
     build_graph.add_dependents(dep_graph)
 end
 
-if config.recipe_tech_unlock then
+if config.graph.recipe_tech_unlock then
     log("Applying recipe tech unlock randomization")
 
     randomizations.recipe_tech_unlock("recipe_tech_unlock")

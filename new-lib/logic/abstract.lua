@@ -646,6 +646,21 @@ function abstract.build(lu)
     -- Can we satisfy this AND node that comes right before an OR?
 
     ----------------------------------------------------------------------
+    -- Extra
+    ----------------------------------------------------------------------
+
+    -- Extra misc. nodes that were easier to add here than to modify type_info directly
+
+    set_class("logic")
+
+    ----------------------------------------
+    add_node("item-ingredient", "AND", nil, "", { canonical = "item" })
+    ----------------------------------------
+    ----------------------------------------
+    add_node("fluid-ingredient", "AND", nil, "", { canonical = "fluid" })
+    ----------------------------------------
+
+    ----------------------------------------------------------------------
     -- Meta
     ----------------------------------------------------------------------
 

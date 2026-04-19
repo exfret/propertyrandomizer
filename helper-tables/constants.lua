@@ -53,7 +53,6 @@ local constants = {
     path_max_removed_node_hits = 30 * 16,
     path_max_depth = 30 * 128,
     path_max_nodes_checked = 30 * 8192,
-    -- Technology randomization (no special constants yet)
     -- Recipe randomization
     max_flow_iterations = 10000,
     cost_params = {
@@ -71,21 +70,9 @@ local constants = {
     item_randomization_max_fallbacks = 100,
 
     -- First pass constants
-    first_pass_max_cost_log_difference = 4,
+    first_pass_max_cost_log_difference = 1000, -- Basically disable for now
 
-    -- Unified randomizations constants
-    unified_randomization_bonus_priority_criticality = {
-        -- The bonus priority for a traveler being on the critical path
-        ["is_critical"] = 1,
-        -- The ADDITIONAL bonus priority for a traveler at least being "significant" (i.e.- leading to some new item)
-        ["is_significant"] = 1,
-    },
-    -- The bonus priority for a traveler being surface specific (and also by requirement the same surface as the given slot)
-    unified_randomization_bonus_priority_surface = 1,
-    unified_randomization_max_bootings_in_a_row = 100,
-    unified_randomization_bootings_until_dummy_slot = 9,
-    unified_randomization_max_num_reservations = 20,
-    
+    unified_recipe_ingredients_cost_threshold = 1000,
     unified_mining_fluid_required_default_fluid_amount = 10,
     unified_recipe_results_dummy_fraction = 1,
 

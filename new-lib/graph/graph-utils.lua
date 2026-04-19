@@ -285,12 +285,16 @@ gutils.remove_edge = function(graph, edge_key)
     gutils.update_pre_info(graph, graph.nodes[edge.stop], -1)
 end
 
--- Doesn't keep extras on edge
 gutils.redirect_edge_start = function(graph, edge_key, new_start)
     local edge = graph.edges[edge_key]
 
     gutils.remove_edge(graph, edge_key)
-    gutils.add_edge(graph, new_start, edge.stop)
+    local new_edge = gutils.add_edge(graph, new_start, edge.stop)
+    for k, v in pairs(edge) do
+        if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+            new_edge[k] = v
+        end
+    end
 end
 
 -- Doesn't keep extras on edge
@@ -298,7 +302,12 @@ gutils.redirect_edge_stop = function(graph, edge_key, new_end)
     local edge = graph.edges[edge_key]
 
     gutils.remove_edge(graph, edge_key)
-    gutils.add_edge(graph, edge.start, new_end)
+    local new_edge = gutils.add_edge(graph, edge.start, new_end)
+    for k, v in pairs(edge) do
+        if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+            new_edge[k] = v
+        end
+    end
 end
 
 -- Uses old terminology

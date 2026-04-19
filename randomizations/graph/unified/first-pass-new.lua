@@ -21,7 +21,7 @@
 local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 1--0.9
 -- TODO: This could be set with a startup settings
-local DO_TESTS = true
+local DO_TESTS = false
 -- Disabled because it was slow
 local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
@@ -475,8 +475,9 @@ first_pass.execute = function(params)
                 return false
             end
 
+            -- Don't do cost checks; I don't think that's what we want
             -- Also check both have costs or both don't have costs
-            local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
+            --[[local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
             local trav_cost = vanilla_costs.recipe_to_cost[trav_recipe.name]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
@@ -485,7 +486,7 @@ first_pass.execute = function(params)
             -- Check that costs aren't wildly different
             if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
                 return false
-            end
+            end]]
         end
 
         if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
@@ -493,7 +494,7 @@ first_pass.execute = function(params)
             local trav_prot = dutils.get_prot(trav.type, trav.name)
 
             -- Check that both have costs, or both don't have costs
-            local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
+            --[[local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
             local trav_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(trav)]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
@@ -502,7 +503,7 @@ first_pass.execute = function(params)
             -- Check that costs aren't wildly different
             if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
                 return false
-            end
+            end]]
         end
 
         return true

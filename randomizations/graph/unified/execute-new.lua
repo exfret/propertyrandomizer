@@ -49,11 +49,12 @@ config.unified = {
     ["tech-prereqs"] = true,
     ["tech-science-packs"] = true,
     ["entity-autoplace"] = true,
+    ["item-ingredients"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
 for id, _ in pairs(config.unified) do
-    if config.unified[id] then
+    if id == "item-ingredients" then--config.unified[id] then
         table.insert(handler_ids, id)
     end
     randomization_info.options.unified[id] = {
@@ -527,7 +528,8 @@ unified.execute = function()
                 sorted_deps = sorted_deps,
                 shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],
                 sort_for_pool = sort_for_pool,
-                trav_to_slot = first_pass_info.trav_to_slot,
+                trav_to_slot = (first_pass_info or {}).trav_to_slot,
+                do_first_pass = DO_FIRST_PASS,
             })
         end
     end
