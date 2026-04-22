@@ -1,3 +1,7 @@
+-- TODO: Check if non-stackable and don't randomize in (would disrupt attempts to fix costs later)
+
+local constants = require("helper-tables/constants")
+local flow_cost = require("lib/graph/flow-cost")
 local gutils = require("new-lib/graph/graph-utils")
 
 local item_ingredients = {}
@@ -6,7 +10,9 @@ item_ingredients.id = "item_ingredients"
 
 item_ingredients.with_replacement = false
 
+local init_aggregate_costs
 item_ingredients.initialize = function()
+    init_aggregate_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
 end
 
 item_ingredients.spoof = function(graph)
@@ -37,18 +43,24 @@ end
 
 item_ingredients.claim = function(graph, prereq, dep, edge)
     if dep.type == "item-ingredient" or dep.type == "fluid-ingredient" then
-        return 1
+        if init_aggregate_costs.material_to_cost[prereq.type .. "-" .. prereq.name] ~= nil then
+            return 2
+        end
     end
 end
 
 item_ingredients.validate = function(graph, base, head, extra)
     local base_owner = gutils.get_owner(graph, base)
     local head_owner = gutils.get_owner(graph, head)
-    if base_owner.type == "item" and head_owner.type == "item-ingredient" then
-        return true
-    end
-    if base_owner.type == "fluid" and head_owner.type == "fluid-ingredient" then
-        return true
+    if (base_owner.type == "item" and head_owner.type == "item-ingredient") or (base_owner.type == "fluid" and head_owner.type == "fluid-ingredient") then
+        local cost1 = init_aggregate_costs.material_to_cost[base_owner.type .. "-" .. base_owner.name]
+        -- User base_owner.type since it doesn't have the -ingredient and will be the same anyways
+        local cost2 = init_aggregate_costs.material_to_cost[base_owner.type .. "-" .. head_owner.name]
+        -- We don't do a math.abs because we are okay with cheaper
+        if math.log(cost1) - math.log(cost2) < 2 then
+            return true
+        end
+        return false
     end
     return false
 end

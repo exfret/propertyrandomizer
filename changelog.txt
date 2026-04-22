@@ -6,10 +6,12 @@ Date: ?
     - Added ability to duplicate recipe tech unlocks for a smoother experience
   Changes:
     - Overrides now accept upper and lower case x's and y's
+    - Items randomized is 100% by default
   Bugfixes:
     - Stop crash when right clicking prototype choice in explorer
     - Recipe crafting times now come with a description of relative change
     - Recipe tech unlock randomization now works (would previously never work due to a misspelling in the last version)
+    - Beam damage interval now capped from below by 1
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.3
 Date: 2026.03.26

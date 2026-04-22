@@ -49,7 +49,7 @@ tech_science_packs.reflect = function(graph, head_to_base, head_to_handler)
             end
             local new_ings = {}
             for _, pack in pairs(packs) do
-                table.insert(new_ings, {pack.name, 1})
+                table.insert(new_ings, {pack.item, 1})
             end
             data.raw.technology[tech_name].unit.ingredients = new_ings
         end

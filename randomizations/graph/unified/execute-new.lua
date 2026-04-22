@@ -50,11 +50,21 @@ config.unified = {
     ["tech-science-packs"] = true,
     ["entity-autoplace"] = true,
     ["item-ingredients"] = true,
+    ["item"] = true,
+}
+
+local enabled = {
+    --["recipe-ingredients"] = true,
+    ["tech-science-packs"] = true,
+    ["tech-prereqs"] = true,
+    ["recipe-tech-unlocks"] = true,
+    ["recipe-category"] = true,
+    --["item"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
 for id, _ in pairs(config.unified) do
-    if id == "item-ingredients" then--config.unified[id] then
+    if enabled[id] then--config.unified[id] then
         table.insert(handler_ids, id)
     end
     randomization_info.options.unified[id] = {
@@ -411,7 +421,7 @@ unified.execute = function()
         for _, prereq in pairs(handler_to_post_shuffled_prereqs[handler.id]) do
             -- CRITICAL TODO: Might need to add back; currently disables adding a prereq multiple times
             if handler.with_replacement == false then
-                --table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
+                table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
             end
         end
     end
@@ -523,14 +533,20 @@ unified.execute = function()
     end
     for _, handler in pairs(handlers) do
         if handler.custom_prereq_search ~= false then
-            handler.custom_prereq_search({
+            local search_result = handler.custom_prereq_search({
                 random_graph = random_graph,
+                split_graph = (first_pass_info or {}).graph,
                 sorted_deps = sorted_deps,
                 shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],
                 sort_for_pool = sort_for_pool,
                 trav_to_slot = (first_pass_info or {}).trav_to_slot,
+                slot_to_trav = (first_pass_info or {}).slot_to_trav,
                 do_first_pass = DO_FIRST_PASS,
             })
+            if search_result == false then
+                log("Failure at ?%")
+                return false
+            end
         end
     end
 

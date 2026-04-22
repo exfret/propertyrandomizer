@@ -663,7 +663,8 @@ randomizations.beam_damage_interval = function(id)
             id = id,
             prototype = beam,
             property = "damage_interval",
-            dir = -1
+            dir = -1,
+            abs_min = 1,
         })
         -- TODO: Inverse rounding
     end

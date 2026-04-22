@@ -8,4 +8,5 @@ return { -- Finished unified randomizations
     "entity-autoplace",
     "recipe-ingredients",
     "item-ingredients",
+    "item",
 }
