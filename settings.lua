@@ -196,7 +196,7 @@ data:extend({
         name = "propertyrandomizer-item-percent",
         localised_name = "Percent of items randomized",
         localised_description = "What percentage of non-resource items should be randomized (raw resources are always randomized for increased fun). 100% shuffles every item in the game while still preventing softlocks.",
-        default_value = 30,
+        default_value = 100,
         minimum_value = 0,
         maximum_value = 100,
         order = "d-fa[item]"
@@ -306,6 +306,16 @@ data:extend({
         localised_description = "",
         default_value = false,
         order = "e-i[item-ingredients]",
+        hidden = true
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-item",
+        localised_name = "",
+        localised_description = "",
+        default_value = false,
+        order = "e-j[item]",
         hidden = true
     },
     {

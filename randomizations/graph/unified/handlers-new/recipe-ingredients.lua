@@ -42,6 +42,7 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
             return false
         end
         if init_aggregate_costs.recipe_to_cost[dep.name] == nil then
+            -- TODO: Support for recipes without a cost
             return false
         end
         -- Need to check this here due to doing custom prereq search
@@ -205,236 +206,248 @@ recipe_ingredients.custom_prereq_search = function(params)
             assert(slot_recipe ~= nil)
             log("Old context: " .. slot_node.name)
 
-            dependent_to_old_ings[slot_recipe.name] = {}
-            for _, ing in pairs(slot_recipe.ingredients) do
-                table.insert(dependent_to_old_ings[slot_recipe.name], ing)
-            end
-            flow_cost.update_recipe_item_costs(vanilla_aggregate_costs, {slot_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
-            vanilla_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
-            for _, resource_id in pairs(major_raw_resources) do
-                flow_cost.update_recipe_item_costs(vanilla_resource_costs[resource_id], {slot_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
-            end
+            -- If it's something without a cost, do whatever
+            if init_aggregate_costs.recipe_to_cost[slot_recipe.name] == nil then
+                
+                -- TODO
 
-            -- Gather information about this recipe
-            -- TODO: Being "a smelting recipe" is up in the air; depends on recipe category randomization as well!
-            -- Need to act based on how recipe category previously randomized
-            local is_smelting_recipe = lu.smelting_rcats[lutils.rcat_name(dependent_recipe)]
-            local is_result_of_this_recipe = {}
-            if dependent_recipe.results ~= nil then
-                for _, result in pairs(dependent_recipe.results) do
-                    is_result_of_this_recipe[result.type .. "-" .. result.name] = true
+            else
+                dependent_to_old_ings[slot_recipe.name] = {}
+                for _, ing in pairs(slot_recipe.ingredients) do
+                    table.insert(dependent_to_old_ings[slot_recipe.name], ing)
                 end
-            end
+                flow_cost.update_recipe_item_costs(vanilla_aggregate_costs, {slot_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                vanilla_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                for _, resource_id in pairs(major_raw_resources) do
+                    flow_cost.update_recipe_item_costs(vanilla_resource_costs[resource_id], {slot_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                end
 
-            local function find_valid_prereq_list(shuffled_prereqs)
-                -- Only include each prereq once
-                local already_included = {}
-
-                local valid_prereq_list = {}
-                local valid_prereq_inds = {}
-                for prereq_index, prereq in pairs(shuffled_prereqs) do
-                    -- Make sure this prereq has currently calculable costs
-                    local prereq_node = random_graph.nodes[prereq]
-                    local prereq_owner = gutils.get_owner(random_graph, prereq_node)
-                    local prereq_prot = dutils.get_prot(prereq_owner.type, prereq_owner.name)
-                    local prereq_prot_id = flow_cost.get_prot_id(prereq_owner)
-                    local has_costs = true
-                    if randomized_aggregate_costs.material_to_cost[prereq_prot_id] == nil then
-                        has_costs = false
+                -- Gather information about this recipe
+                -- TODO: Being "a smelting recipe" is up in the air; depends on recipe category randomization as well!
+                -- Need to act based on how recipe category previously randomized
+                local is_smelting_recipe = lu.smelting_rcats[lutils.rcat_name(dependent_recipe)]
+                local is_result_of_this_recipe = {}
+                if dependent_recipe.results ~= nil then
+                    for _, result in pairs(dependent_recipe.results) do
+                        is_result_of_this_recipe[result.type .. "-" .. result.name] = true
                     end
-                    for _, resource_id in pairs(major_raw_resources) do
-                        if randomized_resource_costs[resource_id].material_to_cost[prereq_prot_id] == nil then
+                end
+
+                local function find_valid_prereq_list(shuffled_prereqs)
+                    -- Only include each prereq once
+                    local already_included = {}
+
+                    local valid_prereq_list = {}
+                    local valid_prereq_inds = {}
+                    for prereq_index, prereq in pairs(shuffled_prereqs) do
+                        -- Make sure this prereq has currently calculable costs
+                        local prereq_node = random_graph.nodes[prereq]
+                        local prereq_owner = gutils.get_owner(random_graph, prereq_node)
+                        local prereq_prot = dutils.get_prot(prereq_owner.type, prereq_owner.name)
+                        local prereq_prot_id = flow_cost.get_prot_id(prereq_owner)
+                        local has_costs = true
+                        if randomized_aggregate_costs.material_to_cost[prereq_prot_id] == nil then
                             has_costs = false
                         end
-                    end
+                        for _, resource_id in pairs(major_raw_resources) do
+                            if randomized_resource_costs[resource_id].material_to_cost[prereq_prot_id] == nil then
+                                has_costs = false
+                            end
+                        end
 
-                    local function do_recipe_checks()
-                        -- Test for reachability at all contexts
-                        local key1 = prereq
-                        local key2 = dep
-                        for context, _ in pairs(logic.contexts) do
-                            local index1 = sort_for_pool.node_to_context_inds[key1][context]
-                            local index2 = sort_for_pool.node_to_context_inds[key2][context]
-                            -- TODO: Should I ignore nil contexts?
-                            --[[if ignore_nil_contexts and (index1 == nil or index2 == nil) then
-                                return true
-                            end]]
-                            index1 = index1 or (#sort_for_pool.sorted + 1)
-                            index2 = index2 or (#sort_for_pool.sorted + 2)
-                            if not (index1 < index2) then
+                        local function do_recipe_checks()
+                            -- Test for reachability at all contexts
+                            local key1 = prereq
+                            local key2 = dep
+                            for context, _ in pairs(logic.contexts) do
+                                local index1 = sort_for_pool.node_to_context_inds[key1][context]
+                                local index2 = sort_for_pool.node_to_context_inds[key2][context]
+                                -- TODO: Should I ignore nil contexts?
+                                --[[if ignore_nil_contexts and (index1 == nil or index2 == nil) then
+                                    return true
+                                end]]
+                                index1 = index1 or (#sort_for_pool.sorted + 1)
+                                index2 = index2 or (#sort_for_pool.sorted + 2)
+                                if not (index1 < index2) then
+                                    return false
+                                end
+                            end
+
+                            -- Test for prereqs already used for other dependents
+                            if ind_to_used[prereq_index] then
                                 return false
                             end
-                        end
 
-                        -- Test for prereqs already used for other dependents
-                        if ind_to_used[prereq_index] then
-                            return false
-                        end
-
-                        -- Make sure this ingredient isn't in the results of the recipe
-                        if is_result_of_this_recipe[prereq_prot_id] then
-                            return false
-                        end
-
-                        -- Make sure we don't have fuels as ingredients of smelting recipes
-                        if is_smelting_recipe and prereq_prot.fuel_value ~= nil and util.parse_energy(prereq_prot.fuel_value) > 0 then
-                            return false
-                        end
-
-                        -- Don't repeat ingredients in smelting recipes
-                        if is_smelting_recipe and smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] then
-                            return false
-                        end
-
-                        -- Make sure we can find a cost for it
-                        if not has_costs then
-                            return false
-                        end
-
-                        -- If the cost is too high, return false
-                        if randomized_aggregate_costs.material_to_cost[prereq_prot_id] > vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
-                            return false
-                        end
-
-                        -- Check if we already included this as a prereq for this recipe
-                        if already_included[key(prereq_owner)] then
-                            return false
-                        end
-
-                        -- Make sure the ingredient isn't too cheap, but don't worry about it for very expensive recipes
-                        local should_check_costs = true
-                        if constants.unified_recipe_ingredients_cost_threshold < vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
-                            should_check_costs = false
-                        end
-                        if should_check_costs then
-                            local largeness_okay_multiplier = 1
-                            if prereq_owner.type == "fluid" then
-                                largeness_okay_multiplier = 0.1
-                            end
-                            if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                            -- Make sure this ingredient isn't in the results of the recipe
+                            if is_result_of_this_recipe[prereq_prot_id] then
                                 return false
                             end
+
+                            -- Make sure we don't have fuels as ingredients of smelting recipes
+                            if is_smelting_recipe and prereq_prot.fuel_value ~= nil and util.parse_energy(prereq_prot.fuel_value) > 0 then
+                                return false
+                            end
+
+                            -- Don't repeat ingredients in smelting recipes
+                            if is_smelting_recipe and smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] then
+                                return false
+                            end
+
+                            -- Make sure we can find a cost for it
+                            if not has_costs then
+                                return false
+                            end
+
+                            -- If the cost is too high, return false
+                            if randomized_aggregate_costs.material_to_cost[prereq_prot_id] > vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                                return false
+                            end
+
+                            -- Check if we already included this as a prereq for this recipe
+                            if already_included[key(prereq_owner)] then
+                                return false
+                            end
+
+                            -- Make sure the ingredient isn't too cheap, but don't worry about it for very expensive recipes
+                            local should_check_costs = true
+                            if constants.unified_recipe_ingredients_cost_threshold < vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                                should_check_costs = false
+                            end
+                            if should_check_costs then
+                                local largeness_okay_multiplier = 1
+                                if prereq_owner.type == "fluid" then
+                                    largeness_okay_multiplier = 0.1
+                                end
+                                if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                                    return false
+                                end
+                            end
+
+                            return true
                         end
 
-                        return true
+                        if do_recipe_checks() then
+                            table.insert(valid_prereq_list, prereq)
+                            table.insert(valid_prereq_inds, prereq_index)
+                            already_included[key(prereq_owner)] = true
+                        end
                     end
 
-                    if do_recipe_checks() then
-                        table.insert(valid_prereq_list, prereq)
-                        table.insert(valid_prereq_inds, prereq_index)
-                        already_included[key(prereq_owner)] = true
-                    end
+                    return {prereq_list = valid_prereq_list, prereq_inds = valid_prereq_inds}
                 end
 
-                return {prereq_list = valid_prereq_list, prereq_inds = valid_prereq_inds}
-            end
+                -- Extract material_to_costs
+                local vanilla_material_to_costs = {}
+                vanilla_material_to_costs.aggregate_cost = vanilla_aggregate_costs.material_to_cost
+                vanilla_material_to_costs.complexity_cost = vanilla_complexity_costs.material_to_cost
+                vanilla_material_to_costs.resource_costs = {}
+                for _, resource_id in pairs(major_raw_resources) do
+                    vanilla_material_to_costs.resource_costs[resource_id] = vanilla_resource_costs[resource_id].material_to_cost
+                end
+                local vanilla_recipe_costs = cost_lib.get_costs_from_ings(vanilla_material_to_costs, slot_recipe.ingredients)
+                local randomized_material_costs = {}
+                randomized_material_costs.aggregate_cost = randomized_aggregate_costs.material_to_cost
+                randomized_material_costs.complexity_cost = randomized_complexity_costs.material_to_cost
+                randomized_material_costs.resource_costs = {}
+                for _, resource_id in pairs(major_raw_resources) do
+                    randomized_material_costs.resource_costs[resource_id] = randomized_resource_costs[resource_id].material_to_cost
+                end
 
-            -- Extract material_to_costs
-            local vanilla_material_to_costs = {}
-            vanilla_material_to_costs.aggregate_cost = vanilla_aggregate_costs.material_to_cost
-            vanilla_material_to_costs.complexity_cost = vanilla_complexity_costs.material_to_cost
-            vanilla_material_to_costs.resource_costs = {}
-            for _, resource_id in pairs(major_raw_resources) do
-                vanilla_material_to_costs.resource_costs[resource_id] = vanilla_resource_costs[resource_id].material_to_cost
-            end
-            local vanilla_recipe_costs = cost_lib.get_costs_from_ings(vanilla_material_to_costs, slot_recipe.ingredients)
-            local randomized_material_costs = {}
-            randomized_material_costs.aggregate_cost = randomized_aggregate_costs.material_to_cost
-            randomized_material_costs.complexity_cost = randomized_complexity_costs.material_to_cost
-            randomized_material_costs.resource_costs = {}
-            for _, resource_id in pairs(major_raw_resources) do
-                randomized_material_costs.resource_costs[resource_id] = randomized_resource_costs[resource_id].material_to_cost
-            end
+                local potential_ings = {}
+                local valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
+                for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
+                    local prereq_node = random_graph.nodes[prereq]
+                    -- TODO: In the future, maybe some less painful way of getting the actual ings?
+                    -- Since ingredients can't be repeated, prereq.inds should only have one element
+                    local ind_of_ing
+                    for ind, _ in pairs(prereq_node.inds) do
+                        if ind_of_ing == nil then
+                            ind_of_ing = ind
+                        else
+                            error()
+                        end
+                    end
+                    assert(ind_of_ing ~= nil)
+                    -- Now go to the vanilla recipe to fetch the ingredient
+                    local ing_recipe_node = gutils.get_owner(random_graph, random_graph.nodes[prereq_node.old_head])
+                    local ing_recipe = data.raw.recipe[ing_recipe_node.name]
+                    table.insert(potential_ings, ing_recipe.ingredients[ind_of_ing])
+                end
 
-            local potential_ings = {}
-            local valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
-            for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
-                local prereq_node = random_graph.nodes[prereq]
-                -- TODO: In the future, maybe some less painful way of getting the actual ings?
-                -- Since ingredients can't be repeated, prereq.inds should only have one element
-                local ind_of_ing
-                for ind, _ in pairs(prereq_node.inds) do
-                    if ind_of_ing == nil then
-                        ind_of_ing = ind
+                -- Find ingredients to not switch out, and put them last
+                local unrandomized_ings = {}
+                local reordered_ings_randomized = {}
+                local reordered_ings_unrandomized = {}
+                for _, ing in pairs(dependent_recipe.ingredients or {}) do
+                    if is_unrandomized_ing(ing, is_result_of_this_recipe) then
+                        table.insert(unrandomized_ings, ing)
+                        table.insert(reordered_ings_unrandomized, ing)
                     else
-                        error()
+                        table.insert(reordered_ings_randomized, ing)
                     end
                 end
-                assert(ind_of_ing ~= nil)
-                -- Now go to the vanilla recipe to fetch the ingredient
-                local ing_recipe_node = gutils.get_owner(random_graph, random_graph.nodes[prereq_node.old_head])
-                local ing_recipe = data.raw.recipe[ing_recipe_node.name]
-                table.insert(potential_ings, ing_recipe.ingredients[ind_of_ing])
-            end
-
-            -- Find ingredients to not switch out, and put them last
-            local unrandomized_ings = {}
-            local reordered_ings_randomized = {}
-            local reordered_ings_unrandomized = {}
-            for _, ing in pairs(dependent_recipe.ingredients or {}) do
-                if is_unrandomized_ing(ing, is_result_of_this_recipe) then
-                    table.insert(unrandomized_ings, ing)
-                    table.insert(reordered_ings_unrandomized, ing)
-                else
-                    table.insert(reordered_ings_randomized, ing)
-                end
-            end
-            -- Find new fluid indices
-            local is_fluid_index = {}
-            for ing_ind, ing in pairs(reordered_ings_randomized) do
-                if ing.type == "fluid" then
-                    is_fluid_index[ing_ind] = true
-                end
-            end
-            for ing_ind, ing in pairs(reordered_ings_unrandomized) do
-                if ing.type == "fluid" then
-                    is_fluid_index[#reordered_ings_randomized + ing_ind] = true
-                end
-            end
-
-            -- TODO: Should I put in part about not preserving resource costs post-nauvis or for final products?
-            -- I decided to leave that part out here
-
-            -- Finally, search for the best ingredients
-            local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
-            
-            -- Update dependencies
-            for index_in_best_search_info, ing in pairs(best_search_info.ings) do
-                -- In this case, this is an unrandomized ing
-                if index_in_best_search_info > #reordered_ings_randomized then
-                    table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
-                else
-                    local prereq_ind_of_ing = valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]
-                    local prereq_of_ing = shuffled_prereqs[prereq_ind_of_ing]
-                    local prereq_owner = gutils.get_owner(random_graph, random_graph.nodes[prereq_of_ing])
-
-                    table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
-                    ind_to_used[prereq_ind_of_ing] = true
-                    -- Add prereq to end of shuffled_prereqs (doing with replacement)
-                    table.insert(shuffled_prereqs, prereq_of_ing)
-                    if is_smelting_recipe then
-                        smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] = true
+                -- Find new fluid indices
+                local is_fluid_index = {}
+                for ing_ind, ing in pairs(reordered_ings_randomized) do
+                    if ing.type == "fluid" then
+                        is_fluid_index[ing_ind] = true
                     end
                 end
-            end
+                for ing_ind, ing in pairs(reordered_ings_unrandomized) do
+                    if ing.type == "fluid" then
+                        is_fluid_index[#reordered_ings_randomized + ing_ind] = true
+                    end
+                end
 
-            -- No need to update reachability
-            -- Get rid of blacklisted property
-            table.remove(dependent_to_new_ings[dependent_recipe.name], 1)
-            -- TODO: Do better than this hotfix once I get a better cost library!
-            local deepcopied_recipe = table.deepcopy(dependent_recipe)
-            deepcopied_recipe.ingredients = dependent_to_new_ings[deepcopied_recipe.name]
-            -- Update item recipe maps
-            flow_cost.update_item_recipe_maps(randomized_item_recipe_maps, {deepcopied_recipe}, dependent_to_new_ings, true)
+                -- TODO: Should I put in part about not preserving resource costs post-nauvis or for final products?
+                -- I decided to leave that part out here
 
-            -- Update costs
-            -- I changed use_data to false, not sure why it was true
-            flow_cost.update_recipe_item_costs(randomized_aggregate_costs, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
-            -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
-            -- I was having bugs with update_recipe_item_costs which is why I do it this way
-            randomized_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
-            for _, resource_id in pairs(major_raw_resources) do
-                flow_cost.update_recipe_item_costs(randomized_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                -- Finally, search for the best ingredients
+                local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
+                -- Test for failure
+                if type(best_search_info) == "string" then
+                    log("Recipe randomization failed")
+                    return false
+                end
+                
+                -- Update dependencies
+                for index_in_best_search_info, ing in pairs(best_search_info.ings) do
+                    -- In this case, this is an unrandomized ing
+                    if index_in_best_search_info > #reordered_ings_randomized then
+                        table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+                    else
+                        local prereq_ind_of_ing = valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]
+                        local prereq_of_ing = shuffled_prereqs[prereq_ind_of_ing]
+                        local prereq_owner = gutils.get_owner(random_graph, random_graph.nodes[prereq_of_ing])
+
+                        table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+                        ind_to_used[prereq_ind_of_ing] = true
+                        -- Add prereq to end of shuffled_prereqs (doing with replacement)
+                        table.insert(shuffled_prereqs, prereq_of_ing)
+                        if is_smelting_recipe then
+                            smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] = true
+                        end
+                    end
+                end
+
+                -- No need to update reachability
+                -- Get rid of blacklisted property
+                table.remove(dependent_to_new_ings[dependent_recipe.name], 1)
+                -- TODO: Do better than this hotfix once I get a better cost library!
+                local deepcopied_recipe = table.deepcopy(dependent_recipe)
+                deepcopied_recipe.ingredients = dependent_to_new_ings[deepcopied_recipe.name]
+                -- Update item recipe maps
+                flow_cost.update_item_recipe_maps(randomized_item_recipe_maps, {deepcopied_recipe}, dependent_to_new_ings, true)
+
+                -- Update costs
+                -- I changed use_data to false, not sure why it was true
+                flow_cost.update_recipe_item_costs(randomized_aggregate_costs, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
+                -- I was having bugs with update_recipe_item_costs which is why I do it this way
+                randomized_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                for _, resource_id in pairs(major_raw_resources) do
+                    flow_cost.update_recipe_item_costs(randomized_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                end
             end
         end
     end
@@ -571,6 +584,12 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
 
     for recipe_name, ings in pairs(dependent_to_new_ings) do
         local recipe = data.raw.recipe[recipe_name]
+
+        -- Remove blacklisted for recipes without cost
+        if ings[1] == "blacklisted" then
+            table.remove(ings, 1)
+        end
+
         -- TODO: Maybe investigate whether the deepcopy is necessary
         recipe.ingredients = table.deepcopy(ings)
     end

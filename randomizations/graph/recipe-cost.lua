@@ -322,7 +322,7 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
 
     local function choose_unused_ind(index_in_ings)
         if #potential_ings == 0 then
-            error("No possible ingredients for recipe.")
+            return "No possible ingredients for recipe."
         end
 
         local num_failed_attempts = 0
@@ -340,13 +340,17 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
             num_failed_attempts = num_failed_attempts + 1
             if num_failed_attempts >= constants.max_num_failed_attempts_ing_search then
                 log(serpent.block(potential_ings))
-                error("Max number of failed attempts reached during recipe ingredient randomization.")
+                return "Max number of failed attempts reached during recipe ingredient randomization."
             end
         end
     end
 
     for i = 1, num_ings_to_find do
         local new_ing_ind = choose_unused_ind(i)
+        -- Check for warning
+        if type(new_ing_ind) == "string" then
+            return new_ing_ind
+        end
         table.insert(curr_ing_inds, new_ing_ind)
     end
 

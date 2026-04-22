@@ -888,7 +888,9 @@ function concrete.build(lu)
         set_prot(item)
 
         ----------------------------------------
-        add_node("item", "OR")
+        add_node("item", "OR", nil, item.name, {
+            item = item.name,
+        })
         ----------------------------------------
         -- Can we obtain this item?
 

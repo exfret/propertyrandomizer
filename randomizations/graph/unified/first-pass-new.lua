@@ -1,6 +1,8 @@
 -- Differences with first-pass.lua:
 --  * Doesn't use base/head terminology, but rather a .slot = true or .trav = true key property; nodes are still of the same type (though slot keeps name)
 
+-- TODO: Filter out things from first pass that are "boring" (maybe in adding no mechanics)
+
 -- TODO: Tests for loop subroutines
 --   * Bring loop subroutines out
 -- TODO: Logging levels
@@ -16,7 +18,7 @@
 --     Ways to get unstuck in the beginning are often different from what you need mid-game. Gun turrets are eventually needed in spage, but not initially, so can be put off even if they're on the critical path
 -- (SOLVED-ISH) NOW: Things coming before on nauvis but after on other places
 --      I tried a solution but it seems logistic science packs now aren't being put after hand crafting
--- NEXT: Gleba things that arenaturally early aren't used early (like biochambers)
+-- NEXT: Gleba things that are naturally early aren't used early (like biochambers)
 
 local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 1--0.9
@@ -27,6 +29,7 @@ local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
+local EXCLUDE_SCIENCE = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
@@ -53,6 +56,11 @@ local function make_trav_name(old_name)
     return old_name .. trav_suffix
 end
 first_pass.make_trav_name = make_trav_name
+local function undo_trav_name(trav_name)
+    assert(string.sub(trav_name, -#trav_suffix, -1) == trav_suffix)
+    return string.sub(trav_name, 1, -(#trav_suffix + 1))
+end
+first_pass.undo_trav_name = undo_trav_name
 
 first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
@@ -72,6 +80,9 @@ first_pass.execute = function(params)
             return false
         end
         if randomization_info.options.first_pass.blacklist[node_key] then
+            return false
+        end
+        if EXCLUDE_SCIENCE and subdiv_node.type == "item" and data.raw.tool[subdiv_node] ~= nil then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
@@ -475,33 +486,39 @@ first_pass.execute = function(params)
                 return false
             end
 
-            -- Don't do cost checks; I don't think that's what we want
             -- Also check both have costs or both don't have costs
-            --[[local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
+            local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
             local trav_cost = vanilla_costs.recipe_to_cost[trav_recipe.name]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
             end
 
             -- Check that costs aren't wildly different
-            if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
+            --[[if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
                 return false
             end]]
         end
 
+        -- Note: THIS IS BROKEN! If it's an item, they'll be ORANDS! Also the name will have the weird suffix from item handler added
+        -- CRITICAL TODO: FIX!
         if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
             local slot_prot = dutils.get_prot(slot.type, slot.name)
             local trav_prot = dutils.get_prot(trav.type, trav.name)
 
             -- Check that both have costs, or both don't have costs
-            --[[local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
+            local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
             local trav_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(trav)]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
             end
 
             -- Check that costs aren't wildly different
-            if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
+            --[[if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
+                return false
+            end]]
+
+            -- Check both are not stackable or are stackable
+            --[[if dutils.is_stackable(slot_prot) ~= dutils.is_stackable(trav_prot) then
                 return false
             end]]
         end
