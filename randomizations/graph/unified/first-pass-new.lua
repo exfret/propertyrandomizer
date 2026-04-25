@@ -24,6 +24,9 @@ local MAX_ITERATIONS = 10000
 local FAILURE_ACCEPTANCE = 1--0.9
 -- TODO: This could be set with a startup settings
 local DO_TESTS = false
+-- Require a node to unlock some mechanic to be considered important
+-- This seemed to make things worse, but I think the general is still valid, so keeping this hear for future reference
+local REQUIRE_MECHANICS_FOR_IMPORTANCE = false
 -- Disabled because it was slow
 local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
@@ -291,7 +294,7 @@ first_pass.execute = function(params)
         -- CRITICAL TODO: Make decision of how to do this/profiling
         -- Right now I'm deciding between prereqs assigned and checking contexts
 
-        -- Actually, this approach doesn't work, since slot
+        -- Actually, this approach doesn't work, since slot ... (I apparently never finished this sentence)
         --node_prenodes_share_context(spoofed_graph, spoofed_node)
 
         for _, prenode in pairs(gutils.prenodes(spoofed_graph, spoofed_node)) do
@@ -327,6 +330,36 @@ first_pass.execute = function(params)
 
     -- Just checks if there are enough prereq slots for trav of each type
     local function trav_acceptable(trav)
+        -- The following code didn't work, but I'm keeping it here in case I need to come back to it
+        -- If this stays here a while and I don't need it, then it's safe to delete the whole commented block after this
+        --[[
+        -- CRITICAL TODO: Something more permanent! So not just for item randomization
+        if trav.type == "orand" then
+            local old_slot_owner = subdiv_graph.nodes[subdiv_graph.orand_to_parent[trav.old_slot] ]
+            if old_slot_owner.type == "item" and old_slot_owner.trav_item then
+                -- Check that there are at least as many reachable item slots as item travs
+                -- We should probably do this without checking every pebble (keep track of what's reachable as we add things)
+                local req_num_item_slots = 0
+                for _, _ in pairs(trav_to_slot) do
+                    req_num_item_slots = 1 + req_num_item_slots
+                end
+                -- Add an extra because the upcoming trav would also need a slot if it was an item
+                local req_num_item_slots = 1 + req_num_item_slots
+
+                local num_item_slots = 0
+                for _, pebble in pairs(split_sort.sorted) do
+                    local node = split_graph.nodes[pebble.node_key]
+                    -- Genuine item!
+                    if node.type == "item" and not node.trav_item then
+                        num_item_slots = 1 + num_item_slots
+                    end
+                end
+                if num_item_slots < req_num_item_slots then
+                    return false
+                end
+            end
+        end]]
+
         if not DO_PREREQ_POOL_CHECK then
             return true
         end
@@ -401,7 +434,9 @@ first_pass.execute = function(params)
             error("Traveler expected, but got different node type")
         end
 
-        return slot_to_trav[trav.old_slot] ~= nil
+        --return slot_to_trav[trav.old_slot] ~= nil
+        -- Actually let's try "reachable" instead
+        return next(split_sort.node_to_context_inds[trav.old_slot]) ~= nil
     end
 
     local trav_to_mechanics = {}
@@ -426,6 +461,24 @@ first_pass.execute = function(params)
             end
             ind = ind + 1
         end
+    end
+    if REQUIRE_MECHANICS_FOR_IMPORTANCE then
+        local new_important = {}
+        local unimportant_removed = 0
+        for node_key, _ in pairs(is_important) do
+            local trav_key = split_graph.nodes[node_key].old_trav
+            -- Make sure node_key actually corresponded to a slot
+            -- Note that we only test is_important on travelers anyways
+            if trav_key ~= nil then
+                if next(trav_to_mechanics[trav_key]) ~= nil then
+                    new_important[trav_key] = true
+                else
+                    unimportant_removed = 1 + unimportant_removed
+                end
+            end
+        end
+        is_important = new_important
+        log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
     end
 
     -- Calculate costs; needed just a bit for compatibility check
@@ -503,11 +556,12 @@ first_pass.execute = function(params)
         -- CRITICAL TODO: FIX!
         if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
             local slot_prot = dutils.get_prot(slot.type, slot.name)
+            -- CRITICAL TODO: This is also broken! Need to get original name without -trav
             local trav_prot = dutils.get_prot(trav.type, trav.name)
 
             -- Check that both have costs, or both don't have costs
-            local slot_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(slot)]
-            local trav_cost = vanilla_costs.material_to_cost[flow_cots.get_prot_id(trav)]
+            local slot_cost = vanilla_costs.material_to_cost[flow_cost.get_prot_id(slot)]
+            local trav_cost = vanilla_costs.material_to_cost[flow_cost.get_prot_id(trav)]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
             end

@@ -54,7 +54,7 @@ config.unified = {
 }
 
 local enabled = {
-    --["recipe-ingredients"] = true,
+    ["recipe-ingredients"] = true,
     ["tech-science-packs"] = true,
     ["tech-prereqs"] = true,
     ["recipe-tech-unlocks"] = true,

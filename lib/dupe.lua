@@ -1187,7 +1187,8 @@ dupe.recipe_tech_unlocks = function()
     local all_recipe_effects = {}
     local all_techs = {}
     local unlock_to_tech = {}
-    for _, tech in pairs(data.raw.technology) do
+    -- CRITICAL TODO: FIX NEXT LINE TO BE NEW DATA RAW
+    for _, tech in pairs(old_data_raw.technology) do
         table.insert(all_techs, tech)
         if tech.effects ~= nil then
             for _, effect in pairs(tech.effects) do
@@ -1199,6 +1200,24 @@ dupe.recipe_tech_unlocks = function()
             end
         end
     end
+    for recipe_name, techs in pairs(unlock_to_tech) do
+        for tech_name, _ in pairs(techs) do
+            local already_has_unlock = false
+            for _, unlock in pairs(data.raw.technology[tech_name].effects) do
+                if unlock.type == "unlock-recipe" and unlock.recipe == recipe_name then
+                    already_has_unlock = true
+                end
+            end
+            if not already_has_unlock then
+                table.insert(data.raw.technology[tech_name].effects, {
+                    type = "unlock-recipe",
+                    recipe = recipe_name,
+                })
+            end
+        end
+    end
+    -- CRITICAL TODO: Uncomment out!
+    --[[
     for _, effect in pairs(all_recipe_effects) do
         local tech
         while true do
@@ -1209,7 +1228,7 @@ dupe.recipe_tech_unlocks = function()
         end
         tech.effects = tech.effects or {}
         table.insert(tech.effects, effect)
-    end
+    end]]
 end
 
 return dupe

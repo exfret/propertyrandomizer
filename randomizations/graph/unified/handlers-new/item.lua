@@ -61,6 +61,7 @@ item.spoof = function(graph)
         local new_node = gutils.add_node(graph, "item", node.name .. trav_suffix)
         new_node.op = "OR"
         new_node.item = node.item
+        new_node.trav_item = true
         local to_move = {pre = {}, dep = {}}
         for _, dir in pairs({"pre", "dep"}) do
             for edge_key, _ in pairs(node[dir]) do
