@@ -43,10 +43,11 @@ if config.dupes then
     --dupe.execute()
     --dupe.execute_vanilla()
 end
-if config.duplicate_recipe_tech_unlocks then
+-- CRITICAL TODO: Uncomment!
+--[[if config.duplicate_recipe_tech_unlocks then
     local dupe = require("lib/dupe")
     dupe.recipe_tech_unlocks()
-end
+end]]
 
 -- Special prototype fixes
 require("randomizations/prefixes")
@@ -293,6 +294,12 @@ end
 log("Done applying extra randomizations")
 
 log("Applying fixes")
+
+-- CRITICAL TODO: REMOVE!
+if config.duplicate_recipe_tech_unlocks then
+    local dupe = require("lib/dupe")
+    dupe.recipe_tech_unlocks()
+end
 
 -- Any fixes needed
 randomizations.fixes()
