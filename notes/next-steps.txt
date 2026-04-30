@@ -2,6 +2,14 @@ CURRENTLY ON:
 
  * Before next release, rocket launch products and node adding API
 
+ * exfretpelago
+    * (DONE) Duplicate recipes (not items), and randomize them separately in each copy
+    * Also run item rando separately in each copy, but try to link items together afterward
+    * Duplicate techs
+    * Perform new-execute randomization on every tech at once, and on tech unlocks
+    * Write control-stage code to create new forces/surfaces, and randomly rotate one person around every 30 minutes
+    * Eventually, commands/interface to choose a surface so many people can be rotated around
+
  * Recipe ingredients unified (basic version first?)
     * Cost implementations
        * (DONE) Factor out cost functions to recipe-cost.lua
@@ -18,15 +26,14 @@ CURRENTLY ON:
        * (DONE) Reachability subroutine
     * Fixes
        * Increase complexity of ings
-       * Decrease amounts (Idea: prefer just decreasing amounts and making the thing just naturally cheaper)
+       * Decrease amounts (Idea: prefer just decreasing amounts afterward and making the thing just naturally cheaper)
  * Rerolls feature!
  * execute-new handler options
-    * Write context switching to describe problems I'm having to others better
+    * Write context switching wiki page to describe problems I'm having to others better
     * Support for recipe blacklisted pre again
-    * Move recipe tech unlock node rando back so that prereqs are actual techs
-    * First pass specific blacklist
+    * Move recipe tech unlock node rando back so that prereqs are actual techs (can this be done? Might need new algorithmic tech)
+    * (DONE) First pass specific blacklist
  * Extracting dependency graph library
  * First pass sort improvements
     * Better compatibility tests (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)
-    * Write context switching wiki page
     * Add more testing/logging?
