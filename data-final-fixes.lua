@@ -97,7 +97,7 @@ end
 
 -- Do unified randomizations first
 
-for i = 1, config.unified_num_retries do
+--[[for i = 1, config.unified_num_retries do
     if not unified.execute() then
         data.raw = table.deepcopy(old_data_raw)
         if i == config.unified_num_retries then
@@ -106,7 +106,18 @@ for i = 1, config.unified_num_retries do
     else
         break
     end
-end
+end]]
+
+
+
+
+-- Actually, need to do this differently
+--local dupe = require("lib/dupe")
+
+
+
+
+
 
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
@@ -147,6 +158,46 @@ build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
+
+
+
+
+
+
+local locale_utils = require("lib/locale")
+local num_copies = 3
+local data_raw_copies = {}
+for i = 1, num_copies do
+    randomizations.recipe_ingredients("recipe_ingredients")
+    -- Rebuild graph
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+
+    table.insert(data_raw_copies, table.deepcopy(data.raw))
+    data.raw = table.deepcopy(old_data_raw)
+end
+-- Update with new recipes
+for i = 1, num_copies do
+    for _, recipe in pairs(data_raw_copies[i].recipe) do
+        local suffix = "-exfret-" .. i .. "-copy"
+        recipe.localised_name = locale_utils.find_localised_name(recipe)
+        recipe.orig_name = recipe.name
+        recipe.suffix = suffix
+        recipe.name = recipe.name .. suffix
+        recipe.enabled = false
+        data:extend({
+            recipe
+        })
+    end
+end
+
+
+
+
+
+
 
 if config.simultaneous then
     -- Include these to toggle individual randomizers

@@ -42,6 +42,18 @@ categories.effect_receivers = {
     ["mining-drill"] = true
 }
 
+categories.enemy_health_classes = {
+    ["asteroid"] = true,
+    ["segment"] = true,
+    ["segmented-unit"] = true,
+    ["simple-entity"] = true,
+    ["spider-unit"] = true,
+    ["tree"] = true, -- They're standing in the way of my factory!
+    ["turret"] = true,
+    ["unit"] = true,
+    ["unit-spawner"] = true
+}
+
 -- The following only consider powering the machine, not power that the machine provides
 categories.energy_sources_input = {
     ["agricultural-tower"] = "energy_source",
@@ -81,18 +93,6 @@ categories.energy_sources_input_electric = {
     -- CRITICAL TODO
 }
 -- For which entities is their energy source forced to be burner or void?
-
-categories.enemy_health_classes = {
-    ["asteroid"] = true,
-    ["segment"] = true,
-    ["segmented-unit"] = true,
-    ["simple-entity"] = true,
-    ["spider-unit"] = true,
-    ["tree"] = true, -- They're standing in the way of my factory!
-    ["turret"] = true,
-    ["unit"] = true,
-    ["unit-spawner"] = true
-}
 
 -- Excludes some entities like linked-container
 categories.entities_with_inventory = {

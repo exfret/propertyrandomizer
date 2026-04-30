@@ -1231,4 +1231,28 @@ dupe.recipe_tech_unlocks = function()
     end]]
 end
 
+-- Actually, I think we need to do the duping in data-final-fixes
+dupe.all_recipes = function()
+    local all_recipes = table.deepcopy(data.raw.recipe)
+    for _, recipe in pairs(all_recipes) do
+        local new_recipe = dupe.prototype(recipe, {
+            suffix = "",
+        })
+
+        -- Recipe tech unlocks
+        for _, technology in pairs(data.raw.technology) do
+            if technology.effects ~= nil then
+                for _, effect in pairs(technology.effects) do
+                    if effect.type == "unlock-recipe" and effect.recipe == recipe.name then
+                        table.insert(technology.effects, {
+                            type = "unlock-recipe",
+                            recipe = new_recipe.name
+                        })
+                    end
+                end
+            end
+        end
+    end
+end
+
 return dupe

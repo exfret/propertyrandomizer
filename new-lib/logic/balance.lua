@@ -67,7 +67,6 @@ balance.build = function(lu)
     -- Can we operate an assembling machine with crafting as a category?
 
     for _, machine in pairs(data.raw["assembling-machine"]) do
-        -- Check this can mine basic-solid
         local valid = false
         for _, cat in pairs(machine.crafting_categories) do
             if cat == "crafting" then

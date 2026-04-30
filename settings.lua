@@ -178,7 +178,7 @@ data:extend({
         name = "propertyrandomizer-recipe-tech-unlock-duplicates",
         localised_name = "Duplicate unlocks (recommended)",
         localised_description = "Adds an extra copy of each recipe unlock in the tech tree to smooth out progression issues.",
-        default_value = true,
+        default_value = false,
         order = "d-ea[recipe-tech-unlock-duplicates]"
     },
     {
@@ -187,7 +187,7 @@ data:extend({
         name = "propertyrandomizer-item",
         localised_name = "Items",
         localised_description = "Randomizes where items are in the game. For example, instead of mining coal you might mine fish, or furnaces could replace circuits as one of the most common intermediates.",
-        default_value = true,
+        default_value = false,
         order = "d-f[item]"
     },
     {
