@@ -139,16 +139,59 @@ script.on_nth_tick(1, function(event)
                     recipe.enabled = false
                 end
             end
+            for _, tech in pairs(force.technologies) do
+                if string.find(tech.name, "exfret%-" .. tostring(i) .. "%-copy") == nil then
+                    tech.enabled = false
+                    tech.visible_when_disabled = false
+                end
+            end
             table.insert(storage.exfretpelago_forces, force)
         end
     end
     for _, player in pairs(game.players) do
+        storage.last_position = storage.last_position or {}
+        storage.last_position[player.name] = storage.last_position[player.name] or {}
         if player.character ~= nil and player.character.valid then
             for i = 1, num_copies do
                 if string.find(player.character.surface.planet.prototype.name, "exfret%-" .. tostring(i) .. "%-copy") ~= nil then
                     if player.force.name ~= storage.exfretpelago_forces[i].name then
                         game.print("Changed " .. player.name .. " to force " .. storage.exfretpelago_forces[i].name)
                         player.force = storage.exfretpelago_forces[i]
+                    end
+                end
+            end
+            storage.last_position[player.name][player.character.surface.name] = player.character.position
+        end
+    end
+
+    if game.tick % (30 * 60 * 60) == 25 * 60 * 60 then
+        game.print("5 minutes until next teleport.")
+    end
+    if game.tick % (30 * 60 * 60) == 30 * 60 * 60 - 30 * 60 then
+        game.print("30 seconds until next teleport.")
+    end
+    local time_left = 30 * 60 * 60 - (game.tick % (30 * 60 * 60))
+    local seconds_left = time_left / 60
+    if (time_left % 60 == 0) and seconds_left <= 5 and seconds_left > 0 then
+        game.print(tostring(seconds_left) .. " seconds until next teleport.")
+    end
+    if game.tick % (30 * 60 * 60) == 0 then
+        for _, player in pairs(game.players) do
+            if player.character ~= nil and player.character.valid then
+                while player.character.crafting_queue_size > 0 do
+                    player.character.cancel_crafting({index = 1, count = player.character.crafting_queue[1].count})
+                end
+                for i = 1, num_copies do
+                    if string.find(player.character.surface.planet.prototype.name, "exfret%-" .. tostring(i) .. "%-copy") ~= nil then
+                        for _, surface in pairs(game.surfaces) do
+                            if string.find(surface.planet.prototype.name, "exfret%-" .. tostring(i % num_copies + 1) .. "%-copy") ~= nil then
+                                local last_position = storage.last_position[player.name][surface.name] or {0, 0}
+                                local non_colliding_position = surface.find_non_colliding_position(player.character.prototype.name, last_position, 0, 1)
+                                player.character.teleport(non_colliding_position, surface, true, false)
+                                break
+                            end
+                        end
+                        break
                     end
                 end
             end
