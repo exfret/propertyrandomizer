@@ -113,6 +113,21 @@ end]]
 
 -- Actually, need to do this differently
 --local dupe = require("lib/dupe")
+-- Make the nauvis copies now
+-- We'll technically have access to multiple nauvis's while randomizing then, but I can't imagine this changing anything if they all have the same resources etc.
+local num_copies = 3
+local locale_utils = require("lib/locale")
+for i = 1, num_copies do
+    local nauvis_copy = table.deepcopy(data.raw.planet.nauvis)
+    local suffix = "-exfret-" .. i .. "-copy"
+    nauvis_copy.localised_name = {"", locale_utils.find_localised_name(nauvis_copy), " #" .. tostring(i)}
+    nauvis_copy.orig_name = nauvis_copy.name
+    nauvis_copy.suffix = suffix
+    nauvis_copy.name = nauvis_copy.name .. suffix
+    data:extend({
+        nauvis_copy
+    })
+end
 
 
 
@@ -164,19 +179,91 @@ build_graph.add_dependents(dep_graph)
 
 
 
-local locale_utils = require("lib/locale")
-local num_copies = 3
+local dupe_number_to_filename = {
+    "number_one.png",
+    "number_two.png",
+    "number_three.png",
+    "number_four.png",
+    "number_five.png",
+    "number_six.png",
+    "number_seven.png",
+    "number_eight.png",
+    "number_nine.png",
+}
+-- Put -#'s at the end of techs at the beginning
+-- Technically assumes that there will not be a -# afterward, but the failure case tech names like just "-3" or "research-2-3" seem pretty silly
+local function strip_numeric_suffix(tech_name)
+    local base, num = string.match(tech_name, "^([%w_%-]+)%-(%d+)$")
+    return base or tech_name, num or ""
+end
+for _, tech in pairs(data.raw.technology) do
+    local base, num = strip_numeric_suffix(tech.name)
+    local old_name = tech.name
+    if num ~= "" then
+        tech.name = num .. "-" .. base
+    end
+    tech.localised_name = locale_utils.find_localised_name(data.raw.technology[base] or data.raw.technology[base .. "-1"] or data.raw.technology["1-" .. base])
+    -- Fix prerequisites
+    -- There are other things that reference tech ID's, but none of them are really important or applicable to upgrade techs
+    for _, other_tech in pairs(data.raw.technology) do
+        if other_tech.prerequisites ~= nil then
+            local new_prereqs = {}
+            for _, prereq in pairs(other_tech.prerequisites) do
+                if prereq == old_name then
+                    table.insert(new_prereqs, tech.name)
+                else
+                    table.insert(new_prereqs, prereq)
+                end
+            end
+            other_tech.prerequisites = new_prereqs
+        end
+    end
+    -- Also set upgrade to false because it's silly
+    tech.upgrade = false
+    data.raw.technology[old_name] = nil
+    data.raw.technology[tech.name] = tech
+end
+-- Need to keep track of these changes!
+local less_old_data_raw = table.deepcopy(data.raw)
 local data_raw_copies = {}
 for i = 1, num_copies do
-    randomizations.recipe_ingredients("recipe_ingredients")
+    config.seed = config.seed + 1
+    
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
+    randomizations.recipe_ingredients("recipe_ingredients")
+
+    build_graph.load()
+    dep_graph = build_graph.graph
+    build_graph_compat.load(dep_graph)
+    build_graph.add_dependents(dep_graph)
+    randomizations.item_new("item-new")
+
+
+
+    log(serpent.block(data.raw.resource["iron-ore"]))
+
+
+
 
     table.insert(data_raw_copies, table.deepcopy(data.raw))
-    data.raw = table.deepcopy(old_data_raw)
+    --data.raw = table.deepcopy(less_old_data_raw)
+    -- Redo data.raw at prototype property level since old logic is badly coded and maintains stale references to a lot of things
+    for _, class in pairs(data.raw) do
+        for _, prot in pairs(class) do
+            for k, v in pairs(prot) do
+                if k ~= "type" and k ~= "name" then
+                    prot[k] = nil
+                end
+            end
+            for k, v in pairs(table.deepcopy(less_old_data_raw[prot.type][prot.name])) do
+                prot[k] = v
+            end
+        end
+    end
 end
 -- Update with new recipes
 for i = 1, num_copies do
@@ -186,12 +273,222 @@ for i = 1, num_copies do
         recipe.orig_name = recipe.name
         recipe.suffix = suffix
         recipe.name = recipe.name .. suffix
-        recipe.enabled = false
+        -- Can't do this or the randomizer will think it's genuinely hidden
+        --recipe.enabled = false
+        -- Also need to do icon
+        local recipe_icons
+        if recipe.icons == nil and recipe.icon == nil then
+            local item_with_icon_name
+            if recipe.main_product ~= nil then
+                item_with_icon_name = recipe.main_product
+            else
+                item_with_icon_name = recipe.results[1].name
+            end
+            local item_with_icon
+            for item_class, _ in pairs(defines.prototypes.item) do
+                if data_raw_copies[i][item_class] ~= nil then
+                    if data_raw_copies[i][item_class][item_with_icon_name] ~= nil then
+                        item_with_icon = data_raw_copies[i][item_class][item_with_icon_name]
+                    end
+                end
+            end
+            if data_raw_copies[i].fluid[item_with_icon_name] ~= nil then
+                item_with_icon = data_raw_copies[i].fluid[item_with_icon_name]
+            end
+            if item_with_icon.icons ~= nil then
+                recipe_icons = item_with_icon.icons
+            else
+                recipe_icons = {
+                    {
+                        icon = item_with_icon.icon,
+                        icon_size = item_with_icon.icon_size or 64
+                    }
+                }
+            end
+        elseif recipe.icons == nil then
+            recipe_icons = {
+                {
+                    icon = recipe.icon,
+                    icon_size = recipe.icon_size or 64
+                }
+            }
+        else
+            recipe_icons = recipe.icons
+        end
+        recipe.icons = recipe_icons
+        table.insert(recipe.icons, {
+            icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[i],
+            icon_size = 120,
+            scale = 1 / 6,
+            shift = {7, -7}
+        })
         data:extend({
             recipe
         })
     end
+
+    local change_control = {}
+    local change_entity = {}
+    -- Whether entity appears should be toggleable in the planet's autoplace settings/controls
+    -- All these entities can't actually be transferred between planets (except tree in space age), so having them be different shouldn't be confusing/require graphics differentiations
+    for _, minable_class in pairs({"resource", "simple-entity", "tree", "unit", "unit-spawner", "fish"}) do
+        for _, entity in pairs(data_raw_copies[i][minable_class]) do
+            local suffix = "-exfret-" .. i .. "-copy"
+            entity.localised_name = locale_utils.find_localised_name(entity)
+            entity.orig_name = entity.name
+            entity.suffix = suffix
+            entity.name = entity.name .. suffix
+            -- Unit spawners do need to be changed to spawn the duplicate units
+            if entity.type == "unit-spawner" then
+                for _, spawn_def in pairs(entity.result_units) do
+                    if spawn_def.unit ~= nil then
+                        spawn_def.unit = spawn_def.unit .. suffix
+                    else
+                        spawn_def[1] = spawn_def[1] .. suffix
+                    end
+                end
+            end
+            if entity.autoplace ~= nil or (entity.type == "resource" and data.raw["autoplace-control"][entity.orig_name] ~= nil) then
+                change_entity[entity.orig_name] = true
+                if entity.autoplace.control ~= nil then
+                    change_control[entity.autoplace.control] = true
+                    entity.autoplace.control = entity.autoplace.control .. suffix
+                end
+                if data.raw["autoplace-control"][entity.orig_name] ~= nil then
+                    change_control[entity.orig_name] = true
+                end
+            end
+
+            -- Don't need to update place results or anything because these entities don't have associated items
+            -- That wouldn't work anyways since we don't duplicate items
+            data:extend({
+                entity
+            })
+        end
+    end
+
+    for _, control in pairs(data_raw_copies[i]["autoplace-control"]) do
+        if change_control[control.name] then
+            local suffix = "-exfret-" .. i .. "-copy"
+            control.localised_name = {"", locale_utils.find_localised_name(control), " #" .. tostring(i)}
+            control.orig_name = control.name
+            control.suffix = suffix
+            control.name = control.name .. suffix
+            control.order = tostring(i) .. control.order
+            data:extend({
+                control
+            })
+        end
+    end
+
+    do
+        -- Update autoplaces
+        local suffix = "-exfret-" .. i .. "-copy"
+        local nauvis_copy = data.raw.planet["nauvis" .. suffix]
+        local autoplace_controls = nauvis_copy.map_gen_settings.autoplace_controls
+        local new_autoplace_controls = {}
+        for k, v in pairs(autoplace_controls) do
+            if change_control[k] then
+                new_autoplace_controls[k .. suffix] = table.deepcopy(v)
+            else
+                new_autoplace_controls[k] = table.deepcopy(v)
+            end
+        end
+        nauvis_copy.map_gen_settings.autoplace_controls = new_autoplace_controls
+        local autoplace_settings = nauvis_copy.map_gen_settings.autoplace_settings.entity.settings
+        local new_autoplace_settings = {}
+        for k, v in pairs(autoplace_settings) do
+            if change_entity[k] then
+                new_autoplace_settings[k .. suffix] = table.deepcopy(v)
+            else
+                new_autoplace_settings[k] = table.deepcopy(v)
+            end
+        end
+        nauvis_copy.map_gen_settings.autoplace_settings.entity.settings = new_autoplace_settings
+    end
+
+    -- More items with fuel values (for coal replacement)
+    -- This works because adding fuel values doesn't break things, so we can just be liberal about things having those fuel values
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data_raw_copies[i][item_class] ~= nil then
+            for _, item in pairs(data_raw_copies[i][item_class]) do
+                if item.fuel_value ~= nil and util.parse_energy(item.fuel_value) > 0 then
+                    local data_raw_item = data.raw[item_class][item.name]
+                    if data_raw_item.fuel_value == nil or util.parse_energy(data_raw_item.fuel_value) == 0 then
+                        local fuel_properties = {
+                            "fuel_value",
+                            "fuel_category",
+                            "fuel_acceleration_multiplier",
+                            "fuel_top_speed_multiplier",
+                            "fuel_emissions_multiplier",
+                            "fuel_acceleration_multiplier_quality_bonus",
+                            "fuel_top_speed_multiplier_quality_bonus",
+                        }
+                        for _, property in pairs(fuel_properties) do
+                            data_raw_item[property] = item[property]
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    for _, tech in pairs(data_raw_copies[i].technology) do
+        local suffix = "-exfret-" .. i .. "-copy"
+        tech.localised_name = locale_utils.find_localised_name(tech)
+        tech.orig_name = tech.name
+        tech.suffix = suffix
+        tech.name = tech.name .. suffix
+        -- Fix prerequisites
+        local new_prereqs = {}
+        for _, prereq in pairs(tech.prerequisites or {}) do
+            table.insert(new_prereqs, prereq .. suffix)
+        end
+        tech.prerequisites = new_prereqs
+        -- Fix recipe unlocks
+        local new_effects = {}
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type == "unlock-recipe" then
+                table.insert(new_effects, {
+                    type = "unlock-recipe",
+                    recipe = effect.recipe .. suffix
+                })
+            else
+                table.insert(new_effects, effect)
+            end
+        end
+        tech.effects = new_effects
+        -- Trigger effects should already have been fixed during randomization, since they test items rather than recipes
+
+        data:extend({
+            tech
+        })
+    end
 end
+-- Remove old techs and recipes by making them hidden
+for _, tech in pairs(data.raw.technology) do
+    if tech.orig_name == nil then
+       tech.hidden = true
+    end
+end
+local lesser_old_data_raw = table.deepcopy(data.raw)
+for i = 1, config.unified_num_retries do
+    if not unified.execute() then
+        data.raw = table.deepcopy(lesser_old_data_raw)
+        if i == config.unified_num_retries then
+            error("Unified randomization failed. Perhaps try a new seed?")
+        end
+    else
+        break
+    end
+end
+
+-- We can't reload old logic after doing the duplicates because of bad coding in old logic building
+--[[build_graph.load()
+dep_graph = build_graph.graph
+build_graph_compat.load(dep_graph)
+build_graph.add_dependents(dep_graph)
+randomizations.item_new("item-new")]]
 
 
 
@@ -358,13 +655,15 @@ do_overrides_postfixes()
 
 -- Final check for completability
 
-local final_sort_info = top_sort.sort(dep_graph)
+-- Don't do the reachability sort now, we can't do the final graph building
+-- I could try with new logic softlock checking, though
+--local final_sort_info = top_sort.sort(dep_graph)
 
 --[[for _, node in pairs(final_sort_info.sorted) do
     log(build_graph.key(node.type, node.name))
 end]]
 
-local reachability_warning_to_insert
+--[[local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
     local first_node_unreachable
     for _, node in pairs(initial_sort_info.sorted) do
@@ -399,7 +698,7 @@ if #final_sort_info.sorted < #initial_sort_info.sorted then
 end
 if reachability_warning_to_insert ~= nil then
     table.insert(randomization_info.warnings, reachability_warning_to_insert)
-end
+end]]
 
 -- Add warnings for control stage
 if not offline then

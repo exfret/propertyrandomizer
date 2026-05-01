@@ -1,5 +1,7 @@
 -- TODO: Split off explorer panel into seperate file.
 
+local num_copies = 3
+
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("new-lib/graph/consistent-sort")
@@ -113,7 +115,46 @@ script.on_event(defines.events.on_post_entity_died, function(event)
     end
 end)
 
+script.on_event(defines.events.on_research_finished, function(event)
+    for _, effect in pairs(event.research.prototype.effects) do
+        if effect.type == "unlock-recipe" then
+            local recipe = event.research.force.recipes[effect.recipe]
+            recipe.enabled = false
+            for i = 1, num_copies do
+                if string.find(recipe.name, "exfret%-" .. tostring(i) .. "%-copy") ~= nil then
+                    storage.exfretpelago_forces[i].recipes[recipe.name].enabled = true
+                end
+            end
+        end
+    end
+end)
+
 script.on_nth_tick(1, function(event)
+    if storage.exfretpelago_forces == nil then
+        storage.exfretpelago_forces = {}
+        for i = 1, num_copies do
+            local force = game.create_force("player-exfret-" .. tostring(i) .. "-copy")
+            for _, recipe in pairs(force.recipes) do
+                if string.find(recipe.name, "exfret%-" .. tostring(i) .. "%-copy") == nil then
+                    recipe.enabled = false
+                end
+            end
+            table.insert(storage.exfretpelago_forces, force)
+        end
+    end
+    for _, player in pairs(game.players) do
+        if player.character ~= nil and player.character.valid then
+            for i = 1, num_copies do
+                if string.find(player.character.surface.planet.prototype.name, "exfret%-" .. tostring(i) .. "%-copy") ~= nil then
+                    if player.force.name ~= storage.exfretpelago_forces[i].name then
+                        game.print("Changed " .. player.name .. " to force " .. storage.exfretpelago_forces[i].name)
+                        player.force = storage.exfretpelago_forces[i]
+                    end
+                end
+            end
+        end
+    end
+
     if storage.combat_robot_entity_to_assign ~= nil then
         for _, spec in pairs(storage.combat_robot_entity_to_assign) do
             spec[1].combat_robot_owner = spec[2]

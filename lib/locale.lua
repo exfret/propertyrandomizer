@@ -153,7 +153,7 @@ function locale_utils.find_localised_name_technology(technology)
         end
     end
     if ending_num ~= nil and string.len(ending_num) > 0 then
-        return {"technology-name." .. string.sub(technology.name, 1, -(string.len(ending_num) + 1))}
+        return {"?", {"technology-name." .. string.sub(technology.name, 1, -(string.len(ending_num) + 2))}, {"technology-name." .. string.sub(technology.name, 1, -(string.len(ending_num) + 2)) .. "-1"}}
     end
 
     return {"technology-name." .. technology.name}

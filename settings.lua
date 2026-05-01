@@ -217,7 +217,7 @@ data:extend({
         name = "propertyrandomizer-unified-retries",
         localised_name = "Unified randomization attempts",
         localised_description = "Unified randomization fails occasionally too, so multiple attempts can be made to prevent startup errors. This also can prolong loading time if many failures occur.",
-        default_value = 10,
+        default_value = 30,
         minimum_value = 1,
         order = "e-[unified]"
     },

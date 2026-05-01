@@ -2638,12 +2638,13 @@ local function load()
     for _, planet in pairs(get_prototypes("planet")) do
         prereqs = {}
 
-        if planet.name == "nauvis" then
+        -- Actually, we need nauvis initially reachable!
+        --if planet.name ~= "nauvis" then
             table.insert(prereqs, {
                 type = "starting-planet",
                 name = "canonical"
             })
-        end
+        --end
         table.insert(prereqs, {
             type = "space-location",
             name = planet.name

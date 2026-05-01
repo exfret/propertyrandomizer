@@ -42,9 +42,11 @@ function graph_setup.build(logic)
     -- Add prereqs and depends to nodes
     for edge_key, edge in pairs(graph.edges) do
         if graph.nodes[edge.start] == nil then
+            log("MISSING START")
             log(serpent.block(edge))
         end
         if graph.nodes[edge.stop] == nil then
+            log("MISSING STOP")
             log(serpent.block(edge))
         end
 
