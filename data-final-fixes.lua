@@ -435,7 +435,7 @@ for i = 1, num_copies do
 
     for _, tech in pairs(data_raw_copies[i].technology) do
         local suffix = "-exfret-" .. i .. "-copy"
-        tech.localised_name = locale_utils.find_localised_name(tech)
+        tech.localised_name = {"", locale_utils.find_localised_name(tech), " #" .. tostring(i)}
         tech.orig_name = tech.name
         tech.suffix = suffix
         tech.name = tech.name .. suffix
@@ -459,6 +459,25 @@ for i = 1, num_copies do
         end
         tech.effects = new_effects
         -- Trigger effects should already have been fixed during randomization, since they test items rather than recipes
+        -- Modify icon
+        local tech_icons
+        if tech.icons == nil then
+            tech_icons = {
+                {
+                    icon = tech.icon,
+                    icon_size = tech.icon_size or 64
+                }
+            }
+        else
+            tech_icons = tech.icons
+        end
+        tech.icons = tech_icons
+        table.insert(tech_icons, {
+            icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[i],
+            icon_size = 120,
+            scale = 1 / 3,
+            shift = {-40, -40}
+        })
 
         data:extend({
             tech
@@ -466,7 +485,7 @@ for i = 1, num_copies do
     end
 end
 -- Remove old techs and recipes by making them hidden
-for _, tech in pairs(data.raw.technology) do
+for tech_key, tech in pairs(data.raw.technology) do
     if tech.orig_name == nil then
        tech.hidden = true
     end
