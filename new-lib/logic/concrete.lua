@@ -483,6 +483,7 @@ function concrete.build(lu)
             -- I was originally planning to use this node to test for ability to throw capsules and such, but then just tested for whether you're on a planet
             -- TODO: Decide if I want to keep this
 
+            -- TODO: Does this need to depend on some surface for context too? Probably right?
             if entity.name == lutils.starting_character_name then
                 -- Starting character can visit the planet, so is isolatable
                 add_edge("starting-character", "", {

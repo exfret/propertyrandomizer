@@ -48,7 +48,8 @@ function abstract.build(lu)
 
         if room.type == "planet" then
             -- If this is the starting planet, fulfill it with the starting planet node
-            if room.name == lutils.starting_planet_name then
+            -- Make everything reachable from the start, except for the "actual" nauvis
+            if room.name ~= lutils.starting_planet_name then
                 add_edge("starting-planet", "")
             end
             -- Planet rooms depend on being able to reach orbit (space-location)

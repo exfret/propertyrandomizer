@@ -92,9 +92,8 @@ dupe.recipe = function(recipe, extra_info)
         end
     end
 
-    -- Only fix icons if it's not a specially suffixed recipe
+    -- Fix icon(s), but only if it's not a specially suffixed recipe
     if has_number_suffix then
-        -- Also need to do icon
         local recipe_icons
         if new_recipe.icons == nil and new_recipe.icon == nil then
             local item_with_icon_name

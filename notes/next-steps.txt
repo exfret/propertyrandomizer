@@ -4,11 +4,20 @@ CURRENTLY ON:
 
  * exfretpelago
     * (DONE) Duplicate recipes (not items), and randomize them separately in each copy
-    * Also run item rando separately in each copy, but try to link items together afterward
-    * Duplicate techs
-    * Perform new-execute randomization on every tech at once, and on tech unlocks
+    * (DONE) Also run item rando separately in each copy, but try to link items together afterward
+    * (DONE) Duplicate techs
+    * (DONE) Perform new-execute randomization on every tech at once, and on tech unlocks
+    * (DONE) Add back numeric icons for recipes (just recipes)
+    * (DONE) Encode separate player forces as separate contexts by creating new nauvis copies and putting player's corresponding resources/recipes tied to that planet (via surface conditions)
+       * Think about how to add requirement of a tech being unlocked on its corresponding planet to logic (probably duplicate science packs as well)
+       * Actually, this isn't necessary, since the items can't be transferred!
     * Write control-stage code to create new forces/surfaces, and randomly rotate one person around every 30 minutes
-    * Eventually, commands/interface to choose a surface so many people can be rotated around
+    * Enable recipes on unlock for only the correct force
+    * Test, consider separate building duplicates too
+    * Decide whether to add back in some sort of balance nodes
+    * Decide how to deal with possibly different rocket silo recipes
+    * Make map gen seed different per nauvis copy
+    * Eventually, commands/interface to choose a surface so many people can be rotated around (maybe in randomizer panel)
 
  * Recipe ingredients unified (basic version first?)
     * Cost implementations

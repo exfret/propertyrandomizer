@@ -6,7 +6,7 @@
 -- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
-local DO_FIRST_PASS = true
+local DO_FIRST_PASS = false
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
@@ -55,8 +55,8 @@ config.unified = {
 
 local enabled = {
     --["recipe-ingredients"] = true,
-    ["tech-science-packs"] = true,
-    ["tech-prereqs"] = true,
+    --["tech-science-packs"] = true,
+    --["tech-prereqs"] = true,
     ["recipe-tech-unlocks"] = true,
     --["recipe-category"] = true,
     --["item"] = true,
@@ -77,6 +77,19 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
     log_info(2, "HANDLER LOADING")
     ----------------------------------------------------------------------------------------------------
+
+    -- I seem to have needed this here as well once I started putting some old logic randomizations first, not sure why
+    -- CRITICAL TODO: Investigate/try to remove?
+    -- for _, id in pairs(all_handler_ids) do
+    for id, _ in pairs(config.unified) do
+        if enabled[id] then--config.unified[id] then
+            table.insert(handler_ids, id)
+        end
+        randomization_info.options.unified[id] = {
+            blacklisted_pre = {},
+            blacklisted_dep = {},
+        }
+    end
 
     -- Load handlers
     local default_handler = require("randomizations/graph/unified/handlers-new/default")
@@ -180,6 +193,7 @@ unified.execute = function()
                         if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
                             num_copies = false
                         end
+                        
                         if randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] then
                             num_copies = false
                         end
