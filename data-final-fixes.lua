@@ -124,6 +124,7 @@ for i = 1, num_copies do
     nauvis_copy.orig_name = nauvis_copy.name
     nauvis_copy.suffix = suffix
     nauvis_copy.name = nauvis_copy.name .. suffix
+    nauvis_copy.map_seed_offset = 100 * i
     data:extend({
         nauvis_copy
     })
@@ -481,6 +482,49 @@ for i = 1, num_copies do
 
         data:extend({
             tech
+        })
+    end
+
+    -- Duplicate rocket silos
+    for _, silo in pairs(data_raw_copies[i]["rocket-silo"]) do
+        local suffix = "-exfret-" .. i .. "-copy"
+        silo.localised_name = {"", locale_utils.find_localised_name(silo), " #" .. tostring(i)}
+        silo.orig_name = silo.name
+        silo.suffix = suffix
+        silo.name = silo.name .. suffix
+        silo.minable.result = silo.minable.result .. suffix
+        silo.fixed_recipe = silo.fixed_recipe .. suffix
+        -- Change graphics
+        silo.base_front_sprite = {
+            layers = {
+                silo.base_front_sprite,
+                {
+                    filename = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[i],
+                    size = 120,
+                    scale = 0.6,
+                    shift = {-3, -2.2},
+                }
+            }
+        }
+        -- TODO: Don't assume it's directly in the item class?
+        silo_item = data_raw_copies[i].item[silo.orig_name]
+        silo_item.localised_name = {"", locale_utils.find_localised_name(silo_item), " #" .. tostring(i)}
+        silo_item.orig_name = silo_item.name
+        silo_item.suffix = suffix
+        silo_item.name = silo_item.name .. suffix
+        silo_item.place_result = silo_item.name
+        -- We're relying that the recipe duplication was run first
+        for _, recipe in pairs(data.raw.recipe) do
+            if recipe.results ~= nil and recipe.results[1] ~= nil and recipe.results[1].name == "rocket-silo" then
+                if string.find(recipe.name, suffix) ~= nil then
+                        recipe.results[1].name = recipe.results[1].name .. suffix
+                    break
+                end
+            end
+        end
+        data:extend({
+            silo,
+            silo_item,
         })
     end
 end
