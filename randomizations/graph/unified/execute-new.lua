@@ -54,12 +54,12 @@ config.unified = {
 }
 
 local enabled = {
-    ["recipe-ingredients"] = true,
+    --["recipe-ingredients"] = true,
     ["tech-science-packs"] = true,
     ["tech-prereqs"] = true,
-    ["recipe-tech-unlocks"] = true,
-    ["recipe-category"] = true,
-    --["item"] = true,
+    --["recipe-tech-unlocks"] = true,
+    --["recipe-category"] = true,
+    ["item"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do

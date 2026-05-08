@@ -25,13 +25,16 @@ local FAILURE_ACCEPTANCE = 1--0.9
 -- TODO: This could be set with a startup settings
 local DO_TESTS = false
 -- Require a node to unlock some mechanic to be considered important
--- This seemed to make things worse, but I think the general is still valid, so keeping this hear for future reference
+-- This seemed to make things worse, but I think the general idea is still valid, so keeping this hear for future reference
 local REQUIRE_MECHANICS_FOR_IMPORTANCE = false
+-- A similar idea, mostly just applies to the item slot trav rando
+local REQUIRE_DEPENDENTS_FOR_IMPORTANCE = false
 -- Disabled because it was slow
 local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
+local DO_ITEM_RANDO = true
 local EXCLUDE_SCIENCE = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
@@ -92,6 +95,9 @@ first_pass.execute = function(params)
             if prenode.type == "head" then
                 return true
             end
+        end
+        if DO_ITEM_RANDO and subdiv_node.type == "item" then
+            return true
         end
         return false
     end
@@ -190,7 +196,23 @@ first_pass.execute = function(params)
         -- EDIT: I'm going back on that and randomizing
         local fixed_pre = {}
         for pre, _ in pairs(node.pre) do
-            if gutils.prenode(split_graph, pre).type ~= "head" then
+            local prenode = gutils.prenode(split_graph, pre)
+            if prenode.type == "orand" then
+                prenode = gutils.unique_prenode(split_graph, prenode)
+            end
+            local always_on_slot = false
+            if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] then
+                always_on_slot = true
+                if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then
+                    local item_prot = dutils.get_prot("item", node.name)
+                    -- If the item and entity/tile are supposed to correspond to each other, don't put on slot
+                    if (prenode.type == "entity-mine" and item_prot.place_result == prenode.name) or (prenode.type == "tile-mine" and item_prot.place_as_tile ~= nil and item_prot.place_as_tile.result == prenode.name) then
+                        always_on_slot = false
+                    end
+                end
+            end
+
+            if prenode.type ~= "head" and not always_on_slot then
                 fixed_pre[pre] = true
                 not_all_randomized = true
             end
@@ -200,7 +222,16 @@ first_pass.execute = function(params)
         end
         local fixed_dep = {}
         for dep, _ in pairs(node.dep) do
-            if gutils.depnode(split_graph, dep).type ~= "base" then
+            local depnode = gutils.depnode(split_graph, dep)
+            if depnode.type == "orand" then
+                depnode = gutils.unique_depnode(split_graph, depnode)
+            end
+            local always_on_slot = false
+            if randomization_info.options.first_pass.always_slot_dep[key(node.type, depnode.type)] then
+                always_on_slot = true
+            end
+
+            if depnode.type ~= "base" and not always_on_slot then
                 fixed_dep[dep] = true
                 not_all_randomized = true
             end
@@ -405,6 +436,18 @@ first_pass.execute = function(params)
         end
 
         -- This part is mandatory since it involves fixed edges
+
+        -- We now allow OR node travs, so handle those
+        -- These are luckily easy, just need to test if the node itself has gotten context
+        if trav.op == "OR" then
+            -- OR nodes should always be absolute reachable as long as we can put them on a good slot
+            -- CRITICAL TODO: Need to check that the slot we put an OR trav on has an edge, or that the trav does
+            return true
+            --[[if next(split_sort.node_to_context_inds[key(trav)]) ~= nil then
+                return true
+            end]]
+        end
+
         -- Check that there is a common context among trav's fixed edge prereqs (excluding the dangling connection for a slot)
         return node_prenodes_share_context(split_graph, trav)
     end
@@ -463,16 +506,30 @@ first_pass.execute = function(params)
         end
     end
     if REQUIRE_MECHANICS_FOR_IMPORTANCE then
-        local new_important = {}
+        local new_important = table.deepcopy(is_important)
         local unimportant_removed = 0
         for node_key, _ in pairs(is_important) do
             local trav_key = split_graph.nodes[node_key].old_trav
             -- Make sure node_key actually corresponded to a slot
             -- Note that we only test is_important on travelers anyways
             if trav_key ~= nil then
-                if next(trav_to_mechanics[trav_key]) ~= nil then
-                    new_important[trav_key] = true
-                else
+                if next(trav_to_mechanics[trav_key]) == nil then
+                    new_important[trav_key] = nil
+                    unimportant_removed = 1 + unimportant_removed
+                end
+            end
+        end
+        is_important = new_important
+        log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
+    end
+    if REQUIRE_DEPENDENTS_FOR_IMPORTANCE then
+        local new_important = table.deepcopy(is_important)
+        local unimportant_removed = 0
+        for node_key, _ in pairs(is_important) do
+            local trav_key = split_graph.nodes[node_key].old_trav
+            if trav_key ~= nil then
+                if next(split_graph.nodes[trav_key].dep) == nil then
+                    new_important[trav_key] = nil
                     unimportant_removed = 1 + unimportant_removed
                 end
             end
@@ -503,7 +560,8 @@ first_pass.execute = function(params)
             return false
         end
         
-        if CHECK_SAME_MECHANICS then
+        -- Don't check same mechanics for items because it's too restrictive
+        if CHECK_SAME_MECHANICS and not slot.type == "item" then
             for mechanic, _ in pairs(trav_to_mechanics[slot.old_trav]) do
                 if not trav_to_mechanics[key(trav)][mechanic] then
                     return false
@@ -554,7 +612,7 @@ first_pass.execute = function(params)
 
         -- Note: THIS IS BROKEN! If it's an item, they'll be ORANDS! Also the name will have the weird suffix from item handler added
         -- CRITICAL TODO: FIX!
-        if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
+        --[=[if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
             local slot_prot = dutils.get_prot(slot.type, slot.name)
             -- CRITICAL TODO: This is also broken! Need to get original name without -trav
             local trav_prot = dutils.get_prot(trav.type, trav.name)
@@ -575,7 +633,7 @@ first_pass.execute = function(params)
             --[[if dutils.is_stackable(slot_prot) ~= dutils.is_stackable(trav_prot) then
                 return false
             end]]
-        end
+        end]=]
 
         return true
     end
@@ -610,12 +668,12 @@ first_pass.execute = function(params)
         end
 
         -- Check that these came from the correct graph
-        if not test_graph_invariants.check_from_graph(split_graph, slot) then
+        if not test_graph_invariants.check_from_graph(graph, slot) then
             log(serpent.block(slot))
             log(key(slot))
             error("Slot from incorrect graph")
         end
-        if not test_graph_invariants.check_from_graph(split_graph, trav) then
+        if not test_graph_invariants.check_from_graph(graph, trav) then
             log(serpent.block(trav))
             log(key(trav))
             error("Trav from incorrect graph")
@@ -624,10 +682,14 @@ first_pass.execute = function(params)
         -- Connect reachable-room to slot edges to satisfy it, then connect slot to trav
         -- We need to connect to reachable-room so that it still gets contexts in a valid way
         local true_node = graph[key("reachable-room", "")]
-
         for _, prenode in pairs(gutils.prenodes(graph, slot)) do
             gutils.add_edge(graph, true_node, prenode)
             sort_info = top.sort(graph, sort_info, {true_node, prenode})
+        end
+        if slot.op == "OR" then
+            -- For OR nodes, we might need a direct connection
+            gutils.add_edge(graph, true_node, slot)
+            sort_info = top.sort(graph, sort_info, {true_node, slot})
         end
 
         -- TEST: Check that slot corresponds to trav
@@ -840,7 +902,7 @@ first_pass.execute = function(params)
         if is_reserved[key(found_slot)] then
             res_string_to_print = res_string_to_print .. "\n(RESERVED)"
         else
-            connect_slot_trav(split_graph, split_sort, found_slot, found_trav)
+            split_sort = connect_slot_trav(split_graph, split_sort, found_slot, found_trav)
         end
         res_string_to_print = res_string_to_print .. "\n"
         log(res_string_to_print)
