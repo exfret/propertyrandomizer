@@ -9,6 +9,17 @@ for _, recipe in pairs(data.raw.recipe) do
     end
 end
 
+randomization_info.options.first_pass.always_slot_pre = {
+    [key("item-craft", "item")] = true,
+    [key("entity-kill", "item")] = true,
+    [key("tile-mine", "item")] = true, -- Special handling
+    [key("entity-mine", "item")] = true, -- Special handling
+}
+
+randomization_info.options.first_pass.always_slot_dep = {
+    [key("item", "recipe")] = true,
+}
+
 randomization_info.options.unified["entity-autoplace"].blacklisted_dep = {
     [key("entity", "fulgoran-ruin-attractor")] = true,
 }

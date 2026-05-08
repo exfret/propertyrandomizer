@@ -51,7 +51,7 @@ item.initialize = function()
 end
 
 item.spoof = function(graph)
-    local item_nodes = {}
+    --[[local item_nodes = {}
     for _, node in pairs(graph.nodes) do
         if node.type == "item" then
             table.insert(item_nodes, node)
@@ -84,46 +84,51 @@ item.spoof = function(graph)
             gutils.redirect_edge_start(graph, edge_key, new_node)
         end
         gutils.add_edge(graph, node, new_node)
-    end
+    end]]
 end
 
 item.claim = function(graph, prereq, dep, edge)
-    if prereq.type == "item" and dep.type == "item" and dep.name == prereq.name .. trav_suffix and not prereq.dummy then
+    return false
+    --[[if prereq.type == "item" and dep.type == "item" and dep.name == prereq.name .. trav_suffix and not prereq.dummy then
         return 1
-    end
+    end]]
 end
 
---[[item.custom_prereq_search = function(params)
+item.custom_prereq_search = function(params)
     trav_to_slot = params.trav_to_slot
     split_graph = params.split_graph
-end]]
+end
 
-item.validate = function(graph, base, head, extra)
+item.validate = false
+--[[item.validate = function(graph, base, head, extra)
     local base_owner = gutils.get_owner(graph, base)
     if base_owner.type == "item" and string.find(base_owner.name, trav_suffix) == nil then
         return true
     end
-end
+end]]
 
 item.reflect = function(graph, head_to_base, head_to_handler)
     local changes = {}
 
     local num_times_changed_graphics_of_simple_entity = {}
-    --for trav_key, slot_key in pairs(trav_to_slot) do
-    for head_key, base_key in pairs(head_to_base) do
+    for trav_key, slot_key in pairs(trav_to_slot) do
+    --for head_key, base_key in pairs(head_to_base) do
         -- Since items are OR nodes, first pass actually deals with orands
         --[[local slot = split_graph.nodes[split_graph.orand_to_parent[slot_key] ]
         local trav_slot_key = split_graph.nodes[trav_key].old_slot
         local trav = split_graph.nodes[split_graph.orand_to_parent[trav_slot_key] ] ]]
-        local base = graph.nodes[base_key]
-        local head = graph.nodes[head_key]
-        if head_to_handler[head_key] == "item" then
+        --local base = graph.nodes[base_key]
+        --local head = graph.nodes[head_key]
+        --[[if head_to_handler[head_key] == "item" then
             local slot = gutils.get_owner(graph, base)
-            local trav = gutils.get_owner(graph, head)
+            local trav = gutils.get_owner(graph, head)]]
+        
+        local slot = split_graph.nodes[slot_key]
+        local trav = split_graph.nodes[trav_key]
 
             if slot ~= nil and slot.type == "item" then
-                local slot_item = dutils.get_prot("item", undo_suffix(slot.name))
-                local trav_item = dutils.get_prot("item", undo_suffix(trav.name))
+                local slot_item = dutils.get_prot("item", slot.name)
+                local trav_item = dutils.get_prot("item", split_graph.nodes[trav.old_slot].name)
                 -- TODO: Cost preservation
 
                 for _, recipe in pairs(data.raw.recipe) do
@@ -383,7 +388,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     end
                 end
             end
-        end
+        --end
     end
 
     for _, change in pairs(changes) do
