@@ -88,7 +88,7 @@ first_pass.execute = function(params)
         if randomization_info.options.first_pass.blacklist[node_key] then
             return false
         end
-        if EXCLUDE_SCIENCE and subdiv_node.type == "item" and data.raw.tool[subdiv_node] ~= nil then
+        if EXCLUDE_SCIENCE and subdiv_node.type == "item" and data.raw.tool[subdiv_node.name] ~= nil then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
@@ -514,7 +514,7 @@ first_pass.execute = function(params)
             -- Note that we only test is_important on travelers anyways
             if trav_key ~= nil then
                 if next(trav_to_mechanics[trav_key]) == nil then
-                    new_important[trav_key] = nil
+                    new_important[node_key] = nil
                     unimportant_removed = 1 + unimportant_removed
                 end
             end
@@ -529,7 +529,7 @@ first_pass.execute = function(params)
             local trav_key = split_graph.nodes[node_key].old_trav
             if trav_key ~= nil then
                 if next(split_graph.nodes[trav_key].dep) == nil then
-                    new_important[trav_key] = nil
+                    new_important[node_key] = nil
                     unimportant_removed = 1 + unimportant_removed
                 end
             end

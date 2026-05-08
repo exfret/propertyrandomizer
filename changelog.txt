@@ -4,6 +4,7 @@ Date: ?
   Features:
     - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).
     - Added ability to duplicate recipe tech unlocks for a smoother experience
+    - Icons next to technology names showing all the science packs required for it and any of its ancestors (in case of science pack randomization that causes something to look like it requires less science than it does)
   Changes:
     - Overrides now accept upper and lower case x's and y's
     - Items randomized is 100% by default

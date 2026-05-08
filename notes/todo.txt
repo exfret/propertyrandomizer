@@ -45,3 +45,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Remove hardcoding in module randomizations
  * Just make furnaces into assembling machine prototypes to avoid issues (most things that would break in mods like voiding machines need manual compat for their recipes anyways)
  * Voiding recipes (toggleable with setting)
+ * Technology name rich text with sciences required

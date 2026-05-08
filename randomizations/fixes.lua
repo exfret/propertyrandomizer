@@ -367,4 +367,54 @@ randomizations.fixes = function()
             end
         end
     end
+
+    -- Fix technology names to indicate what sciences they require
+    for _, tech in pairs(data.raw.technology) do
+        local prereqs = {tech.name}
+        local is_prereq = {[tech.name] = true}
+        local index = 1
+        while index <= #prereqs do
+            local curr = prereqs[index]
+
+            local curr_tech = data.raw.technology[curr]
+            for _, prereq in pairs(curr_tech.prerequisites or {}) do
+                if not is_prereq[prereq] then
+                    is_prereq[prereq] = true
+                    table.insert(prereqs, prereq)
+                end
+            end
+
+            index = index + 1
+        end
+        local pack_required = {}
+        for _, prereq in pairs(prereqs) do
+            local tech = data.raw.technology[prereq]
+            if tech.unit ~= nil then
+                for _, ing in pairs(tech.unit.ingredients) do
+                    pack_required[ing[1]] = true
+                end
+            end
+        end
+        local packs_as_list = {}
+        for pack, _ in pairs(pack_required) do
+            table.insert(packs_as_list, pack)
+        end
+        table.sort(packs_as_list, function(a, b)
+            local tool_a = data.raw.tool[a]
+            local tool_b = data.raw.tool[b]
+            if tool_a ~= nil and tool_b ~= nil then
+                return tool_a.order < tool_b.order
+            end
+            if tool_a == nil and tool_b ~= nil then
+                return false
+            end
+            return true
+        end)
+        local tech_localised_name = locale_utils.find_localised_name(tech)
+        local suffix = " "
+        for _, pack in pairs(packs_as_list) do
+            suffix = suffix .. "[item=" .. pack .. "]"
+        end
+        tech.localised_name = {"", tech_localised_name, suffix}
+    end
 end
