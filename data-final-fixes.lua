@@ -63,7 +63,7 @@ require("compat/master")
 local function smuggle_info()
     log("Smuggling control info")
 
-    new_logic.build()
+    new_logic.build(true)
 
     local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     warnings_selection_tool.type = "selection-tool"
