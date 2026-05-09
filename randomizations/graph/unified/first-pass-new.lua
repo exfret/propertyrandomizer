@@ -26,9 +26,9 @@ local FAILURE_ACCEPTANCE = 1--0.9
 local DO_TESTS = false
 -- Require a node to unlock some mechanic to be considered important
 -- This seemed to make things worse, but I think the general idea is still valid, so keeping this hear for future reference
-local REQUIRE_MECHANICS_FOR_IMPORTANCE = false
--- A similar idea, mostly just applies to the item slot trav rando
-local REQUIRE_DEPENDENTS_FOR_IMPORTANCE = false
+local REQUIRE_MECHANICS_FOR_IMPORTANCE = true
+-- A similar idea for needing something of a different canonical class, mostly just applies to the item slot trav rando
+local REQUIRE_DIFFERENT_CANONICAL_FOR_IMPORTANCE = true
 -- Disabled because it was slow
 local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
@@ -36,6 +36,7 @@ local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
 local DO_ITEM_RANDO = true
 local EXCLUDE_SCIENCE = true
+local EXCLUDE_RECIPES = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
@@ -89,6 +90,9 @@ first_pass.execute = function(params)
             return false
         end
         if EXCLUDE_SCIENCE and subdiv_node.type == "item" and data.raw.tool[subdiv_node.name] ~= nil then
+            return false
+        end
+        if EXCLUDE_RECIPES and subdiv_node.type == "recipe" then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
@@ -231,7 +235,8 @@ first_pass.execute = function(params)
                 always_on_slot = true
             end
 
-            if depnode.type ~= "base" and not always_on_slot then
+            -- TODO: Document/add to vanilla special handling of coal
+            if depnode.type ~= "base" and not always_on_slot and (node_key ~= key("item", "coal") and (depnode.canonical ~= "item" or depnode.name ~= "coal")) then
                 fixed_dep[dep] = true
                 not_all_randomized = true
             end
@@ -283,13 +288,14 @@ first_pass.execute = function(params)
     end
 
     -- Tests if the graph prenodes of node have a shared context in the *split sort* (regardless of the graph)
+    -- Ignores heads (we assume we can make those the right context)
     local function node_prenodes_share_context(graph, node)
         for context, _ in pairs(logic.contexts) do
             local has_context = true
             for _, prenode in pairs(gutils.prenodes(graph, node)) do
                 -- Don't involve the dangling connections for trav nodes
                 if not node.trav or key(prenode) ~= key(trav_to_head[key(node)]) then
-                    if split_sort.node_to_context_inds[key(prenode)][context] == nil then
+                    if prenode.type ~= "head" and split_sort.node_to_context_inds[key(prenode)][context] == nil then
                         has_context = false
                         break
                     end
@@ -357,6 +363,26 @@ first_pass.execute = function(params)
         --   * Just return true (we already follow a sorting of the slots, so this might be enough)
         -- Returning true wasn't sufficient, so I think I'm going to do the first option
         return slot_vanilla_prereqs_assigned(slot)
+    end
+
+    local function slot_absolute_reachable(slot)
+        if not slot.slot then
+            log(serpent.block(slot))
+            log(key(slot))
+            error("Slot expected, but got different node type")
+        end
+
+        if slot.op == "OR" then
+            for _, prenode in pairs(gutils.prenodes(split_graph, slot)) do
+                if prenode.type == "head" or next(split_sort.node_to_context_inds[key(prenode)]) ~= nil then
+                    return true
+                end
+            end
+
+            return false
+        else
+            return node_prenodes_share_context(split_graph, slot)
+        end
     end
 
     -- Just checks if there are enough prereq slots for trav of each type
@@ -513,7 +539,22 @@ first_pass.execute = function(params)
             -- Make sure node_key actually corresponded to a slot
             -- Note that we only test is_important on travelers anyways
             if trav_key ~= nil then
-                if next(trav_to_mechanics[trav_key]) == nil then
+                -- Check if there are any important mechanics
+                -- Right now, this just excludes chemical fuel
+                -- CRITICAL TODO: Document/put this in compat
+                local has_important_mechanic = false
+                for mechanic_node_key, _ in pairs(trav_to_mechanics[trav_key]) do
+                    local mechanic_node = split_graph.nodes[mechanic_node_key]
+                    local mechanic_orand_parent
+                    if mechanic_node.type == "orand" then
+                        local mechanic_orand_parent_key = split_graph.orand_to_parent[mechanic_node_key]
+                        mechanic_orand_parent = split_graph.nodes[mechanic_orand_parent_key]
+                    end
+                    if mechanic_node.prot ~= key(data.raw["fuel-category"]["chemical"]) and not (mechanic_orand_parent ~= nil and (mechanic_orand_parent.type == "energy-source-burner" or mechanic_orand_parent.type == "chemical-fuel")) then
+                        has_important_mechanic = true
+                    end
+                end
+                if not has_important_mechanic then
                     new_important[node_key] = nil
                     unimportant_removed = 1 + unimportant_removed
                 end
@@ -522,13 +563,47 @@ first_pass.execute = function(params)
         is_important = new_important
         log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
     end
-    if REQUIRE_DEPENDENTS_FOR_IMPORTANCE then
+    if REQUIRE_DIFFERENT_CANONICAL_FOR_IMPORTANCE then
         local new_important = table.deepcopy(is_important)
         local unimportant_removed = 0
-        for node_key, _ in pairs(is_important) do
+        --[[for node_key, _ in pairs(is_important) do
             local trav_key = split_graph.nodes[node_key].old_trav
             if trav_key ~= nil then
                 if next(split_graph.nodes[trav_key].dep) == nil then
+                    new_important[node_key] = nil
+                    unimportant_removed = 1 + unimportant_removed
+                end
+            end
+        end]]
+        -- Search for a node with a different canonical or name
+        for node_key, _ in pairs(is_important) do
+            local node = split_graph.nodes[node_key]
+            local trav_key = node.old_trav
+            if trav_key ~= nil then
+                local trav = split_graph.nodes[trav_key]
+                local found_different_node = false
+
+                local open = { trav }
+                local in_open = {}
+                local ind = 1
+                while ind <= #open do
+                    local curr_node = open[ind]
+
+                    if curr_node.canonical ~= trav.canonical or (curr_node.name ~= trav.name and curr_node.name ~= undo_trav_name(trav.name)) then
+                        found_different_node = true
+                        break
+                    end
+                    for _, depnode in pairs(gutils.depnodes(split_graph, curr_node)) do
+                        if not in_open[key(depnode)] then
+                            in_open[key(depnode)] = true
+                            table.insert(open, depnode)
+                        end
+                    end
+
+                    ind = ind + 1
+                end
+
+                if not found_different_node then
                     new_important[node_key] = nil
                     unimportant_removed = 1 + unimportant_removed
                 end
@@ -558,6 +633,15 @@ first_pass.execute = function(params)
         end
         if not same_type then
             return false
+        end
+
+        -- If slot/trav are OR nodes, need to check that at least one has a prereq satisfied
+        -- For slot, this will happen if it has a head prenode or a satisfied non-randomized prenode
+        -- For trav, this will happen if it has a context in general
+        if slot.op == "OR" and not slot_absolute_reachable(slot) then
+            if next(split_sort.node_to_context_inds[key(trav)]) == nil then
+                return false
+            end
         end
         
         -- Don't check same mechanics for items because it's too restrictive
@@ -686,11 +770,12 @@ first_pass.execute = function(params)
             gutils.add_edge(graph, true_node, prenode)
             sort_info = top.sort(graph, sort_info, {true_node, prenode})
         end
-        if slot.op == "OR" then
+        -- Actually, I think this is incorrect: Either slot or trav needs to get context themselves or else it's impossible anyways
+        --[[if slot.op == "OR" then
             -- For OR nodes, we might need a direct connection
             gutils.add_edge(graph, true_node, slot)
             sort_info = top.sort(graph, sort_info, {true_node, slot})
-        end
+        end]]
 
         -- TEST: Check that slot corresponds to trav
         if slot_to_trav[key(slot)] ~= key(trav) then
@@ -810,35 +895,40 @@ first_pass.execute = function(params)
                 for _, slot_ind in pairs(slot_inds) do
                     local slot = ind_to_slot(slot_ind)
                     local slot_key = key(slot)
-                    if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
-                        for perm_ind, sorted_node_ptr in pairs(perm) do
-                            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
 
-                            if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
-                                if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
-                                    if to_be_reserved(trav) then
-                                        is_reserved[key(slot)] = true
-                                        table.insert(reserved_slots, slot)
+                    -- Test if this slot is absolute reachable (for when slots of non-randomized edges)
+                    --if slot_absolute_reachable(slot) then
+                        if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
+                            for perm_ind, sorted_node_ptr in pairs(perm) do
+                                local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+
+                                if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
+                                    if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
+                                        if to_be_reserved(trav) then
+                                            is_reserved[key(slot)] = true
+                                            table.insert(reserved_slots, slot)
+                                        end
+                                        found_slot = slot
+                                        found_trav = trav
+                                        break
                                     end
-                                    found_slot = slot
-                                    found_trav = trav
-                                    break
                                 end
                             end
+                            if found_trav == nil and REPORT_SLOTS_FAILED then
+                                log("SLOT FAILURE: " .. key(slot))
+                            end
                         end
-                        if found_trav == nil and REPORT_SLOTS_FAILED then
-                            log("SLOT FAILURE: " .. key(slot))
+                        if found_trav ~= nil then
+                            break
                         end
-                    end
-                    if found_trav ~= nil then
-                        break
-                    end
 
-                    -- Should we do a completely ordered traversal?
-                    if DO_SLOTS_IN_ORDER and slot_to_trav[slot_key] == nil then
-                        log("COULD NOT FIND TRAV FOR " .. slot_key)
-                        break
-                    end
+                        -- Should we do a completely ordered traversal?
+                        if DO_SLOTS_IN_ORDER and slot_to_trav[slot_key] == nil and slot_absolute_reachable(slot) then
+                            log("COULD NOT FIND TRAV FOR " .. slot_key)
+                            log(slot_absolute_reachable(slot))
+                            break
+                        end
+                    --end
                 end
                 if found_trav ~= nil then
                     break

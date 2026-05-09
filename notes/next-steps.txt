@@ -1,6 +1,7 @@
 CURRENTLY ON:
 
  * Before next release, rocket launch products and node adding API
+ * Also only turn on tech name locale change when a technology randomization is on
 
  * Recipe ingredients unified (basic version first?)
     * Cost implementations

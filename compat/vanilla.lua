@@ -12,8 +12,11 @@ end
 randomization_info.options.first_pass.always_slot_pre = {
     [key("item-craft", "item")] = true,
     [key("entity-kill", "item")] = true,
+    [key("item-burn", "item")] = true,
+    [key("item", "item")] = true,
     [key("tile-mine", "item")] = true, -- Special handling
     [key("entity-mine", "item")] = true, -- Special handling
+    [key("asteroid-chunk-mine", "item")] = true,
 }
 
 randomization_info.options.first_pass.always_slot_dep = {

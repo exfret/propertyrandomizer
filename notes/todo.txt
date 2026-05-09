@@ -46,3 +46,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Just make furnaces into assembling machine prototypes to avoid issues (most things that would break in mods like voiding machines need manual compat for their recipes anyways)
  * Voiding recipes (toggleable with setting)
  * Technology name rich text with sciences required
+ * Fix technology icons to fit recipes unlocked when possible

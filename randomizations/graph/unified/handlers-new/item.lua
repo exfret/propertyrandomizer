@@ -372,6 +372,26 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     end
                 end
 
+                for _, item in pairs(dutils.get_all_prots("item")) do
+                    -- Replace spoil results (not things that spoil)
+                    if item.spoil_result == slot_item.name then
+                        table.insert(changes, {
+                            tbl = item,
+                            prop = "spoil_result",
+                            new_val = trav_item.name
+                        })
+                    end
+
+                    -- Replace burnt fuel results (not things that burn into something)
+                    if item.burnt_result == slot_item.name then
+                        table.insert(changes, {
+                            tbl = item,
+                            prop = "burnt_result",
+                            new_val = trav_item.name
+                        })
+                    end
+                end
+
                 -- TODO: Make this check less ad-hoc
                 -- If this is a coal replacement, give it a fuel value
                 if slot_item.name == "coal" then
