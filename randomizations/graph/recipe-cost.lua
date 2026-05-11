@@ -297,9 +297,9 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
     if extra_params.dont_preserve_resource_costs ~= nil then
         dont_preserve_resource_costs = extra_params.dont_preserve_resource_costs
     end
-    local nauvis_reachable
-    if extra_params.nauvis_reachable ~= nil then
-        nauvis_reachable = extra_params.nauvis_reachable
+    local starting_planet_reachable
+    if extra_params.starting_planet_reachable ~= nil then
+        starting_planet_reachable = extra_params.starting_planet_reachable
     end
 
     local curr_ing_inds = {}
@@ -378,8 +378,8 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
                     new_ings[ind_to_swap] = {type = potential_ings[new_ind_to_use].type, name = potential_ings[new_ind_to_use].name}
                     local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs})
 
-                    -- Bonus negative points if new ingredient is not from nauvis
-                    if nauvis_reachable ~= nil and not nauvis_reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then
+                    -- Bonus negative points if new ingredient is not from starting planet
+                    if starting_planet_reachable ~= nil and not starting_planet_reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then
                         --log(potential_ings[new_ind_to_use].name)
                         new_ings_points = new_ings_points - constants.non_starting_planet_bonus
                     end

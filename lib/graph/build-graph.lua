@@ -4,6 +4,7 @@ if not offline then
 else
     collision_mask_util = require("offline/lualib/collision-mask-util")
 end
+local constants = require("helper-tables/constants")
 
 local build_graph = {}
 
@@ -2638,7 +2639,7 @@ local function load()
     for _, planet in pairs(get_prototypes("planet")) do
         prereqs = {}
 
-        if planet.name == "nauvis" then
+        if planet.name == constants.starting_planet then
             table.insert(prereqs, {
                 type = "starting-planet",
                 name = "canonical"

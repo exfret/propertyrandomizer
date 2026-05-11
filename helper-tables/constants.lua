@@ -43,6 +43,8 @@ local constants = {
         most = 4
     },
 
+    starting_planet = "nauvis",
+
     left_digits_to_keep = 3,
     num_rolls = 25,
     reasonably_large_number = 1000000000,
@@ -85,5 +87,18 @@ local constants = {
         ["propertyrandomizer-watch-the-world-burn"] = true
     }
 }
+
+local function set_aps_starting_planet()
+    if settings.startup["aps-planet"].value ~= "none" then
+        constants.starting_planet = settings.startup["aps-planet"].value
+    end
+end
+-- Assume mods ~= nil means we're in data stage, and script.active_mods ~= nil means control
+if mods ~= nil and mods["any-planet-start"] then
+    set_aps_starting_planet()
+end
+if script ~= nil and script.active_mods ~= nil and script.active_mods["any-planet-start"] ~= nil then
+    set_aps_starting_planet()
+end
 
 return constants

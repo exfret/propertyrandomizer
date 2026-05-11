@@ -186,9 +186,9 @@ randomizations.recipe_ingredients = function(id)
         end
     end
 
-    log("Finding nauvis reachable")
+    log("Finding starting planet reachable")
 
-    -- Find stuff not reachable from nauvis by taking away spaceship and seeing what can be reached
+    -- Find stuff not reachable from starting planet by taking away spaceship and seeing what can be reached
     log("Deepcopying dep_graph")
     local dep_graph_copy = table.deepcopy(dep_graph)
     log("Removing spacheship node")
@@ -204,8 +204,8 @@ randomizations.recipe_ingredients = function(id)
         table.remove(prereq_node.dependents, dependent_ind_to_remove)
     end
     spaceship_node.prereqs = {}
-    log("Doing non-Nauvis top sort")
-    local nauvis_reachable = top_sort.sort(dep_graph_copy).reachable
+    log("Doing non-starting-planet top sort")
+    local starting_planet_reachable = top_sort.sort(dep_graph_copy).reachable
 
     log("Finding all reachable")
 
@@ -312,7 +312,12 @@ randomizations.recipe_ingredients = function(id)
     -- CRITICAL TODO: Test for base game/don't hardcode planets here
     local planet_names = {}
     if mods["space-age"] then
-        planet_names = {"fulgora", "gleba", "vulcanus"}
+        default_planet_names = {"nauvis", "fulgora", "gleba", "vulcanus"}
+        for _, planet_name in pairs(default_planet_names) do
+            if planet_name ~= constants.starting_planet then
+                table.insert(planet_names, planet_name)
+            end
+        end
     end
     local planet_sort_info = {}
     for _, planet_name in pairs(planet_names) do
@@ -856,9 +861,9 @@ randomizations.recipe_ingredients = function(id)
                         return false
                     end
 
-                    -- As a hotfix, assume being on nauvis means it's everywhere
+                    -- As a hotfix, assume being on starting planet means it's everywhere
                     -- CRITICAL TODO: FIX!
-                    if build_graph.surfaces[dependent.surface].name ~= "nauvis" then
+                    if build_graph.surfaces[dependent.surface].name ~= constants.starting_planet then
                         -- If this is a fluid, make sure it's available on the relevant surface
                         if prereq.ing.type == "fluid" and not reachable[build_graph.key("fluid-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
                             return false
@@ -957,9 +962,9 @@ randomizations.recipe_ingredients = function(id)
         end
 
         -- Don't care about preserving resource costs if this is a final product to speed things up
-        -- Also don't care if it's post-nauvis
+        -- Also don't care if it's post-starting-planet
         dont_preserve_resource_costs = produces_final_products(dependent_recipe)
-        if dont_preserve_resource_costs or not nauvis_reachable[build_graph.key(dependent.type, dependent.name)] then
+        if dont_preserve_resource_costs or not starting_planet_reachable[build_graph.key(dependent.type, dependent.name)] then
             log("Will not preserve resource costs")
         else
             log("Will preserve resource costs")
@@ -970,7 +975,7 @@ randomizations.recipe_ingredients = function(id)
         -- Finally, search for the best ingredients
         -- Do a while loop so we can restart if there are recipe loops
         -- TODO: I don't see a while loop here, maybe the last comment is outdated? Consider whether while loop is needed!
-        local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
+        local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable})
         -- Test for error
         if type(best_search_info) == "string" then
             error(best_search_info)

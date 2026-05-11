@@ -247,14 +247,7 @@ top.sort = function(graph, state, new_conn, extra)
 end
 
 top.path = function(graph, goal, sort)
-    local contexts_in_order = {
-        key({type = "planet", name = "nauvis"}),
-        key({type = "surface", name = "space-platform"}),
-        key({type = "planet", name = "vulcanus"}),
-        key({type = "planet", name = "fulgora"}),
-        key({type = "planet", name = "gleba"}),
-        key({type = "planet", name = "aquilo"}),
-    }
+    local contexts_in_order = randomization_info.options.logic.contexts_in_order
 
     local open = sort.open
     local node_to_open_inds = sort.node_to_open_inds

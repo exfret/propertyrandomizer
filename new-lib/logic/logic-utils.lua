@@ -3,13 +3,14 @@
 
 local lib_name = "new-lib" -- Use this until integration with "old" lib
 local categories = require("helper-tables/categories")
+local constants = require("helper-tables/constants")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 
 local lutils = {}
 
 lutils.starting_character_name = "character"
-lutils.starting_planet_name = "nauvis"
+lutils.starting_planet_name = constants.starting_planet
 
 lutils.find_recipe_fluids = function(recipe)
     local fluids = {

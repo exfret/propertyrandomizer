@@ -29,7 +29,7 @@ script.on_configuration_changed(function(event)
     load_dep_graph()
 end)
 
-script.on_event("return-to-nauvis", function(event)
+script.on_event("return-to-starting-planet", function(event)
     local inventories_to_be_empty = {
         defines.inventory.character_main,
         defines.inventory.character_ammo,
@@ -54,7 +54,7 @@ script.on_event("return-to-nauvis", function(event)
         if storage.player_ind_to_last_return_attempt_ticks[event.player_index] == nil or event.tick - storage.player_ind_to_last_return_attempt_ticks[event.player_index] > 5 * 60 then
             game.players[event.player_index].print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Respawn key sequence entered. Enter again within 5 seconds to confirm.")
         else
-            game.players[event.player_index].teleport(game.surfaces.nauvis.find_non_colliding_position("character", {0, 0}, 0, 1), "nauvis")
+            game.players[event.player_index].teleport(game.surfaces[constants.starting_planet].find_non_colliding_position("character", {0, 0}, 0, 1), constants.starting_planet)
         end
 
         storage.player_ind_to_last_return_attempt_ticks[event.player_index] = event.tick

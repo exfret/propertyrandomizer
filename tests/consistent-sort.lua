@@ -1,3 +1,4 @@
+local constants = require("helper-tables/constants")
 local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/consistent-sort")
 -- Used for getting contexts
@@ -88,9 +89,9 @@ test.validate_launch_first = function()
     if mods["space-age"] then
         for _, pebble in pairs(no_platform_info.sorted) do
             local node = no_platform_graph.nodes[pebble.node_key]
-            if node.type == "room" and node.name ~= gutils.key("planet", "nauvis") then
+            if node.type == "room" and node.name ~= gutils.key("planet", constants.starting_planet) then
                 log(serpent.block(pebble))
-                error("Non-nauvis context possible to get to without launch.")
+                error("Non-starting-planet context possible to get to without launch.")
             end
         end
     end
@@ -110,12 +111,12 @@ end
 
 test.path_contains_chemical_science = function()
     local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
-    local nauvis_context = gutils.key("planet", "nauvis")
-    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][nauvis_context]
+    local starting_planet_context = gutils.key("planet", constants.starting_planet)
+    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][starting_planet_context]
     local path_info = top.path(test_graph, { silo_ind }, sort_info)
 
     local science_node = test_graph.nodes[gutils.key("item", "chemical-science-pack")]
-    local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
+    local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][starting_planet_context]
     if not path_info.in_path[science_ind] then
         error()
     end
@@ -123,12 +124,12 @@ end
 
 test.path_not_contains_defender = function()
     local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
-    local nauvis_context = gutils.key("planet", "nauvis")
-    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][nauvis_context]
+    local starting_planet_context = gutils.key("planet", constants.starting_planet)
+    local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][starting_planet_context]
     local path_info = top.path(test_graph, { silo_ind }, sort_info)
 
     local capsule_node = test_graph.nodes[gutils.key("item", "defender-capsule")]
-    local capsule_ind = sort_info.node_to_context_inds[gutils.key(capsule_node)][nauvis_context]
+    local capsule_ind = sort_info.node_to_context_inds[gutils.key(capsule_node)][starting_planet_context]
     if path_info.in_path[capsule_ind] then
         error()
     end
@@ -137,8 +138,8 @@ end
 test.path_contains_gleba_biochamber = function()
     if mods["space-age"] then
         local science_node = test_graph.nodes[gutils.key("item", "promethium-science-pack")]
-        local nauvis_context = gutils.key("planet", "nauvis")
-        local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][nauvis_context]
+        local starting_planet_context = gutils.key("planet", constants.starting_planet)
+        local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][starting_planet_context]
         local path_info = top.path(test_graph, { science_ind }, sort_info)
 
         local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]

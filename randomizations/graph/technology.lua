@@ -38,7 +38,12 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
     -- CRITICAL TODO: Test for base game/don't hardcode planets here
     local planet_names = {}
     if mods["space-age"] then
-        planet_names = {"fulgora", "gleba", "vulcanus"}
+        default_planet_names = {"nauvis", "fulgora", "gleba", "vulcanus"}
+        for _, planet_name in pairs(default_planet_names) do
+            if planet_name ~= constants.starting_planet then
+                table.insert(planet_names, planet_name)
+            end
+        end
     end
     local planet_sort_info = {}
     for _, planet_name in pairs(planet_names) do
@@ -89,7 +94,7 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
         local reachable = table.deepcopy(sort_state.reachable)
         -- Refine reachable to exclude techs not reachable from a single planet if applicable
         local to_remove_from_reachable = {}
-        local is_nauvis_tech = true
+        local is_starting_planet_tech = true
         for _, planet_name in pairs(planet_names) do
             if planet_sort_info[planet_name].reachable[build_graph.key(node.type, node.name)] then
                 for reachable_node_name, _ in pairs(reachable) do
@@ -105,7 +110,7 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
                     end
                 end
 
-                is_nauvis_tech = false
+                is_starting_planet_tech = false
             end
         end
         for reachable_node_name, _ in pairs(to_remove_from_reachable) do
@@ -136,7 +141,7 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
         end
         
         -- Only try color preservation for nauvis techs
-        if (not is_nauvis_tech) or not search_over_list(correct_color_techs) then
+        if (not is_starting_planet_tech) or not search_over_list(correct_color_techs) then
             if not search_over_list(tech_shuffle) then
                 -- Couldn't find a prerequisite
                 error()
