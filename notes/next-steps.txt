@@ -1,7 +1,17 @@
 CURRENTLY ON:
 
+ * Blacklist tree seeds (and things with plant results in general) and rocket parts from item randomization
+    * I guess this would just be a first pass modification directly at this point
+
+ * More mod compatibility!
+
+ * APS compatibility
+ * Make sure to add new test case for with APS
+ * Reachability in testing script
+
  * Before next release, rocket launch products and node adding API
  * Also only turn on tech name locale change when a technology randomization is on
+ * Oh, and how to do balance nodes?... Like, what exactly is fulgora violating with APS?
 
  * Recipe ingredients unified (basic version first?)
     * Cost implementations
@@ -28,6 +38,6 @@ CURRENTLY ON:
     * First pass specific blacklist
  * Extracting dependency graph library
  * First pass sort improvements
-    * Better compatibility tests (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)
+    * Better compatibility nodes (if a node gets military science and thus an extra prereq, it can make the rest of the graph seem invalid)
     * Write context switching wiki page
     * Add more testing/logging?

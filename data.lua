@@ -2,10 +2,10 @@
 --require("prototype/void-lab")
 
 data:extend({
-    -- Key sequence for returning to nauvis
+    -- Key sequence for returning to starting planet
     {
         type = "custom-input",
-        name = "return-to-nauvis",
+        name = "return-to-starting-planet",
         key_sequence = "CONTROL + SHIFT + R",
         localised_name = "Return Home"
     },

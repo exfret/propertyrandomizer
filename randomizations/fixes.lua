@@ -415,6 +415,8 @@ randomizations.fixes = function()
         for _, pack in pairs(packs_as_list) do
             suffix = suffix .. "[item=" .. pack .. "]"
         end
-        tech.localised_name = {"", tech_localised_name, suffix}
+        -- CRITICAL TODO: Included again
+        -- Was causing localised string to be too large
+        --tech.localised_name = {"", tech_localised_name, suffix}
     end
 end

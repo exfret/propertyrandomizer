@@ -55,8 +55,8 @@ config.unified = {
 
 local enabled = {
     --["recipe-ingredients"] = true,
-    ["tech-science-packs"] = true,
-    ["tech-prereqs"] = true,
+    --["tech-science-packs"] = true,
+    --["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
     --["recipe-category"] = true,
     ["item"] = true,
@@ -257,9 +257,10 @@ unified.execute = function()
     local first_pass_info
     local old_sorted_deps
     if DO_FIRST_PASS then
-        local function switch_vulcanus_nauvis(graph)
+        -- NOTE: This switch code is out of date
+        local function switch_gleba_nauvis(graph)
             local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
-            local vulcanus_node = graph.nodes[key("room", key("planet", "vulcanus"))]
+            local gleba_node = graph.nodes[key("room", key("planet", "gleba"))]
 
             -- room-launch's are intrinsic to the room
             local function leads_to_room_launch(node)
@@ -288,11 +289,11 @@ unified.execute = function()
             end
 
             local nauvis_deps = gather_deps(nauvis_node)
-            local vulcanus_deps = gather_deps(vulcanus_node)
+            local gleba_deps = gather_deps(gleba_node)
             for _, edge in pairs(nauvis_deps) do
-                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(vulcanus_node))
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(gleba_node))
             end
-            for _, edge in pairs(vulcanus_deps) do
+            for _, edge in pairs(gleba_deps) do
                 gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
             end
         end
@@ -301,8 +302,8 @@ unified.execute = function()
         local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
-            --switch_vulcanus_nauvis(spoofed_graph_to_pass)
-            switch_vulcanus_nauvis(subdiv_graph_to_pass)
+            --switch_gleba_nauvis(spoofed_graph_to_pass)
+            switch_gleba_nauvis(subdiv_graph_to_pass)
         end
 
         first_pass_info = first_pass.execute({
@@ -560,10 +561,10 @@ unified.execute = function()
 
     if SWITCH_PLANETS then
         local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.vulcanus)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
         data.raw.planet.nauvis.name = "nauvis"
-        data.raw.planet.vulcanus = old_nauvis
-        data.raw.planet.vulcanus.name = "vulcanus"
+        data.raw.planet.gleba = old_nauvis
+        data.raw.planet.gleba.name = "gleba"
     end
 
     return true

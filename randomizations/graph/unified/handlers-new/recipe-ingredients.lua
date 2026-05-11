@@ -403,7 +403,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- I decided to leave that part out here
 
                 -- Finally, search for the best ingredients
-                local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, nauvis_reachable = nauvis_reachable})
+                local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable})
                 -- Test for failure
                 if type(best_search_info) == "string" then
                     log("Recipe randomization failed")

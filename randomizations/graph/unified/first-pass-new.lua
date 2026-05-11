@@ -133,10 +133,10 @@ first_pass.execute = function(params)
     for _, science_pack in pairs(data.raw.tool) do
         is_tool_node[key("item", science_pack.name)] = true
     end
-    local nauvis_context = key("planet", "nauvis")
+    local starting_planet_context = key("planet", constants.starting_planet)
     local goal_inds = {}
     for ind, pebble in pairs(init_sort.sorted) do
-        if is_tool_node[pebble.node_key] and pebble.context == nauvis_context then
+        if is_tool_node[pebble.node_key] and pebble.context == starting_planet_context then
             table.insert(goal_inds, ind)
         end
     end

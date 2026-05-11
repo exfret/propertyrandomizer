@@ -148,8 +148,8 @@ randomizations.item_new = function(id)
         local to_be_randomized = {}
         for _, node in pairs(initial_sort_info.sorted) do
             if node.type == "item" then
-                local nauvis_reachable = initial_sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({node.name, build_graph.compound_key({"planet", "nauvis"})}))]
-                if nauvis_reachable then
+                local starting_planet_reachable = initial_sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({node.name, build_graph.compound_key({"planet", constants.starting_planet})}))]
+                if starting_planet_reachable then
                     local item_prototype = items[node.item]
                     local cost = cost_as_traveler.material_to_cost[flow_cost.get_prot_id(item_prototype)]
                     local stackable = true
@@ -234,7 +234,7 @@ randomizations.item_new = function(id)
         end
         -- We'll make sure chemical fuel is always available as a hotfix at the end, so make sure it's satisfied as a node
         -- build-entity-surface-condition-true is just an easy always-on node to choose
-        graph_utils.add_prereq(dep_graph[build_graph.key("build-entity-surface-condition-true", "canonical")], dep_graph[build_graph.key("fuel-category-surface", build_graph.compound_key({"chemical", build_graph.compound_key({"planet", "nauvis"})}))])
+        graph_utils.add_prereq(dep_graph[build_graph.key("build-entity-surface-condition-true", "canonical")], dep_graph[build_graph.key("fuel-category-surface", build_graph.compound_key({"chemical", build_graph.compound_key({"planet", constants.starting_planet})}))])
 
         -- Now re-sort and create our list of dependents and prereqs for shuffling
         local prereq_sort_info = top_sort.sort(dep_graph)

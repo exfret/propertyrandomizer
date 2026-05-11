@@ -1,3 +1,4 @@
+local constants = require("helper-tables/constants")
 local gutils = require("new-lib/graph/graph-utils")
 
 local key = gutils.key
@@ -95,14 +96,24 @@ randomization_info.options.unified["spoiling"].blacklisted_pre = {
 }
 
 -- I don't know if this actually is needed right now (which is a good thing)
-randomization_info.options.logic.contexts_in_order = {
-    key({type = "planet", name = "nauvis"}),
-    key({type = "surface", name = "space-platform"}),
-    key({type = "planet", name = "vulcanus"}),
-    key({type = "planet", name = "fulgora"}),
-    key({type = "planet", name = "gleba"}),
-    key({type = "planet", name = "aquilo"}),
-}
+randomization_info.options.logic.contexts_in_order = {}
+local contexts_in_order = randomization_info.options.logic.contexts_in_order
+table.insert(contexts_in_order, {
+    key({type = "planet", name = constants.starting_planet})
+})
+table.insert(contexts_in_order, {
+    key({type = "surface", name = "space-platform"})
+})
+for _, planet in pairs({"nauvis", "fulgora", "gleba", "vulcanus"}) do
+    if planet ~= constants.starting_planet then
+        table.insert(contexts_in_order, {
+            key({type = "planet", name = planet})
+        })
+    end
+end
+table.insert(contexts_in_order, {
+    key({type = "planet", name = "aquilo"})
+})
 
 -- TODO: Make these into node format
 randomization_info.options.cost.default_cost_table = {

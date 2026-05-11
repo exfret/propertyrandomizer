@@ -69,8 +69,8 @@ randomizations.item = function(id)
     for _, item_node in pairs(graph_sort) do
         if item_node.type == "item" then
             local item_prototype = items[item_node.item]
-            -- Condition: only do items reachable from nauvis, no weirdness
-            if sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item_node.name, build_graph.compound_key({"planet", "nauvis"})}))] then
+            -- Condition: only do items reachable from starting planet, no weirdness
+            if sort_info.reachable[build_graph.key("item-surface", build_graph.compound_key({item_node.name, build_graph.compound_key({"planet", constants.starting_planet})}))] then
                 -- Must have flow cost, and the cost must be reasonable
                 local cost = old_aggregate_cost_for_old.material_to_cost[flow_cost.get_prot_id(item_prototype)]
                 -- Remove this check for now
