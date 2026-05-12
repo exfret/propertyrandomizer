@@ -4,11 +4,23 @@ local gutils = require("new-lib/graph/graph-utils")
 local key = gutils.key
 
 randomization_info.options.first_pass.blacklist = {}
+-- Blacklist barrels
 for _, recipe in pairs(data.raw.recipe) do
     if string.sub(recipe.name, -6, -1) == "barrel" then
         randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
     end
 end
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if string.sub(item.name, -6, -1) == "barrel" then
+                randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
+        end
+    end
+end
+-- TODO: Do in more automatic way than hardcoding
+randomization_info.options.first_pass.blacklist[key("item", "rocket-part")] = true
 
 randomization_info.options.first_pass.always_slot_pre = {
     [key("item-craft", "item")] = true,

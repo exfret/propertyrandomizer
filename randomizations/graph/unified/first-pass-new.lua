@@ -37,6 +37,7 @@ local CHECK_SAME_MECHANICS = true
 local DO_ITEM_RANDO = true
 local EXCLUDE_SCIENCE = true
 local EXCLUDE_RECIPES = true
+local EXCLUDE_TECHS = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
@@ -93,6 +94,9 @@ first_pass.execute = function(params)
             return false
         end
         if EXCLUDE_RECIPES and subdiv_node.type == "recipe" then
+            return false
+        end
+        if EXCLUDE_TECHS and subdiv_node.type == "technology" then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
@@ -971,6 +975,21 @@ first_pass.execute = function(params)
             if found_trav ~= nil then
                 break
             else
+
+
+
+
+                if i / #slot_inds < 0.9 then
+                    return false
+                end
+                disable_reachability_check = true
+                break
+
+
+
+
+
+
                 print_failure_message(i)
                 -- For debugging, ability to ignore last bit of unassigned slots/travs
                 if i / #slot_inds < FAILURE_ACCEPTANCE then
@@ -984,6 +1003,20 @@ first_pass.execute = function(params)
                 end
             end
         end
+
+
+
+
+
+        if disable_reachability_check == true then
+            break
+        end
+
+
+
+
+
+
 
         slot_to_trav[key(found_slot)] = key(found_trav)
         trav_to_slot[key(found_trav)] = key(found_slot)

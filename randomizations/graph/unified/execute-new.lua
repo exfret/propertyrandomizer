@@ -56,7 +56,7 @@ config.unified = {
 local enabled = {
     --["recipe-ingredients"] = true,
     --["tech-science-packs"] = true,
-    --["tech-prereqs"] = true,
+    ["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
     --["recipe-category"] = true,
     ["item"] = true,
@@ -518,7 +518,18 @@ unified.execute = function()
                     log(head_key)
                     local percentage = math.floor(100 * dep_ind / #sorted_deps)
                     log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
-                    return false
+
+
+
+
+
+
+                    --return false
+
+
+
+
+                    
                 end
             end
         end

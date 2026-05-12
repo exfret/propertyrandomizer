@@ -4,6 +4,11 @@ CURRENTLY ON:
     * I guess this would just be a first pass modification directly at this point
 
  * More mod compatibility!
+ * Make list of handlers actually and implement for mod compatibility
+ * So we're doing the following nodes:
+    * Items (Done)
+    * Techs? (Science pack randomization is misbehaving)
+    * Recipe unlocks and categories?
 
  * APS compatibility
  * Make sure to add new test case for with APS

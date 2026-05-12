@@ -169,7 +169,7 @@ logic.build = function(ignore_balance_nodes)
     -- A lot of the time, this can just end up adding edges from nodes created by logic_group
     
     if not ignore_balance_nodes then
-        --balance.build(lu)
+        balance.build(lu)
     end
 
 ----------------------------------------------------------------------------------------------------
