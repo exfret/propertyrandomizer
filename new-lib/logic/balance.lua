@@ -93,6 +93,7 @@ balance.build = function(lu)
         abilities = table.deepcopy(balance_abilities),
     })
 
+    --[=[
     ----------------------------------------
     add_node("balance-starter-gun", "OR", nil, "", { mechanic = true })
     ----------------------------------------
@@ -166,7 +167,7 @@ balance.build = function(lu)
     end
     add_edge_reversed("recipe", "logistic-science-pack", {
         abilities = table.deepcopy(balance_abilities),
-    })
+    })]=]
 
     ----------------------------------------
     add_node("balance-inserter", "OR", nil, "", { mechanic = true })
@@ -231,6 +232,7 @@ balance.build = function(lu)
         end
     end
 
+    --[=[
     ----------------------------------------
     add_node("balance-underground-belt", "OR", nil, "", { mechanic = true })
     ----------------------------------------
@@ -423,7 +425,7 @@ balance.build = function(lu)
     end
     add_edge_reversed("recipe", "chemical-science-pack", {
         abilities = table.deepcopy(balance_abilities),
-    })
+    })]=]
 
     -- Space age particular things
     if mods["space-age"] then

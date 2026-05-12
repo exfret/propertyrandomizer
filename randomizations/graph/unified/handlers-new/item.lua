@@ -174,21 +174,34 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         if orig_recipe.orig_name ~= nil then
                             orig_recipe = data.raw.recipe[orig_recipe.orig_name]
                         end
-                        if orig_recipe.localised_name == nil then
-                            recipe.localised_name = {"?", {"recipe-name." .. orig_recipe.name}, locale_utils.find_localised_name(trav_item)}
-                        end
+                        --if orig_recipe.localised_name == nil then
+                            -- TODO: Should I check recipe-name?
+                            table.insert(changes, {
+                                tbl = recipe,
+                                prop = "localised_name",
+                                new_val = locale_utils.find_localised_name(trav_item)
+                            })
+                        --end
                         -- If the original recipe had no icon, recreate the icon as the new item's
                         if orig_recipe.icons == nil and orig_recipe.icon == nil then
                             local recipe_icons
                             if trav_item.icons ~= nil then
-                                recipe.icons = trav_item.icons
+                                table.insert(changes, {
+                                    tbl = recipe,
+                                    prop = "icons",
+                                    new_val = table.deepcopy(trav_item.icons)
+                                })
                             else
-                                recipe.icons = {
-                                    {
-                                        icon = trav_item.icon,
-                                        icon_size = trav_item.icon_size or 64
+                                table.insert(changes, {
+                                    tbl = recipe,
+                                    prop = "icons",
+                                    new_val = {
+                                        {
+                                            icon = trav_item.icon,
+                                            icon_size = trav_item.icon_size or 64
+                                        }
                                     }
-                                }
+                                })
                             end
                         end
                     end
