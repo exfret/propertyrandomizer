@@ -4,7 +4,7 @@
 
 
 local build_graph = require("lib/graph/build-graph")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 

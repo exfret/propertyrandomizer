@@ -105,7 +105,7 @@ dep_graph_file:write(json.stringify(build_graph.graph))]]
 
 local cost_params = constants.cost_params
 
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local old_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), cost_params.time, cost_params.complexity).material_to_cost
 local old_recipe_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), cost_params.time, cost_params.complexity).recipe_to_cost
 local old_iron_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table("item-iron-ore"), 0, 0).material_to_cost

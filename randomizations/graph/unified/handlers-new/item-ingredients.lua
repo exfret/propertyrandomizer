@@ -1,7 +1,7 @@
 -- TODO: Check if non-stackable and don't randomize in (would disrupt attempts to fix costs later)
 
 local constants = require("helper-tables/constants")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local gutils = require("new-lib/graph/graph-utils")
 
 local item_ingredients = {}

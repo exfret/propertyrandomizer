@@ -423,7 +423,7 @@ function concrete.build(lu)
             add_node("entity-kill", "AND")
             ----------------------------------------
             -- Can we kill this entity?
-            -- Created for anything that could have health.
+            -- Only created for things that could have health.
 
             -- We just check for immunities here, i.e.- 100% or more resistance
             -- Later, in logic-balancing.lua we can worry about "virtually immune" entities/health amounts etc.
@@ -510,8 +510,6 @@ function concrete.build(lu)
     -- Equipment
     ----------------------------------------------------------------------
 
-    -- Equipment power is SEPARATE from world entity power.
-    -- Grids have their own internal power pool.
     -- Note: Size constraints not checked (equipment might be too large for grid).
 
     set_class("equipment")

@@ -21,7 +21,7 @@
 --      - Tooltips for node types, op?, helpful info
 
 local locale = require("lib/locale")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local gutils = require("new-lib/graph/graph-utils")
 local customizer = require("scripts/customizer")
 

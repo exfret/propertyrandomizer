@@ -46,7 +46,7 @@ local REPORT_SLOTS_FAILED = false
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 -- TODO: Better flow cost library!
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 -- Used for contexts
 local logic = require("new-lib/logic/init")
 local lutils = require("new-lib/logic/logic-utils")
