@@ -1,5 +1,5 @@
 local gutils = require("new-lib/graph/graph-utils")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 
 local stage = {}
 

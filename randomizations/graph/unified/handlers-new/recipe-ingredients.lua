@@ -9,7 +9,7 @@ local lu = require("new-lib/lookup/init")
 -- Used for getting trav name
 local first_pass = require("randomizations/graph/unified/first-pass-new")
 -- Later, I will want a refactored cost library
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
 
 local key = gutils.key

@@ -1,5 +1,7 @@
 CURRENTLY ON:
 
+ * Working on dep graph lib
+
  * Blacklist tree seeds (and things with plant results in general) and rocket parts from item randomization
     * I guess this would just be a first pass modification directly at this point
 

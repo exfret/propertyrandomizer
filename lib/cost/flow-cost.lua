@@ -179,14 +179,14 @@ flow_cost.get_default_raw_resource_table = function()
         ["item-copper-bacteria"] = 5,
         ["item-biter-egg"] = 1
     }
-    local duped_resources = {
+    --[[local duped_resources = {
         ["item-iron-ore-exfret-2-copy"] = 1.25,
         ["item-copper-ore-exfret-2-copy"] = 1,
         ["item-coal-exfret-2-copy"] = 1,
         -- Lower cost for stone so that it's more common
         ["item-stone-exfret-2-copy"] = 0.85,
         ["item-uranium-ore-exfret-2-copy"] = 1.5,
-    }
+    }]]
     if mods["space-age"] then
         for material_id, cost in pairs(space_age_resources) do
             normal_resources[material_id] = cost

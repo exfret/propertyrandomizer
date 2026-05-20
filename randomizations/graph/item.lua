@@ -6,7 +6,7 @@
 -- Only used for its utility functions
 local constants = require("helper-tables/constants")
 local build_graph = require("lib/graph/build-graph")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")

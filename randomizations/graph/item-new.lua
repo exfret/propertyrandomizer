@@ -1,6 +1,6 @@
 local constants = require("helper-tables/constants")
 local build_graph = require("lib/graph/build-graph")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local graph_utils = require("lib/graph/graph-utils")
 local path = require("lib/graph/path")
 local top_sort = require("lib/graph/top-sort")

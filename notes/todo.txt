@@ -3,7 +3,6 @@ For bugs/fixes rather than features, see bugs.txt
 
  * "Recipe randomization" through local switches rather than as a complete randomization
  * Check on tooltips for new randomizations
- * Account for ability to move around on planets in logic (need ice platforms on Aquilo), maybe just a compat on ice platforms etc.?
  * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
  * Spoiling checks on buildings (make sure it's not too quick)
  * Force space resources in appropriate places (like planetary science packs)
@@ -29,7 +28,7 @@ For bugs/fixes rather than features, see bugs.txt
  * Support additional_categories for recipes in logic
  * Logic for not being able to handcraft in space (if not already there)
  * Check that agri towers are counted as automatable on gleba
- * Only add automatable for resource mining if it's by a mining drill
+ * Only add automatable for resource mining if it's by a mining drill (just make mining drills automatically operable and characters not, also depend on entity-character)
  * Fix connection logic that adds contexts to a node once it's connected in first pass (not quite correct)
  * Don't use balance nodes in control phase reachability checks
  * Enforce .nodes and .edges access?
@@ -41,7 +40,7 @@ For bugs/fixes rather than features, see bugs.txt
     * Close button
     * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
  * Make sure to return "not stackable" on vehicles with equipment grid defined, not just armor
- * Change formula so infinite researches can become exponential or become linear cost scaling
+ * Randomize science pack formula so infinite researches can become exponential or become linear cost scaling
  * Randomizations localised descriptions for created entities, such as a laser turret's beam, should also go with the laser turret, for example
  * Remove hardcoding in module randomizations
  * Just make furnaces into assembling machine prototypes to avoid issues (most things that would break in mods like voiding machines need manual compat for their recipes anyways)

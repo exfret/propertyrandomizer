@@ -11,7 +11,7 @@
 local constants = require("helper-tables/constants")
 -- build_graph is used for its utility functions, not the graph building (graph is assumed global)
 local build_graph = require("lib/graph/build-graph")
-local flow_cost = require("lib/graph/flow-cost")
+local flow_cost = require("lib/cost/flow-cost")
 local top_sort = require("lib/graph/top-sort")
 local rng = require("lib/random/rng")
 
