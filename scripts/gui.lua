@@ -21,7 +21,7 @@
 --      - Tooltips for node types, op?, helpful info
 
 local locale = require("lib/locale")
-local flow_cost = require("lib/cost/flow-cost")
+local cutils = require("lib/cost/cost-utils")
 local gutils = require("new-lib/graph/graph-utils")
 local customizer = require("scripts/customizer")
 
@@ -369,11 +369,11 @@ local function get_node_leaves(node)
                     if prenode.type == "recipe" then
                         local recipe_prot = prototypes.recipe[prenode.name]
                         local material_info = decon_to_prot(gutils.deconstruct(curr_node.prot))
-                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] / flow_cost.find_amount_in_ing_or_prod(recipe_prot.products, {type = material_info.top_level_class, name = material_info.prot.name})
+                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] / cutils.find_amount_in_ing_or_prod(recipe_prot.products, {type = material_info.top_level_class, name = material_info.prot.name})
                     elseif curr_node.type == "recipe" then
                         local recipe_prot = prototypes.recipe[curr_node.name]
                         local material_info = decon_to_prot(gutils.deconstruct(prenode.prot))
-                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] * flow_cost.find_amount_in_ing_or_prod(recipe_prot.ingredients, {type = material_info.top_level_class, name = material_info.prot.name})
+                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] * cutils.find_amount_in_ing_or_prod(recipe_prot.ingredients, {type = material_info.top_level_class, name = material_info.prot.name})
                     end
                 end
 

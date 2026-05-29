@@ -1,5 +1,8 @@
 CURRENTLY ON:
 
+ * Simplex cost
+    * Recipe material matrix
+
  * Working on dep graph lib
 
  * Blacklist tree seeds (and things with plant results in general) and rocket parts from item randomization

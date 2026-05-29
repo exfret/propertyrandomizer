@@ -28,9 +28,6 @@ end
 if settings.startup["propertyrandomizer-test-unit"].value then
     config.unit_test = true
 end
-if settings.startup["propertyrandomizer-simultaneous"].value then
-    config.simultaneous = true
-end
 
 config.graph = {}
 if settings.startup["propertyrandomizer-technology"].value then
@@ -70,7 +67,6 @@ if settings.startup["propertyrandomizer-locale"].value then
 end
 config.misc.colors = settings.startup["propertyrandomizer-colors"].value
 
-config.critical_errors = (settings.startup["propertyrandomizer-softlock-prevention"].value == "critical")
 config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
 

@@ -1,5 +1,5 @@
 local gutils = require("new-lib/graph/graph-utils")
-local flow_cost = require("lib/cost/flow-cost")
+local cutils = require("lib/cost/cost-utils")
 
 local stage = {}
 
@@ -208,7 +208,7 @@ stage.weight = function()
                 if curr_recipe.results ~= nil then
                     for _, result in pairs(curr_recipe.results) do
                         if result.type == "item" then
-                            product_count = product_count + flow_cost.find_amount_in_entry(result)
+                            product_count = product_count + cutils.find_amount_in_entry(result)
                         end
                     end
                 end

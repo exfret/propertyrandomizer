@@ -52,6 +52,13 @@ local constants = {
     step_size_modifier = 0.4, -- Things were getting a little too random, thus this
     steps_per_roll = 20,
 
+    -- Simplex cost
+    simplex_per_resource_cost = 1,
+    simplex_per_recipe_cost = 0.1,
+    simplex_per_second_cost = 0.05,
+    simplex_pump_cost = 0.01,
+    simplex_boiling_cost = 0.05,
+
     path_max_removed_node_hits = 30 * 16,
     path_max_depth = 30 * 128,
     path_max_nodes_checked = 30 * 8192,
@@ -80,7 +87,6 @@ local constants = {
 
     -- Randomizations to build dependency graph for
     dep_graph_randomizations = {
-        ["propertyrandomizer-simultaneous"] = true,
         ["propertyrandomizer-technology"] = true,
         ["propertyrandomizer-recipe"] = true,
         ["propertyrandomizer-item"] = true,

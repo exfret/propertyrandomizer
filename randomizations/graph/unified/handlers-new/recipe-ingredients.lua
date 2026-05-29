@@ -8,6 +8,7 @@ local dutils = require("new-lib/data-utils")
 local lu = require("new-lib/lookup/init")
 -- Used for getting trav name
 local first_pass = require("randomizations/graph/unified/first-pass-new")
+local cutils = require("lib/cost/cost-utils")
 -- Later, I will want a refactored cost library
 local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
@@ -503,7 +504,7 @@ end
                 if slot_to_trav[key(pre_orand)] ~= nil then
                     local final_node = split_graph.nodes[split_graph.nodes[slot_to_trav[key(pre_orand)] ].old_slot]
                     final_node = split_graph.nodes[split_graph.orand_to_parent[key(final_node)] ]
-                    local amount = flow_cost.find_amount_in_ing_or_prod(data.raw.recipe[init_slot.name].ingredients, pre_slot)
+                    local amount = cutils.find_amount_in_ing_or_prod(data.raw.recipe[init_slot.name].ingredients, pre_slot)
                     table.insert(recipe_to_new_ings[dep_as_slot.name], {
                         type = pre_slot.type,
                         name = final_node.name,

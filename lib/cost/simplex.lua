@@ -1,68 +1,50 @@
 -- Written by chatGPT, since this is a standard algorithm and I didn't feel like recoding it
 
--- simplex.lua
+-- inplace_simplex.lua
 -- Solves:
 --   maximize c^T x
 --   subject to A x <= b
 --              x >= 0
 --
--- Assumes b[i] >= 0 for all i.
---
--- Returns:
---   {
---     status = "optimal" | "unbounded" | "infeasible",
---     objective = number,
---     solution = {x1, x2, ...}
---   }
+-- This mutates A in-place by turning it into the simplex tableau.
+-- Assumes b[i] >= 0.
 
 local Simplex = {}
 
 local EPS = 1e-9
 
-local function copy_matrix(A)
-    local B = {}
-    for i = 1, #A do
-        B[i] = {}
-        for j = 1, #A[i] do
-            B[i][j] = A[i][j]
-        end
-    end
-    return B
-end
+local function pivot(T, pivot_row, pivot_col)
+    local rows = #T
+    local cols = #T[1]
 
-local function pivot(tableau, pivot_row, pivot_col)
-    local rows = #tableau
-    local cols = #tableau[1]
+    local pivot_value = T[pivot_row][pivot_col]
 
-    local pivot_value = tableau[pivot_row][pivot_col]
-
-    -- Normalize pivot row
+    -- Normalize pivot row.
     for j = 1, cols do
-        tableau[pivot_row][j] = tableau[pivot_row][j] / pivot_value
+        T[pivot_row][j] = T[pivot_row][j] / pivot_value
     end
 
-    -- Eliminate pivot column from all other rows
+    -- Eliminate pivot column from every other row.
     for i = 1, rows do
         if i ~= pivot_row then
-            local factor = tableau[i][pivot_col]
+            local factor = T[i][pivot_col]
+
             if math.abs(factor) > EPS then
                 for j = 1, cols do
-                    tableau[i][j] = tableau[i][j] - factor * tableau[pivot_row][j]
+                    T[i][j] = T[i][j] - factor * T[pivot_row][j]
                 end
             end
         end
     end
 end
 
-local function choose_entering_variable(tableau)
-    -- Last row is the objective row.
-    -- For maximization, negative reduced cost means improvement.
-    -- Bland's rule: choose lowest-index improving variable.
-    local objective_row = #tableau
-    local rhs_col = #tableau[1]
+local function choose_entering_variable(T)
+    local objective_row = #T
+    local rhs_col = #T[1]
 
+    -- Bland's rule: first negative reduced cost.
     for j = 1, rhs_col - 1 do
-        if tableau[objective_row][j] < -EPS then
+        if T[objective_row][j] < -EPS then
             return j
         end
     end
@@ -70,20 +52,19 @@ local function choose_entering_variable(tableau)
     return nil
 end
 
-local function choose_leaving_variable(tableau, entering_col)
-    local rows = #tableau
-    local rhs_col = #tableau[1]
+local function choose_leaving_variable(T, entering_col)
+    local rows = #T
+    local rhs_col = #T[1]
 
     local best_row = nil
     local best_ratio = math.huge
 
     for i = 1, rows - 1 do
-        local coefficient = tableau[i][entering_col]
+        local coeff = T[i][entering_col]
 
-        if coefficient > EPS then
-            local ratio = tableau[i][rhs_col] / coefficient
+        if coeff > EPS then
+            local ratio = T[i][rhs_col] / coeff
 
-            -- Bland-ish tie break: smaller row index
             if ratio < best_ratio - EPS then
                 best_ratio = ratio
                 best_row = i
@@ -94,11 +75,11 @@ local function choose_leaving_variable(tableau, entering_col)
     return best_row
 end
 
-function Simplex.solve(A, b, c)
-    local m = #A       -- number of constraints
-    local n = #c       -- number of original variables
+local function make_tableau_in_place(A, b, c)
+    local m = #A
+    local n = #c
 
-    if m ~= #b then
+    if #b ~= m then
         error("A and b have incompatible sizes")
     end
 
@@ -108,72 +89,92 @@ function Simplex.solve(A, b, c)
         end
 
         if b[i] < -EPS then
-            return {
-                status = "infeasible",
-                objective = nil,
-                solution = nil,
-            }
+            return nil, "infeasible"
         end
     end
 
-    -- Tableau dimensions:
-    -- m constraint rows + 1 objective row
-    -- n original variables + m slack variables + 1 RHS column
-    local rows = m + 1
-    local cols = n + m + 1
-    local rhs_col = cols
+    local rhs_col = n + m + 1
 
-    local tableau = {}
-
-    -- Constraint rows
+    -- Mutate existing constraint rows:
+    -- [A | I | b]
     for i = 1, m do
-        tableau[i] = {}
-
-        -- Original variables
-        for j = 1, n do
-            tableau[i][j] = A[i][j]
-        end
-
-        -- Slack variables
         for j = 1, m do
-            tableau[i][n + j] = (i == j) and 1 or 0
+            A[i][n + j] = (i == j) and 1 or 0
         end
 
-        -- RHS
-        tableau[i][rhs_col] = b[i]
+        A[i][rhs_col] = b[i]
     end
 
-    -- Objective row
-    tableau[rows] = {}
+    -- Append objective row:
+    -- [-c | 0 | 0]
+    A[m + 1] = {}
 
-    -- Since we maximize c^T x, the tableau stores -c.
     for j = 1, n do
-        tableau[rows][j] = -c[j]
+        A[m + 1][j] = -c[j]
     end
 
-    -- Slack variables have zero objective coefficient
     for j = 1, m do
-        tableau[rows][n + j] = 0
+        A[m + 1][n + j] = 0
     end
 
-    -- Objective RHS
-    tableau[rows][rhs_col] = 0
+    A[m + 1][rhs_col] = 0
 
-    -- Basis initially consists of slack variables
+    return {
+        m = m,
+        n = n,
+        rhs_col = rhs_col,
+    }
+end
+
+function Simplex.solve_in_place(A, b, c)
+    local info, status = make_tableau_in_place(A, b, c)
+
+    if info == nil then
+        return {
+            status = status,
+            objective = nil,
+            solution = nil,
+        }
+    end
+
+    local m = info.m
+    local n = info.n
+    local rhs_col = info.rhs_col
+
+    -- Initial basis is the slack variables.
     local basis = {}
     for i = 1, m do
         basis[i] = n + i
     end
 
     while true do
-        local entering_col = choose_entering_variable(tableau)
+        local entering_col = choose_entering_variable(A)
+
+
+
+
+
+        log(entering_col)
+
+
+
+
 
         if entering_col == nil then
-            -- Optimal
             break
         end
 
-        local leaving_row = choose_leaving_variable(tableau, entering_col)
+        local leaving_row = choose_leaving_variable(A, entering_col)
+
+
+
+
+        log(leaving_row)
+
+
+
+
+
 
         if leaving_row == nil then
             return {
@@ -183,11 +184,10 @@ function Simplex.solve(A, b, c)
             }
         end
 
-        pivot(tableau, leaving_row, entering_col)
+        pivot(A, leaving_row, entering_col)
         basis[leaving_row] = entering_col
     end
 
-    -- Extract solution for original variables
     local solution = {}
     for j = 1, n do
         solution[j] = 0
@@ -195,17 +195,18 @@ function Simplex.solve(A, b, c)
 
     for i = 1, m do
         local basic_var = basis[i]
+
         if basic_var <= n then
-            solution[basic_var] = tableau[i][rhs_col]
+            solution[basic_var] = A[i][rhs_col]
         end
     end
 
-    local objective = tableau[rows][rhs_col]
-
     return {
         status = "optimal",
-        objective = objective,
+        objective = A[m + 1][rhs_col],
         solution = solution,
+        basis = basis,
+        tableau = A,
     }
 end
 
