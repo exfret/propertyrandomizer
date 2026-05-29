@@ -1,4 +1,5 @@
 local constants = require("helper-tables/constants")
+local cutils = require("lib/cost/cost-utils")
 
 local flow_cost = {}
 
@@ -27,65 +28,6 @@ flow_cost.update_material_list = function()
     end
 end
 
-flow_cost.find_amount_in_entry = function(ing_or_prod)
-    local amount_expected = ing_or_prod.amount
-    if ing_or_prod.amount == nil then
-        amount_expected = (ing_or_prod.amount_min + math.max(ing_or_prod.amount_min, ing_or_prod.amount_max)) / 2
-    end
-
-    local probability = ing_or_prod.probability or 1
-    local extra_count_fraction = ing_or_prod.extra_count_fraction or 0
-    return probability * (amount_expected + extra_count_fraction)
-end
-
-flow_cost.find_amount_in_ing_or_prod = function(ing_or_prod_list, material)
-    if type(material) ~= "table" then
-        error("Actual material expected; material ID or something else passed.")
-    end
-
-    local material_type = "item"
-    if material.type == "fluid" then
-        material_type = "fluid"
-    end
-
-    local amount = 0
-
-    if ing_or_prod_list ~= nil then
-        for _, ing_or_prod in pairs(ing_or_prod_list) do
-            if ing_or_prod.type == material_type and ing_or_prod.name == material.name then
-                amount = amount + flow_cost.find_amount_in_entry(ing_or_prod)
-            end
-        end
-    end
-
-    return amount
-end
-
-flow_cost.find_amount_in_recipe = function(recipe, material, ing_overrides, use_data)
-    -- Don't count recipes which are not gotten yet; these will have just the string "blacklisted"
-    if ing_overrides ~= nil and ing_overrides[recipe.name] ~= nil and ing_overrides[recipe.name][1] == "blacklisted" then
-        return nil
-    end
-    -- If ing_overrides is non-nil but doesn't contain this recipe, it's not reachable, so also return nil here
-    if ing_overrides ~= nil and ing_overrides[recipe.name] == nil then
-        return nil
-    end
-
-    local ing_amount = flow_cost.find_amount_in_ing_or_prod(recipe.ingredients, material)
-
-    -- Check use_data to see if we should not be paying attention to the overrides
-    if ing_overrides ~= nil and ing_overrides[recipe.name] ~= nil and not use_data then
-        ing_amount = 0
-        for _, prereq in pairs(ing_overrides[recipe.name]) do
-            if prereq.type == material.type and prereq.name == material.name then
-                ing_amount = flow_cost.find_amount_in_entry(prereq)
-            end
-        end
-    end
-
-    return flow_cost.find_amount_in_ing_or_prod(recipe.results, material) - ing_amount
-end
-
 flow_cost.calculate_individual_recipe_map = function(recipe, maps, ing_overrides, use_data)
     for _, material_property in pairs({"ingredients", "results"}) do
         if recipe[material_property] ~= nil then
@@ -94,7 +36,7 @@ flow_cost.calculate_individual_recipe_map = function(recipe, maps, ing_overrides
 
                 -- This is needed in case this is an excluded material, like barrels
                 if flow_cost.material_id_to_material[material_id] ~= nil then
-                    local amount_in_recipe = flow_cost.find_amount_in_recipe(recipe, flow_cost.material_id_to_material[material_id], ing_overrides, use_data)
+                    local amount_in_recipe = cutils.find_amount_in_recipe(recipe, flow_cost.material_id_to_material[material_id], ing_overrides, use_data)
                     if amount_in_recipe ~= 0 then
                         maps.recipe_to_material[recipe.name][material_id] = amount_in_recipe
                         maps.material_to_recipe[material_id][recipe.name] = amount_in_recipe
@@ -258,7 +200,7 @@ flow_cost.eval_recipe_cost = function(params)
     end
     for _, ing in pairs(ings_to_use) do
         local ing_material_id = ing.type .. "-" .. ing.name
-        local ing_amount = flow_cost.find_amount_in_entry(ing)
+        local ing_amount = cutils.find_amount_in_entry(ing)
         
         if material_to_cost[ing_material_id] ~= nil then
             if mode == nil or mode == "add" then
@@ -330,7 +272,7 @@ flow_cost.local_cost_update = function(params)
                     end
                 end
 
-                if recipe_ingredients ~= nil and flow_cost.find_amount_in_ing_or_prod(recipe_ingredients, curr_node_material) > 0 then
+                if recipe_ingredients ~= nil and cutils.find_amount_in_ing_or_prod(recipe_ingredients, curr_node_material) > 0 then
                     -- Evaluate if the recipe is cheaper now
                     local cost_info = flow_cost.eval_recipe_cost({
                         recipe_name = recipe_name,

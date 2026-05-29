@@ -8,6 +8,7 @@ Date: ?
   Changes:
     - Overrides now accept upper and lower case x's and y's
     - Items randomized is 100% by default
+    - Raw resources aren't forced to be randomized on item randomization less than 100%
     - Balance nodes are ignored for the explorer
   Bugfixes:
     - Stop crash when right clicking prototype choice in explorer
