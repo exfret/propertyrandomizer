@@ -1,33 +1,22 @@
 Everything needed before a real "compatible with py release"
 Add things as I think of them
 
- - Demand-based first pass reservation cancellations (DFPRC?): reservations are replaced based off "does this satisfy the next mechanic we need" rather than vague "importance"
- - Basic keeping similar things together (this doesn't seem as big an issue, but still necessary for a good experience)
-    - Module buildings with their modules
+almost done with this!
+ - Simplex-based cost calculations
+    - Calculate per stage of the game (per tech, or just per science pack if too slow)
+    - Might need optimized sparse matrix simplex
+    - Hardcode these once calculated for speed
+
+NECESSARY:
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
     - Fluid temperature logic
     - Animal module logic
     - Smart farm logic
     - Rocket launch products logic
- - Simplex-based cost calculations
-    - Calculate per stage of the game (per tech, or just per science pack if too slow)
-    - Might need optimized sparse matrix simplex
-    - Hardcode these once calculated for speed
- - Local recipe randomization
-    - Switching/local-based recipe randomization
-    - Complete randomization of buildings/other end products
+ - Better balance node handling
+
+MEDIUM PRIORITY:
  - Technology tree reconstruction
- - Explorer improvements
-    - Dynamic explorer (shows green for currently reachable, red for not currently unreachable, and purple for never reachable/softlock)
-    - Some very basic UI improvements (close on e, close button, maybe others)
- - Recipe graph considerations
-    - Moving items around messes with burner recipes, probably should modify them to burn anything and work with void energy source (consumability will be hard otherwise)
-    - Be careful about requiring non-starting ores in beginning
- - UX improvements
-    - Improve recipe icons that are hardcoded to be more representative of the actual things involved
-    - Ore icons for things like stone that produce two results (is that the only example?)
-    - Rename mines for single resources based off what they mine
-    - Put TURD researches at appropriate points of game
  - Finish randomizations
     - Try fluid orand randomization
     - Recipe category randomization
@@ -39,6 +28,29 @@ Add things as I think of them
     - Tweak numerical randomizations (especially crafting speed) to be more appropriate
     - Make sure stats of higher mk's are all better rather than just crafting speed
     - Playtest through circuits
+    - Ash replacement should have high stack size!
+ - Stack size preservation in first-pass-new (and cost preservation)
+
+LOW PRIORITY:
+ - Explorer improvements
+    - Dynamic explorer (shows green for currently reachable, red for not currently unreachable, and purple for never reachable/softlock)
+    - Some very basic UI improvements (close on e, close button, maybe others)
+ - UX improvements
+    - Improve recipe icons that are hardcoded to be more representative of the actual things involved
+    - Ore icons for things like stone that produce two results (is that the only example?)
+    - Rename mines for single resources based off what they mine
+    - Put TURD researches at appropriate points of game
+
+ALGORITHMIC:
+ - Demand-based first pass reservation cancellations (DFPRC?): reservations are replaced based off "does this satisfy the next mechanic we need" rather than vague "importance"
+ - Basic keeping similar things together (this doesn't seem as big an issue, but still necessary for a good experience)
+    - Module buildings with their modules
+ - Local recipe randomization
+    - Switching/local-based recipe randomization
+    - Complete randomization of buildings/other end products
+ - Recipe graph considerations
+    - Moving items around messes with burner recipes, probably should modify them to burn anything and work with void energy source (consumability will be hard otherwise)
+    - Be careful about requiring non-starting ores in beginning
 
 Notes:
  - With just item rando, most of the buildings you unlock aren't really used, could work on recipe category randomization to change that

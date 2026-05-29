@@ -75,13 +75,6 @@ categories.energy_sources_input = {
     ["spider-vehicle"] = "energy_source"
 }
 
--- For which entities is their energy source forced to be electric?
-categories.energy_sources_input_electric = {
-    ["ammo-turret"] = true,
-    -- CRITICAL TODO
-}
--- For which entities is their energy source forced to be burner or void?
-
 categories.enemy_health_classes = {
     ["asteroid"] = true,
     ["segment"] = true,

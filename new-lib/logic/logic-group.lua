@@ -44,7 +44,7 @@ logic_group.build = function(graph, type_info)
     logic_group.graph = graph
     logic_group.type_info = type_info
 
-    curr_class = "groups"
+    curr_class = "logic-groups"
 
     local nauvis_room = key("room", key("planet", "nauvis"))
     local space_plat_room = key("room", key("surface", "space-platform"))

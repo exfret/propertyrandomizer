@@ -2,6 +2,11 @@ CURRENTLY ON:
 
  * Simplex cost
     * Recipe material matrix
+ 
+ * First pass balance (for playable py)
+    - Add new groups nodes to graph
+    - Require and add blacklist created by first-pass-balance.lua
+    - Remove old balance nodes/code
 
  * Working on dep graph lib
 

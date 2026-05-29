@@ -1,7 +1,6 @@
 This is a file for smaller todos (see next-steps.txt for master plan and features.txt for bigger plans)
 For bugs/fixes rather than features, see bugs.txt
 
- * "Recipe randomization" through local switches rather than as a complete randomization
  * Check on tooltips for new randomizations
  * Branched randomization; military part of tech tree being separate for example (might make randomization process too sensitive)
  * Spoiling checks on buildings (make sure it's not too quick)
