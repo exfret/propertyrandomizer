@@ -4113,7 +4113,7 @@ build_graph.ops = {
 -- If checking if something is creatable "from just that surface", we really mean "can it be created from reachable non-isolatable nodes, and via non-transport connections across isolatable nodes"
 -- This should represent "is this something that would need regular shipments to satisfy this ability if it was missing otherwise"
 -- I think I may have been messing up the logic actually, this may not be necessary
--- CRITICAL TODO: REMOVE THIS?
+-- TODO: REMOVE THIS?
 build_graph.isolatable_nodes = {
     ["burn-item-surface"] = true,
     ["craft-material-surface"] = true,

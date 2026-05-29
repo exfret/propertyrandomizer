@@ -30,6 +30,7 @@ local gutils = require("new-lib/graph/graph-utils")
 local top = require("new-lib/graph/consistent-sort")
 local logic = require("new-lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass-new")
+local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 local test_sort = require("tests/consistent-sort")
 
@@ -117,6 +118,26 @@ unified.execute = function()
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
     test_graph_invariants.test(init_graph)
+
+    -- Add forward edges for 
+    -- CRITICAL TODO: Also didn't work!
+    --[[local init_graph_sort = top.sort(init_graph, nil, nil, { choose_randomly = true })
+    local init_encountered = {}
+    for ind, pebble in pairs(init_graph_sort.sorted) do
+        local node_key = pebble.node_key
+        init_encountered[node_key] = true
+        local node = init_graph.nodes[node_key]
+        if node.class == "groups" then
+            for ind2 = ind + 1, #init_graph_sort.sorted do
+                local pebble2 = init_graph_sort.sorted[ind2]
+                local node_key2 = pebble2.node_key
+                if not init_encountered[node_key2] then
+                    local node2 = init_graph.nodes[node_key2]
+                    gutils.add_edge(init_graph, node, node2)
+                end
+            end
+        end
+    end]]
 
     local spoofed_graph = table.deepcopy(init_graph)
     -- Spoofing

@@ -53,6 +53,7 @@ local lutils = require("new-lib/logic/logic-utils")
 local gutils = require("new-lib/graph/graph-utils")
 local dutils = require("new-lib/data-utils")
 local top = require("new-lib/graph/consistent-sort")
+local first_pass_balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 
 local key = gutils.key
@@ -81,6 +82,8 @@ first_pass.execute = function(params)
 
     local init_sort = top.sort(spoofed_graph)
 
+    local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
+
     local function valid_node_for_first_pass(node_key)
         -- Just check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
         local subdiv_node = subdiv_graph.nodes[node_key]
@@ -97,6 +100,13 @@ first_pass.execute = function(params)
             return false
         end
         if EXCLUDE_TECHS and subdiv_node.type == "technology" then
+            return false
+        end
+        --[[if in_balance_blacklist[node_key] then
+            return false
+        end]]
+        -- CRITICAL TODO: A better method for determining blacklistedness!
+        if in_balance_blacklist[subdiv_node.name] then
             return false
         end
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
@@ -885,6 +895,8 @@ first_pass.execute = function(params)
     end
 
     for i = 1, #slot_inds do
+        log(tostring(i) .. " / " .. tostring(#slot_inds))
+
         local found_slot
         local found_trav
 

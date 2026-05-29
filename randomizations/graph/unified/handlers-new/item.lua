@@ -3,7 +3,9 @@ local locale_utils = require("lib/locale")
 local dutils = require("new-lib/data-utils")
 local gutils = require("new-lib/graph/graph-utils")
 
-local simplex_cost = require("lib/cost/simplex-cost")
+--local simplex_cost = require("lib/cost/simplex-cost")
+-- CRITICAL TODO: Depend on modpack
+local material_costs = require("lib/cost/material-costs/py-full")
 
 local item = {}
 
@@ -52,7 +54,8 @@ item.initialize = function()
     trav_to_slot = nil
     split_graph = nil
 
-    material_to_cost = simplex_cost.get_material_costs()
+    --material_to_cost = simplex_cost.get_material_costs()
+    material_to_cost = material_costs.costs
 end
 
 item.spoof = function(graph)
@@ -137,7 +140,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             local slot_cost = material_to_cost[gutils.key("item", slot_item.name)]
             local trav_cost = material_to_cost[gutils.key("item", trav_item.name)]
             local multiplier = 1
-            if slot_cost ~= nil and trav_cost ~= nil then
+            if slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
                 multiplier = math.max(1, math.floor(slot_cost / trav_cost))
             end
 
@@ -451,7 +454,9 @@ item.reflect = function(graph, head_to_base, head_to_handler)
 
             -- TODO: Make this check less ad-hoc
             -- If this is a coal replacement, give it a fuel value
-            if slot_item.name == "coal" then
+            -- Also test for raw coal as a hotfix py replacement
+            -- TODO: Just do this for fuel ores in general!
+            if slot_item.name == "coal" or slot_item.name == "raw-coal" then
                 -- TODO: Need to do something special if this is the only non-chemical fuel, since we just override it to chemical
                 if trav_item.fuel_category == nil then
                     trav_item.localised_description = {"", locale_utils.find_localised_description(trav_item), "\n[color=green](Combustible)[/color]"}
@@ -462,6 +467,18 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     trav_item.fuel_value = "4MJ"
                 elseif util.parse_energy(trav_item.fuel_value) < 2000000 then
                     trav_item.fuel_value = "2MJ"
+                end
+
+                -- TODO: Figure out a better way to do this
+                -- Another py compat hot patch: Make it produce ash to guarantee a good way of getting that
+                if slot_item.name == "raw-coal" then
+                    -- TODO: More proper error handling/just restart
+                    -- If trav already had a (possibly important) burnt result, then just give up (very unlikely)
+                    if trav_item.burnt_result ~= nil and trav_item.burnt_result ~= "ash" then
+                        error("Burnt result collision for raw coal replacement!")
+                    end
+                    
+                    trav_item.burnt_result = "ash"
                 end
             end
         end

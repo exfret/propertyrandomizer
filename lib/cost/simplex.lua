@@ -150,31 +150,11 @@ function Simplex.solve_in_place(A, b, c)
     while true do
         local entering_col = choose_entering_variable(A)
 
-
-
-
-
-        log(entering_col)
-
-
-
-
-
         if entering_col == nil then
             break
         end
-
+    
         local leaving_row = choose_leaving_variable(A, entering_col)
-
-
-
-
-        log(leaving_row)
-
-
-
-
-
 
         if leaving_row == nil then
             return {

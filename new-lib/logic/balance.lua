@@ -234,7 +234,7 @@ balance.build = function(lu)
 
     --[=[
     ----------------------------------------
-    add_node("balance-underground-belt", "OR", nil, "", { mechanic = true })
+    add_node("balance-splitter", "OR", nil, "", { mechanic = true })
     ----------------------------------------
     -- Can we use some sort of splitter?
 
@@ -453,7 +453,9 @@ balance.build = function(lu)
 
         for _, ammo in pairs(data.raw.ammo) do
             if ammo.ammo_category == "rocket" then
-                add_edge("item", ammo.name)
+                add_edge("item", ammo.name, {
+                    abilities = table.deepcopy(balance_abilities),
+                })
             end
         end
         
