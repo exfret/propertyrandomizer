@@ -1,11 +1,11 @@
 Everything needed before a real "compatible with py release"
 Add things as I think of them
+Might need to bubble unlocks *downward*, getting things unlocked much later than they can be made
 
-almost done with this!
- - Simplex-based cost calculations
-    - Calculate per stage of the game (per tech, or just per science pack if too slow)
-    - Might need optimized sparse matrix simplex
-    - Hardcode these once calculated for speed
+ - Need less sensitivity and/or quicker testing
+
+ - See how prereq shuffle on recipe categories works to get rid of "research the whole science packs at once" issue
+ - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
 
 NECESSARY:
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
@@ -30,6 +30,7 @@ MEDIUM PRIORITY:
     - Playtest through circuits
     - Ash replacement should have high stack size!
  - Stack size preservation in first-pass-new (and cost preservation)
+ - Simplex cost calculation per stage in the game
 
 LOW PRIORITY:
  - Explorer improvements

@@ -59,7 +59,7 @@ local enabled = {
     --["tech-science-packs"] = true,
     ["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
-    --["recipe-category"] = true,
+    ["recipe-category"] = true,
     ["item"] = true,
 }
 
@@ -381,6 +381,14 @@ unified.execute = function()
                 if smallest_ind2 == nil or (index2 ~= nil and index2 < smallest_ind2) then
                     smallest_ind2 = index2
                 end
+            end
+
+            if smallest_ind1 == nil or smallest_ind2 == nil then
+                log(key1)
+                log(smallest_ind1)
+                log(key2)
+                log(smallest_ind2)
+                error("Node that should be reachable is not reachable!")
             end
 
             if smallest_ind1 < smallest_ind2 then

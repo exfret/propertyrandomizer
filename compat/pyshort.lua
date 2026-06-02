@@ -1,13 +1,17 @@
+local gutils = require("new-lib/graph/graph-utils")
+
+local key = gutils.key
+
 -- Blacklist canisters
 for _, recipe in pairs(data.raw.recipe) do
-    if string.sub(recipe.name, -6, -1) == "canister" then
+    if string.find(recipe.name, "canister") ~= nil then
         randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
     end
 end
 for class, _ in pairs(defines.prototypes.item) do
     if data.raw[class] ~= nil then
         for _, item in pairs(data.raw[class]) do
-            if string.sub(item.name, -6, -1) == "canister" then
+            if string.find(item.name, "canister") ~= nil then
                 randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
             end
         end

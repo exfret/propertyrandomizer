@@ -128,10 +128,15 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe",
-        localised_name = "Recipes",
-        localised_description = "Randomizes all recipe ingredients (not just the amounts).",
         default_value = false,
         order = "d-d[recipe]"
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-recipe-science-pack",
+        default_value = false,
+        order = "d-da[science-packs-only]"
     },
     {
         setting_type = "startup",
@@ -151,7 +156,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-item",
-        default_value = true,
+        default_value = false,
         order = "d-f[item]"
     },
     {
