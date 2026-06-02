@@ -311,7 +311,9 @@ function concrete.build(lu)
             end
         end
 
-        if lu.operable_entities[entity.name] then
+        -- Too many things were operable in mods that I didn't expect, so just add this for everything
+        -- TODO: Better operability check!
+        --if lu.operable_entities[entity.name] then
             ----------------------------------------
             add_node("entity-operate", "AND")
             ----------------------------------------
@@ -415,7 +417,7 @@ function concrete.build(lu)
                     end
                 end
             end
-        end
+        --end
 
         -- Just check for asteroids and other critical entities now for performance
         if not categories.without_health[entity.type] and (entity.type == "asteroid" or lu.dying_spawns[key("entity", entity.name)] or (entity.loot ~= nil and #entity.loot > 0) or (entity.corpse ~= nil and lu.minable_corpses[entity.corpse])) then

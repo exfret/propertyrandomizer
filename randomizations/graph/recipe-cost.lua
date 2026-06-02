@@ -25,16 +25,23 @@ local function calculate_points(old_recipe_costs, new_recipe_costs, extra_params
     -- resource costs
     local resource_cost_scaling = 0
     local resource_points = 0
-    for resource_id, old_cost in pairs(old_recipe_costs.resource_costs) do
-        local new_cost = new_recipe_costs.resource_costs[resource_id]
-        -- Make it more acceptable for new_cost to be larger to fight imbalance I was having
-        resource_points = resource_points + math.max((1 + old_cost) / (1 + new_cost), (1 + new_cost) / (1 + old_cost), 1) - 1
-        resource_cost_scaling = resource_cost_scaling + 1
+    if not config.only_randomize_science_recipes then
+        for resource_id, old_cost in pairs(old_recipe_costs.resource_costs) do
+            local new_cost = new_recipe_costs.resource_costs[resource_id]
+            -- Make it more acceptable for new_cost to be larger to fight imbalance I was having
+            resource_points = resource_points + math.max((1 + old_cost) / (1 + new_cost), (1 + new_cost) / (1 + old_cost), 1) - 1
+            resource_cost_scaling = resource_cost_scaling + 1
+        end
+        resource_points = resource_points / resource_cost_scaling
     end
-    resource_points = resource_points / resource_cost_scaling
     -- If we don't care about resource costs, don't consider those points
     local resource_points_modifier = 1
     if dont_preserve_resource_costs then
+        resource_points_modifier = 0
+    end
+
+    -- Don't care about resource costs in the case of science pack only randomization; things aren't as sensitive
+    if config.only_randomize_science_recipes then
         resource_points_modifier = 0
     end
 
@@ -60,10 +67,12 @@ local function get_costs_from_ings(material_to_costs, ings)
 
     -- resource costs
     costs.resource_costs = {}
-    for _, resource_id in pairs(major_raw_resources) do
-        costs.resource_costs[resource_id] = 0
-        for _, ing in pairs(ings) do
-            costs.resource_costs[resource_id] = costs.resource_costs[resource_id] + ing.amount * material_to_costs.resource_costs[resource_id][ing.type .. "-" .. ing.name]
+    if not config.only_randomize_science_recipes then
+        for _, resource_id in pairs(major_raw_resources) do
+            costs.resource_costs[resource_id] = 0
+            for _, ing in pairs(ings) do
+                costs.resource_costs[resource_id] = costs.resource_costs[resource_id] + ing.amount * material_to_costs.resource_costs[resource_id][ing.type .. "-" .. ing.name]
+            end
         end
     end
 
@@ -208,8 +217,10 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     local recipe_costs_to_use = table.deepcopy(old_recipe_costs)
     recipe_costs_to_use.aggregate_cost = recipe_costs_to_use.aggregate_cost * allocated_amounts
     -- Don't do complexity costs
-    for _, resource_id in pairs(major_raw_resources) do
-        recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * allocated_amounts
+    if not config.only_randomize_science_recipes then
+        for _, resource_id in pairs(major_raw_resources) do
+            recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * allocated_amounts
+        end
     end
 
     for ing_ind, ing in pairs(proposed_ings) do
@@ -231,8 +242,10 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
         recipe_costs_to_use = table.deepcopy(old_recipe_costs)
         recipe_costs_to_use.aggregate_cost = recipe_costs_to_use.aggregate_cost * allocated_amounts
         -- Don't do complexity costs in this part
-        for _, resource_id in pairs(major_raw_resources) do
-            recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * allocated_amounts
+        if not config.only_randomize_science_recipes then
+            for _, resource_id in pairs(major_raw_resources) do
+                recipe_costs_to_use.resource_costs[resource_id] = recipe_costs_to_use.resource_costs[resource_id] * allocated_amounts
+            end
         end
 
         for i = 1, 2 * (#proposed_ings) do

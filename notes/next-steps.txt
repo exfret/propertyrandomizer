@@ -1,7 +1,6 @@
 CURRENTLY ON:
 
- * Simplex cost
-    * Recipe material matrix
+ * Ability to randomize only science pack recipes
  
  * First pass balance (for playable py)
     - Add new groups nodes to graph
@@ -10,23 +9,16 @@ CURRENTLY ON:
 
  * Working on dep graph lib
 
- * Blacklist tree seeds (and things with plant results in general) and rocket parts from item randomization
-    * I guess this would just be a first pass modification directly at this point
-
- * More mod compatibility!
- * Make list of handlers actually and implement for mod compatibility
- * So we're doing the following nodes:
-    * Items (Done)
-    * Techs? (Science pack randomization is misbehaving)
-    * Recipe unlocks and categories?
-
  * APS compatibility
- * Make sure to add new test case for with APS
- * Reachability in testing script
+    * Make sure to add new test case for with APS
+    * Reachability in testing script
+    * Balance node compatibilty with APS
 
- * Before next release, rocket launch products and node adding API
- * Also only turn on tech name locale change when a technology randomization is on
- * Oh, and how to do balance nodes?... Like, what exactly is fulgora violating with APS?
+ * Before next release:
+    * Rocket launch products
+    * Make randomized recipe tech unlocks random where it appears/check that it is random
+    * Check critical todos (some of them are relevant!)
+    * A preview feature for the py stuff I've been working on
 
  * Recipe ingredients unified (basic version first?)
     * Cost implementations

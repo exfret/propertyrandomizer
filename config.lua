@@ -36,6 +36,9 @@ end
 if settings.startup["propertyrandomizer-recipe"].value then
     config.graph.recipe = true
 end
+if settings.startup["propertyrandomizer-recipe-science-pack"].value then
+    config.only_randomize_science_recipes = true
+end
 if settings.startup["propertyrandomizer-recipe-tech-unlock"].value then
     config.graph.recipe_tech_unlock = true
 end

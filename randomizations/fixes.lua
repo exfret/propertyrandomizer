@@ -279,6 +279,7 @@ randomizations.fixes = function()
                             not_stackable = true
                         end
                         if consistent_amount > 0 and not_stackable then
+                            consistent_amount = 1
                             extra_count_fraction = 0
                         end
                         local new_recycling_result = {

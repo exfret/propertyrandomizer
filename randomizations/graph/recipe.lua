@@ -115,6 +115,27 @@ if mods["space-age"] then
         sensitive_recipes[recipe_name] = bool
     end
 end
+local flow_cost_updates = 100
+-- Check if we should only randomize science pack recipes (recipes with one result that is a science pack)
+if config.only_randomize_science_recipes then
+    flow_cost_updates = 10000
+    for _, recipe in pairs(data.raw.recipe) do
+        local is_science_recipe = false
+        if recipe.results ~= nil then
+            if #recipe.results == 1 then
+                if recipe.results[1].type == "item" and data.raw.tool[recipe.results[1].name] ~= nil then
+                    is_science_recipe = true
+                end
+            end
+        end
+        if not is_science_recipe then
+            -- Jellynut and yumako processing are cursed like Gleba, don't touch them, even with a 20.01m stick
+            if recipe.name ~= "jellynut-processing" and recipe.name ~= "yumako-processing" then
+                sensitive_recipes[recipe.name] = true
+            end
+        end
+    end
+end
 
 -- Manually assign some materials to only be for some surfaces
 local manually_assigned_material_surfaces = {
@@ -247,7 +268,38 @@ randomizations.recipe_ingredients = function(id)
     -- I think this is redundant now?
     -- TODO: Possibly remove
     local recipe_to_surface = {}
+    local material_added = {}
     for _, dependent_node in pairs(graph_sort) do
+        -- Add each item/fluid node once
+        if dependent_node.type == "item-surface" or dependent_node.type == "fluid-surface" then
+            local material_type
+            if dependent_node.type == "item-surface" then
+                material_type = "item"
+            elseif dependent_node.type == "fluid-surface" then
+                material_type = "fluid"
+            end
+
+            -- Check that we didn't already (attempt to) add this
+            local prot_id = flow_cost.get_prot_id({type = material_type, name = dependent_node.item or dependent_node.fluid})
+            if not material_added[prot_id] then
+                material_added[prot_id] = true
+                -- Check that this material has a cost
+                if old_aggregate_cost.material_to_cost[prot_id] ~= nil then
+                    -- Check that not blacklisted in randomizing as an ingredient
+                    if not dont_randomize_ings[prot_id] then
+                        -- Insert a manually constructed prereq so things go smoothly
+                        table.insert(shuffled_prereqs, {
+                            type = material_type,
+                            name = dependent_node.item or dependent_node.fluid,
+                            ing = {
+                                type = material_type,
+                                name = dependent_node.item or dependent_node.fluid,
+                            }
+                        })
+                    end
+                end
+            end
+        end
         if dependent_node.type == "recipe-surface" then
             if recipe_to_surface[dependent_node.recipe] == nil then
                 -- This is the first surface encountered, so assign it to this recipe
@@ -747,10 +799,12 @@ randomizations.recipe_ingredients = function(id)
 
         log("Flow cost update")
 
-        flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent_recipe.name}, flow_cost_updates, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-        for _, resource_id in pairs(major_raw_resources) do
-            flow_cost.update_recipe_item_costs(old_resource_costs_staged[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        if not config.only_randomize_science_recipes then
+            for _, resource_id in pairs(major_raw_resources) do
+                flow_cost.update_recipe_item_costs(old_resource_costs_staged[resource_id], {dependent_recipe.name}, flow_cost_updates, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+            end
         end
 
         log("Gathering recipe info")
@@ -1033,14 +1087,16 @@ randomizations.recipe_ingredients = function(id)
         log("Updating new costs")
 
         -- Update costs
-        flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent_recipe.name}, flow_cost_updates, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
         -- I was having bugs with update_recipe_item_costs which is why I do it this way
         log("Updating complexity cost")
         curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         log("Finished updating complexity cost")
-        for _, resource_id in pairs(major_raw_resources) do
-            flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        if not config.only_randomize_science_recipes then
+            for _, resource_id in pairs(major_raw_resources) do
+                flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent_recipe.name}, flow_cost_updates, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+            end
         end
 
         log("Next loop")

@@ -5,16 +5,20 @@ Date: ?
     - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).
     - Added ability to duplicate recipe tech unlocks for a smoother experience
     - Compatibility with any planet start
+    - Ability to only randomize science pack ingredients
   Changes:
     - Overrides now accept upper and lower case x's and y's
     - Items randomized is 100% by default
     - Raw resources aren't forced to be randomized on item randomization less than 100%
     - Balance nodes are ignored for the explorer
+    - Items with plant results are ignored for item randomization
+    - More flexibility for what the recipe randomization algorithm can choose from
   Bugfixes:
     - Stop crash when right clicking prototype choice in explorer
     - Recipe crafting times now come with a description of relative change
     - Recipe tech unlock randomization now works (would previously never work due to a misspelling in the last version)
     - Beam damage interval now capped from below by 1
+    - Recycling recipe fixing logic didn't correctly account for non-stackable items in amounts, just in extra count fraction
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.3
 Date: 2026.03.26

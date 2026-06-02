@@ -160,8 +160,12 @@ randomizations.item_new = function(id)
                             end
                         end
                     end
+                    if item_prototype.type == "armor" and item_prototype.equipment_grid ~= nil then
+                        stackable = false
+                    end
                     -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
-                    if stackable and item_prototype.equipment_grid == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
+                    -- Also don't include things with plant result (I thought of some situations where they really shouldn't be item randomized)
+                    if stackable and item_prototype.plant_result == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
                         -- Some randomness to determine whether to randomize it (always randomize raw resources)
                         -- Note: No longer always randomizes raw resources
                         if --[[raw_resource_items[item_prototype.name] or]] rng.value(rng.key({id = id})) <= config.item_percent_randomized then                        
