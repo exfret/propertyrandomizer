@@ -134,7 +134,9 @@ stage.entities_with_mine_tech_unlocks = function()
     for _, tech in pairs(lu.techs) do
         if tech.research_trigger ~= nil then
             if tech.research_trigger.type == "mine-entity" then
-                entities_with_mine_tech_unlocks[tech.research_trigger.entity] = true
+                for _, entity in pairs(tech.research_trigger.entities) do
+                    entities_with_mine_tech_unlocks[entity] = true
+                end
             end
         end
     end

@@ -110,7 +110,9 @@ randomizations.fixes = function()
             for _, ing in pairs(recipe.ingredients) do
                 if ing.type == "fluid" then
                     if recipe.category == nil or recipe.category == "crafting" then
-                        recipe.category = "crafting-with-fluid"
+                        -- CRITICAL TODO: Properly fix!
+                        -- This is a hotfix for the categories change
+                        --recipe.category = "crafting-with-fluid"
                     end
                     break
                 end
@@ -361,8 +363,8 @@ randomizations.fixes = function()
                     -- CRITICAL TODO: ERROR!
                     --log(item.name)
                 else
-                    if item.weight < data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size) then
-                        item.weight = math.ceil(data.raw["utility-constants"].default.rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size))
+                    if item.weight < data.raw["utility-constants"].default.default_rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size) then
+                        item.weight = math.ceil(data.raw["utility-constants"].default.default_rocket_lift_weight / (item.stack_size * rocket_silo_inventory_size))
                     end
                 end
             end
@@ -370,7 +372,7 @@ randomizations.fixes = function()
     end
 
     -- Fix technology names to indicate what sciences they require
-    for _, tech in pairs(data.raw.technology) do
+    --[=[for _, tech in pairs(data.raw.technology) do
         local prereqs = {tech.name}
         local is_prereq = {[tech.name] = true}
         local index = 1
@@ -419,5 +421,5 @@ randomizations.fixes = function()
         -- CRITICAL TODO: Included again
         -- Was causing localised string to be too large
         --tech.localised_name = {"", tech_localised_name, suffix}
-    end
+    end]=]
 end

@@ -908,9 +908,8 @@ function concrete.build(lu)
             end
         end
         -- Edge from item-launch for context cycling
-        -- This edge allows items to gain more contexts: an item reachable in one context
-        -- can be launched to space, then delivered to a space surface, gaining that context
-        local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
+        -- This edge allows items to gain more contexts: an item reachable in one context can be launched to space, then delivered to a space surface, gaining that context
+        local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
             add_edge("item-deliver", item.name, {
                 abilities = { [1] = false },
@@ -978,7 +977,7 @@ function concrete.build(lu)
             end
         end
 
-        local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
+        local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight then
             -- CRITICAL TODO: This if condition prevents deliveries of high-weight items *from* space platforms; fix this!
 
@@ -1333,7 +1332,9 @@ function concrete.build(lu)
             local trigger = tech.research_trigger
 
             if trigger.type == "mine-entity" then
-                add_edge("entity-mine", trigger.entity, {
+                -- CRITICAL TODO: Support for multiple mined entities on a trigger
+                -- Right now, this just supports one
+                add_edge("entity-mine", trigger.entities[1], {
                     abilities = table.deepcopy(tech_abilities),
                 })
             elseif trigger.type == "craft-item" then

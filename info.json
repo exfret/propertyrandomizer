@@ -3,12 +3,10 @@
 	"version": "0.5.4",
 	"title": "exfret's Randomizer",
 	"author": "exfret",
-	"factorio_version": "2.0",
+	"factorio_version": "2.1",
 	"description": "Randomizes every aspect of the game, including recipes, technologies, machines, and more. Download for the ultimate randomization experience that will force you to think in different new ways!",
 	"dependencies": [
 		"base >= 2.0.0",
-		"flib",
-		"reskins-assets-bobs",
 		"(?) space-age",
 		"(?) quality",
 		"(?) all-the-overhaul-modpack",

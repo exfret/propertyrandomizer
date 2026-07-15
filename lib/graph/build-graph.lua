@@ -3263,7 +3263,7 @@ local function load()
                 name = planet.name
             })
             -- TODO: Calculate weight if it's nil
-            if item.weight ~= nil and item.weight > get_prototypes("utility-constants").default.rocket_lift_weight then
+            if item.weight ~= nil and item.weight > get_prototypes("utility-constants").default.default_rocket_lift_weight then
                 table.insert(prereqs, {
                     type = "send-heavy-item-to-orbit",
                     name = "canonical"
@@ -3785,7 +3785,7 @@ local function load()
             if trigger.type == "mine-entity" then
                 table.insert(prereqs, {
                     type = "mine-entity",
-                    name = trigger.entity
+                    name = trigger.entities[1]
                 })
             elseif trigger.type == "craft-item" then
                 -- Account for tabular ItemIDFilters
