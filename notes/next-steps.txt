@@ -1,5 +1,9 @@
 CURRENTLY ON:
 
+ * Updating to 2.1
+    * Make sure flib buttons are working
+
+
  * Ability to randomize only science pack recipes
  
  * First pass balance (for playable py)

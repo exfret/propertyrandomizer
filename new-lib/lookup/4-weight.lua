@@ -13,7 +13,8 @@ stage.weight = function()
     local weight = {}
 
     local default_weight = data.raw["utility-constants"].default.default_item_weight
-    local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
+    -- CRITICAL TODO: Deal with possible different rocket lift weights
+    local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
 
     local item_to_first_recipe = {}
 
