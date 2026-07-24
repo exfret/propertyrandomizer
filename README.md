@@ -1,54 +1,125 @@
-# Introduction
+<p align="center">
+  <img src="https://i.imgur.com/UAIppMC.png" width="180" alt="exfret's Randomizer logo">
+</p>
 
-A mod that randomizes everything in the game Factorio.
+<h1 align="center">exfret's Randomizer</h1>
 
-# Overrides
+<p align="center">
+  <strong>A Factorio overhaul built around an algorithmic question:</strong><br>
+  how much of a game's progression can be rewired while keeping it completable and interesting?
+</p>
 
-Overrides provide an extra level of customization, at the cost of a higher complexity to input. Here, I do my best to document how to input the override settings.
+<p align="center">
+  <a href="https://mods.factorio.com/mod/propertyrandomizer">Mod Portal</a>
+  ·
+  <a href="https://github.com/exfret/propertyrandomizer">Source</a>
+  ·
+  <a href="https://github.com/exfret/propertyrandomizer/wiki">Technical Wiki</a>
+  ·
+  <a href="https://discord.gg/ebHX7Yek9T">Discord</a>
+</p>
 
-**Important:** The tooltip values are not corrected after any overrides that modify prototype properties. I may fix this in the future, but keep it in mind that any overrides you set that change the property values could lead to incorrect tooltip info for that specific property, as it is still reporting based on the original non-overrided value.
+exfret's Randomizer changes almost every aspect of a Factorio playthrough. Recipes, technologies, machines, resources, logistics, combat properties, visuals, and many other systems can all change from one seed to the next. Over one hundred different properties are now randomized on game startup.
 
-## Basic Form
+But the number of randomizations is only the tip of the iceberg. Factorio is a densely interconnected game: an item may have several recipes, a recipe may require a particular machine on a particular planet, a machine may require certain resources like electricity to work, and any "loop" in any of these dependencies could result in a genuine softlock (i.e.- a situation preventing a game from being finished, such as if a necessary item required itself in its own crafting recipe). A naive implementation almost always causes the entire game to become unplayable.
 
-Overrides are separated by semicolons, with no spaces. At their most basic, an override simply turns a specific randomization on or off (overriding what any previous settings do, hence the name). To turn a randomization on, simply type it in (remembering to separate different overrides with semicolons). To turn it off, preface it with an exclamation mark. The names of all randomizations can be found under `helper-tables/spec.lua`. For example, if you turned off logistics randomization, but still wanted specifically belt speeds randomized, and were fine with production randomization except for assembling machine crafting speeds being randomized, you could use the following override:
+This project treats randomization as an algorithmic problem. It constructs a rich "dependency graph" model of game progression, implements efficient reachability algorithms for that model, applies those algorithms to structurally scramble it in ways that inherently produce no softlocks, and then reflects the transformed graph back into Factorio's prototype data.
 
-`belt_speed;!crafting_machine_speed`
+The goal is to generate new gameplay experiences without procedural content generation. Maybe burner drills are suddenly better than electric drills. Maybe inserters pick up items from three tiles away. Maybe an atomic bomb is now something you mine from the ground. The pieces are still Factorio's; their relationships are not.
 
-New instructions are all of the form `INSTR:PARAMS`, where `INSTR` is an "instruction" to the randomizer about what to do differently. Right now, there are the following allowed instructions:
+## How does it stay playable?
 
-1. `ON:PARAMS` where `PARAMS` is a randomization to do. This just does the same thing as typing in the randomization on its own, just in the more complex instruction form.
-2. `OFF:PARAMS` where `PARAMS` is a randomization to *not* do. This is just the same as typing `!PARAMS`.
-3. `RESET:PARAMS` where `PARAMS` is a prototype property (see section below on prototype properties). This resets the prototype property to its original (pre-randomization) value after the randomization process.
-4. `SET:PARAMS` where `PARAMS` is a set statement for a prototype property (see section below on expressions). This sets a prototype property to a specific value.
+Changing one number at a time is easy. Rewiring Factorio’s progression is not.
 
-## Prototype Properties
+Recipes, technologies, machines, resources, planets, power systems, and alternate production routes all depend on one another. A careless shuffle can make an important item require itself, place a required machine behind the technology that needs it, or move an ingredient somewhere the player cannot yet reach.
 
-To select a prototype property, you first need to type the prototype. Luckily, Factorio already has a built-in method for this. It goes `[top-level-class=prototype-name]`. You might not know what the top level class/prototype name of a thing is (or even what that means), but no fear! If you have something pipetted, you can open chat and click it to paste a string in exactly this format. You can also google "Factorio rich text" for more information. Beware that there is a difference between, say, the *entity* inserter, the *item* inserter, and the *recipe* inserter. From the engine's perspective, these are different things. Here's an overview of the biggest top-level classes:
+exfret’s Randomizer builds a model of these relationships before changing them. This lets it do several things that simpler randomizers generally cannot:
 
-* Entities (`entity=`) are all in-world objects (with a few exceptions). That's what you'd use for setting most properties like rotation speed or health.
-* Items (`item=`) are the things in your inventory. This is what you'd focus on if, say, the stack size was unbearable.
-* Recipes (`recipe=`) are the processes for getting items.
+* **Restructure progression without relying on pure luck.** Major randomizations are designed to preserve at least one route through the game instead of repeatedly shuffling until a seed happens not to be broken.
+* **Change several connected systems together.** A recipe, its technology unlock, its required machine, and the resources used to craft it can be changed at once rather than in isolation.
+* **Understand alternate routes.** Other randomizers can change things like the ingredients to produce an electronic circuit, but this mod can change how they're obtained altogether (maybe you mine them instead of crafting them).
+* **Handle Space Age’s location constraints.** Something can be obtainable on one planet but inaccessible or impractical on another. Context-based logic tracks not just what you can do, but how and where.
+* **Avoid technically valid but miserable seeds.** Production-cost estimates calculated with "flow cost" and simplex solver methods help prevent early essentials from becoming absurdly expensive even when the game would still be completable in principle.
+* **Apply the result directly to Factorio.** The model is not only used to test a seed. Its transformed relationships are converted back into real recipes, technologies, machines, resources, effects, and other prototype data.
 
-Now, if you use `RESET`, you don't need to do anything else. In that case, it will reset *all* properties of the original thing (or prototype, in modding terminology) back to original. This could cause unexpected results in some cases, so I've also included a special property, `NUMERICAL`, if you just want to reset numerical properties (mining time, crafting speed, etc., rather than crafting categories or mining results).
+This is what allows the mod to produce changes larger than ordinary stat randomization or one-to-one recipe swaps. The game still uses Factorio’s existing content, but familiar objects can occupy genuinely different roles in the progression.
 
-Properties in general are specified with `.` notation. So to reset all numerical properties of an inserter entity, you'd do `RESET:[entity=inserter].NUMERICAL`. If you wanted to reset just the rotation speed, you could do `RESET:[entity=inserter].rotation_speed`. See the API docs [online](https://lua-api.factorio.com/stable/index-prototype.html) or in your local installation for information about the different properties, or you can ask on exfret's discord server (link on main mod page) for help if there is something specific you want to do.
+The full algorithms, diagrams, design history, and experimental systems are documented in the [technical wiki](https://github.com/exfret/propertyrandomizer/wiki).
 
-Some properties are nested, like the mining time of an inserter, which is specified by `[entity=inserter].minable.mining_time` (there is a table for inserters specifying how they're mined, called `minable`, and in this is the time it takes to mine them, `mining_time`). This syntax is supported, and the randomizer will attempt to recurse into tables to get to the actual property when possible.
+## Installation and use
 
-## Expressions
+The easiest way to install the mod is through Factorio's in-game mod browser. The latest stable release (and older releases) can also be manually downloaded from the [Factorio Mod Portal](https://mods.factorio.com/mod/propertyrandomizer) and placed in your mod folder. Note that the version on this repo is a work-in-progress version and may not be ready for actual play.
 
-When using the `SET` instruction, it is not enough to simply specify a prototype property like `SET:[entity=inserter].rotation_speed`. You must also specify the new value, like `SET:[entity=inserter].rotation_speed=2`. In general, try not to include spaces, but the expression parsing uses a helper function provided by Factorio itself, so it's more flexible. Most standard math operations are supported, so you could do things like `SET:[entity=inserter].rotation_speed=2*3-5^2`. There are also two special provided variables, `X`, which is the original value of that property before randomization, and `Y`, which is the new value. So if you thought the new value for rotation speed was just a bit much, and wanted to average it with the old value, you could do `SET:[entity=inserter].rotation_speed=(X+Y)/2`. See [here](https://lua-api.factorio.com/stable/concepts/MathExpression.html) for more information about math expression format.
+Configuration is available through changing the mod settings in-game. A seed controls deterministic generation, while category, chaos, bias, and advanced override settings control what may change and how aggressively.
 
-You can also include a Lua table where an expression would go in order to set a table-valued property. Thus, one could do `SET:[entity=inserter].minable={mining_time=0.1,result="transport-belt"}`. Try not to include any spaces while doing this. This is mostly for those more experienced with the modding API. Also note that you must type in numeric keys manually (apologies). So you would do `ingredients={1={type="item",name="iron-plate",amount=1}}`.
+The advanced override language can enable or disable individual randomizations and reset or replace specific prototype properties after randomization. **See OVERRIDES.md for override documentation.**
 
-## Limitations
+## Repository map
 
-Currently, randomization parameters are not yet configurable. Additionally, nothing can be excluded before randomization begins, meaning this is not useful for the prevention of startup crashes during the randomization process. Still, I hope this is a useful feature for future debugging and dealing with softlocks.
+For a more complete map and more details, see the corresponding [page on the wiki](https://github.com/exfret/propertyrandomizer/wiki/Directory-structure).
 
-## Risks
+```text
+root
+|- helper-tables
+|  |- spec.lua .................... List of all randomizations
+|- lib
+|  |- graph
+|  |  |- build-graph.lua .......... Old game logic
+|  |  |- top-sort.lua ............. Old topological sort logic
+|  |- random
+|  |  |- rng.lua .................. Random number generation library
+|- new-lib
+|  |- graph ....................... Includes new topological sort
+|  |- logic ....................... New game logic
+|- randomizations
+|  |- graph ....................... Graph randomizations (change fundamental game progression)
+|  |  |- unified .................. New unified graph randomizations (run all at once); use new logic/new-lib
+|  |- misc ........................ Silly randomizations that aren't just changing a number
+|  |- numerical ................... Simply numerical randomizations
+|- config.lua ..................... Settings parsing
+|- data-final-fixes.lua ........... Entry point for randomization
+```
 
-Turning numerical randomizations on or off with ON or OFF shouldn't have an affect on the rest of the randomization process, as each one uses a separate random number generator. However, there have been reports of this still breaking, so toggle randomizations mid-run at your own risk.
+## Development and testing
 
-On the other hand, prototype value fixes with SET and RESET are done after all randomizations are already complete, so they are completely safe to use, and are particularly useful if a randomization botched something, like making a number so high or low that the run is effectively unplayable.
+exfret's Randomizer is written primarily in Lua and runs mostly during Factorio's data stage.
 
-That being said, the override system was recently expanded with new features, so make sure to report any bugs or issues you find.
+The repository includes:
+
+* a startup-test harness that launches Factorio across multiple mod-list and settings configurations;
+* pedagogical implementations of selected algorithms under `docs/algorithms/`;
+* release scripts for testing, pruning development files, and packaging the mod.
+
+## Contributing
+
+There are several fairly different ways to contribute:
+
+* implement or polish numerical and structural randomizations;
+* expand the dependency model for game features or other mods;
+* improve reflection, compatibility, and user-facing diagnostics;
+* investigate graph-randomization algorithms, cost models, and context-aware reachability;
+* report reproducible bad seeds, softlocks, or compatibility failures.
+
+For graph work, start with the wiki's recommended reading order:
+
+1. [Graph randomization algorithms](https://github.com/exfret/propertyrandomizer/wiki/Graph-randomization-algorithms)
+2. [Encoding dependencies](https://github.com/exfret/propertyrandomizer/wiki/Encoding-dependencies)
+3. [Sorting](https://github.com/exfret/propertyrandomizer/wiki/Sorting)
+4. [Prereq shuffle](https://github.com/exfret/propertyrandomizer/wiki/Prereq-shuffle)
+5. [Logic with contexts](https://github.com/exfret/propertyrandomizer/wiki/Logic-with-contexts)
+6. [Slot scramble](https://github.com/exfret/propertyrandomizer/wiki/Slot-scramble)
+7. [Multipass methods](https://github.com/exfret/propertyrandomizer/wiki/Multipass-methods)
+
+Bug reports can be made here, on the mod portal, or in my Discord. The last option is the most preferable, as it allows me to interact with you to narrow the issue more carefully, and I am fairly responsive on that platform. The recent log file and screenshot of the exact error message or issue are also helpful for debugging (and savefile if possible/applicable).
+
+## Credits
+
+exfret's Randomizer was created and is maintained by **exfret**.
+
+Nifyr has made major code and algorithmic contributions, including ideas that shaped the multipass architecture. Protocol_1903 contributed code; Osmo contributed graphics; Kotrenn contributed dependency-graph visualizations; and many players have provided testing, examples, and delightfully cursed seeds.
+
+See the [mod portal page](https://mods.factorio.com/mod/propertyrandomizer) and repository history for additional credits and community showcases.
+
+## License
+
+MIT
