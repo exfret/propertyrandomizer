@@ -6,7 +6,9 @@ cutils.find_amount_in_entry = function(ing_or_prod)
         amount_expected = (ing_or_prod.amount_min + math.max(ing_or_prod.amount_min, ing_or_prod.amount_max)) / 2
     end
 
-    local probability = ing_or_prod.probability or 1
+    local independent_probability = ing_or_prod.independent_probability or 1
+    local shared_probability = ing_or_prod.shared_probability or {min = 0, max = 1}
+    local probability = independent_probability * (shared_probability["max"] - shared_probability["min"])
     local extra_count_fraction = ing_or_prod.extra_count_fraction or 0
     return probability * (amount_expected + extra_count_fraction)
 end

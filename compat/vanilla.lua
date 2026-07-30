@@ -84,7 +84,13 @@ randomization_info.options.unified["recipe-ingredients"].blacklisted_dep = {
     [key("recipe", "firearm-magazine")] = true,
 }
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.category == "recycling" or recipe.category == "recycling-or-hand-crafting" then
+    local is_recycling = false
+    for _, cat in pairs(recipe.categories or {"crafting"}) do
+        if cat == "recycling" then
+            is_recycling = true
+        end
+    end
+    if is_recycling then
         randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key("recipe", recipe.name)] = true
     end
 end
@@ -95,9 +101,16 @@ for _, recipe in pairs(data.raw.recipe) do
         randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key("recipe", recipe.name)] = true
     end
 end
--- Add crushing recipes (space stuff is too sensitive I think?)
+-- Add crushing-only recipes (space stuff is too sensitive I think?)
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.category == "crushing" then
+    local is_only_crushing = true
+    for _, cat in pairs(recipe.categories or {"crafting"}) do
+        if cat ~= "crushing" then
+            is_only_crushing = false
+            break
+        end
+    end
+    if is_only_crushing then
         randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key("recipe", recipe.name)] = true
     end
 end

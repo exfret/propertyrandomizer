@@ -93,17 +93,23 @@ recipe_ingredients.custom_prereq_search = function(params)
     local trav_to_slot = params.trav_to_slot
     local do_first_pass = params.do_first_pass
 
-    -- Helper function to determine if a recipe is used in any other recipes
-    -- I think we might not need this so commenting out for now
     local used_mats = {}
     for _, recipe in pairs(data.raw.recipe) do
-        if recipe.ingredients ~= nil and recipe.category ~= "recycling" then
+        local has_recycling = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == "recycling" then
+                has_recycling = true
+            end
+        end
+        if recipe.ingredients ~= nil and not has_recycling then
             for _, ing in pairs(recipe.ingredients) do
                 used_mats[key(ing)] = true
             end
         end
     end
 
+    -- Helper function to determine if a recipe is used in any other recipes
+    -- I think we might not need this?
     local function produces_final_products(recipe)
         if recipe.results ~= nil then
             for _, result in pairs(recipe.results) do

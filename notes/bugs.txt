@@ -12,3 +12,4 @@ This lists bugs/issues before they're moved to their own issues on the github re
 39. Weights accounted for in softlock etc. prevention? Is that done now?
 40. Configuration changed message is reported on base game version change, which could be over-reporting and cause people to ignore it
 41. Item weights were sometimes nil after doing first pass
+42. Dependency graph not reset between item-new retries?

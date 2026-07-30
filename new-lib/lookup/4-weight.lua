@@ -79,8 +79,12 @@ stage.weight = function()
                     end
 
                     local function category_order(recipe)
-                        local category = data.raw["recipe-category"][recipe.category or "crafting"]
-                        return category.order or category.name
+                        -- CRITICAL TODO: Fix once I learn about how categories are ordered now that they're arrays (the docs seem outdated)
+                        -- Neglecting this shouldn't really have an impact so it might be fine to leave out entirely
+                        --local category = data.raw["recipe-category"][recipe.category or "crafting"]
+                        --return category.order or category.name
+                        return ""
+                        -- CRITICAL TODO: Apparently the docs may just be botched on this entirely, and it probably just goes group --> subgroup --> order --> name
                     end
 
                     local function subgroup_order(recipe)
@@ -92,8 +96,7 @@ stage.weight = function()
                         return recipe.order or recipe.name
                     end
 
-                    local checkers = {check_name, using_as_catalyst, usable_in_handcrafting,
-                                      category_order, subgroup_order, recipe_order}
+                    local checkers = {check_name, using_as_catalyst, usable_in_handcrafting, category_order, subgroup_order, recipe_order}
 
                     table.sort(valid_recipes, function(r1, r2)
                         for _, checker in pairs(checkers) do

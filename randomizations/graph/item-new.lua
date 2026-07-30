@@ -13,10 +13,15 @@ randomizations.item_new = function(id)
     local item_to_slot
     local items
     local lootable_entities
+    local is_science_pack
     local cost_as_slot
     local cost_as_traveler
 
+    old_dep_graph = table.deepcopy(dep_graph)
+
     for retry = 1, config.item_new_num_retries do
+        dep_graph = table.deepcopy(old_dep_graph)
+
         local try_succeeded = true
 
         local dont_randomize_item = {
@@ -24,7 +29,6 @@ randomizations.item_new = function(id)
             ["spoilage"] = true,
         }
 
-        -- item lookup
         items = {}
         for item_class, _ in pairs(defines.prototypes.item) do
             if data.raw[item_class] ~= nil then
@@ -34,13 +38,20 @@ randomizations.item_new = function(id)
             end
         end
 
-        -- lootable entity lookup
         lootable_entities = {}
         for entity_class, _ in pairs(defines.prototypes.entity) do
             if data.raw[entity_class] ~= nil then
                 for _, entity in pairs(data.raw[entity_class]) do
                     table.insert(lootable_entities, entity)
                 end
+            end
+        end
+
+        -- Science pack lookup (science packs aren't randomized)
+        is_science_pack = {}
+        for _, lab in pairs(data.raw.lab) do
+            for _, input in pairs(lab.inputs) do
+                is_science_pack[input] = true
             end
         end
 
@@ -165,7 +176,7 @@ randomizations.item_new = function(id)
                     end
                     -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
                     -- Also don't include things with plant result (I thought of some situations where they really shouldn't be item randomized)
-                    if stackable and item_prototype.plant_result == nil and item_prototype.type ~= "tool" and not dont_randomize_item[item_prototype.name] then
+                    if stackable and item_prototype.plant_result == nil and not is_science_pack[item_prototype.name] and not dont_randomize_item[item_prototype.name] then
                         -- Some randomness to determine whether to randomize it (always randomize raw resources)
                         -- Note: No longer always randomizes raw resources
                         if --[[raw_resource_items[item_prototype.name] or]] rng.value(rng.key({id = id})) <= config.item_percent_randomized then                        
@@ -198,6 +209,7 @@ randomizations.item_new = function(id)
             ["repair-pack"] = true,
             ["rocket-turret"] = true,
             ["rocket-ammo"] = true,
+            ["research-science-pack-set-surface"] = true,
         }
         for node_name, _ in pairs(to_be_randomized) do
             local item_node = dep_graph[node_name]
@@ -622,7 +634,13 @@ randomizations.item_new = function(id)
                             })
 
                             -- Multiply amounts in products if this is significantly more expensive
-                            if material_property == "results" and recipe.category ~= "recycling" then
+                            local has_recycling = false
+                            for _, category in pairs(recipe.categories or {"crafting"}) do
+                                if category == "recycling" then
+                                    has_recycling = true
+                                end
+                            end
+                            if material_property == "results" and not has_recycling then
                                 for _, key in pairs({"amount", "amount_min", "amount_max"}) do
                                     if ing_or_prod[key] ~= nil then
                                         ing_or_prod[key] = math.max(1, math.min(65535, ing_or_prod[key] * amount_multiplier))
@@ -682,12 +700,14 @@ randomizations.item_new = function(id)
         for _, entity in pairs(lootable_entities) do
             if entity.loot ~= nil then
                 for ind_in_loot, loot_entry in pairs(entity.loot) do
-                    if loot_entry.item == old_node.name then
-                        loot_entry.count_min = math.max(1, math.min(65535, (loot_entry.count_min or 1) * amount_multiplier))
-                        loot_entry.count_max = math.max(1, math.min(65535, (loot_entry.count_max or 1) * amount_multiplier))
+                    if loot_entry.name == old_node.name then
+                        loot_entry.amount = math.max(1, math.min(65535, (loot_entry.amount or 1) * amount_multiplier))
+                        loot_entry.amount_min = math.max(1, math.min(65535, (loot_entry.amount_min or 1) * amount_multiplier))
+                        loot_entry.amount_max = math.max(1, math.min(65535, (loot_entry.amount_max or 1) * amount_multiplier))
+                        
                         table.insert(changes, {
                             tbl = entity.loot[ind_in_loot],
-                            prop = "item",
+                            prop = "name",
                             new_val = item_node.name
                         })
                     end

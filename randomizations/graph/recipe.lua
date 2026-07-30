@@ -75,7 +75,13 @@ local sensitive_recipes = {
 -- Also add recycling recipes
 -- CRITICAL TODO: WAIT DO WE NOT UPDATE RECYCLING RESULTS???
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.category == "recycling" or recipe.category == "recycling-or-hand-crafting" then
+    local has_recycling = false
+    for _, category in pairs(recipe.categories or {"crafting"}) do
+        if category == "recycling" then
+            has_recycling = true
+        end
+    end
+    if has_recycling then
         sensitive_recipes[recipe.name] = true
     end
 end
@@ -87,7 +93,13 @@ for _, recipe in pairs(data.raw.recipe) do
 end
 -- Add crushing recipes (space stuff is too sensitive I think?)
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.category == "crushing" then
+    local has_crushing = false
+    for _, category in pairs(recipe.categories or {"crafting"}) do
+        if category == "crushing" then
+            has_crushing = true
+        end
+    end
+    if has_crushing then
         sensitive_recipes[recipe.name] = true
     end
 end
@@ -144,7 +156,8 @@ local manually_assigned_material_surfaces = {
 
 local used_mats = {}
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.ingredients ~= nil and recipe.category ~= "recycling" then
+    -- Disregard only recipes that aren't *only* recycling
+    if recipe.ingredients ~= nil and not (recipe.categories ~= nil and #recipe.categories == 1 and recipe.categories[1] == "recycling") then
         for _, ing in pairs(recipe.ingredients) do
             used_mats[flow_cost.get_prot_id(ing)] = true
         end
@@ -200,8 +213,15 @@ randomizations.recipe_ingredients = function(id)
     -- Used for making sure there aren't repeat ingredients for furnaces
     local smelting_ingredients = {}
     for recipe_name, _ in pairs(sensitive_recipes) do
-        if data.raw.recipe[recipe_name].category == "smelting" then
-            for _, ing in pairs(data.raw.recipe[recipe_name].ingredients) do
+        local recipe = data.raw.recipe[recipe_name]
+        local has_smelting = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == "smelting" then
+                has_smelting = true
+            end
+        end
+        if has_smelting then
+            for _, ing in pairs(recipe.ingredients) do
                 smelting_ingredients[ing.type .. "-" .. ing.name] = true
             end
         end
@@ -810,8 +830,14 @@ randomizations.recipe_ingredients = function(id)
         log("Gathering recipe info")
 
         -- Gather information about this dependent/recipe
-        local is_smelting_recipe = false
-        if dependent_recipe.category ~= nil and dependent_recipe.category == "smelting" then
+        local dependent_is_smelting_recipe = false
+        for _, category in pairs(dependent_recipe.categories or {"crafting"}) do
+            if category == "smelting" then
+                dependent_is_smelting_recipe = true
+            end
+        end
+        local is_smelting_recipe
+        if dependent_is_smelting_recipe then
             is_smelting_recipe = true
         end
 

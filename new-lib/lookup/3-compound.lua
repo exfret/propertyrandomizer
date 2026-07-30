@@ -31,22 +31,21 @@ end
 stage.rcat_to_crafters = function()
     local rcat_to_crafters = {}
 
-    -- Initialize for all rcats
     for rcat_name, _ in pairs(lu.rcats) do
         rcat_to_crafters[rcat_name] = {}
     end
 
     -- Pre-compute rcat lookup by base category
-    -- This allows O(1) lookup instead of iterating all rcats
     local rcats_by_cat = {}
     for rcat_name, rcat in pairs(lu.rcats) do
-        if rcats_by_cat[rcat.cat] == nil then
-            rcats_by_cat[rcat.cat] = {}
+        for _, cat in pairs(rcat.cats) do
+            if rcats_by_cat[cat] == nil then
+                rcats_by_cat[cat] = {}
+            end
+            rcats_by_cat[cat][rcat_name] = rcat
         end
-        rcats_by_cat[rcat.cat][rcat_name] = rcat
     end
 
-    -- Iterate machines once, find all compatible rcats per machine
     for _, class in pairs({"assembling-machine", "furnace", "rocket-silo", "character"}) do
         for _, machine in pairs(prots(class)) do
             if machine.crafting_categories ~= nil then
@@ -62,11 +61,9 @@ stage.rcat_to_crafters = function()
                     end
                 end
 
-                -- Only check rcats matching machine's crafting_categories
                 for _, category in pairs(machine.crafting_categories) do
                     if rcats_by_cat[category] ~= nil then
                         for rcat_name, rcat in pairs(rcats_by_cat[category]) do
-                            -- Simple comparison - no function call overhead
                             if machine_fluids.input >= rcat.input and machine_fluids.output >= rcat.output then
                                 rcat_to_crafters[rcat_name][machine.name] = true
                             end

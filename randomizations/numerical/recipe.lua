@@ -40,7 +40,13 @@ end
 
 randomizations.recipe_ingredients_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
-        if recipe.category ~= nil and recipe.category == "recycling" then
+        local has_recycling = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == "recycling" then
+                has_recycling = true
+            end
+        end
+        if has_recycling then
             -- We don't wanna mess with these, lest we trivialize the means of production too much
         elseif recipe.ingredients ~= nil then
             local key = rng.key({ id = id, property = recipe })
@@ -89,7 +95,13 @@ end
 -- New
 randomizations.recipe_result_percent_spoiled = function(id)
     for _, recipe in pairs(data.raw.recipe) do
-        if recipe.category ~= "recycling" and recipe.results ~= nil then
+        local has_recycling = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == "recycling" then
+                has_recycling = true
+            end
+        end
+        if not has_recycling and recipe.results ~= nil then
             for _, product in pairs(recipe.results) do
                 if product.percent_spoiled ~= nil then
                     randprob.rand({
@@ -128,7 +140,13 @@ end
 -- New
 randomizations.recipe_results_numerical = function(id)
     for _, recipe in pairs(data.raw.recipe) do
-        if recipe.category ~= nil and recipe.category == "recycling" then
+        local has_recycling = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == "recycling" then
+                has_recycling = true
+            end
+        end
+        if has_recycling then
             -- RECYCLING??
         elseif recipe.results ~= nil then
             local key = rng.key({ id = id, property = recipe })
