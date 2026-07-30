@@ -1,10 +1,4 @@
 CURRENTLY ON:
-
- * Updating to 2.1
-    * categories (just finished with build graph stuff)
-
-
- * Ability to randomize only science pack recipes
  
  * First pass balance (for playable py)
     - Add new groups nodes to graph

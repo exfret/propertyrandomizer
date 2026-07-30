@@ -1872,23 +1872,24 @@ end
 -- New
 randomizations.lightning_damage = function (id)
     for _, lightning in pairs(data.raw["lightning"] or {}) do
-        if lightning.damage == nil then
-            lightning.damage = 100
+        if lightning.damage ~= nil then
+            local damage = lightning.damage.amount
+            local old_value = damage
+
+            randomize({
+                id = id,
+                prototype = lightning,
+                tbl = lightning.damage,
+                property = "amount",
+                variance = "medium",
+                rounding = "discrete_float",
+                dir = -1,
+            })
+
+            local factor = lightning.damage.amount / old_value
+
+            locale_utils.create_localised_description(lightning, factor, id, { flipped = true, variance = "medium" })
         end
-        local old_value = lightning.damage
-
-        randomize({
-            id = id,
-            prototype = lightning,
-            property = "damage",
-            variance = "medium",
-            rounding = "discrete_float",
-            dir = -1,
-        })
-
-        local factor = lightning.damage / old_value
-
-        locale_utils.create_localised_description(lightning, factor, id, { flipped = true, variance = "medium" })
     end
 end
 

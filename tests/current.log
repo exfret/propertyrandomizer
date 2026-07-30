@@ -1,64 +1,51 @@
-   0.001 2026-03-26 14:23:11; Factorio 2.0.76 (build 84451, mac-arm64, full, space-age)
-   0.003 Operating system: macOS 14.6.0
-   0.003 Program arguments: "/Applications/factorio.app/Contents/MacOS/factorio" "--mod-directory" "/Users/kylehess/Library/Application Support/factorio/mods-randomizer-testing" "--create" "./tests/test-save.zip" 
-   0.003 Config path: /Users/kylehess/Library/Application Support/factorio/config/config.ini
-   0.003 Read data path: /Applications/factorio.app/Contents/data
-   0.003 Write data path: /Users/kylehess/Library/Application Support/factorio [62194/471482MB]
-   0.003 Binaries path: /Applications/factorio.app/Contents
-   0.043 System info: [CPU: arm64, 8 cores, RAM: 16384 MB]
-   0.068 Running in headless mode
-   0.068 Audio is disabled
-   0.069 Info ModManager.cpp:449: FeatureFlag expansion-shaders = true
-   0.069 Info ModManager.cpp:449: FeatureFlag freezing = true
-   0.069 Info ModManager.cpp:449: FeatureFlag quality = true
-   0.069 Info ModManager.cpp:449: FeatureFlag rail-bridges = true
-   0.069 Info ModManager.cpp:449: FeatureFlag segmented-units = true
-   0.069 Info ModManager.cpp:449: FeatureFlag space-travel = true
-   0.069 Info ModManager.cpp:449: FeatureFlag spoiling = true
-   0.070 Loading mod settings propertyrandomizer 0.5.3 (settings.lua)
-   0.072 Loading mod core 0.0.0 (data.lua)
-   0.080 Loading mod base 2.0.76 (data.lua)
-   0.186 Loading mod elevated-rails 2.0.76 (data.lua)
-   0.206 Loading mod flib 0.16.5 (data.lua)
-   0.213 Loading mod quality 2.0.76 (data.lua)
-   0.225 Loading mod space-age 2.0.76 (data.lua)
-   0.457 Loading mod propertyrandomizer 0.5.3 (data.lua)
-   0.467 Loading mod base 2.0.76 (data-updates.lua)
-   0.478 Loading mod quality 2.0.76 (data-updates.lua)
-   0.492 Loading mod space-age 2.0.76 (data-updates.lua)
-   0.502 Loading mod propertyrandomizer 0.5.3 (data-updates.lua)
-   0.513 Loading mod propertyrandomizer 0.5.3 (data-final-fixes.lua)
-   0.704 Script @__propertyrandomizer__/data-final-fixes.lua:23: Gathering config
-   0.708 Script @__propertyrandomizer__/data-final-fixes.lua:48: Loading in new dependency graph file
-   2.172 Script @__propertyrandomizer__/data-final-fixes.lua:57: Smuggling control info
-   2.703 Checksum for core: 4187927925
-   2.703 Checksum of base: 1879415942
-   2.703 Checksum of reskins-assets-bobs: 0
-   2.703 Checksum of elevated-rails: 70351106
-   2.703 Checksum of flib: 728527376
-   2.703 Checksum of quality: 1142589254
-   2.703 Checksum of space-age: 1510664043
-   2.703 Checksum of propertyrandomizer: 1091763295
-   2.876 Prototype list checksum: 4158886619
-   2.951 Info PlayerData.cpp:64: Local player-data.json available, timestamp 1774560191
-   2.951 Info PlayerData.cpp:71: Cloud player-data.json unavailable
-   2.952 Factorio initialised
-   2.953 Info Create.cpp:31: Creating new map /Users/kylehess/Library/Application Support/factorio/mods/propertyrandomizer/./tests/test-save.zip
-   4.091 Loading level.dat: 830302 bytes.
-   4.091 Info Scenario.cpp:154: Map version 2.0.76-0
-   4.127 Checksum for script __level__/control.lua: 2722821277
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSpaceLocationPrototype: nauvis (planet)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSpaceLocationPrototype: vulcanus (planet)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSpaceLocationPrototype: gleba (planet)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSpaceLocationPrototype: fulgora (planet)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSpaceLocationPrototype: aquilo (planet)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:20: [LuaSurfacePrototype: space-platform (surface)]
-   4.130 Script @__propertyrandomizer__/new-lib/graph/graph-utils.lua:21: Node passed for key not a table
-   4.131 Checksum for script __propertyrandomizer__/control.lua: 3647766338
+   0.001 2026-07-30 15:00:57; Factorio 2.1.7 (build 86685, mac-arm64, full, space-age)
+   0.002 Operating system: macOS 14.6.0
+   0.002 Program arguments: "/Applications/factorio.app/Contents/MacOS/factorio" "--mod-directory" "/Users/kylehess/Library/Application Support/factorio/mods-randomizer-testing" "--create" "./tests/test-save.zip" 
+   0.002 Config path: /Users/kylehess/Library/Application Support/factorio/config/config.ini
+   0.002 Read data path: /Applications/factorio.app/Contents/data
+   0.002 Write data path: /Users/kylehess/Library/Application Support/factorio [16070/471482MB]
+   0.002 Binaries path: /Applications/factorio.app/Contents
+   0.047 System info: [CPU: arm64, 8 cores, RAM: 16384 MB]
+   0.078 Running in headless mode
+   0.078 Audio is disabled
+   0.078 Info ModManager.cpp:450: FeatureFlag expansion = true
+   0.078 Info ModManager.cpp:450: FeatureFlag expansion-shaders = true
+   0.078 Info ModManager.cpp:450: FeatureFlag freezing = true
+   0.078 Info ModManager.cpp:450: FeatureFlag quality = true
+   0.078 Info ModManager.cpp:450: FeatureFlag rail-bridges = true
+   0.078 Info ModManager.cpp:450: FeatureFlag segmented-units = true
+   0.078 Info ModManager.cpp:450: FeatureFlag space-travel = true
+   0.078 Info ModManager.cpp:450: FeatureFlag spoiling = true
+   0.079 Loading mod settings propertyrandomizer 0.5.4 (settings.lua)
+   0.081 Loading mod core 0.0.0 (data.lua)
+   0.089 Loading mod base 2.1.7 (data.lua)
+   0.208 Loading mod elevated-rails 2.1.7 (data.lua)
+   0.223 Loading mod recycler 2.1.7 (data.lua)
+   0.231 Loading mod quality 2.1.7 (data.lua)
+   0.237 Loading mod space-age 2.1.7 (data.lua)
+   0.460 Loading mod propertyrandomizer 0.5.4 (data.lua)
+   0.469 Loading mod base 2.1.7 (data-updates.lua)
+   0.479 Loading mod recycler 2.1.7 (data-updates.lua)
+   0.492 Loading mod space-age 2.1.7 (data-updates.lua)
+   0.502 Loading mod propertyrandomizer 0.5.4 (data-updates.lua)
+   0.512 Loading mod propertyrandomizer 0.5.4 (data-final-fixes.lua)
+   0.702 Script @__propertyrandomizer__/data-final-fixes.lua:25: Gathering config
+   0.705 Script @__propertyrandomizer__/data-final-fixes.lua:55: Loading in new dependency graph file
+   1.928 Script @__propertyrandomizer__/data-final-fixes.lua:64: Smuggling control info
+   2.422 Checksum for core: 66224441
+   2.422 Checksum of base: 1474689679
+   2.422 Checksum of elevated-rails: 1071712039
+   2.422 Checksum of recycler: 3153370985
+   2.422 Checksum of quality: 909741783
+   2.422 Checksum of space-age: 1940305997
+   2.422 Checksum of propertyrandomizer: 1678284809
+   2.640 Prototype list checksum: 1649067404
+   2.714 Info PlayerData.cpp:580: Local player-data.json available
+   2.716 Factorio initialised
+   2.717 Info Create.cpp:32: Creating new map /Users/kylehess/Library/Application Support/factorio/mods/propertyrandomizer/./tests/test-save.zip
+   3.883 Loading level.dat: 1020136 bytes.
+   3.883 Info Scenario.cpp:152: Map version 2.1.7-1
+   3.922 Checksum for script __level__/control.lua: 3550340813
+   3.925 Checksum for script __propertyrandomizer__/control.lua: 2499329540
 Done.
-   5.044 Goodbye
+   4.615 Goodbye
