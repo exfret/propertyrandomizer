@@ -10,7 +10,6 @@ local valid_capsule_types = {
     ["gun"] = true,
     ["module"] = true,
     ["space-platform-starter-pack"] = true,
-    ["tool"] = true,
     ["armor"] = true,
     ["repair-tool"] = true,
 }

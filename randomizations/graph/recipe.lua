@@ -129,13 +129,20 @@ if mods["space-age"] then
 end
 local flow_cost_updates = 100
 -- Check if we should only randomize science pack recipes (recipes with one result that is a science pack)
+-- Find science packs
+local is_science_pack = {}
+for _, lab in pairs(data.raw.lab) do
+    for _, input in pairs(lab.inputs) do
+        is_science_pack[input] = true
+    end
+end
 if config.only_randomize_science_recipes then
     flow_cost_updates = 10000
     for _, recipe in pairs(data.raw.recipe) do
         local is_science_recipe = false
         if recipe.results ~= nil then
             if #recipe.results == 1 then
-                if recipe.results[1].type == "item" and data.raw.tool[recipe.results[1].name] ~= nil then
+                if recipe.results[1].type == "item" and is_science_pack[recipe.results[1].name] ~= nil then
                     is_science_recipe = true
                 end
             end

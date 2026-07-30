@@ -316,8 +316,8 @@ randomizations.fixes = function()
                     recycling_recipe.results = new_recycling_results
                     -- Also remove main product, because that sometimes needs to be fixed for some reason
                     recycling_recipe.main_product = nil
-                    -- Remove number from recycling recipe name
-                    recycling_recipe.show_amount_in_title = false
+                    -- Remove number from recycling recipe name (removed in 2.1)
+                    --recycling_recipe.show_amount_in_title = false
                     -- Keep track of what items we have fixed the recycling recipes for
                     reversed_items[product.name] = true
                 end
@@ -344,8 +344,8 @@ randomizations.fixes = function()
                         }
                         -- Also remove main product, because that sometimes needs to be fixed for some reason
                         recycling_recipe.main_product = nil
-                        -- Remove number from recycling recipe name
-                        recycling_recipe.show_amount_in_title = false
+                        -- Remove number from recycling recipe name (removed in 2.1)
+                        --recycling_recipe.show_amount_in_title = false
                     end
                 end
             end

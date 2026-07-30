@@ -187,7 +187,6 @@ categories.normal_item_classes = {
     ["module"] = true,
     ["repair-tool"] = true,
     ["space-platform-starter-pack"] = true,
-    ["tool"] = true,
 }
 
 categories.rail = {
