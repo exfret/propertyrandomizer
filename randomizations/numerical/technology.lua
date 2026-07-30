@@ -177,7 +177,7 @@ randomizations.tech_upgrades = function(id)
                     target_property = "change"
                     abs_max = 300
                 end
-                if ignore_modifiers[modifier.type] == nil and modifier[target_property] > 0 then
+                if ignore_modifiers[modifier.type] == nil and type(modifier[target_property]) == "number" and modifier[target_property] > 0 then
                     local old_value = modifier[target_property]
 
                     local rounding = "discrete_float"

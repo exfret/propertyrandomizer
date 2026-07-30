@@ -20,6 +20,7 @@ Date: ?
     - Recipe tech unlock randomization now works (would previously never work due to a misspelling in the last version)
     - Beam damage interval now capped from below by 1
     - Recycling recipe fixing logic didn't correctly account for non-stackable items in amounts, just in extra count fraction
+    - Item randomization didn't properly reset state after retry
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.3
 Date: 2026.03.26

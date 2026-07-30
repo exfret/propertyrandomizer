@@ -18,7 +18,7 @@
     },
     {
       "name": "flib",
-      "enabled": true
+      "enabled": false
     },
     {
       "name": "propertyrandomizer",
@@ -26,7 +26,7 @@
     },
     {
       "name": "reskins-assets-bobs",
-      "enabled": true
+      "enabled": false
     }
   ]
 }

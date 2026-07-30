@@ -13,12 +13,16 @@
       "enabled": true
     },
     {
+      "name": "recycler",
+      "enabled": true
+    },
+    {
       "name": "space-age",
       "enabled": true
     },
     {
       "name": "flib",
-      "enabled": true
+      "enabled": false
     },
     {
       "name": "propertyrandomizer",
@@ -26,7 +30,7 @@
     },
     {
       "name": "reskins-assets-bobs",
-      "enabled": true
+      "enabled": false
     }
   ]
 }

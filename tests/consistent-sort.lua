@@ -151,7 +151,8 @@ test.path_contains_gleba_biochamber = function()
     end
 end
 
-test.path_not_contains_nauvis_biochamber = function()
+-- Note: It is actually possible to find the nauvis biochamber first, so I'm removing this test
+--[[test.path_not_contains_nauvis_biochamber = function()
     if mods["space-age"] then
         local science_node = test_graph.nodes[gutils.key("item", "promethium-science-pack")]
         local nauvis_context = gutils.key("planet", "nauvis")
@@ -164,7 +165,7 @@ test.path_not_contains_nauvis_biochamber = function()
             error()
         end
     end
-end
+end]]
 
 -- Finds number of pairs of nodes X,Y in sort_info where X is before Y in one context and vice versa in the other
 test.profile_num_switches = function()
