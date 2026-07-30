@@ -93,7 +93,13 @@ first_pass.execute = function(params)
         if randomization_info.options.first_pass.blacklist[node_key] then
             return false
         end
-        if EXCLUDE_SCIENCE and subdiv_node.type == "item" and data.raw.tool[subdiv_node.name] ~= nil then
+        local is_science_pack = {}
+        for _, lab in pairs(data.raw.lab) do
+            for _, input in pairs(lab.inputs) do
+                is_science_pack[input] = true
+            end
+        end
+        if EXCLUDE_SCIENCE and subdiv_node.type == "item" and is_science_pack[subdiv_node.name] ~= nil then
             return false
         end
         if EXCLUDE_RECIPES and subdiv_node.type == "recipe" then
@@ -140,17 +146,19 @@ first_pass.execute = function(params)
     -- FIND PATH
     ----------------------------------------------------------------------------------------------------
 
-    -- First create goal nodes: tool items/sciences
+    -- First create goal nodes: sciences
     -- TODO: This just tests for ability to create sciences, not whether you can launch a ship to beat the game, actually research with the sciences, etc., so I could check those in the future
     -- TODO: This assumes nauvis context; we could be more flexible later
-    local is_tool_node = {}
-    for _, science_pack in pairs(data.raw.tool) do
-        is_tool_node[key("item", science_pack.name)] = true
+    local is_science_pack = {}
+    for _, lab in pairs(data.raw.lab) do
+        for _, input in pairs(lab.inputs) do
+            is_science_pack[key("item", input)] = true
+        end
     end
     local starting_planet_context = key("planet", constants.starting_planet)
     local goal_inds = {}
     for ind, pebble in pairs(init_sort.sorted) do
-        if is_tool_node[pebble.node_key] and pebble.context == starting_planet_context then
+        if is_science_pack[pebble.node_key] and pebble.context == starting_planet_context then
             table.insert(goal_inds, ind)
         end
     end

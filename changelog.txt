@@ -2,6 +2,7 @@
 Version: 0.5.4
 Date: ?
   Features:
+    - Updated to factorio 2.1
     - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).
     - Added ability to duplicate recipe tech unlocks for a smoother experience
     - Compatibility with any planet start

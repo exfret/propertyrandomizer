@@ -29,7 +29,6 @@ common.valid_item_placeable_types = {
     ["gun"] = true,
     ["module"] = true,
     ["space-platform-starter-pack"] = true,
-    ["tool"] = true,
     ["armor"] = true,
     ["repair-tool"] = true,
 }

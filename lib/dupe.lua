@@ -490,8 +490,8 @@ dupe.boiler = function(boiler, dupe_number)
     local new_boiler = dupe.entity(boiler, dupe_number)
 
     if new_boiler.pictures ~= nil then
-        for _, pictures in pairs(new_boiler.pictures) do
-            pictures.structure = add_icon_to_anim(pictures.structure, dupe_number)
+        for _, picture in pairs(new_boiler.pictures) do
+            picture.structure = add_icon_to_anim(picture.structure, dupe_number)
         end
     end
 
@@ -501,11 +501,17 @@ end
 dupe.generator = function(generator, dupe_number)
     local new_generator = dupe.entity(generator, dupe_number)
 
-    for _, animation_type in pairs({"horizontal_animation", "vertical_animation"}) do
+    if new_generator.pictures ~= nil then
+        for _, picture in pairs(new_generator.pictures) do
+            picture.structure = add_icon_to_anim(picture.structure, dupe_number)
+        end
+    end
+
+    --[[for _, animation_type in pairs({"horizontal_animation", "vertical_animation"}) do
         if new_generator[animation_type] ~= nil then
             new_generator[animation_type] = add_icon_to_anim(new_generator[animation_type], dupe_number)
         end
-    end
+    end]]
 
     return new_generator
 end
@@ -842,7 +848,8 @@ dupe.execute = function()
     end
 
     -- Duplicate science pack recipes
-    for _, science_pack in pairs(data.raw.tool) do
+    -- Turned off until I generalize it (right now, it assumes the recipe is named the same as the science pack)
+    --[[for _, science_pack in pairs(data.raw.tool) do
         if data.raw.recipe[science_pack.name] ~= nil then
             for i = 2, num_dupes do
                 dupe.recipe(data.raw.recipe[science_pack.name], i)
@@ -851,7 +858,7 @@ dupe.execute = function()
     end
     for i = 2, num_dupes do
         dupe.recipe(data.raw.recipe["rocket-part"], i)
-    end
+    end]]
 
     local items_to_dupe = {}
     for _, ammo in pairs(data.raw.ammo) do
