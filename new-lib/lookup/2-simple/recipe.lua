@@ -87,13 +87,14 @@ stage.rcats = function()
             local fluids = lutils.find_recipe_fluids(recipe)
 
             rcats[name] = {
-                cat = recipe.category or "crafting",
+                cats = recipe.categories or {"crafting"},
                 input = fluids.input,
                 output = fluids.output,
             }
-            local vanilla_name = recipe.category or "crafting"
-            vanilla_to_rcats[vanilla_name] = vanilla_to_rcats[vanilla_name] or {}
-            vanilla_to_rcats[vanilla_name][name] = true
+            for _, vanilla_name in pairs(recipe.categories or {"crafting"}) do
+                vanilla_to_rcats[vanilla_name] = vanilla_to_rcats[vanilla_name] or {}
+                vanilla_to_rcats[vanilla_name][name] = true
+            end
         end
     end
 

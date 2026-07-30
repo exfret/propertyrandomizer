@@ -85,7 +85,7 @@ function abstract.build(lu)
             -- OR over all starter packs for this surface (with weight check)
 
             local starter_packs = lu.surface_to_starter_packs[room.name]
-            local rocket_lift_weight = data.raw["utility-constants"].default.rocket_lift_weight
+            local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
             if starter_packs ~= nil then
                 for pack_name, _ in pairs(starter_packs) do
                     if lu.weight[pack_name] <= rocket_lift_weight then

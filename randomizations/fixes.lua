@@ -109,10 +109,10 @@ randomizations.fixes = function()
         if recipe.ingredients ~= nil then
             for _, ing in pairs(recipe.ingredients) do
                 if ing.type == "fluid" then
-                    if recipe.category == nil or recipe.category == "crafting" then
+                    if recipe.categories == nil or (#recipe.categories == 1 and recipe.categories[1] == "crafting") then
                         -- CRITICAL TODO: Properly fix!
                         -- This is a hotfix for the categories change
-                        --recipe.category = "crafting-with-fluid"
+                        --recipe.categories = {"crafting-with-fluid"}
                     end
                     break
                 end
@@ -131,7 +131,13 @@ randomizations.fixes = function()
     -- Create lookup table for recycling recipes
     local item_to_recycling_recipe = {}
     for _, recipe in pairs(data.raw.recipe) do
-        if recipe.category == recycling_category_name and recipe.ingredients ~= nil and #recipe.ingredients == 1 then
+        local has_recycling = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if category == recycling_category_name then
+                has_recycling = true
+            end
+        end
+        if has_recycling and recipe.ingredients ~= nil and #recipe.ingredients == 1 then
             item_to_recycling_recipe[recipe.ingredients[1].name] = recipe
         end
     end
@@ -152,8 +158,9 @@ randomizations.fixes = function()
         if product_or_ingredient.ignored_by_stats ~= nil then
             expected_value = expected_value - product_or_ingredient.ignored_by_stats
         end
-        if product_or_ingredient.probability ~= nil then
-            expected_value = expected_value * product_or_ingredient.probability
+        -- CRITICAL TODO: Implement shared probabilities too...
+        if product_or_ingredient.independent_probability ~= nil then
+            expected_value = expected_value * product_or_ingredient.independent_probability
         end
         return expected_value
     end
@@ -195,7 +202,15 @@ randomizations.fixes = function()
     local default_can_recycle = function(recipe)
         if reverisble_name_exceptions[recipe.name] then return true end
         if recipe.auto_recycle == false then return false end
-        if reversible_category_blacklist[recipe.category] then return false end
+
+        local in_category_blacklist = false
+        for _, category in pairs(recipe.categories or {"crafting"}) do
+            if reversible_category_blacklist[category] then
+                in_category_blacklist = true
+            end
+        end
+
+        if in_category_blacklist then return false end
         if reversible_subgroup_blacklist[recipe.subgroup] then return false end
         if reversible_name_blacklist[recipe.name] then return false end
         local match = true
@@ -291,7 +306,7 @@ randomizations.fixes = function()
                         -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
                         if consistent_amount < 1 then
                             new_recycling_result.amount = 1
-                            new_recycling_result.probability = extra_count_fraction
+                            new_recycling_result.independent_probability = extra_count_fraction
                         else
                             new_recycling_result.amount = consistent_amount
                             new_recycling_result.extra_count_fraction = extra_count_fraction
@@ -323,7 +338,7 @@ randomizations.fixes = function()
                                 type = type_item,
                                 name = item.name,
                                 amount = 1,
-                                probability = 1 / 4,
+                                independent_probability = 1 / 4,
                                 ignored_by_stats = 1,
                             },
                         }

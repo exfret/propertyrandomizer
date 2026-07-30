@@ -697,7 +697,13 @@ dupe.resource = function(resource, dupe_number)
         local new_smelted_item
         local smelted_item
         for _, recipe in pairs(data.raw.recipe) do
-            if recipe.category == "smelting" and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" and recipe.ingredients[1].name == associated_item.name then
+            local is_smelting_recipe = false
+            for _, cat in pairs(recipe.categories or {"crafting"}) do
+                if cat == "smelting" then
+                    is_smelting_recipe = true
+                end
+            end
+            if is_smelting_recipe and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" and recipe.ingredients[1].name == associated_item.name then
                 -- Also check that this recipe is named after its result
                 if recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].type == "item" and recipe.results[1].name == recipe.name then
                     -- Find the corresponding item

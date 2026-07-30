@@ -150,7 +150,7 @@ local function recipe_to_spoofed_category_name(recipe)
     local num_input_fluids = fluid_amounts.input_fluids
     local num_output_fluids = fluid_amounts.output_fluids
 
-    return compound_key({recipe.category or "crafting", num_input_fluids, num_output_fluids})
+    return compound_key({compound_key(recipe.categories or {"crafting"}), num_input_fluids, num_output_fluids})
 end
 build_graph.spoofed_recipe_categories = {}
 local function recalculate_spoofed_recipe_categories()
@@ -160,7 +160,7 @@ local function recalculate_spoofed_recipe_categories()
             local fluid_amounts = recipe_to_num_fluids(recipe)
 
             build_graph.spoofed_recipe_categories[spoofed_category_name] = {
-                recipe_category = data.raw["recipe-category"][recipe.category or "crafting"],
+                categories = recipe.categories or {"crafting"},
                 input_fluids = fluid_amounts.input_fluids,
                 output_fluids = fluid_amounts.output_fluids
             }
@@ -267,8 +267,10 @@ local function is_crafting_machine_compatible_with_recipe_category(crafting_mach
 
     local has_crafting_category = false
     for _, crafting_category in pairs(crafting_machine.crafting_categories) do
-        if crafting_category == spoofed_category.recipe_category.name then
-            has_crafting_category = true
+        for _, recipe_category in pairs(spoofed_category.categories) do
+            if recipe_category == crafting_category then
+                has_crafting_category = true
+            end
         end
     end
 
@@ -673,7 +675,7 @@ local function load()
         end
         if entity.loot ~= nil then
             for _, loot in pairs(entity.loot) do
-                mtm_insert(loot_to_entities, loot.item, entity)
+                mtm_insert(loot_to_entities, loot.name, entity)
             end
         end
     end
@@ -2836,8 +2838,10 @@ local function load()
                             local has_crafting_category = false
     
                             for _, category in pairs(character.crafting_categories) do
-                                if category == spoofed_category.recipe_category.name then
-                                    has_crafting_category = true
+                                for _, recipe_category in pairs(spoofed_category.categories) do
+                                    if category == recipe_category then
+                                        has_crafting_category = true
+                                    end
                                 end
                             end
     
@@ -2922,7 +2926,7 @@ local function load()
                     end
                 end
             end
-            local spoofed_category_name = compound_key({recipe.category or "crafting", num_input_fluids, num_output_fluids})
+            local spoofed_category_name = compound_key({compound_key(recipe.categories or {"crafting"}), num_input_fluids, num_output_fluids})
             table.insert(prereqs, {
                 type = "recipe-category-surface",
                 name = compound_key({spoofed_category_name, surface_key})

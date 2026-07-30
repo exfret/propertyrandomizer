@@ -1,7 +1,7 @@
 CURRENTLY ON:
 
  * Updating to 2.1
-    * Make sure flib buttons are working
+    * categories (just finished with build graph stuff)
 
 
  * Ability to randomize only science pack recipes

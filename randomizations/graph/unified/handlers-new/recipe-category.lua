@@ -121,7 +121,7 @@ recipe_category.reflect = function(graph, head_to_base, head_to_handler)
                 local cat_node = gutils.get_owner(graph, base)
                 local rcat = lu.rcats[cat_node.name]
                 local recipe_prot = lu.recipes[recipe_node.name]
-                recipe_prot.category = rcat.cat
+                recipe_prot.categories = rcat.cats
             end
         end
     end

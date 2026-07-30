@@ -682,7 +682,7 @@ first_pass.execute = function(params)
             end
 
             -- Also check that both are crafting or not crafting
-            if (slot_recipe.category == "crafting" or slot_recipe.category == nil) ~= (trav_recipe.category == "crafting" or trav_recipe.category == nil) then
+            if (slot_recipe.categories == nil or (#slot_recipe.categories == 1 and slot_recipe.categories[1] == "crafting")) ~= (trav_recipe.categories == nil or (#trav_recipe.categories == 1 and trav_recipe.categories[1] == "crafting")) then
                 return false
             end
 

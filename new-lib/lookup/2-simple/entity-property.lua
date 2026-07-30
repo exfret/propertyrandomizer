@@ -60,7 +60,7 @@ stage.loot_to_entities = function()
     for _, entity in pairs(lu.entities) do
         if entity.loot ~= nil then
             for _, loot_entry in pairs(entity.loot) do
-                local item_name = loot_entry.item
+                local item_name = loot_entry.name
                 if item_name ~= nil then
                     if loot_to_entities[item_name] == nil then
                         loot_to_entities[item_name] = {}

@@ -52,3 +52,4 @@ For bugs/fixes rather than features, see bugs.txt
  * API for other mods to add nodes and edges
  * Fix technology science pack localisation to not make localised string too long
  * Blacklist barrels from item randomization
+ * Option for all inserters to have offset changes (maybe this is the default, or it happens with higher chaos)

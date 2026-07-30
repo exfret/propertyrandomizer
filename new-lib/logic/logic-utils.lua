@@ -47,8 +47,10 @@ lutils.is_compatible_rcat = function(machine, rcat)
     end
 
     for _, category in pairs(machine.crafting_categories) do
-        if category == rcat.cat and fluids.input >= rcat.input and fluids.output >= rcat.output then
-            return true
+        for _, cat in pairs(rcat.cats) do
+            if category == cat and fluids.input >= rcat.input and fluids.output >= rcat.output then
+                return true
+            end
         end
     end
 
@@ -56,7 +58,7 @@ lutils.is_compatible_rcat = function(machine, rcat)
 end
 lutils.rcat_name = function(recipe)
     local fluids = lutils.find_recipe_fluids(recipe)
-    return gutils.concat({recipe.category or "crafting", fluids.input, fluids.output})
+    return gutils.concat({gutils.concat(recipe.categories or {"crafting"}), fluids.input, fluids.output})
 end
 
 lutils.find_mining_fluids = function(resource)
