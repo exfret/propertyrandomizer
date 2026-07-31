@@ -59,7 +59,7 @@ local enabled = {
     --["tech-science-packs"] = true,
     ["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
-    ["recipe-category"] = true,
+    ["recipe-category"] = false,
     ["item"] = true,
 }
 

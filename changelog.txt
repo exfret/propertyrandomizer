@@ -1,6 +1,12 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.5.4
+Version: 0.5.5
 Date: ?
+  Bugfixes:
+    - Dependency graph rebuilds did not account for recycling recipes being "fixed"
+    - Rocket launch products are accounted for in new logic (finally)
+---------------------------------------------------------------------------------------------------
+Version: 0.5.4
+Date: 2026.07.30
   Features:
     - Updated to factorio 2.1
     - Fluid box randomization is back, and better than it ever has been! (Thanks to protocol_1903 on discord for the help).

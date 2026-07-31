@@ -25,22 +25,6 @@ end
 
 -- END repeated header
 
--- Reverse map: item -> items that spoil into it
-stage.spoil_result_to_items = function()
-    local spoil_result_to_items = {}
-
-    for _, item in pairs(lu.items) do
-        if item.spoil_result ~= nil and item.spoil_result ~= "" then
-            if spoil_result_to_items[item.spoil_result] == nil then
-                spoil_result_to_items[item.spoil_result] = {}
-            end
-            spoil_result_to_items[item.spoil_result][item.name] = true
-        end
-    end
-
-    lu.spoil_result_to_items = spoil_result_to_items
-end
-
 -- Reverse map: item -> fuels that burn into it
 stage.burnt_result_to_items = function()
     local burnt_result_to_items = {}
@@ -55,6 +39,40 @@ stage.burnt_result_to_items = function()
     end
 
     lu.burnt_result_to_items = burnt_result_to_items
+end
+
+-- Reverse map: item --> items that have it as a rocket launch result
+stage.rocket_results_to_items = function()
+    local rocket_results_to_items = {}
+
+    for _, item in pairs(lu.items) do
+        if item.rocket_launch_products ~= nil then
+            for _, product in pairs(item.rocket_launch_products) do
+                if product.type == "item" then
+                    rocket_results_to_items[product.name] = rocket_results_to_items[product.name] or {}
+                    rocket_results_to_items[product.name][item.name] = true
+                end
+            end
+        end
+    end
+
+    lu.rocket_results_to_items = rocket_results_to_items
+end
+
+-- Reverse map: item -> items that spoil into it
+stage.spoil_result_to_items = function()
+    local spoil_result_to_items = {}
+
+    for _, item in pairs(lu.items) do
+        if item.spoil_result ~= nil and item.spoil_result ~= "" then
+            if spoil_result_to_items[item.spoil_result] == nil then
+                spoil_result_to_items[item.spoil_result] = {}
+            end
+            spoil_result_to_items[item.spoil_result][item.name] = true
+        end
+    end
+
+    lu.spoil_result_to_items = spoil_result_to_items
 end
 
 return stage

@@ -149,7 +149,7 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe-tech-unlock-duplicates",
-        default_value = true,
+        default_value = false,
         order = "d-ea[recipe-tech-unlock-duplicates]"
     },
     {
