@@ -55,7 +55,7 @@ require("randomizations/prefixes")
 log("Loading in new dependency graph file")
 
 local new_logic = require("new-lib/logic/init")
-local unified = require("randomizations/graph/unified/execute")
+local unified = require("randomizations/graph/unified/execute-new")
 
 -- Load compat code
 require("compat/master")
@@ -213,6 +213,8 @@ if config.graph.recipe then
     log("Applying recipe ingredients randomization")
 
     randomizations.recipe_ingredients("recipe_ingredients")
+    -- Fix recycling recipes first so that dependency graph is an accurate reflection of reality
+    randomizations.fix_recycling_recipes()
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph

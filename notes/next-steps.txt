@@ -1,4 +1,7 @@
 CURRENTLY ON:
+
+ * Make more mod compatible
+    - Raw resources auto-sensing
  
  * First pass balance (for playable py)
     - Add new groups nodes to graph

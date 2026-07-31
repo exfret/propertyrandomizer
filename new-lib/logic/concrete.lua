@@ -947,6 +947,12 @@ function concrete.build(lu)
                 })
             end
         end
+        -- Check if there are items that give this item as a rocket launch result
+        if lu.rocket_results_to_items[item.name] ~= nil then
+            for launch_item, _ in pairs(lu.rocket_results_to_items[item.name]) do
+                add_edge("item-launch", launch_item)
+            end
+        end
 
         if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
             ----------------------------------------
