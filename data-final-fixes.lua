@@ -143,6 +143,10 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
+-- Fix recycling recipes in case modified by unified rando
+randomizations.fix_recycling_recipes()
+-- Rebuild tech tree
+randomizations.rebuild_tech_tree()
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)

@@ -109,29 +109,31 @@ simplex_cost.make_recipe_material_matrix = function()
             table.insert(cost_column, constants.simplex_boiling_cost)
         end
     end
-    -- Resource mining
-    for _, resource in pairs(prots("resource")) do
-        local minable = resource.minable
-        if minable ~= nil then
-            if minable.results ~= nil or minable.result ~= nil then
-                local results = minable.results or {
-                    {type = "item", name = minable.result, amount = minable.count or 1}
-                }
+    -- Resource/asteroid chunk/plant mining
+    for _, resource_type in pairs({"resource", "plant", "asteroid-chunk"}) do
+        for _, resource in pairs(prots(resource_type)) do
+            local minable = resource.minable
+            if minable ~= nil then
+                if minable.results ~= nil or minable.result ~= nil then
+                    local results = minable.results or {
+                        {type = "item", name = minable.result, amount = minable.count or 1}
+                    }
 
-                local row = {}
-                for _, material in pairs(material_list) do
-                    local amount = 0
-                    if material.type == "fluid" and material.name == minable.required_fluid then
-                        amount = amount - (minable.fluid_amount or 0)
+                    local row = {}
+                    for _, material in pairs(material_list) do
+                        local amount = 0
+                        if material.type == "fluid" and material.name == minable.required_fluid then
+                            amount = amount - (minable.fluid_amount or 0)
+                        end
+                        amount = amount + cutils.find_amount_in_ing_or_prod(results, material)
+                        --table.insert(row, amount)
+                        if amount ~= 0 then
+                            row[material_to_ind[gutils.key(material)]] = amount
+                        end
                     end
-                    amount = amount + cutils.find_amount_in_ing_or_prod(results, material)
-                    --table.insert(row, amount)
-                    if amount ~= 0 then
-                        row[material_to_ind[gutils.key(material)]] = amount
-                    end
+                    table.insert(matrix, row)
+                    table.insert(cost_column, constants.simplex_per_resource_cost)
                 end
-                table.insert(matrix, row)
-                table.insert(cost_column, constants.simplex_per_resource_cost)
             end
         end
     end

@@ -1,6 +1,208 @@
 -- File for any last-minute fixes in the randomization process that may be needed
 
 local locale_utils = require("lib/locale")
+local gutils = require("new-lib/graph/graph-utils")
+local logic = require("new-lib/logic/init")
+local top = require("new-lib/graph/consistent-sort")
+-- Needed for recipe icons logic
+local dupe = require("lib/dupe")
+
+randomizations.rebuild_tech_tree = function()
+    -- Find science packs (used for determine "essential" techs)
+    local is_science_pack = {}
+    for _, lab in pairs(data.raw.lab) do
+        for _, input in pairs(lab.inputs) do
+            is_science_pack[input] = true
+        end
+    end
+
+    -- Just make rocket parts enabled from the beginning, since they basically are anyways due to being a fixed recipe for the silo
+    if data.raw.recipe["rocket-part"] ~= nil then
+        data.raw.recipe["rocket-part"].enabled = true
+    end
+
+    -- Average tech costs across recipes in a technology
+    -- Nvm, a recipe can just take the whole unit from its first found tech
+    --[[local recipe_to_tech_cost = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        recipe_to_tech_cost[recipe.name] = 0
+    end
+    for _, tech in pairs(data.raw.technology) do
+        if tech.unit ~= nil and tech.unit.count_formula == nil then
+            -- First pass finds number of recipe unlocks, second adds cost to them
+            local num_recipe_unlocks = 0
+            for _, effect in pairs(tech.effects or {}) do
+                if effect.type == "unlock-recipe" then
+                    num_recipe_unlocks = 1 + num_recipe_unlocks
+                end
+            end
+            if num_recipe_unlocks > 0 then
+                -- TODO: Support py's different ing amounts per pack
+                local cost_for_each = tech.unit.count / num_recipe_unlocks
+                for _, effect in pairs(tech.effects or {}) do
+                    if effect.type == "unlock-recipe" then
+                        recipe_to_tech_cost[effect.recipe] = cost_for_each + recipe_to_tech_cost[effect.recipe]
+                    end
+                end
+            end
+        end
+    end]]
+
+    logic.build()
+    local graph = logic.graph
+
+    -- Note that the below can fail if the tech associated via recipe_to_unit is different from the one found in top.path
+    -- It might be useful to check this actually happens in the future
+
+    -- Initial top sort for determining science packs for recipes
+    -- Also determines recipes for science packs (i.e.- what recipe techs will be marked essential)
+    local recipe_to_unit = {}
+    local recipe_to_research_trigger = {}
+    local with_tech_sort_info = top.sort(graph)
+    local science_pack_marked = {}
+    local is_essential_recipe = {}
+    for _, node_info in pairs(with_tech_sort_info.sorted) do
+        local node = graph.nodes[node_info.node_key]
+        if node.type == "technology" then
+            local tech = data.raw.technology[node.name]
+            -- CRITICAL TODO: Ignore techs right now with levels; we'll need to nuke them completely later
+            --local isdigit = {["0"] = true, ["1"] = true, ["2"] = true, ["3"] = true, ["4"] = true, ["5"] = true, ["6"] = true, ["7"] = true, ["8"] = true, ["9"] = true}
+            if tech.unit ~= nil and tech.unit.count ~= nil then
+                local num_recipe_unlocks = 0
+                for _, effect in pairs(tech.effects or {}) do
+                    if effect.type == "unlock-recipe" then
+                        num_recipe_unlocks = 1 + num_recipe_unlocks
+                    end
+                end
+                for _, effect in pairs(tech.effects or {}) do
+                    if effect.type == "unlock-recipe" then
+                        if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
+                            recipe_to_unit[effect.recipe] = table.deepcopy(tech.unit)
+                            recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * recipe_to_unit[effect.recipe].count)
+                        end
+                    end
+                end
+            elseif tech.research_trigger ~= nil then
+                for _, effect in pairs(tech.effects or {}) do
+                    if effect.type == "unlock-recipe" then
+                        if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
+                            recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
+                        end
+                    end
+                end
+            end
+        end
+        if node.type == "recipe" then
+            local recipe = data.raw.recipe[node.name]
+            for _, result in pairs(recipe.results or {}) do
+                if result.type == "item" and is_science_pack[result.name] and not science_pack_marked[result.name] then
+                    is_essential_recipe[recipe.name] = true
+                    science_pack_marked[result.name] = true
+                end
+            end
+        end
+    end
+
+    -- Remove all tech prereqs so that they are reachable, do a top sort, then use short path
+    -- Since we're preserving tech research packs/triggers anyways, just keep those on
+    for _, node in pairs(graph.nodes) do
+        if node.type == "technology" then
+            local pres_to_remove = {}
+            for pre, _ in pairs(node.pre) do
+                local prenode = graph.nodes[graph.edges[pre].start]
+                if prenode.type == "technology" then
+                    pres_to_remove[pre] = true
+                end
+            end
+            for pre, _ in pairs(pres_to_remove) do
+                gutils.remove_edge(graph, pre)
+            end
+        end
+    end
+    local no_tech_sort_info = top.sort(graph)
+
+    local recipe_to_prev = {}
+    for ind, node_info in pairs(no_tech_sort_info.sorted) do
+        local node = graph.nodes[node_info.node_key]
+        if node.type == "recipe" and recipe_to_prev[node.name] == nil then
+            local path_info = top.path(graph, {ind}, no_tech_sort_info)
+            recipe_to_prev[node.name] = {}
+            for other_node_ind, _ in pairs(path_info.in_path) do
+                -- Don't count ind itself
+                if other_node_ind < ind then
+                    local other_node_key = no_tech_sort_info.sorted[other_node_ind].node_key
+                    local other_node = graph.nodes[other_node_key]
+                    if other_node.type == "recipe" then
+                        recipe_to_prev[node.name][other_node.name] = true
+                    end
+                end
+            end
+        end
+    end
+
+    for _, tech in pairs(data.raw.technology) do
+        local new_effects = {}
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type ~= "unlock-recipe" then
+                table.insert(new_effects, effect)
+            end
+        end
+        if #new_effects == 0 then
+            tech.hidden = true
+            tech.hidden_in_factoriopedia = true
+        end
+        tech.effects = new_effects
+        tech.prerequisites = {}
+        -- TODO: Figure out how to assign new prereqs (future issue)
+
+        -- TODO: Delete techs from potentially rebuilding it earlier?
+    end
+
+    for recipe_name, prev_recipes in pairs(recipe_to_prev) do
+        local recipe = data.raw.recipe[recipe_name]
+
+        if recipe.enabled == false then
+            local prereqs = {}
+            for prev_recipe_name, _ in pairs(prev_recipes) do
+                local prev_recipe = data.raw.recipe[prev_recipe_name]
+                -- Check that this will get a tech
+                if prev_recipe.enabled == false and (recipe_to_unit[prev_recipe_name] ~= nil or recipe_to_research_trigger[prev_recipe_name] ~= nil) then
+                    table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                end
+            end
+
+            local new_tech = {
+                type = "technology",
+                name = "exfret-rebuilt-" .. recipe_name .. "-suffix",
+                localised_name = locale_utils.find_localised_name(data.raw.recipe[recipe_name]),
+                icons = table.deepcopy(dupe.get_recipe_icons(recipe)),
+                prerequisites = prereqs,
+                essential = is_essential_recipe[recipe_name],
+                effects = {
+                    {
+                        type = "unlock-recipe",
+                        recipe = recipe_name
+                    },
+                },
+            }
+            if recipe_to_unit[recipe_name] ~= nil then
+                new_tech.unit = recipe_to_unit[recipe_name]
+            elseif recipe_to_research_trigger[recipe_name] ~= nil then
+                new_tech.research_trigger = recipe_to_research_trigger[recipe_name]
+            else
+                -- This should only happen if the recipe is gotten first through a tech with count formula, which is kind of dumb, but let's just enable the recipe then
+                recipe.enabled = true
+            end
+
+            -- Check if we just enabled recipe (see above), and if so we no longer need the tech
+            if recipe.enabled == false then
+                data:extend({
+                    new_tech
+                })
+            end
+        end
+    end
+end
 
 randomizations.fix_recycling_recipes = function()
     ----------------------------------------------------------------------
@@ -168,7 +370,7 @@ randomizations.fix_recycling_recipes = function()
                         end
                         local not_stackable = false
                         if ing_as_item.flags ~= nil then
-                            for _, flag in pairs(ing_as_item) do
+                            for _, flag in pairs(ing_as_item.flags) do
                                 if flag == "not-stackable" then
                                     not_stackable = true
                                     break
@@ -178,14 +380,16 @@ randomizations.fix_recycling_recipes = function()
                         if ing_as_item.type == "armor" and ing_as_item.equipment_grid ~= nil then
                             not_stackable = true
                         end
-                        if consistent_amount > 0 and not_stackable then
-                            consistent_amount = 1
-                            extra_count_fraction = 0
-                        end
                         local new_recycling_result = {
                             type = type_item,
                             name = ingredient.name,
                         }
+                        if consistent_amount > 0 and not_stackable then
+                            consistent_amount = 1
+                        end
+                        if not_stackable then
+                            extra_count_fraction = 0
+                        end
                         -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
                         if consistent_amount < 1 then
                             new_recycling_result.amount = 1

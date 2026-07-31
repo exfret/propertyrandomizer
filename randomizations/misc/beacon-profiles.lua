@@ -95,6 +95,10 @@ randomizations.beacon_profiles = function(id)
     -- TODO: Check that beacon profiles are balanced based off max multipliers!
 
     for _, beacon in pairs(data.raw.beacon) do
+        if beacon.profile == nil then
+            beacon.profile = {1}
+        end
+
         local key = rng.key({id = id, prototype = beacon})
         local profile_group = beacon_profiles[rng.int(key, #beacon_profiles)]
 

@@ -4,8 +4,13 @@ local dutils = require("new-lib/data-utils")
 local gutils = require("new-lib/graph/graph-utils")
 
 --local simplex_cost = require("lib/cost/simplex-cost")
--- CRITICAL TODO: Depend on modpack
-local material_costs = require("lib/cost/material-costs/py-full")
+local base_costs = require("lib/cost/material-costs/sa")
+local py_costs = require("lib/cost/material-costs/py-full")
+
+local material_costs = base_costs
+if mods["pyalternativeenergy"] then
+    material_costs = py_costs
+end
 
 local item = {}
 

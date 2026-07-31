@@ -66,6 +66,28 @@ function reformat.initial()
             break
         end
     end
+
+    -- Remove levels from technologies
+    --[[for _, tech in pairs(data.raw.technology) do
+        local old_name = tech.name
+        tech.name = tech.name .. "-not-a-number"
+        local prefix, number = string.match(tech.name, "^(.-)%-(%d+)$")
+        if tech.localised_name == nil then
+            if prefix ~= nil then
+                tech.localised_name = {"technology-name." .. prefix}
+            else
+                tech.localised_name = {"technology-name." .. old_name}
+            end
+        end
+        if tech.localised_description == nil then
+            tech.localised_name = {"technology-description." .. old_name}
+        end
+        local new_prerequisites = {}
+        for _, prereq in pairs(tech.prerequisites or {}) do
+            
+        end
+        tech.prerequisites = 
+    end]]
 end
 
 -- Recursive, so can't be defined with the =function syntax
