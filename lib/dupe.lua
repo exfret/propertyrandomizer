@@ -65,6 +65,49 @@ dupe.prototype = function(prototype, extra_info)
     return new_prototype
 end
 
+dupe.get_recipe_icons = function(recipe)
+    local recipe_icons
+    if recipe.icons == nil and recipe.icon == nil then
+        local item_with_icon_name
+        if recipe.main_product ~= nil then
+            item_with_icon_name = recipe.main_product
+        else
+            item_with_icon_name = recipe.results[1].name
+        end
+        local item_with_icon
+        for item_class, _ in pairs(defines.prototypes.item) do
+            if data.raw[item_class] ~= nil then
+                if data.raw[item_class][item_with_icon_name] ~= nil then
+                    item_with_icon = data.raw[item_class][item_with_icon_name]
+                end
+            end
+        end
+        if data.raw.fluid[item_with_icon_name] ~= nil then
+            item_with_icon = data.raw.fluid[item_with_icon_name]
+        end
+        if item_with_icon.icons ~= nil then
+            recipe_icons = item_with_icon.icons
+        else
+            recipe_icons = {
+                {
+                    icon = item_with_icon.icon,
+                    icon_size = item_with_icon.icon_size or 64
+                }
+            }
+        end
+    elseif recipe.icons == nil then
+        recipe_icons = {
+            {
+                icon = recipe.icon,
+                icon_size = recipe.icon_size or 64
+            }
+        }
+    else
+        recipe_icons = recipe.icons
+    end
+    return recipe_icons
+end
+
 dupe.recipe = function(recipe, extra_info)
     local has_number_suffix = true
     if type(extra_info) == "table" then
@@ -95,45 +138,7 @@ dupe.recipe = function(recipe, extra_info)
     -- Only fix icons if it's not a specially suffixed recipe
     if has_number_suffix then
         -- Also need to do icon
-        local recipe_icons
-        if new_recipe.icons == nil and new_recipe.icon == nil then
-            local item_with_icon_name
-            if new_recipe.main_product ~= nil then
-                item_with_icon_name = new_recipe.main_product
-            else
-                item_with_icon_name = new_recipe.results[1].name
-            end
-            local item_with_icon
-            for item_class, _ in pairs(defines.prototypes.item) do
-                if data.raw[item_class] ~= nil then
-                    if data.raw[item_class][item_with_icon_name] ~= nil then
-                        item_with_icon = data.raw[item_class][item_with_icon_name]
-                    end
-                end
-            end
-            if data.raw.fluid[item_with_icon_name] ~= nil then
-                item_with_icon = data.raw.fluid[item_with_icon_name]
-            end
-            if item_with_icon.icons ~= nil then
-                recipe_icons = item_with_icon.icons
-            else
-                recipe_icons = {
-                    {
-                        icon = item_with_icon.icon,
-                        icon_size = item_with_icon.icon_size or 64
-                    }
-                }
-            end
-        elseif new_recipe.icons == nil then
-            recipe_icons = {
-                {
-                    icon = new_recipe.icon,
-                    icon_size = new_recipe.icon_size or 64
-                }
-            }
-        else
-            recipe_icons = new_recipe.icons
-        end
+        local recipe_icons = dupe.get_recipe_icons(new_recipe)
         new_recipe.icons = recipe_icons
         table.insert(new_recipe.icons, {
             icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[extra_info],

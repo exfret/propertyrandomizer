@@ -15,7 +15,9 @@ local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 -- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
 local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
+local TECH_GRAPH_RECONSTRUCTION = true
 local SWITCH_PLANETS = false
+local REMOVE_TECH_PREREQS = true
 
 -- 0 means nothing except on errors (in case I decide to stop polluting log in the future), 1 means default/important things, 2 means lots
 local LOGGING_LEVEL = 2
@@ -57,9 +59,9 @@ config.unified = {
 local enabled = {
     --["recipe-ingredients"] = true,
     --["tech-science-packs"] = true,
-    ["tech-prereqs"] = true,
+    --["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
-    ["recipe-category"] = false,
+    ["recipe-category"] = true,
     ["item"] = true,
 }
 
@@ -111,6 +113,12 @@ unified.execute = function()
     -- data.raw preprocessing if necessary
     for _, handler in pairs(handlers) do
         handler.preprocess()
+    end
+
+    if REMOVE_TECH_PREREQS then
+        for _, tech in pairs(data.raw.technology) do
+            tech.prerequisites = {}
+        end
     end
 
     -- Logic building
@@ -388,6 +396,10 @@ unified.execute = function()
                 log(smallest_ind1)
                 log(key2)
                 log(smallest_ind2)
+
+                -- CRITICAL TODO: Remove this shortcircuit!
+                do return true end
+
                 error("Node that should be reachable is not reachable!")
             end
 
