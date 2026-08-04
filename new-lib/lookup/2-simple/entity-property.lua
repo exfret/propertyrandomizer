@@ -25,6 +25,37 @@ end
 
 -- END repeated header
 
+-- Entities to py creature module categories that can be used to operate them
+-- Format:
+--   entitiy_name --> module_category_name --> true | nil
+local pyal_building_modules = {}
+-- These are conditional requires but they should be fine since they fire based off mod presence, not settings
+if mods["pyalienlife"] then
+    pyal_building_modules = require("__pyalienlife__.scripts.farming.farm-building-list")
+end
+local pyae_building_modules = {}
+if mods["pyalternativeenergy"] then
+    pyae_building_modules = require("__pyalternativeenergy__.scripts.farming")
+end
+stage.py_operability_module_cats = function()
+    lu.py_operability_module_cats = {}
+
+    local building_modules = {}
+    for _, module_list in pairs({pyal_building_modules, pyae_building_modules}) do
+        for building, spec in pairs(module_list) do
+            building_modules[building] = spec
+        end
+    end
+    
+    for building, spec in pairs(building_modules) do
+        -- spec.default_module is the tier one module for the module category required for a building (according to py dev)
+        if lu.py_operability_module_cats[building] == nil then
+            lu.py_operability_module_cats[building] = {}
+        end
+        lu.py_operability_module_cats[building][data.raw.module[spec.default_module].category] = true
+    end
+end
+
 stage.entity_collision_groups = function()
     local entity_collision_groups = {}
     local entity_collision_group_to_layers = {}

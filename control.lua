@@ -147,7 +147,8 @@ script.on_nth_tick(1, function(event)
                 end
             end
         end
-    elseif event.tick >= 60 and game.players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
+    -- Use connected players instead because it's guaranteed an array
+    elseif event.tick >= 60 and game.connected_players ~= nil and #game.connected_players >= 1 and game.connected_players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
         storage.gave_warning_flying_text = true
         for _, player in pairs(game.players) do
             player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})

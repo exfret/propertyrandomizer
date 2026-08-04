@@ -1,15 +1,13 @@
--- NOTE: This file was written by ChatGPT
--- It was originally made for Archipelago compatibility, which I didn't deem worth the 20-30 hours of work it would have otherwise taken, so it was either this or nothing
-
-
--- Exports the final PropertyRandomizer logic graph for the external Python
--- consistent-sort implementation.
+-- Export the minimum graph/logic data needed by the Python consistent sort.
 --
--- Factorio's data stage cannot write arbitrary files, so this module emits
--- chunked JSON through log(). tools/extract-consistent-sort-graph.py rebuilds
--- the JSON file from factorio-current.log.
+-- Usage after logic.build():
+--   local exporter = require("path/to/export-consistent-sort-graph")
+--   exporter.export_to_log(logic)  -- works in Factorio's data stage
+--
+-- In the repository's offline Lua runner, this is also available:
+--   exporter.export_to_file(logic, "offline/output/consistent-sort-graph.json")
 
-local export = {}
+local exporter = {}
 
 local FORMAT = "propertyrandomizer-consistent-sort-graph-v1"
 local CHUNK_SIZE = 8000
@@ -30,17 +28,15 @@ local function json_escape_string(value)
 end
 
 local function is_array(value)
-    local count = 0
     local max_index = 0
-
+    local count = 0
     for key, _ in pairs(value) do
         if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
             return false
         end
-        count = count + 1
         max_index = math.max(max_index, key)
+        count = count + 1
     end
-
     return count == max_index
 end
 
@@ -57,14 +53,13 @@ end
 
 local function json_encode(value)
     local value_type = type(value)
-
     if value_type == "nil" then
         return "null"
     elseif value_type == "boolean" then
         return value and "true" or "false"
     elseif value_type == "number" then
         if value ~= value or value == math.huge or value == -math.huge then
-            error("Cannot encode a non-finite number as JSON")
+            error("Cannot encode non-finite number as JSON")
         end
         return string.format("%.17g", value)
     elseif value_type == "string" then
@@ -77,81 +72,79 @@ local function json_encode(value)
             end
             return "[" .. table.concat(parts, ",") .. "]"
         end
-
         for _, key in pairs(sorted_keys(value)) do
             parts[#parts + 1] =
                 json_escape_string(key) .. ":" .. json_encode(value[key])
         end
         return "{" .. table.concat(parts, ",") .. "}"
     end
-
-    error("Cannot encode a value of type " .. value_type .. " as JSON")
+    error("Cannot encode value of type " .. value_type .. " as JSON")
 end
 
-local function get_context_mode(context_value)
-    if context_value == nil then
+local function context_mode(context_type)
+    if context_type == nil then
         return "preserve"
-    elseif context_value == true then
+    elseif context_type == true then
         return "broadcast"
-    elseif type(context_value) == "string" then
-        -- context-utils.lua ignores the shared type-info string and emits the
-        -- particular room node's name.
+    elseif type(context_type) == "string" then
         return "emit-node-name"
     end
-
-    error(
-        "Unsupported context metadata type: " .. type(context_value)
-    )
+    error("Unsupported node context type: " .. type(context_type))
 end
 
-function export.build_export_object(logic)
-    if logic == nil then
-        error("Expected new-lib/logic/init")
+local function unpack_inputs(logic_or_graph, contexts, type_info)
+    if logic_or_graph ~= nil and logic_or_graph.graph ~= nil then
+        return logic_or_graph.graph, logic_or_graph.contexts, logic_or_graph.type_info
     end
-    if logic.graph == nil or logic.graph.nodes == nil
-        or logic.graph.edges == nil then
-        error("logic.build() must run before exporting")
+    if logic_or_graph == nil or contexts == nil or type_info == nil then
+        error("Expected logic, or graph plus contexts and type_info")
     end
-    if logic.contexts == nil or logic.type_info == nil then
-        error("Logic contexts/type_info have not been built")
+    return logic_or_graph, contexts, type_info
+end
+
+function exporter.build_export_object(logic_or_graph, contexts, type_info)
+    local graph
+    graph, contexts, type_info = unpack_inputs(
+        logic_or_graph,
+        contexts,
+        type_info
+    )
+    if graph.nodes == nil or graph.edges == nil then
+        error("logic.build() must run before exporting the graph")
     end
 
-    local contexts = {}
-    for context, _ in pairs(logic.contexts) do
-        contexts[#contexts + 1] = context
+    local context_list = {}
+    for context, _ in pairs(contexts) do
+        context_list[#context_list + 1] = context
     end
-    table.sort(contexts)
+    table.sort(context_list)
 
     local nodes = {}
-    for node_key, node in pairs(logic.graph.nodes) do
-        local type_info = logic.type_info[node.type]
-        if type_info == nil then
+    local node_keys = {}
+    for node_key, node in pairs(graph.nodes) do
+        local node_type_info = type_info[node.type]
+        if node_type_info == nil then
             error("Missing type_info for node type " .. tostring(node.type))
         end
-
-        local op = node.op or type_info.op
-        if op ~= "AND" and op ~= "OR" then
-            error("Invalid op on node " .. node_key .. ": " .. tostring(op))
-        end
-
         nodes[#nodes + 1] = {
             key = node_key,
             type = node.type,
             name = node.name,
-            op = op,
-            context_mode = get_context_mode(type_info.context),
+            op = node.op or node_type_info.op,
+            context_mode = context_mode(node_type_info.context),
         }
+        node_keys[node_key] = true
     end
     table.sort(nodes, function(left, right)
         return left.key < right.key
     end)
 
+    -- Export the final graph exactly as built by Property Randomizer.  The
+    -- frozen-profile adapter adds AP gate subdivisions and a supplied stable
+    -- goal later; this exporter never guesses a particular launch or planet.
     local edges = {}
-    for _, edge in pairs(logic.graph.edges) do
-        edges[#edges + 1] = {
-            start = edge.start,
-            stop = edge.stop,
-        }
+    for _, edge in pairs(graph.edges) do
+        edges[#edges + 1] = { start = edge.start, stop = edge.stop }
     end
     table.sort(edges, function(left, right)
         if left.start == right.start then
@@ -159,27 +152,23 @@ function export.build_export_object(logic)
         end
         return left.start < right.start
     end)
-
     return {
         format = FORMAT,
-        contexts = contexts,
+        contexts = context_list,
         nodes = nodes,
         edges = edges,
     }
 end
 
-function export.export_to_log(logic)
-    local export_object = export.build_export_object(logic)
-    local json_string = json_encode(export_object)
-
-    log(
-        BEGIN_MARKER
-        .. " nodes=" .. tostring(#export_object.nodes)
-        .. " edges=" .. tostring(#export_object.edges)
-        .. " contexts=" .. tostring(#export_object.contexts)
-        .. " chars=" .. tostring(#json_string)
+function exporter.to_json(logic_or_graph, contexts, type_info)
+    return json_encode(
+        exporter.build_export_object(logic_or_graph, contexts, type_info)
     )
+end
 
+function exporter.export_to_log(logic_or_graph, contexts, type_info)
+    local json_string = exporter.to_json(logic_or_graph, contexts, type_info)
+    log(BEGIN_MARKER)
     local position = 1
     while position <= #json_string do
         log(
@@ -188,8 +177,20 @@ function export.export_to_log(logic)
         )
         position = position + CHUNK_SIZE
     end
-
     log(END_MARKER)
 end
 
-return export
+function exporter.export_to_file(logic_or_graph, path, contexts, type_info)
+    if io == nil or io.open == nil then
+        error("export_to_file is only available in the offline Lua runner")
+    end
+    local handle, open_error = io.open(path, "wb")
+    if handle == nil then
+        error("Could not open export path: " .. tostring(open_error))
+    end
+    handle:write(exporter.to_json(logic_or_graph, contexts, type_info))
+    handle:write("\n")
+    handle:close()
+end
+
+return exporter

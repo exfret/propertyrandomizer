@@ -334,6 +334,9 @@ function concrete.build(lu)
             if lutils.check_freezable(entity) then
                 add_edge("warmth", "")
             end
+            if lu.py_operability_module_cats[entity.name] ~= nil then
+                add_edge("entity-operate-py-module")
+            end
             -- Note: Turrets are "operable" without ammo; since the damage is on the ammo, we actually need to check if there is a turret to shoot an ammo rather than check if there is ammo for a turret to shoot
             -- TODO: Module requirements (for mods like PyAL)
 
