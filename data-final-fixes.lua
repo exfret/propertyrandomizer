@@ -342,6 +342,10 @@ if not offline then
     smuggle_info()
 end
 
+-- Output current logs
+local export = require("lib/export")
+export.export_to_log(new_logic)
+
 log("Done!")
 
 -- Set config back to nil so that globals aren't floating around
