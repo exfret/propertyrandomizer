@@ -3,15 +3,10 @@
 -- Uses new logic
 -- TODO: Make sure to use testing!
 
-local collision_mask_util
-if not offline then
-    collision_mask_util = require("__core__/lualib/collision-mask-util")
-else
-    collision_mask_util = require("offline/lualib/collision-mask-util")
-end
+local collision_mask_util = require("__core__/lualib/collision-mask-util")
 local rng = require("lib/random/rng")
-local logic = require("new-lib/logic/init")
-local top = require("new-lib/graph/top-sort")
+local logic = require("lib/logic/init")
+local top = require("lib/graph/top-sort")
 local locale = require("lib/locale")
 local common = require("randomizations/graph/entity/common")
 
@@ -136,14 +131,14 @@ entity_rando.preprocess = function()
 end
 
 entity_rando.shuffle = function()
-    -- CRITICAL TODO
+    -- TODO
 end
 
 -- Reflection functions are based on slot entity
 entity_rando.reflect = function()
     -- Reflect
     for slot_name, trav in pairs(slot_to_trav) do
-        -- CRITICAL TODO: Make sure I account for spoofed dummy slots! (Just thought of this)
+        -- TODO: Make sure I account for spoofed dummy slots! (Just thought of this)
         -- Note: slot_name_to_slot gives a deepcopied version and is thus basically the same as giving an old_data_raw version
         local slot = slot_name_to_slot[slot_name]
         entity_to_handler[slot_name].reflect(slot, trav)

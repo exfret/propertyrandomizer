@@ -1,8 +1,8 @@
 -- TODO: This is too inflexible in the way it assigns fluid required, but I'm not too sure how to fix that.
 
-local gutils = require("new-lib/graph/graph-utils")
-local dutils = require("new-lib/data-utils")
-local top = require("new-lib/graph/top-sort")
+local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local top = require("lib/graph/top-sort")
 
 local entity_operation_fluid = {}
 

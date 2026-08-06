@@ -2,7 +2,7 @@
 
 local constants = require("helper-tables/constants")
 local flow_cost = require("lib/cost/flow-cost")
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local item_ingredients = {}
 

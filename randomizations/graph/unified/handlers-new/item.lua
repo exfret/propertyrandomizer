@@ -1,14 +1,13 @@
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
-local dutils = require("new-lib/data-utils")
-local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local gutils = require("lib/graph/graph-utils")
 
---local simplex_cost = require("lib/cost/simplex-cost")
 local base_costs = require("lib/cost/material-costs/sa")
 local py_costs = require("lib/cost/material-costs/py-full")
 
 local material_costs = base_costs
-if mods["pyalternativeenergy"] then
+if mods["pypostprocessing"] then
     material_costs = py_costs
 end
 

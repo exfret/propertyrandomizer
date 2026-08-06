@@ -21,7 +21,7 @@ For bugs/fixes rather than features, see bugs.txt
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
  * Listen for GUI changes and change randomizer panel scale based on that (and clean up GUI code in general)
  * Move contexts to logic utils (or even context-utils?)
- * Reorganize new-lib better, in particular separate graph lib and sort lib as that part is growing too large (and maybe figure out where an "important node decider"/other graph logical analysis would go)
+ * Reorganize lib better, in particular separate graph lib and sort lib as that part is growing too large (and maybe figure out where an "important node decider"/other graph logical analysis would go)
  * Progression nodes/ability to decide when a node/pebble is "important"
  * Starting "windmill" to get over initial problematic power hump; maybe something for space hump as well?
  * Support additional_categories for recipes in logic
@@ -54,3 +54,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Blacklist barrels from item randomization
  * Option for all inserters to have offset changes (maybe this is the default, or it happens with higher chaos)
  * Modify scripts to properly remove new name for duplicate graphics file and remove all executables
+ * Update github wiki and main readme with new repo structure

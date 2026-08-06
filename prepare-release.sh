@@ -12,7 +12,6 @@ IGNORE_ITEMS=(
     ".gitignore"
     ".DS_Store"
     ".vscode"
-    "offline"
     "notes"
     "node-docs"
     "run-tests.sh"

@@ -1,8 +1,8 @@
 -- TODO: Add to handlers.md, settings, and execute
 
 local constants = require("helper-tables/constants")
-local gutils = require("new-lib/graph/graph-utils")
-local top = require("new-lib/graph/top-sort")
+local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/top-sort")
 
 local mining_fluid_required = {}
 

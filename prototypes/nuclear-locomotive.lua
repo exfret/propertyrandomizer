@@ -1,1 +1,0 @@
--- A locomotive unlocked around purple science that is very fast but requires uranium fuel cells

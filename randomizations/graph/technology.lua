@@ -1,7 +1,7 @@
 local constants = require("helper-tables/constants")
 
-local build_graph = require("lib/graph/build-graph")
-local top_sort = require("lib/graph/top-sort")
+local build_graph = require("lib/old-logic/build-graph")
+local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 
 randomizations.technology_tree_insnipping = function(id, dont_apply)

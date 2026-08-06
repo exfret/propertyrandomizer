@@ -1,7 +1,7 @@
 -- TODO: Check collision masks!
 
-local gutils = require("new-lib/graph/graph-utils")
-local dutils = require("new-lib/data-utils")
+local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
 
 local entity_autoplace = {}
 

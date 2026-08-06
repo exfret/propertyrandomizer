@@ -10,15 +10,15 @@
 
 local constants = require("helper-tables/constants")
 -- build_graph is used for its utility functions, not the graph building (graph is assumed global)
-local build_graph = require("lib/graph/build-graph")
+local build_graph = require("lib/old-logic/build-graph")
 local flow_cost = require("lib/cost/flow-cost")
-local top_sort = require("lib/graph/top-sort")
+local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 
 local DO_SURFACE_PRESERVATION = true
-local gutils = require("new-lib/graph/graph-utils")
-local logic = require("new-lib/logic/init")
-local extended_sort = require("new-lib/graph/extended-sort")
+local gutils = require("lib/graph/graph-utils")
+local logic = require("lib/logic/init")
+local extended_sort = require("lib/graph/extended-sort")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
 
@@ -73,7 +73,6 @@ local sensitive_recipes = {
     ["kovarex-enrichment-process"] = true
 }
 -- Also add recycling recipes
--- CRITICAL TODO: WAIT DO WE NOT UPDATE RECYCLING RESULTS???
 for _, recipe in pairs(data.raw.recipe) do
     local has_recycling = false
     for _, category in pairs(recipe.categories or {"crafting"}) do
@@ -279,7 +278,8 @@ randomizations.recipe_ingredients = function(id)
     end
 
     -- Find previously reachable
-    logic.build()
+    -- Ignore balance nodes here
+    logic.build(true)
     local extended_info = extended_sort.sort(logic.graph)
 
     ----------------------------------------------------------------------

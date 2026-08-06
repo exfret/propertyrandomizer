@@ -10,14 +10,9 @@
 -- TODO: Some biter icons not set correctly (for barrels)
 -- TODO: Check about what happens if a capsule enters a unit slot
 
-local collision_mask_util
-if not offline then
-    collision_mask_util = require("__core__/lualib/collision-mask-util")
-else
-    collision_mask_util = require("offline/lualib/collision-mask-util")
-end
-local build_graph = require("lib/graph/build-graph")
-local top_sort = require("lib/graph/top-sort")
+local collision_mask_util = require("__core__/lualib/collision-mask-util")
+local build_graph = require("lib/old-logic/build-graph")
+local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 local locale = require("lib/locale")
 local common = require("randomizations/graph/entity/common")
@@ -228,7 +223,7 @@ entity_rando.shuffle = function()
     end
     travs = new_travs
 
-    -- CRITICAL TODO: Move dependents to entity/item rather than the surface nodes (more convenient for later)
+    -- TODO: Move dependents to entity/item rather than the surface nodes (more convenient for later)
     -- TODO: This could lead to softlocks?..
 
     -- Use key_to_entity_ind to help sort slots
@@ -333,7 +328,7 @@ entity_rando.shuffle = function()
                 -- Check on short path
                 local on_short_path = false
                 for surface_name, surface in pairs(build_graph.surfaces) do
-                    -- CRITICAL TODO: Capture special capsule nodes
+                    -- TODO: Capture special capsule nodes
                     if short_path[build_graph.key("entity-surface", build_graph.compound_key({trav.name, surface_name}))] then
                         on_short_path = true
                     end
@@ -342,7 +337,7 @@ entity_rando.shuffle = function()
                     if #reserved_slots >= 1 then
                         local canceled_slot = reserved_slots[#reserved_slots]
                         
-                        -- CRITICAL TODO
+                        -- TODO
                     else
                         break
                     end
@@ -359,7 +354,7 @@ end
 entity_rando.reflect = function()
     -- Reflect
     for slot_name, trav in pairs(slot_to_trav) do
-        -- CRITICAL TODO: Make sure I account for spoofed dummy slots! (Just thought of this)
+        -- TODO: Make sure I account for spoofed dummy slots! (Just thought of this)
         -- Note: slot_name_to_slot gives a deepcopied version and is thus basically the same as giving an old_data_raw version
         local slot = slot_name_to_slot[slot_name]
         entity_to_handler[slot_name].reflect(slot, trav)

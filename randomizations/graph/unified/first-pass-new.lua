@@ -21,7 +21,8 @@
 -- NEXT: Gleba things that are naturally early aren't used early (like biochambers)
 
 local MAX_ITERATIONS = 10000
-local FAILURE_ACCEPTANCE = 1--0.9
+-- CRITICAL TODO: Change back
+local FAILURE_ACCEPTANCE = 0.5
 -- TODO: This could be set with a startup settings
 local DO_TESTS = false
 -- Require a node to unlock some mechanic to be considered important
@@ -48,11 +49,11 @@ local rng = require("lib/random/rng")
 -- TODO: Better flow cost library!
 local flow_cost = require("lib/cost/flow-cost")
 -- Used for contexts
-local logic = require("new-lib/logic/init")
-local lutils = require("new-lib/logic/logic-utils")
-local gutils = require("new-lib/graph/graph-utils")
-local dutils = require("new-lib/data-utils")
-local top = require("new-lib/graph/consistent-sort")
+local logic = require("lib/logic/init")
+local lutils = require("lib/logic/logic-utils")
+local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local top = require("lib/graph/consistent-sort")
 local first_pass_balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 

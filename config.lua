@@ -18,10 +18,6 @@ randomization_info.options.logging = "default"
 -- Make default 23 since that's my favorite number
 config.seed = 23 + settings.startup["propertyrandomizer-seed"].value
 
-if settings.startup["propertyrandomizer-watch-the-world-burn"].value then
-    config.watch_the_world_burn = true
-    -- TODO: Preset for watch the world burn
-end
 if settings.startup["propertyrandomizer-dupes"].value then
     config.dupes = true
 end

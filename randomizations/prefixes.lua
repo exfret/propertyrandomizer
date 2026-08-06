@@ -1,7 +1,28 @@
+-- Remove pure-recycling recipe unlocks and make them unlocked at the start
+local is_pure_recycling = {}
+for _, recipe in pairs(data.raw.recipe) do
+    if recipe.categories ~= nil and #recipe.categories == 1 and recipe.categories[1] == "recycling" then
+        is_pure_recycling[recipe.name] = true
+        recipe.enabled = true
+    end
+end
+for _, tech in pairs(data.raw.technology) do
+    if tech.effects ~= nil then
+        local new_effects = {}
+        for _, effect in pairs(tech.effects) do
+            if effect.type ~= "unlock-recipe" or not is_pure_recycling[effect.recipe] then
+                table.insert(new_effects, effect)
+            end
+        end
+        tech.effects = new_effects
+    end
+end
+
 -- Add input fluid boxes to all mining drills that don't already have them
 
 local pipe_conns = require("lib/pipe-conns")
 
+-- CRITICAL TODO: This is sometimes putting the pipe connection inside the machine?
 for _, drill in pairs(data.raw["mining-drill"]) do
     if drill.input_fluid_box == nil then
         pipe_conns.add_dummy_pipe_conns(drill, {"input_fluid_box", "output_fluid_box"})

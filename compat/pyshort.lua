@@ -1,4 +1,4 @@
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local key = gutils.key
 

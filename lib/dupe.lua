@@ -763,7 +763,6 @@ dupe.resource = function(resource, dupe_number)
     end
 
     -- Finally, autoplace
-    log(new_resource.autoplace.probability_expression)
     new_resource.autoplace = resource_autoplace.resource_autoplace_settings({
         name = new_resource.name,
         base_density = 30,
@@ -1200,6 +1199,7 @@ dupe.execute_vanilla = function()
     end
 end
 
+-- TODO: In an unfinished state
 dupe.recipe_tech_unlocks = function()
     -- We need to add tech unlocks to different techs due to how they work
     local all_recipe_effects = {}
@@ -1234,7 +1234,7 @@ dupe.recipe_tech_unlocks = function()
             end
         end
     end
-    -- CRITICAL TODO: Uncomment out!
+    -- TODO: Uncomment out!
     --[[
     for _, effect in pairs(all_recipe_effects) do
         local tech

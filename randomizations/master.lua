@@ -7,20 +7,12 @@ require("randomizations/helper/energy")
 require("randomizations/helper/linked")
 require("randomizations/helper/trigger")
 
-log("Gathering planetary randomizations")
-
--- Planetary randomizations are very first because they're hardcoded and sensitive to initial conditions
-require("randomizations/planetary/tile")
-
 log("Gathering graph randomizations (if applicable)")
 
 -- Graph randomizations
 
-require("randomizations/graph/core")
-
 require("randomizations/graph/unified/execute")
 require("randomizations/graph/item")
-require("randomizations/graph/item-new")
 require("randomizations/graph/recipe")
 require("randomizations/graph/recipe-tech-unlock")
 require("randomizations/graph/technology")

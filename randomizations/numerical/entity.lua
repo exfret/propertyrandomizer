@@ -2820,7 +2820,7 @@ end
 randomizations.resistances = function(id)
     -- exfret: Don't randomize resistances on lower than ultimate chaos
     -- I hate this hotfix, but it needs to be pushed out quickly since otherwise there will be unreported softlocks for people on normal settings (due to asteroids, which has already happened, and potentially "soft" softlocks due to biters) and that is not good
-    -- CRITICAL TODO: Simply build this into logic and turn this into a graph rando
+    -- TODO: Simply build this into logic and turn this into a graph rando
     -- TODO: Also should allow override to still trigger this, but I'm short on time now and this needs to get done
     if config.chaos_idx < 4 then
         return

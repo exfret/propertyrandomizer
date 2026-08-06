@@ -1,5 +1,5 @@
-local gutils = require("new-lib/graph/graph-utils")
-local lu = require("new-lib/lookup/init")
+local gutils = require("lib/graph/graph-utils")
+local lu = require("lib/lookup/init")
 
 local starting_planets = {}
 

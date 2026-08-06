@@ -1,8 +1,8 @@
 -- Prevent the first satisfier of certain required nodes from participating in first pass, to maintain game balance
 -- This includes things like transport belts and assembling machines, which should be relatively early
 
-local gutils = require("new-lib/graph/graph-utils")
-local logic = require("new-lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+local logic = require("lib/logic/init")
 
 local balance = {}
 

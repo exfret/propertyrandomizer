@@ -6,9 +6,9 @@
 -- Furnaces don't get many recipes; I tried fixing but was unsuccessful
 -- TODO: Maybe weird context things are happening based on when something is available on another planet...
 
-local gutils = require("new-lib/graph/graph-utils")
-local lutils = require("new-lib/logic/logic-utils")
-local lu = require("new-lib/lookup/init")
+local gutils = require("lib/graph/graph-utils")
+local lutils = require("lib/logic/logic-utils")
+local lu = require("lib/lookup/init")
 
 local recipe_category = {}
 

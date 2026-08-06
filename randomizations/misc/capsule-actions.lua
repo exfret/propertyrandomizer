@@ -1,7 +1,7 @@
 -- We use the dependency graph to double check that an item is actually reachable
 -- Properties of some objects are modified, but none in ways that would modify the dependency graph
-local build_graph = require("lib/graph/build-graph")
-local top_sort = require("lib/graph/top-sort")
+local build_graph = require("lib/old-logic/build-graph")
+local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 

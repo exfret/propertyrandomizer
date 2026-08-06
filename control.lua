@@ -2,7 +2,7 @@
 
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
-local top = require("new-lib/graph/consistent-sort")
+local top = require("lib/graph/consistent-sort")
 
 local function load_dep_graph()
     for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
@@ -123,18 +123,9 @@ script.on_nth_tick(1, function(event)
 
     -- Print warnings on 10th tick
     if event.tick == 10 then
+        -- Check seed to see whether to print info message
         if settings.startup["propertyrandomizer-seed"].value == 0 then
-            --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. If you want things randomized in another way for a new experience, change the \"seed\" setting under mod settings in the menu.")
-        end
-        local has_no_graph_randomizations = true
-        for setting_name, _ in pairs(constants.dep_graph_randomizations) do
-            if settings.startup[setting_name].value then
-                has_no_graph_randomizations = false
-            end
-        end
-        -- Also check if seed is changed since if it is that means they did actually look at the settings
-        if has_no_graph_randomizations and settings.startup["propertyrandomizer-seed"].value == 0 then
-            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Due to slow load times, recipe and other randomizations are off by default, but highly recommended. See mod settings to turn them on. Also consider turning on prototype caching for faster load times for future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
+            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. See mod settings for customization. Note that some randomizations like recipes are off by default due to slow load times. Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
         end
 
         local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)

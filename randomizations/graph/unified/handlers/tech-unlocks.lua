@@ -1,6 +1,6 @@
 -- Just does recipe tech unlocks for now
 
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local tech_unlocks = {}
 

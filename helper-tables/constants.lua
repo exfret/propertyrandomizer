@@ -84,14 +84,6 @@ local constants = {
     unified_recipe_ingredients_cost_threshold = 1000,
     unified_mining_fluid_required_default_fluid_amount = 10,
     unified_recipe_results_dummy_fraction = 1,
-
-    -- Randomizations to build dependency graph for
-    dep_graph_randomizations = {
-        ["propertyrandomizer-technology"] = true,
-        ["propertyrandomizer-recipe"] = true,
-        ["propertyrandomizer-item"] = true,
-        ["propertyrandomizer-watch-the-world-burn"] = true
-    }
 }
 
 local function set_aps_starting_planet()

@@ -2,8 +2,8 @@ local constants = require("helper-tables/constants")
 local simplex = require("lib/cost/simplex")
 local sparse_simplex = require("lib/cost/sparse-simplex-cutoff")
 local cutils = require("lib/cost/cost-utils")
-local dutils = require("new-lib/data-utils")
-local gutils = require("new-lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local prots = dutils.prots
 
@@ -160,35 +160,6 @@ simplex_cost.get_material_costs = function()
     log("#Materials: " .. tostring(#matrix_info.material_list))
     local material_to_cost = {}
 
-
-
-    -- DEBUGGING: Try iron plate first since we know that should be easier
-    do
-        local i = matrix_info.material_to_ind[gutils.key("item", "iron-plate")]
-        local material = { type = "item", name = "iron-plate" }
-        log("Calculating material #" .. tostring(i) .. " cost of " .. material.name)
-
-        local target_col = matrix_info.material_to_ind[gutils.key(material)]
-        local solve_info = sparse_simplex.solve_unit_objective(lp, target_col)
-
-        log(
-            "Calculated status=" .. tostring(solve_info.status)
-            .. " objective=" .. tostring(solve_info.objective)
-            .. " current_objective=" .. tostring(solve_info.current_objective)
-            .. " pivots=" .. tostring(solve_info.pivots)
-            .. " entering_col=" .. tostring(solve_info.entering_col)
-        )
-
-        if solve_info.status == "optimal" then
-            material_to_cost[gutils.key(material)] = solve_info.objective
-        else
-            material_to_cost[gutils.key(material)] = nil
-        end
-    end
-
-
-
-
     for i, material in pairs(matrix_info.material_list) do
         log("Calculating material #" .. tostring(i) .. " cost of " .. material.name)
 
@@ -210,24 +181,6 @@ simplex_cost.get_material_costs = function()
         end
     end
     return material_to_cost
-
-    --[=[local matrix_info = simplex_cost.make_recipe_material_matrix()
-
-    local material_to_cost = {}
-    log("#Materials: " .. tostring(#matrix_info.material_list))
-    for i, material in pairs(matrix_info.material_list) do
-        log("Calculating material #" .. tostring(i) .. " cost of " .. material.name)
-
-        local curr_matrix = table.deepcopy(matrix_info.matrix)
-        local curr_goal_row = table.deepcopy(matrix_info.goal_row)
-        local curr_cost_column = table.deepcopy(matrix_info.cost_column)
-        curr_goal_row[matrix_info.material_to_ind[gutils.key(material)]] = 1
-
-        local solve_info = simplex.solve_in_place(curr_matrix, curr_cost_column, curr_goal_row)
-        material_to_cost[gutils.key(material)] = solve_info.objective
-    end
-
-    return material_to_cost]=]
 end
 
 return simplex_cost

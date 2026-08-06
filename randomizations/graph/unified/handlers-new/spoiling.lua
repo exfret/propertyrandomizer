@@ -4,9 +4,9 @@
 -- Prevent rocket parts/blueprints and some special items (what counts as special other than rocket parts?)
 -- TODO: Do a quick look through item subgroups/spawnables just to see anything that might need to be blacklisted
 
-local gutils = require("new-lib/graph/graph-utils")
-local dutils = require("new-lib/data-utils")
-local top = require("new-lib/graph/top-sort")
+local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local top = require("lib/graph/top-sort")
 
 local spoiling = {}
 

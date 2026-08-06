@@ -1,5 +1,5 @@
 local constants = require("helper-tables/constants")
-local build_graph = require("lib/graph/build-graph")
+local build_graph = require("lib/old-logic/build-graph")
 local rng = require("lib/random/rng")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
