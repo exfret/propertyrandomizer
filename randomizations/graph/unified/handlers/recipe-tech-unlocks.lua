@@ -1,7 +1,7 @@
 -- Made to replace tech-unlock
 -- It's much more technically convenient to change the tech unlock to recipe connection as it turns out, even if logically it makes less sense
 
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local recipe_tech_unlocks = {}
 

@@ -10,14 +10,11 @@
 --   Actually... that means I need to simulate a whole top sort here, not just order the dependents, right? Because I need at which points things got context, not just the order of first unlock
 
 local rng = require("lib/random/rng")
-local logic = require("new-lib/logic/init")
-local lutils = require("new-lib/logic/logic-utils")
-local gutils = require("new-lib/graph/graph-utils")
-local lu = require("new-lib/lookup/init")
--- We use the extended contexts version here
---local top = require("new-lib/graph/extended-sort")
--- Actually let's do that later
-local top = require("new-lib/graph/top-sort")
+local logic = require("lib/logic/init")
+local lutils = require("lib/logic/logic-utils")
+local gutils = require("lib/graph/graph-utils")
+local lu = require("lib/lookup/init")
+local top = require("lib/graph/top-sort")
 
 local first_pass = {}
 

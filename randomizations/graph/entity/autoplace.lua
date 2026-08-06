@@ -1,9 +1,4 @@
-local collision_mask_util
-if not offline then
-    collision_mask_util = require("__core__/lualib/collision-mask-util")
-else
-    collision_mask_util = require("offline/lualib/collision-mask-util")
-end
+local collision_mask_util = require("__core__/lualib/collision-mask-util")
 local locale = require("lib/locale")
 local common = require("randomizations/graph/entity/common")
 

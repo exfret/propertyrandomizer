@@ -6,7 +6,7 @@ data:extend({
         default_value = 0,
         minimum_value = -9007199254740992,
         maximum_value = 9007199254740992,
-        order = "a[seed]"
+        order = "a[seed]",
     },
     {
         setting_type = "startup",
@@ -17,16 +17,7 @@ data:extend({
         },
         default_value = "default",
         order = "ab[preset]",
-        hidden = true
-    },
-    {
-        setting_type = "startup",
-        type = "bool-setting",
-        name = "propertyrandomizer-watch-the-world-burn",
-        default_value = false,
-        order = "az[burn]",
         hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -37,10 +28,10 @@ data:extend({
             "worse",
             "default",
             "better",
-            "best"
+            "best",
         },
         default_value = "default",
-        order = "b-a[bias]"
+        order = "b-a[bias]",
     },
     {
         setting_type = "startup",
@@ -51,10 +42,10 @@ data:extend({
             "less",
             "default",
             "more",
-            "ultimate"
+            "ultimate",
         },
         default_value = "default",
-        order = "b-ba[chaos]"
+        order = "b-ba[chaos]",
     },
     {
         setting_type = "startup",
@@ -63,7 +54,8 @@ data:extend({
         default_value = false,
         order = "b-z[dupes]",
         -- Hidden while broken
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -73,7 +65,7 @@ data:extend({
             "none",
             "less",
             "default",
-            "more"
+            "more",
         },
         default_value = "default",
         order = "c-a[logistic]"
@@ -86,7 +78,7 @@ data:extend({
             "none",
             "less",
             "default",
-            "more"
+            "more",
         },
         default_value = "default",
         order = "c-b[production]"
@@ -99,7 +91,7 @@ data:extend({
             "none",
             "less",
             "default",
-            "more"
+            "more",
         },
         default_value = "default",
         order = "c-c[military]"
@@ -112,52 +104,54 @@ data:extend({
             "none",
             "less",
             "default",
-            "more"
+            "more",
         },
         default_value = "default",
-        order = "c-z[misc]"
+        order = "c-z[misc]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-technology",
         default_value = false,
-        order = "d-c[technology]"
+        order = "d-c[technology]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe",
         default_value = false,
-        order = "d-d[recipe]"
+        order = "d-d[recipe]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe-science-pack",
         default_value = false,
-        order = "d-da[science-packs-only]"
+        order = "d-da[science-packs-only]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe-tech-unlock",
         default_value = false,
-        order = "d-e[recipe-tech-unlock]"
+        order = "d-e[recipe-tech-unlock]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-recipe-tech-unlock-duplicates",
         default_value = false,
-        order = "d-ea[recipe-tech-unlock-duplicates]"
+        order = "d-ea[recipe-tech-unlock-duplicates]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-item",
         default_value = false,
-        order = "d-f[item]"
+        order = "d-f[item]",
     },
     {
         setting_type = "startup",
@@ -166,7 +160,7 @@ data:extend({
         default_value = 100,
         minimum_value = 0,
         maximum_value = 100,
-        order = "d-fa[item]"
+        order = "d-fa[item]",
     },
     {
         setting_type = "startup",
@@ -174,7 +168,7 @@ data:extend({
         name = "propertyrandomizer-item-retries",
         default_value = 10,
         minimum_value = 1,
-        order = "d-fb[item]"
+        order = "d-fb[item]",
     },
     {
         setting_type = "startup",
@@ -182,35 +176,35 @@ data:extend({
         name = "propertyrandomizer-unified-retries",
         default_value = 10,
         minimum_value = 1,
-        order = "e-[unified]"
+        order = "e-[unified]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-tech-prereqs",
         default_value = false,
-        order = "e-a[tech-prereqs]"
+        order = "e-a[tech-prereqs]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-recipe-tech-unlocks",
         default_value = false,
-        order = "e-b[recipe-tech-unlocks]"
+        order = "e-b[recipe-tech-unlocks]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-spoiling",
         default_value = false,
-        order = "e-c[spoiling]"
+        order = "e-c[spoiling]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-tech-science-packs",
         default_value = false,
-        order = "e-d[tech-science-packs]"
+        order = "e-d[tech-science-packs]",
     },
     {
         setting_type = "startup",
@@ -227,7 +221,8 @@ data:extend({
         name = "propertyrandomizer-unified-mining-fluid-required",
         default_value = false,
         order = "e-f[mining-fluid-required]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -235,7 +230,8 @@ data:extend({
         name = "propertyrandomizer-unified-entity-autoplace",
         default_value = false,
         order = "e-g[entity-autoplace]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -243,7 +239,8 @@ data:extend({
         name = "propertyrandomizer-unified-recipe-ingredients",
         default_value = false,
         order = "e-h[recipe-ingredients]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -251,7 +248,8 @@ data:extend({
         name = "propertyrandomizer-unified-item-ingredients",
         default_value = false,
         order = "e-i[item-ingredients]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -259,7 +257,8 @@ data:extend({
         name = "propertyrandomizer-unified-item",
         default_value = false,
         order = "e-j[item]",
-        hidden = true
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -278,21 +277,21 @@ data:extend({
         type = "bool-setting",
         name = "propertyrandomizer-icon",
         default_value = false,
-        order = "g-a[icon]"
+        order = "g-a[icon]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-sound",
         default_value = false,
-        order = "g-b[sound]"
+        order = "g-b[sound]",
     },
     {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-gui",
         default_value = false,
-        order = "g-c[gui]"
+        order = "g-c[gui]",
     },
     {
         setting_type = "startup",
@@ -301,7 +300,7 @@ data:extend({
         localised_name = "Names",
         localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
-        order = "g-d[locale]"
+        order = "g-d[locale]",
     },
     {
         setting_type = "startup",
@@ -313,7 +312,7 @@ data:extend({
             "crazy",
         },
         default_value = "no",
-        order = "g-e[colors]"
+        order = "g-e[colors]",
     },
     {
         setting_type = "startup",
@@ -324,7 +323,7 @@ data:extend({
             "exfret-random-walk",
         },
         default_value = "exfret-random-walk",
-        order = "h-a[algorithm]"
+        order = "h-a[algorithm]",
     },
     {
         setting_type = "startup",
@@ -332,7 +331,7 @@ data:extend({
         name = "propertyrandomizer-overrides",
         default_value = "",
         allow_blank = true,
-        order = "z-custom-override"
+        order = "z-custom-override",
     },
     -- Hidden settings for testing purposes
     {
@@ -340,6 +339,6 @@ data:extend({
         type = "bool-setting",
         name = "propertyrandomizer-test-unit",
         default_value = false,
-        hidden = true
+        hidden = true,
     },
 })

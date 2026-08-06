@@ -165,7 +165,7 @@ end
 
 placeable.fix = function(entity)
     -- Remove next_upgrade property (hotfix for now)
-    -- CRITICAL TODO: Fix properly!
+    -- TODO: Fix properly!
     entity.next_upgrade = nil
 end
 

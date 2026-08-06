@@ -1,9 +1,14 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.5
 Date: ?
+  Organization:
+    - General declutter; deleting unused files/folders, etc.
   Bugfixes:
     - Dependency graph rebuilds did not account for recycling recipes being "fixed"
     - Rocket launch products are accounted for in new logic (finally)
+    - Hid duplicate tech unlocks feature since it's actually not doing anything yet... oops
+    - Recycling recipes are force-unlocked from the start of randomization to prevent randomization issues
+    - Removed conditional requires, which could cause errors when syncing mods in multiplayer
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.4
 Date: 2026.07.30

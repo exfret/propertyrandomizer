@@ -1,6 +1,6 @@
 -- No cost preservation for now, just enough to get it loading
 
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local recipe_ingredients = {}
 

@@ -1,11 +1,11 @@
 -- No cost preservation for now, just enough to get it loading
 
 local constants = require("helper-tables/constants")
-local logic = require("new-lib/logic/init")
-local gutils = require("new-lib/graph/graph-utils")
-local lutils = require("new-lib/logic/logic-utils")
-local dutils = require("new-lib/data-utils")
-local lu = require("new-lib/lookup/init")
+local logic = require("lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+local lutils = require("lib/logic/logic-utils")
+local dutils = require("lib/data-utils")
+local lu = require("lib/lookup/init")
 -- Used for getting trav name
 local first_pass = require("randomizations/graph/unified/first-pass-new")
 local cutils = require("lib/cost/cost-utils")
@@ -577,7 +577,7 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
     end]]
 
     -- Add back unrandomized ings
-    -- CRITICAL TODO: Do we actually need to do this? We might be able to accomplish ingredient restrictions by being careful in first pass
+    -- TODO: Do we actually need to do this? We might be able to accomplish ingredient restrictions by being careful in first pass
     --[[for recipe_name, inds in pairs(recipe_inds_to_remove) do
         local recipe = data.raw.recipe[recipe_name]
         local new_ings = {}

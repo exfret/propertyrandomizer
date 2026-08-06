@@ -22,7 +22,7 @@
 
 local locale = require("lib/locale")
 local cutils = require("lib/cost/cost-utils")
-local gutils = require("new-lib/graph/graph-utils")
+local gutils = require("lib/graph/graph-utils")
 local customizer = require("scripts/customizer")
 
 local function set_width_height(element, player, width_frac, height_frac)

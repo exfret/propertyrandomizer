@@ -9,6 +9,3 @@ __pycache__/
 
 # Python virtual environment
 .venv/
-
-# Offline testing output
-offline/output/

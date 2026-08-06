@@ -237,7 +237,7 @@ unit.reflect = function(slot, trav)
         unit.localised_name = {"", locale.find_localised_name(trav), " (Angry)"}
 
         -- TODO: Left off here - I think that I finished this section actually, but still need to review and refactor a lot of other things here
-        -- CRITICAL TODO: Finish/merge this
+        -- TODO: Finish/merge this
 
         return true
     end

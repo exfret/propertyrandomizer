@@ -13,7 +13,7 @@ local DO_FIRST_PASS = true
 -- TODO: Speed up tests! Currently they take a long time
 local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
--- CRITICAL TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
+-- TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
 local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
 local TECH_GRAPH_RECONSTRUCTION = true
 local SWITCH_PLANETS = false
@@ -28,9 +28,9 @@ local function log_info(level, info)
 end
 
 local rng = require("lib/random/rng")
-local gutils = require("new-lib/graph/graph-utils")
-local top = require("new-lib/graph/consistent-sort")
-local logic = require("new-lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/consistent-sort")
+local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass-new")
 local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
@@ -76,31 +76,27 @@ for id, _ in pairs(config.unified) do
     }
 end
 
-unified.execute = function()
-    ----------------------------------------------------------------------------------------------------
-    log_info(2, "HANDLER LOADING")
-    ----------------------------------------------------------------------------------------------------
+-- Load handlers
+local default_handler = require("randomizations/graph/unified/handlers-new/default")
+local handlers = {}
+for _, handler_id in pairs(handler_ids) do
+    local handler = require("randomizations/graph/unified/handlers-new/" .. handler_id)
+    handler.initialize()
 
-    -- Load handlers
-    local default_handler = require("randomizations/graph/unified/handlers-new/default")
-    local handlers = {}
-    for _, handler_id in pairs(handler_ids) do
-        local handler = require("randomizations/graph/unified/handlers-new/" .. handler_id)
-        handler.initialize()
-
-        for prop, val in pairs(default_handler) do
-            if handler[prop] == nil then
-                if default_handler.required[prop] then
-                    error("Required property " .. prop .. " missing from handler " .. handler_id)
-                else
-                    handler[prop] = val
-                end
+    for prop, val in pairs(default_handler) do
+        if handler[prop] == nil then
+            if default_handler.required[prop] then
+                error("Required property " .. prop .. " missing from handler " .. handler_id)
+            else
+                handler[prop] = val
             end
         end
-
-        handlers[handler_id] = handler
     end
 
+    handlers[handler_id] = handler
+end
+
+unified.execute = function()
     ----------------------------------------------------------------------------------------------------
     log_info(2, "GRAPH PREP")
     ----------------------------------------------------------------------------------------------------
@@ -126,26 +122,6 @@ unified.execute = function()
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
     test_graph_invariants.test(init_graph)
-
-    -- Add forward edges for 
-    -- CRITICAL TODO: Also didn't work!
-    --[[local init_graph_sort = top.sort(init_graph, nil, nil, { choose_randomly = true })
-    local init_encountered = {}
-    for ind, pebble in pairs(init_graph_sort.sorted) do
-        local node_key = pebble.node_key
-        init_encountered[node_key] = true
-        local node = init_graph.nodes[node_key]
-        if node.class == "groups" then
-            for ind2 = ind + 1, #init_graph_sort.sorted do
-                local pebble2 = init_graph_sort.sorted[ind2]
-                local node_key2 = pebble2.node_key
-                if not init_encountered[node_key2] then
-                    local node2 = init_graph.nodes[node_key2]
-                    gutils.add_edge(init_graph, node, node2)
-                end
-            end
-        end
-    end]]
 
     local spoofed_graph = table.deepcopy(init_graph)
     -- Spoofing
@@ -461,14 +437,15 @@ unified.execute = function()
         rng.shuffle(rng.key({id = "unified"}), handler_to_shuffled_prereqs[handler.id])
         rng.shuffle(rng.key({id = "unified"}), handler_to_post_shuffled_prereqs[handler.id])
         for _, prereq in pairs(handler_to_post_shuffled_prereqs[handler.id]) do
-            -- CRITICAL TODO: Might need to add back; currently disables adding a prereq multiple times
+            -- TODO: Might need to add back; currently disables adding a prereq multiple times
             if handler.with_replacement == false then
                 table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
             end
         end
     end
 
-    -- CRITICAL TODO: Tech delinearization (pull out to a helper)
+    -- TODO: Tech delinearization (pull out to a helper)
+    -- Might be defunct now that I'm doing tech tree reconstruction
 
     -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
     local function node_to_first_pass_slot(node)

@@ -1,5 +1,5 @@
-local build_graph = require("lib/graph/build-graph")
-local top_sort = require("lib/graph/top-sort")
+local build_graph = require("lib/old-logic/build-graph")
+local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 
 randomizations.recipe_tech_unlock = function(id)
@@ -134,10 +134,9 @@ randomizations.recipe_tech_unlock = function(id)
     end
 end
 
+local top = require("lib/graph/top-sort")
+local gutils = require("lib/graph/graph-utils")
 randomizations.recipe_tech_unlock_new = function(graph)
-    local top = require("new-lib/graph/top-sort")
-    local gutils = require("new-lib/graph/graph-utils")
-
     local sort_info = top.sort(graph)
     local open = sort_info.open
 

@@ -1,156 +1,544 @@
-local build_graph = require("lib/graph/build-graph")
+-- A file for common graph utils
 
-local util = {}
+local gutils = {}
 
-util.and_type = "AND"
-util.or_type = "OR"
-local node_member_name = "name"
-local node_member_prereqs = "prereqs"
-local node_member_dependents = "dependents"
-local node_member_surface = "surface"
+-- Select separator strings with characters that cannot appear in names
+-- Assuming all names are [a-z-]+
 
-util.is_and_node = function (node)
-    return build_graph.ops[node.type] == util.and_type
+local node_key_separator = ": "
+local concat_separators = {"__", "_2_"}
+local edge_separator = " --> "
+
+-- Get key from type + name
+gutils.key = function(node_type, node_name)
+    -- If just one argument was passed, view node_type as the node
+    if node_name == nil then
+        if node_type == nil then
+            error("Nil node type for key")
+        end
+        -- We need to test for userdata in the case of API objects during control stage
+        if type(node_type) ~= "table" and type(node_type) ~= "userdata" then
+            log(type(node_type))
+            log(node_type)
+            error("Node passed for key not a table")
+        end
+        return gutils.key(node_type.type, node_type.name)
+    end
+    return node_type .. node_key_separator .. node_name
 end
 
-util.is_or_node = function (node)
-    return build_graph.ops[node.type] == util.or_type
-end
-
-util.is_this_one_of_those_uh_one_of_those_nodes_that_you_when_theres_like_uh_source_node_thats_what_its_called_is_that_what_this_is = function(node)
-    return util.is_and_node(node) and #node.prereqs == 0
-end
-
-util.is_false_node = function (node)
-    return util.is_or_node(node) and #node.prereqs == 0
-end
-
-util.get_node_key = function (node)
-    return build_graph.key(node.type, node.name)
-end
-
-util.get_node = function (graph, prereq)
-    return graph[build_graph.key(prereq.type, prereq.name)]
-end
-
--- exfret: I use this so much that having a shorthand where it can use the dep_graph global is great
-util.get = function (prereq)
-    return dep_graph[build_graph.key(prereq.type, prereq.name)]
-end
-
--- exfret: Same thing but get from type and name
-util.getk = function (node_type, node_name)
-    return dep_graph[build_graph.key(node_type, node_name)]
-end
-
-util.create_edge_type = function (prereq_type, dependent_type)
-    return { key = build_graph.key(prereq_type, dependent_type), prereq_type = prereq_type, dependent_type = dependent_type }
-end
-
-util.get_edge_type = function (prereq, dependent)
-    return util.create_edge_type(prereq.type, dependent.type)
-end
-
-util.create_edge = function (prereq_key, dependent_key, graph)
+-- Deconstruct a key into a corresponding type and name
+gutils.deconstruct = function(node_key)
+    local i, j = string.find(node_key, node_key_separator)
     return {
-        key = build_graph.key(prereq_key, dependent_key),
-        prereq_key = prereq_key,
-        dependent_key = dependent_key,
-        type = util.create_edge_type(graph[prereq_key].type, graph[dependent_key].type)
+        type = string.sub(node_key, 1, i - 1),
+        name = string.sub(node_key, j + 1, -1),
     }
 end
 
-util.add_prereq = function (prereq, dependent)
-    -- Check if this edge has already been added
-    for _, dependent2 in pairs(prereq.dependents) do
-        if dependent2.type == dependent.type and dependent2.name == dependent.name then
-            return
+-- Turn a table/list of strings into a string
+gutils.concat = function(key_tbl, sep_level)
+    -- Sometimes, we need a second unique separator for "concatenations over concatenations"
+    sep_to_use = concat_separators[sep_level or 1]
+
+    local compound_key = ""
+    for _, key in pairs(key_tbl) do
+        compound_key = compound_key .. sep_to_use .. tostring(key)
+    end
+    return string.sub(compound_key, 1 + #sep_to_use, -1)
+end
+
+gutils.ekey = function(edge)
+    return edge.start .. edge_separator .. edge.stop
+end
+
+-- TODO: Key deconstruct function for concat and ekey (basically a .split())
+-- Could call this deconcat
+
+gutils.prenode = function(graph, pre)
+    return graph.nodes[graph.edges[pre].start]
+end
+
+gutils.depnode = function(graph, dep)
+    return graph.nodes[graph.edges[dep].stop]
+end
+
+-- Untested
+-- Note: This returns the ACTUAL edges, not the keys!
+gutils.pres = function(graph, node)
+    local edges = {}
+    for pre, _ in pairs(node.pre) do
+        if graph.edges[pre] == nil then
+            log(serpent.block(node))
+            log(pre)
+            error("Randomization assertion failed! Tell exfret he's a dumbo.")
         end
+        table.insert(edges, graph.edges[pre])
     end
-
-    if prereq.dependents ~= nil then
-        prereq.dependents[#prereq.dependents+1] = {
-            type = dependent.type,
-            name = dependent.name,
-        }
-    end
-    dependent.prereqs[#dependent.prereqs+1] = {
-        type = prereq.type,
-        name = prereq.name,
-    }
+    return edges
 end
 
-util.add_edge = function (graph, edge)
-    util.add_prereq(graph[edge.prereq_key], graph[edge.dependent_key])
-end
-
-util.remove_prereq = function (prereq, dependent)
-    if prereq.dependents ~= nil then
-        for i, d in pairs(prereq.dependents) do
-            if d.type == dependent.type and d.name == dependent.name then
-                table.remove(prereq.dependents, i)
-                break
-            end
+-- Untested
+-- Note: This returns the ACTUAL edges, not the keys!
+gutils.deps = function(graph, node)
+    local edges = {}
+    for dep, _ in pairs(node.dep) do
+        if graph.edges[dep] == nil then
+            log(serpent.block(node))
+            log(dep)
+            error("Randomization assertion failed! Tell exfret he's a dumbo.")
         end
+        table.insert(edges, graph.edges[dep])
     end
-    for i, p in pairs(dependent.prereqs) do
-        if p.type == prereq.type and p.name == prereq.name then
-            table.remove(dependent.prereqs, i)
-            break
-        end
-    end
+    return edges
 end
 
-util.delete_edge = function (graph, edge)
-    util.remove_prereq(graph[edge.prereq_key], graph[edge.dependent_key])
+gutils.prenodes = function(graph, node)
+    local nodes = {}
+    for pre, _ in pairs(node.pre) do
+        table.insert(nodes, gutils.prenode(graph, pre))
+    end
+    return nodes
 end
 
-util.update_edges = function (graph, deleted_edges, added_edges)
-    for _, edge in pairs(deleted_edges) do
-        util.delete_edge(graph, edge)
+gutils.depnodes = function(graph, node)
+    local nodes = {}
+    for dep, _ in pairs(node.dep) do
+        table.insert(nodes, gutils.depnode(graph, dep))
     end
-    for _, edge in pairs(added_edges) do
-        util.add_edge(graph, edge)
-    end
+    return nodes
 end
 
-util.clear_prereqs = function (dependent, graph)
-    while #dependent.prereqs > 0 do
-        local prereq = graph[util.get_node_key(dependent.prereqs[#dependent.prereqs])]
-        if prereq.dependents ~= nil then
-            for i, d in pairs(prereq.dependents) do
-                if d.type == dependent.type and d.name == dependent.name then
-                    table.remove(prereq.dependents, i)
-                    break
-                end
-            end
-        end
-        table.remove(dependent.prereqs, #dependent.prereqs)
+-- Untested
+-- Gets unique pre (edge) (only works if it is unique)
+gutils.unique_pre = function(graph, node)
+    -- Check both num_pre and actual number prereqs for safety
+    if node.num_pre ~= 1 then
+        log(serpent.block(node))
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
     end
+    local pres = gutils.pres(graph, node)
+    if #pres ~= 1 then
+        log(serpent.block(node))
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return pres[1]
 end
 
-local node_member_filter = {
-    [node_member_dependents] = true,
-    [node_member_name] = true,
-    [node_member_prereqs] = true,
-    [node_member_surface] = true,
+-- Untested
+-- Gets unique dep (edge) (only works if it is unique)
+gutils.unique_dep = function(graph, node)
+    local deps = gutils.deps(graph, node)
+    if #deps ~= 1 then
+        log(serpent.block(node))
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return deps[1]
+end
+
+-- Untested
+-- Gets unique prenode (only works if it is unique)
+gutils.unique_prenode = function(graph, node)
+    return gutils.prenode(graph, gutils.ekey(gutils.unique_pre(graph, node)))
+end
+
+-- Untested
+-- Gets unique depnode (only works if it is unique)
+gutils.unique_depnode = function(graph, node)
+    return gutils.depnode(graph, gutils.ekey(gutils.unique_dep(graph, node)))
+end
+
+local connector_types = {
+    ["slot"] = true,
+    ["traveler"] = true,
+    ["base"] = true,
+    ["head"] = true,
 }
-util.get_surface_ambiguous_key = function (node)
-    if node[node_member_surface] ~= nil then
-        local name_segments = {}
-        for member, value in pairs(node) do
-            if not node_member_filter[member] then
-                assert(type(value) ~= "nil")
-                assert(type(value) ~= "function")
-                if type(value) == "table" then
-                    value = build_graph.compound_key(value)
-                end
-                name_segments[#name_segments+1] = value
-            end
-        end
-        return build_graph.compound_key(name_segments)
-    end
-    return util.get_node_key(node)
+
+-- Same as above, but goes through slots/travs until reaching a "proper" node
+gutils.unique_preconn = function(graph, node)
+    repeat
+        node = gutils.unique_prenode(graph, node)
+    until not connector_types[node.type]
+    return node
 end
 
-return util
+gutils.unique_depconn = function(graph, node)
+    repeat
+        node = gutils.unique_depnode(graph, node)
+    until not connector_types[node.type]
+    return node
+end
+
+-- Untested
+gutils.is_source = function(graph, node)
+    if node.op ~= "AND" then
+        return false
+    end
+    
+    if node.num_pre == 0 then
+        if next(node.pre) ~= nil then
+            error("Graph invariant failed. Tell exfret he's a dumbo!")
+        end
+        return true
+    elseif next(node.pre) == nil then
+        error("Graph invariant failed. Tell exfret he's a dumbo!")
+    end
+    return false
+end
+
+-- Untested
+gutils.sources = function(graph)
+    local sources = {}
+    for _, node in pairs(graph.nodes) do
+        if gutils.is_source(graph, node) then
+            table.insert(sources, node)
+        end
+    end
+    return sources
+end
+
+-- Does not add to sources or add op property, or orand child-parent connections
+gutils.add_node = function(graph, node_type, node_name, extra)
+    local node = {
+        object_type = "node",
+        type = node_type,
+        name = node_name,
+        pre = {},
+        dep = {},
+        num_pre = 0,
+    }
+
+    if extra ~= nil then
+        for k, v in pairs(extra) do
+            node[k] = v
+        end
+    end
+
+    local node_key = gutils.key(node_type, node_name)
+
+    graph[node_key] = node
+
+    if graph.nodes ~= nil then
+        graph.nodes[node_key] = node
+    end
+
+    return node
+end
+
+gutils.update_pre_info = function(graph, node, change)
+    node.num_pre = node.num_pre + change
+    if node.num_pre == 0 and node.op == "AND" then
+        graph.sources[gutils.key(node)] = true
+    else
+        graph.sources[gutils.key(node)] = nil
+    end
+end
+
+gutils.add_edge = function(graph, start, stop, extra)
+    if type(start) == "table" then
+        start = gutils.key(start)
+    end
+    if type(stop) == "table" then
+        stop = gutils.key(stop)
+    end
+
+    local edge = {
+        object_type = "edge",
+        start = start,
+        stop = stop,
+    }
+
+    if extra ~= nil then
+        for k, v in pairs(extra) do
+            edge[k] = v
+        end
+    end
+
+    local edge_key = gutils.ekey(edge)
+    graph[edge_key] = edge
+
+    -- If we have constructed the nodes yet, then populate their pre/dep/etc.
+    if graph.nodes ~= nil then
+        if graph.nodes[edge.start] ~= nil then
+            graph.nodes[edge.start].dep[edge_key] = true
+        end
+        if graph.nodes[edge.stop] ~= nil then
+            graph.nodes[edge.stop].pre[edge_key] = true
+            gutils.update_pre_info(graph, graph.nodes[edge.stop], 1)
+        end
+    end
+    -- Only add to edges if we've constructed it
+    if graph.edges ~= nil then
+        graph.edges[edge_key] = edge
+    end
+
+    return edge
+end
+
+gutils.remove_edge = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    
+    graph.edges[edge_key] = nil
+    graph.nodes[edge.start].dep[edge_key] = nil
+    graph.nodes[edge.stop].pre[edge_key] = nil
+    gutils.update_pre_info(graph, graph.nodes[edge.stop], -1)
+end
+
+gutils.redirect_edge_start = function(graph, edge_key, new_start)
+    local edge = graph.edges[edge_key]
+
+    gutils.remove_edge(graph, edge_key)
+    local new_edge = gutils.add_edge(graph, new_start, edge.stop)
+    for k, v in pairs(edge) do
+        if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+            new_edge[k] = v
+        end
+    end
+end
+
+-- Doesn't keep extras on edge
+gutils.redirect_edge_stop = function(graph, edge_key, new_end)
+    local edge = graph.edges[edge_key]
+
+    gutils.remove_edge(graph, edge_key)
+    local new_edge = gutils.add_edge(graph, edge.start, new_end)
+    for k, v in pairs(edge) do
+        if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+            new_edge[k] = v
+        end
+    end
+end
+
+-- Uses old terminology
+gutils.subdivide_old = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    local node1 = graph.nodes[edge.start]
+    local node2 = graph.nodes[edge.stop]
+    local slot = gutils.add_node(graph, "slot", edge_key)
+    local traveler = gutils.add_node(graph, "traveler", edge_key)
+    slot.op = "AND"
+    traveler.op = "OR"
+    slot.old_trav = gutils.key(traveler)
+    traveler.old_slot = gutils.key(slot)
+    gutils.add_edge(graph, gutils.key(node1), gutils.key(slot))
+    gutils.add_edge(graph, gutils.key(traveler), gutils.key(node2))
+    -- Slot and traveler start connected
+    gutils.add_edge(graph, gutils.key(slot), gutils.key(traveler))
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the edge to the slot and traveler nodes
+    local normal_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_keys[k] then
+            slot[k] = v
+            traveler[k] = v
+        end
+    end
+
+    return {
+        slot = slot,
+        traveler = traveler,
+    }
+end
+
+-- Untested
+-- Subdivides then remove the middle of the subdivided edge
+gutils.sever = function(graph, edge_key)
+    local slot_trav = gutils.subdivide_old(graph, edge_key)
+    gutils.remove_edge(graph, gutils.ekey(gutils.unique_pre(graph, slot_trav.traveler)))
+    return slot_trav
+end
+
+gutils.sever_node = function(graph, node_key)
+    for _, edge in pairs(gutils.pres(graph, graph.nodes[node_key])) do
+        gutils.sever(graph, gutils.ekey(edge))
+    end
+end
+
+-- TODO: The following could be rewritten in terms of the new traversal functions once I feel confident about them
+-- Get a slot or traveler's base node
+gutils.get_conn_owner = function(graph, conn)
+    if conn.type == "slot" then
+        -- There should only be one prereq
+        for pre, _ in pairs(conn.pre) do
+            return graph.nodes[graph.edges[pre].start]
+        end
+    end
+    if conn.type == "traveler" then
+        -- There should only be one dependent
+        for dep, _ in pairs(conn.dep) do
+            return graph.nodes[graph.edges[dep].stop]
+        end
+    end
+end
+
+-- Get a slot or traveler's connected traveler/slot, if any
+gutils.get_conn_buddy = function(graph, conn)
+    if conn.type == "slot" then
+        -- There should only be one prereq
+        for dep, _ in pairs(conn.dep) do
+            return graph.nodes[graph.edges[dep].stop]
+        end
+    end
+    if conn.type == "traveler" then
+        -- There should only be one dependent
+        for pre, _ in pairs(conn.pre) do
+            return graph.nodes[graph.edges[pre].start]
+        end
+    end
+end
+
+gutils.make_orand = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    
+    local or_node = graph.nodes[edge.stop]
+    if not or_node.op == "OR" then
+        error("Attempt to create orand for non-OR node")
+    end
+
+    local orand = gutils.add_node(graph, "orand", edge_key)
+    orand.op = "AND"
+    graph.node_to_orands[gutils.key(or_node)][gutils.key(orand)] = true
+    graph.orand_to_parent[gutils.key(orand)] = gutils.key(or_node)
+    graph.orand_to_child[gutils.key(orand)] = edge.start
+
+    local new_edge = gutils.add_edge(graph, edge.start, gutils.key(orand))
+    gutils.add_edge(graph, gutils.key(orand), edge.stop)
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the old edge to the new one from the start to the orand
+    local normal_edge_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_edge_keys[k] then
+            new_edge[k] = v
+        end
+    end
+    -- Also add info from the node to the orand
+    local normal_node_keys = {
+        ["type"] = true,
+        ["name"] = true,
+        ["op"] = true,
+        ["pre"] = true,
+        ["dep"] = true,
+        ["num_pre"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(or_node) do
+        if not normal_node_keys[k] then
+            orand[k] = v
+        end
+    end
+
+    return orand
+end
+
+gutils.make_orands = function(graph)
+    local edges_to_subdivide = {}
+    graph.node_to_orands = {}
+    graph.orand_to_parent = {}
+    graph.orand_to_child = {}
+    for _, node in pairs(graph.nodes) do
+        if node.op == "OR" then
+            graph.node_to_orands[gutils.key(node)] = {}
+            for pre, _ in pairs(node.pre) do
+                table.insert(edges_to_subdivide, pre)
+            end
+        else
+            -- Treat AND nodes as their own ORAND
+            graph.node_to_orands[gutils.key(node)] = { gutils.key(node) }
+            graph.orand_to_parent[gutils.key(node)] = gutils.key(node)
+            graph.orand_to_child[gutils.key(node)] = gutils.key(node)
+        end
+    end
+    for _, edge_key in pairs(edges_to_subdivide) do
+        gutils.make_orand(graph, edge_key)
+    end
+end
+
+-- Divide an edge into a head and a base
+gutils.subdivide_base_head = function(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    local node1 = graph.nodes[edge.start]
+    local node2 = graph.nodes[edge.stop]
+    local base = gutils.add_node(graph, "base", edge_key)
+    local head = gutils.add_node(graph, "head", edge_key)
+    base.op = "AND"
+    head.op = "OR"
+    base.old_head = gutils.key(head)
+    head.old_base = gutils.key(base)
+    gutils.add_edge(graph, gutils.key(node1), gutils.key(base))
+    gutils.add_edge(graph, gutils.key(head), gutils.key(node2))
+    -- base and head begin connected
+    gutils.add_edge(graph, gutils.key(base), gutils.key(head))
+    gutils.remove_edge(graph, edge_key)
+
+    -- Add any extra info that was on the edge to the base and head nodes themselves
+    local normal_keys = {
+        ["start"] = true,
+        ["stop"] = true,
+        ["object_type"] = true,
+    }
+    for k, v in pairs(edge) do
+        if not normal_keys[k] then
+            base[k] = v
+            head[k] = v
+        end
+    end
+
+    return {
+        base = base,
+        head = head,
+    }
+end
+
+-- I actually decided to gradually subdivide rather than all at once, so I think this is unused
+gutils.subdivide_ands = function(graph)
+    local edges_to_subdivide = {}
+    graph.old_pres = {}
+    for _, node in pairs(graph.nodes) do
+        if node.op == "AND" then
+            for pre, _ in pairs(node.pre) do
+                table.insert(edges_to_subdivide, pre)
+            end
+        end
+        graph.old_pres[gutils.key(node)] = {}
+        for pre, _ in pairs(node.pre) do
+            graph.old_pres[gutils.key(node)][graph.edges[pre].start] = graph.edges[pre]
+        end
+    end
+    graph.old_edge_to_conns = {}
+    for _, edge_key in pairs(edges_to_subdivide) do
+        graph.old_edge_to_conns[edge_key] = gutils.subdivide_base_head(graph, edge_key)
+    end
+end
+
+gutils.get_buddy = function(graph, conn_node)
+    if conn_node.type == "base" then
+        return gutils.unique_depnode(graph, conn_node)
+    end
+    if conn_node.type == "head" then
+        return gutils.unique_prenode(graph, conn_node)
+    end
+    error("Invalid conn type")
+end
+
+gutils.get_owner = function(graph, conn_node)
+    if conn_node.type == "base" then
+        return gutils.unique_prenode(graph, conn_node)
+    end
+    if conn_node.type == "head" then
+        return gutils.unique_depnode(graph, conn_node)
+    end
+    error("Invalid conn type")
+end
+
+return gutils

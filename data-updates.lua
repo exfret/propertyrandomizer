@@ -1,7 +1,7 @@
 local styles = data.raw["gui-style"].default
 
 local resize_scale = 1 / 2.5
-local slot_tileset = "__propertyrandomizer__/graphics.slots.png"
+local slot_tileset = "__propertyrandomizer__/graphics/slots.png"
 
 for ind, color in pairs({"grey", "red", "orange", "yellow", "green", "cyan", "blue", "purple", "pink"}) do
     -- The following button definition (and graphics) is taken from flib, which is under MIT license

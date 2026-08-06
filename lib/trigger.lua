@@ -1,7 +1,7 @@
 -- exfret: I added the ability to pass in one's own items/entities/etc. list to most of these functions, but later we'll want a separate file for these lookup tables
 -- Some randomizations can actually add new prototypes, not to mention the existence of dupes, so it's not sufficient to just gather the entities once in the beginning in those cases
 -- For this reason, these should be stored in lookup tables that can be recomputed with a simple function call when needed
--- I've started a file for this while creating the new build-graph.lua logic, it is in randomizations/graph/unified/new-lib with a bunch of other heavily WIP stuff if you want to see it
+-- I've started a file for this while creating the new build-graph.lua logic, it is in randomizations/graph/unified/lib with a bunch of other heavily WIP stuff if you want to see it
 
 local export = {}
 
@@ -187,7 +187,7 @@ local gather_equipment_name_structs = function (structs, equipment_name, stop_pr
     end
 end
 
--- Export name-based gather functions for use by new-lib lookup system
+-- Export name-based gather functions for use by lib lookup system
 export.gather_item_name_structs = gather_item_name_structs
 export.gather_entity_name_structs = gather_entity_name_structs
 export.gather_equipment_name_structs = gather_equipment_name_structs

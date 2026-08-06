@@ -28,11 +28,6 @@ log("Gathering config")
 -- Must be loaded first because it also loads settings
 require("config")
 
--- Special changes for watch the world burn mode
-if config.watch_the_world_burn then
-    require("watch-the-world-burn")
-end
-
 -- Duplicates (if applicable)
 
 if config.dupes then
@@ -43,7 +38,7 @@ if config.dupes then
     --dupe.execute()
     --dupe.execute_vanilla()
 end
--- CRITICAL TODO: Uncomment!
+-- CRITICAL TODO: Uncomment and implement!
 --[[if config.duplicate_recipe_tech_unlocks then
     local dupe = require("lib/dupe")
     dupe.recipe_tech_unlocks()
@@ -54,8 +49,8 @@ require("randomizations/prefixes")
 
 log("Loading in new dependency graph file")
 
-local new_logic = require("new-lib/logic/init")
-local unified = require("randomizations/graph/unified/execute-new")
+local new_logic = require("lib/logic/init")
+local unified = require("randomizations/graph/unified/execute")
 
 -- Load compat code
 require("compat/master")
@@ -85,8 +80,9 @@ local function smuggle_info()
 end
 
 -- If unit testing is on, do only those
+local test = require("tests/execute")
 if config.unit_test then
-    require("tests/execute")
+    test.execute()
     smuggle_info()
     return
 end
@@ -115,20 +111,20 @@ log("Building dependency graph (if applicable)")
 -- Load in dependency graph
 local build_graph
 local build_graph_compat
-build_graph = require("lib/graph/build-graph")
+build_graph = require("lib/old-logic/build-graph")
 -- Make dependency graph global
 dep_graph = build_graph.graph
 
 -- Add custom nodes
 log("Adding custom nodes")
-build_graph_compat = require("lib/graph/build-graph-compat")
+build_graph_compat = require("lib/old-logic/build-graph-compat")
 
 -- Build dependents
 log("Adding dependents")
 build_graph.add_dependents(dep_graph)
 
 log("Finding initially reachable nodes")
-local top_sort = require("lib/graph/top-sort")
+local top_sort = require("lib/old-logic/top-sort")
 -- A deepcopy is necessary because otherwise modifications to the nodes by randomizations mess up the sort's "sorted" list
 -- TODO: This slows down startup, though, so I want to find a way around it
 local initial_sort_info = top_sort.sort(table.deepcopy(dep_graph))
@@ -146,26 +142,11 @@ log("Applying graph-based randomizations")
 -- Fix recycling recipes in case modified by unified rando
 randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
-randomizations.rebuild_tech_tree()
+--randomizations.rebuild_tech_tree()
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
 build_graph.add_dependents(dep_graph)
-
-if config.simultaneous then
-    -- Include these to toggle individual randomizers
-    --require("randomizations/graph/core/randomizers/burnt-result-source")
-    --require("randomizations/graph/core/randomizers/recipe-ingredients")
-    --require("randomizations/graph/core/randomizers/technology-ingredients")
-    --require("randomizations/graph/core/randomizers/technology-prerequisites")
-    --randomizations.graph("graph")
-
-    -- Rebuild graph
-    build_graph.load()
-    dep_graph = build_graph.graph
-    build_graph_compat.load(dep_graph)
-    build_graph.add_dependents(dep_graph)
-end
 
 if config.graph.technology then
     -- We currently do tech randomization many times since one time isn't enough to get it that random
@@ -241,7 +222,7 @@ local item_slot_info = {}
 if config.graph.item then
     log("Applying item randomization")
 
-    item_slot_info = randomizations.item_new("item-new")
+    item_slot_info = randomizations.item_new("item")
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -301,12 +282,6 @@ log("Done applying extra randomizations")
 
 log("Applying fixes")
 
--- CRITICAL TODO: REMOVE!
-if config.duplicate_recipe_tech_unlocks then
-    local dupe = require("lib/dupe")
-    dupe.recipe_tech_unlocks()
-end
-
 -- Any fixes needed
 randomizations.fixes()
 do_overrides_postfixes()
@@ -314,10 +289,6 @@ do_overrides_postfixes()
 -- Final check for completability
 
 local final_sort_info = top_sort.sort(dep_graph)
-
---[[for _, node in pairs(final_sort_info.sorted) do
-    log(build_graph.key(node.type, node.name))
-end]]
 
 local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
@@ -357,9 +328,11 @@ if reachability_warning_to_insert ~= nil then
 end
 
 -- Add warnings for control stage
-if not offline then
-    smuggle_info()
-end
+smuggle_info()
+
+-- Output current logs
+local export = require("lib/export")
+export.export_to_log(new_logic)
 
 log("Done!")
 

@@ -4,9 +4,9 @@
 -- Prevent rocket parts/blueprints and some special items (what counts as special other than rocket parts?)
 -- TODO: Do a quick look through item subgroups/spawnables just to see anything that might need to be blacklisted
 
-local gutils = require("new-lib/graph/graph-utils")
-local dutils = require("new-lib/data-utils")
-local top = require("new-lib/graph/top-sort")
+local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
+local top = require("lib/graph/top-sort")
 
 local spoiling = {}
 
@@ -88,11 +88,6 @@ spoiling.reflect = function(graph, trav_to_new_slot, trav_to_handler)
                 local slot_owner = gutils.get_conn_owner(graph, slot)
                 local item = dutils.get_prot("item", slot_owner.name)
                 local spoil_result = trav_owner.name
-                log(serpent.block({
-                    item = item,
-                    spoil_result = spoil_result,
-                    spoil_ticks = trav.spoil_ticks
-                }))
                 table.insert(item_new_spoil, {
                     item = item,
                     spoil_result = spoil_result,

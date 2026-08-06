@@ -460,8 +460,6 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         recipe_to_cost[recipe_name] = cost_info.cost
     end
 
-    --log("Beginning flow cost algorithm")
-
     local open_index = 1
     while true do
         local curr_node

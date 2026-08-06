@@ -1,3 +1,5 @@
+-- TODO: Review fork of raiguard flib mod, which accounts for a couple rules that I don't; add them to this file
+
 local locale_utils = {}
 
 function locale_utils.find_localised_name(prototype)

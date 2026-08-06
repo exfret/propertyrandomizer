@@ -1,5 +1,5 @@
 local rng = require("lib/random/rng")
-local lu = require("new-lib/lookup/init")
+local lu = require("lib/lookup/init")
 
 local reformat = {}
 

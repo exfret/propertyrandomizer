@@ -10,10 +10,10 @@ local COMBINE_TECH_UNLOCK_RECIPE_TWO = false
 local SWITCH_TO_PLANET = false
 
 local rng = require("lib/random/rng")
-local gutils = require("new-lib/graph/graph-utils")
-local top = require("new-lib/graph/top-sort")
-local top2 = require("new-lib/graph/extended-sort")
-local logic = require("new-lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/top-sort")
+local top2 = require("lib/graph/extended-sort")
+local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -31,26 +31,26 @@ for _, id in pairs(all_handler_ids) do
     }
 end
 
-unified.execute = function()
-    -- Load handlers
-    local default_handler = require("randomizations/graph/unified/handlers/default")
-    local handlers = {}
-    for _, handler_id in pairs(handler_ids) do
-        local handler = require("randomizations/graph/unified/handlers/" .. handler_id)
+-- Load handlers
+local default_handler = require("randomizations/graph/unified/handlers/default")
+local handlers = {}
+for _, handler_id in pairs(handler_ids) do
+    local handler = require("randomizations/graph/unified/handlers/" .. handler_id)
 
-        for prop, val in pairs(default_handler) do
-            if handler[prop] == nil then
-                if default_handler.required[prop] then
-                    error("Required property " .. prop .. " missing from handler " .. handler_id)
-                else
-                    handler[prop] = val
-                end
+    for prop, val in pairs(default_handler) do
+        if handler[prop] == nil then
+            if default_handler.required[prop] then
+                error("Required property " .. prop .. " missing from handler " .. handler_id)
+            else
+                handler[prop] = val
             end
         end
-
-        handlers[handler_id] = handler
     end
 
+    handlers[handler_id] = handler
+end
+
+unified.execute = function()
     logic.build()
     test_graph_invariants.test(logic.graph)
 

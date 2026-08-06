@@ -15,7 +15,7 @@ default.with_replacement = true
 
 -- How much later prereqs should be repeated to combat bias toward earlier ones
 -- Makes prereqs in first quartile added once, in second quartile added twice, etc.
--- CRITICAL TODO: Unimplemented, seeing if needed
+-- TODO: Unimplemented, seeing if needed
 -- Seems like not needed, maybe don't do
 --default.ending_bias = false
 

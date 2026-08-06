@@ -68,12 +68,12 @@ root
 |  |  |- top-sort.lua ............. Old topological sort logic
 |  |- random
 |  |  |- rng.lua .................. Random number generation library
-|- new-lib
+|- lib
 |  |- graph ....................... Includes new topological sort
 |  |- logic ....................... New game logic
 |- randomizations
 |  |- graph ....................... Graph randomizations (change fundamental game progression)
-|  |  |- unified .................. New unified graph randomizations (run all at once); use new logic/new-lib
+|  |  |- unified .................. New unified graph randomizations (run all at once); use new logic/lib
 |  |- misc ........................ Silly randomizations that aren't just changing a number
 |  |- numerical ................... Simply numerical randomizations
 |- config.lua ..................... Settings parsing

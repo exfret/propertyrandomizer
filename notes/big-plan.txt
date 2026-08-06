@@ -129,7 +129,7 @@ IV. IMPROVEMENT: Numerical rando improvement, second pass through graph rando (M
         4. Top sort improvements
             i. Make top sort order impacted by seed (randomize dependent order), option for DFS; maybe there's more but I think that's all it would need at this point
         5. The big merge
-            i. Merge new-lib and new logic in as the only library
+            i. Merge lib and new logic in as the only library
     C. Unified rando rounding out sharp edges (if it succeeded, otherwise brainstorm other appraoches)
         1. Fixes
             i. Critical fixes discovered necessary

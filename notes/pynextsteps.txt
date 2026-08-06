@@ -8,15 +8,14 @@ Might need to bubble unlocks *downward*, getting things unlocked much later than
  - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
 
 NECESSARY:
+ - Recipe category rando still doesn't work correctly with furnaces :(
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
     - Fluid temperature logic
     - Animal module logic
     - Smart farm logic
-    - Rocket launch products logic
  - Better balance node handling
 
 MEDIUM PRIORITY:
- - Technology tree reconstruction
  - Finish randomizations
     - Try fluid orand randomization
     - Recipe category randomization
@@ -24,11 +23,13 @@ MEDIUM PRIORITY:
     - Fluid required for patches
  - Final touches for Frodo playthrough
     - Create a modpack including customized recommended QOL mods
+    - Power requirements on buildings scaling better based on where they're placed
     - Create a mod/mod setting that just sets the data.raw to a precalculated value
     - Tweak numerical randomizations (especially crafting speed) to be more appropriate
     - Make sure stats of higher mk's are all better rather than just crafting speed
-    - Playtest through circuits
     - Ash replacement should have high stack size!
+    - Randomization for building/science pack recipe ingredients subset
+    - Playtest through circuits
  - Stack size preservation in first-pass-new (and cost preservation)
  - Simplex cost calculation per stage in the game
 
