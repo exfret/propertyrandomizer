@@ -342,6 +342,37 @@ if not offline then
     smuggle_info()
 end
 
+local consistent_sort = require("new-lib/graph/consistent-sort")
+local gutils = require("new-lib/graph/graph-utils")
+local arch_sort = consistent_sort.sort(new_logic.graph)
+-- Remove all the old edges
+local edges_to_remove = {}
+for edge_key, edge in pairs(new_logic.graph.edges) do
+    table.insert(edges_to_remove, edge_key)
+end
+for _, edge_key in pairs(edges_to_remove) do
+    gutils.remove_edge(new_logic.graph, edge_key)
+end
+-- Add back edges only from one thing to the immediate next thing
+local added = {}
+local last_pebble
+for _, pebble in pairs(arch_sort.sorted) do
+    if not added[pebble.node_key] then
+        added[pebble.node_key] = true
+        if last_pebble ~= nil then
+            gutils.add_edge(new_logic.graph, last_pebble.node_key, pebble.node_key)
+        end
+        last_pebble = pebble
+    end
+end
+-- Make sure the rest of the graph/unreachable part is still unreachable
+for node_key, _ in pairs(new_logic.graph.nodes) do
+    -- Test for no contexts
+    if next(arch_sort.node_to_context_inds[node_key]) == nil then
+        gutils.add_edge(new_logic.graph, gutils.key("false", ""), node_key)
+    end
+end
+
 -- Output current logs
 local export = require("lib/export")
 export.export_to_log(new_logic)
