@@ -159,9 +159,11 @@ end
 -- This is taken mainly from top-sort.lua
 -- Creates a path of inds within sort_info.sorted starting from the goal and going backwards for how to get there
 -- goal_inds is a list of inds in sort_info.sorted of the pebbles we are hoping to achieve
-top.path = function(graph, goal_inds, sort_info)
+top.path = function(graph, goal_inds, sort_info, extra_params)
     local sorted = sort_info.sorted
     local node_to_context_inds = sort_info.node_to_context_inds
+    extra_params = extra_params or {}
+    local stop_if = extra_params.stop_if or function(pebble) return false end
 
     local path = goal_inds
     -- Whether an index is in the path yet
@@ -271,10 +273,12 @@ top.path = function(graph, goal_inds, sort_info)
             log(serpent.block(curr_pebble))
             error()
         end
-        for _, ind in pairs(preinds) do
-            if not in_path[ind] then
-                in_path[ind] = true
-                table.insert(path, ind)
+        if path_ind == 1 or not stop_if(curr_pebble) then
+            for _, ind in pairs(preinds) do
+                if not in_path[ind] then
+                    in_path[ind] = true
+                    table.insert(path, ind)
+                end
             end
         end
 

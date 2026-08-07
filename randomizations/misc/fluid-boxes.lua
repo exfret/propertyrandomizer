@@ -68,6 +68,8 @@ randomizations.fluid_box_locations = function(id)
             if prototype.oxidizer_fluid_box then fluid_boxes[#fluid_boxes + 1] = prototype.oxidizer_fluid_box end
             -- energy source fluid_box
             if prototype.energy_source and prototype.energy_source.type == "fluid" then fluid_boxes[#fluid_boxes + 1] = prototype.energy_source.fluid_box end
+            -- energy source output fluid box
+            if prototype.energy_source and prototype.energy_source.type == "fluid" then fluid_boxes[#fluid_boxes + 1] = prototype.energy_source.output_fluid_box end
             -- energy source heat connections
             if prototype.energy_source and prototype.energy_source.type == "heat" then heat_connections[#heat_connections + 1] = prototype.energy_source.connections end
             -- energy source heat connections

@@ -64,6 +64,67 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
     return connections
 end
 
+pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_source)
+    ignore_energy_source = ignore_energy_source or false
+
+    -- TODO: Compatibility with positions and alt_position(s)
+    local taken_positions = {}
+    for _, property_name in pairs({"fluid_box", "output_fluid_box", "input_fluid_box", "fuel_fluid_box", "oxidizer_fluid_box"}) do
+        if prototype[property_name] ~= nil then
+            for _, pipe_conn in pairs(prototype[property_name].pipe_connections) do
+                table.insert(taken_positions, pipe_conn.position)
+            end
+        end
+    end
+    if prototype.fluid_boxes ~= nil then
+        for _, fluid_box in pairs(prototype.fluid_boxes) do
+            for _, pipe_conn in pairs(fluid_box.pipe_connections) do
+                table.insert(taken_positions, pipe_conn.position)
+            end
+        end
+    end
+    if prototype.heat_buffer ~= nil and prototype.heat_buffer.connections ~= nil then
+        for _, connection in pairs(prototype.heat_buffer.connections) do
+            table.insert(taken_positions, connection.position)
+        end
+    end
+    if not ignore_energy_source then
+        if prototype.energy_source ~= nil then
+            if prototype.energy_source.type == "fluid" then
+                for _, fluid_box_type in pairs({"fluid_box", "output_fluid_box"}) do
+                    if prototype.energy_source[fluid_box_type] ~= nil then
+                        for _, pipe_conn in pairs(prototype.energy_source[fluid_box_type].pipe_connections) do
+                            table.insert(taken_positions, pipe_conn.position)
+                        end
+                    end
+                end
+            elseif prototype.energy_source.type == "heat" then
+                if prototype.energy_source.connections ~= nil then
+                    for _, connection in pairs(prototype.energy_source.connections) do
+                        table.insert(taken_positions, connection.position)
+                    end
+                end
+            end
+        end
+    end
+
+    local connections = pipe_conns.get_possible_pipe_connections(prototype)
+
+    local available_connections = {}
+    for _, connection in pairs(connections) do
+        local doesnt_collide = true
+        for _, position in pairs(taken_positions) do
+            if math.abs(position[1] - connection.position[1]) < 1 and math.abs(position[2] - connection.position[2]) < 1 then
+                doesnt_collide = false
+            end
+        end
+        if doesnt_collide then
+            table.insert(available_connections, connection)
+        end
+    end
+    return available_connections
+end
+
 pipe_conns.add_dummy_pipe_conns = function(prototype, fluid_box_properties)
     local pipe_conn_info = pipe_conns.get_pipe_conns(prototype, fluid_box_properties)
 

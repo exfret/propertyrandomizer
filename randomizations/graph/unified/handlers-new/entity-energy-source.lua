@@ -1,4 +1,4 @@
--- TODO: Spoofed interesting sources
+-- TODO: Need to actual check collisons with pre-existing pipe conns
 
 local categories = require("helper-tables/categories")
 local pipe_conns = require("lib/pipe-conns")
@@ -55,7 +55,7 @@ entity_energy_source.claim = function(graph, prereq, dep, edge)
 end
 
 -- Calculating fluid/heat box connections for the following would be a pain, so don't add that energy source to them
-local dont_add_fluid_or_heat = {
+local dont_add_fluid_or_heat_types = {
     ["offshore-pump"] = true,
     ["mining-drill"] = true,
 }
@@ -66,7 +66,13 @@ entity_energy_source.validate = function(graph, base, head, extra)
     if is_energy_source_node[base_owner.type] then
         local entity = dutils.get_prot("entity", head_owner.name)
 
-        if dont_add_fluid_or_heat[entity.type] and (base_owner.type == "energy-source-fluid" or base_owner.type == "energy-source-heat") and (entity.energy_source == nil or (entity.energy_source.type ~= "fluid" and entity.energy_source.type ~= "heat")) then
+        local dont_add_fluid_or_heat = dont_add_fluid_or_heat_types[entity.type]
+        local possible_conns = pipe_conns.get_available_pipe_connections(entity, true)
+        if #possible_conns < 2 then
+            dont_add_fluid_or_heat = true
+        end
+
+        if dont_add_fluid_or_heat and (base_owner.type == "energy-source-fluid" or base_owner.type == "energy-source-heat") and (entity.energy_source == nil or (entity.energy_source.type ~= "fluid" and entity.energy_source.type ~= "heat")) then
             return false
         end
 
@@ -83,8 +89,9 @@ entity_energy_source.reflect = function(graph, head_to_base, head_to_handler)
             local head_owner = gutils.get_owner(graph, head)
             local entity = dutils.get_prot("entity", head_owner.name)
 
-            local possible_conns = pipe_conns.get_possible_pipe_connections(entity)
+            local possible_conns = pipe_conns.get_available_pipe_connections(entity, true)
             rng.shuffle(rng.key({id = "entity-energy-source"}), possible_conns)
+
             local random_conn1 = possible_conns[1]
             local random_conn2 = possible_conns[2]
 
@@ -101,9 +108,11 @@ entity_energy_source.reflect = function(graph, head_to_base, head_to_handler)
                 entity.energy_source.usage_priority = entity.energy_source.usage_priority or "secondary-input"
             elseif base_owner.type == "energy-source-fluid" then
                 entity.energy_source.type = "fluid"
+                entity.energy_source.burns_fluid = true
+                entity.energy_source.scale_fluid_usage = true
                 entity.energy_source.fluid_box = entity.energy_source.fluid_box or {
                     volume = 1000,
-                    {random_conn1, random_conn2},
+                    pipe_connections = {random_conn1, random_conn2},
                     production_type = "input",
                 }
             elseif base_owner.type == "energy-source-heat" then

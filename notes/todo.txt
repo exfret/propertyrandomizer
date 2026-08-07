@@ -55,3 +55,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Option for all inserters to have offset changes (maybe this is the default, or it happens with higher chaos)
  * Modify scripts to properly remove new name for duplicate graphics file and remove all executables
  * Update github wiki and main readme with new repo structure
+ * Account for spent fluid in logic

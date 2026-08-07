@@ -42,6 +42,8 @@ LOW PRIORITY:
     - Ore icons for things like stone that produce two results (is that the only example?)
     - Rename mines for single resources based off what they mine
     - Put TURD researches at appropriate points of game
+ - Random things
+    - TURD randomizations (bhoddos explosions)
 
 ALGORITHMIC:
  - Demand-based first pass reservation cancellations (DFPRC?): reservations are replaced based off "does this satisfy the next mechanic we need" rather than vague "importance"

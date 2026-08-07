@@ -319,8 +319,8 @@ end
 smuggle_info()
 
 -- Output current logs
-local export = require("lib/export")
-export.export_to_log(new_logic)
+--local export = require("lib/export")
+--export.export_to_log(new_logic)
 
 log("Done!")
 
