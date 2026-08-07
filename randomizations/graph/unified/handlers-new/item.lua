@@ -57,8 +57,6 @@ local material_to_cost
 item.initialize = function()
     trav_to_slot = nil
     split_graph = nil
-
-    --material_to_cost = simplex_cost.get_material_costs()
     material_to_cost = material_costs.costs
 end
 

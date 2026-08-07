@@ -35,7 +35,7 @@ local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
-local DO_ITEM_RANDO = true
+local DO_ITEM_RANDO = false
 local EXCLUDE_SCIENCE = true
 local EXCLUDE_RECIPES = true
 local EXCLUDE_TECHS = true
@@ -641,7 +641,8 @@ first_pass.execute = function(params)
     end
 
     -- Calculate costs; needed just a bit for compatibility check
-    local vanilla_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
+    -- TODO: Redo if needed; was just used for recipes, which we aren't first-passing anymore
+    --local vanilla_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
 
     -- Not strictly necessary; this check makes sure the node replacing another is of the same type, increasing probability that valid previous prereqs can be found
     local function is_compatible(slot, trav)
@@ -1003,6 +1004,7 @@ first_pass.execute = function(params)
 
 
 
+                -- CRITICAL TODO: What is this section?
 
                 if i / #slot_inds < 0.9 then
                     return false

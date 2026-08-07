@@ -49,7 +49,7 @@ randomizations.rebuild_tech_tree = function()
         end
     end]]
 
-    logic.build()
+    logic.build(true)
     local graph = logic.graph
 
     -- Note that the below can fail if the tech associated via recipe_to_unit is different from the one found in top.path
@@ -126,7 +126,14 @@ randomizations.rebuild_tech_tree = function()
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
-            local path_info = top.path(graph, {ind}, no_tech_sort_info)
+            local path_info = top.path(graph, {ind}, no_tech_sort_info, {
+                stop_if = function(pebble)
+                    local node = graph.nodes[pebble.node_key]
+                    if node.type == "recipe" then
+                        return true
+                    end
+                end
+            })
             recipe_to_prev[node.name] = {}
             for other_node_ind, _ in pairs(path_info.in_path) do
                 -- Don't count ind itself
