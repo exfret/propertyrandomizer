@@ -39,6 +39,7 @@ local DO_ITEM_RANDO = true
 local EXCLUDE_SCIENCE = true
 local EXCLUDE_RECIPES = true
 local EXCLUDE_TECHS = true
+local EXCLUDE_ENTITY_OPERATE = true
 local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
@@ -107,6 +108,9 @@ first_pass.execute = function(params)
             return false
         end
         if EXCLUDE_TECHS and subdiv_node.type == "technology" then
+            return false
+        end
+        if EXCLUDE_ENTITY_OPERATE and subdiv_node.type == "entity-operate" then
             return false
         end
         --[[if in_balance_blacklist[node_key] then

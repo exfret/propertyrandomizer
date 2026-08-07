@@ -1,6 +1,6 @@
 Everything needed before a real "compatible with py release"
 Add things as I think of them
-Might need to bubble unlocks *downward*, getting things unlocked much later than they can be made
+Might need to bubble unlocks *downward*, since I'm getting things unlocked much later than they can be made
 
  - Need less sensitivity and/or quicker testing
 

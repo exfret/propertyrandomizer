@@ -60,7 +60,7 @@ recipe_category.validate = function(graph, base, head, extra)
         end
 
         local base_rcat = lu.rcats[base_owner.name]
-        local vanilla_rcat = base_rcat.cat
+        local vanilla_rcats = base_rcat.cats
         local recipe_prot = lu.recipes[head_owner.name]
 
         -- First, if it's a smelting rcat, make sure the recipe has exactly one ingredient and output
@@ -73,8 +73,10 @@ recipe_category.validate = function(graph, base, head, extra)
 
             -- Also check that this one ingredient isn't used in another recipe for this category
             local unique_ing = recipe_prot.ingredients[1]
-            if smelting_cat_to_ings[vanilla_rcat] ~= nil and smelting_cat_to_ings[vanilla_rcat][gutils.key(unique_ing)] then
-                return false
+            for _, cat in pairs(vanilla_rcats) do
+                if smelting_cat_to_ings[cat] ~= nil and smelting_cat_to_ings[cat][gutils.key(unique_ing)] then
+                    return false
+                end
             end
         end
 
@@ -102,11 +104,14 @@ recipe_category.process = function(graph, base, head)
     local base_owner = gutils.get_owner(graph, base)
 
     if lu.smelting_rcats[base_owner.name] then
-        local vanilla_rcat = lu.rcats[base_owner.name].cat
+        local vanilla_rcats = lu.rcats[base_owner.name].cats
         local recipe_prot = lu.recipes[head_owner.name]
         local unique_ing = recipe_prot.ingredients[1]
-        smelting_cat_to_ings[base_owner.name] = smelting_cat_to_ings[base_owner.name] or {}
-        smelting_cat_to_ings[base_owner.name][gutils.key(unique_ing)] = true
+
+        for _, cat in pairs(vanilla_rcats) do
+            smelting_cat_to_ings[cat] = smelting_cat_to_ings[cat] or {}
+            smelting_cat_to_ings[cat][gutils.key(unique_ing)] = true
+        end
     end
 end
 

@@ -1,16 +1,14 @@
 CURRENTLY ON:
 
- * Rename lib
- * Fix up dupe.lua (some of its functions are still used)
- * Verify with claude (explicitly check against conditional requires)
+ * Fix compat nodes with better solution, upload to portal
 
  * Check into item softlock in execute-new
+
+ * Prepare for py compat; check vanilla issues first
 
  * Make more mod compatible
     - Raw resources auto-sensing
 
- * Fix compat nodes with better solution, upload to portal
- 
  * First pass balance (for playable py)
     - Add new groups nodes to graph
     - Require and add blacklist created by first-pass-balance.lua

@@ -12,6 +12,8 @@ default.required = {
 
 -- Whether to add a prereq back to the end of the list when it's used
 default.with_replacement = true
+-- Whether to put extra copies with the same priority or at the end (default at the end)
+default.uniform_copies = false
 
 -- How much later prereqs should be repeated to combat bias toward earlier ones
 -- Makes prereqs in first quartile added once, in second quartile added twice, etc.

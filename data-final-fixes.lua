@@ -50,7 +50,7 @@ require("randomizations/prefixes")
 log("Loading in new dependency graph file")
 
 local new_logic = require("lib/logic/init")
-local unified = require("randomizations/graph/unified/execute")
+local unified = require("randomizations/graph/unified/execute-new")
 
 -- Load compat code
 require("compat/master")
@@ -142,7 +142,7 @@ log("Applying graph-based randomizations")
 -- Fix recycling recipes in case modified by unified rando
 randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
---randomizations.rebuild_tech_tree()
+randomizations.rebuild_tech_tree()
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
@@ -228,18 +228,6 @@ if config.graph.item then
     dep_graph = build_graph.graph
     build_graph_compat.load(dep_graph)
     build_graph.add_dependents(dep_graph)
-
-    --[[while true do
-        local should_break = randomizations.item("item")
-        -- Rebuild graph
-        build_graph.load()
-        dep_graph = build_graph.graph
-        build_graph_compat.load(dep_graph)
-        build_graph.add_dependents(dep_graph)
-        if should_break then
-            break
-        end
-    end]]
 end
 
 log("Done applying graph-based randomizations")
