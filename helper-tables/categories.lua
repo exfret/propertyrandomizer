@@ -42,6 +42,21 @@ categories.effect_receivers = {
     ["mining-drill"] = true
 }
 
+categories.energy_sources_any = {
+    ["agricultural-tower"] = true,
+    ["boiler"] = true,
+    ["assembling-machine"] = true,
+    ["furnace"] = true,
+    ["rocket-silo"] = true,
+    ["inserter"] = true,
+    ["lab"] = true,
+    ["mining-drill"] = true,
+    ["offshore-pump"] = true,
+    ["pump"] = true,
+    ["radar"] = true,
+    ["reactor"] = true,
+}
+
 -- The following only consider powering the machine, not power that the machine provides
 categories.energy_sources_input = {
     ["agricultural-tower"] = "energy_source",

@@ -317,7 +317,23 @@ function concrete.build(lu)
                 abilities = { [2] = true } -- Automatic operation doesn't require automatic production
             })
             if categories.energy_sources_input[entity.type] then
-                add_edge("entity-operate-energy")
+                -- Note: Entities still depend on "void" energy source even if their energy_source is nil so that randomization is still possible
+                -- The energy source nodes are generic/entity independent, but burner energy sources that have different fuel_categories are counted as distinct
+                -- TODO: Later, also distinguish fluid energy sources based off fluid box filters/whether they burn fluid, and heat energy sources based on min/max heat etc., but for now just having one of each is fine
+                for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
+                    local energy_source = entity[energy_prop]
+                    if energy_source == nil or energy_source.type == "void" then
+                        add_edge("energy-source-void", "")
+                    elseif energy_source.type == "burner" then
+                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source))
+                    elseif energy_source.type == "electric" then
+                        add_edge("energy-source-electric", "")
+                    elseif energy_source.type == "fluid" then
+                        add_edge("energy-source-fluid", "")
+                    elseif energy_source.type == "heat" then
+                        add_edge("energy-source-heat", "")
+                    end
+                end
             end
             if categories.fluid_required[entity.type] then
                 add_edge("entity-operate-fluid")
@@ -383,31 +399,6 @@ function concrete.build(lu)
                                 ind = ind,
                             })
                         end
-                    end
-                end
-            end
-
-            if categories.energy_sources_input[entity.type] ~= nil then
-                ----------------------------------------
-                add_node("entity-operate-energy", "OR")
-                ----------------------------------------
-                -- Can we power this entity?
-
-                -- Note: Entities still depend on "void" energy source even if their energy_source is nil so that randomization is still possible
-                -- The energy source nodes are generic/entity independent, but burner energy sources that have different fuel_categories are counted as distinct
-                -- TODO: Later, also distinguish fluid energy sources based off fluid box filters/whether they burn fluid, and heat energy sources based on min/max heat etc., but for now just having one of each is fine
-                for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
-                    local energy_source = entity[energy_prop]
-                    if energy_source == nil or energy_source.type == "void" then
-                        add_edge("energy-source-void", "")
-                    elseif energy_source.type == "burner" then
-                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source))
-                    elseif energy_source.type == "electric" then
-                        add_edge("energy-source-electric", "")
-                    elseif energy_source.type == "fluid" then
-                        add_edge("energy-source-fluid", "")
-                    elseif energy_source.type == "heat" then
-                        add_edge("energy-source-heat", "")
                     end
                 end
             end

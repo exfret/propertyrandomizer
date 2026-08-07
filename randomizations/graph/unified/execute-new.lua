@@ -54,6 +54,7 @@ config.unified = {
     ["entity-autoplace"] = true,
     ["item-ingredients"] = true,
     ["item"] = true,
+    ["entity-energy-source"] = true,
 }
 
 local enabled = {
@@ -63,6 +64,7 @@ local enabled = {
     --["recipe-tech-unlocks"] = true,
     ["recipe-category"] = true,
     ["item"] = true,
+    ["entity-energy-source"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -118,7 +120,7 @@ unified.execute = function()
     end
 
     -- Logic building
-    logic.build()
+    logic.build(true)
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
     test_graph_invariants.test(init_graph)
@@ -211,7 +213,11 @@ unified.execute = function()
                     if info.num_copies > 0 then
                         table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
                         for i = 2, info.num_copies do
-                            table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
+                            if info.handler.uniform_copies then
+                                table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
+                            else
+                                table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
+                            end
                         end
                     end
                 end

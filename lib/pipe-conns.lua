@@ -41,7 +41,7 @@ pipe_conns.get_pipe_conns = function(prototype, fluid_box_properties)
     return {conns = pipe_conns, positions = fluid_box_positions, directions = fluid_box_directions}
 end
 
--- returns a table of all possible pipe connecitons
+-- returns a table of all possible pipe connections
 pipe_conns.get_possible_pipe_connections = function (prototype)
     if not prototype.collision_box then return {} end
     local connections = {}

@@ -107,6 +107,7 @@ randomizations.item_new = function(id)
             end)
         end
         local short_path = {}
+        -- CRITICAL TODO: This seems to be finding basically all nodes; fix!
         short_path = path.find_path(dep_graph, all_technologies_node)
 
         local to_be_randomized = {}

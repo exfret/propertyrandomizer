@@ -1,6 +1,4 @@
 local constants = require("helper-tables/constants")
-local simplex = require("lib/cost/simplex")
-local sparse_simplex = require("lib/cost/sparse-simplex-cutoff")
 local cutils = require("lib/cost/cost-utils")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
@@ -150,37 +148,6 @@ simplex_cost.make_recipe_material_matrix = function()
         material_list = material_list,
         material_to_ind = material_to_ind,
     }
-end
-
-simplex_cost.get_material_costs = function()
-    local matrix_info = simplex_cost.make_recipe_material_matrix()
-
-    log("Constructing matrix")
-    local lp = sparse_simplex.new(matrix_info.matrix, matrix_info.cost_column, #matrix_info.material_list)
-    log("#Materials: " .. tostring(#matrix_info.material_list))
-    local material_to_cost = {}
-
-    for i, material in pairs(matrix_info.material_list) do
-        log("Calculating material #" .. tostring(i) .. " cost of " .. material.name)
-
-        local target_col = matrix_info.material_to_ind[gutils.key(material)]
-        local solve_info = sparse_simplex.solve_unit_objective(lp, target_col)
-
-        log(
-            "Calculated status=" .. tostring(solve_info.status)
-            .. " objective=" .. tostring(solve_info.objective)
-            .. " current_objective=" .. tostring(solve_info.current_objective)
-            .. " pivots=" .. tostring(solve_info.pivots)
-            .. " entering_col=" .. tostring(solve_info.entering_col)
-        )
-
-        if solve_info.status == "optimal" then
-            material_to_cost[gutils.key(material)] = solve_info.objective
-        else
-            material_to_cost[gutils.key(material)] = nil
-        end
-    end
-    return material_to_cost
 end
 
 return simplex_cost
