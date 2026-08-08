@@ -318,6 +318,14 @@ end
 -- Add warnings for control stage
 smuggle_info()
 
+
+
+
+-- TODO: REMOVE
+log(serpent.block(data.raw))
+
+
+
 -- Output current logs
 --local export = require("lib/export")
 --export.export_to_log(new_logic)

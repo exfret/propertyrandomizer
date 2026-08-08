@@ -20,6 +20,41 @@ end
 
 -- END repeated header
 
+-- Entities to py creature module categories that can be used to operate them
+-- Format:
+--   entitiy_name --> module_category_name --> true | nil
+local pyal_building_modules = {}
+-- These are conditional requires but they should be fine since they fire based off mod presence, not settings
+if mods["pyalienlife"] then
+    pyal_building_modules = require("__pyalienlife__.scripts.farming.farm-building-list")
+end
+local pyae_building_modules = {}
+if mods["pyalternativeenergy"] then
+    pyae_building_modules = require("__pyalternativeenergy__.scripts.farming")
+end
+stage.py_operability_module_cats = function()
+    lu.py_operability_module_cats = {}
+
+    local building_modules = {}
+    for _, module_list in pairs({pyal_building_modules, pyae_building_modules}) do
+        for building, spec in pairs(module_list) do
+            building_modules[building] = spec
+        end
+    end
+    
+    for building, spec in pairs(building_modules) do
+        -- reproductive complexes have no default module and have to be treated separately
+        if spec.default_module ~= nil then
+            -- spec.default_module is the tier one module for the module category required for a building (according to py dev)
+            if lu.py_operability_module_cats[building] == nil then
+                lu.py_operability_module_cats[building] = {}
+            end
+            local module_category = data.raw.module[spec.default_module].category
+            lu.py_operability_module_cats[building][module_category] = true
+        end
+    end
+end
+
 stage.entity_collision_groups = function()
     local entity_collision_groups = {}
     local entity_collision_group_to_layers = {}
@@ -69,18 +104,20 @@ stage.loot_to_entities = function()
     lu.loot_to_entities = loot_to_entities
 end
 
--- Maps entities to their output fluid (boilers, fusion-reactors, fusion-generators)
+-- Maps entities to their output fluid and temp (boilers, fusion-reactors, fusion-generators)
 stage.entity_output_fluids = function()
     local entity_output_fluids = {}
 
     for _, entity in pairs(lu.entities) do
-        local output_fluid = nil
+        local output_fluid
+        local output_temp
 
         if entity.type == "boiler" then
             if entity.output_fluid_box ~= nil and entity.output_fluid_box.filter ~= nil then
                 local input_filter = entity.fluid_box and entity.fluid_box.filter
                 if entity.output_fluid_box.filter ~= input_filter then
                     output_fluid = entity.output_fluid_box.filter
+                    output_temp = entity.target_temperature
                 end
             end
         elseif entity.type == "fusion-reactor" then
@@ -94,7 +131,9 @@ stage.entity_output_fluids = function()
         end
 
         if output_fluid ~= nil then
-            entity_output_fluids[entity.name] = output_fluid
+            local fluid_prot = data.raw.fluid[output_fluid]
+            output_temp = output_temp or fluid_prot.default_temperature
+            entity_output_fluids[entity.name] = gutils.key(output_fluid, output_temp)
         end
     end
 

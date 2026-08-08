@@ -18,6 +18,7 @@ local second_stage_names = {
     "entity-create",
     "entity-property",
     "equipment",
+    "fluid",
     "fuel",
     "item",
     "mining",

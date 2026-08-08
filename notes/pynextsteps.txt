@@ -9,18 +9,15 @@ Might need to bubble unlocks *downward*, since I'm getting things unlocked much 
 
 NECESSARY:
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
-    - Fluid temperature logic
-       * Could do temperature nodes as separate nodes (probably will do)
-          * fluid-create-temperature nodes
-    - Animal module logic
     - Smart farm logic
- - Better balance node handling
-    * Use mechanics system?
+    - Separate treatment of reproductive complexes
+ - Floating biopyanoport/guano weirdness
+    - Also check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
+    - Reproductive complex recipes
 
 MEDIUM PRIORITY:
  - Finish randomizations
     - Try fluid orand randomization
-    - Recipe category randomization
     - Fuel category randomization
     - Fluid required for patches
  - Final touches for Frodo playthrough
@@ -31,15 +28,13 @@ MEDIUM PRIORITY:
     - Power requirements on buildings scaling better based on where they're placed
     - Create a mod/mod setting that just sets the data.raw to a precalculated value
     - Tweak numerical randomizations (especially crafting speed) to be more appropriate
-    - Make sure stats of higher mk's are all better rather than just crafting speed
-    - Randomization for building/science pack recipe ingredients subset
+    - Recipe randomization for building/science pack recipe ingredients subset
     - Playtest through circuits
  - Stack size preservation in first-pass-new (and cost preservation)
- - Simplex cost calculation per stage in the game
 
 LOW PRIORITY:
  - Explorer improvements
-    - Dynamic explorer (shows green for currently reachable, red for not currently unreachable, and purple for never reachable/softlock)
+    - Dynamic explorer (shows green for currently reachable, red for currently unreachable, and purple for never reachable/softlock)
     - Some very basic UI improvements (close on e, close button, maybe others)
  - UX improvements
     - Improve recipe icons that are hardcoded to be more representative of the actual things involved

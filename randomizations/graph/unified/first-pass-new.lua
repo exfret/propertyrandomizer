@@ -60,6 +60,14 @@ local top = require("lib/graph/consistent-sort")
 local first_pass_balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 
+local base_costs = require("lib/cost/material-costs/sa")
+local py_costs = require("lib/cost/material-costs/py-full")
+
+local material_costs = base_costs
+if mods["pypostprocessing"] then
+    material_costs = py_costs
+end
+
 local key = gutils.key
 
 local first_pass = {}
@@ -219,6 +227,7 @@ first_pass.execute = function(params)
             table.insert(ordered_mechanics, pebble.node_key)
         end
     end
+    log(serpent.block(ordered_mechanics))
     local curr_mechanic_index = 1
     
     local slot_inds = {}

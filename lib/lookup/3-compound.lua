@@ -85,10 +85,21 @@ stage.mat_recipe_map = function()
     }
 
     for mat_key, mat in pairs(lu.materials) do
-        mat_recipe_map.material[mat_key] = {
-            ingredients = {},
-            results = {},
-        }
+        if mat.type == "fluid" then
+            for _, temp in pairs(lu.fluid_temperatures_ordered[mat.name]) do
+                -- This secretly relies on the associativity of the gutils.key function
+                local real_key = gutils.key(mat_key, tostring(temp))
+                mat_recipe_map.material[real_key] = {
+                    ingredients = {},
+                    results = {},
+                }
+            end
+        else
+            mat_recipe_map.material[mat_key] = {
+                ingredients = {},
+                results = {},
+            }
+        end
     end
 
     for _, recipe in pairs(lu.recipes) do
@@ -101,7 +112,15 @@ stage.mat_recipe_map = function()
             if recipe[prop] ~= nil then
                 for ind, prod in pairs(recipe[prop]) do
                     local recipe_map = mat_recipe_map.recipe[recipe.name][prop]
-                    local prod_key = gutils.key(prod)
+                    local name_key = prod.name
+                    if prod.type == "fluid" then
+                        local fluid_prot = data.raw.fluid[prod.name]
+                        -- Assume for simplicity that the min/max temperature is actually exactly what's needed to craft this
+                        -- This is true in basically all the scenarios I care about
+                        -- TODO: Remove this assumption
+                        name_key = gutils.key(prod.name, prod.temperature or prod.minimum_temperature or prod.maximum_temperature or fluid_prot.default_temperature)
+                    end
+                    local prod_key = gutils.key(prod.type, name_key)
                     local mat_map = mat_recipe_map.material[prod_key]
 
                     if mat_map ~= nil then
@@ -130,7 +149,15 @@ stage.mat_mining_map = function()
     }
 
     for mat_key, mat in pairs(lu.materials) do
-        mat_mining_map.to_minable[mat_key] = {}
+        if mat.type == "fluid" then
+            for _, temp in pairs(lu.fluid_temperatures_ordered[mat.name]) do
+                -- This secretly relies on the associativity of the gutils.key function
+                local real_key = gutils.key(mat_key, tostring(temp))
+                mat_mining_map.to_minable[real_key] = {}
+            end
+        else
+            mat_mining_map.to_minable[mat_key] = {}
+        end
     end
 
     local function add_minable(minable_thing, minable_key)
@@ -144,6 +171,10 @@ stage.mat_mining_map = function()
             end
             for ind, result in pairs(minable_results or {}) do
                 local result_key = gutils.key(result)
+                if result.type == "fluid" then
+                    local fluid = data.raw.fluid[result.name]
+                    result_key = gutils.key(result_key, tostring(result.temperature or fluid.default_temperature))
+                end
                 local to_material_map = mat_mining_map.to_material[minable_key]
                 local to_minable_map = mat_mining_map.to_minable[result_key]
 
