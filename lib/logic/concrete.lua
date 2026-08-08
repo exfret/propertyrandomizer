@@ -346,8 +346,26 @@ function concrete.build(lu)
             if lutils.check_freezable(entity) then
                 add_edge("warmth", "")
             end
+            if lu.py_operability_module_cats[entity.name] ~= nil then
+                add_edge("entity-operate-py-module")
+            end
             -- Note: Turrets are "operable" without ammo; since the damage is on the ammo, we actually need to check if there is a turret to shoot an ammo rather than check if there is ammo for a turret to shoot
             -- TODO: Module requirements (for mods like PyAL)
+
+            if lu.py_operability_module_cats[entity.name] ~= nil then
+                ----------------------------------------
+                add_node("entity-operate-py-module", "OR")
+                ----------------------------------------
+                -- Can we get the module required to operate this py building
+
+                for category, _ in pairs(lu.py_operability_module_cats[entity.name]) do
+                    for _, mod in pairs(data.raw.module) do
+                        if mod.category == category then
+                            add_edge("item", mod.name)
+                        end
+                    end
+                end
+            end
 
             if categories.fluid_required[entity.type] then
                 ----------------------------------------
@@ -727,80 +745,92 @@ function concrete.build(lu)
         ----------------------------------------
         -- Can we create/produce this fluid?
         -- OR over: crafting, offshore pumping, mining, entity output
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            add_edge("fluid-create-temperature", key(fluid.name, tostring(temp)))
+        end
 
-        local corresponding_recipes = lu.mat_recipe_map.material[key("fluid", fluid.name)].results
-        if corresponding_recipes ~= nil then
-            add_edge("fluid-craft")
-        end
-        -- Check offshore pumping possibilities
-        local has_filter_pumps = lu.pumps_with_filter[fluid.name] ~= nil
-        local has_tiles = lu.fluid_to_tiles[fluid.name] ~= nil
-        if has_filter_pumps or has_tiles then
-            add_edge("fluid-create-offshore")
-        end
-        -- Check if fluid comes from mining
-        local corresponding_minables = lu.mat_mining_map.to_minable[key("fluid", fluid.name)]
-        if corresponding_minables ~= nil then
-            for minable_key, inds in pairs(corresponding_minables) do
-                local minable = gutils.deconstruct(minable_key)
-                add_edge(minable.type, minable.name, {
-                    inds = inds,
-                })
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            local fluid_temp_name = key(fluid.name, tostring(temp))
+            ----------------------------------------
+            add_node("fluid-create-temperature", "OR", nil, fluid_temp_name)
+            ----------------------------------------
+            local corresponding_recipes = (lu.mat_recipe_map.material[key("fluid", fluid_temp_name)] or {}).results or {}
+            if corresponding_recipes ~= nil then
+                add_edge("fluid-craft", fluid_temp_name)
             end
-        end
-        -- Check if fluid comes from boiler/reactor/generator output
-        if lu.entity_output_fluids ~= nil then
-            for entity_name, output_fluid in pairs(lu.entity_output_fluids) do
-                if output_fluid == fluid.name then
-                    add_edge("entity-operate", entity_name)
+            -- Check offshore pumping possibilities
+            -- Offshore pumps only produce default temperature
+            local has_filter_pumps = lu.pumps_with_filter[fluid.name] ~= nil
+            local has_tiles = lu.fluid_to_tiles[fluid.name] ~= nil
+            if temp == fluid.default_temperature then
+                if has_filter_pumps or has_tiles then
+                    add_edge("fluid-create-offshore", fluid_temp_name)
                 end
             end
-        end
-        -- Check for recipes that should skip over fluid-craft
-        for recipe_name, inds in pairs(corresponding_recipes) do
-            local recipe = data.raw.recipe[recipe_name]
-            if recipe.hide_from_stats then
-                add_edge("recipe", recipe_name, {
-                    inds = inds,
-                })
+            -- Check if fluid comes from mining
+            local corresponding_minables = lu.mat_mining_map.to_minable[key("fluid", fluid_temp_name)]
+            if corresponding_minables ~= nil then
+                for minable_key, inds in pairs(corresponding_minables) do
+                    local minable = gutils.deconstruct(minable_key)
+                    add_edge(minable.type, minable.name, {
+                        inds = inds,
+                    })
+                end
             end
-        end
-
-        if corresponding_recipes ~= nil then
-            ----------------------------------------
-            add_node("fluid-craft", "OR")
-            ----------------------------------------
-            -- Can we produce this fluid via recipe?
-
+            -- Check if fluid comes from boiler/reactor/generator output
+            if lu.entity_output_fluids ~= nil then
+                for entity_name, output_fluid in pairs(lu.entity_output_fluids) do
+                    if output_fluid == fluid_temp_name then
+                        add_edge("entity-operate", entity_name)
+                    end
+                end
+            end
+            -- Check for recipes that should skip over fluid-craft
             for recipe_name, inds in pairs(corresponding_recipes) do
                 local recipe = data.raw.recipe[recipe_name]
-                -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
-                if not recipe.hide_from_stats then
+                if recipe.hide_from_stats then
                     add_edge("recipe", recipe_name, {
                         inds = inds,
                     })
                 end
             end
-        end
 
-        if has_filter_pumps or has_tiles then
-            ----------------------------------------
-            add_node("fluid-create-offshore", "OR", nil, nil, { mechanic = true })
-            ----------------------------------------
-            -- Can we pump this fluid using an offshore pump?
-            -- OR over: pumps with filter for this fluid, tiles that have this fluid
+            if corresponding_recipes ~= nil then
+                ----------------------------------------
+                add_node("fluid-craft", "OR", nil, fluid_temp_name)
+                ----------------------------------------
+                -- Can we produce this fluid via recipe?
 
-            -- Pumps with filter always produce this fluid
-            if has_filter_pumps then
-                for pump_name, _ in pairs(lu.pumps_with_filter[fluid.name]) do
-                    add_edge("entity-operate", pump_name)
+                for recipe_name, inds in pairs(corresponding_recipes) do
+                    local recipe = data.raw.recipe[recipe_name]
+                    -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
+                    if not recipe.hide_from_stats then
+                        add_edge("recipe", recipe_name, {
+                            inds = inds,
+                        })
+                    end
                 end
             end
 
-            -- Tiles with this fluid can be pumped by compatible pumps
-            if has_tiles then
-                for tile_name, _ in pairs(lu.fluid_to_tiles[fluid.name]) do
-                    add_edge("tile-fluid", tile_name)
+            if temp == fluid.default_temperature and (has_filter_pumps or has_tiles) then
+                ----------------------------------------
+                add_node("fluid-create-offshore", "OR", nil, fluid_temp_name, { mechanic = true })
+                ----------------------------------------
+                -- Can we pump this fluid using an offshore pump?
+                -- OR over: pumps with filter for this fluid, tiles that have this fluid
+
+                -- Pumps with filter always produce this fluid
+                if has_filter_pumps then
+                    for pump_name, _ in pairs(lu.pumps_with_filter[fluid.name]) do
+                        add_edge("entity-operate", pump_name)
+                    end
+                end
+
+                -- Tiles with this fluid can be pumped by compatible pumps
+                if has_tiles then
+                    for tile_name, _ in pairs(lu.fluid_to_tiles[fluid.name]) do
+                        add_edge("tile-fluid", tile_name)
+                    end
                 end
             end
         end
@@ -1064,7 +1094,22 @@ function concrete.build(lu)
         -- Ingredients with inds for trigger technology support
         for mat_key, inds in pairs(ingredient_map) do
             local mat = gutils.deconstruct(mat_key)
-            add_edge(mat.type, mat.name, {
+            local mat_type = mat.type
+            local mat_name = mat.name
+            -- For fluids, we want to depend on the specific temperature, but I didn't want to have also a temperature-specific node at the fluid and fluid-create levels
+            -- Thus, if we depend on the default temperature, go to the fluid node, otherwise, skip fluid-hold and go to fluid-create-temperature directly
+            -- This is going to be a huge pain for recipe randomization...
+            if mat.type == "fluid" then
+                local fluid_name = gutils.deconstruct(mat.name).type
+                local temperature = tonumber(gutils.deconstruct(mat.name).name)
+                if temperature == data.raw.fluid[fluid_name].default_temperature then
+                    mat_type = "fluid"
+                    mat_name = fluid_name
+                else
+                    mat_type = "fluid-create-temperature"
+                end
+            end
+            add_edge(mat_type, mat_name, {
                 inds = inds,
             })
         end
