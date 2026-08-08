@@ -58,7 +58,9 @@ lutils.is_compatible_rcat = function(machine, rcat)
 end
 lutils.rcat_name = function(recipe)
     local fluids = lutils.find_recipe_fluids(recipe)
-    return gutils.concat({gutils.concat(recipe.categories or {"crafting"}), fluids.input, fluids.output})
+    local cats_table = recipe.categories or {"crafting"}
+    table.sort(cats_table)
+    return gutils.concat({gutils.concat(cats_table), fluids.input, fluids.output})
 end
 
 lutils.find_mining_fluids = function(resource)

@@ -87,6 +87,9 @@ if config.unit_test then
     return
 end
 
+smuggle_info()
+do return end
+
 ----------------------------------------------------------------------
 -- Setup done!
 ----------------------------------------------------------------------
@@ -322,7 +325,7 @@ smuggle_info()
 
 
 -- TODO: REMOVE
-log(serpent.block(data.raw))
+log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 
 
 

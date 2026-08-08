@@ -31,13 +31,14 @@ For bugs/fixes rather than features, see bugs.txt
  * Fix connection logic that adds contexts to a node once it's connected in first pass (not quite correct)
  * Don't use balance nodes in control phase reachability checks
  * Enforce .nodes and .edges access?
+
  * Work on explorer:
     * Explain the square to select prototypes
     * More gaps/padding
     * Resize home/explorer tab main flows to take up whole window
-    * Right clicking on prototype causes crash
     * Close button
     * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
+
  * Make sure to return "not stackable" on vehicles with equipment grid defined, not just armor
  * Randomize science pack formula so infinite researches can become exponential or become linear cost scaling
  * Randomizations localised descriptions for created entities, such as a laser turret's beam, should also go with the laser turret, for example
