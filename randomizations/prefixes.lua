@@ -1,3 +1,15 @@
+local categories = require("helper-tables/categories")
+
+-- Make fixed recipes non-hidden
+for machine_type, _ in pairs(categories.crafting_machines) do
+    for _, machine in pairs(data.raw[machine_type]) do
+        if machine.fixed_recipe ~= nil then
+            local recipe = data.raw.recipe[machine.fixed_recipe]
+            recipe.hidden = false
+        end
+    end
+end
+
 -- Remove pure-recycling recipe unlocks and make them unlocked at the start
 local is_pure_recycling = {}
 for _, recipe in pairs(data.raw.recipe) do

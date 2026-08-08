@@ -34,6 +34,7 @@ if mods["pyalternativeenergy"] then
 end
 stage.py_operability_module_cats = function()
     lu.py_operability_module_cats = {}
+    lu.is_operability_module_cat = {}
 
     local building_modules = {}
     for _, module_list in pairs({pyal_building_modules, pyae_building_modules}) do
@@ -50,6 +51,7 @@ stage.py_operability_module_cats = function()
                 lu.py_operability_module_cats[building] = {}
             end
             local module_category = data.raw.module[spec.default_module].category
+            lu.is_operability_module_cat[module_category] = true
             lu.py_operability_module_cats[building][module_category] = true
         end
     end

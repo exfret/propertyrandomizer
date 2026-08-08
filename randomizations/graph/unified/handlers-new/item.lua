@@ -83,11 +83,14 @@ item.spoof = function(graph)
     -- Only used for pyanodons power balancing
     orig_graph = table.deepcopy(graph)
     local orig_graph_sort = top.sort(orig_graph)
-    local science_inds = {}
+    --local science_inds = {}
+    -- Assume linear sciences (this is only for py anyways)
+    local num_science_packs = 0
     local already_checked_science = {}
     for ind, pebble in pairs(orig_graph_sort.sorted) do
         local node = orig_graph.nodes[pebble.node_key]
         if node.type == "item" then
+            node_science_level[pebble.node_key] = num_science_packs
             local is_science_pack = false
             for _, lab in pairs(data.raw.lab) do
                 for _, input in pairs(lab.inputs) do
@@ -98,22 +101,26 @@ item.spoof = function(graph)
             end
             if is_science_pack and not already_checked_science[pebble.node_key] then
                 already_checked_science[pebble.node_key] = true
-                science_inds[ind] = true
+                num_science_packs = 1 + num_science_packs
+                --science_inds[ind] = true
             end
         end
     end
-    for ind, pebble in pairs(orig_graph_sort.sorted) do
-        local path_info = top.path(orig_graph, {ind}, orig_graph_sort)
-        local num_sciences_required = 0
-        for science_ind, _ in pairs(science_inds) do
-            if path_info.in_path[science_ind] then
-                num_sciences_required = 1 + num_sciences_required
+    --[[for ind, pebble in pairs(orig_graph_sort.sorted) do
+        local node = orig_graph.nodes[pebble.node_key]
+        if node.type == "item" then
+            local path_info = top.path(orig_graph, {ind}, orig_graph_sort)
+            local num_sciences_required = 0
+            for science_ind, _ in pairs(science_inds) do
+                if path_info.in_path[science_ind] then
+                    num_sciences_required = 1 + num_sciences_required
+                end
+            end
+            if node_science_level[pebble.node_key] == nil then
+                node_science_level[pebble.node_key] = num_sciences_required
             end
         end
-        if node_science_level[pebble.node_key] == nil then
-            node_science_level[pebble.node_key] = num_sciences_required
-        end
-    end
+    end]]
     
     --[[local item_nodes = {}
     for _, node in pairs(graph.nodes) do
@@ -197,7 +204,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 if trav_item.place_result ~= nil then
                     local energy_factor = py_scaling[1 + node_science_level[gutils.key("item", slot_item.name)]] / py_scaling[1 + node_science_level[gutils.key("item", trav_item.name)]]
                     local entity = dutils.get_prot("entity", trav_item.place_result)
-                    for _, property in pairs({"energy_usage", "power", "max_power_output", "power_input", "consumption", "energy_production"}) do
+                    -- Focus only on energy_usage; that's the problematic part that absolutely needed to be changed and let's just let the rest be random as possible
+                    for _, property in pairs({"energy_usage"}) do--, "power", "max_power_output", "power_input", "consumption", "energy_production"}) do
                         if entity[property] ~= nil then
                             local curr_usage = 60 * util.parse_energy(entity[property])
                             curr_usage = energy_factor * curr_usage
@@ -526,7 +534,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             -- If this is a coal replacement, give it a fuel value
             -- Also test for raw coal as a hotfix py replacement
             -- TODO: Just do this for fuel ores in general!
-            if slot_item.name == "coal" or slot_item.name == "raw-coal" then
+            if (not mods["pypostprocessing"] and slot_item.name == "coal") or (mods["pypostprocessing"] and slot_item.name == "raw-coal") then
                 -- TODO: Need to do something special if this is the only non-chemical fuel, since we just override it to chemical
                 if trav_item.fuel_category == nil then
                     trav_item.localised_description = {"", locale_utils.find_localised_description(trav_item), "\n[color=green](Combustible)[/color]"}

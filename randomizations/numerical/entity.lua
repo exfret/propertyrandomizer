@@ -3826,24 +3826,26 @@ randomizations.unit_attack_speed = function(id)
     for _, unit_class in pairs({"unit", "spider-unit"}) do
         if data.raw[unit_class] ~= nil then
             for _, unit in pairs(data.raw[unit_class]) do
-                local old_attack_speed = 1 / unit.attack_parameters.cooldown
+                if unit.attack_parameters.cooldown ~= 0 and unit.attack_parameters.cooldown ~= nil then
+                    local old_attack_speed = 1 / unit.attack_parameters.cooldown
 
-                -- To attacks per second
-                unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
-                randomize({
-                    id = id,
-                    prototype = unit,
-                    tbl = unit.attack_parameters,
-                    property = "cooldown",
-                    rounding = "discrete_float",
-                    range = "small",
-                    dir = -1
-                })
-                -- Back to ticks per attack
-                unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
+                    -- To attacks per second
+                    unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
+                    randomize({
+                        id = id,
+                        prototype = unit,
+                        tbl = unit.attack_parameters,
+                        property = "cooldown",
+                        rounding = "discrete_float",
+                        range = "small",
+                        dir = -1
+                    })
+                    -- Back to ticks per attack
+                    unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
 
-                local new_attack_speed = 1 / unit.attack_parameters.cooldown
-                locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
+                    local new_attack_speed = 1 / unit.attack_parameters.cooldown
+                    locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
+                end
             end
         end
     end

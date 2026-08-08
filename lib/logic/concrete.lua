@@ -1116,6 +1116,25 @@ function concrete.build(lu)
         if recipe.surface_conditions ~= nil then
             add_edge("recipe-surface-condition")
         end
+        local create_py_module_node = false
+        if recipe.allowed_module_categories ~= nil and #recipe.allowed_module_categories == 1 and lu.is_operability_module_cat[recipe.allowed_module_categories[1]] then
+            create_py_module_node = true
+            add_edge("recipe-py-module")
+        end
+
+        if create_py_module_node then
+            ----------------------------------------
+            add_node("recipe-py-module", "OR")
+            ----------------------------------------
+            -- Can we get the module required to craft this recipe
+            -- TODO: This should be combined in a new node along with entity-operate-py-module
+
+            for _, mod in pairs(data.raw.module) do
+                if mod.category == recipe.allowed_module_categories[1] then
+                    add_edge("item", mod.name)
+                end
+            end
+        end
 
         if recipe.enabled == false then
             ----------------------------------------
