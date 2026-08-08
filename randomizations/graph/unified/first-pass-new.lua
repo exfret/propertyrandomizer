@@ -214,7 +214,7 @@ first_pass.execute = function(params)
     local already_included_in_ordered_mechanics = {}
     for ind, pebble in pairs(init_sort.sorted) do
         local node = spoofed_graph.nodes[pebble.node_key]
-        if path_info.in_path[ind] and node.mechanic and node.type ~= "orand" and not already_included_in_ordered_mechanics[pebble.node_key] then
+        if (path_info.in_path[ind] or node.important) and node.mechanic and node.type ~= "orand" and not already_included_in_ordered_mechanics[pebble.node_key] then
             already_included_in_ordered_mechanics[pebble.node_key] = true
             table.insert(ordered_mechanics, pebble.node_key)
         end

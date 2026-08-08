@@ -91,6 +91,7 @@ local builder = require(lib_name .. "/logic/builder")
 local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
 local balance = require(lib_name .. "/logic/balance")
+local balance_mechanics = require(lib_name .. "/logic/balance-mechanics")
 local graph_setup = require(lib_name .. "/logic/graph-setup")
 
 local key = gutils.key
@@ -180,6 +181,7 @@ logic.build = function(ignore_balance_nodes)
     if not ignore_balance_nodes then
         balance.build(lu)
     end
+    balance_mechanics.build(lu)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

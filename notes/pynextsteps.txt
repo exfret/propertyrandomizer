@@ -25,11 +25,13 @@ MEDIUM PRIORITY:
     - Fluid required for patches
  - Final touches for Frodo playthrough
     - Create a modpack including customized recommended QOL mods
+    - Check into costs for item switching/reducing amount of "65k" amounts
+    - Don't randomize slaughterhouse recipe category
+    - Don't randomize barreling recipe categories (or canisters etc.)
     - Power requirements on buildings scaling better based on where they're placed
     - Create a mod/mod setting that just sets the data.raw to a precalculated value
     - Tweak numerical randomizations (especially crafting speed) to be more appropriate
     - Make sure stats of higher mk's are all better rather than just crafting speed
-    - Ash replacement should have high stack size!
     - Randomization for building/science pack recipe ingredients subset
     - Playtest through circuits
  - Stack size preservation in first-pass-new (and cost preservation)
@@ -48,7 +50,6 @@ LOW PRIORITY:
     - TURD randomizations (bhoddos explosions)
 
 ALGORITHMIC:
- - Demand-based first pass reservation cancellations (DFPRC?): reservations are replaced based off "does this satisfy the next mechanic we need" rather than vague "importance"
  - Basic keeping similar things together (this doesn't seem as big an issue, but still necessary for a good experience)
     - Module buildings with their modules
  - Local recipe randomization
