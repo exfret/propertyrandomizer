@@ -120,6 +120,8 @@ randomization_info.options.unified["spoiling"].blacklisted_pre = {
     [key("item", "iron-bacteria")] = true,
 }
 
+randomization_info.options.unified["recipe-category"].blacklisted_dep = {}
+
 -- I don't know if this actually is needed right now (which is a good thing)
 randomization_info.options.logic.contexts_in_order = {}
 local contexts_in_order = randomization_info.options.logic.contexts_in_order

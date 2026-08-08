@@ -28,3 +28,8 @@ local short_py_cost_table_additions = {
 for k, v in pairs(short_py_cost_table_additions) do
     randomization_info.options.cost.default_cost_table[k] = v
 end
+
+-- TODO: Verify these are the correct names
+table.insert(randomization_info.options.unified["recipe-category"].blacklisted_pre, key("recipe_category", "py-unbarreling__1__0"))
+table.insert(randomization_info.options.unified["recipe-category"].blacklisted_pre, key("recipe_category", "py-barreling__0__1"))
+table.insert(randomization_info.options.unified["recipe-category"].blacklisted_pre, key("recipe-category", "slaughterhouse"))

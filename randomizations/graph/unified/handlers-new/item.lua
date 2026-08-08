@@ -2,6 +2,7 @@ local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/consistent-sort")
 
 local base_costs = require("lib/cost/material-costs/sa")
 local py_costs = require("lib/cost/material-costs/py-full")
@@ -54,13 +55,66 @@ local sticks_with_trav = {
 local trav_to_slot
 local split_graph
 local material_to_cost
+local orig_graph
+local node_science_level
+local py_scaling = { -- Roughly in GW expected for an "average" base, but the ratios are what matter anyways
+    0.1, -- pre-auto
+    0.2, -- auto
+    0.5, -- py1
+    1, -- logi
+    4, -- py2
+    20, -- chem
+    60, -- py3
+    200, -- prod
+    500, -- py4
+    1000, -- utility
+    2000, -- space
+}
 item.initialize = function()
     trav_to_slot = nil
     split_graph = nil
     material_to_cost = material_costs.costs
+    orig_graph = nil
+    node_science_level = {}
 end
 
 item.spoof = function(graph)
+    -- Just calculate recipe levels here
+    -- Only used for pyanodons power balancing
+    orig_graph = table.deepcopy(graph)
+    local orig_graph_sort = top.sort(orig_graph)
+    local science_inds = {}
+    local already_checked_science = {}
+    for ind, pebble in pairs(orig_graph_sort.sorted) do
+        local node = orig_graph.nodes[pebble.node_key]
+        if node.type == "item" then
+            local is_science_pack = false
+            for _, lab in pairs(data.raw.lab) do
+                for _, input in pairs(lab.inputs) do
+                    if input == node.name then
+                        is_science_pack = true
+                    end
+                end
+            end
+            if is_science_pack and not already_checked_science[pebble.node_key] then
+                already_checked_science[pebble.node_key] = true
+                science_inds[ind] = true
+            end
+        end
+    end
+    for ind, pebble in pairs(orig_graph_sort.sorted) do
+        local path_info = top.path(orig_graph, {ind}, orig_graph_sort)
+        local num_sciences_required = 0
+        for science_ind, _ in pairs(science_inds) do
+            if path_info.in_path[science_ind] then
+                num_sciences_required = 1 + num_sciences_required
+            end
+        end
+        if node_science_level[pebble.node_key] == nil then
+            node_science_level[pebble.node_key] = num_sciences_required
+        end
+    end
+    
     --[[local item_nodes = {}
     for _, node in pairs(graph.nodes) do
         if node.type == "item" then
@@ -138,6 +192,20 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         if slot ~= nil and slot.type == "item" then
             local slot_item = dutils.get_prot("item", slot.name)
             local trav_item = dutils.get_prot("item", split_graph.nodes[trav.old_slot].name)
+
+            if mods["pypostprocessing"] then
+                if trav_item.place_result ~= nil then
+                    local energy_factor = py_scaling[1 + node_science_level[gutils.key("item", slot_item.name)]] / py_scaling[1 + node_science_level[gutils.key("item", trav_item.name)]]
+                    local entity = dutils.get_prot("entity", trav_item.place_result)
+                    for _, property in pairs({"energy_usage", "power", "max_power_output", "power_input", "consumption", "energy_production"}) do
+                        if entity[property] ~= nil then
+                            local curr_usage = 60 * util.parse_energy(entity[property])
+                            curr_usage = energy_factor * curr_usage
+                            entity[property] = tostring(curr_usage) .. "W"
+                        end
+                    end
+                end
+            end
             
             local slot_cost = material_to_cost[gutils.key("item", slot_item.name)]
             local trav_cost = material_to_cost[gutils.key("item", trav_item.name)]

@@ -22,7 +22,6 @@ MEDIUM PRIORITY:
     - Fluid required for patches
  - Final touches for Frodo playthrough
     - Create a modpack including customized recommended QOL mods
-    - Check into costs for item switching/reducing amount of "65k" amounts
     - Don't randomize slaughterhouse recipe category
     - Don't randomize barreling recipe categories (or canisters etc.)
     - Power requirements on buildings scaling better based on where they're placed

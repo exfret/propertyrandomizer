@@ -821,6 +821,20 @@ first_pass.execute = function(params)
             end]]
         end
 
+        if slot.type == "item" and trav.type == "item" then
+            local slot_cost = material_costs.costs[key(slot)]
+            local trav_cost = material_costs.costs[trav.old_slot]
+            if type(slot_cost) ~= type(trav_cost) then
+                return false
+            end
+            if slot_cost ~= nil then
+                -- Don't allow costs to differ more than by a factor of like a few hundred
+                if math.abs(math.log(slot_cost) - math.log(trav_cost)) > 6 then
+                    return false
+                end
+            end
+        end
+
         -- Note: THIS IS BROKEN! If it's an item, they'll be ORANDS! Also the name will have the weird suffix from item handler added
         -- CRITICAL TODO: FIX!
         --[=[if (slot.type == "item" and trav.type == "item") or (slot.type == "fluid" and trav.type == "fluid") then
