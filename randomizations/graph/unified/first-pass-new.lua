@@ -88,6 +88,33 @@ first_pass.execute = function(params)
 
     local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
 
+    local sensitive_node_keys = {
+        [key("item", "stone-furnace")] = true,
+        [key("item", "pipe")] = true,
+        [key("item", "raw-coal")] = true,
+        [key("item", "boiler")] = true,
+    }
+    -- Burnt results are special
+    for burnt_result, _ in pairs(lu.burnt_result_to_items) do
+        sensitive_node_keys[key("item", burnt_result)] = true
+    end
+    for _, item in pairs(lu.items) do
+        if item.burnt_result ~= nil and item.burnt_result ~= "ash" then
+            sensitive_node_keys[key("item", item.name)] = true
+        end
+    end
+    -- So are rocket launch results
+    for item_name, _ in pairs(lu.silo_items) do
+        sensitive_node_keys[key("item", item_name)] = true
+    end
+    for item_name, _ in pairs(lu.rocket_results_to_items) do
+        sensitive_node_keys[key("item", item_name)] = true
+    end
+    for _, item in pairs(lu.items) do
+        if item.rocket_launch_products ~= nil then
+            sensitive_node_keys[key("item", item.name)] = true
+        end
+    end
     local function valid_node_for_first_pass(node_key)
         -- Just check if at least one of its edges are randomized, or in other words that one of the pre's in subdiv graph are a head
         local subdiv_node = subdiv_graph.nodes[node_key]
@@ -106,9 +133,6 @@ first_pass.execute = function(params)
         if EXCLUDE_SCIENCE and subdiv_node.type == "item" and is_science_pack[subdiv_node.name] ~= nil then
             return false
         end
-        local sensitive_node_keys = {
-            [key("item", "stone-furnace")] = true,
-        }
         if EXCLUDE_SENSITIVE and sensitive_node_keys[key(subdiv_node)] then
             return false
         end
@@ -282,7 +306,8 @@ first_pass.execute = function(params)
             end
 
             -- TODO: Document/add to vanilla special handling of coal
-            if depnode.type ~= "base" and not always_on_slot and (node_key ~= key("item", "coal") and (depnode.canonical ~= "item" or depnode.name ~= "coal")) then
+            -- CRITICAL TODO: Test for pyanodons (uses raw coal instead)
+            if depnode.type ~= "base" and not always_on_slot then --and (node_key ~= key("item", "coal") and (depnode.canonical ~= "item" or depnode.name ~= "coal")) then
                 fixed_dep[dep] = true
                 not_all_randomized = true
             end
@@ -561,8 +586,22 @@ first_pass.execute = function(params)
         local open = { trav }
         local in_open = {}
         local ind = 1
-        -- CRITICAL TODO: Put this 100 into a configuration variable or something
-        while ind <= #open and ind < 100 do
+        local dont_propagate_types = {
+            ["fluid-hold"] = true,
+        }
+        -- TODO: Put this max_depth into a configuration variable or something
+        local max_depth = 20
+        local curr_depth = 0
+        local curr_next_depth_ind = 1
+        while ind <= #open do
+            if ind == curr_next_depth_ind then
+                curr_depth = 1 + curr_depth
+                curr_next_depth_ind = #open + 1
+            end
+            if curr_depth > max_depth then
+                break
+            end
+
             local next_node = open[ind]
             --[[local mechanic_key
             if next_node.mechanic then
@@ -598,7 +637,7 @@ first_pass.execute = function(params)
             if mechanic_key ~= nil then
                 trav_to_mechanics[key(trav)][mechanic_key] = true
                 --trav_to_mechanics[key(trav)][key(next_node)] = true
-            else
+            elseif not dont_propagate_types[next_node.type] then
                 for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
                     if not in_open[key(depnode)] then
                         in_open[key(depnode)] = true
@@ -836,7 +875,7 @@ first_pass.execute = function(params)
             end
 
             local curr_mechanic = ordered_mechanics[curr_mechanic_index]
-            if next(sort_info.node_to_context_inds[curr_mechanic]) ~= nil and curr_mechanic_index <= #ordered_mechanics then
+            if next(sort_info.node_to_context_inds[curr_mechanic]) ~= nil then
                 curr_mechanic_index = 1 + curr_mechanic_index
             else
                 break
@@ -974,6 +1013,233 @@ first_pass.execute = function(params)
     end
 
     ----------------------------------------------------------------------------------------------------
+    -- DEBUG CURRENT MECHANIC
+    ----------------------------------------------------------------------------------------------------
+
+    local debugged_mechanics = {}
+
+    local function debug_contexts(node_key)
+        local contexts = split_sort.node_to_context_inds[node_key]
+        if contexts == nil then
+            return "NIL"
+        end
+        return serpent.line(contexts)
+    end
+
+    local function debug_mechanic_blockage(mechanic_key)
+        local mechanic = split_graph.nodes[mechanic_key]
+        if mechanic == nil then
+            log("DEBUG: mechanic missing from split_graph: " .. tostring(mechanic_key))
+            return
+        end
+
+        log("\n\n================ PY1 BLOCKAGE DEBUG ================")
+        log("MECHANIC: " .. mechanic_key)
+        log("MECHANIC CONTEXTS: " .. debug_contexts(mechanic_key))
+
+        ------------------------------------------------------------------------
+        -- A. Walk backward until we hit reachable nodes.
+        ------------------------------------------------------------------------
+
+        local seen = {}
+
+        local function walk_blocked(node, depth, indent)
+            if node == nil or depth < 0 then
+                return
+            end
+
+            local node_key = key(node)
+            if seen[node_key] then
+                return
+            end
+            seen[node_key] = true
+
+            local contexts = split_sort.node_to_context_inds[node_key]
+            local reachable =
+                contexts ~= nil and next(contexts) ~= nil
+
+            local extra = ""
+
+            if node.slot then
+                extra =
+                    extra
+                    .. " SLOT"
+                    .. " assigned=" .. tostring(slot_to_trav[node_key])
+                    .. " reserved=" .. tostring(is_reserved[node_key] ~= nil)
+            end
+
+            if node.trav then
+                extra =
+                    extra
+                    .. " TRAV"
+                    .. " assigned_to=" .. tostring(trav_to_slot[node_key])
+            end
+
+            log(
+                indent
+                .. node_key
+                .. " type=" .. tostring(node.type)
+                .. " op=" .. tostring(node.op)
+                .. " contexts=" .. debug_contexts(node_key)
+                .. extra
+            )
+
+            if reachable then
+                log(indent .. "  ^^^ REACHABLE FRONTIER")
+                return
+            end
+
+            for _, pre in pairs(gutils.prenodes(split_graph, node)) do
+                walk_blocked(pre, depth - 1, indent .. "  ")
+            end
+        end
+
+        log("\n=== BLOCKED BACKTRACE ===")
+        walk_blocked(mechanic, 12, "")
+
+        ------------------------------------------------------------------------
+        -- B. Find traveler-side paths feeding toward this mechanic.
+        ------------------------------------------------------------------------
+
+        log("\n=== TRAVELERS WITH PATHS TOWARD MECHANIC ===")
+
+        local queue = {
+            {
+                node = mechanic,
+                path = {mechanic_key},
+                depth = 0,
+            }
+        }
+
+        local visited = {}
+        local num_travs_printed = 0
+        local MAX_TRAVS_PRINTED = 50
+        local MAX_DEPTH = 15
+
+        local qind = 1
+
+        while qind <= #queue and num_travs_printed < MAX_TRAVS_PRINTED do
+            local entry = queue[qind]
+            qind = qind + 1
+
+            local node = entry.node
+            local node_key = key(node)
+
+            if not visited[node_key] then
+                visited[node_key] = true
+
+                if node.trav then
+                    num_travs_printed = num_travs_printed + 1
+
+                    log("\nTRAV ANCESTOR: " .. node_key)
+                    log("  contexts=" .. debug_contexts(node_key))
+                    log("  assigned_to=" .. tostring(trav_to_slot[node_key]))
+
+                    log("  PATH TRAV -> MECHANIC:")
+                    for i = #entry.path, 1, -1 do
+                        local path_key = entry.path[i]
+                        local path_node = split_graph.nodes[path_key]
+
+                        log(
+                            "    "
+                            .. path_key
+                            .. " type="
+                            .. tostring(path_node and path_node.type)
+                        )
+                    end
+                elseif entry.depth < MAX_DEPTH then
+                    for _, pre in pairs(gutils.prenodes(split_graph, node)) do
+                        local new_path = table.deepcopy(entry.path)
+                        table.insert(new_path, key(pre))
+
+                        table.insert(queue, {
+                            node = pre,
+                            path = new_path,
+                            depth = entry.depth + 1,
+                        })
+                    end
+                end
+            end
+        end
+
+        log("\nNUM TRAV PATHS PRINTED: " .. tostring(num_travs_printed))
+        log("================ END PY1 DEBUG ================\n\n")
+    end
+
+    local function debug_blocked_node(node_key, max_depth)
+        local node = split_graph.nodes[node_key]
+
+        if node == nil then
+            log("DEBUG NODE MISSING: " .. tostring(node_key))
+            return
+        end
+
+        log("\n\n================ BLOCKED NODE DEBUG ================")
+        log("TARGET: " .. node_key)
+        log("TARGET CONTEXTS: " .. debug_contexts(node_key))
+
+        local seen = {}
+
+        local function walk(node, depth, indent)
+            if node == nil or depth < 0 then
+                return
+            end
+
+            local node_key = key(node)
+            if seen[node_key] then
+                log(indent .. node_key .. " [already seen]")
+                return
+            end
+            seen[node_key] = true
+
+            local contexts = split_sort.node_to_context_inds[node_key]
+            local reachable =
+                contexts ~= nil and next(contexts) ~= nil
+
+            local extra = ""
+
+            if node.slot then
+                extra =
+                    extra
+                    .. " SLOT"
+                    .. " assigned=" .. tostring(slot_to_trav[node_key])
+                    .. " reserved=" .. tostring(is_reserved[node_key] ~= nil)
+                    .. " abs_reachable="
+                    .. tostring(slot_absolute_reachable(node))
+            end
+
+            if node.trav then
+                extra =
+                    extra
+                    .. " TRAV"
+                    .. " assigned_to=" .. tostring(trav_to_slot[node_key])
+            end
+
+            log(
+                indent
+                .. node_key
+                .. " type=" .. tostring(node.type)
+                .. " op=" .. tostring(node.op)
+                .. " contexts=" .. debug_contexts(node_key)
+                .. extra
+            )
+
+            if reachable then
+                log(indent .. "  ^^^ REACHABLE FRONTIER")
+                return
+            end
+
+            for _, pre in pairs(gutils.prenodes(split_graph, node)) do
+                walk(pre, depth - 1, indent .. "  ")
+            end
+        end
+
+        walk(node, max_depth or 10, "")
+
+        log("================ END BLOCKED NODE DEBUG ================\n")
+    end
+
+    ----------------------------------------------------------------------------------------------------
     -- CORE LOOP
     ----------------------------------------------------------------------------------------------------
 
@@ -1103,9 +1369,24 @@ first_pass.execute = function(params)
                     end
                     if not found_fulfiller then
                         log("FAILED CANCELLATION")
-                        break
-                        --fulfill_reservation(1)
-                        --update_reservations()
+                        debug_mechanic_blockage(curr_mechanic)
+                        debug_blocked_node(
+                            key("item", "agar"),
+                            12
+                        )
+
+                        debug_blocked_node(
+                            key("item", "latex-slab"),
+                            12
+                        )
+
+                        debug_blocked_node(
+                            key("fluid", "steam"),
+                            12
+                        )
+                        --break
+                        fulfill_reservation(1)
+                        update_reservations()
                     end
 
                     --[[if #reserved_slots == 0 then

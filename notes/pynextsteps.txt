@@ -8,12 +8,14 @@ Might need to bubble unlocks *downward*, since I'm getting things unlocked much 
  - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
 
 NECESSARY:
- - Recipe category rando still doesn't work correctly with furnaces :(
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
     - Fluid temperature logic
+       * Could do temperature nodes as separate nodes (probably will do)
+          * fluid-create-temperature nodes
     - Animal module logic
     - Smart farm logic
  - Better balance node handling
+    * Use mechanics system?
 
 MEDIUM PRIORITY:
  - Finish randomizations

@@ -785,7 +785,7 @@ function concrete.build(lu)
 
         if has_filter_pumps or has_tiles then
             ----------------------------------------
-            add_node("fluid-create-offshore", "OR")
+            add_node("fluid-create-offshore", "OR", nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we pump this fluid using an offshore pump?
             -- OR over: pumps with filter for this fluid, tiles that have this fluid
@@ -872,9 +872,20 @@ function concrete.build(lu)
     for _, item in pairs(lu.items) do
         set_prot(item)
 
+        local is_science_pack = false
+        for _, lab in pairs(data.raw.lab) do
+            for _, input in pairs(lab.inputs) do
+                if input == item.name then
+                    is_science_pack = true
+                end
+            end
+        end
+        local should_be_mechanic = is_science_pack or (lu.burnt_result_to_items[item.name] ~= nil) or (lu.rocket_results_to_items[item.name] ~= nil)
+
         ----------------------------------------
         add_node("item", "OR", nil, item.name, {
             item = item.name,
+            mechanic = should_be_mechanic,
         })
         ----------------------------------------
         -- Can we obtain this item?

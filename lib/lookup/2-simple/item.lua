@@ -54,6 +54,23 @@ stage.rocket_results_to_items = function()
     lu.rocket_results_to_items = rocket_results_to_items
 end
 
+-- Map from item --> whether it is the result of a silo recipe (used for determining whether an item is "special"/shouldn't be randomized)
+stage.silo_items = function()
+    local silo_items = {}
+
+    for _, silo in pairs(data.raw["rocket-silo"]) do
+        if silo.fixed_recipe ~= nil then
+            local recipe = data.raw.recipe[silo.fixed_recipe]
+            for _, result in pairs(recipe.results or {}) do
+                -- Technically could be a fluid with the same name but that's too cursed for even me to think about
+                silo_items[result.name] = true
+            end
+        end
+    end
+
+    lu.silo_items = silo_items
+end
+
 -- Reverse map: item -> items that spoil into it
 stage.spoil_result_to_items = function()
     local spoil_result_to_items = {}
