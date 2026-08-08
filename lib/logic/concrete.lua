@@ -1136,7 +1136,7 @@ function concrete.build(lu)
         if spoofed_cats ~= nil then
             for mcat_key, _ in pairs(spoofed_cats) do
                 ----------------------------------------
-                add_node("resource-category", "OR", nil, mcat_key)
+                add_node("resource-category", "OR", nil, mcat_key, { mechanic = true })
                 ----------------------------------------
                 -- Can we mine resources in this category with these fluid requirements?
                 -- OR over mining drills that support this category AND have matching fluid boxes
