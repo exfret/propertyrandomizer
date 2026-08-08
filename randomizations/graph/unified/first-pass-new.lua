@@ -35,8 +35,10 @@ local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
-local DO_ITEM_RANDO = false
+local DO_ITEM_RANDO = true
 local EXCLUDE_SCIENCE = true
+-- Exclude key things, like stone furnaces
+local EXCLUDE_SENSITIVE = true
 local EXCLUDE_RECIPES = true
 local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
@@ -102,6 +104,12 @@ first_pass.execute = function(params)
             end
         end
         if EXCLUDE_SCIENCE and subdiv_node.type == "item" and is_science_pack[subdiv_node.name] ~= nil then
+            return false
+        end
+        local sensitive_node_keys = {
+            [key("item", "stone-furnace")] = true,
+        }
+        if EXCLUDE_SENSITIVE and sensitive_node_keys[key(subdiv_node)] then
             return false
         end
         if EXCLUDE_RECIPES and subdiv_node.type == "recipe" then
@@ -177,6 +185,17 @@ first_pass.execute = function(params)
     if REPORT_PATH then
         log(serpent.block(is_important))
     end
+
+    local ordered_mechanics = {}
+    local already_included_in_ordered_mechanics = {}
+    for ind, pebble in pairs(init_sort.sorted) do
+        local node = spoofed_graph.nodes[pebble.node_key]
+        if path_info.in_path[ind] and node.mechanic and node.type ~= "orand" and not already_included_in_ordered_mechanics[pebble.node_key] then
+            already_included_in_ordered_mechanics[pebble.node_key] = true
+            table.insert(ordered_mechanics, pebble.node_key)
+        end
+    end
+    local curr_mechanic_index = 1
     
     local slot_inds = {}
     if PUT_PATH_SLOTS_FIRST then
@@ -542,12 +561,44 @@ first_pass.execute = function(params)
         local open = { trav }
         local in_open = {}
         local ind = 1
-        while ind <= #open do
+        -- CRITICAL TODO: Put this 100 into a configuration variable or something
+        while ind <= #open and ind < 100 do
             local next_node = open[ind]
-            if next_node.mechanic or (next_node.old_slot and split_graph.nodes[next_node.old_slot].mechanic) then
-                trav_to_mechanics[key(trav)][key(next_node)] = true
+            --[[local mechanic_key
+            if next_node.mechanic then
+                if next_node.type == "orand" then
+                    mechanic_key = split_graph.orand_to_parent[key(next_node)]
+                else
+                    mechanic_key = key(next_node)
+                end
+            elseif next_node.old_slot ~= nil and split_graph.nodes[next_node.old_slot].mechanic then
+                if next_node.type == "orand" then
+                    mechanic_key = split_graph.orand_to_parent[next_node.old_slot]
+                else
+                    mechanic_key = key(next_node)
+                end
+            end]]
+            local mechanic_key
+            if next_node.old_slot ~= nil then
+                local old_slot = split_graph.nodes[next_node.old_slot]
+                if old_slot ~= nil and old_slot.mechanic then
+                    mechanic_key = next_node.old_slot
+                end
+            elseif next_node.mechanic then
+                mechanic_key = key(next_node)
+            end
+            if mechanic_key ~= nil then
+                local mechanic_node = split_graph.nodes[mechanic_key]
+                if mechanic_node.type == "orand" then
+                    mechanic_key = split_graph.orand_to_parent[mechanic_key]
+                end
+            end
+
+            -- Don't propagate through mechanics
+            if mechanic_key ~= nil then
+                trav_to_mechanics[key(trav)][mechanic_key] = true
+                --trav_to_mechanics[key(trav)][key(next_node)] = true
             else
-                -- Don't propagate through mechanics
                 for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
                     if not in_open[key(depnode)] then
                         in_open[key(depnode)] = true
@@ -640,7 +691,7 @@ first_pass.execute = function(params)
         log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
     end
 
-    -- Calculate costs; needed just a bit for compatibility check
+    -- Calculate costs; needed just a bit for a compatibility check
     -- TODO: Redo if needed; was just used for recipes, which we aren't first-passing anymore
     --local vanilla_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
 
@@ -673,7 +724,7 @@ first_pass.execute = function(params)
         end
         
         -- Don't check same mechanics for items because it's too restrictive
-        if CHECK_SAME_MECHANICS and not slot.type == "item" then
+        if CHECK_SAME_MECHANICS and slot.type ~= "item" then
             for mechanic, _ in pairs(trav_to_mechanics[slot.old_trav]) do
                 if not trav_to_mechanics[key(trav)][mechanic] then
                     return false
@@ -763,8 +814,37 @@ first_pass.execute = function(params)
     end
 
     local function to_be_reserved(trav)
-        return not (trav_vanilla_reachable(trav) and is_important[trav.old_slot])
+        -- If we've hit all the mechanics, then no need to worry anymore
+        if curr_mechanic_index > #ordered_mechanics then
+            return false
+        end
+
+        -- Reserve if it doesn't help the next mechanic
+        local curr_mechanic = ordered_mechanics[curr_mechanic_index]
+        if not trav_to_mechanics[key(trav)][curr_mechanic] then
+            return true
+        end
+        return false
+        --return not (trav_vanilla_reachable(trav) and is_important[trav.old_slot])
     end
+
+    local function update_mechanic_index(sort_info)
+        -- Update mechanic index
+        while true do
+            if curr_mechanic_index > #ordered_mechanics then
+                return
+            end
+
+            local curr_mechanic = ordered_mechanics[curr_mechanic_index]
+            if next(sort_info.node_to_context_inds[curr_mechanic]) ~= nil and curr_mechanic_index <= #ordered_mechanics then
+                curr_mechanic_index = 1 + curr_mechanic_index
+            else
+                break
+            end
+        end
+    end
+    -- Immediately do this to get the mechanics reachable off the bat
+    update_mechanic_index(split_sort)
 
     local function connect_slot_trav(graph, sort_info, slot, trav)
         -- TEST: Check slot is slot and trav is trav
@@ -833,6 +913,8 @@ first_pass.execute = function(params)
         gutils.add_edge(graph, slot_base, trav_head)
         sort_info = top.sort(graph, sort_info, {slot_base, trav_head})
 
+        update_mechanic_index(sort_info)
+
         return sort_info
     end
 
@@ -848,7 +930,16 @@ first_pass.execute = function(params)
     end
 
     local function update_reservations()
-        local new_reservations = {}
+        -- Actually, fulfill everything if we got all the mechanics
+        if curr_mechanic_index > #ordered_mechanics then
+            for j = #reserved_slots, 1, -1 do
+                fulfill_reservation(j)
+            end
+        end
+
+        -- Travelers now only become fulfilled as necessary to progress with mechanics
+        do return end
+
         while true do
             local fulfilled = false
 
@@ -964,7 +1055,60 @@ first_pass.execute = function(params)
                     break
                 else
                     -- Reservation loop
+
+                    local curr_mechanic
+                    if curr_mechanic_index <= #ordered_mechanics then
+                        curr_mechanic = ordered_mechanics[curr_mechanic_index]
+                    end
+
+                    log("\n\nRESERVATION LOOP FOR MECHANIC:\n\t" .. (curr_mechanic or "NIL") .. "\n")
+
                     if #reserved_slots == 0 then
+                        log("RAN OUT OF RESERVED SLOTS")
+                        break
+                    end
+
+                    -- First, try to fulfill an early reservation that now targets the current mechanic
+                    local found_fulfiller = false
+                    for j = 1, #reserved_slots do
+                        local reserved_slot = reserved_slots[j]
+                        local reserved_trav_key = slot_to_trav[key(reserved_slot)]
+                        if curr_mechanic == nil or trav_to_mechanics[reserved_trav_key][curr_mechanic] then
+                            log("FOUND FULFILLER\n\t" .. reserved_trav_key .. "\nFOR \n\t" .. (curr_mechanic or "NIL"))
+                            found_fulfiller = true
+                            fulfill_reservation(j)
+                            update_reservations()
+                            break
+                        end
+                    end
+                    -- Cancel reservation
+                    if not found_fulfiller then
+                        for perm_ind, sorted_node_ptr in pairs(perm) do
+                            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                            -- to_be_reserved checks that it actually satisfies the mechanic we're looking for
+                            if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) and not to_be_reserved(trav) then
+                                for j = #reserved_slots, 1, -1 do
+                                    local slot = reserved_slots[j]
+                                    if is_compatible(slot, trav) then
+                                        replace_reservation(j, trav)
+                                        found_fulfiller = true
+                                        break
+                                    end
+                                end
+                            end
+                            if found_fulfiller then
+                                break
+                            end
+                        end
+                    end
+                    if not found_fulfiller then
+                        log("FAILED CANCELLATION")
+                        break
+                        --fulfill_reservation(1)
+                        --update_reservations()
+                    end
+
+                    --[[if #reserved_slots == 0 then
                         break
                     end
 
@@ -994,7 +1138,7 @@ first_pass.execute = function(params)
                         log("FAILED CANCELLATION")
                         fulfill_reservation(1)
                         update_reservations()
-                    end
+                    end]]
                 end
             end
 
