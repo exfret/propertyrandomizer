@@ -13,8 +13,6 @@ local DO_FIRST_PASS = true
 -- TODO: Speed up tests! Currently they take a long time
 local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
--- TODO: Make this a config entry/setting so we can switch it better in recipe-tech-unlocks as well
-local SPECIAL_RECIPE_TECH_UNLOCK_VALIDATION = true
 local TECH_GRAPH_RECONSTRUCTION = true
 local SWITCH_PLANETS = false
 local REMOVE_TECH_PREREQS = true
@@ -85,7 +83,6 @@ local default_handler = require("randomizations/graph/unified/handlers-new/defau
 local handlers = {}
 for _, handler_id in pairs(handler_ids) do
     local handler = require("randomizations/graph/unified/handlers-new/" .. handler_id)
-    handler.initialize()
 
     for prop, val in pairs(default_handler) do
         if handler[prop] == nil then
@@ -101,6 +98,10 @@ for _, handler_id in pairs(handler_ids) do
 end
 
 unified.execute = function()
+    for _, handler in pairs(handlers) do
+        handler.initialize()
+    end
+
     ----------------------------------------------------------------------------------------------------
     log_info(2, "GRAPH PREP")
     ----------------------------------------------------------------------------------------------------
@@ -259,6 +260,7 @@ unified.execute = function()
         for _, head_key in pairs(dep_to_heads[dep]) do
             local head = pool_graph.nodes[head_key]
             local old_base = pool_graph.nodes[head.old_base]
+            gutils.add_edge(pool_graph, old_base, head)
             sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
         end
     end
@@ -271,9 +273,9 @@ unified.execute = function()
     local old_sorted_deps
     if DO_FIRST_PASS then
         -- NOTE: This switch code is out of date
-        local function switch_gleba_nauvis(graph)
+        local function switch_vulcanus_nauvis(graph)
             local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
-            local gleba_node = graph.nodes[key("room", key("planet", "gleba"))]
+            local vulcanus_node = graph.nodes[key("room", key("planet", "vulcanus"))]
 
             -- room-launch's are intrinsic to the room
             local function leads_to_room_launch(node)
@@ -302,11 +304,11 @@ unified.execute = function()
             end
 
             local nauvis_deps = gather_deps(nauvis_node)
-            local gleba_deps = gather_deps(gleba_node)
+            local vulcanus_deps = gather_deps(vulcanus_node)
             for _, edge in pairs(nauvis_deps) do
-                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(gleba_node))
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(vulcanus_node))
             end
-            for _, edge in pairs(gleba_deps) do
+            for _, edge in pairs(vulcanus_deps) do
                 gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
             end
         end
@@ -315,8 +317,8 @@ unified.execute = function()
         local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
-            --switch_gleba_nauvis(spoofed_graph_to_pass)
-            switch_gleba_nauvis(subdiv_graph_to_pass)
+            --switch_vulcanus_nauvis(spoofed_graph_to_pass)
+            switch_vulcanus_nauvis(subdiv_graph_to_pass)
         end
 
         first_pass_info = first_pass.execute({
@@ -327,6 +329,19 @@ unified.execute = function()
             return false
         end
         sort_for_pool = first_pass_info.sort
+
+
+
+
+
+
+        log(serpent.block(sort_for_pool))
+
+
+
+
+
+
 
         -- Replace deps in sorted_deps by travs
         old_sorted_deps = table.deepcopy(sorted_deps)
@@ -380,9 +395,6 @@ unified.execute = function()
                 log(smallest_ind1)
                 log(key2)
                 log(smallest_ind2)
-
-                -- CRITICAL TODO: Remove this shortcircuit!
-                do return true end
 
                 error("Node that should be reachable is not reachable!")
             end
@@ -598,10 +610,10 @@ unified.execute = function()
 
     if SWITCH_PLANETS then
         local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.vulcanus)
         data.raw.planet.nauvis.name = "nauvis"
-        data.raw.planet.gleba = old_nauvis
-        data.raw.planet.gleba.name = "gleba"
+        data.raw.planet.vulcanus = old_nauvis
+        data.raw.planet.vulcanus.name = "vulcanus"
     end
 
     return {

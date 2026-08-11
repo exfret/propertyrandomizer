@@ -12,6 +12,16 @@ local function load_dep_graph()
         storage.graph = graph
         break
     end
+    storage.sort_info = top.sort(storage.graph)
+
+    storage.tech_graph = storage.graph
+    local tech_graph = storage.tech_graph
+    for _, node in pairs(tech_graph.nodes) do
+        if node.type == "technology" and not game.forces.player.technologies[node.name].researched then
+            gutils.add_edge(tech_graph, gutils.key("false", ""), node)
+        end
+    end
+    storage.tech_sort_info = top.sort(tech_graph)
 end
 
 script.on_init(function(event)
@@ -22,7 +32,6 @@ script.on_init(function(event)
     game.forces.player.mining_with_fluid = true
 
     load_dep_graph()
-    storage.sort_info = top.sort(storage.graph)
 
     for data, _ in pairs(prototypes.item["propertyrandomizer-slot-to-trav"].get_entity_type_filters(defines.selection_mode.select)) do
         local _, slot_to_trav = serpent.load(data)
@@ -75,6 +84,17 @@ script.on_configuration_changed(function(event)
     game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Mod configuration was changed; keep in mind that updates may break pre-existing runs.\nYou can sync the exact versions of mods by Ctrl + Left Click on the \"Sync mods\" button on the top right when selecting a save to load.\nIf you need any help, message exfret on discord or on the mod's website - mods.factorio.com/mod/propertyrandomizer")
 
     load_dep_graph()
+end)
+
+script.on_event(defines.events.on_research_finished, function(event)
+    local research = event.research
+    local tech_graph = storage.tech_graph
+    local node_key = gutils.key("technology", research.name)
+    local node = tech_graph.nodes[node_key]
+    local remove_edge_key = gutils.ekey({start = gutils.key("false", ""), stop = node_key})
+    gutils.remove_edge(tech_graph, remove_edge_key)
+    local new_edge = gutils.add_edge(tech_graph, gutils.key("true", ""), node)
+    storage.tech_sort_info = top.sort(tech_graph, storage.tech_sort_info, {tech_graph.nodes[new_edge.start], tech_graph.nodes[new_edge.stop]})
 end)
 
 script.on_event("return-to-starting-planet", function(event)

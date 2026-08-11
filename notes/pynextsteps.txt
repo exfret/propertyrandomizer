@@ -1,18 +1,17 @@
-FIRST: Need the loading to go better! What is the logi science blocker?
+ - Next: explorer improvements, to help with headaches.
+ - Then: maybe more randomizations, like recipe rando
+
  - IDEA: Bring back/identify building that an item makes with item so that it requires the electricity etc. for placement at least
     * Could also just change where we consider it in the initial sort/put it later if possible
 
  - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
     * Will only be an issue if we do recipe rando again
- - Force assembling machines early
-    - Actually, let's just give some early assembling machines? Oh but they need to be powered... Just blacklist them heavily from things
- - Modify crashed ship materials to actually be new versions
 
 NECESSARY:
- - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
+ - Expansion of logic
     - Check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
        * This probably can be avoided for the preview!
- - Investigate why fawogae fluid box overlapped
+ - Whatever is blocking utility science
 
 MEDIUM PRIORITY:
  - Finish randomizations
@@ -23,22 +22,19 @@ MEDIUM PRIORITY:
     - Create a modpack including customized recommended QOL mods
     - Don't randomize slaughterhouse recipe category (CHECK)
     - Don't randomize barreling recipe categories (or canisters etc.) (CHECK)
-    - Create a mod/mod setting that just sets the data.raw to a precalculated value
-    - Tweak numerical randomizations (especially crafting speed) to be more appropriate
     - Recipe randomization for building/science pack recipe ingredients subset
     - Playtest through circuits
- - Stack size preservation in first-pass-new (and cost preservation)
 
 LOW PRIORITY:
  - Explorer improvements
     - Dynamic explorer (shows green for currently reachable, red for currently unreachable, and purple for never reachable/softlock)
     - Some very basic UI improvements (close on e, close button, maybe others)
+    - Abilities (check for how you can make power)
  - UX improvements
     - Improve recipe icons that are hardcoded to be more representative of the actual things involved
-    - Ore icons for things like stone that produce two results (is that the only example?)
     - Rename mines for single resources based off what they mine
     - Put TURD researches at appropriate points of game
-    - Just trim useless items/fluids
+    - Just trim useless items/fluids?
  - Random things
     - TURD randomizations (bhoddos explosions)
 

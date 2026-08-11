@@ -4,8 +4,9 @@ Date: ?
   Features:
     - Item weight randomization and a few other randomizations that I commented are no longer commented out
     - Randomize leg sizes
+    - Explorer now shows red for "reachable in the future but not given current techs" and purple for "never reachable"
   Changes:
-    - Removed white color in tooltip
+    - Removed white color in tooltips
   Organization:
     - General declutter; deleting unused files/folders, etc.
   Balancing:

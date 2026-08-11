@@ -1429,13 +1429,12 @@ function concrete.build(lu)
                     abilities = table.deepcopy(tech_abilities),
                 })
             elseif trigger.type == "capture-spawner" then
-                -- Need to capture the specified spawner type
+                -- If trigger.entity is set, we need that specific spawner; otherwise any will do
                 if trigger.entity ~= nil then
                     add_edge("entity-capture-spawner", trigger.entity, {
                         abilities = table.deepcopy(tech_abilities),
                     })
                 else
-                    -- Any spawner will do
                     add_edge("capture-spawner", "", {
                         abilities = table.deepcopy(tech_abilities),
                     })
@@ -1466,7 +1465,6 @@ function concrete.build(lu)
         ----------------------------------------
         -- Can we encounter this tile?
 
-        -- Tiles can be encountered by being generated on a planet
         local tile_rooms = lu.tiles_to_rooms[tile.name]
         if tile_rooms ~= nil then
             for room_key, _ in pairs(tile_rooms) do
@@ -1477,7 +1475,6 @@ function concrete.build(lu)
         end
 
         local buildable = lu.buildables[key(tile)]
-        -- Tiles can also be built (if buildable)
         if buildable ~= nil then
             add_edge("tile-build")
 
@@ -1485,7 +1482,6 @@ function concrete.build(lu)
             add_node("tile-build", "OR")
             ----------------------------------------
             -- Can we build this tile?
-            -- OR over tile-build-item-place-as-tile (one per item that can build it)
 
             local tile_items = lu.place_as_tile_items[tile.name]
             if tile_items ~= nil then
@@ -1498,7 +1494,6 @@ function concrete.build(lu)
             add_node("tile-build-item", "OR")
             ----------------------------------------
             -- Can we access an item that can build this tile?
-            -- Useful for direct queries about tile-building items.
 
             if tile_items ~= nil then
                 for item_name, _ in pairs(tile_items) do
@@ -1506,7 +1501,7 @@ function concrete.build(lu)
                 end
             end
 
-            -- Compound nodes: one per (tile, item) pair
+            -- Compound node: one per (tile, item) pair
             if tile_items ~= nil then
                 for item_name, condition_info in pairs(tile_items) do
                     local compound_key = concat({tile.name, item_name})
@@ -1550,10 +1545,8 @@ function concrete.build(lu)
                                 end
                             end
 
-                            if not group_blocked then
-                                -- Add tiles from this group (filtered by whitelist if present)
-                                -- For more efficiency, we could depend on groups of tiles again instead of specific tiles,
-                                -- but that is less likely to help in this case and more involved, so let's not go that far for now
+                            if (not condition_info.invert and not group_blocked) or (condition_info.invert and group_blocked) then
+                                -- For more efficiency, we could depend on groups of tiles again instead of specific tiles, but that is less likely to help in this case and more involved, so let's not go that far for now
                                 for tile_name_in_group, _ in pairs(tiles_in_group) do
                                     local allowed = true
                                     if condition_info.whitelist ~= nil then
@@ -1566,8 +1559,6 @@ function concrete.build(lu)
                             end
                         end
                     end
-                    -- No condition = no edges (falsey, conservative default)
-                    -- In vanilla all items have conditions, so this shouldn't trigger
                 end
             end
         end
@@ -1577,7 +1568,7 @@ function concrete.build(lu)
             add_node("tile-fluid", "AND")
             ----------------------------------------
             -- Can we pump fluid from this tile?
-            -- Requires: tile + compatible pump
+            -- Requires: tile and compatible pump
 
             add_edge("tile")
             add_edge("tile-fluid-pump")

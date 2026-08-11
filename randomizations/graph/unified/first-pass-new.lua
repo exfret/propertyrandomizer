@@ -92,7 +92,7 @@ first_pass.execute = function(params)
     local spoofed_graph = table.deepcopy(params.spoofed_graph)
     local subdiv_graph = table.deepcopy(params.subdiv_graph)
 
-    local init_sort = top.sort(spoofed_graph)
+    local init_sort = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
 
     --local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
 
@@ -347,7 +347,7 @@ first_pass.execute = function(params)
     end
 
     local old_split_graph = table.deepcopy(split_graph)
-    local split_sort = top.sort(split_graph)
+    local split_sort = top.sort(split_graph, nil, nil, { choose_randomly = true })
 
     ----------------------------------------------------------------------------------------------------
     -- HELPER FUNCTIONS
@@ -942,7 +942,7 @@ first_pass.execute = function(params)
         local true_node = graph[key("reachable-room", "")]
         for _, prenode in pairs(gutils.prenodes(graph, slot)) do
             gutils.add_edge(graph, true_node, prenode)
-            sort_info = top.sort(graph, sort_info, {true_node, prenode})
+            sort_info = top.sort(graph, sort_info, {true_node, prenode}, { choose_randomly = true })
         end
         -- Actually, I think this is incorrect: Either slot or trav needs to get context themselves or else it's impossible anyways
         --[[if slot.op == "OR" then
@@ -977,7 +977,7 @@ first_pass.execute = function(params)
         end
 
         gutils.add_edge(graph, slot_base, trav_head)
-        sort_info = top.sort(graph, sort_info, {slot_base, trav_head})
+        sort_info = top.sort(graph, sort_info, {slot_base, trav_head}, { choose_randomly = true })
 
         update_mechanic_index(sort_info)
 
@@ -1415,7 +1415,7 @@ first_pass.execute = function(params)
                     end
                     if not found_fulfiller then
                         log("FAILED CANCELLATION")
-                        debug_mechanic_blockage(curr_mechanic)
+                        --debug_mechanic_blockage(curr_mechanic)
                         
                         --break
                         fulfill_reservation(1)
@@ -1464,7 +1464,7 @@ first_pass.execute = function(params)
 
                 -- CRITICAL TODO: What is this section?
 
-                if i / #slot_inds < 0.9 then
+                if i / #slot_inds < 1 then
                     return false
                 end
                 disable_reachability_check = true
@@ -1529,7 +1529,7 @@ first_pass.execute = function(params)
     end
 
     -- Need to do a new sort since the reservations can make it out of order
-    local ordered_sort = top.sort(old_split_graph)
+    local ordered_sort = top.sort(old_split_graph, nil, nil, { choose_randomly = true })
     for _, slot_key in pairs(new_slot_order) do
         local slot = old_split_graph.nodes[slot_key]
         local trav = old_split_graph.nodes[slot_to_trav[slot_key]]
