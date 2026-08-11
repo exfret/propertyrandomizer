@@ -68,6 +68,7 @@ local unified = require("randomizations/graph/unified/execute-new")
 -- Load compat code
 require("compat/master")
 
+local unified_info
 local function smuggle_info()
     log("Smuggling control info")
 
@@ -85,10 +86,15 @@ local function smuggle_info()
     logic_selection_tool.type = "selection-tool"
     logic_selection_tool.name = "propertyrandomizer-logic"
     logic_selection_tool.select.entity_type_filters = {serpent.dump(new_logic.type_info)}
+    local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    slot_to_trav_selection_tool.type = "selection-tool"
+    slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
+    slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump((unified_info.first_pass_info or {}).slot_to_trav or {})}
     data:extend({
         warnings_selection_tool,
         graph_selection_tool,
         logic_selection_tool,
+        slot_to_trav_selection_tool,
     })
 end
 
@@ -107,7 +113,8 @@ end
 -- Do unified randomizations first
 
 for i = 1, config.unified_num_retries do
-    if not unified.execute() then
+    unified_info = unified.execute()
+    if not unified_info then
         data.raw = table.deepcopy(old_data_raw)
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
