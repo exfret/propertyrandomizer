@@ -1,16 +1,9 @@
-Everything needed before a real "compatible with py release"
-Add things as I think of them
-Might need to bubble unlocks *downward*, since I'm getting things unlocked much later than they can be made
-
 FIRST: Need the loading to go better! What is the logi science blocker?
- - Stop at randomized items
-
  - IDEA: Bring back/identify building that an item makes with item so that it requires the electricity etc. for placement at least
     * Could also just change where we consider it in the initial sort/put it later if possible
- - Test if making py modules into mechanics helps with loading process
 
- - See how prereq shuffle on recipe categories works to get rid of "research the whole science packs at once" issue
  - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
+    * Will only be an issue if we do recipe rando again
  - Force assembling machines early
     - Actually, let's just give some early assembling machines? Oh but they need to be powered... Just blacklist them heavily from things
  - Modify crashed ship materials to actually be new versions
@@ -19,9 +12,8 @@ FIRST: Need the loading to go better! What is the logi science blocker?
 
 NECESSARY:
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
-    - Finally, check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
+    - Check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
        * This probably can be avoided for the preview!
-    - Filtered fluid energy sources
  - Investigate why fawogae fluid box overlapped
 
 MEDIUM PRIORITY:

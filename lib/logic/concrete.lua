@@ -329,7 +329,11 @@ function concrete.build(lu)
                     elseif energy_source.type == "electric" then
                         add_edge("energy-source-electric", "")
                     elseif energy_source.type == "fluid" then
-                        add_edge("energy-source-fluid", "")
+                        if energy_source.fluid_box.filter ~= nil then
+                            add_edge("fluid", energy_source.fluid_box.filter)
+                        else
+                            add_edge("energy-source-fluid", "")
+                        end
                     elseif energy_source.type == "heat" then
                         add_edge("energy-source-heat", "")
                     end
@@ -346,19 +350,27 @@ function concrete.build(lu)
             if lutils.check_freezable(entity) then
                 add_edge("warmth", "")
             end
-            if lu.py_operability_module_cats[entity.name] ~= nil then
+            local base_name
+            if string.len(entity.name) >= 6 then
+                if string.sub(entity.name, -5, -3) == "-mk" then
+                    base_name = string.sub(entity.name, 1, -6)
+                end
+            end
+            local operability_modules
+            if base_name ~= nil and lu.py_operability_module_cats[base_name] ~= nil then
+                operability_modules = lu.py_operability_module_cats[base_name]
                 add_edge("entity-operate-py-module")
             end
             -- Note: Turrets are "operable" without ammo; since the damage is on the ammo, we actually need to check if there is a turret to shoot an ammo rather than check if there is ammo for a turret to shoot
             -- TODO: Module requirements (for mods like PyAL)
 
-            if lu.py_operability_module_cats[entity.name] ~= nil then
+            if operability_modules ~= nil then
                 ----------------------------------------
                 add_node("entity-operate-py-module", "OR", nil, nil, { mechanic = true })
                 ----------------------------------------
                 -- Can we get the module required to operate this py building
 
-                for category, _ in pairs(lu.py_operability_module_cats[entity.name]) do
+                for category, _ in pairs(operability_modules) do
                     for _, mod in pairs(data.raw.module) do
                         if mod.category == category then
                             add_edge("item", mod.name)

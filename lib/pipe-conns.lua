@@ -57,7 +57,7 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
       connections[#connections+1] = {position = {x + shift.x,  shift.y}, direction = defines.direction.north}
       connections[#connections+1] = {position = {x + shift.x, -shift.y}, direction = defines.direction.south}
     end
-    for y = 0, height do
+    for y = 1, height - 1 do
       connections[#connections+1] = {position = { shift.x, y + shift.y}, direction = defines.direction.west}
       connections[#connections+1] = {position = {-shift.x, y + shift.y}, direction = defines.direction.east}
     end
@@ -67,25 +67,34 @@ end
 pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_source)
     ignore_energy_source = ignore_energy_source or false
 
-    -- TODO: Compatibility with positions and alt_position(s)
     local taken_positions = {}
+
+    local function add_to_taken(pipe_conn)
+        if pipe_conn.position ~= nil then
+            table.insert(taken_positions, pipe_conn.position)
+        end
+        if pipe_conn.positions ~= nil then
+            table.insert(taken_positions, pipe_conn.positions[1])
+        end
+    end
+
     for _, property_name in pairs({"fluid_box", "output_fluid_box", "input_fluid_box", "fuel_fluid_box", "oxidizer_fluid_box"}) do
         if prototype[property_name] ~= nil then
             for _, pipe_conn in pairs(prototype[property_name].pipe_connections) do
-                table.insert(taken_positions, pipe_conn.position)
+                add_to_taken(pipe_conn)
             end
         end
     end
     if prototype.fluid_boxes ~= nil then
         for _, fluid_box in pairs(prototype.fluid_boxes) do
             for _, pipe_conn in pairs(fluid_box.pipe_connections) do
-                table.insert(taken_positions, pipe_conn.position)
+                add_to_taken(pipe_conn)
             end
         end
     end
     if prototype.heat_buffer ~= nil and prototype.heat_buffer.connections ~= nil then
         for _, connection in pairs(prototype.heat_buffer.connections) do
-            table.insert(taken_positions, connection.position)
+            add_to_taken(connection)
         end
     end
     if not ignore_energy_source then
@@ -94,14 +103,14 @@ pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_so
                 for _, fluid_box_type in pairs({"fluid_box", "output_fluid_box"}) do
                     if prototype.energy_source[fluid_box_type] ~= nil then
                         for _, pipe_conn in pairs(prototype.energy_source[fluid_box_type].pipe_connections) do
-                            table.insert(taken_positions, pipe_conn.position)
+                            add_to_taken(pipe_conn)
                         end
                     end
                 end
             elseif prototype.energy_source.type == "heat" then
                 if prototype.energy_source.connections ~= nil then
                     for _, connection in pairs(prototype.energy_source.connections) do
-                        table.insert(taken_positions, connection.position)
+                        add_to_taken(connection)
                     end
                 end
             end

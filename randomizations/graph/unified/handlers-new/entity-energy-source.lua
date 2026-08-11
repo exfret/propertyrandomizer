@@ -112,7 +112,7 @@ entity_energy_source.reflect = function(graph, head_to_base, head_to_handler)
                 entity.energy_source.scale_fluid_usage = true
                 entity.energy_source.fluid_box = entity.energy_source.fluid_box or {
                     volume = 1000,
-                    pipe_connections = {random_conn1, random_conn2},
+                    pipe_connections = {table.deepcopy(random_conn1), table.deepcopy(random_conn2)},
                     production_type = "input",
                 }
             elseif base_owner.type == "energy-source-heat" then

@@ -30,23 +30,31 @@ for k, v in pairs(short_py_cost_table_additions) do
     randomization_info.options.cost.default_cost_table[k] = v
 end
 
-local barreling_machine = dutils.get_prot("entity", "barrel-machine-mk01")
-if barreling_machine ~= nil then
-    local barreling_cats = barreling_machine.crafting_categories or {"crafting"}
-    table.sort(barreling_cats)
-    for input = 0, 1 do
-        for output = 0, 1 do
-            table.insert(randomization_info.options.unified["recipe-category"].blacklisted_pre, key("recipe_category", gutils.concat({gutils.concat(barreling_cats), tostring(input), tostring(output)})))
-        end
-    end
-end
-local slaughterhouse_machine = dutils.get_prot("entity", "slaughterhouse-mk01")
-if slaughterhouse_machine ~= nil then
-    local slaughterhouse_cats = slaughterhouse_machine.crafting_categories or {"crafting"}
-    table.sort(slaughterhouse_cats)
-    for input = 0, 3 do
-        for output = 0, 3 do
-            table.insert(randomization_info.options.unified["recipe-category"].blacklisted_pre, key("recipe_category", gutils.concat({gutils.concat(slaughterhouse_cats), tostring(input), tostring(output)})))
+for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01"}) do
+    local machine = dutils.get_prot("entity", machine_name)
+    if machine ~= nil then
+        local machine_cats = machine.crafting_categories or {"crafting"}
+        for _, recipe in pairs(data.raw.recipe) do
+            -- Don't check for fluids, just do a dumb check for some matching category
+            local compatible = false
+            for _, cat in pairs(recipe.categories or {"crafting"}) do
+                for _, cat2 in pairs(machine_cats) do
+                    if cat == cat2 then
+                        compatible = true
+                    end
+                end
+            end
+            if compatible then
+                -- Just assume there are at most 4 input/output fluids
+                -- If we need to blacklist a category with a recipe having more, increase this number
+                for input_fluids = 0, 4 do
+                    for output_fluids = 0, 4 do
+                        local recipe_categories = table.deepcopy(recipe.categories)
+                        table.sort(recipe_categories)
+                        randomization_info.options.unified["recipe-category"].blacklisted_pre[key("recipe-category", gutils.concat({gutils.concat(recipe_categories), tostring(input_fluids), tostring(output_fluids)}))] = true
+                    end
+                end
+            end
         end
     end
 end

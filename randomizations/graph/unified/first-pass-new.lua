@@ -1416,26 +1416,7 @@ first_pass.execute = function(params)
                     if not found_fulfiller then
                         log("FAILED CANCELLATION")
                         debug_mechanic_blockage(curr_mechanic)
-                        debug_blocked_node(
-                            key("item", "cdna"),
-                            12
-                        )
-
-                        debug_blocked_node(
-                            key("item", "ralesia-seeds"),
-                            12
-                        )
-
-                        debug_blocked_node(
-                            key("item", "cottongut-pup"),
-                            12
-                        )
-
-                        debug_blocked_node(
-                            key("item", "cottongut-mk01"),
-                            12
-                        )
-
+                        
                         --break
                         fulfill_reservation(1)
                         update_reservations()
