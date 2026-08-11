@@ -3,6 +3,8 @@
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("lib/graph/consistent-sort")
+-- Used for getting key
+local gutils = require("lib/graph/graph-utils")
 
 local function load_dep_graph()
     for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
@@ -21,6 +23,52 @@ script.on_init(function(event)
 
     load_dep_graph()
     storage.sort_info = top.sort(storage.graph)
+
+    for data, _ in pairs(prototypes.item["propertyrandomizer-slot-to-trav"].get_entity_type_filters(defines.selection_mode.select)) do
+        local _, slot_to_trav = serpent.load(data)
+        storage.slot_to_trav = slot_to_trav
+        break
+    end
+
+    if script.active_mods["pyalternativeenergy"] then
+        if remote.interfaces["freeplay"] ~= nil and remote.interfaces["freeplay"]["get_created_items"] ~= nil and remote.interfaces["freeplay"]["set_created_items"] ~= nil then
+            local items = remote.call("freeplay", "get_created_items")
+            local ship_items = remote.call("freeplay", "get_ship_items")
+            local debris_items = remote.call("freeplay", "get_debris_items")
+            local respawn_items = remote.call("freeplay", "get_respawn_items")
+
+            for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
+                local new_item_list = {}
+                local old_item_names = {}
+                for item_name, amount in pairs(item_list) do
+                    local new_item_name
+                    local slot_key = gutils.key("item", item_name)
+                    local trav_key = storage.slot_to_trav[slot_key]
+                    -- Excluded from first pass
+                    if trav_key == nil then
+                        new_item_name = item_name
+                    else
+                        local trav = gutils.deconstruct(trav_key)
+                        local suffix = "-trav"
+                        new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
+                    end
+                    new_item_list[new_item_name] = amount
+                    table.insert(old_item_names, item_name)
+                end
+                for _, item_name in pairs(old_item_names) do
+                    item_list[item_name] = nil
+                end
+                for k, v in pairs(new_item_list) do
+                    item_list[k] = v
+                end
+            end
+
+            remote.call("freeplay", "set_created_items", items)
+            remote.call("freeplay", "set_ship_items", ship_items)
+            remote.call("freeplay", "set_debris_items", debris_items)
+            remote.call("freeplay", "set_respawn_items", respawn_items)
+        end
+    end
 end)
 
 script.on_configuration_changed(function(event)

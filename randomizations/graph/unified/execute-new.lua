@@ -604,7 +604,9 @@ unified.execute = function()
         data.raw.planet.gleba.name = "gleba"
     end
 
-    return true
+    return {
+        first_pass_info = first_pass_info
+    }
 end
 
 return unified

@@ -7,8 +7,6 @@ FIRST: Need the loading to go better! What is the logi science blocker?
  - Force assembling machines early
     - Actually, let's just give some early assembling machines? Oh but they need to be powered... Just blacklist them heavily from things
  - Modify crashed ship materials to actually be new versions
- - Figure out why automated factory mk01 got 1GW power usage
-    - Maybe the thing it replaced is later
 
 NECESSARY:
  - Expansion of logic (don't wait for dep graph lib, and this can inform dep graph lib's methods too anyways)
