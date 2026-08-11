@@ -1,5 +1,11 @@
 local categories = require("helper-tables/categories")
 
+if mods["pyalternativeenergy"] then
+    -- Make assembling machines painfully early so they don't get pushed late
+    data.raw.recipe["assembling-machine-1"].enabled = true
+    data.raw.recipe["assembling-machine-1"].ingredients = {{type = "item", name = "iron-ore", amount = 8}}
+end
+
 -- Make fixed recipes non-hidden
 for machine_type, _ in pairs(categories.crafting_machines) do
     for _, machine in pairs(data.raw[machine_type]) do

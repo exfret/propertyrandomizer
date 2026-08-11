@@ -91,7 +91,7 @@ function abstract.build(lu)
         end
 
         ----------------------------------------
-        add_node("room-autoplace", "OR", nil, room_key, { mechanic = true })
+        add_node("room-autoplace", "OR", nil, room_key)--, { mechanic = true })
         ----------------------------------------
         -- Can we see things generated on this planet?
         -- Mostly here for technical reasons so that entity autoplace randomization works better

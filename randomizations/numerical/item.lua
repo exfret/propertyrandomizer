@@ -575,6 +575,7 @@ randomizations.item_stack_sizes = function(id)
     end
 end
 
+-- TODO: Don't hardcode this?
 local rocket_lift_weight = 1000000
 
 -- New
@@ -590,7 +591,7 @@ randomizations.item_weights = function(id)
                         dummy = 1,
                         rounding = "discrete_float",
                     }
-                    item.weight = item.weight / weight_factor
+                    item.weight = math.min(item.weight / weight_factor, rocket_lift_weight)
 
                     locale_utils.create_localised_description(item, 1 / weight_factor, id, { flipped = false })
                 end

@@ -16,6 +16,10 @@ for class, _ in pairs(defines.prototypes.item) do
             if string.find(item.name, "barrel") ~= nil then
                 randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
             end
+            -- Armors with grids all get their own electric network, potentially lagging the game; don't randomize them!
+            if item.type == "armor" and item.equipment_grid ~= nil then
+                randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
         end
     end
 end

@@ -69,6 +69,8 @@ stage.place_as_tile_items = function()
                 end
             end
 
+            condition_info.invert = item.place_as_tile.invert
+
             place_as_tile_items[tile_name][item.name] = condition_info
         end
     end

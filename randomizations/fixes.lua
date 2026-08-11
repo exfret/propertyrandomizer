@@ -9,6 +9,29 @@ local dupe = require("lib/dupe")
 local cutils = require("lib/cost/cost-utils")
 
 randomizations.rebuild_tech_tree = function()
+    -- Special py fixes
+    if mods["pyalternativeenergy"] then
+        -- Force icons of recipes to be their sole result
+        for _, recipe in pairs(data.raw.recipe) do
+            if recipe.results ~= nil and #recipe.results == 1 then
+                local item_or_fluid
+                if recipe.results[1].type == "item" then
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if data.raw[item_class][recipe.results[1].name] ~= nil then
+                        item_or_fluid = data.raw[item_class][recipe.results[1].name]
+                    end
+                end
+                elseif recipe.results[1].type == "fluid" then
+                    item_or_fluid = data.raw.fluid[recipe.results[1].name]
+                end
+
+                recipe.icon = item_or_fluid.icon
+                recipe.icons = item_or_fluid.icons
+                recipe.icon_size = item_or_fluid.icon_size
+            end
+        end
+    end
+
     -- Find science packs (used for determine "essential" techs)
     local is_science_pack = {}
     for _, lab in pairs(data.raw.lab) do
@@ -20,6 +43,7 @@ randomizations.rebuild_tech_tree = function()
     -- Just make rocket parts enabled from the beginning, since they basically are anyways due to being a fixed recipe for the silo
     if data.raw.recipe["rocket-part"] ~= nil then
         data.raw.recipe["rocket-part"].enabled = true
+        data.raw.recipe["rocket-part"].hidden = true
     end
 
     -- Average tech costs across recipes in a technology

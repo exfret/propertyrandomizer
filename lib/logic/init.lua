@@ -203,7 +203,10 @@ logic.build = function(ignore_balance_nodes)
     -- TODO: Fix these
     -- Right now, we don't add the extra tiles from the starter pack
     if mods["space-age"] then
-        gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
+        --gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
+        for _, surface in pairs(data.raw.surface) do
+            gutils.add_edge(logic.graph, key("room", key("surface", surface.name)), key("tile", "empty-space"))
+        end
     end
 
 ----------------------------------------------------------------------------------------------------

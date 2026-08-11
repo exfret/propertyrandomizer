@@ -340,10 +340,6 @@ smuggle_info()
 
 
 
-
-log(serpent.block(data.raw["assembling-machine"]["assembling-machine-1"]))
-
-
 -- TODO: REMOVE
 --log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 
