@@ -7,7 +7,7 @@ local logic = require("lib/logic/init")
 local balance = {}
 
 balance.find_balance_blacklist = function(graph, init_sort)
-    local in_blacklist = {}
+    --[[local in_blacklist = {}
 
     for _, node in pairs(graph.nodes) do
         if node.class == "groups" and node.type ~= "orand" then
@@ -59,7 +59,7 @@ balance.find_balance_blacklist = function(graph, init_sort)
 
     log(serpent.block(in_blacklist))
 
-    return in_blacklist
+    return in_blacklist]]
 end
 
 return balance

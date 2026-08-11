@@ -1,5 +1,7 @@
 -- TODO: Review fork of raiguard flib mod, which accounts for a couple rules that I don't; add them to this file
 
+local constants = require("helper-tables/constants")
+
 local locale_utils = {}
 
 function locale_utils.find_localised_name(prototype)
@@ -253,15 +255,12 @@ function locale_utils.create_tooltip(factor, extra_params)
         exponent = 0 - exponent
     end
     if exponent < -8 then
-        color = color_to_string(colors.white)
-    elseif exponent < -4 then
-        local t = (exponent + 8) / 4
-        color = lerp_color(colors.white, colors.magenta, t)
-    elseif exponent < -2 then
-        local t = (exponent + 4) / 2
+        color = color_to_string(colors.magenta)
+    elseif exponent < -3 then
+        local t = (exponent + 8) / 5
         color = lerp_color(colors.magenta, colors.red, t)
     elseif exponent < -1 then
-        local t = (exponent + 2) / 1
+        local t = (exponent + 3) / 2
         color = lerp_color(colors.red, colors.orange, t)
     elseif exponent < 0 then
         local t = (exponent + 1) / 1
@@ -269,17 +268,14 @@ function locale_utils.create_tooltip(factor, extra_params)
     elseif exponent < 1 then
         local t = (exponent + 0) / 1
         color = lerp_color(colors.gray, colors.light_green, t)
-    elseif exponent < 2 then
-        local t = (exponent - 1) / 1
+    elseif exponent < 3 then
+        local t = (exponent - 1) / 2
         color = lerp_color(colors.light_green, colors.green, t)
-    elseif exponent < 4 then
-        local t = (exponent - 2) / 2
-        color = lerp_color(colors.green, colors.cyan, t)
     elseif exponent < 8 then
-        local t = (exponent - 4) / 4
-        color = lerp_color(colors.cyan, colors.white, t)
+        local t = (exponent - 3) / 5
+        color = lerp_color(colors.green, colors.cyan, t)
     else
-        color = color_to_string(colors.white)
+        color = color_to_string(colors.cyan)
     end
     local sign_symbol = ""
     if percent_change >= 0 then
@@ -288,13 +284,7 @@ function locale_utils.create_tooltip(factor, extra_params)
     return "[color=" .. color .. "]" .. sign_symbol .. percent_change .. "%"
 end
 
-local str_to_mul_std = {
-    very_small = 1.1,
-    small = 1.2,
-    medium = 1.5,
-    big = 2.0,
-    very_big = 3.5
-}
+local str_to_mul_std = constants.str_to_mul_std
 
 function locale_utils.create_localised_description(prototype, factor, id, extra_params)
     if extra_params == nil then

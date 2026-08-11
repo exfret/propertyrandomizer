@@ -14,3 +14,7 @@ This lists bugs/issues before they're moved to their own issues on the github re
 41. Item weights were sometimes nil after doing first pass
 43. Putting fluid boxes on mining drills is sometimes putting them inside the drills
 44. Item randomization does not properly account for when icons are less than 64px (like the py guar seeds) - seems like a resource icon property issue actually
+45. Things that are made consumable can be made immediately dysfunctional
+46. Railgun/other projectiles die before reaching target with large range
+47. Space platforms don't require tiles (should be there for players to not go insane)
+48. Spoil time getting down to 0 seconds

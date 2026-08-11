@@ -1,8 +1,15 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.5
 Date: ?
+  Features:
+    - Item weight randomization and a few other randomizations that I commented are no longer commented out
+    - Randomize leg sizes
+  Changes:
+    - Removed white color in tooltip
   Organization:
     - General declutter; deleting unused files/folders, etc.
+  Balancing:
+    - Various tweaks based on player feedback
   Bugfixes:
     - Dependency graph rebuilds did not account for recycling recipes being "fixed"
     - Rocket launch products are accounted for in new logic (finally)

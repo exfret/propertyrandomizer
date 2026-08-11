@@ -94,7 +94,7 @@ first_pass.execute = function(params)
 
     local init_sort = top.sort(spoofed_graph)
 
-    local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
+    --local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
 
     local sensitive_node_keys = {
         [key("item", "stone-furnace")] = true,
@@ -157,9 +157,9 @@ first_pass.execute = function(params)
             return false
         end]]
         -- CRITICAL TODO: A better method for determining blacklistedness!
-        if in_balance_blacklist[subdiv_node.name] then
+        --[[if in_balance_blacklist[subdiv_node.name] then
             return false
-        end
+        end]]
         for _, prenode in pairs(gutils.prenodes(subdiv_graph, subdiv_node)) do
             if prenode.type == "head" then
                 return true
@@ -593,7 +593,9 @@ first_pass.execute = function(params)
         local trav = ind_to_trav(slot_inds[sorted_node_ptr])
         trav_to_mechanics[key(trav)] = {}
         local open = { trav }
-        local in_open = {}
+        local in_open = {
+            [key(trav)] = true,
+        }
         local ind = 1
         local dont_propagate_types = {
             ["fluid-hold"] = true,
@@ -646,11 +648,13 @@ first_pass.execute = function(params)
             if mechanic_key ~= nil then
                 trav_to_mechanics[key(trav)][mechanic_key] = true
                 --trav_to_mechanics[key(trav)][key(next_node)] = true
-            elseif not dont_propagate_types[next_node.type] then
+            elseif not dont_propagate_types[next_node.type] --[[and not (next_node.trav and key(next_node) ~= key(trav))]] then
                 for _, depnode in pairs(gutils.depnodes(split_graph, next_node)) do
-                    if not in_open[key(depnode)] then
-                        in_open[key(depnode)] = true
-                        table.insert(open, depnode)
+                    if not (next_node.slot and key(depnode) == key(slot_to_base[key(next_node)])) then
+                        if not in_open[key(depnode)] then
+                            in_open[key(depnode)] = true
+                            table.insert(open, depnode)
+                        end
                     end
                 end
             end
@@ -1302,18 +1306,37 @@ first_pass.execute = function(params)
                     log("ITERATION #" .. tostring(iteration))
                 end
 
+                -- Precompute traveler predicates
+                local precomp_travs = {}
+                for perm_ind, sorted_node_ptr in pairs(perm) do
+                    local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                    if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
+                        if can_reserve(trav) or not to_be_reserved(trav) then
+                            table.insert(precomp_travs, trav)
+                        end
+                    end
+                end
+
+                local slot_tries = 0
                 for _, slot_ind in pairs(slot_inds) do
+                    -- TODO: Don't hardcode this number
+                    if slot_tries >= 100 then
+                        break
+                    end
+
                     local slot = ind_to_slot(slot_ind)
                     local slot_key = key(slot)
 
                     -- Test if this slot is absolute reachable (for when slots of non-randomized edges)
                     --if slot_absolute_reachable(slot) then
                         if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
-                            for perm_ind, sorted_node_ptr in pairs(perm) do
-                                local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                            slot_tries = 1 + slot_tries
+                            for _, trav in pairs(precomp_travs) do
+                            --for perm_ind, sorted_node_ptr in pairs(perm) do
+                                --local trav = ind_to_trav(slot_inds[sorted_node_ptr])
 
-                                if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
-                                    if is_compatible(slot, trav) and (can_reserve(trav) or not to_be_reserved(trav)) then
+                                --if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
+                                    if is_compatible(slot, trav) then --and (can_reserve(trav) or not to_be_reserved(trav)) then
                                         if to_be_reserved(trav) then
                                             is_reserved[key(slot)] = true
                                             table.insert(reserved_slots, slot)
@@ -1322,7 +1345,7 @@ first_pass.execute = function(params)
                                         found_trav = trav
                                         break
                                     end
-                                end
+                                --end
                             end
                             if found_trav == nil and REPORT_SLOTS_FAILED then
                                 log("SLOT FAILURE: " .. key(slot))
@@ -1394,19 +1417,25 @@ first_pass.execute = function(params)
                         log("FAILED CANCELLATION")
                         debug_mechanic_blockage(curr_mechanic)
                         debug_blocked_node(
-                            key("item", "agar"),
+                            key("item", "cdna"),
                             12
                         )
 
                         debug_blocked_node(
-                            key("item", "latex-slab"),
+                            key("item", "ralesia-seeds"),
                             12
                         )
 
                         debug_blocked_node(
-                            key("fluid", "steam"),
+                            key("item", "cottongut-pup"),
                             12
                         )
+
+                        debug_blocked_node(
+                            key("item", "cottongut-mk01"),
+                            12
+                        )
+
                         --break
                         fulfill_reservation(1)
                         update_reservations()

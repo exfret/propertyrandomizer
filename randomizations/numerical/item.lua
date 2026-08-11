@@ -266,7 +266,7 @@ randomizations.armor_resistances = function(id)
                 end
             end
             if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Botched resistance)[/color]"}
+                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Changed resistance)[/color]"}
             end
         end
     end
@@ -582,26 +582,17 @@ randomizations.item_weights = function(id)
     for item_class, _ in pairs(categories.normal_item_classes) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                if item.subgroup == nil or categories.special_item_subgroups[item.subgroup] == nil then
+                if item.subgroup == nil or categories.special_item_subgroups[item.subgroup] == nil and item.weight ~= nil then
                     local key = rng.key({ id = id, property = item })
 
                     local weight_factor = randomize{
                         key = key,
                         dummy = 1,
                         rounding = "discrete_float",
-                        dir = -1,
                     }
-                    if item.ingredient_to_weight_coefficient == nil then
-                        item.ingredient_to_weight_coefficient = 0.5
-                    end
-                    item.ingredient_to_weight_coefficient = item.ingredient_to_weight_coefficient * weight_factor
+                    item.weight = item.weight / weight_factor
 
-                    -- Let's try not to make stuff too heavy for rockets
-                    if item.weight ~= nil and item.weight <= rocket_lift_weight then
-                        item.weight = math.min(item.weight * weight_factor, rocket_lift_weight)
-                    end
-
-                    locale_utils.create_localised_description(item, weight_factor, id, { flipped = true })
+                    locale_utils.create_localised_description(item, 1 / weight_factor, id, { flipped = false })
                 end
             end
         end
