@@ -7,7 +7,10 @@ local randomize = randnum.rand
 
 randomizations.cliff_sizes = function(id)
     for _, cliff in pairs(data.raw.cliff) do
-        for orientation_type, orientation in pairs(cliff.orientations) do
+        -- Remove references between cliff orientation tables
+        for orientation_type, _ in pairs(cliff.orientations) do
+            cliff.orientations[orientation_type] = table.deepcopy(cliff.orientations[orientation_type])
+            local orientation = cliff.orientations[orientation_type]
             -- The "none" orientations were causing troubles
             if not string.find(orientation_type, "none") then
                 local factor = randomize({
@@ -26,7 +29,9 @@ randomizations.cliff_sizes = function(id)
                 end
                 
                 reformat.change_image_variations_size(orientation.pictures, factor)
-                reformat.change_image_variations_size(orientation.pictures_lower, factor)
+                if orientation.pictures_lower ~= nil then
+                    reformat.change_image_variations_size(orientation.pictures_lower, factor)
+                end
             end
         end
     end
@@ -62,14 +67,17 @@ randomizations.unit_sizes = function(id)
     for _, unit_class in pairs({"unit", "spider-unit"}) do
         if data.raw[unit_class] then
             for _, unit in pairs(data.raw[unit_class]) do
-                local group_spec = get_unit_group(unit)
-                local group_name = group_spec.name
-                local group_ind = group_spec.ind
+                -- Ignore dummy spider unit, which shares a leg with spidertron
+                if unit.name ~= "dummy-spider-unit" then
+                    local group_spec = get_unit_group(unit)
+                    local group_name = group_spec.name
+                    local group_ind = group_spec.ind
 
-                if unit_groups[group_name] == nil then
-                    unit_groups[group_name] = {}
+                    if unit_groups[group_name] == nil then
+                        unit_groups[group_name] = {}
+                    end
+                    unit_groups[group_name][group_ind] = unit
                 end
-                unit_groups[group_name][group_ind] = unit
             end
         end
     end
@@ -184,6 +192,39 @@ randomizations.unit_sizes = function(id)
 
             -- Localised description
             unit.localised_description = locale_utils.create_localised_description(unit, factor, id, { variance = "very_small", flipped = true })
+        end
+    end
+end
+
+randomizations.spider_leg_sizes = function(id)
+    for _, class in pairs({"spider-unit", "spider-vehicle"}) do
+        for _, entity in pairs(data.raw[class] or {}) do
+            if entity.name ~= "dummy-spider-unit" then
+                -- Remove references between things
+                entity.spider_engine = table.deepcopy(entity.spider_engine)
+                local engine = entity.spider_engine
+                if engine.legs.leg then
+                    local factor = randomize({
+                        key = rng.key({id = id}),
+                        dummy = 1,
+                        rounding = "none",
+                        variance = "very_small",
+                        range = "very_small"
+                    })
+                    reformat.change_spider_leg_spec_size(engine.legs, factor)
+                else
+                    for _, leg_spec in pairs(engine.legs) do
+                        local factor = randomize({
+                            key = rng.key({id = id}),
+                            dummy = 1,
+                            rounding = "none",
+                            variance = "very_small",
+                            range = "very_small"
+                        })
+                        reformat.change_spider_leg_spec_size(leg_spec, factor)
+                    end
+                end
+            end
         end
     end
 end

@@ -56,7 +56,8 @@ randomizations.all_sounds = function(id)
         end
 
         for key, val in pairs(tbl) do
-            if is_sound_property(val) then
+            -- Check tbl.type is nil so we don't mess up sound prototypes
+            if is_sound_property(val) and val.type == nil then
                 table.insert(sound_tbl_prop_keys, {tbl = tbl, property = key})
                 table.insert(sounds, val)
             else

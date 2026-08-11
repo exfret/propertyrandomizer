@@ -892,13 +892,13 @@ local spec = {
         }
     },
     -- Affects rocket capacity
-    --[[item_weights = {
+    item_weights = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },]]
+    },
     lab_research_speed = {
         category = "numerical",
         setting = {
@@ -1448,6 +1448,13 @@ local spec = {
             val = "more"
         }
     },]]
+    spider_leg_sizes = {
+        category = "numerical",
+        setting = {
+            name = "propertyrandomizer-misc",
+            val = "more"
+        }
+    },
     spider_unit_projectile_range = {
         category = "numerical",
         setting = {
@@ -1462,6 +1469,8 @@ local spec = {
             val = "more"
         }
     },
+    -- This has been causing weird issues, like things spoiling in 0 seconds, things spoiling that shouldn't be, and things that say they spoil even though they don't
+    --[[
     spoil_spawn = {
         category = "numerical",
         setting = {
@@ -1470,7 +1479,7 @@ local spec = {
         },
         -- Needs to be done before spoil time randomization
         order = 1,
-    },
+    },]]
     spoil_time = {
         category = "numerical",
         setting = {
@@ -1717,13 +1726,13 @@ local spec = {
             val = "less"
         }
     },
-    --[[vehicle_weight = {
+    vehicle_weight = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },]]
+    },
     worm_range = {
         category = "numerical",
         setting = {

@@ -700,7 +700,9 @@ randomizations.belt_speed = function(id)
         prototypes = belts,
         property = "speed",
         range_min = "small",
-        rounding = "discrete",
+        range_max = "big",
+        bias = 0.05,
+        rounding = "pure_discrete",
         abs_min = 1
     })
 
@@ -1599,7 +1601,8 @@ randomizations.inventory_sizes = function(id)
     for _, class_name in pairs({"container", "logistic-container"}) do
         for _, container in pairs(data.raw[class_name]) do
             -- If the inventory has size 0 or 1, it probably should not be randomized
-            if container.inventory_size > 1 then
+            -- AAI puts starting inventory in the crashed spaceship, so let's not randomize that
+            if container.inventory_size > 1 and container.name ~= "crash-site-spaceship" then
                 container_to_old_size[container.name] = container.inventory_size
                 table.insert(container_list, container)
             end
@@ -2422,14 +2425,16 @@ randomizations.module_slots = function(id)
     for entity_class, _ in pairs(categories.entities_with_module_slots) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                if entity.module_slots ~= nil and entity.module_slots > 0 then
-                    table.insert(module_slot_counts, entity.module_slots)
-                else
-                    no_module_slots_count = no_module_slots_count + 1
-                end
-                if entity_class ~= prototype_beacon then
-                    if entity.effect_receiver == nil then
-                        entity.effect_receiver = {}
+                if (entity.allowed_module_categories == nil or #entity.allowed_module_categories > 0) and (type(entity.allowed_effects) == "string" or (entity.allowed_effects == nil and (entity.type == "lab" or entity.type == "mining-drill")) or (type(entity.allowed_effects) == "table" and #entity.allowed_effects > 0)) then
+                    if entity.module_slots ~= nil and entity.module_slots > 0 then
+                        table.insert(module_slot_counts, entity.module_slots)
+                    else
+                        no_module_slots_count = no_module_slots_count + 1
+                    end
+                    if entity_class ~= prototype_beacon then
+                        if entity.effect_receiver == nil then
+                            entity.effect_receiver = {}
+                        end
                     end
                 end
             end
@@ -2445,16 +2450,36 @@ randomizations.module_slots = function(id)
     for entity_class, _ in pairs(categories.entities_with_module_slots) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
-                local rng_key = rng.key({ id = id, prototype = entity })
-                if entity.module_slots ~= nil and entity.module_slots > 0 then
-                    if entity_class ~= prototype_beacon and randbool.rand_bias_chaos(rng_key, remove_p, -1) then
-                        entity.effect_receiver.uses_module_effects = false
-                        entity.effect_receiver.uses_beacon_effects = false
-                        entity.module_slots = 0
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Module incompatible)[/color]"}
-                    else
-                        local old_module_slots = entity.module_slots
+                if (entity.allowed_module_categories == nil or #entity.allowed_module_categories > 0) and (type(entity.allowed_effects) == "string" or (entity.allowed_effects == nil and (entity.type == "lab" or entity.type == "mining-drill")) or (type(entity.allowed_effects) == "table" and #entity.allowed_effects > 0)) then
+                    local rng_key = rng.key({ id = id, prototype = entity })
+                    if entity.module_slots ~= nil and entity.module_slots > 0 then
+                        if entity_class ~= prototype_beacon and randbool.rand_bias_chaos(rng_key, remove_p, -1) then
+                            entity.effect_receiver.uses_module_effects = false
+                            entity.effect_receiver.uses_beacon_effects = false
+                            entity.module_slots = 0
+                            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Module incompatible)[/color]"}
+                        else
+                            local old_module_slots = entity.module_slots
 
+                            randomize({
+                                id = id,
+                                prototype = entity,
+                                property = "module_slots",
+                                rounding = "discrete",
+                                abs_min = 1,
+                                variance = "big",
+                                data_type = "uint16",
+                            })
+
+                            locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                        end
+                    elseif randbool.rand_bias_chaos(rng_key, add_p, 1) then
+                        -- Beacons don't have effect receiver
+                        if entity.effect_receiver ~= nil then
+                            entity.effect_receiver.uses_module_effects = true
+                            entity.effect_receiver.uses_beacon_effects = true
+                        end
+                        entity.module_slots = module_slot_counts[rng.int(rng_key, #module_slot_counts)]
                         randomize({
                             id = id,
                             prototype = entity,
@@ -2464,24 +2489,9 @@ randomizations.module_slots = function(id)
                             variance = "big",
                             data_type = "uint16",
                         })
-
-                        locale_utils.create_localised_description(entity, entity.module_slots / old_module_slots, id, { variance = "big" })
+                        entity.allowed_effects = get_allowed_effects(entity)
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
                     end
-                elseif randbool.rand_bias_chaos(rng_key, add_p, 1) then
-                    entity.effect_receiver.uses_module_effects = true
-                    entity.effect_receiver.uses_beacon_effects = true
-                    entity.module_slots = module_slot_counts[rng.int(rng_key, #module_slot_counts)]
-                    randomize({
-                        id = id,
-                        prototype = entity,
-                        property = "module_slots",
-                        rounding = "discrete",
-                        abs_min = 1,
-                        variance = "big",
-                        data_type = "uint16",
-                    })
-                    entity.allowed_effects = get_allowed_effects(entity)
-                    entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
                 end
             end
         end
@@ -4168,13 +4178,13 @@ randomizations.vehicle_weight = function(id)
                 prototype = vehicle,
                 property = "weight",
                 rounding = "discrete_float",
-                variance = "big",
+                variance = "medium",
                 dir = -1,
             })
 
             local factor = vehicle.weight / old_value
 
-            locale_utils.create_localised_description(vehicle, factor, id, { variance = "big", flipped = true })
+            locale_utils.create_localised_description(vehicle, factor, id, { variance = "medium", flipped = true })
         end
     end
 end

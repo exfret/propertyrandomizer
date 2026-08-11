@@ -354,7 +354,7 @@ function concrete.build(lu)
 
             if lu.py_operability_module_cats[entity.name] ~= nil then
                 ----------------------------------------
-                add_node("entity-operate-py-module", "OR")
+                add_node("entity-operate-py-module", "OR", nil, nil, { mechanic = true })
                 ----------------------------------------
                 -- Can we get the module required to operate this py building
 
@@ -1124,7 +1124,7 @@ function concrete.build(lu)
 
         if create_py_module_node then
             ----------------------------------------
-            add_node("recipe-py-module", "OR")
+            add_node("recipe-py-module", "OR", nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we get the module required to craft this recipe
             -- TODO: This should be combined in a new node along with entity-operate-py-module

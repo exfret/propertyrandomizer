@@ -9,25 +9,27 @@ for name, _ in pairs(data.raw["damage-type"]) do
     table.insert(damage_type_names, name)
 end
 
-local add_damage_type_description = function (prototype)
-    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), "\n[color=red](Damage type augment)[/color]"}
+local add_damage_type_description = function (prototype, new_val)
+    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), "\n[color=red](Damage type augmented to " .. new_val .. ")[/color]"}
 end
 
 local damage_type_randomization = function (prototype, parents, structs, id)
     local changed = false
+    local new_val
     local rng_key = rng.key({ id = id, prototype = prototype })
 
     for _, damage_parameters in pairs(structs["damage-parameters"] or {}) do
         local old_type = damage_parameters.type
         damage_parameters.type = damage_type_names[rng.int(rng_key, #damage_type_names)]
         if damage_parameters.type ~= old_type then
+            new_val = damage_parameters.type
             changed = true
         end
     end
 
     if changed then
         for _, parent in pairs(parents) do
-            add_damage_type_description(parent)
+            add_damage_type_description(parent, new_val)
         end
     end
 end

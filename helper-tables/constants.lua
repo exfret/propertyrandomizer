@@ -35,6 +35,13 @@ local constants = {
         ["more"] = 1.3,
         ["ultimate"] = 1.7
     },
+    str_to_mul_std = {
+        very_small = 1.1,
+        small = 1.2,
+        medium = 1.5,
+        big = 2.0,
+        very_big = 3.5
+    },
     setting_values = {
         none = 0,
         less = 1,

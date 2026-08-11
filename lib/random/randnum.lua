@@ -129,13 +129,7 @@ randnum.fill_in_defaults = function(params)
     }
     params.step_size = str_to_step_size[params.variance or "medium"]
     
-    local str_to_mul_std = {
-        very_small = 1.1,
-        small = 1.2,
-        medium = 1.5,
-        big = 2.0,
-        very_big = 3.5
-    }
+    local str_to_mul_std = constants.str_to_mul_std
     params.mul_std = str_to_mul_std[params.variance or "medium"]
 
     -- Returns either negative or positive the split bias

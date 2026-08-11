@@ -62,13 +62,13 @@ local py_scaling = { -- Roughly in GW expected for an "average" base, but the ra
     0.2, -- auto
     0.5, -- py1
     1, -- logi
-    4, -- py2
-    20, -- chem
-    60, -- py3
-    200, -- prod
-    500, -- py4
-    1000, -- utility
-    2000, -- space
+    3, -- py2
+    10, -- chem
+    20, -- py3
+    50, -- prod
+    100, -- py4
+    200, -- utility
+    300, -- space
 }
 item.initialize = function()
     trav_to_slot = nil
@@ -203,6 +203,10 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             if mods["pypostprocessing"] then
                 if trav_item.place_result ~= nil then
                     local energy_factor = py_scaling[1 + node_science_level[gutils.key("item", slot_item.name)]] / py_scaling[1 + node_science_level[gutils.key("item", trav_item.name)]]
+                    -- Be less punishing when making the energy costs *higher*
+                    if energy_factor > 1 then
+                        energy_factor = math.max(energy_factor / 10, 1)
+                    end
                     local entity = dutils.get_prot("entity", trav_item.place_result)
                     -- Focus only on energy_usage; that's the problematic part that absolutely needed to be changed and let's just let the rest be random as possible
                     for _, property in pairs({"energy_usage"}) do--, "power", "max_power_output", "power_input", "consumption", "energy_production"}) do
