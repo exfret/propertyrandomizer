@@ -72,10 +72,12 @@ for id, _ in pairs(config.unified) do
     if enabled[id] then--config.unified[id] then
         table.insert(handler_ids, id)
     end
-    randomization_info.options.unified[id] = {
-        blacklisted_pre = {},
-        blacklisted_dep = {},
-    }
+    if randomization_info.options.unified[id] == nil then
+        randomization_info.options.unified[id] = {
+            blacklisted_pre = {},
+            blacklisted_dep = {},
+        }
+    end
 end
 
 -- Load handlers

@@ -20,6 +20,19 @@ randomization_info = {
 local reformat = require("lib/reformat")
 reformat.initial()
 
+-- Get rid of shared references in data.raw that have been causing constant issues
+local function copy_without_shared_refs(value)
+    if type(value) ~= "table" then
+        return value
+    end
+    local copy = {}
+    for k, v in pairs(value) do
+        copy[k] = copy_without_shared_refs(v)
+    end
+    return copy
+end
+data.raw = copy_without_shared_refs(data.raw)
+
 old_data_raw = table.deepcopy(data.raw)
 
 log("Gathering config")
@@ -321,8 +334,11 @@ smuggle_info()
 
 
 
+log(serpent.block(data.raw["assembling-machine"]["assembling-machine-1"]))
+
+
 -- TODO: REMOVE
-log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+--log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 
 
 
