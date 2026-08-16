@@ -652,7 +652,7 @@ randomizations.item_new = function(id)
                     if item_prototype.icons ~= nil then
                         recipe.icons = item_prototype.icons
                     else
-                        local icon_filename, icon_size = get_primary_icon(trav_item)
+                        local icon_filename, icon_size = get_primary_icon(item_prototype)
                         recipe.icons = {
                             {
                                 icon = icon_filename,
@@ -739,7 +739,7 @@ randomizations.item_new = function(id)
                         if has_result then
                             if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
                                 entity.localised_name = locale_utils.find_localised_name(item_prototype)
-                                local icon_filename, icon_size = get_primary_icon(trav_item)
+                                local icon_filename, icon_size = get_primary_icon(item_prototype)
                                 entity.stages = {
                                     -- Note: This is technically botched with icons, TODO: Fix
                                     sheets = {
@@ -871,7 +871,7 @@ randomizations.item_new = function(id)
                                     local selection_box_x_size = entity.selection_box[2][1] - entity.selection_box[1][1]
                                     local selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                     for i = 1, #shifts do
-                                        local icon_filename, icon_size = get_primary_icon(trav_item)
+                                        local icon_filename, icon_size = get_primary_icon(item_prototype)
                                         table.insert(entity.lower_pictures[j].layers, {
                                             filename = icon_filename,
                                             size = icon_size,

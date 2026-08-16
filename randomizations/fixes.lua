@@ -297,7 +297,7 @@ randomizations.fix_recycling_recipes = function()
     local reversible_name_keyword_blacklist = {
         "science", "pack"
     }
-    local reverisble_name_exceptions = {
+    local reversible_name_exceptions = {
         ["battery"] = true,
         ["big-mining-drill"] = true,
         ["turbo-transport-belt"] = true,
@@ -311,7 +311,7 @@ randomizations.fix_recycling_recipes = function()
     }
 
     local default_can_recycle = function(recipe)
-        if reverisble_name_exceptions[recipe.name] then return true end
+        if reversible_name_exceptions[recipe.name] then return true end
         if recipe.auto_recycle == false then return false end
 
         local in_category_blacklist = false
@@ -444,7 +444,7 @@ randomizations.fix_recycling_recipes = function()
             for _, item in pairs(data.raw[class_name]) do
                 if reversed_items[item.name] == nil then
                     local recycling_recipe = item_to_recycling_recipe[item.name]
-                    if recycling_recipe ~= nil then
+                    if recycling_recipe ~= nil and default_can_recycle(recycling_recipe) then
                         -- Create new set of recycling results only containing 25% chance of getting the sole ingredient back
                         recycling_recipe.results = {
                             {
@@ -457,8 +457,6 @@ randomizations.fix_recycling_recipes = function()
                         }
                         -- Also remove main product, because that sometimes needs to be fixed for some reason
                         recycling_recipe.main_product = nil
-                        -- Remove number from recycling recipe name (removed in 2.1)
-                        --recycling_recipe.show_amount_in_title = false
                     end
                 end
             end

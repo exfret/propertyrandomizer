@@ -13,10 +13,8 @@ IGNORE_ITEMS=(
     ".DS_Store"
     ".vscode"
     "notes"
-    "node-docs"
     "run-tests.sh"
     "prepare-release.sh"
-    "docs"
 )
 
 PROJECT_DIR="$(pwd)"

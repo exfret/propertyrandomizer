@@ -1,13 +1,15 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.5
-Date: ?
+Date: 2026.08.15
   Features:
-    - Item weight randomization and a few other randomizations that I commented are no longer commented out
+    - Item weight randomization and a few other randomizations that I commented out are no longer commented out
     - Randomize leg sizes
     - Explorer now shows red for "reachable in the future but not given current techs" and purple for "never reachable"
+    - New tech tree rebuild option
     - Support for fluid temperatures in logic
   Changes:
     - Removed white color in tooltips
+    - Hid/disabled unified randomization due to issue with its interactions with normal randomizations
   Organization:
     - General declutter; deleting unused files/folders, etc.
   Balancing:

@@ -1,18 +1,3 @@
-local new_logic = require("lib/logic/init")
-new_logic.build(true)
-local blacklisted_science = "chemical-science-pack"
-local gutils = require("lib/graph/graph-utils")
---gutils.add_edge(new_logic.graph, gutils.key("false", ""), gutils.key("recipe", blacklisted_science))
-local top = require("lib/graph/consistent-sort")
-local sort_info = top.sort(new_logic.graph)
-log(serpent.block(sort_info))
-
-local simplex_lp_export = require("lib/cost/simplex-lp-export")
---simplex_lp_export.export_to_log(sort_info)
-
-
-
-
 local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
@@ -78,7 +63,7 @@ require("randomizations/prefixes")
 log("Loading in new dependency graph file")
 
 local new_logic = require("lib/logic/init")
-local unified = require("randomizations/graph/unified/execute-new")
+local unified = require("randomizations/graph/unified/execute")
 
 -- Load compat code
 require("compat/master")
@@ -104,7 +89,11 @@ local function smuggle_info()
     local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     slot_to_trav_selection_tool.type = "selection-tool"
     slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
-    slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(((unified_info or {}).first_pass_info or {}).slot_to_trav or {})}
+    if type(unified_info) == "table" then
+        slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.first_pass_info.slot_to_trav)}
+    else
+        slot_to_trav_selection_tool.select.entity_type_filters = {}
+    end
     data:extend({
         warnings_selection_tool,
         graph_selection_tool,
@@ -120,17 +109,6 @@ if config.unit_test then
     smuggle_info()
     return
 end
-
-
-
-
-smuggle_info()
-do return end
-
-
-
-
-
 
 ----------------------------------------------------------------------
 -- Setup done!
@@ -186,9 +164,9 @@ require("randomizations/master")
 log("Applying graph-based randomizations")
 
 -- Fix recycling recipes in case modified by unified rando
-randomizations.fix_recycling_recipes()
+--randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
-randomizations.rebuild_tech_tree()
+--randomizations.rebuild_tech_tree()
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)
@@ -278,6 +256,11 @@ end
 
 log("Done applying graph-based randomizations")
 
+if settings.startup["propertyrandomizer-tech-tree-rebuild"].value then
+    log("Rebuilding tech tree")
+    randomizations.rebuild_tech_tree()
+end
+
 log("Applying numerical/misc randomizations")
 
 -- Now randomize
@@ -364,16 +347,8 @@ end
 -- Add warnings for control stage
 smuggle_info()
 
-
-
 -- TODO: REMOVE
 --log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
-
-
-
--- Output current logs
---local export = require("lib/export")
---export.export_to_log(new_logic)
 
 log("Done!")
 
