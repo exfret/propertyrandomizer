@@ -1,5 +1,5 @@
 -- TODO: Split off explorer panel into seperate file.
-
+--[[
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("lib/graph/consistent-sort")
@@ -214,4 +214,4 @@ script.on_nth_tick(1, function(event)
             player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
         end
     end
-end)
+end)]]

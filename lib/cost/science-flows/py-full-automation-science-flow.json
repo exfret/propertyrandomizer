@@ -1,0 +1,37 @@
+{
+  "active_rows": [],
+  "flow_extra_row_count": 1,
+  "infeasible_requirements": [
+    {
+      "amount": 1.0,
+      "key": "item: automation-science-pack",
+      "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+      "name": "automation-science-pack",
+      "solver_status": 2
+    }
+  ],
+  "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+  "nit": 0,
+  "objective": null,
+  "requirements": [
+    {
+      "amount": 1,
+      "key": "item: automation-science-pack",
+      "material_index": 104,
+      "name": "automation-science-pack"
+    }
+  ],
+  "science": {
+    "name": "automation-science-pack",
+    "requirements": [
+      {
+        "amount": 1,
+        "key": "item: automation-science-pack",
+        "material_index": 104,
+        "name": "automation-science-pack"
+      }
+    ],
+    "stage_index": 1
+  },
+  "status": "infeasible"
+}

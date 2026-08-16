@@ -20,6 +20,7 @@ NECESSARY:
  - Fluid temperatures in cost calculation matrix (use fake recipes/items for ranges)
 
 MEDIUM PRIORITY:
+ - Add fluid boxes; don't include in recipe category anymore (add as needed); except for small special things like assembling machines and barreling (anything else?)
  - Finish randomizations
     - Try fluid orand randomization
     - Fuel category randomization

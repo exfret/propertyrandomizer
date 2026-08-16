@@ -233,9 +233,7 @@ dupe.technology = function(tech, dupe_number)
             local prereq_prefix, prereq_suffix = prereq:match("^(.*)%-(%d+)$")
             if prereq_suffix ~= nil and tonumber(prereq_suffix) ~= nil then
                 -- Ignore leveled techs for now
-                -- CRITICAL TODO: just fix the issues
-                --table.insert(new_prerequisites, prereq_prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. prereq_suffix)
-                table.insert(new_prerequisites, prereq)
+                table.insert(new_prerequisites, prereq_prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. prereq_suffix)
             else
                 table.insert(new_prerequisites, prereq .. "-exfret-" .. tostring(dupe_number) .. "-copy")
             end

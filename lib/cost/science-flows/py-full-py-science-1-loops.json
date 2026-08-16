@@ -1,0 +1,298 @@
+{
+  "max_cycle_length": 10,
+  "protected_edges": [
+    {
+      "cycle_nodes": [
+        "item: caged-vrauks",
+        "item: cage",
+        "item: caged-vrauks"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: cage",
+          "recipe": "full-render-vrauks",
+          "row_index": 229,
+          "to": "item: caged-vrauks"
+        }
+      ],
+      "ingredient": "item: cage",
+      "ingredient_amount_per_use": 1.0,
+      "min_cycle_length": 2,
+      "recipe": "caged-vrauks",
+      "row_index": 225,
+      "row_usage": 0.5,
+      "via_product": "item: caged-vrauks"
+    },
+    {
+      "cycle_nodes": [
+        "item: barrel",
+        "item: water-barrel",
+        "item: barrel"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: water-barrel",
+          "recipe": "water-barrel",
+          "row_index": 245,
+          "to": "item: barrel"
+        }
+      ],
+      "ingredient": "item: water-barrel",
+      "ingredient_amount_per_use": 3.0,
+      "min_cycle_length": 2,
+      "recipe": "vrauks-1",
+      "row_index": 227,
+      "row_usage": 0.25,
+      "via_product": "item: barrel"
+    },
+    {
+      "cycle_nodes": [
+        "item: barrel",
+        "item: water-barrel",
+        "item: barrel"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: water-barrel",
+          "recipe": "water-barrel",
+          "row_index": 245,
+          "to": "item: barrel"
+        }
+      ],
+      "ingredient": "item: water-barrel",
+      "ingredient_amount_per_use": 4.0,
+      "min_cycle_length": 2,
+      "recipe": "vrauks-cocoon-1",
+      "row_index": 228,
+      "row_usage": 0.5,
+      "via_product": "item: barrel"
+    },
+    {
+      "cycle_nodes": [
+        "item: cage",
+        "item: caged-vrauks",
+        "item: cage"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: caged-vrauks",
+          "recipe": "caged-vrauks",
+          "row_index": 225,
+          "to": "item: cage"
+        }
+      ],
+      "ingredient": "item: caged-vrauks",
+      "ingredient_amount_per_use": 1.0,
+      "min_cycle_length": 2,
+      "recipe": "full-render-vrauks",
+      "row_index": 229,
+      "row_usage": 0.5,
+      "via_product": "item: cage"
+    },
+    {
+      "cycle_nodes": [
+        "item: water-barrel",
+        "item: barrel",
+        "item: water-barrel"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: barrel",
+          "recipe": "vrauks-1",
+          "row_index": 227,
+          "to": "item: water-barrel"
+        }
+      ],
+      "ingredient": "item: barrel",
+      "ingredient_amount_per_use": 1.0,
+      "min_cycle_length": 2,
+      "recipe": "water-barrel",
+      "row_index": 245,
+      "row_usage": 2.75,
+      "via_product": "item: water-barrel"
+    },
+    {
+      "cycle_nodes": [
+        "item: barrel",
+        "item: cocoon",
+        "item: water-barrel",
+        "item: barrel"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: cocoon",
+          "recipe": "vrauks-cocoon-1",
+          "row_index": 228,
+          "to": "item: water-barrel"
+        },
+        {
+          "from": "item: water-barrel",
+          "recipe": "water-barrel",
+          "row_index": 245,
+          "to": "item: barrel"
+        }
+      ],
+      "ingredient": "item: cocoon",
+      "ingredient_amount_per_use": 10.0,
+      "min_cycle_length": 3,
+      "recipe": "vrauks-1",
+      "row_index": 227,
+      "row_usage": 0.25,
+      "via_product": "item: barrel"
+    },
+    {
+      "cycle_nodes": [
+        "item: log",
+        "item: wood-seedling",
+        "item: wood-seeds",
+        "item: wood",
+        "item: log"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: wood-seedling",
+          "recipe": "wood-seedling",
+          "row_index": 194,
+          "to": "item: wood-seeds"
+        },
+        {
+          "from": "item: wood-seeds",
+          "recipe": "wood-seeds",
+          "row_index": 195,
+          "to": "item: wood"
+        },
+        {
+          "from": "item: wood",
+          "recipe": "log-wood",
+          "row_index": 64,
+          "to": "item: log"
+        }
+      ],
+      "ingredient": "item: wood-seedling",
+      "ingredient_amount_per_use": 3.0,
+      "min_cycle_length": 4,
+      "recipe": "log2",
+      "row_index": 62,
+      "row_usage": 1.081268656716418,
+      "via_product": "item: log"
+    },
+    {
+      "cycle_nodes": [
+        "item: wood",
+        "item: log",
+        "item: wood-seedling",
+        "item: wood-seeds",
+        "item: wood"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: log",
+          "recipe": "log2",
+          "row_index": 62,
+          "to": "item: wood-seedling"
+        },
+        {
+          "from": "item: wood-seedling",
+          "recipe": "wood-seedling",
+          "row_index": 194,
+          "to": "item: wood-seeds"
+        },
+        {
+          "from": "item: wood-seeds",
+          "recipe": "wood-seeds",
+          "row_index": 195,
+          "to": "item: wood"
+        }
+      ],
+      "ingredient": "item: log",
+      "ingredient_amount_per_use": 4.0,
+      "min_cycle_length": 4,
+      "recipe": "log-wood",
+      "row_index": 64,
+      "row_usage": 1.081268656716418,
+      "via_product": "item: wood"
+    },
+    {
+      "cycle_nodes": [
+        "item: wood-seedling",
+        "item: wood-seeds",
+        "item: wood",
+        "item: log",
+        "item: wood-seedling"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: wood-seeds",
+          "recipe": "wood-seeds",
+          "row_index": 195,
+          "to": "item: wood"
+        },
+        {
+          "from": "item: wood",
+          "recipe": "log-wood",
+          "row_index": 64,
+          "to": "item: log"
+        },
+        {
+          "from": "item: log",
+          "recipe": "log2",
+          "row_index": 62,
+          "to": "item: wood-seedling"
+        }
+      ],
+      "ingredient": "item: wood-seeds",
+      "ingredient_amount_per_use": 1.0,
+      "min_cycle_length": 4,
+      "recipe": "wood-seedling",
+      "row_index": 194,
+      "row_usage": 1.081268656716418,
+      "via_product": "item: wood-seedling"
+    },
+    {
+      "cycle_nodes": [
+        "item: wood-seeds",
+        "item: wood",
+        "item: log",
+        "item: wood-seedling",
+        "item: wood-seeds"
+      ],
+      "cycle_return_edges": [
+        {
+          "from": "item: wood",
+          "recipe": "log-wood",
+          "row_index": 64,
+          "to": "item: log"
+        },
+        {
+          "from": "item: log",
+          "recipe": "log2",
+          "row_index": 62,
+          "to": "item: wood-seedling"
+        },
+        {
+          "from": "item: wood-seedling",
+          "recipe": "wood-seedling",
+          "row_index": 194,
+          "to": "item: wood-seeds"
+        }
+      ],
+      "ingredient": "item: wood",
+      "ingredient_amount_per_use": 5.0,
+      "min_cycle_length": 4,
+      "recipe": "wood-seeds",
+      "row_index": 195,
+      "row_usage": 0.2703171641791045,
+      "via_product": "item: wood-seeds"
+    }
+  ],
+  "stats": {
+    "active_recipe_rows": 53,
+    "protected_by_min_cycle_length": {
+      "2": 5,
+      "3": 1,
+      "4": 4
+    },
+    "protected_recipe_ingredient_edges": 10
+  },
+  "status": "optimal"
+}
