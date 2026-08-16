@@ -1,4 +1,7 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.5.6
+Date: ?
+---------------------------------------------------------------------------------------------------
 Version: 0.5.5
 Date: 2026.08.15
   Features:
@@ -23,6 +26,7 @@ Date: 2026.08.15
     - Space platforms are correctly required before space
     - Stopped indexing into players on init; prevents previous error when starting game in headless mode
     - Fixed bug with fetching icon for raw ores and rocks from an item
+    - Fixed scrap recycling recipe being "fixed" wrong
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.4
 Date: 2026.07.30

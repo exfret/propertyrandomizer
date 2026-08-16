@@ -1,3 +1,37 @@
+local cost = require("lib/cost/simplex-lp-export")
+local top = require("lib/graph/consistent-sort")
+local logic = require("lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+local packs_in_order = {
+    "automation-science-pack",
+    "py-science-pack-1",
+    "logistic-science-pack",
+    "military-science-pack",
+    "py-science-pack-2",
+    "chemical-science-pack",
+    "py-science-pack-3",
+    "production-science-pack",
+    "py-science-pack-4",
+    "utility-science-pack",
+    "space-science-pack",
+    "full-pyrrhic-victory",
+}
+for i = 1, #packs_in_order do
+    log("I IS THIS VALUE " .. i)
+    logic.build()
+    local science_pack = packs_in_order[i]
+    if science_pack ~= "full-pyrrhic-victory" then
+        gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
+    end
+    local sort_info = top.sort(logic.graph)
+    log("SORT COMPLETE")
+    cost.export_to_log(sort_info, i)
+end
+do return end
+
+
+
+
 local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
@@ -63,7 +97,7 @@ require("randomizations/prefixes")
 log("Loading in new dependency graph file")
 
 local new_logic = require("lib/logic/init")
-local unified = require("randomizations/graph/unified/execute")
+local unified = require("randomizations/graph/unified/execute-new")
 
 -- Load compat code
 require("compat/master")
@@ -166,7 +200,11 @@ log("Applying graph-based randomizations")
 -- Fix recycling recipes in case modified by unified rando
 --randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
---randomizations.rebuild_tech_tree()
+randomizations.rebuild_tech_tree()
+smuggle_info()
+do return end
+
+
 build_graph.load()
 dep_graph = build_graph.graph
 build_graph_compat.load(dep_graph)

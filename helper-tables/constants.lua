@@ -60,10 +60,10 @@ local constants = {
     steps_per_roll = 20,
 
     -- Simplex cost
-    simplex_per_resource_cost = 1,
-    simplex_per_recipe_cost = 0.1,
-    simplex_per_second_cost = 0.05,
-    simplex_pump_cost = 0.01,
+    simplex_per_resource_cost = 0.3,
+    simplex_per_recipe_cost = 0.3,
+    simplex_per_second_cost = 0.1,
+    simplex_pump_cost = 0.005,
     simplex_boiling_cost = 0.05,
     simplex_burnt_cost = 1,
 
