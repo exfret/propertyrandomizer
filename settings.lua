@@ -177,6 +177,7 @@ data:extend({
         default_value = 10,
         minimum_value = 1,
         order = "e-[unified]",
+        hidden = true,
     },
     {
         setting_type = "startup",
@@ -184,6 +185,8 @@ data:extend({
         name = "propertyrandomizer-unified-tech-prereqs",
         default_value = false,
         order = "e-a[tech-prereqs]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -191,6 +194,8 @@ data:extend({
         name = "propertyrandomizer-unified-recipe-tech-unlocks",
         default_value = false,
         order = "e-b[recipe-tech-unlocks]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -198,6 +203,8 @@ data:extend({
         name = "propertyrandomizer-unified-spoiling",
         default_value = false,
         order = "e-c[spoiling]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -205,6 +212,8 @@ data:extend({
         name = "propertyrandomizer-unified-tech-science-packs",
         default_value = false,
         order = "e-d[tech-science-packs]",
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -271,6 +280,14 @@ data:extend({
         },
         default_value = "some",
         order = "f-a[tech-delinearization]",
+        hidden = true,
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-tech-tree-rebuild",
+        default_value = false,
+        order = "f-b[rebuild]",
     },
     {
         setting_type = "startup",
