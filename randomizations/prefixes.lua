@@ -6,7 +6,7 @@ if mods["pyalternativeenergy"] then
     data.raw.recipe["assembling-machine-1"].ingredients = {{type = "item", name = "iron-ore", amount = 8}}
 end
 
--- Make fixed recipes non-hidden
+-- Make fixed recipes non-hidden and enabled
 for machine_type, _ in pairs(categories.crafting_machines) do
     for _, machine in pairs(data.raw[machine_type]) do
         if machine.fixed_recipe ~= nil then

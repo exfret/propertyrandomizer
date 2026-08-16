@@ -72,7 +72,8 @@ stage.fluid_temperatures_ordered = function()
 
     -- Recipe ingredients/products
     for _, recipe in pairs(prots("recipe")) do
-        for _, ing in pairs(dutils.tablize(recipe.ingredients)) do
+        -- Ingredients now get ranges
+        --[[for _, ing in pairs(dutils.tablize(recipe.ingredients)) do
             if ing.type == "fluid" then
                 if ing.temperature ~= nil then
                     lu.fluid_temps[ing.name][ing.temperature] = true
@@ -85,7 +86,7 @@ stage.fluid_temperatures_ordered = function()
                     end
                 end
             end
-        end
+        end]]
         for _, result in pairs(dutils.tablize(recipe.results)) do
             if result.type == "fluid" and result.temperature ~= nil then
                 lu.fluid_temps[result.name][result.temperature] = true

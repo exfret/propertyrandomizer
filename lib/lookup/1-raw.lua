@@ -24,6 +24,23 @@ stage.rooms = function()
         end
     end
 
+    -- Add special control surfaces
+
+    if mods["space-exploration"] then
+        rooms[gutils.key("control", "")] = {
+            type = "control",
+            name = "space"
+        }
+    end
+    if mods["space-exploration"] then
+        -- One surface just to represent all the other planets
+        rooms[gutils.key("control", "")] = {
+            type = "control",
+            name = "other-planet"
+        }
+    end
+    -- TODO: Deep space/naquitite
+
     lu.rooms = rooms
 end
 

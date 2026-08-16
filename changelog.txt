@@ -5,6 +5,7 @@ Date: ?
     - Item weight randomization and a few other randomizations that I commented are no longer commented out
     - Randomize leg sizes
     - Explorer now shows red for "reachable in the future but not given current techs" and purple for "never reachable"
+    - Support for fluid temperatures in logic
   Changes:
     - Removed white color in tooltips
   Organization:
@@ -17,6 +18,9 @@ Date: ?
     - Hid duplicate tech unlocks feature since it's actually not doing anything yet... oops
     - Recycling recipes are force-unlocked from the start of randomization to prevent randomization issues
     - Removed conditional requires, which could cause errors when syncing mods in multiplayer
+    - Space platforms are correctly required before space
+    - Stopped indexing into players on init; prevents previous error when starting game in headless mode
+    - Fixed bug with fetching icon for raw ores and rocks from an item
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.4
 Date: 2026.07.30

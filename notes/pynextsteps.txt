@@ -11,7 +11,13 @@ NECESSARY:
  - Expansion of logic
     - Check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
        * This probably can be avoided for the preview!
- - Whatever is blocking utility science
+    - Hidden recipe logic (fixed recipes should be possible even if hidden or disabled; make them depend on entity-operate for the given buildings, or rather just have a special recipe-fixed node!)
+       * Remove code that unhides fixed recipes
+    - Some more compat, like not having big electric poles be the way you get electricity
+    - mining-with-fluid unlock should still be in logic for archipelago compat
+    - blacklist smart farms from rocket silo nodes
+    - Investigate bitumen seeps
+ - Fluid temperatures in cost calculation matrix (use fake recipes/items for ranges)
 
 MEDIUM PRIORITY:
  - Finish randomizations

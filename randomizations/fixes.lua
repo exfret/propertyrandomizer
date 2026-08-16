@@ -40,12 +40,6 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
-    -- Just make rocket parts enabled from the beginning, since they basically are anyways due to being a fixed recipe for the silo
-    if data.raw.recipe["rocket-part"] ~= nil then
-        data.raw.recipe["rocket-part"].enabled = true
-        data.raw.recipe["rocket-part"].hidden = true
-    end
-
     -- Average tech costs across recipes in a technology
     -- Nvm, a recipe can just take the whole unit from its first found tech
     --[[local recipe_to_tech_cost = {}

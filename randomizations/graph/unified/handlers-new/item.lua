@@ -178,6 +178,19 @@ item.validate = false
     end
 end]]
 
+local function get_primary_icon(prot)
+    if prot.icon ~= nil then
+        return prot.icon, prot.icon_size or 64
+    end
+
+    if prot.icons ~= nil and prot.icons[1] ~= nil then
+        local icon = prot.icons[1]
+        return icon.icon, icon.icon_size or prot.icon_size or 64
+    end
+
+    error("Prototype has no usable icon: " .. tostring(prot.name))
+end
+
 item.reflect = function(graph, head_to_base, head_to_handler)
     local changes = {}
 
@@ -298,13 +311,14 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                 new_val = table.deepcopy(trav_item.icons)
                             })
                         else
+                            local icon_filename, icon_size = get_primary_icon(trav_item)
                             table.insert(changes, {
                                 tbl = recipe,
                                 prop = "icons",
                                 new_val = {
                                     {
-                                        icon = trav_item.icon,
-                                        icon_size = trav_item.icon_size or 64
+                                        icon = icon_filename,
+                                        icon_size = icon_size
                                     }
                                 }
                             })
@@ -398,34 +412,35 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             if has_result then
                                 if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
                                     entity.localised_name = locale_utils.find_localised_name(trav_item)
+                                    local icon_filename, icon_size = get_primary_icon(trav_item)
                                     entity.stages = {
                                         -- Note: This is technically botched with icons, TODO: Fix
                                         sheets = {
                                             {
                                                 variation_count = 1,
-                                                filename = trav_item.icon or trav_item.icons[1].icon,
-                                                size = trav_item.icon_size or 64,
+                                                filename = icon_filename,
+                                                size = icon_size,
                                                 scale = 0.35,
                                                 shift = {0.2, 0.6}
                                             },
                                             {
                                                 variation_count = 1,
-                                                filename = trav_item.icon or trav_item.icons[1].icon,
-                                                size = trav_item.icon_size or 64,
+                                                filename = icon_filename,
+                                                size = icon_size,
                                                 scale = 0.25,
                                                 shift = {-0.5, 0.2}
                                             },
                                             {
                                                 variation_count = 1,
-                                                filename = trav_item.icon or trav_item.icons[1].icon,
-                                                size = trav_item.icon_size or 64,
+                                                filename = icon_filename,
+                                                size = icon_size,
                                                 scale = 0.45,
                                                 shift = {0, 0}
                                             },
                                             {
                                                 variation_count = 1,
-                                                filename = trav_item.icon or trav_item.icons[1].icon,
-                                                size = trav_item.icon_size or 64,
+                                                filename = icon_filename,
+                                                size = icon_size,
                                                 scale = 0.4,
                                                 shift = {-0.2, -0.6}
                                             }
@@ -476,9 +491,10 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                         local selection_box_x_size = entity.selection_box[2][1] - entity.selection_box[1][1]
                                         local selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                         for i = 1, #shifts do
+                                            local icon_filename, icon_size = get_primary_icon(trav_item)
                                             table.insert(entity.lower_pictures[j].layers, {
-                                                filename = trav_item.icon or trav_item.icons[1].icon,
-                                                size = trav_item.icon_size or 64,
+                                                filename = icon_filename,
+                                                size = icon_size,
                                                 scale = 0.25,
                                                 tint = {236, 152, 130},
                                                 shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}

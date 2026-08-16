@@ -129,8 +129,8 @@ local function emit_chunked_json(json_string)
     log("PROPERTYRANDOMIZER_LP_JSON_END")
 end
 
-function simplex_lp_export.build_export_object()
-    local matrix_info = simplex_cost.make_recipe_material_matrix()
+function simplex_lp_export.build_export_object(sort_info)
+    local matrix_info = simplex_cost.make_recipe_material_matrix(sort_info)
 
     local materials = {}
     for i, material in pairs(matrix_info.material_list) do
@@ -148,10 +148,14 @@ function simplex_lp_export.build_export_object()
 
     local rows = {}
     for i, row in pairs(matrix_info.matrix) do
+        local source = matrix_info.row_sources[i]
+
         rows[#rows + 1] = {
             index = i,
             cost = matrix_info.cost_column[i],
             coeffs = sparse_row_to_coeff_pairs(row),
+            source_type = source.type,
+            source_name = source.name,
         }
     end
 
@@ -178,10 +182,10 @@ function simplex_lp_export.build_export_object()
     }
 end
 
-function simplex_lp_export.export_to_log()
+function simplex_lp_export.export_to_log(sort_info)
     log("Constructing simplex LP export object")
 
-    local export_object = simplex_lp_export.build_export_object()
+    local export_object = simplex_lp_export.build_export_object(sort_info)
     local json_string = json_encode(export_object)
 
     log(

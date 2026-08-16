@@ -13,7 +13,6 @@ local DO_FIRST_PASS = true
 -- TODO: Speed up tests! Currently they take a long time
 local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
-local TECH_GRAPH_RECONSTRUCTION = true
 local SWITCH_PLANETS = false
 local REMOVE_TECH_PREREQS = true
 
@@ -329,19 +328,6 @@ unified.execute = function()
             return false
         end
         sort_for_pool = first_pass_info.sort
-
-
-
-
-
-
-        log(serpent.block(sort_for_pool))
-
-
-
-
-
-
 
         -- Replace deps in sorted_deps by travs
         old_sorted_deps = table.deepcopy(sorted_deps)

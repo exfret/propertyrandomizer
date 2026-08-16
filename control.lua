@@ -39,7 +39,7 @@ script.on_init(function(event)
         break
     end
 
-    if script.active_mods["pyalternativeenergy"] then
+    if script.active_mods["pyalternativeenergy"] and slot_to_trav ~= nil then
         if remote.interfaces["freeplay"] ~= nil and remote.interfaces["freeplay"]["get_created_items"] ~= nil and remote.interfaces["freeplay"]["set_created_items"] ~= nil then
             local items = remote.call("freeplay", "get_created_items")
             local ship_items = remote.call("freeplay", "get_ship_items")
@@ -92,9 +92,11 @@ script.on_event(defines.events.on_research_finished, function(event)
     local node_key = gutils.key("technology", research.name)
     local node = tech_graph.nodes[node_key]
     local remove_edge_key = gutils.ekey({start = gutils.key("false", ""), stop = node_key})
-    gutils.remove_edge(tech_graph, remove_edge_key)
-    local new_edge = gutils.add_edge(tech_graph, gutils.key("true", ""), node)
-    storage.tech_sort_info = top.sort(tech_graph, storage.tech_sort_info, {tech_graph.nodes[new_edge.start], tech_graph.nodes[new_edge.stop]})
+    if tech_graph.edges[remove_edge_key] ~= nil then
+        gutils.remove_edge(tech_graph, remove_edge_key)
+        local new_edge = gutils.add_edge(tech_graph, gutils.key("true", ""), node)
+        storage.tech_sort_info = top.sort(tech_graph, storage.tech_sort_info, {tech_graph.nodes[new_edge.start], tech_graph.nodes[new_edge.stop]})
+    end
 end)
 
 script.on_event("return-to-starting-planet", function(event)
@@ -206,7 +208,7 @@ script.on_nth_tick(1, function(event)
                 end
             end
         end
-    elseif event.tick >= 60 and game.players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
+    elseif event.tick >= 60 and game.connected_players ~= nil and #game.connected_players >= 1 and game.connected_players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
         storage.gave_warning_flying_text = true
         for _, player in pairs(game.players) do
             player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})

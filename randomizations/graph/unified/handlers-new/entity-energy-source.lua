@@ -58,6 +58,7 @@ end
 local dont_add_fluid_or_heat_types = {
     ["offshore-pump"] = true,
     ["mining-drill"] = true,
+    ["reactor"] = true,
 }
 entity_energy_source.validate = function(graph, base, head, extra)
     local base_owner = gutils.get_owner(graph, base)

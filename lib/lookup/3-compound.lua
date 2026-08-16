@@ -83,6 +83,10 @@ stage.mat_recipe_map = function()
         material = {},
         recipe = {},
     }
+    local temp_ranges = {}
+    for _, fluid in pairs(lu.fluids) do
+        temp_ranges[fluid.name] = {}
+    end
 
     for mat_key, mat in pairs(lu.materials) do
         if mat.type == "fluid" then
@@ -113,12 +117,18 @@ stage.mat_recipe_map = function()
                 for ind, prod in pairs(recipe[prop]) do
                     local recipe_map = mat_recipe_map.recipe[recipe.name][prop]
                     local name_key = prod.name
+                    local min_temperature
+                    local max_temperature
                     if prod.type == "fluid" then
-                        local fluid_prot = data.raw.fluid[prod.name]
-                        -- Assume for simplicity that the min/max temperature is actually exactly what's needed to craft this
-                        -- This is true in basically all the scenarios I care about
-                        -- TODO: Remove this assumption
-                        name_key = gutils.key(prod.name, prod.temperature or prod.minimum_temperature or prod.maximum_temperature or fluid_prot.default_temperature)
+                        if prop == "results" then
+                            local fluid_prot = data.raw.fluid[prod.name]
+                            name_key = gutils.key(prod.name, prod.temperature or fluid_prot.default_temperature)
+                        elseif prop == "ingredients" then
+                            min_temperature = prod.temperature or prod.minimum_temperature or "nil"
+                            max_temperature = prod.temperature or prod.maximum_temperature or "nil"
+                            temp_ranges[prod.name][gutils.key(min_temperature, max_temperature)] = true
+                            name_key = gutils.key(prod.name, gutils.key(min_temperature, max_temperature))
+                        end
                     end
                     local prod_key = gutils.key(prod.type, name_key)
                     local mat_map = mat_recipe_map.material[prod_key]
@@ -132,12 +142,31 @@ stage.mat_recipe_map = function()
                         end
                         recipe_map[prod_key][ind] = true
                         mat_map[prop][recipe.name][ind] = true
+                    elseif min_temperature ~= nil then
+                        -- Recipe map just gets prod key/range raw
+                        if recipe_map[prod_key] == nil then
+                            recipe_map[prod_key] = {}
+                        end
+                        recipe_map[prod_key][ind] = true
+                        -- But testing for a specific material involves the fluid
+                        for _, temp in pairs(lu.fluid_temperatures_ordered[prod.name]) do
+                            if min_temperature == "nil" or tonumber(min_temperature) <= temp then
+                                if max_temperature == "nil" or tonumber(max_temperature) >= temp then
+                                    mat_map = mat_recipe_map.material[gutils.key("fluid", gutils.key(prod.name, temp))]
+                                    if mat_map[prop][recipe.name] == nil then
+                                        mat_map[prop][recipe.name] = {}
+                                    end
+                                    mat_map[prop][recipe.name][ind] = true
+                                end
+                            end
+                        end
                     end
                 end
             end
         end
     end
 
+    lu.temp_ranges = temp_ranges
     lu.mat_recipe_map = mat_recipe_map
 end
 

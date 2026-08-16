@@ -1,3 +1,18 @@
+local new_logic = require("lib/logic/init")
+new_logic.build(true)
+local blacklisted_science = "chemical-science-pack"
+local gutils = require("lib/graph/graph-utils")
+--gutils.add_edge(new_logic.graph, gutils.key("false", ""), gutils.key("recipe", blacklisted_science))
+local top = require("lib/graph/consistent-sort")
+local sort_info = top.sort(new_logic.graph)
+log(serpent.block(sort_info))
+
+local simplex_lp_export = require("lib/cost/simplex-lp-export")
+--simplex_lp_export.export_to_log(sort_info)
+
+
+
+
 local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
@@ -89,7 +104,7 @@ local function smuggle_info()
     local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     slot_to_trav_selection_tool.type = "selection-tool"
     slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
-    slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump((unified_info.first_pass_info or {}).slot_to_trav or {})}
+    slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(((unified_info or {}).first_pass_info or {}).slot_to_trav or {})}
     data:extend({
         warnings_selection_tool,
         graph_selection_tool,
@@ -105,6 +120,17 @@ if config.unit_test then
     smuggle_info()
     return
 end
+
+
+
+
+smuggle_info()
+do return end
+
+
+
+
+
 
 ----------------------------------------------------------------------
 -- Setup done!
