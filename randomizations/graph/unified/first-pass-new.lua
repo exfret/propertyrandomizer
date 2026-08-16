@@ -99,9 +99,11 @@ first_pass.execute = function(params)
     local sensitive_node_keys = {
         [key("item", "stone-furnace")] = true,
         [key("item", "pipe")] = true,
-        [key("item", "raw-coal")] = true,
-        [key("item", "boiler")] = true,
     }
+    if mods["pypostprocessing"] then
+        sensitive_node_keys[key("item", "raw-coal")] = true
+        sensitive_node_keys[key("item", "boiler")] = true
+    end
     -- Burnt results are special
     for burnt_result, _ in pairs(lu.burnt_result_to_items) do
         sensitive_node_keys[key("item", burnt_result)] = true
@@ -813,11 +815,11 @@ first_pass.execute = function(params)
             end
 
             -- Also check both have costs or both don't have costs
-            local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
+            --[[local slot_cost = vanilla_costs.recipe_to_cost[slot_recipe.name]
             local trav_cost = vanilla_costs.recipe_to_cost[trav_recipe.name]
             if (slot_cost == nil and trav_cost ~= nil) or (slot_cost ~= nil and trav_cost == nil) then
                 return false
-            end
+            end]]
 
             -- Check that costs aren't wildly different
             --[[if slot_cost ~= nil and trav_cost ~= nil and math.abs(math.log(slot_cost) - math.log(trav_cost)) > constants.first_pass_max_cost_log_difference then
@@ -833,7 +835,8 @@ first_pass.execute = function(params)
             end
             if slot_cost ~= nil then
                 -- Don't allow costs to differ more than by a factor of like a few hundred
-                if math.abs(math.log(slot_cost) - math.log(trav_cost)) > 6 then
+                -- Be more permissive about putting cheat travelers in expensive slots
+                if math.log(trav_cost) - math.log(slot_cost) > 6 or math.log(slot_cost) - math.log(trav_cost) > 10 then
                     return false
                 end
             end
@@ -941,8 +944,8 @@ first_pass.execute = function(params)
         -- We need to connect to reachable-room so that it still gets contexts in a valid way
         local true_node = graph[key("reachable-room", "")]
         for _, prenode in pairs(gutils.prenodes(graph, slot)) do
-            gutils.add_edge(graph, true_node, prenode)
-            sort_info = top.sort(graph, sort_info, {true_node, prenode}, { choose_randomly = true })
+            --gutils.add_edge(graph, true_node, prenode)
+            --sort_info = top.sort(graph, sort_info, {true_node, prenode}, { choose_randomly = true })
         end
         -- Actually, I think this is incorrect: Either slot or trav needs to get context themselves or else it's impossible anyways
         --[[if slot.op == "OR" then

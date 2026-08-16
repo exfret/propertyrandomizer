@@ -90,7 +90,13 @@ def build_sparse_matrix(lp: dict):
     return A, b
 
 
-def solve_one_target(A, b, target_index_zero_based: int, method: str):
+def solve_one_target(
+    A,
+    b,
+    rows,
+    target_index_zero_based: int,
+    method: str,
+):
     n = A.shape[1]
     c = np.zeros(n, dtype=float)
     c[target_index_zero_based] = -1.0
@@ -107,9 +113,37 @@ def solve_one_target(A, b, target_index_zero_based: int, method: str):
     )
 
     if result.status == 0:
+        recipe = None
+
+        lhs = np.asarray(A @ result.x).ravel()
+
+        for row_obj in rows:
+            if row_obj.get("source_type") != "recipe":
+                continue
+
+            row_index = int(row_obj["index"]) - 1
+
+            # This recipe must actually produce the target.
+            if A[row_index, target_index_zero_based] <= 0:
+                continue
+
+            slack = b[row_index] - lhs[row_index]
+
+            # Relative-ish tolerance for numerical LP noise.
+            scale = max(
+                1.0,
+                abs(b[row_index]),
+                abs(lhs[row_index]),
+            )
+
+            if abs(slack) <= 1e-8 * scale:
+                recipe = row_obj["source_name"]
+                break
+
         return {
             "status": "optimal",
             "objective": float(-result.fun),
+            "recipe": recipe,
             "message": result.message,
             "nit": getattr(result, "nit", None),
         }
@@ -118,6 +152,7 @@ def solve_one_target(A, b, target_index_zero_based: int, method: str):
         return {
             "status": "unbounded",
             "objective": None,
+            "recipe": None,
             "message": result.message,
             "nit": getattr(result, "nit", None),
         }
@@ -126,6 +161,7 @@ def solve_one_target(A, b, target_index_zero_based: int, method: str):
         return {
             "status": "infeasible",
             "objective": None,
+            "recipe": None,
             "message": result.message,
             "nit": getattr(result, "nit", None),
         }
@@ -133,6 +169,7 @@ def solve_one_target(A, b, target_index_zero_based: int, method: str):
     return {
         "status": f"solver_status_{result.status}",
         "objective": None,
+        "recipe": None,
         "message": result.message,
         "nit": getattr(result, "nit", None),
     }
@@ -210,6 +247,22 @@ def write_lua_result(path: Path, lp: dict, results: dict):
         lines.append(f"        [{lua_quote(key)}] = {lua_quote(status)},")
 
     lines.append("    },")
+
+    lines.append("    recipes = {")
+
+    for index in sorted(results.keys(), key=int):
+        result = results[index]
+        material = materials_by_index[int(index)]
+        key = material["key"]
+        recipe = result.get("recipe")
+
+        if recipe is not None:
+            lines.append(
+                f"        [{lua_quote(key)}] = {lua_quote(recipe)},"
+            )
+
+    lines.append("    },")
+    
     lines.append("}")
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -290,7 +343,13 @@ def main():
                 flush=True,
             )
 
-        result = solve_one_target(A, b, target_zero, args.method)
+        result = result = solve_one_target(
+            A,
+            b,
+            lp["rows"],
+            target_zero,
+            args.method,
+        )
         results[str(target_lua_index)] = result
 
         if result["status"] != "optimal":
@@ -310,6 +369,7 @@ def main():
         },
         "results_by_lua_index": results,
         "costs": {},
+        "recipes": {},
         "statuses": {},
     }
 
@@ -319,6 +379,9 @@ def main():
 
         if result["objective"] is not None:
             output["costs"][key] = result["objective"]
+
+        if result.get("recipe") is not None:
+            output["recipes"][key] = result["recipe"]
 
         output["statuses"][key] = result["status"]
 

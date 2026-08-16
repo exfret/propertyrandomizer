@@ -189,10 +189,12 @@ stage.room_tile_maps = function()
 
     -- Build room_tiles, then invert for tiles_to_rooms
     for room_key, room in pairs(lu.rooms) do
-        room_tiles[room_key] = get_room_tiles(room)
+        if room.type ~= "control" then
+            room_tiles[room_key] = get_room_tiles(room)
 
-        for tile_name, _ in pairs(room_tiles[room_key]) do
-            tiles_to_rooms[tile_name][room_key] = true
+            for tile_name, _ in pairs(room_tiles[room_key]) do
+                tiles_to_rooms[tile_name][room_key] = true
+            end
         end
     end
 

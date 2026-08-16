@@ -57,7 +57,7 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
       connections[#connections+1] = {position = {x + shift.x,  shift.y}, direction = defines.direction.north}
       connections[#connections+1] = {position = {x + shift.x, -shift.y}, direction = defines.direction.south}
     end
-    for y = 1, height - 1 do
+    for y = 0, height do
       connections[#connections+1] = {position = { shift.x, y + shift.y}, direction = defines.direction.west}
       connections[#connections+1] = {position = {-shift.x, y + shift.y}, direction = defines.direction.east}
     end

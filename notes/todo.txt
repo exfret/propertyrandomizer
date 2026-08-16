@@ -69,3 +69,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Don't randomize crashed spaceship (AAI puts starting inventory in ship)
  * Randomize inventory width again
  * Fix spoil spawns
+ * Add victory node (prevents needing it in spec for archipelago)

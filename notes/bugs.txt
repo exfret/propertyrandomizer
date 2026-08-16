@@ -18,3 +18,4 @@ This lists bugs/issues before they're moved to their own issues on the github re
 46. Railgun/other projectiles die before reaching target with large range
 47. Space platforms don't require tiles (should be there for players to not go insane)
 48. Spoil time getting down to 0 seconds
+49. Fix recycling recipe fixing

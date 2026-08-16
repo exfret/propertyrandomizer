@@ -31,7 +31,11 @@ function abstract.build(lu)
     set_class("room")
 
     for room_key, room in pairs(lu.rooms) do
-        set_prot(data.raw[room.type][room.name])
+        if room.type ~= "control" then
+            set_prot(data.raw[room.type][room.name])
+        else
+            set_prot(nil)
+        end
 
         ----------------------------------------
         add_node("room", "OR", room_key, room_key, { mechanic = true })
@@ -434,7 +438,7 @@ function abstract.build(lu)
     -- Can we keep entities warm?
 
     for room_key, room in pairs(lu.rooms) do
-        if not data.raw[room.type][room.name].entities_require_heating then
+        if room.type ~= "control" and not data.raw[room.type][room.name].entities_require_heating then
             add_edge("room", room_key)
         end
     end

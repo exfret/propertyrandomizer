@@ -146,6 +146,7 @@ local function decon_to_prot(deconstructed)
 end
 
 local type_to_localised = {
+    ["deliver"] = "Ability to deliver from space",
     ["energy-source-burner"] = "Fuel",
     ["energy-source-electric"] = "Electricity",
     ["energy-source-electric-distribution"] = "Distribution",
@@ -160,18 +161,24 @@ local type_to_localised = {
     ["entity-kill"] = "Kill: ",
     ["entity-mine"] = "Mine: ",
     ["entity-operate"] = "Operate: ",
-    ["entity-rocket-silo"] = "Rocket silo: ",
+    ["entity-rocket-silo"] = "Rocket building: ",
     ["fluid"] = "",
     ["fluid-craft"] = "Craft: ",
     ["fluid-create"] = "Create: ",
+    ["fluid-create-temperature"] = "Create: ",
     ["fluid-hold"] = "Hold: ",
+    ["fluid-temperature"] = "Fluid: ",
+    ["fluid-temperature-range"] = "Fluid: ",
     ["item"] = "",
     ["item-craft"] = "Craft: ",
-    ["item-deliver"] = "Deliver: ",
+    ["item-launch"] = "Launch: ",
     ["launch"] = "Ability to launch sh**",
     ["planet"] = "A planet",
     ["recipe"] = "",
     ["recipe-category"] = "Crafting category: ",
+    ["rocket-silo"] = "Any rocket silo",
+    ["recipe-tech-unlock"] = "Recipe unlock",
+    ["recipe-unlock"] = "Recipe unlock",
     ["room"] = "Location: ",
     ["room-create-platform"] = "Platform creation: ",
     ["room-launch"] = "Launch from: ",
@@ -255,6 +262,11 @@ local function get_node_caption(node)
     local deconstructed = gutils.deconstruct(node.prot)
     local prot_info = decon_to_prot(deconstructed)
     if is_elem_type[prot_info.top_level_class] then
+        if node.type == "fluid-temperature" then
+            log(deconstructed.name)
+            local temp_decon = gutils.deconstruct(node.name)
+            return "[" .. prot_info.top_level_class .. "=" .. temp_decon.type .. "] (" .. temp_decon.name .. "°C)"
+        end
         return "[" .. prot_info.top_level_class .. "=" .. deconstructed.name .. "]"
     else
         return {"?", locale.find_localised_name(prot_info.prot), prot_info.prot.name}
@@ -383,7 +395,7 @@ local function get_node_leaves(node)
                 -- Don't check op if there is one prereq (AND/OR equivalent then)
                 -- Also make sure it's not a source (must be included as leaf then!)
                 -- Finally, needs to be the same sort of thing (same node name)
-                if prenode.num_pre ~= 0 and (prenode.op == node.op or prenode.num_pre == 1) and graph.type_info[prenode.type].canonical == graph.type_info[node.type].canonical and prenode.name == node.name then
+                if prenode.num_pre ~= 0 and (((prenode.op == node.op or prenode.num_pre == 1) and (graph.type_info[prenode.type].canonical == graph.type_info[node.type].canonical and prenode.name == node.name)) or (node.num_pre == 1 and prenode.type == "fluid-temperature")) then
                     table.insert(open, prenode)
                 else
                     table.insert(leaves, prenode)
@@ -435,6 +447,7 @@ local function expand_node_dropdown(event, node)
             ["item-deliver"] = true,
             ["resistance-group"] = true,
             ["warmth"] = true,
+            ["false"] = true,
         }
         if not is_confusing_node_type[leaf.type] then
             if not is_hidden then
@@ -482,7 +495,23 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
         explorer_dropdowns.clear()
 
         if prot_choice.elem_value ~= nil then
-            local node = graph.nodes[gutils.key(prot_choice.elem_type, prot_choice.elem_value)]
+            local node_type_to_use = prot_choice.elem_type
+            -- Refer to the operate entity node if there are more requirements to operation than just the entity
+            if node_type_to_use == "entity" then
+                local operate_node = graph.nodes[gutils.key("entity-operate", prot_choice.elem_value)]
+                if operate_node ~= nil then
+                    local to_ignore = {
+                        ["entity"] = true,
+                        ["warmth"] = true,
+                    }
+                    for _, prenode in pairs(gutils.prenodes(graph, operate_node)) do
+                        if not to_ignore[prenode.type] then
+                            node_type_to_use = "entity-operate"
+                        end
+                    end
+                end
+            end
+            local node = graph.nodes[gutils.key(node_type_to_use, prot_choice.elem_value)]
             if node ~= nil then
                 local root_flow = explorer_dropdowns.add({type = "flow", name = "randomizer-explorer-dropdowns-root", direction = "horizontal"})
                 local amount

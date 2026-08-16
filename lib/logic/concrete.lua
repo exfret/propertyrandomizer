@@ -92,7 +92,6 @@ function concrete.build(lu)
         add_node("asteroid-chunk-mine", "AND")
         ----------------------------------------
         -- Can we mine this asteroid chunk?
-        -- Requires: chunk + asteroid collector
 
         -- Asteroid chunks can be mined automatically
         add_edge("asteroid-chunk", chunk.name, {
@@ -114,7 +113,6 @@ function concrete.build(lu)
         add_node("damage-type", "OR")
         ----------------------------------------
         -- Can we deal damage of this type?
-        -- OR over: ammo items, turrets with built-in damage, combat robots, equipment
         -- Note: Land mines excluded due to offensive drawbacks
 
         local sources = lu.damage_type_sources[damage.name]
@@ -169,12 +167,14 @@ function concrete.build(lu)
         end
         -- Check if the entity is put automatically in a room (planet/space surface)
         for room_key, room in pairs(lu.rooms) do
-            if lutils.check_in_room(room, entity) then
-                -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed there
-                add_edge("room-autoplace", room_key, {
-                    entity = entity.name,
-                    abilities = { [1] = true },
-                }) -- Being from a room leads to isolatability
+            if room.type ~= "control" then
+                if lutils.check_in_room(room, entity) then
+                    -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed there
+                    add_edge("room-autoplace", room_key, {
+                        entity = entity.name,
+                        abilities = { [1] = true },
+                    }) -- Being from a room leads to isolatability
+                end
             end
         end
         -- Check if entity could be the corpse of another entity
@@ -278,8 +278,10 @@ function concrete.build(lu)
                 -- Can we access a room with the right surface conditions for this entity?
 
                 for room_key, room in pairs(lu.rooms) do
-                    if lutils.check_surface_conditions(room, entity.surface_conditions or {}) then
-                        add_edge("room", room_key)
+                    if room.type ~= "control" then
+                        if lutils.check_surface_conditions(room, entity.surface_conditions or {}) then
+                            add_edge("room", room_key)
+                        end
                     end
                 end
             end
@@ -744,19 +746,68 @@ function concrete.build(lu)
         set_prot(fluid)
 
         ----------------------------------------
-        add_node("fluid", "AND")
+        add_node("fluid", "OR")
         ----------------------------------------
         -- Can we obtain this fluid?
-        -- Requires: some way to create it + way to hold/transport it
+        -- OR over all possible fluid temperatures
 
-        add_edge("fluid-create")
-        add_edge("fluid-hold")
+        -- NOTE: We don't count mixing for middle temperatures, so like mixing 50 degree and 150 degree fluid for 100 degree fluid
+        -- If a modpack requires this in the future, manual compatibility would have to be added
+        -- Though honestly, this sounds like an awful mechanic to have to deal with as a player (especially with any fluid temperatures that have to be exact), which is why it's not coded into logic
+
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            add_edge("fluid-temperature", key(fluid.name, tostring(temp)))
+        end
+
+        for temp_range, _ in pairs(lu.temp_ranges[fluid.name]) do
+            local fluid_temp_range_name = key(fluid.name, temp_range)
+
+            ----------------------------------------
+            add_node("fluid-temperature-range", "OR", nil, fluid_temp_range_name)
+            ----------------------------------------
+            -- Can we create fluid at this specific temperature range?
+
+            local temps = gutils.deconstruct(temp_range)
+            local temp_min = temps.type
+            local temp_max = temps.name
+
+            for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+                if temp_min == "nil" or tonumber(temp_min) <= temp then
+                    if temp_max == "nil" or tonumber(temp_max) >= temp then
+                        add_edge("fluid-temperature", key(fluid.name, temp))
+                    end
+                end
+            end
+        end
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            local fluid_temp_range_name = key(fluid.name, key(tostring(temp), tostring(temp)))
+
+            ----------------------------------------
+            add_node("fluid-temperature-range", "OR", nil, fluid_temp_range_name)
+            ----------------------------------------
+            -- Can we create fluid at this specific temperature range (that consists of a single temperature)?
+
+            add_edge("fluid-temperature", key(fluid.name, tostring(temp)))
+        end
+
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            local fluid_temp_name = key(fluid.name, tostring(temp))
+
+            ----------------------------------------
+            add_node("fluid-temperature", "AND", nil, fluid_temp_name)
+            ----------------------------------------
+            -- Can we obtain this fluid at this given temperature point?
+            -- Checks ability to create it and to hold it
+
+            add_edge("fluid-create-temperature", fluid_temp_name)
+            add_edge("fluid-hold", fluid.name)
+        end
 
         ----------------------------------------
         add_node("fluid-create", "OR")
         ----------------------------------------
         -- Can we create/produce this fluid?
-        -- OR over: crafting, offshore pumping, mining, entity output
+
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
             add_edge("fluid-create-temperature", key(fluid.name, tostring(temp)))
         end
@@ -766,6 +817,8 @@ function concrete.build(lu)
             ----------------------------------------
             add_node("fluid-create-temperature", "OR", nil, fluid_temp_name)
             ----------------------------------------
+            -- Can we create/produce this fluid at this given temperature point?
+
             local corresponding_recipes = (lu.mat_recipe_map.material[key("fluid", fluid_temp_name)] or {}).results or {}
             if corresponding_recipes ~= nil then
                 add_edge("fluid-craft", fluid_temp_name)
@@ -829,7 +882,6 @@ function concrete.build(lu)
                 add_node("fluid-create-offshore", "OR", nil, fluid_temp_name, { mechanic = true })
                 ----------------------------------------
                 -- Can we pump this fluid using an offshore pump?
-                -- OR over: pumps with filter for this fluid, tiles that have this fluid
 
                 -- Pumps with filter always produce this fluid
                 if has_filter_pumps then
@@ -1087,6 +1139,12 @@ function concrete.build(lu)
 
     set_class("recipe")
 
+    -- Recipes with special control behavior for their ingredients
+    -- Easier to add here than to mess with it later in compat
+    local ingredients_not_needed = {
+        ["bioport-hidden-recipe"] = true,
+    }
+
     for _, recipe in pairs(lu.recipes) do
         set_prot(recipe)
 
@@ -1101,29 +1159,21 @@ function concrete.build(lu)
 
         add_edge("recipe-category", rcat_name)
         if recipe.enabled == false then
-            add_edge("recipe-tech-unlock")
+            add_edge("recipe-unlock")
         end
         -- Ingredients with inds for trigger technology support
-        for mat_key, inds in pairs(ingredient_map) do
-            local mat = gutils.deconstruct(mat_key)
-            local mat_type = mat.type
-            local mat_name = mat.name
-            -- For fluids, we want to depend on the specific temperature, but I didn't want to have also a temperature-specific node at the fluid and fluid-create levels
-            -- Thus, if we depend on the default temperature, go to the fluid node, otherwise, skip fluid-hold and go to fluid-create-temperature directly
-            -- This is going to be a huge pain for recipe randomization...
-            if mat.type == "fluid" then
-                local fluid_name = gutils.deconstruct(mat.name).type
-                local temperature = tonumber(gutils.deconstruct(mat.name).name)
-                if temperature == data.raw.fluid[fluid_name].default_temperature then
-                    mat_type = "fluid"
-                    mat_name = fluid_name
-                else
-                    mat_type = "fluid-create-temperature"
+        if not ingredients_not_needed[recipe.name] then
+            for mat_key, inds in pairs(ingredient_map) do
+                local mat = gutils.deconstruct(mat_key)
+                local mat_type = mat.type
+                local mat_name = mat.name
+                if mat.type == "fluid" then
+                    mat_type = "fluid-temperature-range"
                 end
+                add_edge(mat_type, mat_name, {
+                    inds = inds,
+                })
             end
-            add_edge(mat_type, mat_name, {
-                inds = inds,
-            })
         end
         if recipe.surface_conditions ~= nil then
             add_edge("recipe-surface-condition")
@@ -1139,7 +1189,7 @@ function concrete.build(lu)
             add_node("recipe-py-module", "OR", nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we get the module required to craft this recipe
-            -- TODO: This should be combined in a new node along with entity-operate-py-module
+            -- TODO: This should be combined in a new node along with entity-operate-py-module (there's only one category we're accounting for anyways)
 
             for _, mod in pairs(data.raw.module) do
                 if mod.category == recipe.allowed_module_categories[1] then
@@ -1149,6 +1199,17 @@ function concrete.build(lu)
         end
 
         if recipe.enabled == false then
+            ----------------------------------------
+            add_node("recipe-unlock", "OR")
+            ----------------------------------------
+            -- Can we unlock this recipe in some way?
+            -- Recipes are mainly unlocked via technologies, but could also be enabled with control scripting and access to an assembling machine with the recipe as a fixed_recipe (which doesn't require it being enabled to work)
+
+            add_edge("recipe-tech-unlock")
+            for machine_name, _ in pairs(lu.fixed_recipes[recipe.name] or {}) do
+                add_edge("entity-operate", machine_name)
+            end
+
             ----------------------------------------
             add_node("recipe-tech-unlock", "OR")
             ----------------------------------------
@@ -1170,8 +1231,10 @@ function concrete.build(lu)
             -- Can we craft on a surface meeting this recipe's conditions?
 
             for room_key, room in pairs(lu.rooms) do
-                if lutils.check_surface_conditions(room, recipe.surface_conditions) then
-                    add_edge("room", room_key)
+                if room.type ~= "control" then
+                    if lutils.check_surface_conditions(room, recipe.surface_conditions) then
+                        add_edge("room", room_key)
+                    end
                 end
             end
         end

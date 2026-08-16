@@ -17,9 +17,35 @@ local set_prot = builder.set_prot
 
 local compat = {}
 
-function compat.build(lu)
+function compat.build(graph, lu)
     set_class("compat")
     set_prot(nil)
+
+    add_edge("logic-or", "bioport-hidden-recipe-food", nil, "recipe", "bioport-hidden-recipe")
+    ----------------------------------------
+    add_node("logic-or", "OR", nil, "bioport-hidden-recipe-food")
+    ----------------------------------------
+    -- Can we provide this biopyanoport with food?
+    add_edge("item", "workers-food")
+    add_edge("item", "workers-food-02")
+    add_edge("item", "workers-food-03")
+
+    add_edge("logic-or", "bioport-hidden-recipe-animal", nil, "recipe", "bioport-hidden-recipe")
+    ----------------------------------------
+    add_node("logic-or", "OR", nil, "bioport-hidden-recipe-animal")
+    ----------------------------------------
+    -- Can we provide this biopyanoport with an animal to work in it?
+    add_edge("item", "chorkok")
+    add_edge("item", "huzu")
+    add_edge("item", "gobachov")
+
+    add_edge("logic-and", "bioport-hidden-recipe-logistic-component", nil, "recipe", "bioport-hidden-recipe")
+    ----------------------------------------
+    add_node("logic-and", "AND", nil, "bioport-hidden-recipe-logistic-component")
+    ----------------------------------------
+    -- Can we provide this biopyanoport with the provider and requester to allow animals to actually work?
+    add_edge("entity-operate", "provider-tank")
+    add_edge("entity-operate", "requester-tank")
 end
 
 return compat

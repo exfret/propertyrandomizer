@@ -92,7 +92,11 @@ local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
 local balance = require(lib_name .. "/logic/balance")
 local balance_mechanics = require(lib_name .. "/logic/balance-mechanics")
+local compat_bobs = require(lib_name .. "/logic/compat/bobs")
+local compat_krastorio = require(lib_name .. "/logic/compat/krastorio")
 local compat_pyfull = require(lib_name .. "/logic/compat/pyfull")
+local compat_spaceage = require(lib_name .. "/logic/compat/spaceage")
+local compat_spaceexploration = require(lib_name .. "/logic/compat/spaceexploration")
 local graph_setup = require(lib_name .. "/logic/graph-setup")
 
 local key = gutils.key
@@ -190,8 +194,26 @@ logic.build = function(ignore_balance_nodes)
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
+    -- This is mostly for "special cases"; things that can be handled more programmatically like py modules are in the appropriate node locations
+
+    if mods["boblibrary"] then
+        compat_bobs.build(logic.graph, lu)
+    end
+
+    if mods["Krastorio2"] then
+        compat_krastorio.build(logic.graph, lu)
+    end
+
     if mods["pyalternativeenergy"] then
-        compat_pyfull.build()
+        compat_pyfull.build(logic.graph, lu)
+    end
+
+    if mods["space-age"] then
+        compat_spaceage.build(logic.graph, lu)
+    end
+
+    if mods["space-exploration"] then
+        compat_spaceexploration.build(logic.graph, lu)
     end
 
 ----------------------------------------------------------------------------------------------------
@@ -199,15 +221,6 @@ logic.build = function(ignore_balance_nodes)
 -- Hotfixes
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-
-    -- TODO: Fix these
-    -- Right now, we don't add the extra tiles from the starter pack
-    if mods["space-age"] then
-        --gutils.add_edge(logic.graph, key("room", key("surface", "space-platform")), key("tile", "space-platform-foundation"))
-        for _, surface in pairs(data.raw.surface) do
-            gutils.add_edge(logic.graph, key("room", key("surface", surface.name)), key("tile", "empty-space"))
-        end
-    end
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

@@ -7,6 +7,19 @@ local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 
+local function get_primary_icon(prot)
+    if prot.icon ~= nil then
+        return prot.icon, prot.icon_size or 64
+    end
+
+    if prot.icons ~= nil and prot.icons[1] ~= nil then
+        local icon = prot.icons[1]
+        return icon.icon, icon.icon_size or prot.icon_size or 64
+    end
+
+    error("Prototype has no usable icon: " .. tostring(prot.name))
+end
+
 randomizations.item_new = function(id)
     local item_slots
     local slot_to_item
@@ -639,10 +652,11 @@ randomizations.item_new = function(id)
                     if item_prototype.icons ~= nil then
                         recipe.icons = item_prototype.icons
                     else
+                        local icon_filename, icon_size = get_primary_icon(trav_item)
                         recipe.icons = {
                             {
-                                icon = item_prototype.icon,
-                                icon_size = item_prototype.icon_size or 64
+                                icon = icon_filename,
+                                icon_size = icon_size
                             }
                         }
                     end
@@ -725,34 +739,35 @@ randomizations.item_new = function(id)
                         if has_result then
                             if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
                                 entity.localised_name = locale_utils.find_localised_name(item_prototype)
+                                local icon_filename, icon_size = get_primary_icon(trav_item)
                                 entity.stages = {
                                     -- Note: This is technically botched with icons, TODO: Fix
                                     sheets = {
                                         {
                                             variation_count = 1,
-                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
-                                            size = item_prototype.icon_size or 64,
+                                            filename = icon_filename,
+                                            size = icon_size,
                                             scale = 0.35,
                                             shift = {0.2, 0.6}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
-                                            size = item_prototype.icon_size or 64,
+                                            filename = icon_filename,
+                                            size = icon_size,
                                             scale = 0.25,
                                             shift = {-0.5, 0.2}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
-                                            size = item_prototype.icon_size or 64,
+                                            filename = icon_filename,
+                                            size = icon_size,
                                             scale = 0.45,
                                             shift = {0, 0}
                                         },
                                         {
                                             variation_count = 1,
-                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
-                                            size = item_prototype.icon_size or 64,
+                                            filename = icon_filename,
+                                            size = icon_size,
                                             scale = 0.4,
                                             shift = {-0.2, -0.6}
                                         }
@@ -856,9 +871,10 @@ randomizations.item_new = function(id)
                                     local selection_box_x_size = entity.selection_box[2][1] - entity.selection_box[1][1]
                                     local selection_box_y_size = entity.selection_box[2][2] - entity.selection_box[1][2]
                                     for i = 1, #shifts do
+                                        local icon_filename, icon_size = get_primary_icon(trav_item)
                                         table.insert(entity.lower_pictures[j].layers, {
-                                            filename = item_prototype.icon or item_prototype.icons[1].icon,
-                                            size = item_prototype.icon_size or 64,
+                                            filename = icon_filename,
+                                            size = icon_size,
                                             scale = 0.25,
                                             tint = {236, 152, 130},
                                             shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}

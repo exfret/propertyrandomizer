@@ -65,6 +65,7 @@ local constants = {
     simplex_per_second_cost = 0.05,
     simplex_pump_cost = 0.01,
     simplex_boiling_cost = 0.05,
+    simplex_burnt_cost = 1,
 
     path_max_removed_node_hits = 30 * 16,
     path_max_depth = 30 * 128,
