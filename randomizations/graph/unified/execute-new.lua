@@ -25,6 +25,7 @@ local function log_info(level, info)
 end
 
 local rng = require("lib/random/rng")
+local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
@@ -52,16 +53,20 @@ config.unified = {
     ["item-ingredients"] = true,
     ["item"] = true,
     ["entity-energy-source"] = true,
+    ["recipe-ingredients-first-pass"] = true,
 }
 
+ITEM_ENABLED = true
+RECIPE_INGS_DIR = "FORWARD"
 local enabled = {
     --["recipe-ingredients"] = true,
     --["tech-science-packs"] = true,
     --["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
-    ["recipe-category"] = true,
-    ["item"] = true,
-    ["entity-energy-source"] = true,
+    --["recipe-category"] = true,
+    ["item"] = ITEM_ENABLED,
+    --["entity-energy-source"] = true,
+    ["recipe-ingredients-first-pass"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -590,8 +595,56 @@ unified.execute = function()
     log_info(2, "REFLECT")
     ----------------------------------------------------------------------------------------------------
 
-    for _, handler in pairs(handlers) do
-        handler.reflect(random_graph, head_to_base, head_to_handler)
+    changes = {}
+    handlers["recipe-ingredients-first-pass"].reflect(random_graph, head_to_base, head_to_handler)
+    for handler_id, handler in pairs(handlers) do
+        if handler_id ~= "recipe-ingredients-first-pass" then
+            handler.reflect(random_graph, head_to_base, head_to_handler)
+        end
+    end
+    for _, change in pairs(changes) do
+        if change.multiplier then
+            if change.tbl[change.prop] ~= nil then
+                change.tbl[change.prop] = change.multiplier * change.tbl[change.prop]
+            end
+        else
+            change.tbl[change.prop] = change.new_val
+        end
+    end
+    for _, change in pairs(changes) do
+        if change.is_ing_or_result and change.tbl[change.prop] ~= nil then
+            if change.tbl.type == "item" then
+                local item
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if (data.raw[item_class] or {})[change.tbl.name] ~= nil then
+                        item = data.raw[item_class][change.tbl.name]
+                        break
+                    end
+                end
+                -- If we have to raise it from 2/3 or below and this is in the ingredients, this is an expensive ingredient, so give some of it back
+                if change.ingredients and change.prop == "amount" and change.tbl[change.prop] <= 2 / 3 then
+                    local cost_over_reasonable = (3 / 2) / change.tbl[change.prop]
+                    -- You "should" only pay up to the cost_reasonable, which would correspond to 1 / cost_over_reasonable amount of the 1 thing, so you get 1 minus this amount back
+                    local amount_back = 1 - 1 / cost_over_reasonable
+                    -- Make sure this isn't a weird recipe
+                    if change.recipe.results ~= nil and #change.recipe.results > 0 then
+                        -- Make sure main product is kept
+                        if #change.recipe.results == 1 then
+                            change.recipe.main_product = change.recipe.results[1].name
+                        end
+                        table.insert(change.recipe.results, {type = "item", name = change.tbl.name, amount = 1, independent_probability = amount_back})
+                    end
+                end
+                change.tbl[change.prop] = math.max(1, math.floor(0.5 + change.tbl[change.prop]))
+                if not dutils.is_stackable(item) then
+                    change.tbl[change.prop] = 1
+                else
+                    change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
+                end
+            else
+                change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
+            end
+        end
     end
 
     if SWITCH_PLANETS then

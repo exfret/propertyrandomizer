@@ -61,6 +61,9 @@ dutils.is_stackable = function(item_prototype)
     if item_prototype.type == "armor" and item_prototype.equipment_grid ~= nil then
         return false
     end
+    if item_prototype.type == "item-with-inventory" then
+        return false
+    end
     if item_prototype.flags ~= nil then
         for _, flag in pairs(item_prototype.flags) do
             if flag == "not-stackable" then

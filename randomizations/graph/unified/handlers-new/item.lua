@@ -192,8 +192,6 @@ local function get_primary_icon(prot)
 end
 
 item.reflect = function(graph, head_to_base, head_to_handler)
-    local changes = {}
-
     local num_times_changed_graphics_of_simple_entity = {}
     for trav_key, slot_key in pairs(trav_to_slot) do
     --for head_key, base_key in pairs(head_to_base) do
@@ -235,8 +233,10 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             local slot_cost = material_to_cost[gutils.key("item", slot_item.name)]
             local trav_cost = material_to_cost[gutils.key("item", trav_item.name)]
             local multiplier = 1
+            local exact_multiplier = 1
             if slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
                 multiplier = math.max(1, math.floor(slot_cost / trav_cost))
+                exact_multiplier = slot_cost / trav_cost
             end
 
             for _, recipe in pairs(data.raw.recipe) do
@@ -252,15 +252,13 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                 })
                                 for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
                                     if ing_or_prod[amount_key] ~= nil then
-                                        local new_amount = multiplier * ing_or_prod[amount_key]
-                                        if not dutils.is_stackable(trav_item) then
-                                            new_amount = 1
-                                        end
-                                        new_amount = math.min(65535, new_amount)
                                         table.insert(changes, {
                                             tbl = ing_or_prod,
                                             prop = amount_key,
-                                            new_val = new_amount
+                                            multiplier = exact_multiplier,
+                                            is_ing_or_result = true,
+                                            ingredients = (material_property == "ingredients"),
+                                            recipe = recipe,
                                         })
                                     end
                                 end
@@ -580,10 +578,6 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 end
             end
         end
-    end
-
-    for _, change in pairs(changes) do
-        change.tbl[change.prop] = change.new_val
     end
 end
 

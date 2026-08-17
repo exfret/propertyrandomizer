@@ -216,30 +216,8 @@ script.on_nth_tick(1, function(event)
         storage.combat_robot_entity_to_assign = nil
     end
 
-    -- Print warnings on 10th tick
     if event.tick == 10 then
         -- Tell them about the randomizer panel
         game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")
-
-        -- Check seed to see whether to print info message
-        if settings.startup["propertyrandomizer-seed"].value == 0 then
-            --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. See mod settings for customization. Note that some randomizations like recipes are off by default due to slow load times. Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
-        end
-
-        --[[local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)
-        for data, _ in pairs(table_to_load) do
-            local _, warnings = serpent.load(data)
-            for _, warning in pairs(warnings) do
-                if type(warning) == "string" then
-                    storage.there_was_warning = true
-                    game.print(warning)
-                end
-            end
-        end]]
-    elseif event.tick >= 60 and game.connected_players ~= nil and #game.connected_players >= 1 and game.connected_players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
-        storage.gave_warning_flying_text = true
-        for _, player in pairs(game.players) do
-            player.create_local_flying_text({text="Hm... I should open the randomizer panel.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
-        end
     end
 end)

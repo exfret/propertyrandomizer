@@ -35,11 +35,12 @@ local PUT_PATH_SLOTS_FIRST = false
 local DO_PREREQ_POOL_CHECK = false
 local DO_SLOTS_IN_ORDER = true
 local CHECK_SAME_MECHANICS = true
-local DO_ITEM_RANDO = true
+local DO_ITEM_RANDO
 local EXCLUDE_SCIENCE = true
 -- Exclude key things, like stone furnaces
-local EXCLUDE_SENSITIVE = true
-local EXCLUDE_RECIPES = true
+local EXCLUDE_SENSITIVE = false
+local EXCLUDE_RECIPES = false
+local SPECIAL_RECIPE_FIRST_PASS = true
 local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
 local REPORT_PATH = false
@@ -83,7 +84,42 @@ local function undo_trav_name(trav_name)
 end
 first_pass.undo_trav_name = undo_trav_name
 
+local function is_canonical_result(mat_or_recipe_name)
+    local is_science_pack = {}
+    for _, lab in pairs(data.raw.lab) do
+        for _, input in pairs(lab.inputs) do
+            is_science_pack[input] = true
+        end
+    end
+    local recipe = data.raw.recipe[mat_or_recipe_name]
+    if recipe == nil or recipe.results == nil or #recipe.results ~= 1 or recipe.results[1].name ~= recipe.name then
+        return false
+    end
+    if EXCLUDE_SCIENCE and is_science_pack[mat_or_recipe_name] then
+        return false
+    end
+    if randomization_info.options.first_pass.blacklist[key("recipe", mat_or_recipe_name)] then
+        return false
+    end
+    -- TODO: Don't assume base game in the future!
+    -- Make sure all ingredients have costs
+    for _, ing in pairs(recipe.ingredients or {}) do
+        if type(base_costs.costs[gutils.key(ing)]) ~= "number" then
+            return false
+        end
+    end
+    -- Just here to hotfix a bug
+    if mat_or_recipe_name == "satellite" then
+        return false
+    end
+    -- TODO: We might need to make sure that the item also is *only* gotten from the recipe (or some other *later* ways like mining the building that it places)
+    return true
+end
+first_pass.is_canonical_result = is_canonical_result
+
 first_pass.execute = function(params)
+    DO_ITEM_RANDO = ITEM_ENABLED
+
     ----------------------------------------------------------------------------------------------------
     -- CREATE PERMUTATION
     ----------------------------------------------------------------------------------------------------
@@ -148,6 +184,11 @@ first_pass.execute = function(params)
         end
         if EXCLUDE_RECIPES and subdiv_node.type == "recipe" then
             return false
+        end
+        if SPECIAL_RECIPE_FIRST_PASS and subdiv_node.type == "recipe" then
+            if is_canonical_result(subdiv_node.name) then
+                return true
+            end
         end
         if EXCLUDE_TECHS and subdiv_node.type == "technology" then
             return false
@@ -285,21 +326,61 @@ first_pass.execute = function(params)
             if prenode.type == "orand" then
                 prenode = gutils.unique_prenode(split_graph, prenode)
             end
-            local always_on_slot = false
-            if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] then
-                always_on_slot = true
-                if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then
-                    local item_prot = dutils.get_prot("item", node.name)
-                    -- If the item and entity/tile are supposed to correspond to each other, don't put on slot
-                    if (prenode.type == "entity-mine" and item_prot.place_result == prenode.name) or (prenode.type == "tile-mine" and item_prot.place_as_tile ~= nil and item_prot.place_as_tile.result == prenode.name) then
-                        always_on_slot = false
+            -- Special handling for recipe ingredients
+            if SPECIAL_RECIPE_FIRST_PASS and node.type == "recipe" and is_canonical_result(node.name) then
+                if prenode.type == "recipe-category" then
+                    -- Stays with trav
+                    if RECIPE_INGS_DIR ~= "BACKWARD" then
+                        fixed_pre[pre] = true
+                        not_all_randomized = true
+                    end
+                elseif prenode.type == "recipe-unlock" then
+                    -- Stays with slot
+                    -- Or maybe not?
+                    --if RECIPE_INGS_DIR == "BACKWARD" then
+                        --fixed_pre[pre] = true
+                        --not_all_randomized = true
+                    --end
+                elseif prenode.type == "recipe-surface-condition" then
+                    -- Stays with slot, for context reasons (not currently applicable since doing base game)
+                    if RECIPE_INGS_DIR == "BACKWARD" then
+                        fixed_pre[pre] = true
+                        not_all_randomized = true
+                    end
+                elseif prenode.type == "recipe-py-module" then
+                    -- Stays with trav (the actual recipe prototype goes with trav)
+                    if RECIPE_INGS_DIR ~= "BACKWARD" then
+                        fixed_pre[pre] = true
+                        not_all_randomized = true
+                    end
+                elseif prenode.type == "item" or prenode.type == "fluid-temperature-range" then
+                    -- *All* ingredents stay with trav
+                    if RECIPE_INGS_DIR ~= "BACKWARD" then
+                        -- Nevermind, let's keep non-canonical edges on slot
+                        -- Nevermind again, softlocks
+                        --if is_canonical_result(prenode.fluid or prenode.name) then
+                            fixed_pre[pre] = true
+                            not_all_randomized = true
+                        --end
                     end
                 end
-            end
+            else
+                local always_on_slot = false
+                if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] then
+                    always_on_slot = true
+                    if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then
+                        local item_prot = dutils.get_prot("item", node.name)
+                        -- If the item and entity/tile are supposed to correspond to each other, don't put on slot
+                        if (prenode.type == "entity-mine" and item_prot.place_result == prenode.name) or (prenode.type == "tile-mine" and item_prot.place_as_tile ~= nil and item_prot.place_as_tile.result == prenode.name) then
+                            always_on_slot = false
+                        end
+                    end
+                end
 
-            if prenode.type ~= "head" and not always_on_slot then
-                fixed_pre[pre] = true
-                not_all_randomized = true
+                if prenode.type ~= "head" and not always_on_slot then
+                    fixed_pre[pre] = true
+                    not_all_randomized = true
+                end
             end
         end
         for pre, _ in pairs(fixed_pre) do
@@ -311,16 +392,25 @@ first_pass.execute = function(params)
             if depnode.type == "orand" then
                 depnode = gutils.unique_depnode(split_graph, depnode)
             end
-            local always_on_slot = false
-            if randomization_info.options.first_pass.always_slot_dep[key(node.type, depnode.type)] then
-                always_on_slot = true
-            end
+            -- Special handling for recipe ingredients
+            if SPECIAL_RECIPE_FIRST_PASS and node.type == "recipe" and is_canonical_result(node.name) then
+                -- In this case there should only be one outgoing edge, standing for the item/fluid-craft, which actually stays with the slot (this is what makes the matching nontrivial)
+                if RECIPE_INGS_DIR == "BACKWARD" then
+                    fixed_dep[dep] = true
+                    not_all_randomized = true
+                end
+            else
+                local always_on_slot = false
+                if randomization_info.options.first_pass.always_slot_dep[key(node.type, depnode.type)] then
+                    always_on_slot = true
+                end
 
-            -- TODO: Document/add to vanilla special handling of coal
-            -- CRITICAL TODO: Test for pyanodons (uses raw coal instead)
-            if depnode.type ~= "base" and not always_on_slot then --and (node_key ~= key("item", "coal") and (depnode.canonical ~= "item" or depnode.name ~= "coal")) then
-                fixed_dep[dep] = true
-                not_all_randomized = true
+                -- TODO: Document/add to vanilla special handling of coal
+                -- CRITICAL TODO: Test for pyanodons (uses raw coal instead)
+                if depnode.type ~= "base" and not always_on_slot then --and (node_key ~= key("item", "coal") and (depnode.canonical ~= "item" or depnode.name ~= "coal")) then
+                    fixed_dep[dep] = true
+                    not_all_randomized = true
+                end
             end
         end
         for dep, _ in pairs(fixed_dep) do
@@ -334,6 +424,10 @@ first_pass.execute = function(params)
         local head = base_head.head
         local edge_to_sever = gutils.unique_pre(split_graph, head)
         gutils.remove_edge(split_graph, gutils.ekey(edge_to_sever))
+        if SPECIAL_RECIPE_FIRST_PASS and node.type == "recipe" and is_canonical_result(node.name) and RECIPE_INGS_DIR ~= "BACKWARD" then
+            -- I'm not sure how to deal with this in general, but we don't want the AND slot transmitting contexts without a matching traveler yet (in this case at least), so connect a false to it that we'll deal with later
+            gutils.add_edge(split_graph, gutils.key("false", ""), gutils.key(node))
+        end
     end
     test_graph_invariants.test(split_graph)
 
@@ -377,7 +471,8 @@ first_pass.execute = function(params)
             for _, prenode in pairs(gutils.prenodes(graph, node)) do
                 -- Don't involve the dangling connections for trav nodes
                 if not node.trav or key(prenode) ~= key(trav_to_head[key(node)]) then
-                    if prenode.type ~= "head" and split_sort.node_to_context_inds[key(prenode)][context] == nil then
+                    -- Make sure to also not include the false connections to some slots added to prevent them from being satisfied too early
+                    if prenode.type ~= "false" and prenode.type ~= "head" and split_sort.node_to_context_inds[key(prenode)][context] == nil then
                         has_context = false
                         break
                     end
@@ -693,7 +788,7 @@ first_pass.execute = function(params)
             end
         end
         is_important = new_important
-        log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
+        --log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
     end
     if REQUIRE_DIFFERENT_CANONICAL_FOR_IMPORTANCE then
         local new_important = table.deepcopy(is_important)
@@ -742,7 +837,7 @@ first_pass.execute = function(params)
             end
         end
         is_important = new_important
-        log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
+        --log("Removed " .. tostring(unimportant_removed) .. " unimportant nodes.")
     end
 
     -- Calculate costs; needed just a bit for a compatibility check
@@ -977,6 +1072,36 @@ first_pass.execute = function(params)
             log(serpent.block(trav))
             log(trav)
             error("trav head nil")
+        end
+
+        -- Special handling for recipe first pass randomization
+        if SPECIAL_RECIPE_FIRST_PASS and slot.type == "recipe" and is_canonical_result(slot.name) and RECIPE_INGS_DIR ~= "BACKWARD" then
+            -- Remove false node
+            local pre_to_remove
+            for pre, _ in pairs(slot.pre) do
+                local pre_edge = graph.edges[pre]
+                local pre_edge_node = graph.nodes[pre_edge.start]
+                if pre_edge_node.type == "false" then
+                    pre_to_remove = pre
+                    break
+                end
+            end
+            gutils.remove_edge(graph, pre_to_remove)
+            -- First move dependents to trav
+            local deps_to_move = {}
+            for dep, _ in pairs(slot.dep) do
+                local depnode_key = graph.edges[dep].stop
+                -- Check that this isn't the slot's base
+                if depnode_key ~= gutils.key(slot_to_base[gutils.key(slot)]) then
+                    deps_to_move[dep] = true
+                end
+            end
+            for dep, _ in pairs(deps_to_move) do
+                gutils.redirect_edge_start(graph, dep, trav)
+            end
+            -- Now filter context through slot
+            gutils.add_edge(graph, gutils.key("true", ""), gutils.key(slot))
+            sort_info = top.sort(graph, sort_info, {graph.nodes[gutils.key("true", "")], slot}, { choose_randomly = true })
         end
 
         gutils.add_edge(graph, slot_base, trav_head)
@@ -1332,7 +1457,7 @@ first_pass.execute = function(params)
 
                     -- Test if this slot is absolute reachable (for when slots of non-randomized edges)
                     --if slot_absolute_reachable(slot) then
-                        if slot_to_trav[slot_key] == nil and (slot_acceptable(slot) or disable_reachability_check) then
+                        if slot_to_trav[slot_key] == nil and (slot_absolute_reachable(slot) or disable_reachability_check) then--and (slot_acceptable(slot) or disable_reachability_check) then
                             slot_tries = 1 + slot_tries
                             for _, trav in pairs(precomp_travs) do
                             --for perm_ind, sorted_node_ptr in pairs(perm) do
@@ -1462,22 +1587,6 @@ first_pass.execute = function(params)
             if found_trav ~= nil then
                 break
             else
-
-
-
-                -- CRITICAL TODO: What is this section?
-
-                if i / #slot_inds < 1 then
-                    return false
-                end
-                disable_reachability_check = true
-                break
-
-
-
-
-
-
                 print_failure_message(i)
                 -- For debugging, ability to ignore last bit of unassigned slots/travs
                 if i / #slot_inds < FAILURE_ACCEPTANCE then
@@ -1491,20 +1600,6 @@ first_pass.execute = function(params)
                 end
             end
         end
-
-
-
-
-
-        if disable_reachability_check == true then
-            break
-        end
-
-
-
-
-
-
 
         slot_to_trav[key(found_slot)] = key(found_trav)
         trav_to_slot[key(found_trav)] = key(found_slot)
@@ -1523,12 +1618,18 @@ first_pass.execute = function(params)
 
     if #reserved_slots >= 1 then
         -- The travs should have been satisfied by now
-        for _, slot in pairs(reserved_slots) do
+        --[[for _, slot in pairs(reserved_slots) do
             log(key(slot))
             log(slot_to_trav[key(slot)])
         end
         log("There are " .. tostring(#reserved_slots) .. " reservations left!")
-        return false
+        return false]]
+
+        -- No wait, we should be able to just fulfill the reservations
+        while #reserved_slots >= 1 do
+            fulfill_reservation(1)
+            update_reservations()
+        end
     end
 
     -- Need to do a new sort since the reservations can make it out of order

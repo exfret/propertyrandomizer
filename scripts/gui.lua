@@ -137,6 +137,15 @@ local function toggle_randomizer_panel(event)
     home_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(home_tab, home_flow)
     local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = "Welcome to the randomizer panel!"})
+    local reachability_text
+    local reachable = prototypes.mod_data["propertyrandomizer-reachability-data"].data["reachable"]
+    local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
+    if reachable < total then
+        reachability_text = "[color=red]Potential critical softlock found: Only " .. tostring(reachable) .. "/" .. tostring(total) .. " science packs seem reachable.[/color]"
+    else
+        reachability_text = "[color=green]No critical softlocks discovered. All " .. tostring(total) .. " science packs seem reachable.[/color]"
+    end
+    local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
     if settings.startup["propertyrandomizer-seed"].value == 0 then
         local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = "[color=orange]Warning:[/color] You are on the default seed. If this is unintended, see mod settings for customization."})
         local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = "Note that some randomizations like recipes are off by default due to slow load times."})
@@ -230,6 +239,7 @@ local type_to_localised = {
     ["fluid-temperature"] = "Fluid: ",
     ["fluid-temperature-range"] = "Fluid: ",
     ["item"] = "",
+    ["item-burn"] = "Burn: ",
     ["item-craft"] = "Craft: ",
     ["item-launch"] = "Launch: ",
     ["launch"] = "Ability to launch sh**",
