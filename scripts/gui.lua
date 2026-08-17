@@ -23,14 +23,11 @@
 local locale = require("lib/locale")
 local cutils = require("lib/cost/cost-utils")
 local gutils = require("lib/graph/graph-utils")
+local common = require("scripts/common")
 local customizer = require("scripts/customizer")
+local derandomizer = require("scripts/derandomizer")
 
-local function set_width_height(element, player, width_frac, height_frac)
-    element.style.minimal_width = player.display_resolution.width * width_frac
-    element.style.maximal_width = player.display_resolution.width * width_frac
-    element.style.minimal_height = player.display_resolution.height * height_frac
-    element.style.maximal_height = player.display_resolution.height * height_frac
-end
+local set_width_height = common.set_width_height
 
 local selected_ind_to_elem_type = {
     "entity",
@@ -59,6 +56,26 @@ local is_elem_type = {
     ["space-location"] = true,
 }
 
+local function can_be_derandomized(element)
+    if prototypes.recipe["derandomized-" .. element.elem_type .. "--" .. element.elem_value] ~= nil then
+        return true
+    end
+end
+
+local function add_derandomizer_amount_caption(element)
+    local color = "white"
+    if storage.num_derandomizations == 0 then
+        color = "red"
+    end
+    local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]You currently have this many derandomizations left: " .. tostring(storage.num_derandomizations) .. "[/color]"})
+    local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = "Number techs until next derandomization: " .. tostring(storage.techs_until_derandomization)})
+end
+
+local function reset_derandomizer(element)
+    local explorer_derandomizer_prot_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "Select a prototype for derandomization."})
+    add_derandomizer_amount_caption(element)
+end
+
 local function update_explorer_choice(player_index, explorer_type_choice)
     local explorer_flow_choice = explorer_type_choice.parent
     -- Choosing the same thing shouldn't reset things
@@ -79,42 +96,81 @@ local function update_explorer_choice(player_index, explorer_type_choice)
     return true
 end
 
-script.on_event("randomizer-panel", function(event)
-    local gui = game.players[event.player_index].gui.screen
+local function toggle_randomizer_panel(event)
+    local player = game.players[event.player_index]
+    local gui = player.gui.screen
 
     if gui["randomizer-main-panel"] ~= nil then
         --gui["randomizer-main-panel"].destroy()
         gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
         if gui["randomizer-main-panel"].visible then
+            --player.opened = gui["randomizer-main-panel"]
             gui["randomizer-main-panel"].force_auto_center()
+        else
+            if player.opened == gui["randomizer-main-panel"] then
+                --player.opened = nil
+            end
         end
         return
     end
 
-    local main_frame = gui.add({type = "frame", name = "randomizer-main-panel", caption = "Randomizer Panel"})
-    local player = game.players[event.player_index]
+    local main_frame = gui.add({type = "frame", name = "randomizer-main-panel", direction = "vertical"})
+    local title_flow = main_frame.add({type = "flow", name = "randomizer-main-title-flow", direction = "horizontal"})
+    title_flow.drag_target = main_frame
+    local title_label = title_flow.add({type = "label", caption = "Randomizer Panel", style = "frame_title"})
+    title_label.drag_target = main_frame
+    local drag_space = title_flow.add({type = "empty-widget", style = "draggable_space_header"})
+    drag_space.style.horizontally_stretchable = true
+    drag_space.style.height = 24
+    drag_space.drag_target = main_frame
+    title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
+    --player.opened = main_frame
     set_width_height(main_frame, player, 1 / 2.5, 1 / 2.5)
     main_frame.force_auto_center()
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
+    main_tabbed_pane.style.horizontally_stretchable = true
+    main_tabbed_pane.style.vertically_stretchable = true
 
     local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = "Home"})
     local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow", direction = "vertical"})
+    home_flow.style.horizontally_stretchable = true
+    home_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(home_tab, home_flow)
     local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = "Welcome to the randomizer panel!"})
+    if settings.startup["propertyrandomizer-seed"].value == 0 then
+        local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = "[color=orange]Warning:[/color] You are on the default seed. If this is unintended, see mod settings for customization."})
+        local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = "Note that some randomizations like recipes are off by default due to slow load times."})
+        local home_default_seed_warning_caption_3 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-3", caption = "Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching)."})
+    end
+    local home_flow_tip_sync = home_flow.add({type = "label", name = "randomizer-home-flow-tip-1", caption = "[color=yellow]Tip:[/color] Randomizers don't play well with mod updates. CTRL + Click the sync mods button in the loading screen for a save to sync the exact same version."})
 
     --local customizer_tab = customizer.create(main_tabbed_pane, event.player_index)
+    --local derandomizer_tab = derandomizer.create(main_tabbed_pane, event.player_index)
 
     local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = "Explorer"})
     local explorer_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-explorer-flow", direction = "vertical"})
+    explorer_flow.style.horizontally_stretchable = true
+    explorer_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(explorer_tab, explorer_flow)
     local explorer_intro = explorer_flow.add({type = "label", name = "randomizer-explorer-intro", caption = "Select something to see what's needed to get it."})
     local explorer_flow_main = explorer_flow.add({type = "flow", name = "randomizer-explorer-flow-main", direction = "horizontal"})
-    local explorer_flow_choice = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
+    explorer_flow_main.style.horizontally_stretchable = true
+    explorer_flow_main.style.vertically_stretchable = true
+    local explorer_flow_left = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-left", direction = "vertical"})
+    explorer_flow_left.style.maximal_width = player.display_resolution.width / 6
+    local explorer_flow_choice = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
     local explorer_type_choice = explorer_flow_choice.add({type = "list-box", name = "randomizer-explorer-type-choice", selected_index = 1, items = {"Entity", "Fluid", "Item", "Recipe", "Technology", "Tile", "Asteroid Chunk"}})
     update_explorer_choice(event.player_index, explorer_type_choice)
-    explorer_type_choice.style.maximal_width = player.display_resolution.width / 8
+    local explorer_derandomizer = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-derandomizer", direction = "vertical"})
+    reset_derandomizer(explorer_derandomizer)
     local explorer_dropdowns_scroll = explorer_flow_main.add({type = "scroll-pane", name = "randomizer-explorer-dropdowns-scroll", vertical_scroll_policy = "dont-show-but-allow-scrolling", horizontal_scroll_policy = "dont-show-but-allow-scrolling"})
+    explorer_dropdowns_scroll.style.horizontally_stretchable = true
+    explorer_dropdowns_scroll.style.vertically_stretchable = true
     local explorer_dropdowns = explorer_dropdowns_scroll.add({type = "flow", name = "randomizer-explorer-dropdowns", direction = "vertical"})
+end
+
+script.on_event("randomizer-panel", function(event)
+    toggle_randomizer_panel(event)
 end)
 
 script.on_event(defines.events.on_gui_selection_state_changed, function(event)
@@ -125,8 +181,12 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(event)
         local should_update = update_explorer_choice(event.player_index, event.element)
         if should_update ~= false then
             -- Also clear the dropdowns
-            explorer_dropdowns = event.element.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+            explorer_dropdowns = event.element.parent.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
             explorer_dropdowns.clear()
+            
+            local explorer_derandomizer = event.element.parent.parent["randomizer-explorer-derandomizer"]
+            explorer_derandomizer.clear()
+            reset_derandomizer(explorer_derandomizer)
         end
     end
 end)
@@ -360,6 +420,42 @@ script.on_event(defines.events.on_gui_click, function(event)
             end
         end
     end
+    if event.element.name == "randomizer-explorer-derandomizer-button" then
+        if storage.num_derandomizations > 0 then
+            storage.num_derandomizations = -1 + storage.num_derandomizations
+            local prot_choice = event.element.parent.parent["randomizer-explorer-flow-choice"]["randomizer-explorer-prot-choice"]
+            game.forces.player.recipes["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].enabled = true
+            storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] = true
+
+            local parent = event.element.parent
+            parent.clear()
+            reset_derandomizer(parent)
+        end
+        return
+    end
+    if event.element.name == "randomizer-main-close" then
+        local player = game.players[event.player_index]
+        if player.opened == event.element.parent.parent then
+            --player.opened = nil
+        else
+            event.element.parent.parent.visible = false
+        end
+        return
+    end
+    if event.element.name == "randomizer-main-open" then
+        toggle_randomizer_panel(event)
+        return
+    end
+end)
+
+script.on_event(defines.events.on_gui_closed, function(event)
+    if event.element ~= nil and event.element.name == "randomizer-main-panel" then
+        event.element.visible = false
+        local player = game.players[event.player_index]
+        if player.opened == event.element then
+            --player.opened = nil
+        end
+    end
 end)
 
 local function get_node_leaves(node)
@@ -491,11 +587,27 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
 
     if event.element.name == "randomizer-explorer-prot-choice" then
         local prot_choice = event.element
-        explorer_dropdowns = prot_choice.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+        explorer_dropdowns = prot_choice.parent.parent.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
         explorer_dropdowns.clear()
+
+        local explorer_derandomizer = prot_choice.parent.parent["randomizer-explorer-derandomizer"]
 
         if prot_choice.elem_value ~= nil then
             local node_type_to_use = prot_choice.elem_type
+
+            explorer_derandomizer.clear()
+            if storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] then
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]You already acquired the derandomized version of this.[/color]"})
+            elseif can_be_derandomized(prot_choice) then
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=green]This prototype can be derandomized![/color]"})
+            else
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]This prototype is not derandomizable.[/color]"})
+            end
+            add_derandomizer_amount_caption(explorer_derandomizer)
+            if not storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] and can_be_derandomized(prot_choice) and storage.num_derandomizations > 0 then
+                local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = "Derandomize!"})
+            end
+
             -- Refer to the operate entity node if there are more requirements to operation than just the entity
             if node_type_to_use == "entity" then
                 local operate_node = graph.nodes[gutils.key("entity-operate", prot_choice.elem_value)]
@@ -530,6 +642,9 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
                 root_checkbox.state = true
                 expand_node_dropdown({player_index = event.player_index, element = root_checkbox}, node)
             end
+        else
+            explorer_derandomizer.clear()
+            reset_derandomizer(explorer_derandomizer)
         end
     end
 end)

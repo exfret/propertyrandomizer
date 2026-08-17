@@ -315,8 +315,14 @@ function concrete.build(lu)
             ----------------------------------------
             -- Can we operate this entity (ensure it's heated, powered, etc.)?
 
+            -- Automatic operation doesn't require automatic production (unless this is a character)
+            local is_automatic = true
+            if entity.type == "character" then
+                is_automatic = false
+            end
+
             add_edge("entity", entity.name, {
-                abilities = { [2] = true } -- Automatic operation doesn't require automatic production
+                abilities = { [2] = is_automatic }
             })
             if categories.energy_sources_input[entity.type] then
                 -- Note: Entities still depend on "void" energy source even if their energy_source is nil so that randomization is still possible

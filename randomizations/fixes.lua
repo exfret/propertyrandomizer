@@ -669,3 +669,110 @@ randomizations.fixes = function()
         --tech.localised_name = {"", tech_localised_name, suffix}
     end]=]
 end
+
+randomizations.add_old_versions = function()
+    -- old_data_raw is a global
+
+    -- Add any entity with a crafting recipe of the same name
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        for _, entity in pairs(old_data_raw[entity_class] or {}) do
+            if old_data_raw.recipe[entity.name] ~= nil and old_data_raw.recipe[entity.name].results ~= nil and #old_data_raw.recipe[entity.name].results == 1 and old_data_raw.recipe[entity.name].results[1].name == entity.name then
+                local copy = table.deepcopy(entity)
+                copy.name = "old-" .. entity.name
+                copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
+                copy.localised_description = "Just like old."
+                local old_item
+                local old_data_item
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if old_data_raw[item_class] ~= nil and old_data_raw[item_class][entity.name] ~= nil then
+                        old_item = old_data_raw[item_class][entity.name]
+                    end
+                    if data.raw[item_class] ~= nil and data.raw[item_class][entity.name] ~= nil then
+                        old_data_item = data.raw[item_class][entity.name]
+                    end
+                end
+                local item_copy = table.deepcopy(old_item)
+                item_copy.name = copy.name
+                item_copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
+                item_copy.localised_description = "Just like old."
+                if item_copy.place_result == entity.name then
+                    item_copy.place_result = copy.name
+                end
+                if copy.minable ~= nil then
+                    if copy.minable.result == old_item.name then
+                        copy.minable.result = copy.name
+                    elseif copy.minable.results ~= nil then
+                        for _, result in pairs(copy.minable.results) do
+                            if result.name == old_item.name then
+                                result.name = copy.name
+                            end
+                        end
+                    end
+                end
+                if copy.placeable_by ~= nil then
+                    if copy.placeable_by.item == entity.name then
+                        copy.placeable_by.item = copy.name
+                    elseif copy.placeable_by.item == nil then
+                        for _, placeable in pairs(copy.placeable_by) do
+                            if placeable.item == entity.name then
+                                placeable.item = copy.name
+                            end
+                        end
+                    end
+                end
+                -- Apply gray tint
+                if copy.icons ~= nil then
+                    for _, layer in pairs(copy.icons) do
+                        layer.tint = {r = 0.5, g = 0.5, b = 0.5, a = 1}
+                    end
+                elseif copy.icon ~= nil then
+                    copy.icons = {
+                        {
+                            icon = copy.icon,
+                            icon_size = copy.icon_size or 64,
+                            tint = {r = 0.5, g = 0.5, b = 0.5, a = 1},
+                        }
+                    }
+                    copy.icon = nil
+                end
+                if item_copy.icons ~= nil then
+                    for _, layer in pairs(item_copy.icons) do
+                        layer.tint = {r = 0.5, g = 0.5, b = 0.5, a = 1}
+                    end
+                else
+                    item_copy.icons = {
+                        {
+                            icon = item_copy.icon,
+                            icon_size = item_copy.icon_size or 64,
+                            tint = {r = 0.5, g = 0.5, b = 0.5, a = 1},
+                        }
+                    }
+                    item_copy.icon = nil
+                end
+                if data.raw[entity.type][entity.name].fast_replaceable_group == nil then
+                    data.raw[entity.type][entity.name].fast_replaceable_group = "old-" .. entity.name
+                    copy.fast_replaceable_group = "old-" .. entity.name
+                end
+                item_copy.order = (data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
+                item_copy.subgroup = data.raw[old_data_item.type][old_data_item.name].subgroup
+                copy.order = (data.raw[entity.type][entity.name].order or "z-" .. data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
+                copy.subgroup = data.raw[entity.type][entity.name].subgroup
+                data:extend({
+                    copy,
+                    item_copy,
+                    {
+                        type = "recipe",
+                        name = "derandomized-" .. "entity" .. "--" .. entity.name, -- We can't use gutils.key because colons aren't allowed
+                        ingredients = {{type = "item", name = entity.name, amount = 1}},
+                        results = {{type = "item", name = copy.name, amount = 1}},
+                        main_product = copy.name,
+                        energy_required = 0.5,
+                        enabled = false,
+                        subgroup = old_data_raw.recipe[entity.name].subgroup,
+                        order = (old_data_raw.recipe[entity.name].order or data.raw[old_data_item.type][old_data_item.name].order or "") .. "z",
+                    },
+                })
+            end
+        end
+    end
+end

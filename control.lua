@@ -1,10 +1,20 @@
 -- TODO: Split off explorer panel into seperate file.
---[[
+
+local mod_gui = require("__core__.lualib.mod-gui")
+
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("lib/graph/consistent-sort")
 -- Used for getting key
 local gutils = require("lib/graph/graph-utils")
+
+local function ensure_randomizer_button(player)
+    local button_flow = mod_gui.get_button_flow(player)
+
+    if button_flow["randomizer-main-open"] == nil then
+        button_flow.add({type = "button", name = "randomizer-main-open", caption = "Randomizer Panel", style = mod_gui.button_style})
+    end
+end
 
 local function load_dep_graph()
     for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
@@ -32,6 +42,10 @@ script.on_init(function(event)
     game.forces.player.mining_with_fluid = true
 
     load_dep_graph()
+
+    storage.num_derandomizations = 2
+    storage.techs_until_derandomization = 10
+    storage.already_derandomized = {}
 
     for data, _ in pairs(prototypes.item["propertyrandomizer-slot-to-trav"].get_entity_type_filters(defines.selection_mode.select)) do
         local _, slot_to_trav = serpent.load(data)
@@ -86,8 +100,19 @@ script.on_configuration_changed(function(event)
     load_dep_graph()
 end)
 
+script.on_event(defines.events.on_player_created, function(event)
+    ensure_randomizer_button(game.players[event.player_index])
+end)
+
 script.on_event(defines.events.on_research_finished, function(event)
     local research = event.research
+
+    storage.techs_until_derandomization = -1 + storage.techs_until_derandomization
+    if storage.techs_until_derandomization == 0 then
+        storage.techs_until_derandomization = 10
+        storage.num_derandomizations = 1 + storage.num_derandomizations
+    end
+
     local tech_graph = storage.tech_graph
     local node_key = gutils.key("technology", research.name)
     local node = tech_graph.nodes[node_key]
@@ -193,12 +218,15 @@ script.on_nth_tick(1, function(event)
 
     -- Print warnings on 10th tick
     if event.tick == 10 then
+        -- Tell them about the randomizer panel
+        game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")
+
         -- Check seed to see whether to print info message
         if settings.startup["propertyrandomizer-seed"].value == 0 then
-            game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. See mod settings for customization. Note that some randomizations like recipes are off by default due to slow load times. Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
+            --game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] You are on the default seed. See mod settings for customization. Note that some randomizations like recipes are off by default due to slow load times. Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching).")
         end
 
-        local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)
+        --[[local table_to_load = prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)
         for data, _ in pairs(table_to_load) do
             local _, warnings = serpent.load(data)
             for _, warning in pairs(warnings) do
@@ -207,11 +235,11 @@ script.on_nth_tick(1, function(event)
                     game.print(warning)
                 end
             end
-        end
+        end]]
     elseif event.tick >= 60 and game.connected_players ~= nil and #game.connected_players >= 1 and game.connected_players[1].controller_type ~= defines.controllers.cutscene and not storage.gave_warning_flying_text and storage.there_was_warning then
         storage.gave_warning_flying_text = true
         for _, player in pairs(game.players) do
-            player.create_local_flying_text({text="Hm... I should check randomizer warnings in chat.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
+            player.create_local_flying_text({text="Hm... I should open the randomizer panel.", position={player.position.x, player.position.y - 1.5}, time_to_live=300, speed = 0.7})
         end
     end
-end)]]
+end)
