@@ -50,8 +50,8 @@ for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01"}) do
                 for input_fluids = 0, 4 do
                     for output_fluids = 0, 4 do
                         local recipe_categories = table.deepcopy(recipe.categories)
-                        table.sort(recipe_categories)
-                        randomization_info.options.unified["recipe-category"].blacklisted_pre[key("recipe-category", gutils.concat({gutils.concat(recipe_categories), tostring(input_fluids), tostring(output_fluids)}))] = true
+                        table.sort(recipe_categories);
+                        ((randomization_info.options.unified["recipe-category"] or {}).blacklisted_pre or {})[key("recipe-category", gutils.concat({gutils.concat(recipe_categories), tostring(input_fluids), tostring(output_fluids)}))] = true
                     end
                 end
             end

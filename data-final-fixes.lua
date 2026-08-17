@@ -1,4 +1,4 @@
-local cost = require("lib/cost/simplex-lp-export")
+--[[local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
 local gutils = require("lib/graph/graph-utils")
@@ -27,7 +27,7 @@ for i = 1, #packs_in_order do
     log("SORT COMPLETE")
     cost.export_to_log(sort_info, i)
 end
-do return end
+do return end]]
 
 
 
@@ -67,8 +67,6 @@ local function copy_without_shared_refs(value)
 end
 data.raw = copy_without_shared_refs(data.raw)
 
-old_data_raw = table.deepcopy(data.raw)
-
 log("Gathering config")
 
 -- Find randomizations to perform
@@ -94,10 +92,18 @@ end]]
 -- Special prototype fixes
 require("randomizations/prefixes")
 
+old_data_raw = table.deepcopy(data.raw)
+
 log("Loading in new dependency graph file")
 
 local new_logic = require("lib/logic/init")
-local unified = require("randomizations/graph/unified/execute-new")
+local unified = require("randomizations/graph/unified/execute")
+
+log("Initial reachability check")
+
+local top = require("lib/graph/consistent-sort")
+new_logic.build(true)
+local init_sort_info = top.sort(new_logic.graph)
 
 -- Load compat code
 require("compat/master")
@@ -136,7 +142,7 @@ local function smuggle_info()
     })
 end
 
--- If unit testing is on, do only those
+-- If unit testing is on, do only the unit tests
 local test = require("tests/execute")
 if config.unit_test then
     test.execute()
@@ -201,8 +207,13 @@ log("Applying graph-based randomizations")
 --randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
 randomizations.rebuild_tech_tree()
-smuggle_info()
-do return end
+
+
+
+--[[smuggle_info()
+do return end]]
+
+
 
 
 build_graph.load()
@@ -343,9 +354,10 @@ do_overrides_postfixes()
 
 -- Final check for completability
 
-local final_sort_info = top_sort.sort(dep_graph)
+new_logic.build(true)
+local final_sort_info = top.sort(new_logic.graph)
 
-local reachability_warning_to_insert
+--[[local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
     local first_node_unreachable
     for _, node in pairs(initial_sort_info.sorted) do
@@ -380,7 +392,10 @@ if #final_sort_info.sorted < #initial_sort_info.sorted then
 end
 if reachability_warning_to_insert ~= nil then
     table.insert(randomization_info.warnings, reachability_warning_to_insert)
-end
+end]]
+
+-- Add old versions
+randomizations.add_old_versions()
 
 -- Add warnings for control stage
 smuggle_info()

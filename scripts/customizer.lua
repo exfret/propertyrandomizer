@@ -3,19 +3,11 @@
 -- TODO: Fix!
 
 local spec = require("helper-tables/spec")
+local common = require("scripts/common")
+
+local set_width_height = common.set_width_height
 
 local customizer = {}
-
-local function set_width_height(element, player, width_frac, height_frac)
-    if width_frac ~= nil then
-        element.style.minimal_width = player.display_resolution.width * width_frac
-        element.style.maximal_width = player.display_resolution.width * width_frac
-    end
-    if height_frac ~= nil then
-        element.style.minimal_height = player.display_resolution.height * height_frac
-        element.style.maximal_height = player.display_resolution.height * height_frac
-    end
-end
 
 customizer.update_configuration_graph = function(config_gui, player_index)
     config_gui.clear()
