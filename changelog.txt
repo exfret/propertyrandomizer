@@ -1,6 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.6
 Date: ?
+  Features:
+    - Ability to get back originals for some prototypes in case something rolls too poorly; you get two "derandomizations" at the start and an extra one every ten techs researched
+    - Randomizer panel improvements and more visibility for ease of use
+  Bugfixes:
+    - Reachability sanity check uses now correctly uses new logic, which is more accurate; look at the Home tab of the randomizer panel for whether your seed seems to be softlocked
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.5
 Date: 2026.08.15

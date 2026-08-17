@@ -8,6 +8,7 @@ randomization_info.options.first_pass.blacklist = {}
 for _, recipe in pairs(data.raw.recipe) do
     if string.find(recipe.name, "barrel") ~= nil then
         randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
+        -- TODO: Item blacklist as well
     end
 end
 for class, _ in pairs(defines.prototypes.item) do

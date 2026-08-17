@@ -769,7 +769,9 @@ function concrete.build(lu)
             local fluid_temp_range_name = key(fluid.name, temp_range)
 
             ----------------------------------------
-            add_node("fluid-temperature-range", "OR", nil, fluid_temp_range_name)
+            add_node("fluid-temperature-range", "OR", nil, fluid_temp_range_name, {
+                fluid = fluid.name,
+            })
             ----------------------------------------
             -- Can we create fluid at this specific temperature range?
 
@@ -818,6 +820,16 @@ function concrete.build(lu)
             add_edge("fluid-create-temperature", key(fluid.name, tostring(temp)))
         end
 
+        ----------------------------------------
+        add_node("fluid-craft-temperature", "OR", nil, fluid_temp_name)
+        ----------------------------------------
+        -- Can we produce this fluid via recipe?
+        -- Needed for tech trigger
+
+        for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
+            add_edge("fluid-craft-temperature", key(fluid.name, tostring(temp)))
+        end
+
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
             local fluid_temp_name = key(fluid.name, tostring(temp))
             ----------------------------------------
@@ -826,16 +838,14 @@ function concrete.build(lu)
             -- Can we create/produce this fluid at this given temperature point?
 
             local corresponding_recipes = (lu.mat_recipe_map.material[key("fluid", fluid_temp_name)] or {}).results or {}
-            if corresponding_recipes ~= nil then
-                add_edge("fluid-craft", fluid_temp_name)
-            end
+            add_edge("fluid-craft-temperature", fluid_temp_name)
             -- Check offshore pumping possibilities
             -- Offshore pumps only produce default temperature
             local has_filter_pumps = lu.pumps_with_filter[fluid.name] ~= nil
             local has_tiles = lu.fluid_to_tiles[fluid.name] ~= nil
             if temp == fluid.default_temperature then
                 if has_filter_pumps or has_tiles then
-                    add_edge("fluid-create-offshore", fluid_temp_name)
+                    add_edge("fluid-create-offshore-temperature", fluid_temp_name)
                 end
             end
             -- Check if fluid comes from mining
@@ -866,28 +876,27 @@ function concrete.build(lu)
                 end
             end
 
-            if corresponding_recipes ~= nil then
-                ----------------------------------------
-                add_node("fluid-craft", "OR", nil, fluid_temp_name)
-                ----------------------------------------
-                -- Can we produce this fluid via recipe?
+            ----------------------------------------
+            add_node("fluid-craft-temperature", "OR", nil, fluid_temp_name)
+            ----------------------------------------
+            -- Can we produce this fluid via recipe at this temperature?
 
-                for recipe_name, inds in pairs(corresponding_recipes) do
-                    local recipe = data.raw.recipe[recipe_name]
-                    -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
-                    if not recipe.hide_from_stats then
-                        add_edge("recipe", recipe_name, {
-                            inds = inds,
-                        })
-                    end
+            for recipe_name, inds in pairs(corresponding_recipes) do
+                local recipe = data.raw.recipe[recipe_name]
+                -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
+                if not recipe.hide_from_stats then
+                    add_edge("recipe", recipe_name, {
+                        inds = inds,
+                    })
                 end
             end
 
             if temp == fluid.default_temperature and (has_filter_pumps or has_tiles) then
                 ----------------------------------------
-                add_node("fluid-create-offshore", "OR", nil, fluid_temp_name, { mechanic = true })
+                add_node("fluid-create-offshore-temperature", "OR", nil, fluid_temp_name, { mechanic = true })
                 ----------------------------------------
                 -- Can we pump this fluid using an offshore pump?
+                -- Still counted as a "temperature" node even though this only exists at one temperature point in logic technically
 
                 -- Pumps with filter always produce this fluid
                 if has_filter_pumps then
@@ -991,9 +1000,7 @@ function concrete.build(lu)
         -- Can we obtain this item?
 
         local corresponding_recipes = lu.mat_recipe_map.material[key("item", item.name)].results
-        if corresponding_recipes ~= nil then
-            add_edge("item-craft")
-        end
+        add_edge("item-craft")
         local corresponding_minables = lu.mat_mining_map.to_minable[key("item", item.name)]
         if corresponding_minables ~= nil then
             for minable_key, inds in pairs(corresponding_minables) do
@@ -1061,21 +1068,19 @@ function concrete.build(lu)
             add_edge("fuel-category-burn", item.fuel_category)
         end
 
-        if corresponding_recipes ~= nil then
-            ----------------------------------------
-            add_node("item-craft", "OR")
-            ----------------------------------------
-            -- Can we craft this item? (Separate node needed for tech triggers)
+        ----------------------------------------
+        add_node("item-craft", "OR")
+        ----------------------------------------
+        -- Can we craft this item? (Separate node needed for tech triggers)
 
-            for recipe_name, inds in pairs(corresponding_recipes) do
-                local recipe = data.raw.recipe[recipe_name]
-                -- Recipes hidden from stats don't satisfy crafting triggers; those edges go directly to the item
-                if not recipe.hide_from_stats then
-                    add_edge("recipe", recipe_name, {
-                        -- The indices of where in the results this item is (it could be in multiple spots)
-                        inds = inds,
-                    })
-                end
+        for recipe_name, inds in pairs(corresponding_recipes) do
+            local recipe = data.raw.recipe[recipe_name]
+            -- Recipes hidden from stats don't satisfy crafting triggers; those edges go directly to the item
+            if not recipe.hide_from_stats then
+                add_edge("recipe", recipe_name, {
+                    -- The indices of where in the results this item is (it could be in multiple spots)
+                    inds = inds,
+                })
             end
         end
 

@@ -97,10 +97,11 @@ old_data_raw = table.deepcopy(data.raw)
 log("Loading in new dependency graph file")
 
 local new_logic = require("lib/logic/init")
-local unified = require("randomizations/graph/unified/execute")
+local unified = require("randomizations/graph/unified/execute-new")
 
 log("Initial reachability check")
 
+local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/consistent-sort")
 new_logic.build(true)
 local init_sort_info = top.sort(new_logic.graph)
@@ -356,6 +357,34 @@ do_overrides_postfixes()
 
 new_logic.build(true)
 local final_sort_info = top.sort(new_logic.graph)
+
+local reachable = 0
+local total = 0
+local is_science_pack = {}
+for _, lab in pairs(data.raw.lab) do
+    for _, input in pairs(lab.inputs) do
+        is_science_pack[input] = true
+    end
+end
+for pack, _ in pairs(is_science_pack) do
+    local pack_key = gutils.key("item", pack)
+    if next(init_sort_info.node_to_context_inds[pack_key]) ~= nil then
+        total = 1 + total
+        if next(final_sort_info.node_to_context_inds[pack_key]) ~= nil then
+            reachable = 1 + reachable
+        end
+    end
+end
+data:extend({
+    {
+        type = "mod-data",
+        name = "propertyrandomizer-reachability-data",
+        data = {
+            ["reachable"] = reachable,
+            ["total"] = total,
+        }
+    }
+})
 
 --[[local reachability_warning_to_insert
 if #final_sort_info.sorted < #initial_sort_info.sorted then
