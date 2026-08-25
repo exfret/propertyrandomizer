@@ -42,6 +42,18 @@ categories.effect_receivers = {
     ["mining-drill"] = true
 }
 
+categories.enemy_health_classes = {
+    ["asteroid"] = true,
+    ["segment"] = true,
+    ["segmented-unit"] = true,
+    ["simple-entity"] = true,
+    ["spider-unit"] = true,
+    ["tree"] = true, -- They're standing in the way of my factory!
+    ["turret"] = true,
+    ["unit"] = true,
+    ["unit-spawner"] = true
+}
+
 categories.energy_sources_any = {
     ["agricultural-tower"] = true,
     ["boiler"] = true,
@@ -88,18 +100,6 @@ categories.energy_sources_input = {
     ["rocket-silo"] = "energy_source",
     ["selector-combinator"] = "energy_source",
     ["spider-vehicle"] = "energy_source"
-}
-
-categories.enemy_health_classes = {
-    ["asteroid"] = true,
-    ["segment"] = true,
-    ["segmented-unit"] = true,
-    ["simple-entity"] = true,
-    ["spider-unit"] = true,
-    ["tree"] = true, -- They're standing in the way of my factory!
-    ["turret"] = true,
-    ["unit"] = true,
-    ["unit-spawner"] = true
 }
 
 -- Excludes some entities like linked-container

@@ -88,10 +88,32 @@ local constants = {
 
     -- First pass constants
     first_pass_max_cost_log_difference = 1000, -- Basically disable for now
+    -- Now I use upper and lower; we're more strict about an expensive thing going in a cheap slot
+    -- These are base e, so something 150x more expensive is rejected, and something 3000x cheaper is rejected
+    first_pass_max_cost_log_difference_expensive = 5,
+    first_pass_max_cost_log_difference_cheap = 8,
 
     unified_recipe_ingredients_cost_threshold = 1000,
-    unified_mining_fluid_required_default_fluid_amount = 10,
     unified_recipe_results_dummy_fraction = 1,
+
+    -- For the built in graph costs
+    cost = {
+        default_payback_time = 10 * 3600,
+        -- One-time cost per entity
+        -- In particular, this is what gives ores their value of about 1
+        per_entity_cost = 1,
+        -- Covers the space cost of the building (per second)
+        per_tile_operation_cost = 0.001,
+        -- To cover fixed costs of logistics to a building, like belts/inserters (per second)
+        per_building_operation_cost = 0.025,
+        -- How much your time is worth (per second)
+        character_operation_cost = 30,
+        -- Spoilage costs are only for calculating slot cost
+        -- Additional fixed cost from nuisance of getting something through spoiling
+        slot_spoil_additional_cost_fixed = 0.2,
+        -- Variable cost per second of having to wait for something to spoil
+        slot_spoil_additional_cost_per_second = 0.0167,
+    },
 }
 
 local function set_aps_starting_planet()

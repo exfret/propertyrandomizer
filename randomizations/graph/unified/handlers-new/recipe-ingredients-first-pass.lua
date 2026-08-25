@@ -114,7 +114,7 @@ recipe_ingredients_first_pass.reflect = function(graph, head_to_base, head_to_ha
                     -- In this case, the ingredients are more expensive; multiply results then
                     local multiplier = recipe_to_cost[trav_recipe.name] / recipe_to_cost[slot_recipe.name]
                     -- Recall there is only one result anyways
-                    for amount_key in pairs({"amount", "amount_min", "amount_max"}) do
+                    for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
                         table.insert(changes, {
                             tbl = slot_recipe.results[1],
                             prop = amount_key,

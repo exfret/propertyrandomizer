@@ -43,30 +43,35 @@ local handler_ids = {}
 
 -- CRITICAL TODO: REMOVE!
 config.unified = {
-    ["recipe-category"] = true,
     ["recipe-ingredients"] = true,
     ["recipe-tech-unlocks"] = true,
     ["spoiling"] = true,
     ["tech-prereqs"] = true,
     ["tech-science-packs"] = true,
-    ["entity-autoplace"] = true,
     ["item-ingredients"] = true,
+    ["recipe-ingredients-first-pass"] = true,
+    ["entity-autoplace"] = true,
+
+    ["recipe-category"] = true,
     ["item"] = true,
     ["entity-energy-source"] = true,
-    ["recipe-ingredients-first-pass"] = true,
+    ["mining-fluid-required"] = true,
 }
 
-ITEM_ENABLED = true
+ITEM_ENABLED = false
 RECIPE_INGS_DIR = "FORWARD"
 local enabled = {
     --["recipe-ingredients"] = true,
     --["tech-science-packs"] = true,
     --["tech-prereqs"] = true,
     --["recipe-tech-unlocks"] = true,
+    --["recipe-ingredients-first-pass"] = true,
+    --["entity-autoplace"] = true,
+
     --["recipe-category"] = true,
     ["item"] = ITEM_ENABLED,
     --["entity-energy-source"] = true,
-    ["recipe-ingredients-first-pass"] = true,
+    --["mining-fluid-required"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -596,7 +601,9 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     changes = {}
-    handlers["recipe-ingredients-first-pass"].reflect(random_graph, head_to_base, head_to_handler)
+    if handlers["recipe-ingredients-first-pass"] ~= nil then
+        handlers["recipe-ingredients-first-pass"].reflect(random_graph, head_to_base, head_to_handler)
+    end
     for handler_id, handler in pairs(handlers) do
         if handler_id ~= "recipe-ingredients-first-pass" then
             handler.reflect(random_graph, head_to_base, head_to_handler)
@@ -623,16 +630,23 @@ unified.execute = function()
                 end
                 -- If we have to raise it from 2/3 or below and this is in the ingredients, this is an expensive ingredient, so give some of it back
                 if change.ingredients and change.prop == "amount" and change.tbl[change.prop] <= 2 / 3 then
+                    -- Note: This case doesn't appear to ever happen since we only ever use multipliers larger than 1
+                    local recipe_name_to_use = change.recipe.name
+                    if handlers["recipe-ingredients-first-pass"] ~= nil then
+                        recipe_name_to_use = random_graph.nodes[handlers["recipe-ingredients-first-pass"].trav_to_slot[gutils.key("recipe", make_trav_name(change.recipe.name))]].name
+                    end
+                    local recipe_to_use = data.raw.recipe[recipe_name_to_use]
+
                     local cost_over_reasonable = (3 / 2) / change.tbl[change.prop]
                     -- You "should" only pay up to the cost_reasonable, which would correspond to 1 / cost_over_reasonable amount of the 1 thing, so you get 1 minus this amount back
                     local amount_back = 1 - 1 / cost_over_reasonable
                     -- Make sure this isn't a weird recipe
-                    if change.recipe.results ~= nil and #change.recipe.results > 0 then
+                    if recipe_to_use.results ~= nil and #recipe_to_use.results > 0 then
                         -- Make sure main product is kept
-                        if #change.recipe.results == 1 then
-                            change.recipe.main_product = change.recipe.results[1].name
+                        if #recipe_to_use.results == 1 then
+                            recipe_to_use.main_product = recipe_to_use.results[1].name
                         end
-                        table.insert(change.recipe.results, {type = "item", name = change.tbl.name, amount = 1, independent_probability = amount_back})
+                        table.insert(recipe_to_use.results, {type = "item", name = change.tbl.name, amount = 1, independent_probability = amount_back})
                     end
                 end
                 change.tbl[change.prop] = math.max(1, math.floor(0.5 + change.tbl[change.prop]))

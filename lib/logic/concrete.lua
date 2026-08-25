@@ -3,7 +3,9 @@
 local collision_mask_util collision_mask_util = require("__core__/lualib/collision-mask-util")
 
 local lib_name = "lib"
+local constants = require("helper-tables/constants")
 local categories = require("helper-tables/categories")
+local cutils = require("lib/cost/cost-utils")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
@@ -19,7 +21,10 @@ local set_prot = builder.set_prot
 
 local concrete = {}
 
-function concrete.build(lu)
+function concrete.build(lu, extra_params)
+    extra_params = extra_params or {}
+    local payback_time = extra_params.payback_time or constants.cost.default_payback_time
+
     ----------------------------------------------------------------------
     -- Ammo Category
     ----------------------------------------------------------------------
@@ -97,7 +102,7 @@ function concrete.build(lu)
         add_edge("asteroid-chunk", chunk.name, {
             abilities = { [2] = true },
         })
-        add_edge("asteroid-collector", "")
+        add_edge("asteroid-collector", "", { amount = 1 })
     end
 
     ----------------------------------------------------------------------
@@ -155,15 +160,16 @@ function concrete.build(lu)
     for _, entity in pairs(lu.entities) do
         set_prot(entity)
 
+        local entity_cost = constants.cost.per_entity_cost
         ----------------------------------------
-        add_node("entity", "OR")
+        add_node("entity", "OR", nil, nil, { cost = entity_cost})
         ----------------------------------------
-        -- Can we encounter this entity? (Previously called spawn-entity)
+        -- Can we encounter this entity in the wild?
 
         -- TODO: Should any of these turn off automatability?
         local buildable = lu.buildables[key(entity)]
         if buildable ~= nil then
-            add_edge("entity-build")
+            add_edge("entity-build", nil, { amount = 1 })
         end
         -- Check if the entity is put automatically in a room (planet/space surface)
         for room_key, room in pairs(lu.rooms) do
@@ -180,24 +186,27 @@ function concrete.build(lu)
         -- Check if entity could be the corpse of another entity
         if categories.corpse[entity.type] and lu.minable_corpses[entity.name] ~= nil then
             for other_entity, _ in pairs(lu.minable_corpses[entity.name]) do
-                add_edge("entity-kill", other_entity)
+                -- Technically we could spawn multiple corpses (thus costing a fraction of an entity), but this doesn't account for that yet
+                add_edge("entity-kill", other_entity, { amount = 1 })
             end
         end
         -- Check if for spawners that capture into this entity
         if lu.unit_spawner_captures[entity.name] ~= nil then
             for _, spawner in pairs(lu.unit_spawner_captures[entity.name]) do
-                add_edge("entity-capture-spawner", spawner.name)
+                add_edge("entity-capture-spawner", spawner.name, { amount = 1 })
             end
         end
         -- Check if entity spawns from a capsule (only on planets)
         if lu.capsule_spawns_reverse[entity.name] ~= nil then
             for item_name, _ in pairs(lu.capsule_spawns_reverse[entity.name]) do
-                add_edge("item-capsule", item_name)
+                -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
+                add_edge("item-capsule", item_name, { amount = 1 })
             end
         end
         if lu.ammo_spawns_reverse[entity.name] ~= nil then
             for item_name, _ in pairs(lu.ammo_spawns_reverse[entity.name]) do
-                add_edge("item-ammo", item_name)
+                -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
+                add_edge("item-ammo", item_name, { amount = 1 })
             end
         end
         -- Asteroid spawning in space
@@ -217,7 +226,8 @@ function concrete.build(lu)
             for dying_entity_key, _ in pairs(lu.dying_spawns_reverse[key("entity", entity.name)]) do
                 local dying_info = gutils.deconstruct(dying_entity_key)
                 if dying_info.type == "entity" then
-                    add_edge("entity-kill", dying_info.name)
+                    -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
+                    add_edge("entity-kill", dying_info.name, { amount = 1 })
                 end
             end
         end
@@ -235,7 +245,8 @@ function concrete.build(lu)
             -- Can we build this entity using an item?
             -- Entities that can be planted are counted as being built, though later during randomization we might have to condition on it being a planted or built entity
 
-            add_edge("entity-build-item")
+            add_edge("entity-build-item", nil, { amount = 1 })
+            -- We could include a cost for special tiles needed here, but we already factor in space costs in the entity-operate
             add_edge("entity-build-tile")
             if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
                 add_edge("entity-build-surface-condition")
@@ -243,8 +254,11 @@ function concrete.build(lu)
             -- If it's a rolling stock (locomotive/cargo wagon/etc.), check that we can build some rail that it does not collide with
             -- Technically, we should test that the rail also shares a tile with the locomotive that both can be placed on, but also I could have a life and I think I'd take the latter
             if categories.rolling_stock[entity.type] then
+                -- If we wanted to get technical, we could include the price of the rail, but let's not
                 add_edge("entity-build-rail")
+            end
 
+            if categories.rolling_stock[entity.type] then
                 ----------------------------------------
                 add_node("entity-build-rail", "OR")
                 ----------------------------------------
@@ -268,6 +282,8 @@ function concrete.build(lu)
             for item, prop in pairs(buildable) do
                 add_edge("item", item, {
                     build_key = prop,
+                    -- TODO: Support for item build place amount as defined by placeable_by
+                    amount = 1,
                 })
             end
 
@@ -310,8 +326,21 @@ function concrete.build(lu)
         -- Too many things were operable in mods that I didn't expect, so just add this for everything
         -- TODO: Better operability check!
         --if lu.operable_entities[entity.name] then
+            local operation_cost = 0
+            if entity.collision_box ~= nil then
+                local width = math.ceil(entity.collision_box[2][1] - entity.collision_box[1][1])
+                local height = math.ceil(entity.collision_box[2][2] - entity.collision_box[1][2])
+                operation_cost = operation_cost + constants.cost.per_tile_operation_cost * width * height
+            end
+            operation_cost = operation_cost + constants.cost.per_building_operation_cost
+            if entity.type == "character" then
+                operation_cost = operation_cost + constants.cost.character_operation_cost
+            end
+
+            -- TODO: extra operation cost for entities that require a character? (Like cars)
+
             ----------------------------------------
-            add_node("entity-operate", "AND")
+            add_node("entity-operate", "AND", nil, nil, { cost = operation_cost })
             ----------------------------------------
             -- Can we operate this entity (ensure it's heated, powered, etc.)?
 
@@ -322,7 +351,9 @@ function concrete.build(lu)
             end
 
             add_edge("entity", entity.name, {
-                abilities = { [2] = is_automatic }
+                abilities = { [2] = is_automatic },
+                -- Account for one-time cost of entity
+                amount = 1 / payback_time,
             })
             if categories.energy_sources_input[entity.type] then
                 -- Note: Entities still depend on "void" energy source even if their energy_source is nil so that randomization is still possible
@@ -330,32 +361,45 @@ function concrete.build(lu)
                 -- TODO: Later, also distinguish fluid energy sources based off fluid box filters/whether they burn fluid, and heat energy sources based on min/max heat etc., but for now just having one of each is fine
                 for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
                     local energy_source = entity[energy_prop]
+                    -- TODO: Check for keys more than just energy_usage (like consumption)
+                    local energy_amount = (60 * util.parse_energy(entity.energy_usage or "0J"))
                     if energy_source == nil or energy_source.type == "void" then
                         add_edge("energy-source-void", "")
                     elseif energy_source.type == "burner" then
-                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source))
+                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source), { amount = energy_amount })
                     elseif energy_source.type == "electric" then
-                        add_edge("energy-source-electric", "")
+                        add_edge("energy-source-electric", "", { amount = energy_amount })
                     elseif energy_source.type == "fluid" then
                         if energy_source.fluid_box.filter ~= nil then
-                            add_edge("fluid", energy_source.fluid_box.filter)
+                            local fluid_name = energy_source.fluid_box.filter
+                            local fluid = data.raw.fluid[fluid_name]
+                            local fuel_value = fluid.fuel_value
+                            local amount_of_fluid
+                            -- TODO: Figure out temperature heating/when fuel value is nil
+                            if fuel_value ~= nil then
+                                amount_of_fluid = energy_amount / util.parse_energy(fuel_value)
+                            end
+                            add_edge("fluid", fluid_name, { amount = amount_of_fluid })
                         else
-                            add_edge("energy-source-fluid", "")
+                            add_edge("energy-source-fluid", "", { amount = energy_amount })
                         end
                     elseif energy_source.type == "heat" then
-                        add_edge("energy-source-heat", "")
+                        add_edge("energy-source-heat", "", { amount = energy_amount })
                     end
                 end
             end
             if categories.fluid_required[entity.type] then
-                add_edge("entity-operate-fluid")
+                -- Fluid amounts are defined in the entity-operate-fluid node
+                add_edge("entity-operate-fluid", nil, { amount = 1 })
             end
             -- Thrusters need two specific fluids (AND), not a generic fluid requirement
             if entity.type == "thruster" then
+                -- TODO: fluid amounts cost
                 add_edge("fluid", entity.fuel_fluid_box.filter)
                 add_edge("fluid", entity.oxidizer_fluid_box.filter)
             end
             if lutils.check_freezable(entity) then
+                -- TODO: Heating energy const
                 add_edge("warmth", "")
             end
             local base_name
@@ -367,7 +411,7 @@ function concrete.build(lu)
             local operability_modules
             if base_name ~= nil and lu.py_operability_module_cats[base_name] ~= nil then
                 operability_modules = lu.py_operability_module_cats[base_name]
-                add_edge("entity-operate-py-module")
+                add_edge("entity-operate-py-module", nil, { amount = entity.module_slots })
             end
             -- Note: Turrets are "operable" without ammo; since the damage is on the ammo, we actually need to check if there is a turret to shoot an ammo rather than check if there is ammo for a turret to shoot
             -- TODO: Module requirements (for mods like PyAL)
@@ -381,7 +425,8 @@ function concrete.build(lu)
                 for category, _ in pairs(operability_modules) do
                     for _, mod in pairs(data.raw.module) do
                         if mod.category == category then
-                            add_edge("item", mod.name)
+                            -- The number of modules needed is factored in by the entity-operate edge from here
+                            add_edge("item", mod.name, { amount = 1 / payback_time })
                         end
                     end
                 end
@@ -391,31 +436,33 @@ function concrete.build(lu)
                 ----------------------------------------
                 add_node("entity-operate-fluid", "OR")
                 ----------------------------------------
-                -- Can we provide a fluid this entity needs to operate?
-
-                -- Different entity types have different fluid input properties
-                -- See categories.fluid_required: boiler, fusion-generator, fusion-reactor, generator, fluid-turret
+                -- Can we provide a fluid that this entity needs to operate?
 
                 if entity.type == "boiler" then
-                    -- Boilers use fluid_box for input
+                    -- TODO: boiler fluid amounts calculation
                     if entity.fluid_box.filter ~= nil then
-                        add_edge("fluid", entity.fluid_box.filter)
+                        local fluid_amount = 0
+                        if entity.target_temperature ~= nil and entity.output_fluid_box.filter ~= nil and entity.fluid_box.filter ~= nil then
+                            fluid_amount = dutils.boiler_input_amount(entity)
+                        end
+                        add_edge("fluid", entity.fluid_box.filter, { amount = fluid_amount })
                     else
-                        -- No filter - boiler heats any fluid (powered by energy source, not the fluid)
+                        -- No filter, i.e.- any fluid can be heated
                         -- TODO: Implement proper fluid availability check
                         add_edge("satisfied", "")
                     end
                 elseif entity.type == "fusion-generator" then
-                    -- Fusion generators use input_fluid_box (required field per API)
+                    -- TODO: Implement fluid amounts
                     if entity.input_fluid_box.filter ~= nil then
                         add_edge("fluid", entity.input_fluid_box.filter)
                     end
                 elseif entity.type == "fusion-reactor" then
-                    -- Fusion reactors use input_fluid_box (required field per API)
+                    -- TODO: Implement fluid amounts
                     if entity.input_fluid_box.filter ~= nil then
                         add_edge("fluid", entity.input_fluid_box.filter)
                     end
                 elseif entity.type == "generator" then
+                    -- TODO: Implement fluid amounts
                     -- Generators can have filtered fluid_box or burn any fuel fluid
                     if entity.fluid_box.filter ~= nil then
                         add_edge("fluid", entity.fluid_box.filter)
@@ -423,14 +470,15 @@ function concrete.build(lu)
                         -- Any fluid with fuel_value works
                         add_edge("energy-source-fluid", "")
                     else
-                        -- Non-burning generator without filter (steam engine style)
-                        -- In vanilla, all steam engines have filters (steam), so this branch is unlikely
+                        -- Non-burning generator without filter
+                        -- In vanilla, all generators have filters (steam), so I'm ignoring this for now
                         -- TODO: Implement temperature requirements for proper fluid matching
                         add_edge("satisfied", "")
                     end
                 -- TODO: Store damage_modifier on edges so reflection can reconstruct appropriate modifiers for new fluids
                 elseif entity.type == "fluid-turret" then
                     -- Fluid turrets specify fluids in attack_parameters.fluids
+                    -- TODO: Implement fluid amounts
                     if entity.attack_parameters ~= nil and entity.attack_parameters.fluids ~= nil then
                         for ind, stream_fluid in pairs(entity.attack_parameters.fluids) do
                             add_edge("fluid", stream_fluid.type, {
@@ -455,7 +503,7 @@ function concrete.build(lu)
             -- We also might want edges to damage types for representing resistances to randomize later, but when I do that I can decide what specific entities to touch
             -- Building every entity-damage type combination seems like a lot to me now, which is why I'm doing it this way
             add_edge("resistance-group", lu.entity_resistance_groups.to_resistance[entity.name])
-            add_edge("entity")
+            add_edge("entity", nil, { amount = 1 })
         end
 
         if entity.minable ~= nil then
@@ -467,24 +515,26 @@ function concrete.build(lu)
             if entity.type == "resource" then
                 add_edge("entity", entity.name, {
                     abilities = { [2] = true },
+                    amount = 1,
                 })
                 -- For resources requiring fluid: need the specific fluid + tech unlock
                 -- These are separate edges because different resources may need different fluids
                 -- Note that if we wanted to be especially careful, we'd check mining drill filters too, but we'll leave that for another time
                 if entity.minable.required_fluid ~= nil then
-                    add_edge("fluid", entity.minable.required_fluid)
+                    -- I don't know why the actual amount is divided by 10 (at least in pyanodons) but whatever
+                    local fluid_amount = (entity.minable.fluid_amount or 0) / 10
+                    add_edge("fluid", entity.minable.required_fluid, { amount = fluid_amount })
                     -- Mining with fluid unlock triggered automatically at start of game now
                     --[[add_edge("mining-with-fluid-unlock", "", {
                         abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
                     })]]
                 end
 
-                -- Resource category checks drill capability (right category + fluid boxes)
-                -- The mcat_name includes has_input/has_output flags
-                add_edge("resource-category", lutils.mcat_name(entity)) -- Need to be able to automatically operate the entity to automate the resources
+                add_edge("resource-category", lutils.mcat_name(entity), { amount = 1 / entity.minable.mining_time })
             else
                 add_edge("entity", entity.name, {
                     abilities = { [2] = false },
+                    amount = 1,
                 })
             end
         end
@@ -495,8 +545,8 @@ function concrete.build(lu)
             ----------------------------------------
             -- Can we capture this unit spawner?
 
-            add_edge("entity")
-            add_edge("capture-robot", "")
+            add_edge("entity", nil, { amount = 1 })
+            add_edge("capture-robot", "", { amount = 1 })
         end
 
         if entity.type == "character" then
@@ -516,18 +566,25 @@ function concrete.build(lu)
             end
         end
 
+        local blacklisted_silos = {
+            ["mega-farm"] = true, -- Py smart farms work via scripting and don't actually launch a rocket
+        }
         if entity.type == "rocket-silo" then
             ----------------------------------------
             add_node("entity-rocket-silo", "AND")
             ----------------------------------------
             -- Can we use this rocket silo for launching?
-            -- Combines entity-operate with the silo's fixed recipe requirement.
+            
+            -- Cost corresponds to cost for one rocket
 
-            add_edge("entity-operate")
             if entity.fixed_recipe ~= nil and lu.recipes[entity.fixed_recipe] ~= nil then
-                add_edge("recipe", entity.fixed_recipe)
+                local recipe = data.raw.recipe[entity.fixed_recipe]
+                add_edge("entity-operate", nil, { amount = (recipe.energy_required or 0.5) * entity.rocket_parts_required / entity.crafting_speed })
+                add_edge("recipe", entity.fixed_recipe, { amount = entity.rocket_parts_required })
+            else
+                -- Just add the entity-operate without a cost if no fixed recipe
+                add_edge("entity-operate")
             end
-            -- If no fixed recipe, silo can be used without crafting (edge case)
         end
     end
 
@@ -546,16 +603,14 @@ function concrete.build(lu)
         add_node("equipment", "AND")
         ----------------------------------------
         -- Can we use this equipment?
-        -- Requires: way to place it + planet (equipment works where player is)
 
         add_edge("equipment-place")
-        add_edge("planet", "")  -- Equipment only works on planets, not in space
+        add_edge("planet", "") -- Equipment only works on planets, not in space
 
         ----------------------------------------
         add_node("equipment-place", "OR")
         ----------------------------------------
         -- Can we place this equipment in some grid?
-        -- OR over items that place this equipment.
 
         local placing_items = lu.equipment_to_items[equip_name]
         if placing_items ~= nil then
@@ -564,12 +619,12 @@ function concrete.build(lu)
             end
         end
 
+        -- TODO: Clean up this section
         -- Determine power type using categories tables
         local power_type = "void"
         if categories.equipment_power_producers[equip.type] then
-            power_type = "producer"  -- Producers don't need external power
+            power_type = "producer"
         elseif categories.equipment_power_consumers[equip.type] then
-            -- Check if this specific equipment has burner instead of electric
             if equip.burner ~= nil or (equip.energy_source ~= nil and equip.energy_source.type == "burner") then
                 power_type = "burner"
             elseif equip.energy_source == nil then
@@ -591,7 +646,6 @@ function concrete.build(lu)
             add_node("equipment-operate", "AND")
             ----------------------------------------
             -- Can we operate this electric-powered equipment?
-            -- Requires: equipment + power from a compatible grid
 
             add_edge("equipment")
             add_edge("equipment-operate-power")
@@ -600,8 +654,6 @@ function concrete.build(lu)
             add_node("equipment-operate-power", "OR")
             ----------------------------------------
             -- Can we power this equipment?
-            -- OR over equipment categories that can be powered.
-            -- Note: Not checking size constraints.
 
             local equip_cats = equip.categories or {}
             for _, cat in pairs(equip_cats) do
@@ -613,7 +665,6 @@ function concrete.build(lu)
             add_node("equipment-operate", "AND")
             ----------------------------------------
             -- Can we operate this burner-powered equipment?
-            -- Requires: equipment + fuel
 
             add_edge("equipment")
             local burner = equip.burner or equip.energy_source
@@ -626,17 +677,16 @@ function concrete.build(lu)
             add_node("equipment-operate", "AND")
             ----------------------------------------
             -- Can we operate this void-powered equipment?
-            -- Consumers with optional power need void energy source.
 
             add_edge("equipment")
             add_edge("energy-source-void", "")
 
-        else
+        elseif power_type == "producer" then
             ----------------------------------------
             add_node("equipment-operate", "AND")
             ----------------------------------------
             -- Can we operate this producer equipment?
-            -- Producers just need to be placed (they generate power, not consume).
+            -- In this branch, the equipment doesn't require power, it produces it without requirements, so we only need the equipment for operation
 
             add_edge("equipment")
         end
@@ -645,10 +695,6 @@ function concrete.build(lu)
     ----------------------------------------------------------------------
     -- Equipment Category
     ----------------------------------------------------------------------
-
-    -- Equipment categories determine which grids equipment can go in.
-    -- A category is "available" if any grid accepts it.
-    -- A category is "powered" if any accepting grid can be powered.
 
     set_class("equipment-category")
 
@@ -666,7 +712,6 @@ function concrete.build(lu)
         add_node("equipment-category", "OR")
         ----------------------------------------
         -- Can we access a grid that accepts this equipment category?
-        -- OR over grids that accept this category.
 
         local grids = lu.category_to_grids[cat]
         if grids ~= nil then
@@ -678,8 +723,7 @@ function concrete.build(lu)
         ----------------------------------------
         add_node("equipment-category-powered", "OR")
         ----------------------------------------
-        -- Can we access a POWERED grid that accepts this equipment category?
-        -- OR over grids that accept this category AND can be powered.
+        -- Can we access a powered grid that accepts this equipment category?
 
         local grids = lu.category_to_grids[cat]
         if grids ~= nil then
@@ -693,9 +737,6 @@ function concrete.build(lu)
     -- Equipment Grid
     ----------------------------------------------------------------------
 
-    -- Equipment grids are accessed via armors or vehicles.
-    -- Nodes are by grid NAME, not category.
-
     set_class("equipment-grid")
 
     for _, grid in pairs(prots("equipment-grid")) do
@@ -705,7 +746,6 @@ function concrete.build(lu)
         add_node("equipment-grid", "OR")
         ----------------------------------------
         -- Can we access this specific equipment grid?
-        -- OR over armors/vehicles that have this grid.
 
         local sources = lu.grid_to_sources[grid.name]
         if sources ~= nil then
@@ -722,7 +762,6 @@ function concrete.build(lu)
         add_node("equipment-grid-powered", "AND")
         ----------------------------------------
         -- Can we access this grid AND power it?
-        -- Requires: grid + power source that fits in this grid.
 
         add_edge("equipment-grid", grid.name)
         add_edge("equipment-grid-power-source", grid.name)
@@ -731,8 +770,6 @@ function concrete.build(lu)
         add_node("equipment-grid-power-source", "OR")
         ----------------------------------------
         -- Can we power this specific grid?
-        -- OR over power-producing equipment that can go in this grid.
-        -- Depends on equipment-operate (generators can have burner energy sources).
 
         local power_sources = lu.grid_power_sources[grid.name]
         if power_sources ~= nil then
@@ -762,7 +799,7 @@ function concrete.build(lu)
         -- Though honestly, this sounds like an awful mechanic to have to deal with as a player (especially with any fluid temperatures that have to be exact), which is why it's not coded into logic
 
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
-            add_edge("fluid-temperature", key(fluid.name, tostring(temp)))
+            add_edge("fluid-temperature", key(fluid.name, tostring(temp)), { amount = 1 })
         end
 
         for temp_range, _ in pairs(lu.temp_ranges[fluid.name]) do
@@ -782,7 +819,7 @@ function concrete.build(lu)
             for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
                 if temp_min == "nil" or tonumber(temp_min) <= temp then
                     if temp_max == "nil" or tonumber(temp_max) >= temp then
-                        add_edge("fluid-temperature", key(fluid.name, temp))
+                        add_edge("fluid-temperature", key(fluid.name, temp), { amount = 1 })
                     end
                 end
             end
@@ -795,7 +832,7 @@ function concrete.build(lu)
             ----------------------------------------
             -- Can we create fluid at this specific temperature range (that consists of a single temperature)?
 
-            add_edge("fluid-temperature", key(fluid.name, tostring(temp)))
+            add_edge("fluid-temperature", key(fluid.name, tostring(temp)), { amount = 1 })
         end
 
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
@@ -807,7 +844,7 @@ function concrete.build(lu)
             -- Can we obtain this fluid at this given temperature point?
             -- Checks ability to create it and to hold it
 
-            add_edge("fluid-create-temperature", fluid_temp_name)
+            add_edge("fluid-create-temperature", fluid_temp_name, { amount = 1 })
             add_edge("fluid-hold", fluid.name)
         end
 
@@ -817,17 +854,17 @@ function concrete.build(lu)
         -- Can we create/produce this fluid?
 
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
-            add_edge("fluid-create-temperature", key(fluid.name, tostring(temp)))
+            add_edge("fluid-create-temperature", key(fluid.name, tostring(temp)), { amount = 1 })
         end
 
         ----------------------------------------
         add_node("fluid-craft-temperature", "OR", nil, fluid_temp_name)
         ----------------------------------------
         -- Can we produce this fluid via recipe?
-        -- Needed for tech trigger
+        -- Needed for tech triggers
 
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
-            add_edge("fluid-craft-temperature", key(fluid.name, tostring(temp)))
+            add_edge("fluid-craft-temperature", key(fluid.name, tostring(temp)), { amount = 1 })
         end
 
         for _, temp in pairs(lu.fluid_temperatures_ordered[fluid.name]) do
@@ -838,30 +875,48 @@ function concrete.build(lu)
             -- Can we create/produce this fluid at this given temperature point?
 
             local corresponding_recipes = (lu.mat_recipe_map.material[key("fluid", fluid_temp_name)] or {}).results or {}
-            add_edge("fluid-craft-temperature", fluid_temp_name)
+            add_edge("fluid-craft-temperature", fluid_temp_name, { amount = 1 })
             -- Check offshore pumping possibilities
             -- Offshore pumps only produce default temperature
             local has_filter_pumps = lu.pumps_with_filter[fluid.name] ~= nil
             local has_tiles = lu.fluid_to_tiles[fluid.name] ~= nil
             if temp == fluid.default_temperature then
                 if has_filter_pumps or has_tiles then
-                    add_edge("fluid-create-offshore-temperature", fluid_temp_name)
+                    add_edge("fluid-create-offshore-temperature", fluid_temp_name, { amount = 1 })
                 end
             end
+
             -- Check if fluid comes from mining
             local corresponding_minables = lu.mat_mining_map.to_minable[key("fluid", fluid_temp_name)]
             if corresponding_minables ~= nil then
                 for minable_key, inds in pairs(corresponding_minables) do
-                    local minable = gutils.deconstruct(minable_key)
-                    add_edge(minable.type, minable.name, {
+                    local minable_thing = gutils.deconstruct(minable_key)
+                    local minable_prot = dutils.get_prot(string.sub(minable_thing.type, 1, -(1 + string.len("-mine"))), minable_thing.name)
+                    local minable = minable_prot.minable
+                    local minable_amount
+                    if minable.results ~= nil then
+                        minable_amount = cutils.find_amount_in_ing_or_prod(minable.results, {type = "fluid", name = fluid.name, temperature = temp})
+                    else
+                        minable_amount = minable.count or 1
+                    end
+                    add_edge(minable_thing.type, minable_thing.name, {
                         inds = inds,
+                        amount = minable_amount,
                     })
                 end
             end
-            -- Check if fluid comes from boiler/reactor/generator output
+            -- Check if fluid comes from boiler/reactor/fusion generator output
             if lu.entity_output_fluids ~= nil then
                 for entity_name, output_fluid in pairs(lu.entity_output_fluids) do
                     if output_fluid == fluid_temp_name then
+                        -- TODO: Amounts for things other than boiler
+                        local fluid_amount = 0
+                        local entity = dutils.get_prot("entity", entity_name)
+                        if entity.type == "boiler" then
+                            if entity.target_temperature ~= nil and entity.output_fluid_box.filter ~= nil and entity.fluid_box.filter ~= nil then
+                                fluid_amount = dutils.boiler_output_amount(entity)
+                            end
+                        end
                         add_edge("entity-operate", entity_name)
                     end
                 end
@@ -870,8 +925,10 @@ function concrete.build(lu)
             for recipe_name, inds in pairs(corresponding_recipes) do
                 local recipe = data.raw.recipe[recipe_name]
                 if recipe.hide_from_stats then
+                    local result_amount = cutils.find_amount_in_ing_or_prod(recipe.results, {type = "fluid", name = fluid.name, temperature = temp})
                     add_edge("recipe", recipe_name, {
                         inds = inds,
+                        amount = result_amount,
                     })
                 end
             end
@@ -885,12 +942,16 @@ function concrete.build(lu)
                 local recipe = data.raw.recipe[recipe_name]
                 -- Recipes hidden from stats don't satisfy crafting triggers; these will go directly to the fluid
                 if not recipe.hide_from_stats then
+                    local result_amount = cutils.find_amount_in_ing_or_prod(recipe.results, {type = "fluid", name = fluid.name, temperature = temp})
                     add_edge("recipe", recipe_name, {
                         inds = inds,
+                        amount = result_amount,
                     })
                 end
             end
 
+            -- TODO: If the offshore pump filter has a temperature condition, can this force it to produce fluids with that temperature?
+            -- If so, that might be something we want to account for (though we have no logic for temperature specific pipes now)
             if temp == fluid.default_temperature and (has_filter_pumps or has_tiles) then
                 ----------------------------------------
                 add_node("fluid-create-offshore-temperature", "OR", nil, fluid_temp_name, { mechanic = true })
@@ -901,14 +962,15 @@ function concrete.build(lu)
                 -- Pumps with filter always produce this fluid
                 if has_filter_pumps then
                     for pump_name, _ in pairs(lu.pumps_with_filter[fluid.name]) do
-                        add_edge("entity-operate", pump_name)
+                        local pump = data.raw["offshore-pump"][pump_name]
+                        add_edge("entity-operate", pump_name, { amount = pump.pumping_speed })
                     end
                 end
 
                 -- Tiles with this fluid can be pumped by compatible pumps
                 if has_tiles then
                     for tile_name, _ in pairs(lu.fluid_to_tiles[fluid.name]) do
-                        add_edge("tile-fluid", tile_name)
+                        add_edge("tile-fluid", tile_name, { amount = 1 })
                     end
                 end
             end
@@ -955,7 +1017,9 @@ function concrete.build(lu)
                 -- OR over all items with this fuel_category and burnt flag.
 
                 for item_name, _ in pairs(items_for_fcat) do
-                    add_edge("item", item_name)
+                    local item = dutils.get_prot("item", item_name)
+                    local fuel_value = util.parse_energy(item.fuel_value)
+                    add_edge("item", item_name, { amount = 1 / fuel_value })
                 end
             end
         end
@@ -967,7 +1031,23 @@ function concrete.build(lu)
         -- OR over burner entities with burnt_inventory_size > 0 for this category.
         if lu.fcat_to_burners[fcat.name] ~= nil then
             for burner_name, _ in pairs(lu.fcat_to_burners[fcat.name]) do
-                add_edge("entity-operate", burner_name)
+                local burner_entity = dutils.get_prot("entity", burner_name)
+                local energy_usage
+                -- TODO: Double check that we got all energy usage keys for burner things
+                if burner_entity.max_power_output ~= nil then
+                    energy_usage = burner_entity.max_power_output
+                elseif burner_entity.energy_consumption ~= nil then
+                    energy_usage = burner_entity.energy_consumption
+                elseif burner_entity.consumption ~= nil then
+                    energy_usage = burner_entity.consumption
+                elseif burner_entity.energy_usage ~= nil then
+                    energy_usage = burner_entity.energy_usage
+                end
+                local watts_burned = 0
+                if energy_usage ~= nil then
+                    watts_burned = 60 * util.parse_energy(energy_usage)
+                end
+                add_edge("entity-operate", burner_name, { amount = watts_burned })
             end
         end
     end
@@ -1000,13 +1080,22 @@ function concrete.build(lu)
         -- Can we obtain this item?
 
         local corresponding_recipes = lu.mat_recipe_map.material[key("item", item.name)].results
-        add_edge("item-craft")
+        add_edge("item-craft", nil, { amount = 1 })
         local corresponding_minables = lu.mat_mining_map.to_minable[key("item", item.name)]
         if corresponding_minables ~= nil then
             for minable_key, inds in pairs(corresponding_minables) do
-                local minable = gutils.deconstruct(minable_key)
-                add_edge(minable.type, minable.name, {
+                local minable_thing = gutils.deconstruct(minable_key)
+                local minable_prot = dutils.get_prot(string.sub(minable_thing.type, 1, -(1 + string.len("-mine"))), minable_thing.name)
+                local minable = minable_prot.minable
+                local minable_amount
+                if minable.results ~= nil then
+                    minable_amount = cutils.find_amount_in_ing_or_prod(minable.results, {type = "item", name = item.name})
+                else
+                    minable_amount = minable.count or 1
+                end
+                add_edge(minable_thing.type, minable_prot.name, {
                     inds = inds,
+                    amount = minable_amount
                 })
             end
         end
@@ -1016,6 +1105,7 @@ function concrete.build(lu)
         if lu.weight[item.name] <= rocket_lift_weight then
             add_edge("item-deliver", item.name, {
                 abilities = { [1] = false },
+                -- TODO: Deliver cost
             })
         end
         -- Edge from items that spoil into this item
@@ -1024,18 +1114,24 @@ function concrete.build(lu)
                 local item_prot = dutils.get_prot("item", spoiling_item)
                 add_edge("item", spoiling_item, {
                     spoil_ticks = item_prot.spoil_ticks,
+                    amount = 1,
+                    slot_additional_cost = constants.cost.slot_spoil_additional_cost_fixed + constants.cost.slot_spoil_additional_cost_per_second * item_prot.spoil_ticks / 60,
                 })
             end
         end
         -- Edge from fuels that burn into this item
         if lu.burnt_result_to_items[item.name] ~= nil then
             for fuel_item, _ in pairs(lu.burnt_result_to_items[item.name]) do
-                add_edge("item-burn", fuel_item)
+                -- item-burn already takes into account extra costs from operating a machine to burn it
+                add_edge("item-burn", fuel_item, {
+                    amount = 1,
+                })
             end
         end
         -- Edge from entity kills that drop this as loot
         if lu.loot_to_entities[item.name] ~= nil then
             for entity_name, _ in pairs(lu.loot_to_entities[item.name]) do
+                -- TODO: cost amounts
                 add_edge("entity-kill", entity_name, {
                     abilities = { [2] = false }, -- Even if we can automatically kill something, we can't automatically pick up its loot (at least in vanilla)
                 })
@@ -1045,15 +1141,19 @@ function concrete.build(lu)
         for recipe_name, inds in pairs(corresponding_recipes) do
             local recipe = data.raw.recipe[recipe_name]
             if recipe.hide_from_stats then
+                local result_amount = cutils.find_amount_in_ing_or_prod(recipe.results, {type = "item", name = item.name})
                 add_edge("recipe", recipe_name, {
                     inds = inds,
+                    amount = result_amount,
                 })
             end
         end
         -- Check if there are items that give this item as a rocket launch result
         if lu.rocket_results_to_items[item.name] ~= nil then
             for launch_item, _ in pairs(lu.rocket_results_to_items[item.name]) do
-                add_edge("item-launch", launch_item)
+                local launch_item_prot = dutils.get_prot("item", launch_item)
+                local result_amount = cutils.find_amount_in_ing_or_prod(launch_item_prot.rocket_launch_products, {type = "item", name = item.name})
+                add_edge("item-launch", launch_item, { amount = result_amount })
             end
         end
 
@@ -1061,11 +1161,12 @@ function concrete.build(lu)
             ----------------------------------------
             add_node("item-burn", "AND")
             ----------------------------------------
-            -- Can we burn this item? (Possibly unlocks burnt_result items)
-            -- Requires: item + burner with burnt_inventory_size > 0
+            -- Can we burn this item?
 
-            add_edge("item")
-            add_edge("fuel-category-burn", item.fuel_category)
+            add_edge("item", nil, { amount = 1 })
+            -- In this case, the amount is longer/more annoying for items with larger fuel values, since we're measuring machine usage, not the item usage
+            -- Technically, this double counts the fuel consumption, since the item being burned is already providing fuel, but I think that's fine (burning is annoying anyways so the extra cost is probably welcome)
+            add_edge("fuel-category-burn", item.fuel_category, { amount = util.parse_energy(item.fuel_value) })
         end
 
         ----------------------------------------
@@ -1075,11 +1176,11 @@ function concrete.build(lu)
 
         for recipe_name, inds in pairs(corresponding_recipes) do
             local recipe = data.raw.recipe[recipe_name]
-            -- Recipes hidden from stats don't satisfy crafting triggers; those edges go directly to the item
             if not recipe.hide_from_stats then
+                local result_amount = cutils.find_amount_in_ing_or_prod(recipe.results, {type = "item", name = item.name})
                 add_edge("recipe", recipe_name, {
-                    -- The indices of where in the results this item is (it could be in multiple spots)
                     inds = inds,
+                    amount = result_amount,
                 })
             end
         end
@@ -1098,8 +1199,11 @@ function concrete.build(lu)
             -- This causes planets to launch to other planets, which may not be accurate if there ever comes some extra step besides launching into space to deliver an item
             -- TODO: Address this in more generality
 
-            add_edge("item")
-            add_edge("deliver", "")
+            -- TODO: In games with both a rocket silo that launches items for delivery and for launch results, this allows the delivery launch to satisfy a result launch
+            -- Fix this! (I'll need a separate item-launch-results node or something)
+
+            add_edge("item", nil, { amount = 1 })
+            add_edge("deliver", "", { amount = 1 })
 
             ----------------------------------------
             add_node("item-deliver", "AND")
@@ -1107,7 +1211,7 @@ function concrete.build(lu)
             -- Can we receive this item in a room?
             -- Filters context to reachable rooms
 
-            add_edge("item-launch")
+            add_edge("item-launch", nil, { amount = 1 })
             add_edge("reachable-room", "")
         end
 
@@ -1117,7 +1221,7 @@ function concrete.build(lu)
             ----------------------------------------
             -- Can we use this ammo item in some gun or turret?
 
-            add_edge("item")
+            add_edge("item", nil, { amount = 1 })
             add_edge("ammo-category", item.ammo_category)
         end
 
@@ -1128,7 +1232,7 @@ function concrete.build(lu)
             -- Can we use this capsule item to spawn entities?
             -- Capsules only work where there's a character (on planets, not in space).
 
-            add_edge("item")
+            add_edge("item", nil, { amount = 1 })
             add_edge("planet", "")  -- Capsules require a planet (character can only be on planets)
         end
 
@@ -1139,7 +1243,7 @@ function concrete.build(lu)
             -- Can we use this gun item?
             -- Guns only work where there's a character (on planets, not in space).
 
-            add_edge("item")
+            add_edge("item", nil, { amount = 1 })
             add_edge("planet", "")  -- Guns require a planet (character can only be on planets)
         end
     end
@@ -1168,7 +1272,7 @@ function concrete.build(lu)
         ----------------------------------------
         -- Can we perform this recipe?
 
-        add_edge("recipe-category", rcat_name)
+        add_edge("recipe-category", rcat_name, { cost = recipe.energy_required or 0.5 })
         if recipe.enabled == false then
             add_edge("recipe-unlock")
         end
@@ -1181,8 +1285,11 @@ function concrete.build(lu)
                 if mat.type == "fluid" then
                     mat_type = "fluid-temperature-range"
                 end
+                -- Doesn't account for if a recipe has ingredients for the same fluid with different temperature ranges
+                local ing_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = mat.name})
                 add_edge(mat_type, mat_name, {
                     inds = inds,
+                    amount = ing_amount,
                 })
             end
         end
@@ -1192,7 +1299,8 @@ function concrete.build(lu)
         local create_py_module_node = false
         if recipe.allowed_module_categories ~= nil and #recipe.allowed_module_categories == 1 and lu.is_operability_module_cat[recipe.allowed_module_categories[1]] then
             create_py_module_node = true
-            add_edge("recipe-py-module")
+            -- Usually, py modules required for a recipe indicate it's in the reproductive complex, which has two module slots
+            add_edge("recipe-py-module", nil, { amount = 2 })
         end
 
         if create_py_module_node then
@@ -1204,7 +1312,9 @@ function concrete.build(lu)
 
             for _, mod in pairs(data.raw.module) do
                 if mod.category == recipe.allowed_module_categories[1] then
-                    add_edge("item", mod.name)
+                    -- We can't know the actual amount of time the recipe takes (and thus we can't actually calculate the per-module costs), because we don't know the machine
+                    -- Therefore, just assume crafting speed 1
+                    add_edge("item", mod.name, { amount = (recipe.energy_required or 0.5) / payback_time })
                 end
             end
         end
@@ -1218,6 +1328,7 @@ function concrete.build(lu)
 
             add_edge("recipe-tech-unlock")
             for machine_name, _ in pairs(lu.fixed_recipes[recipe.name] or {}) do
+                -- This isn't where we factor in operation cost; see recipe-category for that
                 add_edge("entity-operate", machine_name)
             end
 
@@ -1255,7 +1366,7 @@ function concrete.build(lu)
     -- Recipe Category
     ----------------------------------------------------------------------
 
-    -- Spoofed categories keyed by base category prototype, with nodes for each fluid count variant.
+    -- Spoofed categories keyed by base category prototype, with nodes for each fluid count variant
 
     set_class("recipe-category")
 
@@ -1269,12 +1380,12 @@ function concrete.build(lu)
                 add_node("recipe-category", "OR", nil, rcat_name, { mechanic = true })
                 ----------------------------------------
                 -- Can we craft recipes in this spoofed category?
-                -- OR over all entities that support this category with sufficient fluid boxes.
 
                 local crafters = lu.rcat_to_crafters[rcat_name]
                 if crafters ~= nil then
                     for crafter_name, _ in pairs(crafters) do
-                        add_edge("entity-operate", crafter_name)
+                        local crafter_entity = dutils.get_prot("entity", crafter_name)
+                        add_edge("entity-operate", crafter_name, { amount = 1 / (crafter_entity.crafting_speed or 1) })
                     end
                 end
             end
@@ -1284,9 +1395,8 @@ function concrete.build(lu)
     ----------------------------------------------------------------------
     -- Resource Category
     ----------------------------------------------------------------------
-    -- Spoofed resource categories: category|has_input|has_output
-    -- has_input/has_output are 0 or 1, indicating fluid box requirements
-    -- The specific input fluid is handled by entity-mine, not here
+
+    -- Spoofed categories keyed by base category prototype, with nodes for each fluid count variant
 
     set_class("resource-category")
 
@@ -1300,12 +1410,13 @@ function concrete.build(lu)
                 add_node("resource-category", "OR", nil, mcat_key, { mechanic = true })
                 ----------------------------------------
                 -- Can we mine resources in this category with these fluid requirements?
-                -- OR over mining drills that support this category AND have matching fluid boxes
 
+                -- drills includes character as well (since they can also mine things)
                 local drills = lu.mcat_to_drills[mcat_key]
                 if drills ~= nil then
                     for drill_name, _ in pairs(drills) do
-                        add_edge("entity-operate", drill_name)
+                        local drill = dutils.get_prot("entity", drill_name)
+                        add_edge("entity-operate", drill_name, { amount = 1 / drill.mining_speed })
                     end
                 end
             end

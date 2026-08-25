@@ -1,3 +1,10 @@
+-- Global table for mods to say changes they want to be executed or extra data for the randomizer
+RANDOMIZER_HOOK = {
+    -- Modifications executed for the dependency graph
+    -- pass in functions that take params = { logic = logic, lookups = lookups }
+    GRAPH_FIXES = {},
+}
+
 data:extend({
     -- Key sequence for returning to starting planet
     {

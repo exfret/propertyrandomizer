@@ -229,6 +229,27 @@ logic.build = function(ignore_balance_nodes)
 ----------------------------------------------------------------------------------------------------
 
     graph_setup.build(logic)
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- Mod fixes
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+    for ind, fix in pairs(RANDOMIZER_HOOK.GRAPH_FIXES) do
+        if type(ind) ~= "number" or math.floor(tonumber(ind)) ~= tonumber(ind) then
+            error("Non-integer key deteceted! Graph fixes must be given as a list, such as with table.insert().")
+        end
+        if type(fix) ~= "function" then
+            error("Non-function passed as graph fix. Make sure to pass fixes as functions with signature my_fix(params).")
+        end
+        fix({
+            -- Most other files can be included directly since they are just helper functions
+            logic = logic,
+            lookups = lu,
+        })
+    end
+
 end
 
 return logic

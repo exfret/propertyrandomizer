@@ -236,7 +236,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             local exact_multiplier = 1
             if slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
                 multiplier = math.max(1, math.floor(slot_cost / trav_cost))
-                exact_multiplier = slot_cost / trav_cost
+                exact_multiplier = math.max(1, slot_cost / trav_cost)
             end
 
             for _, recipe in pairs(data.raw.recipe) do

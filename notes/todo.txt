@@ -15,7 +15,7 @@ For bugs/fixes rather than features, see bugs.txt
  * Check heating_energy when checking whether things can freeze (zero means it can't freeze)
  * Document that ability to mine fluid ("uranium mining") is researched from start
  * Limits setting
-    * Go through orb and dosh run to see what needs to be changed with regards to limitation
+    * Go through orb and dosh run to see what needs to be changed with regards to limitations
  * Tech trigger handler randomization
  * Presets to guide player away from "ultimate chaos"
  * Fail on softlocks during testing (and perhaps also on prereq shuffle failures by searching for % or something)
@@ -35,8 +35,6 @@ For bugs/fixes rather than features, see bugs.txt
  * Work on explorer:
     * Explain the square to select prototypes
     * More gaps/padding
-    * Resize home/explorer tab main flows to take up whole window
-    * Close button
     * https://discord.com/channels/139677590393716737/231518135231053825/1479302758778667172
 
  * Make sure to return "not stackable" on vehicles with equipment grid defined, not just armor
@@ -62,11 +60,9 @@ For bugs/fixes rather than features, see bugs.txt
  * Fix range on asteroid collector being able to be super small
  * Look into thruster efficiency weirdness (seems like min and max points are not correctly randomized)
  * Safeguard against ammo spoiling? (also check rocket part... anything else?) (armors with grids) - with safeguard setting?
- * Lightning rod lower end boosted
- * Fewer module slots
- * Larger cargo bays (inventory size too swingy)
- * Change item gui not just recipe gui
- * Don't randomize crashed spaceship (AAI puts starting inventory in ship)
+ * Lightning rod lower end boosted?
+ * Change item and entity gui not just recipe gui
  * Randomize inventory width again
  * Fix spoil spawns
  * Add victory node (prevents needing it in spec for archipelago)
+ * Randomize pipeline extent

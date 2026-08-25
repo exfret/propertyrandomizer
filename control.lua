@@ -1,6 +1,6 @@
 -- TODO: Split off explorer panel into seperate file.
 
-local mod_gui = require("__core__.lualib.mod-gui")
+--[[local mod_gui = require("__core__.lualib.mod-gui")
 
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
@@ -220,4 +220,4 @@ script.on_nth_tick(1, function(event)
         -- Tell them about the randomizer panel
         game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")
     end
-end)
+end)]]

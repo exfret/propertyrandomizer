@@ -1,0 +1,33 @@
+{
+  "and_nodes": 22443,
+  "edge_amounts_missing": 70141,
+  "edge_slot_costs_nonzero": 0,
+  "edge_slot_costs_not_or_or": 0,
+  "graph_edges": 142528,
+  "graph_nodes": 52279,
+  "missing_endpoint_edge_examples": [],
+  "missing_endpoint_edges": 0,
+  "mixed_edges": 115919,
+  "node_costs_nonzero": 2905,
+  "node_slot_costs_nonzero": 0,
+  "non_and_or_node_examples": [],
+  "non_and_or_nodes": 0,
+  "or_nodes": 29836,
+  "or_nodes_with_cost": 1452,
+  "or_nodes_with_cost_examples": [
+    "entity: accumulator (cost=1)",
+    "entity: accumulator-mk01 (cost=1)",
+    "entity: accumulator-mk02 (cost=1)",
+    "entity: accumulator-mk03 (cost=1)",
+    "entity: gun-turret (cost=1)",
+    "entity: arithmetic-combinator (cost=1)",
+    "entity: orange-arrow-with-circle (cost=1)",
+    "entity: fake-selection-box-2x2 (cost=1)"
+  ],
+  "same_and_edges": 6922,
+  "same_or_edges": 19687,
+  "slot_cost_field_present": false,
+  "warnings": [
+    "No slot_additional_cost field occurs in this sample graph dump. The parser/solver supports it, but sample slot LPs will therefore match normal LPs unless synthetic/input data changes."
+  ]
+}

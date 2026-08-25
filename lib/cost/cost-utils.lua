@@ -16,6 +16,7 @@ cutils.find_amount_in_entry = function(ing_or_prod, extra_params)
     return probability * (amount_expected + extra_count_fraction)
 end
 
+-- Supports material.temperature, but only for results
 cutils.find_amount_in_ing_or_prod = function(ing_or_prod_list, material, extra_params)
     if type(material) ~= "table" then
         error("Actual material expected; material ID or something else passed.")
@@ -31,7 +32,22 @@ cutils.find_amount_in_ing_or_prod = function(ing_or_prod_list, material, extra_p
     if ing_or_prod_list ~= nil then
         for _, ing_or_prod in pairs(ing_or_prod_list) do
             if ing_or_prod.type == material_type and ing_or_prod.name == material.name then
-                amount = amount + cutils.find_amount_in_entry(ing_or_prod, extra_params)
+                local matches_temperature
+                if material.temperature ~= nil and material.type == "fluid" then
+                    local fluid = data.raw.fluid[material.name]
+                    if material.temperature == fluid.default_temperature and ing_or_prod.temperature == nil then
+                        matches_temperature = true
+                    elseif material.temperature == ing_or_prod.temperature then
+                        matches_temperature = true
+                    else
+                        matches_temperature = false
+                    end
+                else
+                    matches_temperature = true
+                end
+                if matches_temperature then
+                    amount = amount + cutils.find_amount_in_entry(ing_or_prod, extra_params)
+                end
             end
         end
     end

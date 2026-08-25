@@ -39,7 +39,7 @@ local DO_ITEM_RANDO
 local EXCLUDE_SCIENCE = true
 -- Exclude key things, like stone furnaces
 local EXCLUDE_SENSITIVE = false
-local EXCLUDE_RECIPES = false
+local EXCLUDE_RECIPES = true
 local SPECIAL_RECIPE_FIRST_PASS = true
 local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
@@ -101,6 +101,12 @@ local function is_canonical_result(mat_or_recipe_name)
     if randomization_info.options.first_pass.blacklist[key("recipe", mat_or_recipe_name)] then
         return false
     end
+    if randomization_info.options.first_pass.blacklist[key("item", mat_or_recipe_name)] then
+        return false
+    end
+    if randomization_info.options.first_pass.blacklist[key("fluid", mat_or_recipe_name)] then
+        return false
+    end
     -- TODO: Don't assume base game in the future!
     -- Make sure all ingredients have costs
     for _, ing in pairs(recipe.ingredients or {}) do
@@ -116,6 +122,17 @@ local function is_canonical_result(mat_or_recipe_name)
     return true
 end
 first_pass.is_canonical_result = is_canonical_result
+
+local recipe_first_pass_node_types = {
+    ["recipe"] = true,
+    ["entity-mine"] = true, -- Only for resources
+    ["fluid-create-offshore-temperature"] = true, -- Use filtered pumps
+    ["item-launch"] = true,
+    -- Think about entity output fluids, like water --> steam in boilers
+}
+local function valid_for_recipe_first_pass(node)
+    -- CRITICAL TODO
+end
 
 first_pass.execute = function(params)
     DO_ITEM_RANDO = ITEM_ENABLED
@@ -168,6 +185,10 @@ first_pass.execute = function(params)
             return false
         end
         if randomization_info.options.first_pass.blacklist[node_key] then
+            return false
+        end
+        -- Exclude entity-mine nodes; not much reason to change order of resource mining and that might make non-starter ores too used
+        if subdiv_node.type == "entity-mine" then
             return false
         end
         local is_science_pack = {}
@@ -931,7 +952,7 @@ first_pass.execute = function(params)
             if slot_cost ~= nil then
                 -- Don't allow costs to differ more than by a factor of like a few hundred
                 -- Be more permissive about putting cheat travelers in expensive slots
-                if math.log(trav_cost) - math.log(slot_cost) > 6 or math.log(slot_cost) - math.log(trav_cost) > 10 then
+                if math.log(trav_cost) - math.log(slot_cost) > constants.first_pass_max_cost_log_difference_expensive or math.log(slot_cost) - math.log(trav_cost) > constants.first_pass_max_cost_log_difference_cheap then
                     return false
                 end
             end

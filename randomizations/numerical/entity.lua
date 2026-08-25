@@ -2467,7 +2467,7 @@ randomizations.module_slots = function(id)
                                 property = "module_slots",
                                 rounding = "discrete",
                                 abs_min = 1,
-                                variance = "big",
+                                variance = "medium",
                                 data_type = "uint16",
                             })
 
@@ -2486,7 +2486,7 @@ randomizations.module_slots = function(id)
                             property = "module_slots",
                             rounding = "discrete",
                             abs_min = 1,
-                            variance = "big",
+                            variance = "medium",
                             data_type = "uint16",
                         })
                         entity.allowed_effects = get_allowed_effects(entity)

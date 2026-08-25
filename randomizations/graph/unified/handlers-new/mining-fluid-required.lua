@@ -1,8 +1,10 @@
 -- TODO: Add to handlers.md, settings, and execute
+-- CRITICAL TODO: Cost checking (just reject very expensive fluids)
 
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/top-sort")
+local rng = require("lib/random/rng")
 
 local mining_fluid_required = {}
 
@@ -61,15 +63,23 @@ mining_fluid_required.validate = function(graph, base, head, extra)
     end
 end
 
+-- This is actually a tenth of the actual fluid used amount it seems, so about 40 is a good median
+local possible_fluid_amounts = {
+    10,
+    20,
+    40,
+    50,
+    100,
+}
 mining_fluid_required.reflect = function(graph, head_to_base, head_to_handler)
     for head_key, base_key in pairs(head_to_base) do
-        if head_to_base[head_key].id == "mining_fluid_required" then
+        if head_to_handler[head_key].id == "mining_fluid_required" then
             local head = graph.nodes[head_key]
             local resource_node = gutils.get_owner(graph, head)
             -- Check for dummies
             if not resource_node.spoof then
                 local resource = data.raw.resource[resource_node.name]
-                local base = graph.nodes[base]
+                local base = graph.nodes[base_key]
                 local base_owner = gutils.get_owner(graph, base)
                 if base_owner.spoof then
                     resource.minable.required_fluid = nil
@@ -78,7 +88,7 @@ mining_fluid_required.reflect = function(graph, head_to_base, head_to_handler)
                     local fluid = data.raw.fluid[base_owner.name]
                     resource.minable.required_fluid = fluid.name
                     if resource.minable.fluid_amount == nil or resource.minable.fluid_amount == 0 then
-                        resource.minable.fluid_amount = constants.unified_mining_fluid_required_default_fluid_amount
+                        resource.minable.fluid_amount = possible_fluid_amounts[rng.int(rng.key({ id = "unified" }), #possible_fluid_amounts)]
                     end
                 end
             end

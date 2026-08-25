@@ -1,0 +1,4101 @@
+{
+  "format": "propertyrandomizer-dependency-costs-v1",
+  "normal": {
+    "__pr_lp_or__:energy-source-electric:  --> entity-operate: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 94,
+        "row_key": "energy-source-electric: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:energy-source-electric:  --> entity-operate: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 94,
+        "row_key": "energy-source-electric: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:energy-source-void:  --> entity-operate: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 95,
+        "row_key": "energy-source-void: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:technology: steam-power --> technology: automation-science-pack": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 151,
+        "row_key": "technology: steam-power",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: big-sand-rock": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 62,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 96,
+        "row_key": "entity-build: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 97,
+        "row_key": "entity-build: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: character": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 1,
+        "row_key": "__pr_lp_and__:entity-character: character --> entity: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 63,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: copper-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: dry-hairy-tree": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 64,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 98,
+        "row_key": "entity-build: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 65,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: iron-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 99,
+        "row_key": "entity-build: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: ore-bioreserve": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 66,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 100,
+        "row_key": "entity-build: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 101,
+        "row_key": "entity-build: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 102,
+        "row_key": "entity-build: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 103,
+        "row_key": "entity-build: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 67,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 104,
+        "row_key": "entity-build: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "balance-mining-drill: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "electric-pole: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "energy-source-burner: chemical__biomass_2_1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 1e-07,
+      "producer_row": {
+        "row_index": 48,
+        "row_key": "__pr_lp_and__:item: wood --> energy-source-burner: chemical__biomass_2_1",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "energy-source-electric-distribution: ": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 0,
+        "row_key": "__pr_lp_and__:electric-pole:  --> energy-source-electric-distribution: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "energy-source-electric-production: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "entity-build-item: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 37,
+        "row_key": "__pr_lp_and__:item: boiler --> entity-build-item: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 38,
+        "row_key": "__pr_lp_and__:item: burner-mining-drill --> entity-build-item: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 39,
+        "row_key": "__pr_lp_and__:item: flora-collector-mk01 --> entity-build-item: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 42,
+        "row_key": "__pr_lp_and__:item: offshore-pump --> entity-build-item: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 43,
+        "row_key": "__pr_lp_and__:item: pipe-to-ground --> entity-build-item: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 44,
+        "row_key": "__pr_lp_and__:item: small-electric-pole --> entity-build-item: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 45,
+        "row_key": "__pr_lp_and__:item: soil-extractor-mk01 --> entity-build-item: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 46,
+        "row_key": "__pr_lp_and__:item: steam-engine --> entity-build-item: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 47,
+        "row_key": "__pr_lp_and__:item: stone-furnace --> entity-build-item: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 3,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 4,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: burner-mining-drill",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 10,
+        "row_key": "__pr_lp_and__:entity-collision-group: item__object__water_tile --> entity-build-tile: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 9,
+        "row_key": "__pr_lp_and__:entity-collision-group: is_lower_object__is_object__object__train --> entity-build-tile: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 2,
+        "row_key": "__pr_lp_and__:entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile --> entity-build-tile: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 8,
+        "row_key": "__pr_lp_and__:entity-collision-group: is_lower_object__is_object__item__object__player__water_tile --> entity-build-tile: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 5,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 6,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 7,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-character: character": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 72,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 73,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: is_lower_object__is_object__item__object__player__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 74,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: is_lower_object__is_object__item__object__player__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: is_lower_object__is_object__object__train": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 75,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: is_lower_object__is_object__object__train",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: item__object__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 76,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: item__object__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-operate-fluid: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 13,
+        "row_key": "__pr_lp_and__:fluid: water --> entity-operate-fluid: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-operate-fluid: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 12,
+        "row_key": "__pr_lp_and__:fluid: steam --> entity-operate-fluid: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: big-sand-rock": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 78,
+        "row_key": "__pr_lp_or_cost_and__:entity: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 35.83711994654193,
+      "producer_row": {
+        "row_index": 79,
+        "row_key": "__pr_lp_or_cost_and__:entity: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 92.07812167785438,
+      "producer_row": {
+        "row_index": 80,
+        "row_key": "__pr_lp_or_cost_and__:entity: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "entity: character": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 81,
+        "row_key": "__pr_lp_or_cost_and__:entity: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 82,
+        "row_key": "__pr_lp_or_cost_and__:entity: copper-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: dry-hairy-tree": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 83,
+        "row_key": "__pr_lp_or_cost_and__:entity: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2225.5917747471376,
+      "producer_row": {
+        "row_index": 84,
+        "row_key": "__pr_lp_or_cost_and__:entity: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 85,
+        "row_key": "__pr_lp_or_cost_and__:entity: iron-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 70.21969443853841,
+      "producer_row": {
+        "row_index": 86,
+        "row_key": "__pr_lp_or_cost_and__:entity: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: ore-bioreserve": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 87,
+        "row_key": "__pr_lp_or_cost_and__:entity: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 65.89346353612976,
+      "producer_row": {
+        "row_index": 88,
+        "row_key": "__pr_lp_or_cost_and__:entity: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 10.652461804817301,
+      "producer_row": {
+        "row_index": 89,
+        "row_key": "__pr_lp_or_cost_and__:entity: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1156.5581963976551,
+      "producer_row": {
+        "row_index": 90,
+        "row_key": "__pr_lp_or_cost_and__:entity: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 303.83616316860554,
+      "producer_row": {
+        "row_index": 91,
+        "row_key": "__pr_lp_or_cost_and__:entity: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 92,
+        "row_key": "__pr_lp_or_cost_and__:entity: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.2272727272727273,
+      "producer_row": {
+        "row_index": 93,
+        "row_key": "__pr_lp_or_cost_and__:entity: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-create-offshore-temperature: water: 15": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 152,
+        "row_key": "tile-fluid: water",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-create-temperature: steam: 250": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-create-temperature: water: 15": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 11,
+        "row_key": "__pr_lp_and__:fluid-create-offshore-temperature: water: 15 --> fluid-create-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-hold: steam": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-hold: water": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-temperature-range: water: nil: nil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 122,
+        "row_key": "fluid-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid: steam": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 1,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid: water": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 122,
+        "row_key": "fluid-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fuel-category-burn: chemical": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 8.375548801080717e-09,
+      "producer_row": {
+        "row_index": 111,
+        "row_key": "entity-operate: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 3701250.0,
+        "usage": 2.701789935832489e-07
+      },
+      "status": "optimal"
+    },
+    "item-craft: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 125,
+        "row_key": "recipe: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: bolts": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 126,
+        "row_key": "recipe: bolts",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 127,
+        "row_key": "recipe: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "item-craft: copper-cable": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 128,
+        "row_key": "recipe: copper-cable",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: copper-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 129,
+        "row_key": "recipe: copper-plate",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item-craft: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 9.416098168453665,
+      "producer_row": {
+        "row_index": 130,
+        "row_key": "recipe: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 131,
+        "row_key": "recipe: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: inductor1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 38.93607812167786,
+      "producer_row": {
+        "row_index": 132,
+        "row_key": "recipe: inductor1-2",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-gear-wheel": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 17.304923609634603,
+      "producer_row": {
+        "row_index": 133,
+        "row_key": "recipe: iron-gear-wheel",
+        "target_contribution": 1.0006682258603408,
+        "target_output_per_use": 1.0,
+        "usage": 1.0006682258603408
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 134,
+        "row_key": "recipe: iron-plate",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-stick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 135,
+        "row_key": "recipe: iron-stick",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 137,
+        "row_key": "recipe: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 138,
+        "row_key": "recipe: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 139,
+        "row_key": "recipe: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 2.0,
+        "usage": 0.5
+      },
+      "status": "optimal"
+    },
+    "item-craft: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 12.528618257526015,
+      "producer_row": {
+        "row_index": 140,
+        "row_key": "recipe: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 141,
+        "row_key": "recipe: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: small-parts-01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 21.631154512043253,
+      "producer_row": {
+        "row_index": 142,
+        "row_key": "recipe: small-parts-01",
+        "target_contribution": 1.001670564650852,
+        "target_output_per_use": 2.0,
+        "usage": 0.500835282325426
+      },
+      "status": "optimal"
+    },
+    "item-craft: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 143,
+        "row_key": "recipe: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 16.0,
+        "usage": 0.0625
+      },
+      "status": "optimal"
+    },
+    "item-craft: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 144,
+        "row_key": "recipe: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 145,
+        "row_key": "recipe: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: stone-brick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.09090909090909091,
+      "producer_row": {
+        "row_index": 146,
+        "row_key": "recipe: stone-brick",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 147,
+        "row_key": "recipe: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: wood": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2,
+      "producer_row": {
+        "row_index": 136,
+        "row_key": "recipe: log-wood",
+        "target_contribution": 1.0,
+        "target_output_per_use": 20.0,
+        "usage": 0.05
+      },
+      "status": "optimal"
+    },
+    "item: ash": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 1.0945039291706493,
+      "producer_row": {
+        "row_index": 123,
+        "row_key": "item-burn: kerogen",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 14,
+        "row_key": "__pr_lp_and__:item-craft: boiler --> item: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: bolts": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 15,
+        "row_key": "__pr_lp_and__:item-craft: bolts --> item: bolts",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 16,
+        "row_key": "__pr_lp_and__:item-craft: burner-mining-drill --> item: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "item: copper-cable": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 17,
+        "row_key": "__pr_lp_and__:item-craft: copper-cable --> item: copper-cable",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 1.0815577256021627,
+      "producer_row": {
+        "row_index": 106,
+        "row_key": "entity-mine: copper-ore",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: copper-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 18,
+        "row_key": "__pr_lp_and__:item-craft: copper-plate --> item: copper-plate",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 9.416098168453665,
+      "producer_row": {
+        "row_index": 19,
+        "row_key": "__pr_lp_and__:item-craft: empty-planter-box --> item: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 20,
+        "row_key": "__pr_lp_and__:item-craft: flora-collector-mk01 --> item: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: inductor1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 38.93607812167786,
+      "producer_row": {
+        "row_index": 21,
+        "row_key": "__pr_lp_and__:item-craft: inductor1 --> item: inductor1",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: iron-gear-wheel": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 17.304923609634603,
+      "producer_row": {
+        "row_index": 22,
+        "row_key": "__pr_lp_and__:item-craft: iron-gear-wheel --> item: iron-gear-wheel",
+        "target_contribution": 1.0006682258603408,
+        "target_output_per_use": 1.0,
+        "usage": 1.0006682258603408
+      },
+      "status": "optimal"
+    },
+    "item: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 1.0815577256021627,
+      "producer_row": {
+        "row_index": 108,
+        "row_key": "entity-mine: iron-ore",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item: iron-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 23,
+        "row_key": "__pr_lp_and__:item-craft: iron-plate --> item: iron-plate",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item: iron-stick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 24,
+        "row_key": "__pr_lp_and__:item-craft: iron-stick --> item: iron-stick",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: kerogen": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 1.0815513977057578,
+      "producer_row": {
+        "row_index": 110,
+        "row_key": "entity-mine: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: log": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 107,
+        "row_key": "entity-mine: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: native-flora": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 1.135821993742976,
+      "producer_row": {
+        "row_index": 109,
+        "row_key": "entity-mine: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 25,
+        "row_key": "__pr_lp_and__:item-craft: offshore-pump --> item: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 26,
+        "row_key": "__pr_lp_and__:item-craft: pipe --> item: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 27,
+        "row_key": "__pr_lp_and__:item-craft: pipe-to-ground --> item: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 12.528618257526015,
+      "producer_row": {
+        "row_index": 28,
+        "row_key": "__pr_lp_and__:item-craft: planter-box --> item: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 29,
+        "row_key": "__pr_lp_and__:item-craft: small-electric-pole --> item: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: small-parts-01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 21.631154512043253,
+      "producer_row": {
+        "row_index": 30,
+        "row_key": "__pr_lp_and__:item-craft: small-parts-01 --> item: small-parts-01",
+        "target_contribution": 1.001670564650852,
+        "target_output_per_use": 1.0,
+        "usage": 1.001670564650852
+      },
+      "status": "optimal"
+    },
+    "item: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 31,
+        "row_key": "__pr_lp_and__:item-craft: soil --> item: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 32,
+        "row_key": "__pr_lp_and__:item-craft: soil-extractor-mk01 --> item: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 33,
+        "row_key": "__pr_lp_and__:item-craft: steam-engine --> item: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.045454545454545456,
+      "producer_row": {
+        "row_index": 105,
+        "row_key": "entity-mine: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 22.0,
+        "usage": 0.045454545454545456
+      },
+      "status": "optimal"
+    },
+    "item: stone-brick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.09090909090909091,
+      "producer_row": {
+        "row_index": 34,
+        "row_key": "__pr_lp_and__:item-craft: stone-brick --> item: stone-brick",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 35,
+        "row_key": "__pr_lp_and__:item-craft: stone-furnace --> item: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: wood": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 0.2,
+      "producer_row": {
+        "row_index": 36,
+        "row_key": "__pr_lp_and__:item-craft: wood --> item: wood",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: crafting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 30.026027777777777,
+      "producer_row": {
+        "row_index": 113,
+        "row_key": "entity-operate: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: smelting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 0.049034090909090916,
+      "producer_row": {
+        "row_index": 120,
+        "row_key": "entity-operate: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: soil-extraction__1__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 0.10612661656660155,
+      "producer_row": {
+        "row_index": 118,
+        "row_key": "entity-operate: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: wpu-handcrafting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 30.026027777777777,
+      "producer_row": {
+        "row_index": 113,
+        "row_key": "entity-operate: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-tech-unlock: automation-science-pack": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: boiler": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: empty-planter-box": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: flora-collector-mk01": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: inductor1-2": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: offshore-pump": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: pipe": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: pipe-to-ground": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: planter-box": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: small-electric-pole": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: soil": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: soil-extractor-mk01": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: steam-engine": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-unlock: automation-science-pack": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 49,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: automation-science-pack --> recipe-unlock: automation-science-pack",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 50,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: boiler --> recipe-unlock: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 51,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: empty-planter-box --> recipe-unlock: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 52,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: flora-collector-mk01 --> recipe-unlock: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: inductor1-2": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 53,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: inductor1-2 --> recipe-unlock: inductor1-2",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 54,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: offshore-pump --> recipe-unlock: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 55,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: pipe --> recipe-unlock: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 56,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: pipe-to-ground --> recipe-unlock: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 57,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: planter-box --> recipe-unlock: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 58,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: small-electric-pole --> recipe-unlock: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 59,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: soil --> recipe-unlock: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 60,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: soil-extractor-mk01 --> recipe-unlock: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 61,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: steam-engine --> recipe-unlock: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "resource-category: basic-solid__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 0.08155772560216266,
+      "producer_row": {
+        "row_index": 112,
+        "row_key": "entity-operate: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "resource-category: ore-bioreserve__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 14,
+      "objective": 0.13582199374297607,
+      "producer_row": {
+        "row_index": 114,
+        "row_key": "entity-operate: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "room-autoplace: planet: nauvis": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 70,
+        "row_key": "__pr_lp_and__:room: planet: nauvis --> room-autoplace: planet: nauvis",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "room: planet: nauvis": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "tile-collision-group: ground_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 77,
+        "row_key": "__pr_lp_and__:tile: red-desert-3 --> tile-collision-group: ground_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "tile-fluid-pump: water": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "tile: red-desert-3": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 68,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> tile: red-desert-3",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "tile: water": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 69,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> tile: water",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "warmth: ": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 71,
+        "row_key": "__pr_lp_and__:room: planet: nauvis --> warmth: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    }
+  },
+  "slot": {
+    "__pr_lp_or__:energy-source-electric:  --> entity-operate: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 94,
+        "row_key": "energy-source-electric: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:energy-source-electric:  --> entity-operate: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 94,
+        "row_key": "energy-source-electric: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:energy-source-void:  --> entity-operate: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 95,
+        "row_key": "energy-source-void: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or__:technology: steam-power --> technology: automation-science-pack": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 151,
+        "row_key": "technology: steam-power",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: big-sand-rock": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 62,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 96,
+        "row_key": "entity-build: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 97,
+        "row_key": "entity-build: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: character": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 1,
+        "row_key": "__pr_lp_and__:entity-character: character --> entity: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 63,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: copper-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: dry-hairy-tree": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 64,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 98,
+        "row_key": "entity-build: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 65,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: iron-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 99,
+        "row_key": "entity-build: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: ore-bioreserve": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 66,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 100,
+        "row_key": "entity-build: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 101,
+        "row_key": "entity-build: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 102,
+        "row_key": "entity-build: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 103,
+        "row_key": "entity-build: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 67,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> entity: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "__pr_lp_or_cost_pre__:entity: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 104,
+        "row_key": "entity-build: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "balance-mining-drill: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "electric-pole: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "energy-source-burner: chemical__biomass_2_1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 1e-07,
+      "producer_row": {
+        "row_index": 48,
+        "row_key": "__pr_lp_and__:item: wood --> energy-source-burner: chemical__biomass_2_1",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "energy-source-electric-distribution: ": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 0,
+        "row_key": "__pr_lp_and__:electric-pole:  --> energy-source-electric-distribution: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "energy-source-electric-production: ": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "entity-build-item: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 37,
+        "row_key": "__pr_lp_and__:item: boiler --> entity-build-item: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 38,
+        "row_key": "__pr_lp_and__:item: burner-mining-drill --> entity-build-item: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 39,
+        "row_key": "__pr_lp_and__:item: flora-collector-mk01 --> entity-build-item: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 42,
+        "row_key": "__pr_lp_and__:item: offshore-pump --> entity-build-item: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 43,
+        "row_key": "__pr_lp_and__:item: pipe-to-ground --> entity-build-item: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 44,
+        "row_key": "__pr_lp_and__:item: small-electric-pole --> entity-build-item: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 45,
+        "row_key": "__pr_lp_and__:item: soil-extractor-mk01 --> entity-build-item: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 46,
+        "row_key": "__pr_lp_and__:item: steam-engine --> entity-build-item: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-item: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 47,
+        "row_key": "__pr_lp_and__:item: stone-furnace --> entity-build-item: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 3,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 4,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: burner-mining-drill",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 10,
+        "row_key": "__pr_lp_and__:entity-collision-group: item__object__water_tile --> entity-build-tile: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 9,
+        "row_key": "__pr_lp_and__:entity-collision-group: is_lower_object__is_object__object__train --> entity-build-tile: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 2,
+        "row_key": "__pr_lp_and__:entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile --> entity-build-tile: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 8,
+        "row_key": "__pr_lp_and__:entity-collision-group: is_lower_object__is_object__item__object__player__water_tile --> entity-build-tile: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 5,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 6,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-build-tile: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 7,
+        "row_key": "__pr_lp_and__:entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile --> entity-build-tile: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-character: character": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 72,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: car__floor__is_lower_object__item__meltable__transport_belt__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 73,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: caravan_collision_mask__is_lower_object__is_object__item__meltable__object__player__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: is_lower_object__is_object__item__object__player__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 74,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: is_lower_object__is_object__item__object__player__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: is_lower_object__is_object__object__train": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 75,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: is_lower_object__is_object__object__train",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-collision-group: item__object__water_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 76,
+        "row_key": "__pr_lp_and__:tile-collision-group: ground_tile --> entity-collision-group: item__object__water_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-operate-fluid: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 13,
+        "row_key": "__pr_lp_and__:fluid: water --> entity-operate-fluid: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity-operate-fluid: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 12,
+        "row_key": "__pr_lp_and__:fluid: steam --> entity-operate-fluid: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: big-sand-rock": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 78,
+        "row_key": "__pr_lp_or_cost_and__:entity: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 35.83711994654193,
+      "producer_row": {
+        "row_index": 79,
+        "row_key": "__pr_lp_or_cost_and__:entity: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 92.07812167785438,
+      "producer_row": {
+        "row_index": 80,
+        "row_key": "__pr_lp_or_cost_and__:entity: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "entity: character": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 81,
+        "row_key": "__pr_lp_or_cost_and__:entity: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 82,
+        "row_key": "__pr_lp_or_cost_and__:entity: copper-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: dry-hairy-tree": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 83,
+        "row_key": "__pr_lp_or_cost_and__:entity: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2225.5917747471376,
+      "producer_row": {
+        "row_index": 84,
+        "row_key": "__pr_lp_or_cost_and__:entity: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 85,
+        "row_key": "__pr_lp_or_cost_and__:entity: iron-ore",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 70.21969443853841,
+      "producer_row": {
+        "row_index": 86,
+        "row_key": "__pr_lp_or_cost_and__:entity: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: ore-bioreserve": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 87,
+        "row_key": "__pr_lp_or_cost_and__:entity: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 65.89346353612976,
+      "producer_row": {
+        "row_index": 88,
+        "row_key": "__pr_lp_or_cost_and__:entity: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 10.652461804817301,
+      "producer_row": {
+        "row_index": 89,
+        "row_key": "__pr_lp_or_cost_and__:entity: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1156.5581963976551,
+      "producer_row": {
+        "row_index": 90,
+        "row_key": "__pr_lp_or_cost_and__:entity: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 303.83616316860554,
+      "producer_row": {
+        "row_index": 91,
+        "row_key": "__pr_lp_or_cost_and__:entity: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 92,
+        "row_key": "__pr_lp_or_cost_and__:entity: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "entity: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.2272727272727273,
+      "producer_row": {
+        "row_index": 93,
+        "row_key": "__pr_lp_or_cost_and__:entity: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-create-offshore-temperature: water: 15": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 152,
+        "row_key": "tile-fluid: water",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-create-temperature: steam: 250": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-create-temperature: water: 15": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 11,
+        "row_key": "__pr_lp_and__:fluid-create-offshore-temperature: water: 15 --> fluid-create-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid-hold: steam": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-hold: water": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid-temperature-range: water: nil: nil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 122,
+        "row_key": "fluid-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fluid: steam": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 1,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "fluid: water": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 122,
+        "row_key": "fluid-temperature: water: 15",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "fuel-category-burn: chemical": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 8.375548801080717e-09,
+      "producer_row": {
+        "row_index": 111,
+        "row_key": "entity-operate: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 3701250.0,
+        "usage": 2.701789935832489e-07
+      },
+      "status": "optimal"
+    },
+    "item-craft: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 125,
+        "row_key": "recipe: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: bolts": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 126,
+        "row_key": "recipe: bolts",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 127,
+        "row_key": "recipe: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "item-craft: copper-cable": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 128,
+        "row_key": "recipe: copper-cable",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: copper-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 129,
+        "row_key": "recipe: copper-plate",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item-craft: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 9.416098168453665,
+      "producer_row": {
+        "row_index": 130,
+        "row_key": "recipe: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 131,
+        "row_key": "recipe: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: inductor1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 38.93607812167786,
+      "producer_row": {
+        "row_index": 132,
+        "row_key": "recipe: inductor1-2",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-gear-wheel": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 17.304923609634603,
+      "producer_row": {
+        "row_index": 133,
+        "row_key": "recipe: iron-gear-wheel",
+        "target_contribution": 1.0006682258603408,
+        "target_output_per_use": 1.0,
+        "usage": 1.0006682258603408
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 134,
+        "row_key": "recipe: iron-plate",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item-craft: iron-stick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 135,
+        "row_key": "recipe: iron-stick",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 2.0,
+        "usage": 0.5002505846976277
+      },
+      "status": "optimal"
+    },
+    "item-craft: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 137,
+        "row_key": "recipe: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 138,
+        "row_key": "recipe: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 139,
+        "row_key": "recipe: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 2.0,
+        "usage": 0.5
+      },
+      "status": "optimal"
+    },
+    "item-craft: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 12.528618257526015,
+      "producer_row": {
+        "row_index": 140,
+        "row_key": "recipe: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 141,
+        "row_key": "recipe: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: small-parts-01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 21.631154512043253,
+      "producer_row": {
+        "row_index": 142,
+        "row_key": "recipe: small-parts-01",
+        "target_contribution": 1.001670564650852,
+        "target_output_per_use": 2.0,
+        "usage": 0.500835282325426
+      },
+      "status": "optimal"
+    },
+    "item-craft: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 143,
+        "row_key": "recipe: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 16.0,
+        "usage": 0.0625
+      },
+      "status": "optimal"
+    },
+    "item-craft: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 144,
+        "row_key": "recipe: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 145,
+        "row_key": "recipe: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: stone-brick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.09090909090909091,
+      "producer_row": {
+        "row_index": 146,
+        "row_key": "recipe: stone-brick",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 147,
+        "row_key": "recipe: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item-craft: wood": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2,
+      "producer_row": {
+        "row_index": 136,
+        "row_key": "recipe: log-wood",
+        "target_contribution": 1.0,
+        "target_output_per_use": 20.0,
+        "usage": 0.05
+      },
+      "status": "optimal"
+    },
+    "item: ash": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 1.0945039291706493,
+      "producer_row": {
+        "row_index": 123,
+        "row_key": "item-burn: kerogen",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 34.83711994654193,
+      "producer_row": {
+        "row_index": 14,
+        "row_key": "__pr_lp_and__:item-craft: boiler --> item: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: bolts": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 15,
+        "row_key": "__pr_lp_and__:item-craft: bolts --> item: bolts",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: burner-mining-drill": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 91.07812167785438,
+      "producer_row": {
+        "row_index": 16,
+        "row_key": "__pr_lp_and__:item-craft: burner-mining-drill --> item: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "item: copper-cable": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 17,
+        "row_key": "__pr_lp_and__:item-craft: copper-cable --> item: copper-cable",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: copper-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 1.0815577256021627,
+      "producer_row": {
+        "row_index": 106,
+        "row_key": "entity-mine: copper-ore",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: copper-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 18,
+        "row_key": "__pr_lp_and__:item-craft: copper-plate --> item: copper-plate",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 9.416098168453665,
+      "producer_row": {
+        "row_index": 19,
+        "row_key": "__pr_lp_and__:item-craft: empty-planter-box --> item: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 2224.5917747471376,
+      "producer_row": {
+        "row_index": 20,
+        "row_key": "__pr_lp_and__:item-craft: flora-collector-mk01 --> item: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: inductor1": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 38.93607812167786,
+      "producer_row": {
+        "row_index": 21,
+        "row_key": "__pr_lp_and__:item-craft: inductor1 --> item: inductor1",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: iron-gear-wheel": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 17.304923609634603,
+      "producer_row": {
+        "row_index": 22,
+        "row_key": "__pr_lp_and__:item-craft: iron-gear-wheel --> item: iron-gear-wheel",
+        "target_contribution": 1.0006682258603408,
+        "target_output_per_use": 1.0,
+        "usage": 1.0006682258603408
+      },
+      "status": "optimal"
+    },
+    "item: iron-ore": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 1.0815577256021627,
+      "producer_row": {
+        "row_index": 108,
+        "row_key": "entity-mine: iron-ore",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item: iron-plate": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 23,
+        "row_key": "__pr_lp_and__:item-craft: iron-plate --> item: iron-plate",
+        "target_contribution": 1.001837621115937,
+        "target_output_per_use": 1.0,
+        "usage": 1.001837621115937
+      },
+      "status": "optimal"
+    },
+    "item: iron-stick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 4.326230902408651,
+      "producer_row": {
+        "row_index": 24,
+        "row_key": "__pr_lp_and__:item-craft: iron-stick --> item: iron-stick",
+        "target_contribution": 1.0005011693952555,
+        "target_output_per_use": 1.0,
+        "usage": 1.0005011693952555
+      },
+      "status": "optimal"
+    },
+    "item: kerogen": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 1.0815513977057578,
+      "producer_row": {
+        "row_index": 110,
+        "row_key": "entity-mine: stone",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: log": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 1.0,
+      "producer_row": {
+        "row_index": 107,
+        "row_key": "entity-mine: dry-hairy-tree",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: native-flora": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 1.135821993742976,
+      "producer_row": {
+        "row_index": 109,
+        "row_key": "entity-mine: ore-bioreserve",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 69.21969443853841,
+      "producer_row": {
+        "row_index": 25,
+        "row_key": "__pr_lp_and__:item-craft: offshore-pump --> item: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 8.652461804817301,
+      "producer_row": {
+        "row_index": 26,
+        "row_key": "__pr_lp_and__:item-craft: pipe --> item: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 64.89346353612976,
+      "producer_row": {
+        "row_index": 27,
+        "row_key": "__pr_lp_and__:item-craft: pipe-to-ground --> item: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 12.528618257526015,
+      "producer_row": {
+        "row_index": 28,
+        "row_key": "__pr_lp_and__:item-craft: planter-box --> item: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 7,
+      "objective": 9.652461804817301,
+      "producer_row": {
+        "row_index": 29,
+        "row_key": "__pr_lp_and__:item-craft: small-electric-pole --> item: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: small-parts-01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 21.631154512043253,
+      "producer_row": {
+        "row_index": 30,
+        "row_key": "__pr_lp_and__:item-craft: small-parts-01 --> item: small-parts-01",
+        "target_contribution": 1.001670564650852,
+        "target_output_per_use": 1.0,
+        "usage": 1.001670564650852
+      },
+      "status": "optimal"
+    },
+    "item: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 31,
+        "row_key": "__pr_lp_and__:item-craft: soil --> item: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 1155.5581963976551,
+      "producer_row": {
+        "row_index": 32,
+        "row_key": "__pr_lp_and__:item-craft: soil-extractor-mk01 --> item: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 4,
+      "objective": 302.83616316860554,
+      "producer_row": {
+        "row_index": 33,
+        "row_key": "__pr_lp_and__:item-craft: steam-engine --> item: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: stone": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.045454545454545456,
+      "producer_row": {
+        "row_index": 105,
+        "row_key": "entity-mine: big-sand-rock",
+        "target_contribution": 1.0,
+        "target_output_per_use": 22.0,
+        "usage": 0.045454545454545456
+      },
+      "status": "optimal"
+    },
+    "item: stone-brick": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.09090909090909091,
+      "producer_row": {
+        "row_index": 34,
+        "row_key": "__pr_lp_and__:item-craft: stone-brick --> item: stone-brick",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: stone-furnace": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 0.2272727272727273,
+      "producer_row": {
+        "row_index": 35,
+        "row_key": "__pr_lp_and__:item-craft: stone-furnace --> item: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "item: wood": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 0.2,
+      "producer_row": {
+        "row_index": 36,
+        "row_key": "__pr_lp_and__:item-craft: wood --> item: wood",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: crafting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 30.026027777777777,
+      "producer_row": {
+        "row_index": 113,
+        "row_key": "entity-operate: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: smelting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 1,
+      "objective": 0.049034090909090916,
+      "producer_row": {
+        "row_index": 120,
+        "row_key": "entity-operate: stone-furnace",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: soil-extraction__1__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 11,
+      "objective": 0.10612661656660155,
+      "producer_row": {
+        "row_index": 118,
+        "row_key": "entity-operate: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-category: wpu-handcrafting__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": 30.026027777777777,
+      "producer_row": {
+        "row_index": 113,
+        "row_key": "entity-operate: character",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-tech-unlock: automation-science-pack": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: boiler": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: empty-planter-box": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: flora-collector-mk01": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: inductor1-2": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: offshore-pump": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: pipe": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: pipe-to-ground": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: planter-box": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: small-electric-pole": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: soil": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: soil-extractor-mk01": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-tech-unlock: steam-engine": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "recipe-unlock: automation-science-pack": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 49,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: automation-science-pack --> recipe-unlock: automation-science-pack",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: boiler": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 50,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: boiler --> recipe-unlock: boiler",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: empty-planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 51,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: empty-planter-box --> recipe-unlock: empty-planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: flora-collector-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 52,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: flora-collector-mk01 --> recipe-unlock: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: inductor1-2": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 53,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: inductor1-2 --> recipe-unlock: inductor1-2",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: offshore-pump": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 54,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: offshore-pump --> recipe-unlock: offshore-pump",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: pipe": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 55,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: pipe --> recipe-unlock: pipe",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: pipe-to-ground": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 56,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: pipe-to-ground --> recipe-unlock: pipe-to-ground",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: planter-box": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 57,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: planter-box --> recipe-unlock: planter-box",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: small-electric-pole": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 58,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: small-electric-pole --> recipe-unlock: small-electric-pole",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: soil": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 59,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: soil --> recipe-unlock: soil",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: soil-extractor-mk01": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 60,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: soil-extractor-mk01 --> recipe-unlock: soil-extractor-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "recipe-unlock: steam-engine": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 61,
+        "row_key": "__pr_lp_and__:recipe-tech-unlock: steam-engine --> recipe-unlock: steam-engine",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "resource-category: basic-solid__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 8,
+      "objective": 0.08155772560216266,
+      "producer_row": {
+        "row_index": 112,
+        "row_key": "entity-operate: burner-mining-drill",
+        "target_contribution": 1.0023387905111927,
+        "target_output_per_use": 1.0,
+        "usage": 1.0023387905111927
+      },
+      "status": "optimal"
+    },
+    "resource-category: ore-bioreserve__0__0": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 14,
+      "objective": 0.13582199374297607,
+      "producer_row": {
+        "row_index": 114,
+        "row_key": "entity-operate: flora-collector-mk01",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "room-autoplace: planet: nauvis": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 70,
+        "row_key": "__pr_lp_and__:room: planet: nauvis --> room-autoplace: planet: nauvis",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "room: planet: nauvis": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "tile-collision-group: ground_tile": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 77,
+        "row_key": "__pr_lp_and__:tile: red-desert-3 --> tile-collision-group: ground_tile",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "tile-fluid-pump: water": {
+      "message": "The problem is unbounded. (HiGHS Status 10: model_status is Unbounded; primal_status is Feasible)",
+      "nit": 0,
+      "objective": null,
+      "producer_row": null,
+      "status": "unbounded"
+    },
+    "tile: red-desert-3": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 68,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> tile: red-desert-3",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "tile: water": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 69,
+        "row_key": "__pr_lp_and__:room-autoplace: planet: nauvis --> tile: water",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    },
+    "warmth: ": {
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "nit": 0,
+      "objective": -0.0,
+      "producer_row": {
+        "row_index": 71,
+        "row_key": "__pr_lp_and__:room: planet: nauvis --> warmth: ",
+        "target_contribution": 1.0,
+        "target_output_per_use": 1.0,
+        "usage": 1.0
+      },
+      "status": "optimal"
+    }
+  },
+  "stage": 1,
+  "target_hint": "recipe: automation-science-pack"
+}

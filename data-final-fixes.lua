@@ -1,4 +1,170 @@
---[[local cost = require("lib/cost/simplex-lp-export")
+--[[local gutils = require("lib/graph/graph-utils")
+local cutils = require("lib/cost/cost-utils")
+local flow_amounts_ingredients = {}
+local flow_amounts_results = {}
+for _, recipe in pairs(data.raw.recipe) do
+    local considered = {}
+    for _, ingredient in pairs(recipe.ingredients or {}) do
+        if not considered[gutils.key(ingredient)] then
+            considered[gutils.key(ingredient)] = true
+            flow_amounts_ingredients[gutils.key(ingredient)] = flow_amounts_ingredients[gutils.key(ingredient)] or {}
+            table.insert(flow_amounts_ingredients[gutils.key(ingredient)], cutils.find_amount_in_ing_or_prod(recipe.ingredients, ingredient))
+        end
+    end
+    considered = {}
+    for _, result in pairs(recipe.results or {}) do
+        if not considered[gutils.key(result)] then
+            considered[gutils.key(result)] = true
+            flow_amounts_results[gutils.key(result)] = flow_amounts_results[gutils.key(result)] or {}
+            table.insert(flow_amounts_results[gutils.key(result)], cutils.find_amount_in_ing_or_prod(recipe.results, result))
+        end
+    end
+end
+log(serpent.block(flow_amounts_ingredients))
+log(serpent.block(flow_amounts_results))
+do return end]]
+
+--[[local dutils = require("lib/data-utils")
+local pipe_conns = require("lib/pipe-conns")
+local new_recipes = require("lib/cost/rotated-bases/semantic_slots_v22_followup_degree4_angles_15_40_65_integerized")
+local fixed_recipes = {}
+for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
+    for _, machine in pairs(data.raw[machine_class]) do
+        if machine.fixed_recipe ~= nil then
+            fixed_recipes[machine.fixed_recipe] = true
+        end
+        machine.fluid_boxes = machine.fluid_boxes or {}
+        local has_input_already = false
+        if machine.type == "furnace" then
+            for _, box in pairs(machine.fluid_boxes) do
+                if box.production_type == "input" then
+                    has_input_already = true
+                end
+            end
+        end
+        local available = pipe_conns.get_available_pipe_connections(machine)
+        -- Alternately add input and output boxes
+        for ind, conn in pairs(available) do
+            local input_type = "input"
+            if ind % 2 == 0 or (machine.type == "furnace" and has_input_already) then
+                input_type = "output"
+            else
+                has_input_already = true
+            end
+            conn.flow_direction = input_type
+            table.insert(machine.fluid_boxes, {
+                volume = 100,
+                pipe_connections = { conn },
+                production_type = input_type,
+                conn,
+            })
+        end
+    end
+end
+for recipe_name, recipe_data in pairs(new_recipes.recipes) do
+    local blacklisted_recipes = {
+    }
+    if not blacklisted_recipes[recipe_name] and not fixed_recipes[recipe_name] then
+        local recipe = data.raw.recipe[recipe_name]
+        local cleaned_ings = {}
+        local has_fluid = false
+        for _, ing in pairs(recipe_data.ingredients) do
+            --ing.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * ing.amount)))
+            if ing.type == "item" then
+                local item
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if (data.raw[item_class] or {})[ing.name] then
+                        item = (data.raw[item_class] or {})[ing.name]
+                    end
+                end
+                if not dutils.is_stackable(item) then
+                    ing.amount = 1
+                end
+            else
+                has_fluid = true
+                if ing.name == "steam" then
+                    ing.amount = ing.amount * 1 / 5
+                end
+            end
+            if ing.amount > 0 then
+                table.insert(cleaned_ings, ing)
+            end
+        end
+        recipe.ingredients = cleaned_ings
+        local cleaned_results = {}
+        for _, result in pairs(recipe_data.results) do
+            --result.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * result.amount)))
+            if result.type == "item" then
+                local item
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if (data.raw[item_class] or {})[result.name] then
+                        item = (data.raw[item_class] or {})[result.name]
+                    end
+                end
+                if not dutils.is_stackable(item) then
+                    result.amount = 1
+                end
+                if result.amount < 1 then
+                    result.independent_probability = result.amount
+                    result.amount = 1
+                end
+            end
+            if result.amount > 0 then
+                
+                table.insert(cleaned_results, result)
+            end
+        end
+        recipe.main_product = nil
+        if recipe.results ~= nil and #recipe.results >= 1 then
+            local item
+            for item_class, _ in pairs(defines.prototypes.item) do
+                if (data.raw[item_class] or {})[recipe.results[1].name] then
+                    item = (data.raw[item_class] or {})[recipe.results[1].name]
+                end
+            end
+            if recipe.results[1].type == "fluid" then
+                item = data.raw.fluid[recipe.results[1].name]
+            end
+            recipe.icon = recipe.icon or item.icon
+            recipe.icon_size = recipe.icon_size or item.icon_size
+            recipe.icons = recipe.icons or item.icons
+        end
+        recipe.results = cleaned_results
+        if has_fluid then
+            local new_categories = {}
+            local added_fluid_with_crafting = false
+            for _, cat in pairs(recipe.categories or {"crafting"}) do
+                if cat == "crafting" then
+                    if not added_fluid_with_crafting then
+                        added_fluid_with_crafting = true
+                        table.insert(new_categories, "crafting-with-fluid")
+                    end
+                elseif cat == "crafting-with-fluid" then
+                    if not added_fluid_with_crafting then
+                        added_fluid_with_crafting = true
+                        table.insert(new_categories, cat)
+                    end
+                else
+                    table.insert(new_categories, cat)
+                end
+            end
+            recipe.categories = new_categories
+        end
+        -- fbreactor
+        --recipe.categories = {"fbreactor"}
+        recipe.energy_required = (recipe.energy_required or 0.5) * recipe_data.energy_required_multiplier
+    end
+end
+
+data.raw.recipe["stone-brick"].ingredients[1].name = "iron-ore"
+data.raw.recipe["low-grade-smelting-iron"].categories = {"crafting"}
+randomizations = {}
+require("randomizations/fixes")
+randomizations.rebuild_tech_tree()
+
+do return end]]
+
+local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
 local gutils = require("lib/graph/graph-utils")
@@ -21,13 +187,68 @@ for i = 1, #packs_in_order do
     logic.build()
     local science_pack = packs_in_order[i]
     if science_pack ~= "full-pyrrhic-victory" then
-        gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
+        --gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
+        local science_node = logic.graph.nodes[gutils.key("item", science_pack)]
+        local edges_to_remove = {}
+        for dep, _ in pairs(science_node.dep) do
+            table.insert(edges_to_remove, dep)
+        end
+        for _, dep in pairs(edges_to_remove) do
+            local depnode = logic.graph.nodes[logic.graph.edges[dep].stop]
+            if depnode.op == "AND" then
+                gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key(depnode.type, depnode.name))
+            end
+            gutils.remove_edge(logic.graph, dep)
+        end
+        if packs_in_order[i] == "military-science-pack" then
+            -- Also blacklist py2
+            local science_node_2 = logic.graph.nodes[gutils.key("item", "py-science-pack-2")]
+            local edges_to_remove_2 = {}
+            for dep, _ in pairs(science_node_2.dep) do
+                table.insert(edges_to_remove_2, dep)
+            end
+            for _, dep in pairs(edges_to_remove_2) do
+                local depnode = logic.graph.nodes[logic.graph.edges[dep].stop]
+                if depnode.op == "AND" then
+                    gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key(depnode.type, depnode.name))
+                end
+                gutils.remove_edge(logic.graph, dep)
+            end
+        end
     end
     local sort_info = top.sort(logic.graph)
+    if i < #packs_in_order then
+        -- Find required materials for this science at this level
+        local science_ind
+        for ind, pebble in pairs(sort_info.sorted) do
+            local node = logic.graph.nodes[pebble.node_key]
+            if node.type == "item" and node.name == packs_in_order[i] then
+                science_ind = ind
+                break
+            end
+        end
+        local path = top.path(logic.graph, {science_ind}, sort_info)
+        log(serpent.dump(path))
+        log(serpent.dump(sort_info))
+    else
+        local pyrrhic_ind
+        for ind, pebble in pairs(sort_info.sorted) do
+            local node = logic.graph.nodes[pebble.node_key]
+            if node.type == "technology" and node.name == "pyrrhic" then
+                pyrrhic_ind = ind
+                break
+            end
+        end
+        local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
+        log(serpent.dump(path))
+        log(serpent.dump(sort_info))
+    end
     log("SORT COMPLETE")
-    cost.export_to_log(sort_info, i)
+    --cost.export_to_log(sort_info, i)
 end
-do return end]]
+log(serpent.dump(logic.graph))
+--log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+do return end
 
 
 

@@ -148,13 +148,13 @@ function abstract.build(lu)
         -- Can we power an entity with this burner energy source?
 
         for _, fuel_category in pairs(combo_info.fuel) do
-            -- Check fuels with burnt results only if curr.burnt == 1
+            -- Check fuels with burnt results only if combo_info.burnt == 1
             for burnable = 0, combo_info.burnt do
                 local items_for_fuel = lu.fcat_to_items[concat({fuel_category, burnable})]
-                -- If items_for_fuel is nil, then there are no items that satisfy this fuel category and so we just don't have any prereqs
                 if items_for_fuel ~= nil then
                     for item_name, _ in pairs(items_for_fuel) do
-                        add_edge("item", item_name)
+                        local item_prot = dutils.get_prot("item", item_name)
+                        add_edge("item", item_name, { amount = 1 / util.parse_energy(item_prot.fuel_value) })
                     end
                 end
             end
@@ -165,7 +165,6 @@ function abstract.build(lu)
     add_node("energy-source-electric", "AND", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we power an entity with an electric energy source?
-    -- Requires: distribution + production
 
     add_edge("energy-source-electric-distribution", "")
     add_edge("energy-source-electric-production", "")
@@ -174,8 +173,6 @@ function abstract.build(lu)
     add_node("energy-source-electric-distribution", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we distribute power?
-    -- OR over: electric poles, space surfaces (don't need poles)
-    -- Grouped with energy-source-electric via canonical name
 
     add_edge("electric-pole", "")
     for room_key, room in pairs(lu.rooms) do
@@ -200,7 +197,8 @@ function abstract.build(lu)
     add_node("energy-source-electric-production", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we produce power?
-    -- Grouped with energy-source-electric via canonical name
+
+    -- TODO: cost analysis for power
 
     for _, generator in pairs(prots("burner-generator")) do
         add_edge("entity-operate", generator.name)
@@ -259,7 +257,7 @@ function abstract.build(lu)
 
     for _, fluid in pairs(lu.fluids) do
         if fluid.fuel_value ~= nil and util.parse_energy(fluid.fuel_value) > 0 then
-            add_edge("fluid", fluid.name)
+            add_edge("fluid", fluid.name, {amount = 1 / util.parse_energy(fluid.fuel_value) })
         end
     end
 
@@ -276,7 +274,6 @@ function abstract.build(lu)
     add_node("energy-source-heat-distribution", "OR", nil, "", { canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we distribute produced heat to entities?
-    -- Same canonical name as heat
 
     for _, pipe in pairs(prots("heat-pipe")) do
         add_edge("entity-operate", pipe.name)
@@ -286,7 +283,8 @@ function abstract.build(lu)
     add_node("energy-source-heat-production", "OR", nil, "", { canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we produce heat?
-    -- Same canonical name as heat
+
+    -- TODO: cost analysis
 
     for class_name, _ in pairs(categories.heat_producers) do
         for _, heater in pairs(prots(class_name)) do
@@ -297,10 +295,6 @@ function abstract.build(lu)
     ----------------------------------------------------------------------
     -- Science Pack Set
     ----------------------------------------------------------------------
-    -- Virtual nodes for each unique combination of science packs.
-    -- Labs must accept ALL packs in a set simultaneously for research.
-
-    -- TODO: Ability to support mods with techs which take different amounts of each science pack (like in py)
 
     set_class("science-pack-set")
 
@@ -524,7 +518,7 @@ function abstract.build(lu)
 
     for _, silo in pairs(prots("rocket-silo")) do
         if lu.entities[silo.name] ~= nil then
-            add_edge("entity-rocket-silo", silo.name)
+            add_edge("entity-rocket-silo", silo.name, { amount = 1 })
         end
     end
 
@@ -544,7 +538,7 @@ function abstract.build(lu)
     -- Requires: planet + rocket silo + cargo landing pad
 
     add_edge("planet", "")
-    add_edge("rocket-silo", "")
+    add_edge("rocket-silo", "", { amount = 1 })
     add_edge("cargo-landing-pad", "")
 
     ----------------------------------------
@@ -555,6 +549,7 @@ function abstract.build(lu)
 
     add_edge("launch", "", {
         abilities = { [1] = false }, -- Make sure deliverability doesn't carry isolatability with it
+        amount = 1,
     })
     add_edge("space-surface", "", {
         abilities = { [1] = false },
@@ -643,6 +638,11 @@ function abstract.build(lu)
     add_node("orand", "AND", nil, "", { canonical = "orand" })
     ----------------------------------------
     -- Can we satisfy this AND node that comes right before an OR?
+
+    ----------------------------------------
+    add_node("cost-unit", "AND", nil, "", { canonical = "cost", cost = 1 })
+    ----------------------------------------
+    -- Can we make something more expensive?
 
     ----------------------------------------------------------------------
     -- Extra

@@ -12,12 +12,12 @@ randomizations.rebuild_tech_tree = function()
     -- Special py fixes
     if mods["pyalternativeenergy"] then
         -- Force icons of recipes to be their sole result
-        for _, recipe in pairs(data.raw.recipe) do
+        --[[for _, recipe in pairs(data.raw.recipe) do
             if recipe.results ~= nil and #recipe.results == 1 then
                 local item_or_fluid
                 if recipe.results[1].type == "item" then
                 for item_class, _ in pairs(defines.prototypes.item) do
-                    if data.raw[item_class][recipe.results[1].name] ~= nil then
+                    if (data.raw[item_class] or {})[recipe.results[1].name] ~= nil then
                         item_or_fluid = data.raw[item_class][recipe.results[1].name]
                     end
                 end
@@ -29,7 +29,7 @@ randomizations.rebuild_tech_tree = function()
                 recipe.icons = item_or_fluid.icons
                 recipe.icon_size = item_or_fluid.icon_size
             end
-        end
+        end]]
     end
 
     -- Find science packs (used for determine "essential" techs)

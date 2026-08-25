@@ -74,4 +74,16 @@ dutils.is_stackable = function(item_prototype)
     return true
 end
 
+dutils.boiler_input_amount = function(boiler)
+    local input_fluid = data.raw.fluid[boiler.fluid_box.filter]
+    local energy_to_heat = (boiler.target_temperature - input_fluid.default_temperature) * util.parse_energy(input_fluid.heat_capacity or "1kJ")
+    return (60 * util.parse_energy(boiler.energy_consumption)) / energy_to_heat
+end
+
+dutils.boiler_output_amount = function(boiler)
+    local input_fluid = data.raw.fluid[boiler.fluid_box.filter]
+    local output_fluid = data.raw.fluid[boiler.output_fluid_box.filter]
+    return dutils.boiler_input_amount(boiler) * util.parse_energy(input_fluid.heat_capacity or "1kJ") / util.parse_energy(output_fluid.heat_capacity or "1kJ")
+end
+
 return dutils

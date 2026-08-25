@@ -822,7 +822,7 @@ local spec = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
-            val = "more"
+            val = "default"
         }
     },
     --[[inserter_base_hand_size = {
