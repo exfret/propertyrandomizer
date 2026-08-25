@@ -1267,12 +1267,47 @@ function concrete.build(lu, extra_params)
         local unlocking_techs = lu.recipe_to_techs[recipe.name]
         local ingredient_map = lu.mat_recipe_map.recipe[recipe.name].ingredients
 
+        -- dont_randomize is mainly for outside programs not to know to randomize this recipe
+        local dont_randomize = false
+        if recipe.hidden then
+            dont_randomize = true
+        end
+        local dont_randomize_categories = {
+            ["compost"] = true,
+            ["py-barreling"] = true,
+            ["py-unbarreling"] = true,
+            ["py-incineration"] = true,
+            ["py-runoff"] = true,
+            ["py-venting"] = true,
+            ["slaughterhouse"] = true,
+        }
+        for _, cat in pairs(recipe.categories or {"crafting"}) do
+            if dont_randomize_categories[cat] then
+                dont_randomize = true
+            end
+        end
+        -- py caging/uncaging recipes
+        if string.find(recipe.name, "caged") ~= nil or string.find(recipe.name, "uncaged") ~= nil then
+            -- Some "caged" recipes aren't actually about caging, so check that we actually get a thing caged
+            if recipe.results ~= nil and #recipe.results == 1 and string.find(recipe.results[1].name, "caged") ~= nil then
+                dont_randomize = true
+            end
+        end
+        -- Let's not mess with tholins
+        if string.find(recipe.name, "tholins") ~= nil then
+            dont_randomize = true
+        end
+        -- For some reason, methanol canisters are their own special thing
+        if string.find(recipe.name, "methanol") ~= nil and string.find(recipe.name, "canister") ~= nil then
+            dont_randomize = true
+        end
+
         ----------------------------------------
-        add_node("recipe", "AND")
+        add_node("recipe", "AND", nil, nil, { dont_randomize = dont_randomize })
         ----------------------------------------
         -- Can we perform this recipe?
 
-        add_edge("recipe-category", rcat_name, { cost = recipe.energy_required or 0.5 })
+        add_edge("recipe-category", rcat_name, { amount = recipe.energy_required or 0.5 })
         if recipe.enabled == false then
             add_edge("recipe-unlock")
         end
@@ -1282,11 +1317,13 @@ function concrete.build(lu, extra_params)
                 local mat = gutils.deconstruct(mat_key)
                 local mat_type = mat.type
                 local mat_name = mat.name
+                local fluid_name
                 if mat.type == "fluid" then
                     mat_type = "fluid-temperature-range"
+                    fluid_name = gutils.deconstruct(mat_name).type
                 end
                 -- Doesn't account for if a recipe has ingredients for the same fluid with different temperature ranges
-                local ing_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = mat.name})
+                local ing_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = fluid_name or mat.name})
                 add_edge(mat_type, mat_name, {
                     inds = inds,
                     amount = ing_amount,

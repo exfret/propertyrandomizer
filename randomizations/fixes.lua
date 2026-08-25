@@ -1,6 +1,7 @@
 -- File for any last-minute fixes in the randomization process that may be needed
 
 local locale_utils = require("lib/locale")
+local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/init")
 local top = require("lib/graph/consistent-sort")
@@ -221,6 +222,7 @@ randomizations.rebuild_tech_tree = function()
             end
 
             -- Check if we just enabled recipe (see above), and if so we no longer need the tech
+            -- (Or if it was enabled from the start)
             if recipe.enabled == false then
                 data:extend({
                     new_tech
@@ -749,14 +751,15 @@ randomizations.add_old_versions = function()
                     }
                     item_copy.icon = nil
                 end
-                if data.raw[entity.type][entity.name].fast_replaceable_group == nil then
-                    data.raw[entity.type][entity.name].fast_replaceable_group = "old-" .. entity.name
+                local curr_entity = dutils.get_prot("entity", entity.name)
+                if curr_entity.fast_replaceable_group == nil then
+                    curr_entity.fast_replaceable_group = "old-" .. entity.name
                     copy.fast_replaceable_group = "old-" .. entity.name
                 end
                 item_copy.order = (data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
                 item_copy.subgroup = data.raw[old_data_item.type][old_data_item.name].subgroup
-                copy.order = (data.raw[entity.type][entity.name].order or "z-" .. data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
-                copy.subgroup = data.raw[entity.type][entity.name].subgroup
+                copy.order = (curr_entity.order or "z-" .. data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
+                copy.subgroup = curr_entity.subgroup
                 data:extend({
                     copy,
                     item_copy,

@@ -1,6 +1,7 @@
 -- TODO: Split off explorer panel into seperate file.
 
---[[local mod_gui = require("__core__.lualib.mod-gui")
+local mod_gui = require("__core__.lualib.mod-gui")
+local util = require("util")
 
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
@@ -24,7 +25,7 @@ local function load_dep_graph()
     end
     storage.sort_info = top.sort(storage.graph)
 
-    storage.tech_graph = storage.graph
+    storage.tech_graph = util.table.deepcopy(storage.graph)
     local tech_graph = storage.tech_graph
     for _, node in pairs(tech_graph.nodes) do
         if node.type == "technology" and not game.forces.player.technologies[node.name].researched then
@@ -32,6 +33,35 @@ local function load_dep_graph()
         end
     end
     storage.tech_sort_info = top.sort(tech_graph)
+
+    storage.science_pack_graph = util.table.deepcopy(storage.graph)
+    storage.science_pack_name = {}
+    storage.science_pack_crafted = {}
+    local science_graph = storage.science_pack_graph
+    for _, node in pairs(science_graph.nodes) do
+        if node.type == "item" then
+            local is_science_pack = false
+            -- Determine if it's a science pack via whether it has a science-pack-set-science dep
+            for _, depnode in pairs(gutils.depnodes(science_graph, node)) do
+                if depnode.type == "science-pack-set-science" then
+                    is_science_pack = true
+                end
+            end
+            -- Check if the science pack was crafted in case we're being called by configuration change and not on init
+            if is_science_pack and not storage.science_pack_crafted[node.name] then
+                storage.science_pack_name[node.name] = true
+                -- Cut off pre
+                local edges_to_remove = {}
+                for pre, _ in pairs(node.pre) do
+                    table.insert(edges_to_remove, pre)
+                end
+                for _, pre in pairs(edges_to_remove) do
+                    gutils.remove_edge(science_graph, pre)
+                end
+            end
+        end
+    end
+    storage.science_pack_sort_info = top.sort(science_graph)
 end
 
 script.on_init(function(event)
@@ -53,38 +83,50 @@ script.on_init(function(event)
         break
     end
 
-    if script.active_mods["pyalternativeenergy"] and slot_to_trav ~= nil then
+    if script.active_mods["pyalternativeenergy"] then
         if remote.interfaces["freeplay"] ~= nil and remote.interfaces["freeplay"]["get_created_items"] ~= nil and remote.interfaces["freeplay"]["set_created_items"] ~= nil then
             local items = remote.call("freeplay", "get_created_items")
             local ship_items = remote.call("freeplay", "get_ship_items")
             local debris_items = remote.call("freeplay", "get_debris_items")
             local respawn_items = remote.call("freeplay", "get_respawn_items")
 
-            for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
-                local new_item_list = {}
-                local old_item_names = {}
-                for item_name, amount in pairs(item_list) do
-                    local new_item_name
-                    local slot_key = gutils.key("item", item_name)
-                    local trav_key = storage.slot_to_trav[slot_key]
-                    -- Excluded from first pass
-                    if trav_key == nil then
-                        new_item_name = item_name
-                    else
-                        local trav = gutils.deconstruct(trav_key)
-                        local suffix = "-trav"
-                        new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
+            if slot_to_trav ~= nil then
+                for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
+                    local new_item_list = {}
+                    local old_item_names = {}
+                    for item_name, amount in pairs(item_list) do
+                        local new_item_name
+                        local slot_key = gutils.key("item", item_name)
+                        local trav_key = storage.slot_to_trav[slot_key]
+                        -- Excluded from first pass
+                        if trav_key == nil then
+                            new_item_name = item_name
+                        else
+                            local trav = gutils.deconstruct(trav_key)
+                            local suffix = "-trav"
+                            new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
+                        end
+                        new_item_list[new_item_name] = amount
+                        table.insert(old_item_names, item_name)
                     end
-                    new_item_list[new_item_name] = amount
-                    table.insert(old_item_names, item_name)
-                end
-                for _, item_name in pairs(old_item_names) do
-                    item_list[item_name] = nil
-                end
-                for k, v in pairs(new_item_list) do
-                    item_list[k] = v
+                    for _, item_name in pairs(old_item_names) do
+                        item_list[item_name] = nil
+                    end
+                    for k, v in pairs(new_item_list) do
+                        item_list[k] = v
+                    end
                 end
             end
+
+            -- Add extra items
+            items["burner-mining-drill"] = 20
+            items["stone-furnace"] = 20
+            items["transport-belt"] = 200
+            items["burner-inserter"] = 50
+            items["underground-belt"] = 20
+            items["assembling-machine-1"] = 5
+            items["pipe"] = 50
+            items["small-electric-pole"] = 50
 
             remote.call("freeplay", "set_created_items", items)
             remote.call("freeplay", "set_ship_items", ship_items)
@@ -208,6 +250,25 @@ script.on_event(defines.events.on_post_entity_died, function(event)
     end
 end)
 
+script.on_nth_tick(10, function(event)
+    for _, surface in pairs(game.surfaces) do
+        -- Don't scan through all surfaces each time
+        -- This is a lazy way of doing it, sure, but I don't care
+        -- Also just sidestep the issue outside of space age by always doing nauvis
+        if surface.name == "nauvis" or math.random(1, 6) == 1 then
+            local prod_stats = game.forces.player.get_item_production_statistics(surface)
+            for science_name, _ in pairs(storage.science_pack_name) do
+                local amount_produced = prod_stats.get_input_count(science_name)
+                if amount_produced > 0 and not storage.science_pack_crafted[science_name] then
+                    storage.science_pack_crafted[science_name] = true
+                    local new_edge = gutils.add_edge(storage.science_pack_graph, gutils.key("true", ""), gutils.key("item", science_name))
+                    storage.science_pack_sort_info = top.sort(storage.science_pack_graph, storage.science_pack_sort_info, {storage.science_pack_graph.nodes[new_edge.start], storage.science_pack_graph.nodes[new_edge.stop]})
+                end
+            end
+        end
+    end
+end)
+
 script.on_nth_tick(1, function(event)
     if storage.combat_robot_entity_to_assign ~= nil then
         for _, spec in pairs(storage.combat_robot_entity_to_assign) do
@@ -220,4 +281,4 @@ script.on_nth_tick(1, function(event)
         -- Tell them about the randomizer panel
         game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")
     end
-end)]]
+end)

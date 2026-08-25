@@ -9,3 +9,6 @@ __pycache__/
 
 # Python virtual environment
 .venv/
+
+# Any logs
+factorio-current.log

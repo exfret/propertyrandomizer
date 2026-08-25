@@ -26,7 +26,7 @@ do return end]]
 
 --[[local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
-local new_recipes = require("lib/cost/rotated-bases/semantic_slots_v22_followup_degree4_angles_15_40_65_integerized")
+local new_recipes = require("lib/cost/rotated-bases/FINAL_RANDOMIZED_RECIPES_seed202608250324")
 local fixed_recipes = {}
 for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
     for _, machine in pairs(data.raw[machine_class]) do
@@ -164,7 +164,7 @@ randomizations.rebuild_tech_tree()
 
 do return end]]
 
-local cost = require("lib/cost/simplex-lp-export")
+--[[local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
 local gutils = require("lib/graph/graph-utils")
@@ -228,7 +228,9 @@ for i = 1, #packs_in_order do
             end
         end
         local path = top.path(logic.graph, {science_ind}, sort_info)
+        log("PATH DUMP")
         log(serpent.dump(path))
+        log("SORT INFO DUMP")
         log(serpent.dump(sort_info))
     else
         local pyrrhic_ind
@@ -240,15 +242,17 @@ for i = 1, #packs_in_order do
             end
         end
         local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
+        log("PATH DUMP")
         log(serpent.dump(path))
+        log("SORT INFO DUMP")
         log(serpent.dump(sort_info))
     end
-    log("SORT COMPLETE")
     --cost.export_to_log(sort_info, i)
 end
+log("GRAPH DUMP")
 log(serpent.dump(logic.graph))
---log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
-do return end
+log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+do return end]]
 
 
 
@@ -351,7 +355,7 @@ local function smuggle_info()
     local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     slot_to_trav_selection_tool.type = "selection-tool"
     slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
-    if type(unified_info) == "table" then
+    if type(unified_info) == "table" and unified_info.first_pass_info ~= nil then
         slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.first_pass_info.slot_to_trav)}
     else
         slot_to_trav_selection_tool.select.entity_type_filters = {}

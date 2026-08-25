@@ -368,6 +368,8 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
     local style_to_use = "randomizer_slot_button_pink"
     if next(storage.tech_sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
         style_to_use = "randomizer_slot_button_green"
+    elseif next(storage.science_pack_sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
+        style_to_use = "randomizer_slot_button_yellow"
     elseif next(storage.sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
         style_to_use = "randomizer_slot_button_red"
     end

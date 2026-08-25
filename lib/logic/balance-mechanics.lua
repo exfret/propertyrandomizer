@@ -114,6 +114,28 @@ balance_mechanics.build = function(lu)
     end
 
     ----------------------------------------
+    add_node("balance-mechanics-pipe", "OR", nil, "", { mechanic = true, important = true })
+    ----------------------------------------
+    -- Can we use some sort of pipe?
+
+    for _, pipe in pairs(data.raw["pipe"]) do
+        add_edge("entity-operate", pipe.name, {
+            abilities = table.deepcopy(balance_abilities),
+        })
+    end
+
+    ----------------------------------------
+    add_node("balance-mechanics-pipe-to-ground", "OR", nil, "", { mechanic = true, important = true })
+    ----------------------------------------
+    -- Can we use some sort of pipe-to-ground?
+
+    for _, pipe in pairs(data.raw["pipe-to-ground"]) do
+        add_edge("entity-operate", pipe.name, {
+            abilities = table.deepcopy(balance_abilities),
+        })
+    end
+
+    ----------------------------------------
     add_node("balance-mechanics-storage", "OR", nil, "", { mechanic = true, important = true })
     ----------------------------------------
     -- Can we get some sort of storage

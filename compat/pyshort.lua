@@ -18,6 +18,10 @@ for class, _ in pairs(defines.prototypes.item) do
         end
     end
 end
+-- Blacklist productivity modules in py; too sensitive
+randomization_info.options.first_pass.blacklist[key("item", "productivity-module")] = true
+randomization_info.options.first_pass.blacklist[key("item", "productivity-module-2")] = true
+randomization_info.options.first_pass.blacklist[key("item", "productivity-module-3")] = true
 
 local short_py_cost_table_additions = {
     ["fluid-bitumen"] = 0.2,
@@ -30,7 +34,7 @@ for k, v in pairs(short_py_cost_table_additions) do
     randomization_info.options.cost.default_cost_table[k] = v
 end
 
-for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01"}) do
+for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01", "py-burner", "py-gas-vent", "py-sinkhole", "compost-plant-mk01"}) do
     local machine = dutils.get_prot("entity", machine_name)
     if machine ~= nil then
         local machine_cats = machine.crafting_categories or {"crafting"}

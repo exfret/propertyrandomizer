@@ -7,26 +7,14 @@
     * Will only be an issue if we do recipe rando again
 
 NECESSARY:
- - Expansion of logic
-    - Check nexelit mines and potential other weirdnesses (anything involving "worker's food" etc. probably)
-       * This probably can be avoided for the preview!
-    - Hidden recipe logic (fixed recipes should be possible even if hidden or disabled; make them depend on entity-operate for the given buildings, or rather just have a special recipe-fixed node!)
-       * Remove code that unhides fixed recipes
-    - Some more compat, like not having big electric poles be the way you get electricity
-    - mining-with-fluid unlock should still be in logic for archipelago compat
-    - blacklist smart farms from rocket silo nodes
-    - Investigate bitumen seeps
- - Fluid temperatures in cost calculation matrix (use fake recipes/items for ranges)
  - Put vatbrains on critical path (they're soft required)
 
 MEDIUM PRIORITY:
- - Give burner/vent/sinkhole for voiding items from the start of game (balancing some things like stone/kerogen much harder otherwise)
- - Add fluid boxes; don't include special fluid box tracking in recipe category anymore (add as needed); except for small special things like assembling machines and barreling (anything else?)
  - Finish randomizations
     - Try fluid orand randomization
+       - Or maybe just include fluids with item rando?
     - Fuel category randomization
-       - Add burnt results randomization to everything
-    - Fluid required for patches
+       - Defer
  - Final touches for Frodo playthrough
     - Create a modpack including customized recommended QOL mods
     - Don't randomize slaughterhouse recipe category (CHECK)

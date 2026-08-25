@@ -1,9 +1,71 @@
 local categories = require("helper-tables/categories")
+local dutils = require("lib/data-utils")
+local pipe_conns = require("lib/pipe-conns")
 
 if mods["pyalternativeenergy"] then
     -- Make assembling machines painfully early so they don't get pushed late
     data.raw.recipe["assembling-machine-1"].enabled = true
-    data.raw.recipe["assembling-machine-1"].ingredients = {{type = "item", name = "iron-ore", amount = 8}}
+    data.raw.recipe["assembling-machine-1"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+
+    -- Same with burners/sinkhole/exhaust pipe
+    for _, voider in pairs({"py-burner", "py-gas-vent", "py-sinkhole"}) do
+        data.raw.recipe[voider].enabled = true
+        data.raw.recipe[voider].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+    end
+
+    -- Give all burner energy sources burnt result inventory
+    for _, entity in pairs(lu.entities) do
+        if categories.energy_sources_input[entity.type] ~= nil then
+            for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
+                local energy_source = entity[energy_prop]
+                if energy_source ~= nil and energy_source.type == "burner" then
+                    if energy_source.burnt_inventory_size == 0 or energy_source.burnt_inventory_size == nil then
+                        energy_source.burnt_inventory_size = 1
+                    end
+                end
+            end
+        end
+    end
+
+    -- Add pipe connections to assembling machines
+    for _, machine in pairs(data.raw["assembling-machine"]) do
+        machine.fluid_boxes = machine.fluid_boxes or {}
+        local available = pipe_conns.get_available_pipe_connections(machine)
+        -- Alternately add input and output boxes
+        -- Keep three fluid boxes free; one for input, one for output, and one for energy source
+        for ind = 1, #available - 3 do
+            local conn = available[ind]
+            local input_type = "input"
+            if ind % 2 == 0 then
+                input_type = "output"
+            end
+            conn.flow_direction = input_type
+            table.insert(machine.fluid_boxes, {
+                volume = 100,
+                pipe_connections = { conn },
+                production_type = input_type,
+                conn,
+            })
+        end
+    end
+
+    -- Make furnaces crafting machines
+    -- I think this is really all that's needed?
+    for _, furnace_name in pairs({"stone-furnace", "steel-furnace", "electric-furnace"}) do
+        local furnace = data.raw.furnace[furnace_name]
+        furnace.type = "assembling-machine"
+        data.raw.furnace[furnace_name] = nil
+        data:extend({
+            furnace
+        })
+    end
+
+    -- Enable hidden recipes; these are all now crafted by machines that should grant you the ability to do them immediately anyways
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.hidden then
+            recipe.enabled = true
+        end
+    end
 end
 
 -- Make fixed recipes non-hidden and enabled
@@ -37,8 +99,6 @@ for _, tech in pairs(data.raw.technology) do
 end
 
 -- Add input fluid boxes to all mining drills that don't already have them
-
-local pipe_conns = require("lib/pipe-conns")
 
 -- CRITICAL TODO: This is sometimes putting the pipe connection inside the machine?
 for _, drill in pairs(data.raw["mining-drill"]) do
