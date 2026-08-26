@@ -65,10 +65,12 @@ function compat.build(graph, lu)
                 local mat = gutils.deconstruct(mat_key)
                 local mat_type = mat.type
                 local mat_name = mat.name
+                local fluid_name
                 if mat.type == "fluid" then
                     mat_type = "fluid-temperature-range"
+                    fluid_name = gutils.deconstruct(mat_name).type
                 end
-                local result_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = mat.name})
+                local result_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = fluid_name or mat.name})
                 add_edge(mat_type, mat_name, {
                     inds = inds,
                     amount = result_amount,

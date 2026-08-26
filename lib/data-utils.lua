@@ -82,7 +82,8 @@ end
 
 dutils.boiler_output_amount = function(boiler)
     local input_fluid = data.raw.fluid[boiler.fluid_box.filter]
-    local output_fluid = data.raw.fluid[boiler.output_fluid_box.filter]
+    -- If no filter is set, but input fluid box filter is set, then we're getting the input fluid out anyways
+    local output_fluid = data.raw.fluid[boiler.output_fluid_box.filter or boiler.fluid_box.filter]
     return dutils.boiler_input_amount(boiler) * util.parse_energy(input_fluid.heat_capacity or "1kJ") / util.parse_energy(output_fluid.heat_capacity or "1kJ")
 end
 

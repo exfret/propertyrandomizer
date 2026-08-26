@@ -115,7 +115,9 @@ logic.type_info = {}
 -- Needed for edge context info
 logic.edge_info = {}
 
-logic.build = function(ignore_balance_nodes)
+logic.build = function(ignore_balance_nodes, extra_params)
+    extra_params = extra_params or {}
+
     --log("Loading lookups")
     lu.load_lookups()
     -- Just make it a global
@@ -142,7 +144,7 @@ logic.build = function(ignore_balance_nodes)
 ----------------------------------------------------------------------------------------------------
 
     -- The following nodes represent "concrete" types of things; usually there is a related prototype to point to
-    concrete.build(lu)
+    concrete.build(lu, extra_params)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

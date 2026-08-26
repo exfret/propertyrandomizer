@@ -1,6 +1,6 @@
 {
   "active_rows": [],
-  "flow_extra_row_count": 1,
+  "flow_extra_row_count": 0,
   "infeasible_requirements": [
     {
       "amount": 1.0,
@@ -15,9 +15,9 @@
   "objective": null,
   "requirements": [
     {
-      "amount": 1,
+      "amount": 1.0,
       "key": "item: automation-science-pack",
-      "material_index": 104,
+      "material_index": 1753,
       "name": "automation-science-pack"
     }
   ],
@@ -25,9 +25,9 @@
     "name": "automation-science-pack",
     "requirements": [
       {
-        "amount": 1,
+        "amount": 1.0,
         "key": "item: automation-science-pack",
-        "material_index": 104,
+        "material_index": 1753,
         "name": "automation-science-pack"
       }
     ],

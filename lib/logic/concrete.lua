@@ -162,7 +162,7 @@ function concrete.build(lu, extra_params)
 
         local entity_cost = constants.cost.per_entity_cost
         ----------------------------------------
-        add_node("entity", "OR", nil, nil, { cost = entity_cost})
+        add_node("entity", "OR", nil, nil, { cost = entity_cost })
         ----------------------------------------
         -- Can we encounter this entity in the wild?
 
@@ -179,6 +179,7 @@ function concrete.build(lu, extra_params)
                     add_edge("room-autoplace", room_key, {
                         entity = entity.name,
                         abilities = { [1] = true },
+                        amount = 0, -- Zero amount to trigger the creation of this entity as an OR node
                     }) -- Being from a room leads to isolatability
                 end
             end
@@ -234,7 +235,8 @@ function concrete.build(lu, extra_params)
         -- Check if we can get access this through it being our character
         if entity.type == "character" then
             add_edge("entity-character", entity.name, {
-                abilities = { [1] = true } -- Characters are always "local"
+                abilities = { [1] = true }, -- Characters are always "local"
+                amount = 0,
             })
         end
 
@@ -327,6 +329,7 @@ function concrete.build(lu, extra_params)
         -- TODO: Better operability check!
         --if lu.operable_entities[entity.name] then
             local operation_cost = 0
+            local slot_additional_operation_cost = 0
             if entity.collision_box ~= nil then
                 local width = math.ceil(entity.collision_box[2][1] - entity.collision_box[1][1])
                 local height = math.ceil(entity.collision_box[2][2] - entity.collision_box[1][2])
@@ -335,12 +338,23 @@ function concrete.build(lu, extra_params)
             operation_cost = operation_cost + constants.cost.per_building_operation_cost
             if entity.type == "character" then
                 operation_cost = operation_cost + constants.cost.character_operation_cost
+                slot_additional_operation_cost = slot_additional_operation_cost + constants.cost.slot_additional_character_operation_cost
+            end
+
+            -- Check for burner energy source
+            if categories.energy_sources_input[entity.type] then
+                for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
+                    local energy_source = entity[energy_prop]
+                    if energy_source ~= nil and energy_source.type == "burner" then
+                        operation_cost = operation_cost + constants.cost.burner_energy_source_penalty
+                    end
+                end
             end
 
             -- TODO: extra operation cost for entities that require a character? (Like cars)
 
             ----------------------------------------
-            add_node("entity-operate", "AND", nil, nil, { cost = operation_cost })
+            add_node("entity-operate", "AND", nil, nil, { cost = operation_cost, slot_additional_cost = slot_additional_operation_cost })
             ----------------------------------------
             -- Can we operate this entity (ensure it's heated, powered, etc.)?
 
@@ -362,7 +376,10 @@ function concrete.build(lu, extra_params)
                 for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
                     local energy_source = entity[energy_prop]
                     -- TODO: Check for keys more than just energy_usage (like consumption)
-                    local energy_amount = (60 * util.parse_energy(entity.energy_usage or "0J"))
+                    local energy_amount = 60 * util.parse_energy(entity.energy_usage or entity.energy_consumption or "0J")
+                    if energy_amount == 0 then
+                        energy_amount = nil
+                    end
                     if energy_source == nil or energy_source.type == "void" then
                         add_edge("energy-source-void", "")
                     elseif energy_source.type == "burner" then
@@ -390,7 +407,12 @@ function concrete.build(lu, extra_params)
             end
             if categories.fluid_required[entity.type] then
                 -- Fluid amounts are defined in the entity-operate-fluid node
-                add_edge("entity-operate-fluid", nil, { amount = 1 })
+                local amount_to_use
+                -- Costs only implemented for boilers and generators now
+                if entity.type == "boiler" or entity.type == "generator" then
+                    amount_to_use = 1
+                end
+                add_edge("entity-operate-fluid", nil, { amount = amount_to_use })
             end
             -- Thrusters need two specific fluids (AND), not a generic fluid requirement
             if entity.type == "thruster" then
@@ -442,7 +464,7 @@ function concrete.build(lu, extra_params)
                     -- TODO: boiler fluid amounts calculation
                     if entity.fluid_box.filter ~= nil then
                         local fluid_amount = 0
-                        if entity.target_temperature ~= nil and entity.output_fluid_box.filter ~= nil and entity.fluid_box.filter ~= nil then
+                        if entity.target_temperature ~= nil and entity.fluid_box.filter ~= nil then
                             fluid_amount = dutils.boiler_input_amount(entity)
                         end
                         add_edge("fluid", entity.fluid_box.filter, { amount = fluid_amount })
@@ -465,7 +487,7 @@ function concrete.build(lu, extra_params)
                     -- TODO: Implement fluid amounts
                     -- Generators can have filtered fluid_box or burn any fuel fluid
                     if entity.fluid_box.filter ~= nil then
-                        add_edge("fluid", entity.fluid_box.filter)
+                        add_edge("fluid", entity.fluid_box.filter, { amount = 60 * entity.fluid_usage_per_tick })
                     elseif entity.burns_fluid then
                         -- Any fluid with fuel_value works
                         add_edge("energy-source-fluid", "")
@@ -530,12 +552,14 @@ function concrete.build(lu, extra_params)
                     })]]
                 end
 
-                add_edge("resource-category", lutils.mcat_name(entity), { amount = 1 / entity.minable.mining_time })
+                add_edge("resource-category", lutils.mcat_name(entity), { amount = entity.minable.mining_time })
             else
                 add_edge("entity", entity.name, {
                     abilities = { [2] = false },
                     amount = 1,
                 })
+                -- TODO: Don't hardcode characters?
+                add_edge("entity-operate", "character", { amount = entity.minable.mining_time / data.raw.character.character.mining_speed })
             end
         end
 
@@ -839,7 +863,7 @@ function concrete.build(lu, extra_params)
             local fluid_temp_name = key(fluid.name, tostring(temp))
 
             ----------------------------------------
-            add_node("fluid-temperature", "AND", nil, fluid_temp_name)
+            add_node("fluid-temperature", "AND", nil, fluid_temp_name, { cost = constants.cost.per_fluid_cost })
             ----------------------------------------
             -- Can we obtain this fluid at this given temperature point?
             -- Checks ability to create it and to hold it
@@ -910,14 +934,14 @@ function concrete.build(lu, extra_params)
                 for entity_name, output_fluid in pairs(lu.entity_output_fluids) do
                     if output_fluid == fluid_temp_name then
                         -- TODO: Amounts for things other than boiler
-                        local fluid_amount = 0
+                        local fluid_amount
                         local entity = dutils.get_prot("entity", entity_name)
                         if entity.type == "boiler" then
-                            if entity.target_temperature ~= nil and entity.output_fluid_box.filter ~= nil and entity.fluid_box.filter ~= nil then
+                            if entity.target_temperature ~= nil and entity.fluid_box.filter ~= nil then
                                 fluid_amount = dutils.boiler_output_amount(entity)
                             end
                         end
-                        add_edge("entity-operate", entity_name)
+                        add_edge("entity-operate", entity_name, { amount = fluid_amount })
                     end
                 end
             end
@@ -932,7 +956,7 @@ function concrete.build(lu, extra_params)
                     })
                 end
             end
-
+ 
             ----------------------------------------
             add_node("fluid-craft-temperature", "OR", nil, fluid_temp_name)
             ----------------------------------------
@@ -1075,6 +1099,7 @@ function concrete.build(lu, extra_params)
         add_node("item", "OR", nil, item.name, {
             item = item.name,
             mechanic = should_be_mechanic,
+            cost = constants.cost.per_item_cost,
         })
         ----------------------------------------
         -- Can we obtain this item?
@@ -1093,9 +1118,13 @@ function concrete.build(lu, extra_params)
                 else
                     minable_amount = minable.count or 1
                 end
+                -- Ignore tiles for now
+                if minable_thing.type == "tile-mine" then
+                    minable_amount = nil
+                end
                 add_edge(minable_thing.type, minable_prot.name, {
                     inds = inds,
-                    amount = minable_amount
+                    amount = minable_amount,
                 })
             end
         end
@@ -1105,6 +1134,7 @@ function concrete.build(lu, extra_params)
         if lu.weight[item.name] <= rocket_lift_weight then
             add_edge("item-deliver", item.name, {
                 abilities = { [1] = false },
+                amount = 1,
                 -- TODO: Deliver cost
             })
         end
@@ -1115,6 +1145,7 @@ function concrete.build(lu, extra_params)
                 add_edge("item", spoiling_item, {
                     spoil_ticks = item_prot.spoil_ticks,
                     amount = 1,
+                    -- Note: When doing OR-OR subdivision for cost analysis, make sure this cost goes on that AND node; costs don't technically go on edges
                     slot_additional_cost = constants.cost.slot_spoil_additional_cost_fixed + constants.cost.slot_spoil_additional_cost_per_second * item_prot.spoil_ticks / 60,
                 })
             end
@@ -1159,7 +1190,7 @@ function concrete.build(lu, extra_params)
 
         if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
             ----------------------------------------
-            add_node("item-burn", "AND")
+            add_node("item-burn", "AND", nil, nil, { cost = constants.cost.burnt_result_additional_cost })
             ----------------------------------------
             -- Can we burn this item?
 
@@ -1422,7 +1453,21 @@ function concrete.build(lu, extra_params)
                 if crafters ~= nil then
                     for crafter_name, _ in pairs(crafters) do
                         local crafter_entity = dutils.get_prot("entity", crafter_name)
-                        add_edge("entity-operate", crafter_name, { amount = 1 / (crafter_entity.crafting_speed or 1) })
+                        local crafting_speed
+                        local base_name
+                        if string.len(crafter_entity.name) >= 6 then
+                            if string.sub(crafter_entity.name, -5, -3) == "-mk" then
+                                base_name = string.sub(crafter_entity.name, 1, -6)
+                            end
+                        end
+                        -- Assume pyAL buildings have crafting speed of 1
+                        -- TODO: Factor in higher mk speed bonus
+                        if base_name ~= nil and lu.py_operability_module_cats[base_name] ~= nil then
+                            crafting_speed = 1
+                        else
+                            crafting_speed = crafter_entity.crafting_speed
+                        end
+                        add_edge("entity-operate", crafter_name, { amount = crafting_speed or 1 })
                     end
                 end
             end
@@ -1453,7 +1498,7 @@ function concrete.build(lu, extra_params)
                 if drills ~= nil then
                     for drill_name, _ in pairs(drills) do
                         local drill = dutils.get_prot("entity", drill_name)
-                        add_edge("entity-operate", drill_name, { amount = 1 / drill.mining_speed })
+                        add_edge("entity-operate", drill_name, { amount = drill.mining_speed })
                     end
                 end
             end
@@ -1793,7 +1838,7 @@ function concrete.build(lu, extra_params)
             -- Requires: tile and compatible pump
 
             add_edge("tile")
-            add_edge("tile-fluid-pump")
+            add_edge("tile-fluid-pump", nil, { amount = 1 })
 
             ----------------------------------------
             add_node("tile-fluid-pump", "OR")
@@ -1803,7 +1848,8 @@ function concrete.build(lu, extra_params)
             local valid_pumps = lu.tile_valid_pumps[tile.name]
             if valid_pumps ~= nil then
                 for pump_name, _ in pairs(valid_pumps) do
-                    add_edge("entity-operate", pump_name)
+                    local pump = data.raw["offshore-pump"][pump_name]
+                    add_edge("entity-operate", pump_name, { amount = pump.pumping_speed })
                 end
             end
             -- If no valid pumps, this node has no prereqs and will be unsatisfiable

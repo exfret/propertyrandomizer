@@ -164,10 +164,65 @@ randomizations.rebuild_tech_tree()
 
 do return end]]
 
---[[local cost = require("lib/cost/simplex-lp-export")
+local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
 local gutils = require("lib/graph/graph-utils")
+randomization_info = {
+    warnings = {},
+    touched = {},
+    options = {
+        cost = {},
+        logic = {},
+        unified = {},
+        first_pass = {},
+    },
+}
+data:extend({
+    {
+        type = "mod-data",
+        name = "propertyrandomizer-reachability-data",
+        data = {
+            ["reachable"] = 1,
+            ["total"] = 1,
+        }
+    }
+})
+
+local unified_info
+local function smuggle_info()
+    log("Smuggling control info")
+
+    logic.build(true)
+
+    local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    warnings_selection_tool.type = "selection-tool"
+    warnings_selection_tool.name = "propertyrandomizer-warnings"
+    warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
+    local graph_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    graph_selection_tool.type = "selection-tool"
+    graph_selection_tool.name = "propertyrandomizer-graph"
+    graph_selection_tool.select.entity_type_filters = {serpent.dump(logic.graph)}
+    local logic_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    logic_selection_tool.type = "selection-tool"
+    logic_selection_tool.name = "propertyrandomizer-logic"
+    logic_selection_tool.select.entity_type_filters = {serpent.dump(logic.type_info)}
+    local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    slot_to_trav_selection_tool.type = "selection-tool"
+    slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
+    if type(unified_info) == "table" and unified_info.first_pass_info ~= nil then
+        slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.first_pass_info.slot_to_trav)}
+    else
+        slot_to_trav_selection_tool.select.entity_type_filters = {}
+    end
+    data:extend({
+        warnings_selection_tool,
+        graph_selection_tool,
+        logic_selection_tool,
+        slot_to_trav_selection_tool,
+    })
+end
+
 local packs_in_order = {
     "automation-science-pack",
     "py-science-pack-1",
@@ -182,9 +237,26 @@ local packs_in_order = {
     "space-science-pack",
     "full-pyrrhic-victory",
 }
+local payback_times = {
+    30 * 60,
+    2 * 3600,
+    4 * 3600,
+    10 * 3600,
+    10 * 3600,
+    15 * 3600,
+    25 * 3600,
+    35 * 3600,
+    50 * 3600,
+    50 * 3600,
+    50 * 3600,
+    -- Payback time goes down since you're almost done
+    20 * 3600,
+}
 for i = 1, #packs_in_order do
     log("I IS THIS VALUE " .. i)
-    logic.build()
+    logic.build(true, { payback_time = payback_times[i] })
+    log("GRAPH DUMP")
+    log(serpent.dump(logic.graph))
     local science_pack = packs_in_order[i]
     if science_pack ~= "full-pyrrhic-victory" then
         --gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
@@ -247,12 +319,12 @@ for i = 1, #packs_in_order do
         log("SORT INFO DUMP")
         log(serpent.dump(sort_info))
     end
-    --cost.export_to_log(sort_info, i)
+    local simplex_export = require("lib/cost/simplex-lp-export")
+    simplex_export.export_to_log(sort_info, i)
 end
-log("GRAPH DUMP")
-log(serpent.dump(logic.graph))
 log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
-do return end]]
+smuggle_info()
+do return end
 
 
 

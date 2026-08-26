@@ -4,6 +4,7 @@
 local collision_mask_util = require("__core__/lualib/collision-mask-util")
 
 local lib_name = "lib"
+local constants = require("helper-tables/constants")
 local categories = require("helper-tables/categories")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
@@ -95,7 +96,7 @@ function abstract.build(lu)
         end
 
         ----------------------------------------
-        add_node("room-autoplace", "OR", nil, room_key)--, { mechanic = true })
+        add_node("room-autoplace", "AND", nil, room_key)--, { mechanic = true })
         ----------------------------------------
         -- Can we see things generated on this planet?
         -- Mostly here for technical reasons so that entity autoplace randomization works better

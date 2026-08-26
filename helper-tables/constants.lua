@@ -107,12 +107,22 @@ local constants = {
         -- To cover fixed costs of logistics to a building, like belts/inserters (per second)
         per_building_operation_cost = 0.025,
         -- How much your time is worth (per second)
-        character_operation_cost = 30,
+        character_operation_cost = 1,
+        slot_additional_character_operation_cost = 30,
+        -- Floor on fluid cost to represent logistical complexity of a lot of fluid, even if it's otherwise free
+        per_fluid_cost = 0.001,
+        -- Floor on item cost to represent logistical complexity of many items, even if they're otherwise free
+        per_item_cost = 0.1,
+        -- Complexity cost for dealing with having to burn something
+        burnt_result_additional_cost = 2,
+        -- TODO: Spoilage costs not tested yet
         -- Spoilage costs are only for calculating slot cost
         -- Additional fixed cost from nuisance of getting something through spoiling
         slot_spoil_additional_cost_fixed = 0.2,
         -- Variable cost per second of having to wait for something to spoil
         slot_spoil_additional_cost_per_second = 0.0167,
+        -- Penalty to operation for something having a burner energy source
+        burner_energy_source_penalty = 0.1,
     },
 }
 
