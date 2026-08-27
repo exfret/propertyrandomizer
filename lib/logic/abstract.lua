@@ -21,7 +21,9 @@ local set_prot = builder.set_prot
 
 local abstract = {}
 
-function abstract.build(lu)
+function abstract.build(lu, extra_params)
+    extra_params = extra_params or {}
+
     ----------------------------------------------------------------------
     -- Room
     ----------------------------------------------------------------------
@@ -163,7 +165,7 @@ function abstract.build(lu)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric", "AND", nil, "", { canonical = "energy-source-electric", mechanic = true })
+    add_node("energy-source-electric", "AND", nil, "", { cost = extra_params.power_cost , canonical = "energy-source-electric", mechanic = true })
     ----------------------------------------
     -- Can we power an entity with an electric energy source?
 
@@ -258,12 +260,12 @@ function abstract.build(lu)
 
     for _, fluid in pairs(lu.fluids) do
         if fluid.fuel_value ~= nil and util.parse_energy(fluid.fuel_value) > 0 then
-            add_edge("fluid", fluid.name, {amount = 1 / util.parse_energy(fluid.fuel_value) })
+            add_edge("fluid", fluid.name, { amount = 1 / util.parse_energy(fluid.fuel_value) })
         end
     end
 
     ----------------------------------------
-    add_node("energy-source-heat", "AND", nil, "", { canonical = "energy-source-heat", mechanic = true })
+    add_node("energy-source-heat", "AND", nil, "", { cost = constants.cost.heat_multiplier * (extra_params.power_cost or 0), canonical = "energy-source-heat", mechanic = true })
     ----------------------------------------
     -- Can we deliver heat to entities?
 

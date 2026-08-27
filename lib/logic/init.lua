@@ -153,7 +153,7 @@ logic.build = function(ignore_balance_nodes, extra_params)
 ----------------------------------------------------------------------------------------------------
 
     -- The following nodes represent "abstract" types of things, like electricity, for which there is usually no specific prototype involved
-    abstract.build(lu)
+    abstract.build(lu, extra_params)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

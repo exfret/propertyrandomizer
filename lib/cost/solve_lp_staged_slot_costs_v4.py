@@ -32,7 +32,10 @@ LP semantics are taken directly from logic.graph:
   * there is NO special case that makes a cost-bearing source OR available
   * an explicitly present amount=0 edge into an OR is an intentional
     zero-cost/free-production marker; missing-amount edges remain ignored
-  * same-op edges are subdivided so the LP is strictly AND/OR bipartite
+  * an AND node with any AND fan-out is routed through one shared synthetic OR;
+    that OR carries the AND node's entire quantitative fan-out
+  * any OR -> OR edges created by that grouping are subdivided independently,
+    leaving the final LP strictly AND/OR bipartite
 
 For each target, two LPs are solved: one with traveler/ordinary row costs and
 one with slot row costs.  The traveler/ordinary formulation is:
@@ -763,11 +766,88 @@ def make_bipartite(
             )
         )
 
+    # An AND node represents one action.  If that action points directly to one
+    # or more AND nodes, do not give each AND->AND edge its own synthetic OR:
+    # that would give the row several independently-priced output states.
+    # Instead, give the source AND exactly one synthetic OR representing the
+    # action's completed output bundle, and move *all* of that AND's fan-out to
+    # the shared OR.
+    #
+    #     A(AND) --1--> A_out(OR) --X--> B(AND)
+    #                              --Y--> C(AND)
+    #                              --Z--> D(OR)
+    #
+    # The last edge is then OR->OR, which is safe to subdivide independently
+    # in the second pass below.
+    and_sources_with_and_fanout = {
+        edge.start
+        for edge in intermediate_edges
+        if out_nodes[edge.start].op == "AND"
+        and out_nodes[edge.stop].op == "AND"
+    }
+
+    fanout_or_for_and: dict[str, str] = {}
+    grouped_edges: list[GraphEdge] = []
+    and_and_edges_grouped = 0
+    and_fanout_edges_rerouted = 0
+
+    for source_key in sorted(and_sources_with_and_fanout):
+        mid = _synthetic_key("and_fanout_or", source_key)
+        if mid in out_nodes:
+            raise RuntimeError(f"Synthetic key collision {mid!r}")
+        fanout_or_for_and[source_key] = mid
+        out_nodes[mid] = GraphNode(
+            key=mid,
+            op="OR",
+            node_type=None,
+            name=None,
+            cost_present=False,
+            synthetic=True,
+            source=f"and-fanout:{source_key}",
+        )
+        grouped_edges.append(
+            GraphEdge(
+                key=f"and-fanout:{source_key}:bundle",
+                start=source_key,
+                stop=mid,
+                amount=1.0,
+                amount_present=True,
+                synthetic=True,
+                source=f"and-fanout:{source_key}",
+            )
+        )
+
+    for edge in intermediate_edges:
+        mid = fanout_or_for_and.get(edge.start)
+        if mid is None:
+            grouped_edges.append(edge)
+            continue
+
+        and_fanout_edges_rerouted += 1
+        if out_nodes[edge.stop].op == "AND":
+            and_and_edges_grouped += 1
+        grouped_edges.append(
+            GraphEdge(
+                key=edge.key,
+                start=mid,
+                stop=edge.stop,
+                amount=edge.amount,
+                amount_present=edge.amount_present,
+                synthetic=edge.synthetic,
+                source=edge.source,
+                slot_additional_cost=edge.slot_additional_cost,
+                slot_cost_present=edge.slot_cost_present,
+            )
+        )
+
+    # After the fan-out grouping there must be no AND->AND edges left.  The
+    # only possible same-op edges are OR->OR, including those created by moving
+    # an AND source's original AND->OR outputs behind its shared fan-out OR.
+    # Subdivide those independently as OR --X--> AND(0) --1--> OR.
     strict_edges: list[GraphEdge] = []
-    same_and = 0
     same_or = 0
 
-    for ordinal, edge in enumerate(intermediate_edges):
+    for ordinal, edge in enumerate(grouped_edges):
         src = out_nodes[edge.start]
         dst = out_nodes[edge.stop]
 
@@ -776,58 +856,37 @@ def make_bipartite(
             continue
 
         if src.op == "AND":
-            same_and += 1
-            mid = _synthetic_key("and_to_and_or", f"{ordinal}:{edge.key}")
-            if mid in out_nodes:
-                raise RuntimeError(f"Synthetic key collision {mid!r}")
-            out_nodes[mid] = GraphNode(
-                key=mid,
-                op="OR",
-                node_type=None,
-                name=None,
-                cost_present=False,
-                synthetic=True,
-                source=edge.key,
+            raise RuntimeError(
+                f"AND->AND edge remained after shared fan-out grouping: "
+                f"{edge.start!r} -> {edge.stop!r}"
             )
-            # A --X--> B  ==>  A --1--> M --X--> B
-            strict_edges.append(
-                GraphEdge(
-                    f"{edge.key}:a", edge.start, mid, 1.0, True, True, edge.key
-                )
+
+        same_or += 1
+        mid = _synthetic_key("or_to_or_and", f"{ordinal}:{edge.key}")
+        if mid in out_nodes:
+            raise RuntimeError(f"Synthetic key collision {mid!r}")
+        out_nodes[mid] = GraphNode(
+            key=mid,
+            op="AND",
+            node_type=None,
+            name=None,
+            cost=0.0,
+            slot_additional_cost=edge.slot_additional_cost,
+            cost_present=True,
+            slot_cost_present=edge.slot_cost_present,
+            synthetic=True,
+            source=edge.key,
+        )
+        strict_edges.append(
+            GraphEdge(
+                f"{edge.key}:a", edge.start, mid, edge.amount, True, True, edge.key
             )
-            strict_edges.append(
-                GraphEdge(
-                    f"{edge.key}:b", mid, edge.stop, edge.amount, True, True, edge.key
-                )
+        )
+        strict_edges.append(
+            GraphEdge(
+                f"{edge.key}:b", mid, edge.stop, 1.0, True, True, edge.key
             )
-        else:
-            same_or += 1
-            mid = _synthetic_key("or_to_or_and", f"{ordinal}:{edge.key}")
-            if mid in out_nodes:
-                raise RuntimeError(f"Synthetic key collision {mid!r}")
-            out_nodes[mid] = GraphNode(
-                key=mid,
-                op="AND",
-                node_type=None,
-                name=None,
-                cost=0.0,
-                slot_additional_cost=edge.slot_additional_cost,
-                cost_present=True,
-                slot_cost_present=edge.slot_cost_present,
-                synthetic=True,
-                source=edge.key,
-            )
-            # A --X--> B  ==>  A --X--> R --1--> B
-            strict_edges.append(
-                GraphEdge(
-                    f"{edge.key}:a", edge.start, mid, edge.amount, True, True, edge.key
-                )
-            )
-            strict_edges.append(
-                GraphEdge(
-                    f"{edge.key}:b", mid, edge.stop, 1.0, True, True, edge.key
-                )
-            )
+        )
 
     return out_nodes, strict_edges, {
         "or_cost_nodes_split": len(cost_or_nodes),
@@ -837,7 +896,11 @@ def make_bipartite(
         "missing_amount_edges_ignored": ignored_missing_amount,
         "explicit_zero_free_producer_edges": explicit_zero_free_producers,
         "explicit_zero_into_and_ignored": ignored_zero_into_and,
-        "same_and_edges_subdivided": same_and,
+        "and_sources_fanout_grouped": len(and_sources_with_and_fanout),
+        "and_and_edges_grouped": and_and_edges_grouped,
+        "and_fanout_edges_rerouted": and_fanout_edges_rerouted,
+        # Kept for compatibility with older matrix metadata readers.
+        "same_and_edges_subdivided": 0,
         "same_or_edges_subdivided": same_or,
         "strict_nonzero_edges": len(strict_edges),
     }
@@ -1985,8 +2048,9 @@ def main() -> None:
         print(
             f"  matrix={A.shape[0]} x {A.shape[1]}, nnz={A.nnz}; "
             f"stage cuts={extraction_meta['stage_cut_edges_removed']}; "
-            f"same-op subdivisions="
-            f"{transform_meta['same_and_edges_subdivided'] + transform_meta['same_or_edges_subdivided']}",
+            f"AND fanout groups={transform_meta['and_sources_fanout_grouped']} "
+            f"({transform_meta['and_and_edges_grouped']} AND->AND edges); "
+            f"OR->OR subdivisions={transform_meta['same_or_edges_subdivided']}",
             flush=True,
         )
 

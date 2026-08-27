@@ -26,6 +26,12 @@ function compat.build(graph, lu)
     set_class("compat")
     set_prot(nil)
 
+    -- Make productivity modules mechanics so they don't change spot too much
+    -- The .nodes table isn't constructed yet, so access the graph directly
+    graph[gutils.key("item", "productivity-module")].mechanic = true
+    graph[gutils.key("item", "productivity-module-2")].mechanic = true
+    graph[gutils.key("item", "productivity-module-3")].mechanic = true
+
     -- Smart farms
 
     for _, spec in pairs(farm_specs) do

@@ -1,0 +1,23 @@
+python solve_staged_growth_lower_bound_v6.py factorio-current.log \
+    --stage 3 \
+    --goal py-science-pack-1 \
+    --goal-amount 4350 \
+    --time-seconds 1200 \
+    --moment-order 3 \
+    --output result.json \
+    --actions-csv actions.csv \
+    --solve-mode feasibility \
+    --solver-log
+
+
+
+
+python solve_staged_growth_lower_bound_v3.py factorio-current.log \
+    --stage 2 \
+    --goal automation-science-pack \
+    --goal-amount 2009 \
+    --time-seconds 200 \
+    --output result.json \
+    --actions-csv actions.csv
+
+Amount of auto needed: 2009

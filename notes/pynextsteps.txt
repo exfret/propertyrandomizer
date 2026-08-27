@@ -6,6 +6,8 @@
  - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
     * Will only be an issue if we do recipe rando again
 
+ - Electricity in cost analysis
+
 NECESSARY:
  - Put vatbrains on critical path (they're soft required)
 

@@ -1,0 +1,782 @@
+rank,action_key,total_amount,average_rate_per_second,mean_time_seconds,remaining_fraction_moment_1,node_type,name,synthetic,source,coproduct
+1,__pr_graph_lp_or_to_or_and__: 6403:item: raw-coal --> energy-source-burner: chemical__biomass_2_1,11662156513643.773,6478975840.913207,110.10624879540498,0.9388298617803306,,,True,item: raw-coal --> energy-source-burner: chemical__biomass_2_1,False
+2,energy-source-electric: ,2794051020411.9126,1552250566.895507,1000.360558723114,0.44424413404271446,energy-source-electric,,False,,False
+3,__pr_graph_lp_or_to_or_and__: 6491:fluid: acetylene --> energy-source-fluid: ,741433333333.333,411907407.4074072,1800.0,0.0,,,True,fluid: acetylene --> energy-source-fluid: ,False
+4,__pr_graph_lp_explicit_zero_free_source__: 1559:entity-operate: locomotive --> fuel-category-burn: chemical,492670069897.811,273705594.3876728,720.6170643261627,0.5996571864854652,,,True,explicit-zero:entity-operate: locomotive --> fuel-category-burn: chemical,False
+5,__pr_graph_lp_or_to_or_and__: 6493:fluid: coke-oven-gas --> energy-source-fluid: ,312280567663.9987,173489204.25777707,0.0,1.0,,,True,fluid: coke-oven-gas --> energy-source-fluid: ,False
+6,__pr_graph_lp_or_to_or_and__: 6486:fluid: coal-gas --> energy-source-fluid: ,41585466942.05854,23103037.190032523,0.0,1.0,,,True,fluid: coal-gas --> energy-source-fluid: ,False
+7,__pr_graph_lp_or_to_or_and__: 6490:fluid: gasoline --> energy-source-fluid: ,5121516412.737365,2845286.8959652027,0.0,1.0,,,True,fluid: gasoline --> energy-source-fluid: ,False
+8,__pr_graph_lp_or_to_or_and__: 648:fluid-create-offshore-temperature: water: 15 --> fluid-create-temperature: water: 15,45994630.58837929,25552.57254909961,901.1367793584149,0.49936845591199175,,,True,fluid-create-offshore-temperature: water: 15 --> fluid-create-temperature: water: 15,False
+9,__pr_graph_lp_or_to_or_and__: 7150:tile-fluid: deepwater --> fluid-create-offshore-temperature: water: 15:noncoproduct-route,45994630.58837929,25552.57254909961,901.1367793584149,0.49936845591199175,,,True,tile-fluid: deepwater --> fluid-create-offshore-temperature: water: 15,False
+10,__pr_graph_lp_or_to_or_and__: 7607:entity-operate: offshore-pump --> tile-fluid-pump: deepwater:noncoproduct-route,45994630.58837929,25552.57254909961,901.1367793584149,0.49936845591199175,,,True,entity-operate: offshore-pump --> tile-fluid-pump: deepwater,False
+11,tile-fluid: deepwater,45994630.58837929,25552.57254909961,901.1367793584149,0.49936845591199175,tile-fluid,deepwater,False,,False
+12,fluid-temperature: water: 15,33011184.346365586,18339.54685909199,547.6098600672506,0.6957722999626386,fluid-temperature,water: 15,False,,False
+13,__pr_graph_lp_or_to_or_and__: 7145:fluid-temperature: water: 15 --> fluid-temperature-range: water: nil: nil:noncoproduct-route,29347179.163442057,16303.988424134475,547.0565411711194,0.6960796993493781,,,True,fluid-temperature: water: 15 --> fluid-temperature-range: water: nil: nil,False
+14,__pr_graph_lp_or_to_or_and__: 7336:entity-operate: stone-furnace --> recipe-category: smelting__0__0:noncoproduct-route,13614125.323487457,7563.402957493032,0.0,1.0,,,True,entity-operate: stone-furnace --> recipe-category: smelting__0__0,False
+15,entity-operate: stone-furnace,13614125.323487457,7563.402957493032,0.0,1.0,entity-operate,stone-furnace,False,,False
+16,__pr_graph_lp_or_to_or_and__: 7343:entity-operate: burner-mining-drill --> resource-category: basic-solid__0__0:noncoproduct-route,13444979.935334917,7469.433297408287,41.036453514588736,0.9772019702696729,,,True,entity-operate: burner-mining-drill --> resource-category: basic-solid__0__0,False
+17,entity-operate: burner-mining-drill,13444979.935334917,7469.433297408287,41.036453514588736,0.9772019702696729,entity-operate,burner-mining-drill,False,,False
+18,entity-mine: iron-ore,6748889.92535715,3749.3832918650833,0.0,1.0,entity-mine,iron-ore,False,,True
+19,__pr_graph_lp_used_payback_or_to_or_and__: 406:item: moss --> entity-operate-py-module: moss-farm-mk01,5010283.465818702,2783.4908143437233,1024.8873722661658,0.4306181265187968,,,True,item: moss --> entity-operate-py-module: moss-farm-mk01,False
+20,entity-mine: raw-coal,4710963.846653338,2617.202137029632,197.1619276414859,0.89046559575473,entity-mine,raw-coal,False,,True
+21,__pr_graph_lp_used_payback_or_to_or_and__: 508:item: sap-tree --> entity-operate-py-module: sap-extractor-mk01,3985112.69526223,2213.9514973679056,985.1895592108685,0.45267246710507303,,,True,item: sap-tree --> entity-operate-py-module: sap-extractor-mk01,False
+22,entity-mine: copper-ore,3746165.0056730653,2081.202780929481,0.0,1.0,entity-mine,copper-ore,False,,True
+23,__pr_graph_lp_or_to_or_and__: 7144:fluid-temperature: water: 15 --> fluid: water:noncoproduct-route,3664005.182923528,2035.5584349575156,552.0417175479555,0.6933101569178025,,,True,fluid-temperature: water: 15 --> fluid: water,False
+24,__pr_graph_lp_or_to_or_and__: 7165:entity-operate: boiler --> fluid-create-temperature: steam: 250:noncoproduct-route,3664005.182923528,2035.5584349575156,552.041717547955,0.6933101569178027,,,True,entity-operate: boiler --> fluid-create-temperature: steam: 250,False
+25,fluid-temperature: steam: 250,3664005.182923528,2035.5584349575156,552.041717547955,0.6933101569178027,fluid-temperature,steam: 250,False,,False
+26,__pr_graph_lp_used_payback_or_to_or_and__: 554:item: seaweed --> entity-operate-py-module: seaweed-crop-mk01,2430891.317936199,1350.4951766312215,1584.585623257503,0.11967465374583175,,,True,item: seaweed --> entity-operate-py-module: seaweed-crop-mk01,False
+27,__pr_graph_lp_used_payback_or_to_or_and__: 422:item: tree-mk01 --> entity-operate-py-module: fwf-mk01,2412379.6701093027,1340.2109278385014,900.0,0.5,,,True,item: tree-mk01 --> entity-operate-py-module: fwf-mk01,False
+28,entity-operate: offshore-pump,2299731.529418965,1277.6286274549805,901.1367793584149,0.49936845591199175,entity-operate,offshore-pump,False,,False
+29,__pr_graph_lp_or_to_or_and__: 7157:fluid-temperature: steam: 250 --> fluid: steam:noncoproduct-route,2025027.9799619725,1125.015544423318,19.300332969447954,0.9892775927947511,,,True,fluid-temperature: steam: 250 --> fluid: steam,False
+30,__pr_graph_lp_or_to_or_and__: 7158:fluid-temperature: steam: 250 --> fluid-temperature-range: steam: nil: nil:noncoproduct-route,1283381.009867599,712.9894499264439,1545.6049175954686,0.14133060133585074,,,True,fluid-temperature: steam: 250 --> fluid-temperature-range: steam: nil: nil,False
+31,__pr_graph_lp_or_to_or_and__: 7224:fluid-temperature: acetylene: 15 --> fluid: acetylene:noncoproduct-route,1277087.295344177,709.4929418578761,1045.0186176508225,0.4194341013050986,,,True,fluid-temperature: acetylene: 15 --> fluid: acetylene,False
+32,__pr_graph_lp_or_to_or_and__: 800:fluid-craft-temperature: acetylene: 15 --> fluid-create-temperature: acetylene: 15,1277087.295344177,709.4929418578761,1045.0186176508225,0.4194341013050986,,,True,fluid-craft-temperature: acetylene: 15 --> fluid-create-temperature: acetylene: 15,False
+33,fluid-temperature: acetylene: 15,1277087.295344177,709.4929418578761,1045.0186176508225,0.4194341013050986,fluid-temperature,acetylene: 15,False,,False
+34,__pr_graph_lp_or_to_or_and__: 7195:fluid-temperature: flue-gas: 15 --> fluid-temperature-range: flue-gas: nil: nil:noncoproduct-route,1275035.782795373,708.3532126640961,1800.0,0.0,,,True,fluid-temperature: flue-gas: 15 --> fluid-temperature-range: flue-gas: nil: nil,False
+35,__pr_graph_lp_or_to_or_and__: 732:fluid-craft-temperature: flue-gas: 15 --> fluid-create-temperature: flue-gas: 15,1275035.782795373,708.3532126640961,1800.0,0.0,,,True,fluid-craft-temperature: flue-gas: 15 --> fluid-create-temperature: flue-gas: 15,False
+36,fluid-temperature: flue-gas: 15,1275035.782795373,708.3532126640961,1800.0,0.0,fluid-temperature,flue-gas: 15,False,,False
+37,__pr_graph_lp_or_to_or_and__: 710:fluid-craft-temperature: tar: 10 --> fluid-create-temperature: tar: 10,1225702.9985661868,680.9461103145482,12.167944217915029,0.9932400309900472,,,True,fluid-craft-temperature: tar: 10 --> fluid-create-temperature: tar: 10,False
+38,__pr_graph_lp_or_to_or_and__: 7189:fluid-temperature: tar: 10 --> fluid-temperature-range: tar: nil: nil:noncoproduct-route,1225702.9985661868,680.9461103145482,12.167944217915029,0.9932400309900472,,,True,fluid-temperature: tar: 10 --> fluid-temperature-range: tar: nil: nil,False
+39,fluid-temperature: tar: 10,1225702.9985661868,680.9461103145482,12.167944217915029,0.9932400309900472,fluid-temperature,tar: 10,False,,False
+40,__pr_graph_lp_or_to_or_and__: 7581:entity-operate: sap-extractor-mk01 --> recipe-category: sap-extractor__0__0:noncoproduct-route,1145575.3977280504,636.4307765155835,382.7596165818597,0.7873557685656335,,,True,entity-operate: sap-extractor-mk01 --> recipe-category: sap-extractor__0__0,False
+41,entity-operate: sap-extractor-mk01,1145575.3977280504,636.4307765155835,382.7596165818597,0.7873557685656335,entity-operate,sap-extractor-mk01,False,,False
+42,__pr_graph_lp_or_to_or_and__: 1025:item-craft: copper-cable --> item: copper-cable,873764.5923750805,485.4247735417114,0.0,1.0,,,True,item-craft: copper-cable --> item: copper-cable,False
+43,entity-operate: fluid-drill-mk01,873664.2262204841,485.3690145669356,8.947079006495006,0.9950294005519472,entity-operate,fluid-drill-mk01,False,,False
+44,__pr_graph_lp_or_to_or_and__: 1016:item-craft: iron-plate --> item: iron-plate,807291.4894421581,448.4952719123101,0.532368475424061,0.9997042397358755,,,True,item-craft: iron-plate --> item: iron-plate,False
+45,recipe: iron-plate,803125.7216369214,446.18095646495635,0.0,1.0,recipe,iron-plate,False,,True
+46,__pr_graph_lp_or_to_or_and__: 829:fluid-craft-temperature: coke-oven-gas: 250 --> fluid-create-temperature: coke-oven-gas: 250,798775.8533777143,443.76436298761905,1096.2919204201369,0.39094893309992396,,,True,fluid-craft-temperature: coke-oven-gas: 250 --> fluid-create-temperature: coke-oven-gas: 250,False
+47,fluid-temperature: coke-oven-gas: 250,798775.8533777143,443.76436298761905,1096.2919204201369,0.39094893309992396,fluid-temperature,coke-oven-gas: 250,False,,False
+48,entity-operate: botanical-nursery,798771.0288327502,443.7616826848612,1086.6281194785115,0.3963177114008269,entity-operate,botanical-nursery,False,,False
+49,__pr_graph_lp_or_to_or_and__: 7449:entity-operate: soil-extractor-mk01 --> recipe-category: soil-extraction__1__0:noncoproduct-route,733314.0894926697,407.3967163848165,861.5776153823631,0.5213457692320205,,,True,entity-operate: soil-extractor-mk01 --> recipe-category: soil-extraction__1__0,False
+50,entity-operate: soil-extractor-mk01,733314.0894926697,407.3967163848165,861.5776153823631,0.5213457692320205,entity-operate,soil-extractor-mk01,False,,False
+51,entity-operate: assembling-machine-1,727814.1121959169,404.34117344217606,126.18697115943081,0.9298961271336496,entity-operate,assembling-machine-1,False,,False
+52,__pr_graph_lp_or_to_or_and__: 7309:entity-operate: assembling-machine-1 --> recipe-category: crafting__0__0:noncoproduct-route,716450.7392018909,398.02818844549495,120.90246215892842,0.932831965467262,,,True,entity-operate: assembling-machine-1 --> recipe-category: crafting__0__0,False
+53,__pr_graph_lp_or_to_or_and__: 682:fluid-craft-temperature: carbon-dioxide: 15 --> fluid-create-temperature: carbon-dioxide: 15,655773.0715245092,364.3183730691718,652.5347052924376,0.6374807192819791,,,True,fluid-craft-temperature: carbon-dioxide: 15 --> fluid-create-temperature: carbon-dioxide: 15,False
+54,__pr_graph_lp_or_to_or_and__: 7178:fluid-temperature: carbon-dioxide: 15 --> fluid-temperature-range: carbon-dioxide: nil: nil:noncoproduct-route,655773.0715245092,364.3183730691718,652.5347052924376,0.6374807192819791,,,True,fluid-temperature: carbon-dioxide: 15 --> fluid-temperature-range: carbon-dioxide: nil: nil,False
+55,fluid-temperature: carbon-dioxide: 15,655773.0715245092,364.3183730691718,652.5347052924376,0.6374807192819791,fluid-temperature,carbon-dioxide: 15,False,,False
+56,__pr_graph_lp_or_to_or_and__: 7466:entity-operate: botanical-nursery --> recipe-category: nursery__1__0:noncoproduct-route,629674.1602364542,349.8189779091412,1378.4384301692003,0.2342008721282221,,,True,entity-operate: botanical-nursery --> recipe-category: nursery__1__0,False
+57,entity-operate: advanced-foundry-mk01,596180.0751906805,331.21115288371135,900.0,0.5,entity-operate,advanced-foundry-mk01,False,,False
+58,entity-mine: stone,594443.0809780322,330.2461560989068,146.8987366284406,0.9183895907619775,entity-mine,stone,False,,True
+59,__pr_graph_lp_or_to_or_and__: 7208:fluid-temperature: molten-glass: 10 --> fluid-temperature-range: molten-glass: nil: nil:noncoproduct-route,585814.4773745468,325.4524874303038,1247.4939220949893,0.3069478210583393,,,True,fluid-temperature: molten-glass: 10 --> fluid-temperature-range: molten-glass: nil: nil,False
+60,__pr_graph_lp_or_to_or_and__: 766:fluid-craft-temperature: molten-glass: 10 --> fluid-create-temperature: molten-glass: 10,585814.4773745468,325.4524874303038,1247.4939220949893,0.3069478210583393,,,True,fluid-craft-temperature: molten-glass: 10 --> fluid-create-temperature: molten-glass: 10,False
+61,fluid-temperature: molten-glass: 10,585814.4773745468,325.4524874303038,1247.4939220949893,0.3069478210583393,fluid-temperature,molten-glass: 10,False,,False
+62,__pr_graph_lp_used_payback_or_to_or_and__: 315:item: moondrop --> entity-operate-py-module: moondrop-greenhouse-mk01,571798.6784950817,317.66593249726765,0.0,1.0,,,True,item: moondrop --> entity-operate-py-module: moondrop-greenhouse-mk01,False
+63,__pr_graph_lp_or_to_or_and__: 689:fluid-craft-temperature: coal-gas: 15 --> fluid-create-temperature: coal-gas: 15,544606.1840078707,302.55899111548376,2.5979218776228663e-12,0.9999999999999986,,,True,fluid-craft-temperature: coal-gas: 15 --> fluid-create-temperature: coal-gas: 15,False
+64,fluid-temperature: coal-gas: 15,544606.1840078707,302.55899111548376,2.5979218776228663e-12,0.9999999999999986,fluid-temperature,coal-gas: 15,False,,False
+65,__pr_graph_lp_or_to_or_and__: 7180:fluid-temperature: coal-gas: 15 --> fluid: coal-gas:noncoproduct-route,537043.8257312267,298.3576809617926,2.7977620220553945e-12,0.9999999999999984,,,True,fluid-temperature: coal-gas: 15 --> fluid: coal-gas,False
+66,__pr_graph_lp_or_to_or_and__: 286:fluid: water --> entity-operate-fluid: boiler,488534.0243898037,271.40779132766875,552.0417175479553,0.6933101569178026,,,True,fluid: water --> entity-operate-fluid: boiler,False
+67,entity-operate: boiler,488534.0243898037,271.40779132766875,552.0417175479553,0.6933101569178026,entity-operate,boiler,False,,False
+68,__pr_graph_lp_or_to_or_and__: 7239:fluid-temperature: coke-oven-gas: 250 --> fluid-temperature-range: coke-oven-gas: 250: nil:noncoproduct-route,486495.2857137156,270.275158729842,1800.0,0.0,,,True,fluid-temperature: coke-oven-gas: 250 --> fluid-temperature-range: coke-oven-gas: 250: nil,False
+69,__pr_graph_lp_used_payback_or_to_or_and__: 459:item: vrauks --> entity-operate-py-module: vrauks-paddock-mk01,471250.0,261.80555555555554,1440.0,0.2,,,True,item: vrauks --> entity-operate-py-module: vrauks-paddock-mk01,False
+70,__pr_graph_lp_or_to_or_and__: 1022:item-craft: copper-plate --> item: copper-plate,468270.62570913316,260.1503476161851,0.0,1.0,,,True,item-craft: copper-plate --> item: copper-plate,False
+71,recipe: copper-plate,468270.62570913316,260.1503476161851,0.0,1.0,recipe,copper-plate,False,,True
+72,recipe: copper-cable,436882.2961875402,242.7123867708557,0.0,1.0,recipe,copper-cable,False,,True
+73,__pr_graph_lp_or_to_or_and__: 7346:entity-operate: fluid-drill-mk01 --> resource-category: basic-with-fluid__1__0:noncoproduct-route,436832.11311024206,242.6845072834678,8.947079006495006,0.9950294005519472,,,True,entity-operate: fluid-drill-mk01 --> resource-category: basic-with-fluid__1__0,False
+74,__pr_graph_lp_or_to_or_and__: 7191:fluid-temperature: muddy-sludge: 10 --> fluid-temperature-range: muddy-sludge: nil: nil:noncoproduct-route,417523.6221515585,231.95756786197697,1024.8873722661658,0.4306181265187967,,,True,fluid-temperature: muddy-sludge: 10 --> fluid-temperature-range: muddy-sludge: nil: nil,False
+75,__pr_graph_lp_or_to_or_and__: 720:fluid-craft-temperature: muddy-sludge: 10 --> fluid-create-temperature: muddy-sludge: 10,417523.6221515585,231.95756786197697,1024.8873722661658,0.4306181265187967,,,True,fluid-craft-temperature: muddy-sludge: 10 --> fluid-create-temperature: muddy-sludge: 10,False
+76,fluid-temperature: muddy-sludge: 10,417523.6221515585,231.95756786197697,1024.8873722661658,0.4306181265187967,fluid-temperature,muddy-sludge: 10,False,,False
+77,__pr_graph_lp_or_to_or_and__: 1027:item-craft: iron-stick --> item: iron-stick,406320.994561111,225.73388586728387,0.0,1.0,,,True,item-craft: iron-stick --> item: iron-stick,False
+78,__pr_graph_lp_or_to_or_and__: 7595:entity-operate: borax-mine --> resource-category: borax__0__0:noncoproduct-route,390542.98491636454,216.96832495353587,1247.4939220949893,0.3069478210583393,,,True,entity-operate: borax-mine --> resource-category: borax__0__0,False
+79,entity-operate: hpf,369099.6436255528,205.05535756975158,1169.864055724956,0.3500755245972466,entity-operate,hpf,False,,False
+80,__pr_graph_lp_or_to_or_and__: 7159:fluid-temperature: steam: 250 --> fluid-temperature-range: steam: 250: nil:noncoproduct-route,355596.1930939564,197.55344060775354,0.0,1.0,,,True,fluid-temperature: steam: 250 --> fluid-temperature-range: steam: 250: nil,False
+81,__pr_graph_lp_or_to_or_and__: 7408:entity-operate: advanced-foundry-mk01 --> recipe-category: smelting__0__0:noncoproduct-route,352576.4848038704,195.8758248910391,1521.8316898533074,0.15453795008149593,,,True,entity-operate: advanced-foundry-mk01 --> recipe-category: smelting__0__0,False
+82,__pr_graph_lp_or_to_or_and__: 2205:item-craft: bolts --> item: bolts,343415.95245904283,190.7866402550238,0.0,1.0,,,True,item-craft: bolts --> item: bolts,False
+83,__pr_graph_lp_or_to_or_and__: 7545:entity-operate: moss-farm-mk01 --> recipe-category: moss__2__0:noncoproduct-route,334018.8977212468,185.56605428958156,1024.8873722661658,0.4306181265187968,,,True,entity-operate: moss-farm-mk01 --> recipe-category: moss__2__0,False
+84,entity-operate: moss-farm-mk01,334018.8977212468,185.56605428958156,1024.8873722661658,0.4306181265187968,entity-operate,moss-farm-mk01,False,,False
+85,__pr_graph_lp_or_to_or_and__: 7202:fluid-temperature: slacked-lime: 10 --> fluid-temperature-range: slacked-lime: nil: nil:noncoproduct-route,319271.82383604423,177.37323546446902,1800.0,0.0,,,True,fluid-temperature: slacked-lime: 10 --> fluid-temperature-range: slacked-lime: nil: nil,False
+86,__pr_graph_lp_or_to_or_and__: 754:fluid-craft-temperature: slacked-lime: 10 --> fluid-create-temperature: slacked-lime: 10,319271.82383604423,177.37323546446902,1800.0,0.0,,,True,fluid-craft-temperature: slacked-lime: 10 --> fluid-create-temperature: slacked-lime: 10,False
+87,fluid-temperature: slacked-lime: 10,319271.82383604423,177.37323546446902,1800.0,0.0,fluid-temperature,slacked-lime: 10,False,,False
+88,__pr_graph_lp_or_to_or_and__: 7238:fluid-temperature: coke-oven-gas: 250 --> fluid: coke-oven-gas:noncoproduct-route,312280.5676639987,173.48920425777706,0.0,1.0,,,True,fluid-temperature: coke-oven-gas: 250 --> fluid: coke-oven-gas,False
+89,__pr_graph_lp_or_to_or_and__: 747:fluid-craft-temperature: aromatics: 10 --> fluid-create-temperature: aromatics: 10,296337.1942435225,164.6317745797347,0.0,1.0,,,True,fluid-craft-temperature: aromatics: 10 --> fluid-create-temperature: aromatics: 10,False
+90,fluid-temperature: aromatics: 10,296337.1942435225,164.6317745797347,0.0,1.0,fluid-temperature,aromatics: 10,False,,False
+91,__pr_graph_lp_or_to_or_and__: 7199:fluid-temperature: aromatics: 10 --> fluid: aromatics:noncoproduct-route,291734.01964034786,162.07445535574882,0.0,1.0,,,True,fluid-temperature: aromatics: 10 --> fluid: aromatics,False
+92,__pr_graph_lp_or_to_or_and__: 7295:fluid-temperature: creamy-latex: 10 --> fluid-temperature-range: creamy-latex: nil: nil:noncoproduct-route,290000.0,161.11111111111111,1800.0,0.0,,,True,fluid-temperature: creamy-latex: 10 --> fluid-temperature-range: creamy-latex: nil: nil,False
+93,__pr_graph_lp_or_to_or_and__: 7297:fluid-temperature: formic-acid: 15 --> fluid-temperature-range: formic-acid: nil: nil:noncoproduct-route,290000.0,161.11111111111111,1800.0,0.0,,,True,fluid-temperature: formic-acid: 15 --> fluid-temperature-range: formic-acid: nil: nil,False
+94,__pr_graph_lp_or_to_or_and__: 938:fluid-craft-temperature: creamy-latex: 10 --> fluid-create-temperature: creamy-latex: 10,290000.0,161.11111111111111,1800.0,0.0,,,True,fluid-craft-temperature: creamy-latex: 10 --> fluid-create-temperature: creamy-latex: 10,False
+95,__pr_graph_lp_or_to_or_and__: 942:fluid-craft-temperature: formic-acid: 15 --> fluid-create-temperature: formic-acid: 15,290000.0,161.11111111111111,1800.0,0.0,,,True,fluid-craft-temperature: formic-acid: 15 --> fluid-create-temperature: formic-acid: 15,False
+96,fluid-temperature: creamy-latex: 10,290000.0,161.11111111111111,1800.0,0.0,fluid-temperature,creamy-latex: 10,False,,False
+97,fluid-temperature: formic-acid: 15,290000.0,161.11111111111111,1800.0,0.0,fluid-temperature,formic-acid: 15,False,,False
+98,__pr_graph_lp_used_payback_or_to_or_and__: 130:item: fawogae --> entity-operate-py-module: fawogae-plantation-mk01,258928.57142857142,143.84920634920636,1297.1428571428573,0.2793650793650793,,,True,item: fawogae --> entity-operate-py-module: fawogae-plantation-mk01,False
+99,__pr_graph_lp_or_to_or_and__: 7193:fluid-temperature: tailings: 10 --> fluid-temperature-range: tailings: nil: nil:noncoproduct-route,255032.4770518018,141.68470947322322,1312.6671092149975,0.2707404948805569,,,True,fluid-temperature: tailings: 10 --> fluid-temperature-range: tailings: nil: nil,False
+100,__pr_graph_lp_or_to_or_and__: 728:fluid-craft-temperature: tailings: 10 --> fluid-create-temperature: tailings: 10,255032.4770518018,141.68470947322322,1312.6671092149975,0.2707404948805569,,,True,fluid-craft-temperature: tailings: 10 --> fluid-create-temperature: tailings: 10,False
+101,fluid-temperature: tailings: 10,255032.4770518018,141.68470947322322,1312.6671092149975,0.2707404948805569,fluid-temperature,tailings: 10,False,,False
+102,__pr_graph_lp_or_to_or_and__: 7410:entity-operate: advanced-foundry-mk01 --> recipe-category: advanced-foundry__0__0:noncoproduct-route,243603.59038681007,135.33532799267226,0.0,1.0,,,True,entity-operate: advanced-foundry-mk01 --> recipe-category: advanced-foundry__0__0,False
+103,__pr_graph_lp_or_to_or_and__: 7554:entity-operate: seaweed-crop-mk01 --> recipe-category: seaweed__1__0:noncoproduct-route,243089.13179361986,135.04951766312215,1584.585623257503,0.11967465374583176,,,True,entity-operate: seaweed-crop-mk01 --> recipe-category: seaweed__1__0,False
+104,entity-operate: seaweed-crop-mk01,243089.13179361986,135.04951766312215,1584.585623257503,0.11967465374583176,entity-operate,seaweed-crop-mk01,False,,False
+105,__pr_graph_lp_or_to_or_and__: 2201:item-craft: small-parts-01 --> item: small-parts-01,228943.96830602855,127.1910935033492,0.0,1.0,,,True,item-craft: small-parts-01 --> item: small-parts-01,False
+106,__pr_graph_lp_or_to_or_and__: 1677:item-craft: coke --> item: coke,226708.68657151263,125.94927031750701,598.9870347619062,0.6672294251322743,,,True,item-craft: coke --> item: coke,False
+107,__pr_graph_lp_or_to_or_and__: 7548:entity-operate: fwf-mk01 --> recipe-category: fwf__1__0:noncoproduct-route,208221.79924045486,115.67877735580825,757.293755496208,0.5792812469465511,,,True,entity-operate: fwf-mk01 --> recipe-category: fwf__1__0,False
+108,entity-operate: fwf-mk01,208221.79924045486,115.67877735580825,757.293755496208,0.5792812469465511,entity-operate,fwf-mk01,False,,False
+109,recipe: iron-stick,203160.4972805555,112.86694293364194,0.0,1.0,recipe,iron-stick,False,,True
+110,entity-mine: ore-tin,202502.79799619725,112.50155444233181,19.300332969447954,0.9892775927947511,entity-mine,ore-tin,False,,True
+111,entity-mine: ore-quartz,195271.49245818227,108.48416247676793,1247.4939220949893,0.3069478210583393,entity-mine,ore-quartz,False,,True
+112,entity-operate: borax-mine,195271.49245818227,108.48416247676793,1247.4939220949893,0.3069478210583393,entity-operate,borax-mine,False,,False
+113,__pr_graph_lp_or_to_or_and__: 1696:item-craft: soil --> item: soil,194530.5730471911,108.07254058177284,36.82144793912241,0.9795436400338209,,,True,item-craft: soil --> item: soil,False
+114,entity-operate: distilator,190973.64044916444,106.09646691620246,898.5520786120223,0.5008044007710987,entity-operate,distilator,False,,False
+115,__pr_graph_lp_or_to_or_and__: 7197:fluid-temperature: water-saline: 25 --> fluid-temperature-range: water-saline: nil: nil:noncoproduct-route,186476.6194180742,103.59812189893012,39.989693509101734,0.9777835036060546,,,True,fluid-temperature: water-saline: 25 --> fluid-temperature-range: water-saline: nil: nil,False
+116,__pr_graph_lp_or_to_or_and__: 739:fluid-craft-temperature: water-saline: 25 --> fluid-create-temperature: water-saline: 25,186476.6194180742,103.59812189893012,39.989693509101734,0.9777835036060546,,,True,fluid-craft-temperature: water-saline: 25 --> fluid-create-temperature: water-saline: 25,False
+117,fluid-temperature: water-saline: 25,186476.6194180742,103.59812189893012,39.989693509101734,0.9777835036060546,fluid-temperature,water-saline: 25,False,,False
+118,__pr_graph_lp_or_to_or_and__: 7284:fluid-temperature: pitch: 10 --> fluid-temperature-range: pitch: nil: nil:noncoproduct-route,184383.2112339033,102.4351173521685,0.0,1.0,,,True,fluid-temperature: pitch: 10 --> fluid-temperature-range: pitch: nil: nil,False
+119,__pr_graph_lp_or_to_or_and__: 916:fluid-craft-temperature: pitch: 10 --> fluid-create-temperature: pitch: 10,184383.2112339033,102.4351173521685,0.0,1.0,,,True,fluid-craft-temperature: pitch: 10 --> fluid-create-temperature: pitch: 10,False
+120,fluid-temperature: pitch: 10,184383.2112339033,102.4351173521685,0.0,1.0,fluid-temperature,pitch: 10,False,,False
+121,__pr_graph_lp_or_to_or_and__: 1709:item-craft: limestone --> item: limestone,181621.55639170588,100.90086466205882,662.1124061668772,0.6321597743517349,,,True,item-craft: limestone --> item: limestone,False
+122,__pr_graph_lp_or_to_or_and__: 7435:entity-operate: hpf --> recipe-category: hpf__0__0:noncoproduct-route,180726.4882777804,100.40360459876688,1156.3823116204976,0.35756538243305697,,,True,entity-operate: hpf --> recipe-category: hpf__0__0,False
+123,recipe: bolts,171707.97622952142,95.3933201275119,0.0,1.0,recipe,bolts,False,,True
+124,__pr_graph_lp_or_to_or_and__: 7465:entity-operate: botanical-nursery --> recipe-category: nursery__0__0:noncoproduct-route,169096.86859629597,93.94270477571999,0.0,1.0,,,True,entity-operate: botanical-nursery --> recipe-category: nursery__0__0,False
+125,__pr_graph_lp_or_to_or_and__: 698:fluid-craft-temperature: creosote: 10 --> fluid-create-temperature: creosote: 10,158832.96624863383,88.24053680479658,0.0,1.0,,,True,fluid-craft-temperature: creosote: 10 --> fluid-create-temperature: creosote: 10,False
+126,__pr_graph_lp_or_to_or_and__: 7183:fluid-temperature: creosote: 10 --> fluid-temperature-range: creosote: nil: nil:noncoproduct-route,158832.96624863383,88.24053680479658,0.0,1.0,,,True,fluid-temperature: creosote: 10 --> fluid-temperature-range: creosote: nil: nil,False
+127,fluid-temperature: creosote: 10,158832.96624863383,88.24053680479658,0.0,1.0,fluid-temperature,creosote: 10,False,,False
+128,__pr_graph_lp_or_to_or_and__: 983:item-craft: wood --> item: wood,158591.32569893714,88.10629205496508,745.714185318956,0.5857143414894689,,,True,item-craft: wood --> item: wood,False
+129,__pr_graph_lp_or_to_or_and__: 7275:fluid-temperature: anthracene-oil: 10 --> fluid-temperature-range: anthracene-oil: nil: nil:noncoproduct-route,154091.68367404776,85.60649093002654,0.0,1.0,,,True,fluid-temperature: anthracene-oil: 10 --> fluid-temperature-range: anthracene-oil: nil: nil,False
+130,__pr_graph_lp_or_to_or_and__: 896:fluid-craft-temperature: anthracene-oil: 10 --> fluid-create-temperature: anthracene-oil: 10,154091.68367404776,85.60649093002654,0.0,1.0,,,True,fluid-craft-temperature: anthracene-oil: 10 --> fluid-create-temperature: anthracene-oil: 10,False
+131,fluid-temperature: anthracene-oil: 10,154091.68367404776,85.60649093002654,0.0,1.0,fluid-temperature,anthracene-oil: 10,False,,False
+132,__pr_graph_lp_or_to_or_and__: 978:item-craft: stone-brick --> item: stone-brick,133053.60047889533,73.91866693271963,130.77436414627854,0.9273475754742897,,,True,item-craft: stone-brick --> item: stone-brick,False
+133,__pr_graph_lp_or_to_or_and__: 7358:item-burn: raw-coal --> item: ash:noncoproduct-route,130654.49464102765,72.58583035612646,903.8775005164317,0.4978458330464268,,,True,item-burn: raw-coal --> item: ash,False
+134,item-burn: raw-coal,130654.49464102765,72.58583035612646,903.8775005164317,0.4978458330464268,item-burn,raw-coal,False,,False
+135,__pr_graph_lp_or_to_or_and__: 1892:item-craft: calcium-carbide --> item: calcium-carbide,127708.72953441768,70.94929418578761,1045.0186176508223,0.4194341013050987,,,True,item-craft: calcium-carbide --> item: calcium-carbide,False
+136,recipe: stone-brick,123386.93381222867,68.54829656234926,4.196643033083092e-12,0.9999999999999977,recipe,stone-brick,False,,True
+137,entity-operate: wpu-mk01,116572.16868339485,64.76231593521936,900.0,0.5,entity-operate,wpu-mk01,False,,False
+138,__pr_graph_lp_or_to_or_and__: 1029:item-craft: iron-gear-wheel --> item: iron-gear-wheel,114471.98415301427,63.5955467516746,0.0,1.0,,,True,item-craft: iron-gear-wheel --> item: iron-gear-wheel,False
+139,recipe: iron-gear-wheel,114471.98415301427,63.5955467516746,0.0,1.0,recipe,iron-gear-wheel,False,,True
+140,recipe: small-parts-01,114471.98415301427,63.5955467516746,0.0,1.0,recipe,small-parts-01,False,,True
+141,entity-operate: glassworks-mk01,108907.46562574571,60.50414756985873,1225.425632973783,0.3192079816812317,entity-operate,glassworks-mk01,False,,False
+142,__pr_graph_lp_or_to_or_and__: 7552:entity-operate: micro-mine-mk01 --> recipe-category: micro-mine__0__0:noncoproduct-route,104400.0,58.0,1800.0,0.0,,,True,entity-operate: micro-mine-mk01 --> recipe-category: micro-mine__0__0,False
+143,entity-operate: micro-mine-mk01,104400.0,58.0,1800.0,0.0,entity-operate,micro-mine-mk01,False,,False
+144,entity-operate: gasifier,102620.72512413279,57.01151395785155,1040.3980275022657,0.4220010958320747,entity-operate,gasifier,False,,False
+145,__pr_graph_lp_or_to_or_and__: 7425:entity-operate: gasifier --> recipe-category: gasifier__1__2:noncoproduct-route,102166.98362753415,56.759435348630085,1045.0186176508225,0.41943410130509867,,,True,entity-operate: gasifier --> recipe-category: gasifier__1__2,False
+146,__pr_graph_lp_or_to_or_and__: 7433:entity-operate: hpf --> recipe-category: hpf__0__1:noncoproduct-route,102152.01033910309,56.75111685505727,852.5284180273675,0.526373101095907,,,True,entity-operate: hpf --> recipe-category: hpf__0__1,False
+147,__pr_graph_lp_or_to_or_and__: 7247:fluid-temperature: methane: 15 --> fluid-temperature-range: methane: nil: nil:noncoproduct-route,95299.77974918029,52.94432208287794,0.0,1.0,,,True,fluid-temperature: methane: 15 --> fluid-temperature-range: methane: nil: nil,False
+148,__pr_graph_lp_or_to_or_and__: 841:fluid-craft-temperature: methane: 15 --> fluid-create-temperature: methane: 15,95299.77974918029,52.94432208287794,0.0,1.0,,,True,fluid-craft-temperature: methane: 15 --> fluid-create-temperature: methane: 15,False
+149,fluid-temperature: methane: 15,95299.77974918029,52.94432208287794,0.0,1.0,fluid-temperature,methane: 15,False,,False
+150,__pr_graph_lp_or_to_or_and__: 7210:fluid-temperature: vacuum: 15 --> fluid-temperature-range: vacuum: nil: nil:noncoproduct-route,94408.3702447237,52.449094580402054,1.9984014443252818e-13,0.9999999999999999,,,True,fluid-temperature: vacuum: 15 --> fluid-temperature-range: vacuum: nil: nil,False
+151,__pr_graph_lp_or_to_or_and__: 772:fluid-craft-temperature: vacuum: 15 --> fluid-create-temperature: vacuum: 15,94408.3702447237,52.449094580402054,1.9984014443252818e-13,0.9999999999999999,,,True,fluid-craft-temperature: vacuum: 15 --> fluid-create-temperature: vacuum: 15,False
+152,fluid-temperature: vacuum: 15,94408.3702447237,52.449094580402054,1.9984014443252818e-13,0.9999999999999999,fluid-temperature,vacuum: 15,False,,False
+153,__pr_graph_lp_or_to_or_and__: 1058:item-craft: pipe --> item: pipe,90211.01816707382,50.117232315041015,0.0,1.0,,,True,item-craft: pipe --> item: pipe,False
+154,recipe: pipe,90211.01816707382,50.117232315041015,0.0,1.0,recipe,pipe,False,,True
+155,__pr_graph_lp_or_to_or_and__: 985:item-craft: coal --> item: coal,88108.65795429911,48.94925441905506,148.11257262332686,0.9177152374314851,,,True,item-craft: coal --> item: coal,False
+156,__pr_graph_lp_or_to_or_and__: 7468:entity-operate: wpu-mk01 --> recipe-category: wpu__0__0:noncoproduct-route,84853.90354360742,47.14105752422634,957.671812055724,0.4679601044134866,,,True,entity-operate: wpu-mk01 --> recipe-category: wpu__0__0,False
+157,__pr_graph_lp_or_to_or_and__: 7418:entity-operate: distilator --> recipe-category: distilator__0__2:noncoproduct-route,82938.66423868237,46.07703568815687,103.63719826028827,0.9424237787442843,,,True,entity-operate: distilator --> recipe-category: distilator__0__2,False
+158,__pr_graph_lp_or_to_or_and__: 7416:entity-operate: distilator --> recipe-category: distilator__1__3:noncoproduct-route,82050.53619648467,45.58363122026926,1668.5354799962827,0.07303584444650962,,,True,entity-operate: distilator --> recipe-category: distilator__1__3,False
+159,__pr_graph_lp_or_to_or_and__: 7434:entity-operate: hpf --> recipe-category: hpf__1__0:noncoproduct-route,79867.82635872404,44.37101464373558,1699.307545824742,0.055940252319587734,,,True,entity-operate: hpf --> recipe-category: hpf__1__0,False
+160,__pr_graph_lp_or_to_or_and__: 7249:fluid-temperature: methanal: 10 --> fluid-temperature-range: methanal: nil: nil:noncoproduct-route,79416.48312431692,44.12026840239829,0.0,1.0,,,True,fluid-temperature: methanal: 10 --> fluid-temperature-range: methanal: nil: nil,False
+161,__pr_graph_lp_or_to_or_and__: 846:fluid-craft-temperature: methanal: 10 --> fluid-create-temperature: methanal: 10,79416.48312431692,44.12026840239829,0.0,1.0,,,True,fluid-craft-temperature: methanal: 10 --> fluid-create-temperature: methanal: 10,False
+162,fluid-temperature: methanal: 10,79416.48312431692,44.12026840239829,0.0,1.0,fluid-temperature,methanal: 10,False,,False
+163,__pr_graph_lp_or_to_or_and__: 7472:entity-operate: glassworks-mk01 --> recipe-category: glassworks__0__1:noncoproduct-route,78108.5969832729,43.393664990707165,1247.4939220949893,0.3069478210583393,,,True,entity-operate: glassworks-mk01 --> recipe-category: glassworks__0__1,False
+164,__pr_graph_lp_or_to_or_and__: 7281:fluid-temperature: naphthalene-oil: 10 --> fluid-temperature-range: naphthalene-oil: nil: nil:noncoproduct-route,76387.33036833137,42.4374057601841,0.0,1.0,,,True,fluid-temperature: naphthalene-oil: 10 --> fluid-temperature-range: naphthalene-oil: nil: nil,False
+165,__pr_graph_lp_or_to_or_and__: 909:fluid-craft-temperature: naphthalene-oil: 10 --> fluid-create-temperature: naphthalene-oil: 10,76387.33036833137,42.4374057601841,0.0,1.0,,,True,fluid-craft-temperature: naphthalene-oil: 10 --> fluid-create-temperature: naphthalene-oil: 10,False
+166,fluid-temperature: naphthalene-oil: 10,76387.33036833137,42.4374057601841,0.0,1.0,fluid-temperature,naphthalene-oil: 10,False,,False
+167,entity-operate: rc-mk01,76125.0,42.291666666666664,1440.0,0.2,entity-operate,rc-mk01,False,,False
+168,entity-mine: ore-zinc,72933.50491008697,40.518613838937206,0.0,1.0,entity-mine,ore-zinc,False,,True
+169,__pr_graph_lp_or_to_or_and__: 7219:fluid-temperature: pressured-air: 15 --> fluid-temperature-range: pressured-air: nil: nil:noncoproduct-route,72499.99999999999,40.27777777777777,1800.0,0.0,,,True,fluid-temperature: pressured-air: 15 --> fluid-temperature-range: pressured-air: nil: nil,False
+170,__pr_graph_lp_or_to_or_and__: 7269:fluid-temperature: hot-air: 15 --> fluid-temperature-range: hot-air: nil: nil:noncoproduct-route,72499.99999999999,40.27777777777777,1800.0,0.0,,,True,fluid-temperature: hot-air: 15 --> fluid-temperature-range: hot-air: nil: nil,False
+171,__pr_graph_lp_or_to_or_and__: 790:fluid-craft-temperature: pressured-air: 15 --> fluid-create-temperature: pressured-air: 15,72499.99999999999,40.27777777777777,1800.0,0.0,,,True,fluid-craft-temperature: pressured-air: 15 --> fluid-create-temperature: pressured-air: 15,False
+172,__pr_graph_lp_or_to_or_and__: 887:fluid-craft-temperature: hot-air: 15 --> fluid-create-temperature: hot-air: 15,72499.99999999999,40.27777777777777,1800.0,0.0,,,True,fluid-craft-temperature: hot-air: 15 --> fluid-create-temperature: hot-air: 15,False
+173,fluid-temperature: hot-air: 15,72499.99999999999,40.27777777777777,1800.0,0.0,fluid-temperature,hot-air: 15,False,,False
+174,fluid-temperature: pressured-air: 15,72499.99999999999,40.27777777777777,1800.0,0.0,fluid-temperature,pressured-air: 15,False,,False
+175,__pr_graph_lp_or_to_or_and__: 2773:item-craft: moss --> item: moss,66803.77954424937,37.113210857916314,1024.8873722661658,0.4306181265187967,,,True,item-craft: moss --> item: moss,False
+176,__pr_graph_lp_or_to_or_and__: 2142:item-craft: inductor1 --> item: inductor1,62896.858680551406,34.942699266973,0.0,1.0,,,True,item-craft: inductor1 --> item: inductor1,False
+177,recipe: inductor1-2,62896.858680551406,34.942699266973,0.0,1.0,recipe,inductor1-2,False,,True
+178,__pr_graph_lp_or_to_or_and__: 7453:entity-operate: washer --> recipe-category: washer__1__1:noncoproduct-route,61459.700417534834,34.144278009741576,900.0,0.49999999999999994,,,True,entity-operate: washer --> recipe-category: washer__1__1,False
+179,entity-operate: washer,61459.700417534834,34.144278009741576,900.0,0.49999999999999994,entity-operate,washer,False,,False
+180,__pr_graph_lp_or_to_or_and__: 2463:item-craft: saps --> item: saps,57278.769886402515,31.821538825779175,382.7596165818597,0.7873557685656335,,,True,item-craft: saps --> item: saps,False
+181,__pr_graph_lp_or_to_or_and__: 671:fluid-craft-temperature: light-oil: 25 --> fluid-create-temperature: light-oil: 25,56631.98630755602,31.462214615308902,0.0,1.0,,,True,fluid-craft-temperature: light-oil: 25 --> fluid-create-temperature: light-oil: 25,False
+182,__pr_graph_lp_or_to_or_and__: 7174:fluid-temperature: light-oil: 25 --> fluid-temperature-range: light-oil: nil: nil:noncoproduct-route,56631.98630755602,31.462214615308902,0.0,1.0,,,True,fluid-temperature: light-oil: 25 --> fluid-temperature-range: light-oil: nil: nil,False
+183,fluid-temperature: light-oil: 25,56631.98630755602,31.462214615308902,0.0,1.0,fluid-temperature,light-oil: 25,False,,False
+184,__pr_graph_lp_or_to_or_and__: 7362:item-burn: kerogen --> item: ash:noncoproduct-route,50147.88040152591,27.859933556403284,0.0,1.0,,,True,item-burn: kerogen --> item: ash,False
+185,item-burn: kerogen,50147.88040152591,27.859933556403284,0.0,1.0,item-burn,kerogen,False,,False
+186,__pr_graph_lp_or_to_or_and__: 2770:item-craft: seaweed --> item: seaweed,48617.82635872397,27.009903532624428,1584.585623257503,0.11967465374583176,,,True,item-craft: seaweed --> item: seaweed,False
+187,__pr_graph_lp_or_to_or_and__: 1037:item-craft: stone-furnace --> item: stone-furnace,48135.007503342844,26.74167083519047,0.0,1.0,,,True,item-craft: stone-furnace --> item: stone-furnace,False
+188,recipe: stone-furnace,48135.007503342844,26.74167083519047,0.0,1.0,recipe,stone-furnace,False,,True
+189,__pr_graph_lp_or_to_or_and__: 7567:entity-operate: vrauks-paddock-mk01 --> recipe-category: vrauks__0__0:noncoproduct-route,47125.0,26.180555555555557,1440.0,0.2,,,True,entity-operate: vrauks-paddock-mk01 --> recipe-category: vrauks__0__0,False
+190,entity-operate: vrauks-paddock-mk01,47125.0,26.180555555555557,1440.0,0.2,entity-operate,vrauks-paddock-mk01,False,,False
+191,entity-mine: ore-titanium,46392.68044393994,25.77371135774441,0.0,1.0,entity-mine,ore-titanium,False,,True
+192,__pr_graph_lp_or_to_or_and__: 7461:entity-operate: jaw-crusher --> recipe-category: crusher__0__0:noncoproduct-route,45327.21882076674,25.181788233759303,1074.8508571119041,0.4028606349378309,,,True,entity-operate: jaw-crusher --> recipe-category: crusher__0__0,False
+193,entity-operate: jaw-crusher,45327.21882076674,25.181788233759303,1074.8508571119041,0.4028606349378309,entity-operate,jaw-crusher,False,,False
+194,entity-operate: tar-processing-unit,42703.15172177201,23.72397317876223,900.0000000000002,0.4999999999999999,entity-operate,tar-processing-unit,False,,False
+195,entity-operate: electronics-factory-mk01,42058.321164816814,23.365733980453786,900.0,0.5,entity-operate,electronics-factory-mk01,False,,False
+196,recipe: coke-coal,39938.79266888571,22.18821814938095,850.022965454012,0.5277650191922155,recipe,coke-coal,False,,True
+197,__pr_graph_lp_or_to_or_and__: 7287:fluid-temperature: middle-oil: 10 --> fluid-temperature-range: middle-oil: nil: nil:noncoproduct-route,39510.68812155071,21.950382289750394,0.0,1.0,,,True,fluid-temperature: middle-oil: 10 --> fluid-temperature-range: middle-oil: nil: nil,False
+198,__pr_graph_lp_or_to_or_and__: 921:fluid-craft-temperature: middle-oil: 10 --> fluid-create-temperature: middle-oil: 10,39510.68812155071,21.950382289750394,0.0,1.0,,,True,fluid-craft-temperature: middle-oil: 10 --> fluid-create-temperature: middle-oil: 10,False
+199,fluid-temperature: middle-oil: 10,39510.68812155071,21.950382289750394,0.0,1.0,fluid-temperature,middle-oil: 10,False,,False
+200,__pr_graph_lp_or_to_or_and__: 1810:item-craft: crushed-quartz --> item: crushed-quartz,39054.29849163645,21.696832495353583,1247.4939220949893,0.3069478210583393,,,True,item-craft: crushed-quartz --> item: crushed-quartz,False
+201,recipe: crushing-quartz,39054.29849163645,21.696832495353583,1247.4939220949893,0.3069478210583393,recipe,crushing-quartz,False,,True
+202,__pr_graph_lp_or_to_or_and__: 7511:entity-operate: moondrop-greenhouse-mk01 --> recipe-category: moon__2__1:noncoproduct-route,35737.41740594261,19.854120781079228,0.0,1.0,,,True,entity-operate: moondrop-greenhouse-mk01 --> recipe-category: moon__2__1,False
+203,entity-operate: moondrop-greenhouse-mk01,35737.41740594261,19.854120781079228,0.0,1.0,entity-operate,moondrop-greenhouse-mk01,False,,False
+204,entity-mine: ore-lead,35008.324023508416,19.44906890194912,0.0,1.0,entity-mine,ore-lead,False,,True
+205,__pr_graph_lp_or_to_or_and__: 7516:entity-operate: electronics-factory-mk01 --> recipe-category: electronic__0__0:noncoproduct-route,34400.303149257685,19.11127952736538,1100.3533568904593,0.38869257950530034,,,True,entity-operate: electronics-factory-mk01 --> recipe-category: electronic__0__0,False
+206,entity-mine: ore-aluminium,32911.649102093405,18.284249501163004,4.796163466380676e-12,0.9999999999999973,entity-mine,ore-aluminium,False,,True
+207,entity-operate: pulp-mill-mk01,31766.593249726768,17.648107360959315,900.0,0.5,entity-operate,pulp-mill-mk01,False,,False
+208,__pr_graph_lp_or_to_or_and__: 7469:entity-operate: wpu-mk01 --> recipe-category: wpu-handcrafting__0__0:noncoproduct-route,31718.26513978743,17.621258410993015,745.714185318956,0.5857143414894689,,,True,entity-operate: wpu-mk01 --> recipe-category: wpu-handcrafting__0__0,False
+209,__pr_graph_lp_or_to_or_and__: 1764:item-craft: log --> item: log,31233.26988606823,17.351816603371237,757.293755496208,0.5792812469465511,,,True,item-craft: log --> item: log,False
+210,__pr_graph_lp_or_to_or_and__: 1727:item-craft: lime --> item: lime,29838.531783618157,16.576962102010086,894.5346303752827,0.5030363164581763,,,True,item-craft: lime --> item: lime,False
+211,recipe: distilled-raw-coal,29340.533426196318,16.300296347886842,146.47877501561385,0.9186229027691034,recipe,distilled-raw-coal,False,,True
+212,cost-unit: ,29000.0,16.11111111111111,1800.0,0.0,cost-unit,,False,,False
+213,__pr_graph_lp_or_to_or_and__: 7230:fluid-temperature: hydrogen: 15 --> fluid-temperature-range: hydrogen: nil: nil:noncoproduct-route,28473.241758310898,15.818467643506054,1800.0,0.0,,,True,fluid-temperature: hydrogen: 15 --> fluid-temperature-range: hydrogen: nil: nil,False
+214,__pr_graph_lp_or_to_or_and__: 809:fluid-craft-temperature: hydrogen: 15 --> fluid-create-temperature: hydrogen: 15,28473.241758310898,15.818467643506054,1800.0,0.0,,,True,fluid-craft-temperature: hydrogen: 15 --> fluid-create-temperature: hydrogen: 15,False
+215,fluid-temperature: hydrogen: 15,28473.241758310898,15.818467643506054,1800.0,0.0,fluid-temperature,hydrogen: 15,False,,False
+216,__pr_graph_lp_or_to_or_and__: 794:fluid-craft-temperature: gasoline: 10 --> fluid-create-temperature: gasoline: 10,28315.99315377801,15.731107307654451,1528.6948553283905,0.1507250803731164,,,True,fluid-craft-temperature: gasoline: 10 --> fluid-create-temperature: gasoline: 10,False
+217,fluid-temperature: gasoline: 10,28315.99315377801,15.731107307654451,1528.6948553283905,0.1507250803731164,fluid-temperature,gasoline: 10,False,,False
+218,__pr_graph_lp_or_to_or_and__: 7471:entity-operate: glassworks-mk01 --> recipe-category: glassworks__1__0:noncoproduct-route,26448.868642472815,14.693815912484897,1065.7544706745757,0.407914182958569,,,True,entity-operate: glassworks-mk01 --> recipe-category: glassworks__1__0,False
+219,__pr_graph_lp_or_to_or_and__: 1730:item-craft: fawogae-substrate --> item: fawogae-substrate,26100.0,14.5,1800.0,0.0,,,True,item-craft: fawogae-substrate --> item: fawogae-substrate,False
+220,__pr_graph_lp_or_to_or_and__: 7457:entity-operate: fawogae-plantation-mk01 --> recipe-category: fawogae__0__0:noncoproduct-route,25892.85714285714,14.384920634920634,1297.1428571428573,0.2793650793650793,,,True,entity-operate: fawogae-plantation-mk01 --> recipe-category: fawogae__0__0,False
+221,entity-operate: fawogae-plantation-mk01,25892.85714285714,14.384920634920634,1297.1428571428573,0.2793650793650793,entity-operate,fawogae-plantation-mk01,False,,False
+222,__pr_graph_lp_or_to_or_and__: 7569:entity-operate: rc-mk01 --> recipe-category: rc__0__0:noncoproduct-route,25375.0,14.097222222222221,1440.0,0.2,,,True,entity-operate: rc-mk01 --> recipe-category: rc__0__0,False
+223,__pr_graph_lp_or_to_or_and__: 7427:entity-operate: tar-processing-unit --> recipe-category: tar__1__0:noncoproduct-route,24528.235185858684,13.626797325477046,1566.881443298969,0.1295103092783505,,,True,entity-operate: tar-processing-unit --> recipe-category: tar__1__0,False
+224,__pr_graph_lp_or_to_or_and__: 1040:item-craft: burner-mining-drill --> item: burner-mining-drill,24356.72763798273,13.53151535443485,0.0,1.0,,,True,item-craft: burner-mining-drill --> item: burner-mining-drill,False
+225,recipe: burner-mining-drill,24356.72763798273,13.53151535443485,0.0,1.0,recipe,burner-mining-drill,False,,True
+226,__pr_graph_lp_or_to_or_and__: 7222:fluid-temperature: gasoline: 10 --> fluid-temperature-range: gasoline: nil: nil:noncoproduct-route,24048.062809830204,13.360034894350113,1800.0,0.0,,,True,fluid-temperature: gasoline: 10 --> fluid-temperature-range: gasoline: nil: nil,False
+227,recipe: extract-limestone-01,22702.694548963234,12.612608082757353,662.1124061668772,0.6321597743517349,recipe,extract-limestone-01,False,,True
+228,__pr_graph_lp_or_to_or_and__: 7583:entity-operate: research-center-mk01 --> recipe-category: research__0__0:noncoproduct-route,21750.0,12.083333333333334,1800.0,0.0,,,True,entity-operate: research-center-mk01 --> recipe-category: research__0__0,False
+229,entity-operate: research-center-mk01,21750.0,12.083333333333334,1800.0,0.0,entity-operate,research-center-mk01,False,,False
+230,__pr_graph_lp_or_to_or_and__: 2076:item-craft: tin-plate --> item: tin-plate,20323.516307556234,11.290842393086796,25.684531756245832,0.9857308156909745,,,True,item-craft: tin-plate --> item: tin-plate,False
+231,__pr_graph_lp_or_to_or_and__: 351:item: stone-furnace --> entity-build-item: stone-furnace,19968.40553744719,11.093558631915105,0.0,1.0,,,True,item: stone-furnace --> entity-build-item: stone-furnace,False
+232,__pr_graph_lp_or_to_or_and__: 6996:entity-build: stone-furnace --> entity: stone-furnace:noncoproduct-route,19968.40553744719,11.093558631915105,0.0,1.0,,,True,entity-build: stone-furnace --> entity: stone-furnace,False
+233,entity-build: stone-furnace,19968.40553744719,11.093558631915105,0.0,1.0,entity-build,stone-furnace,False,,False
+234,__pr_graph_lp_or_to_or_and__: 991:item-craft: stone --> item: stone,19863.02654818489,11.035014748991607,1226.3992066317828,0.3186671074267873,,,True,item-craft: stone --> item: stone,False
+235,__pr_graph_lp_or_to_or_and__: 7278:fluid-temperature: carbolic-oil: 10 --> fluid-temperature-range: carbolic-oil: nil: nil:noncoproduct-route,19755.344060775355,10.975191144875197,0.0,1.0,,,True,fluid-temperature: carbolic-oil: 10 --> fluid-temperature-range: carbolic-oil: nil: nil,False
+236,__pr_graph_lp_or_to_or_and__: 902:fluid-craft-temperature: carbolic-oil: 10 --> fluid-create-temperature: carbolic-oil: 10,19755.344060775355,10.975191144875197,0.0,1.0,,,True,fluid-craft-temperature: carbolic-oil: 10 --> fluid-create-temperature: carbolic-oil: 10,False
+237,fluid-temperature: carbolic-oil: 10,19755.344060775355,10.975191144875197,0.0,1.0,fluid-temperature,carbolic-oil: 10,False,,False
+238,__pr_graph_lp_or_to_or_and__: 2379:item-craft: wood-seedling --> item: wood-seedling,19637.267726549617,10.909593181416454,602.2416299918508,0.665421316671194,,,True,item-craft: wood-seedling --> item: wood-seedling,False
+239,recipe: glass-2,19527.149245818226,10.848416247676791,1247.4939220949893,0.3069478210583393,recipe,glass-2,False,,True
+240,__pr_graph_lp_or_to_or_and__: 414:item: burner-mining-drill --> entity-build-item: burner-mining-drill,19177.00007605318,10.653888931140656,0.0,1.0,,,True,item: burner-mining-drill --> entity-build-item: burner-mining-drill,False
+241,__pr_graph_lp_or_to_or_and__: 7036:entity-build: burner-mining-drill --> entity: burner-mining-drill:noncoproduct-route,19177.00007605318,10.653888931140656,0.0,1.0,,,True,entity-build: burner-mining-drill --> entity: burner-mining-drill,False
+242,entity-build: burner-mining-drill,19177.00007605318,10.653888931140656,0.0,1.0,entity-build,burner-mining-drill,False,,False
+243,__pr_graph_lp_or_to_or_and__: 7538:entity-operate: rhe --> recipe-category: rhe__1__1:noncoproduct-route,16433.33333333333,9.129629629629626,1800.0,0.0,,,True,entity-operate: rhe --> recipe-category: rhe__1__1,False
+244,entity-operate: rhe,16433.33333333333,9.129629629629626,1800.0,0.0,entity-operate,rhe,False,,False
+245,__pr_graph_lp_or_to_or_and__: 1094:item-craft: steel-plate --> item: steel-plate,16194.207613088947,8.996782007271637,1.9984014443252818e-13,0.9999999999999999,,,True,item-craft: steel-plate --> item: steel-plate,False
+246,recipe: steel-plate,16194.207613088925,8.996782007271625,0.0,1.0,recipe,steel-plate,False,,True
+247,__pr_graph_lp_or_to_or_and__: 7519:entity-operate: pulp-mill-mk01 --> recipe-category: pulp__0__0:noncoproduct-route,15883.296624863386,8.82405368047966,1800.0,0.0,,,True,entity-operate: pulp-mill-mk01 --> recipe-category: pulp__0__0,False
+248,__pr_graph_lp_or_to_or_and__: 7520:entity-operate: pulp-mill-mk01 --> recipe-category: pulp__1__0:noncoproduct-route,15883.296624863382,8.824053680479656,0.0,1.0,,,True,entity-operate: pulp-mill-mk01 --> recipe-category: pulp__1__0,False
+249,__pr_graph_lp_or_to_or_and__: 2002:item-craft: glass --> item: glass,14963.62137873065,8.313122988183695,0.0,1.0,,,True,item-craft: glass --> item: glass,False
+250,__pr_graph_lp_or_to_or_and__: 7422:entity-operate: distilator --> recipe-category: distilator__2__0:noncoproduct-route,14500.0,8.055555555555555,1800.0,0.0,,,True,entity-operate: distilator --> recipe-category: distilator__2__0,False
+251,__pr_graph_lp_or_to_or_and__: 7588:entity-operate: slaughterhouse-mk01 --> recipe-category: slaughterhouse__0__1:noncoproduct-route,14500.0,8.055555555555555,1800.0,0.0,,,True,entity-operate: slaughterhouse-mk01 --> recipe-category: slaughterhouse__0__1,False
+252,entity-operate: slaughterhouse-mk01,14500.0,8.055555555555555,1800.0,0.0,entity-operate,slaughterhouse-mk01,False,,False
+253,recipe: sap-01,14319.692471600629,7.955384706444794,382.7596165818597,0.7873557685656335,recipe,sap-01,False,,True
+254,__pr_graph_lp_or_to_or_and__: 1669:item-craft: gravel --> item: gravel,13285.000758094871,7.380555976719373,0.0,1.0,,,True,item-craft: gravel --> item: gravel,False
+255,recipe: acetylene,12770.872953441769,7.094929418578761,1045.0186176508225,0.41943410130509867,recipe,acetylene,False,,True
+256,recipe: calcium-carbide,12770.872953441769,7.094929418578761,1045.0186176508225,0.41943410130509867,recipe,calcium-carbide,False,,True
+257,__pr_graph_lp_or_to_or_and__: 2431:item-craft: cellulose --> item: cellulose,12564.17524550435,6.980097358613528,1246.4009530274088,0.30755502609588387,,,True,item-craft: cellulose --> item: cellulose,False
+258,recipe: cellulose-00,12508.93715026626,6.9494095279257,1243.9563203209655,0.3089131553772414,recipe,cellulose-00,False,,True
+259,recipe: soil,12158.160815449444,6.754533786360803,36.82144793912241,0.9795436400338209,recipe,soil,False,,True
+260,__pr_graph_lp_or_to_or_and__: 7312:entity-operate: assembling-machine-1 --> recipe-category: crafting-with-fluid__1__0:noncoproduct-route,11363.372994026075,6.312984996681153,459.3706466155997,0.7447940852135557,,,True,entity-operate: assembling-machine-1 --> recipe-category: crafting-with-fluid__1__0,False
+261,__pr_graph_lp_or_to_or_and__: 2480:item-craft: sap-seeds --> item: sap-seeds,11069.757486839528,6.149865270466404,0.0,1.0,,,True,item-craft: sap-seeds --> item: sap-seeds,False
+262,__pr_graph_lp_or_to_or_and__: 705:fluid-craft-temperature: syngas: 15 --> fluid-create-temperature: syngas: 15,10587.301587301597,5.8818342151675544,5.995204332975845e-13,0.9999999999999997,,,True,fluid-craft-temperature: syngas: 15 --> fluid-create-temperature: syngas: 15,False
+263,fluid-temperature: syngas: 15,10587.301587301597,5.8818342151675544,5.995204332975845e-13,0.9999999999999997,fluid-temperature,syngas: 15,False,,False
+264,__pr_graph_lp_or_to_or_and__: 7428:entity-operate: tar-processing-unit --> recipe-category: tar__1__1:noncoproduct-route,10009.37432412618,5.560763513403433,0.0,1.0,,,True,entity-operate: tar-processing-unit --> recipe-category: tar__1__1,False
+265,__pr_graph_lp_or_to_or_and__: 2219:item-craft: warm-stone-brick --> item: warm-stone-brick,9666.666666666664,5.370370370370369,1800.0,0.0,,,True,item-craft: warm-stone-brick --> item: warm-stone-brick,False
+266,__pr_graph_lp_or_to_or_and__: 7421:entity-operate: distilator --> recipe-category: distilator__2__4:noncoproduct-route,9219.160561695166,5.121755867608425,0.0,1.0,,,True,entity-operate: distilator --> recipe-category: distilator__2__4,False
+267,__pr_graph_lp_or_to_or_and__: 7186:fluid-temperature: syngas: 15 --> fluid-temperature-range: syngas: nil: nil:noncoproduct-route,9206.349206349216,5.114638447971786,7.993605777301127e-13,0.9999999999999996,,,True,fluid-temperature: syngas: 15 --> fluid-temperature-range: syngas: nil: nil,False
+268,__pr_graph_lp_or_to_or_and__: 2381:item-craft: wood-seeds --> item: wood-seeds,8720.755908849873,4.8448643938054845,811.1827440205813,0.549342919988566,,,True,item-craft: wood-seeds --> item: wood-seeds,False
+269,__pr_graph_lp_or_to_or_and__: 1704:item-craft: sand --> item: sand,8593.57175346923,4.774206529705128,0.0,1.0,,,True,item-craft: sand --> item: sand,False
+270,__pr_graph_lp_or_to_or_and__: 1684:item-craft: iron-oxide --> item: iron-oxide,8331.535610473595,4.628630894707553,103.16862570139371,0.942684096832559,,,True,item-craft: iron-oxide --> item: iron-oxide,False
+271,__pr_graph_lp_or_to_or_and__: 2508:item-craft: empty-planter-box --> item: empty-planter-box,8293.561887927423,4.6075343821819015,0.0,1.0,,,True,item-craft: empty-planter-box --> item: empty-planter-box,False
+272,__pr_graph_lp_or_to_or_and__: 2510:item-craft: planter-box --> item: planter-box,8293.561887927423,4.6075343821819015,0.0,1.0,,,True,item-craft: planter-box --> item: planter-box,False
+273,recipe: empty-planter-box,8293.561887927423,4.6075343821819015,0.0,1.0,recipe,empty-planter-box,False,,True
+274,recipe: planter-box,8293.561887927423,4.6075343821819015,0.0,1.0,recipe,planter-box,False,,True
+275,recipe: coal-gas,8085.865795429911,4.492147664127728,0.0,1.0,recipe,coal-gas,False,,True
+276,__pr_graph_lp_or_to_or_and__: 7525:entity-operate: pcb-factory-mk01 --> recipe-category: pcb__1__0:noncoproduct-route,7941.648312431692,4.412026840239829,900.0,0.49999999999999994,,,True,entity-operate: pcb-factory-mk01 --> recipe-category: pcb__1__0,False
+277,entity-operate: pcb-factory-mk01,7941.648312431692,4.412026840239829,900.0,0.49999999999999994,entity-operate,pcb-factory-mk01,False,,False
+278,__pr_graph_lp_or_to_or_and__: 2160:item-craft: raw-fiber --> item: raw-fiber,7941.648312431691,4.412026840239828,0.0,1.0,,,True,item-craft: raw-fiber --> item: raw-fiber,False
+279,recipe: log-wood,7929.566284946857,4.405314602748254,745.714185318956,0.5857143414894689,recipe,log-wood,False,,True
+280,__pr_graph_lp_or_to_or_and__: 7517:entity-operate: electronics-factory-mk01 --> recipe-category: electronic__1__0:noncoproduct-route,7658.018015559133,4.254454453088408,1.9984014443252818e-13,0.9999999999999999,,,True,entity-operate: electronics-factory-mk01 --> recipe-category: electronic__1__0,False
+281,__pr_graph_lp_or_to_or_and__: 7181:fluid-temperature: coal-gas: 15 --> fluid-temperature-range: coal-gas: nil: nil:noncoproduct-route,7562.358276643998,4.20131015369111,5.995204332975845e-13,0.9999999999999997,,,True,fluid-temperature: coal-gas: 15 --> fluid-temperature-range: coal-gas: nil: nil,False
+282,__pr_graph_lp_or_to_or_and__: 2086:item-craft: zinc-plate --> item: zinc-plate,7293.350491008697,4.05186138389372,0.0,1.0,,,True,item-craft: zinc-plate --> item: zinc-plate,False
+283,__pr_graph_lp_or_to_or_and__: 2390:item-craft: agar --> item: agar,7273.565271744808,4.040869595413782,1578.8680751393294,0.12285106936703916,,,True,item-craft: agar --> item: agar,False
+284,recipe: agar,7273.565271744808,4.040869595413782,1578.8680751393294,0.12285106936703916,recipe,agar,False,,True
+285,__pr_graph_lp_or_to_or_and__: 7599:entity-operate: flora-collector-mk01 --> resource-category: ore-bioreserve__0__0:noncoproduct-route,7250.000000000003,4.0277777777777795,1440.0,0.19999999999999993,,,True,entity-operate: flora-collector-mk01 --> resource-category: ore-bioreserve__0__0,False
+286,entity-mine: ore-bioreserve,7250.000000000003,4.0277777777777795,1440.0,0.19999999999999993,entity-mine,ore-bioreserve,False,,True
+287,entity-operate: flora-collector-mk01,7250.000000000003,4.0277777777777795,1440.0,0.19999999999999993,entity-operate,flora-collector-mk01,False,,False
+288,__pr_graph_lp_or_to_or_and__: 2398:item-craft: cocoon --> item: cocoon,7250.0,4.027777777777778,1440.0,0.2,,,True,item-craft: cocoon --> item: cocoon,False
+289,__pr_graph_lp_or_to_or_and__: 7509:entity-operate: clay-pit-mk01 --> recipe-category: clay__1__0:noncoproduct-route,6781.958615449464,3.767754786360813,900.0,0.5,,,True,entity-operate: clay-pit-mk01 --> recipe-category: clay__1__0,False
+290,entity-operate: clay-pit-mk01,6781.958615449464,3.767754786360813,900.0,0.5,entity-operate,clay-pit-mk01,False,,False
+291,__pr_graph_lp_or_to_or_and__: 7429:entity-operate: tar-processing-unit --> recipe-category: tar__2__4:noncoproduct-route,6585.114686925118,3.6583970482917323,0.0,1.0,,,True,entity-operate: tar-processing-unit --> recipe-category: tar__2__4,False
+292,recipe: wood-seedling,6545.755908849873,3.6365310604721515,602.2416299918508,0.665421316671194,recipe,wood-seedling,False,,True
+293,__pr_graph_lp_or_to_or_and__: 2098:item-craft: tinned-cable --> item: tinned-cable,6395.2757333211,3.5529309629561667,0.0,1.0,,,True,item-craft: tinned-cable --> item: tinned-cable,False
+294,recipe: tinned-cable,6395.2757333211,3.5529309629561667,0.0,1.0,recipe,tinned-cable,False,,True
+295,__pr_graph_lp_or_to_or_and__: 7436:entity-operate: hpf --> recipe-category: hpf__1__1:noncoproduct-route,6353.318649945353,3.529621472191863,0.0,1.0,,,True,entity-operate: hpf --> recipe-category: hpf__1__1,False
+296,__pr_graph_lp_or_to_or_and__: 7550:entity-operate: spore-collector-mk01 --> recipe-category: spore__0__0:noncoproduct-route,6214.285714285714,3.452380952380952,1297.142857142857,0.27936507936507937,,,True,entity-operate: spore-collector-mk01 --> recipe-category: spore__0__0,False
+297,entity-operate: spore-collector-mk01,6214.285714285714,3.452380952380952,1297.142857142857,0.27936507936507937,entity-operate,spore-collector-mk01,False,,False
+298,__pr_graph_lp_or_to_or_and__: 1701:item-craft: nexelit-ore --> item: nexelit-ore,6076.190476190476,3.375661375661376,1759.0909090909092,0.022727272727272742,,,True,item-craft: nexelit-ore --> item: nexelit-ore,False
+299,__pr_graph_lp_or_to_or_and__: 2057:item-craft: lead-plate --> item: lead-plate,5834.720670584736,3.2415114836581864,0.0,1.0,,,True,item-craft: lead-plate --> item: lead-plate,False
+300,recipe: lead-plate-1,5834.720670584736,3.2415114836581864,0.0,1.0,recipe,lead-plate-1,False,,True
+301,__pr_graph_lp_or_to_or_and__: 7523:entity-operate: chipshooter-mk01 --> recipe-category: chip__0__0:noncoproduct-route,5834.680392806958,3.2414891071149765,900.0,0.5,,,True,entity-operate: chipshooter-mk01 --> recipe-category: chip__0__0,False
+302,entity-operate: chipshooter-mk01,5834.680392806958,3.2414891071149765,900.0,0.5,entity-operate,chipshooter-mk01,False,,False
+303,__pr_graph_lp_or_to_or_and__: 2383:item-craft: empty-petri-dish --> item: empty-petri-dish,5823.565271744808,3.2353140398582267,1613.4446102266916,0.10364188320739354,,,True,item-craft: empty-petri-dish --> item: empty-petri-dish,False
+304,__pr_graph_lp_or_to_or_and__: 2386:item-craft: petri-dish --> item: petri-dish,5823.565271744808,3.2353140398582267,1613.4446102266916,0.10364188320739354,,,True,item-craft: petri-dish --> item: petri-dish,False
+305,recipe: empty-petri-dish,5823.565271744808,3.2353140398582267,1613.4446102266916,0.10364188320739354,recipe,empty-petri-dish,False,,True
+306,recipe: petri-dish,5823.565271744808,3.2353140398582267,1613.4446102266916,0.10364188320739354,recipe,petri-dish,False,,True
+307,__pr_graph_lp_or_to_or_and__: 2488:item-craft: stopper --> item: stopper,5800.0,3.2222222222222223,1800.0,0.0,,,True,item-craft: stopper --> item: stopper,False
+308,__pr_graph_lp_or_to_or_and__: 1064:item-craft: steam-engine --> item: steam-engine,5735.512666945077,3.1863959260805985,0.0,1.0,,,True,item-craft: steam-engine --> item: steam-engine,False
+309,recipe: steam-engine,5735.512666945077,3.1863959260805985,0.0,1.0,recipe,steam-engine,False,,True
+310,recipe: sap-seeds,5534.878743419764,3.074932635233202,0.0,1.0,recipe,sap-seeds,False,,True
+311,__pr_graph_lp_or_to_or_and__: 2388:item-craft: petri-dish-bacteria --> item: petri-dish-bacteria,5220.0,2.9,1800.0,0.0,,,True,item-craft: petri-dish-bacteria --> item: petri-dish-bacteria,False
+312,recipe: petri-dish-bacteria,5220.0,2.9,1800.0,0.0,recipe,petri-dish-bacteria,False,,True
+313,recipe: log3,5205.544981011371,2.8919694338952064,757.293755496208,0.5792812469465511,recipe,log3,False,,True
+314,recipe: tin-plate-1,5008.379076889058,2.782432820493921,0.0,1.0,recipe,tin-plate-1,False,,True
+315,recipe: seaweed-1,4861.782635872397,2.700990353262443,1584.585623257503,0.11967465374583178,recipe,seaweed-1,False,,True
+316,__pr_graph_lp_or_to_or_and__: 2027:item-craft: titanium-plate --> item: titanium-plate,4639.6362983622475,2.5775757213123596,0.0,1.0,,,True,item-craft: titanium-plate --> item: titanium-plate,False
+317,__pr_graph_lp_or_to_or_and__: 7200:fluid-temperature: aromatics: 10 --> fluid-temperature-range: aromatics: nil: nil:noncoproduct-route,4603.174603174608,2.557319223985893,7.993605777301127e-13,0.9999999999999996,,,True,fluid-temperature: aromatics: 10 --> fluid-temperature-range: aromatics: nil: nil,False
+318,__pr_graph_lp_or_to_or_and__: 7234:fluid-temperature: oxygen: 15 --> fluid-temperature-range: oxygen: nil: nil:noncoproduct-route,4603.174603174606,2.557319223985892,0.0,1.0,,,True,fluid-temperature: oxygen: 15 --> fluid-temperature-range: oxygen: nil: nil,False
+319,__pr_graph_lp_or_to_or_and__: 821:fluid-craft-temperature: oxygen: 15 --> fluid-create-temperature: oxygen: 15,4603.174603174606,2.557319223985892,0.0,1.0,,,True,fluid-craft-temperature: oxygen: 15 --> fluid-create-temperature: oxygen: 15,False
+320,fluid-temperature: oxygen: 15,4603.174603174606,2.557319223985892,0.0,1.0,fluid-temperature,oxygen: 15,False,,False
+321,__pr_graph_lp_or_to_or_and__: 7480:entity-operate: automated-screener-mk01 --> recipe-category: screener__0__0:noncoproduct-route,4520.30239264282,2.511279107023789,900.0,0.5,,,True,entity-operate: automated-screener-mk01 --> recipe-category: screener__0__0,False
+322,entity-operate: automated-screener-mk01,4520.30239264282,2.511279107023789,900.0,0.5,entity-operate,automated-screener-mk01,False,,False
+323,__pr_graph_lp_or_to_or_and__: 2147:item-craft: resistor1 --> item: resistor1,4376.010294605219,2.431116830336233,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: resistor1 --> item: resistor1,False
+324,__pr_graph_lp_or_to_or_and__: 1732:item-craft: flask --> item: flask,4350.0,2.4166666666666665,1800.0,0.0,,,True,item-craft: flask --> item: flask,False
+325,__pr_graph_lp_or_to_or_and__: 2415:item-craft: py-science-pack-1 --> item: py-science-pack-1,4350.0,2.4166666666666665,1800.0,0.0,,,True,item-craft: py-science-pack-1 --> item: py-science-pack-1,False
+326,__pr_graph_lp_or_to_or_and__: 7473:entity-operate: glassworks-mk01 --> recipe-category: glassworks__2__0:noncoproduct-route,4350.0,2.4166666666666665,1800.0,0.0,,,True,entity-operate: glassworks-mk01 --> recipe-category: glassworks__2__0,False
+327,__pr_graph_lp_or_to_or_and__: 1124:item-craft: concrete --> item: concrete,4296.785876734615,2.387103264852564,0.0,1.0,,,True,item-craft: concrete --> item: concrete,False
+328,__pr_graph_lp_or_to_or_and__: 7221:fluid-temperature: gasoline: 10 --> fluid: gasoline:noncoproduct-route,4267.930343947804,2.371072413304336,0.0,1.0,,,True,fluid-temperature: gasoline: 10 --> fluid: gasoline,False
+329,recipe: stone-to-gravel,4265.100444075078,2.3695002467083763,0.0,1.0,recipe,stone-to-gravel,False,,True
+330,recipe: Moss-2,4175.236221515585,2.3195756786197697,1024.8873722661658,0.4306181265187967,recipe,Moss-2,False,,True
+331,__pr_graph_lp_or_to_or_and__: 1158:item-craft: barrel --> item: barrel,3987.5000000000005,2.215277777777778,1440.0,0.19999999999999998,,,True,item-craft: barrel --> item: barrel,False
+332,recipe: water-barrel,3987.5000000000005,2.215277777777778,1440.0,0.19999999999999998,recipe,water-barrel,False,,True
+333,recipe: fiber-01,3970.8241562158455,2.206013420119914,0.0,1.0,recipe,fiber-01,False,,True
+334,__pr_graph_lp_or_to_or_and__: 2145:item-craft: capacitor1 --> item: capacitor1,3646.675245504349,2.0259306919468605,0.0,1.0,,,True,item-craft: capacitor1 --> item: capacitor1,False
+335,__pr_graph_lp_or_to_or_and__: 2010:item-craft: aluminium-plate --> item: aluminium-plate,3291.16491020934,1.8284249501163001,4.796163466380676e-12,0.9999999999999973,,,True,item-craft: aluminium-plate --> item: aluminium-plate,False
+336,recipe: aluminium-plate-1,3291.16491020934,1.8284249501163001,4.796163466380676e-12,0.9999999999999973,recipe,aluminium-plate-1,False,,True
+337,__pr_graph_lp_or_to_or_and__: 1788:item-craft: treated-wood --> item: treated-wood,3176.659324972677,1.7648107360959318,0.0,1.0,,,True,item-craft: treated-wood --> item: treated-wood,False
+338,recipe: anthracene-oil-creosote,3081.833673480955,1.7121298186005305,0.0,1.0,recipe,anthracene-oil-creosote,False,,True
+339,recipe: molten-glass,2992.72427574613,1.6626245976367389,0.0,1.0,recipe,molten-glass,False,,True
+340,recipe: lime,2983.8531783618155,1.6576962102010087,894.5346303752827,0.5030363164581763,recipe,lime,False,,True
+341,__pr_graph_lp_or_to_or_and__: 2167:item-craft: meat --> item: meat,2900.0,1.6111111111111112,1800.0,0.0,,,True,item-craft: meat --> item: meat,False
+342,__pr_graph_lp_or_to_or_and__: 2417:item-craft: guts --> item: guts,2900.0,1.6111111111111112,1800.0,0.0,,,True,item-craft: guts --> item: guts,False
+343,__pr_graph_lp_or_to_or_and__: 2482:item-craft: sodium-alginate --> item: sodium-alginate,2900.0,1.6111111111111112,1800.0,0.0,,,True,item-craft: sodium-alginate --> item: sodium-alginate,False
+344,__pr_graph_lp_or_to_or_and__: 2484:item-craft: latex-slab --> item: latex-slab,2900.0,1.6111111111111112,1800.0,0.0,,,True,item-craft: latex-slab --> item: latex-slab,False
+345,__pr_graph_lp_or_to_or_and__: 2486:item-craft: latex --> item: latex,2900.0,1.6111111111111112,1800.0,0.0,,,True,item-craft: latex --> item: latex,False
+346,__pr_graph_lp_or_to_or_and__: 6506:item: guts --> logic-or: workers-food-or-meat,2900.0,1.6111111111111112,1800.0,0.0,,,True,item: guts --> logic-or: workers-food-or-meat,False
+347,__pr_graph_lp_or_to_or_and__: 6507:item: meat --> logic-or: workers-food-or-meat,2900.0,1.6111111111111112,1800.0,0.0,,,True,item: meat --> logic-or: workers-food-or-meat,False
+348,recipe: creamy-latex,2900.0,1.6111111111111112,1800.0,0.0,recipe,creamy-latex,False,,True
+349,recipe: latex,2900.0,1.6111111111111112,1800.0,0.0,recipe,latex,False,,True
+350,recipe: latex-slab,2900.0,1.6111111111111112,1800.0,0.0,recipe,latex-slab,False,,True
+351,recipe: sodium-alginate,2900.0,1.6111111111111112,1800.0,0.0,recipe,sodium-alginate,False,,True
+352,__pr_graph_lp_or_to_or_and__: 1046:item-craft: burner-inserter --> item: burner-inserter,2701.75392002658,1.5009744000147667,0.0,1.0,,,True,item-craft: burner-inserter --> item: burner-inserter,False
+353,recipe: burner-inserter,2701.75392002658,1.5009744000147667,0.0,1.0,recipe,burner-inserter,False,,True
+354,recipe: fawogae-substrate,2610.0,1.45,1800.0,0.0,recipe,fawogae-substrate,False,,True
+355,__pr_graph_lp_or_to_or_and__: 2132:item-craft: clay --> item: clay,2543.234480793549,1.412908044885305,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: clay --> item: clay,False
+356,__pr_graph_lp_or_to_or_and__: 1740:item-craft: rich-clay --> item: rich-clay,2397.0520793596647,1.331695599644258,1800.0,0.0,,,True,item-craft: rich-clay --> item: rich-clay,False
+357,recipe: tar-distilation,2397.0520793596647,1.331695599644258,0.0,1.0,recipe,tar-distilation,False,,True
+358,__pr_graph_lp_or_to_or_and__: 2519:item-craft: moondrop-seeds --> item: moondrop-seeds,2382.494493729507,1.3236080520719484,0.0,1.0,,,True,item-craft: moondrop-seeds --> item: moondrop-seeds,False
+359,recipe: methane-co2,2382.494493729507,1.3236080520719484,0.0,1.0,recipe,methane-co2,False,,True
+360,__pr_graph_lp_or_to_or_and__: 7417:entity-operate: distilator --> recipe-category: distilator__1__2:noncoproduct-route,2265.2794523022408,1.258488584612356,0.0,1.0,,,True,entity-operate: distilator --> recipe-category: distilator__1__2,False
+361,__pr_graph_lp_or_to_or_and__: 2779:item-craft: sap-tree --> item: sap-tree,2213.9514973679056,1.229973054093281,0.0,1.0,,,True,item-craft: sap-tree --> item: sap-tree,False
+362,recipe: sap-tree,2213.9514973679056,1.229973054093281,0.0,1.0,recipe,sap-tree,False,,True
+363,__pr_graph_lp_or_to_or_and__: 2149:item-craft: graphite --> item: graphite,2188.00514730261,1.2155584151681167,7.993605777301127e-13,0.9999999999999996,,,True,item-craft: graphite --> item: graphite,False
+364,__pr_graph_lp_or_to_or_and__: 1031:item-craft: electronic-circuit --> item: electronic-circuit,2188.0051473026097,1.2155584151681165,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: electronic-circuit --> item: electronic-circuit,False
+365,__pr_graph_lp_or_to_or_and__: 2151:item-craft: vacuum-tube --> item: vacuum-tube,2188.0051473026097,1.2155584151681165,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: vacuum-tube --> item: vacuum-tube,False
+366,recipe: wood-seeds,2180.188977212468,1.2112160984513711,811.1827440205813,0.549342919988566,recipe,wood-seeds,False,,True
+367,__pr_graph_lp_or_to_or_and__: 1137:item-craft: transport-belt --> item: transport-belt,2173.774960293736,1.2076527557187422,0.0,1.0,,,True,item-craft: transport-belt --> item: transport-belt,False
+368,__pr_graph_lp_or_to_or_and__: 2060:item-craft: clean-nexelit --> item: clean-nexelit,2025.3968253968253,1.125220458553792,1759.0909090909092,0.022727272727272742,,,True,item-craft: clean-nexelit --> item: clean-nexelit,False
+369,recipe: clean-nexelit,2025.3968253968253,1.125220458553792,1759.0909090909092,0.022727272727272742,recipe,clean-nexelit,False,,True
+370,entity-operate: quenching-tower,1973.9741021287057,1.096652278960392,900.0,0.5,entity-operate,quenching-tower,False,,False
+371,recipe: warm-stone-brick-1,1933.3333333333328,1.0740740740740737,1800.0,0.0,recipe,warm-stone-brick-1,False,,True
+372,__pr_graph_lp_or_to_or_and__: 2810:item-craft: moondrop --> item: moondrop,1905.9955949836058,1.0588864416575587,0.0,1.0,,,True,item-craft: moondrop --> item: moondrop,False
+373,entity-operate: vacuum-pump-mk01,1888.167404894474,1.0489818916080411,900.0,0.49999999999999994,entity-operate,vacuum-pump-mk01,False,,False
+374,recipe: pitch-refining,1843.832112339033,1.024351173521685,0.0,1.0,recipe,pitch-refining,False,,True
+375,recipe: zinc-plate-1,1823.3376227521742,1.01296534597343,0.0,1.0,recipe,zinc-plate-1,False,,True
+376,__pr_graph_lp_or_to_or_and__: 2803:item-craft: fawogae --> item: fawogae,1812.5,1.0069444444444444,1297.142857142857,0.27936507936507937,,,True,item-craft: fawogae --> item: fawogae,False
+377,entity-operate: character,1800.0,1.0,900.0,0.5,entity-operate,character,False,,False
+378,recipe: muddy-sludge,1642.3393961187599,0.9124107756215333,436.13989805958784,0.7577000566335623,recipe,muddy-sludge,False,,True
+379,__pr_graph_lp_or_to_or_and__: 2536:item-craft: sb-grade-02 --> item: sb-grade-02,1632.3314195654632,0.9068507886474796,0.0,1.0,,,True,item-craft: sb-grade-02 --> item: sb-grade-02,False
+380,entity-operate: barrel-machine-mk01,1595.0000000000002,0.8861111111111112,1440.0,0.19999999999999998,entity-operate,barrel-machine-mk01,False,,False
+381,__pr_graph_lp_or_to_or_and__: 2157:item-craft: formica --> item: formica,1588.3296624863385,0.8824053680479659,1.9984014443252818e-13,0.9999999999999999,,,True,item-craft: formica --> item: formica,False
+382,recipe: treated-wood,1588.3296624863385,0.8824053680479659,0.0,1.0,recipe,treated-wood,False,,True
+383,recipe: formica,1588.3296624863383,0.8824053680479658,0.0,1.0,recipe,formica,False,,True
+384,recipe: methanal,1588.3296624863383,0.8824053680479658,0.0,1.0,recipe,methanal,False,,True
+385,__pr_graph_lp_or_to_or_and__: 7430:entity-operate: tar-processing-unit --> recipe-category: tar__2__3:noncoproduct-route,1580.4275248620283,0.8780152915900158,0.0,1.0,,,True,entity-operate: tar-processing-unit --> recipe-category: tar__2__3,False
+386,__pr_graph_lp_or_to_or_and__: 2314:item-craft: fluid-drill-mk01 --> item: fluid-drill-mk01,1553.6355931411942,0.8631308850784413,0.0,1.0,,,True,item-craft: fluid-drill-mk01 --> item: fluid-drill-mk01,False
+387,recipe: fluid-drill-mk01,1553.6355931411942,0.8631308850784413,0.0,1.0,recipe,fluid-drill-mk01,False,,True
+388,recipe: naphthalene-oil-creosote,1527.7466073666274,0.8487481152036819,0.0,1.0,recipe,naphthalene-oil-creosote,False,,True
+389,recipe: coke-co2,1471.0318219045155,0.8172399010580642,794.5320724641366,0.5585932930754797,recipe,coke-co2,False,,True
+390,recipe: resistor1,1458.6700982017464,0.810372276778748,8.79296635503124e-12,0.9999999999999951,recipe,resistor1,False,,True
+391,__pr_graph_lp_or_to_or_and__: 2100:item-craft: solder --> item: solder,1458.6700982017396,0.8103722767787442,1.9984014443252818e-13,0.9999999999999999,,,True,item-craft: solder --> item: solder,False
+392,recipe: solder-0,1458.6700982017396,0.8103722767787442,1.9984014443252818e-13,0.9999999999999999,recipe,solder-0,False,,True
+393,__pr_graph_lp_or_to_or_and__: 2409:item-craft: cage --> item: cage,1450.0,0.8055555555555556,1800.0,0.0,,,True,item-craft: cage --> item: cage,False
+394,__pr_graph_lp_or_to_or_and__: 2426:item-craft: brain --> item: brain,1450.0,0.8055555555555556,1800.0,0.0,,,True,item-craft: brain --> item: brain,False
+395,__pr_graph_lp_or_to_or_and__: 2434:item-craft: chitin --> item: chitin,1450.0,0.8055555555555556,1800.0,0.0,,,True,item-craft: chitin --> item: chitin,False
+396,__pr_graph_lp_or_to_or_and__: 2461:item-craft: vrauks-food-01 --> item: vrauks-food-01,1450.0,0.8055555555555556,1440.0,0.2,,,True,item-craft: vrauks-food-01 --> item: vrauks-food-01,False
+397,__pr_graph_lp_or_to_or_and__: 2491:item-craft: caged-vrauks --> item: caged-vrauks,1450.0,0.8055555555555556,1800.0,0.0,,,True,item-craft: caged-vrauks --> item: caged-vrauks,False
+398,__pr_graph_lp_or_to_or_and__: 2793:item-craft: vrauks --> item: vrauks,1450.0,0.8055555555555556,1440.0,0.2,,,True,item-craft: vrauks --> item: vrauks,False
+399,__pr_graph_lp_used_payback_or_to_or_and__: 5390:item: vrauks --> recipe-py-module: vrauks-cocoon-2,1450.0,0.8055555555555556,1440.0,0.2,,,True,item: vrauks --> recipe-py-module: vrauks-cocoon-2,False
+400,recipe: caged-vrauks,1450.0,0.8055555555555556,1800.0,0.0,recipe,caged-vrauks,False,,True
+401,recipe: full-render-vrauks,1450.0,0.8055555555555556,1800.0,0.0,recipe,full-render-vrauks,False,,True
+402,recipe: hotair-flask,1450.0,0.8055555555555556,1800.0,0.0,recipe,hotair-flask,False,,True
+403,recipe: py-science-pack-1,1450.0,0.8055555555555556,1800.0,0.0,recipe,py-science-pack-1,False,,True
+404,recipe: stopper,1450.0,0.8055555555555556,1800.0,0.0,recipe,stopper,False,,True
+405,__pr_graph_lp_or_to_or_and__: 7185:fluid-temperature: syngas: 15 --> fluid: syngas:noncoproduct-route,1380.9523809523819,0.7671957671957677,0.0,1.0,,,True,fluid-temperature: syngas: 15 --> fluid: syngas,False
+406,__pr_graph_lp_or_to_or_and__: 2768:item-craft: tree-mk01 --> item: tree-mk01,1340.2109278385014,0.7445616265769452,0.0,1.0,,,True,item-craft: tree-mk01 --> item: tree-mk01,False
+407,recipe: tree,1340.2109278385014,0.7445616265769452,0.0,1.0,recipe,tree,False,,True
+408,recipe: tar-refining,1317.0229373850236,0.7316794096583464,0.0,1.0,recipe,tar-refining,False,,True
+409,__pr_graph_lp_or_to_or_and__: 7475:entity-operate: vacuum-pump-mk01 --> recipe-category: vacuum__0__1:noncoproduct-route,1306.5837024472369,0.7258798346929094,499.3939529307344,0.7225589150384809,,,True,entity-operate: vacuum-pump-mk01 --> recipe-category: vacuum__0__1,False
+410,__pr_graph_lp_or_to_or_and__: 1055:item-craft: offshore-pump --> item: offshore-pump,1277.6286274549805,0.7097936819194336,0.0,1.0,,,True,item-craft: offshore-pump --> item: offshore-pump,False
+411,__pr_graph_lp_or_to_or_and__: 442:item: offshore-pump --> entity-build-item: offshore-pump,1277.6286274549805,0.7097936819194336,0.0,1.0,,,True,item: offshore-pump --> entity-build-item: offshore-pump,False
+412,__pr_graph_lp_or_to_or_and__: 7052:entity-build: offshore-pump --> entity: offshore-pump:noncoproduct-route,1277.6286274549805,0.7097936819194336,0.0,1.0,,,True,entity-build: offshore-pump --> entity: offshore-pump,False
+413,entity-build: offshore-pump,1277.6286274549805,0.7097936819194336,0.0,1.0,entity-build,offshore-pump,False,,False
+414,recipe: offshore-pump,1277.6286274549805,0.7097936819194336,0.0,1.0,recipe,offshore-pump,False,,True
+415,__pr_graph_lp_or_to_or_and__: 2140:item-craft: ceramic --> item: ceramic,1271.6172403967746,0.7064540224426525,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: ceramic --> item: ceramic,False
+416,__pr_graph_lp_or_to_or_and__: 7605:entity-operate: antimony-drill-mk01 --> resource-category: antimonium__0__0:noncoproduct-route,1255.6395535118947,0.6975775297288305,0.0,1.0,,,True,entity-operate: antimony-drill-mk01 --> resource-category: antimonium__0__0,False
+417,entity-mine: antimonium,1255.6395535118947,0.6975775297288305,0.0,1.0,entity-mine,antimonium,False,,True
+418,entity-operate: antimony-drill-mk01,1255.6395535118947,0.6975775297288305,0.0,1.0,entity-operate,antimony-drill-mk01,False,,False
+419,recipe: capacitor1,1215.5584151681162,0.6753102306489535,0.0,1.0,recipe,capacitor1,False,,True
+420,recipe: saline-water,1179.2076178434659,0.6551153432463699,0.0,1.0,recipe,saline-water,False,,True
+421,recipe: gravel-to-sand,1172.8572511564103,0.6515873617535612,0.0,1.0,recipe,gravel-to-sand,False,,True
+422,recipe: titanium-plate-1,1159.9090745905619,0.6443939303280899,0.0,1.0,recipe,titanium-plate-1,False,,True
+423,recipe: light-oil-aromatics,1132.6397261511204,0.629244292306178,0.0,1.0,recipe,light-oil-aromatics,False,,True
+424,entity-mine: seaweed,1125.0000000000364,0.6250000000000202,1800.0,0.0,entity-mine,seaweed,False,,True
+425,__pr_graph_lp_or_to_or_and__: 2290:item-craft: sap-extractor-mk01 --> item: sap-extractor-mk01,1106.9757486839528,0.6149865270466405,0.0,1.0,,,True,item-craft: sap-extractor-mk01 --> item: sap-extractor-mk01,False
+426,__pr_graph_lp_or_to_or_and__: 240:item: sap-extractor-mk01 --> entity-build-item: sap-extractor-mk01,1106.9757486839528,0.6149865270466405,0.0,1.0,,,True,item: sap-extractor-mk01 --> entity-build-item: sap-extractor-mk01,False
+427,__pr_graph_lp_or_to_or_and__: 6932:entity-build: sap-extractor-mk01 --> entity: sap-extractor-mk01:noncoproduct-route,1106.9757486839528,0.6149865270466405,0.0,1.0,,,True,entity-build: sap-extractor-mk01 --> entity: sap-extractor-mk01,False
+428,entity-build: sap-extractor-mk01,1106.9757486839528,0.6149865270466405,0.0,1.0,entity-build,sap-extractor-mk01,False,,False
+429,recipe: sap-extractor-mk01,1106.9757486839528,0.6149865270466405,0.0,1.0,recipe,sap-extractor-mk01,False,,True
+430,recipe: graphite,1094.002573651305,0.6077792075840583,7.993605777301127e-13,0.9999999999999996,recipe,graphite,False,,True
+431,recipe: vacuum-tube,1094.0025736513048,0.6077792075840582,3.9968028886505635e-13,0.9999999999999998,recipe,vacuum-tube,False,,True
+432,recipe: transport-belt,1086.887480146868,0.6038263778593711,0.0,1.0,recipe,transport-belt,False,,True
+433,__pr_graph_lp_or_to_or_and__: 2211:item-craft: soot --> item: soot,1020.1299082072072,0.5667388378928929,1800.0,0.0,,,True,item-craft: soot --> item: soot,False
+434,__pr_graph_lp_or_to_or_and__: 7438:entity-operate: quenching-tower --> recipe-category: quenching-tower__2__3:noncoproduct-route,1020.1299082072072,0.5667388378928929,58.479946894195464,0.9675111406143359,,,True,entity-operate: quenching-tower --> recipe-category: quenching-tower__2__3,False
+435,__pr_graph_lp_or_to_or_and__: 1080:item-craft: assembling-machine-1 --> item: assembling-machine-1,1015.523881748873,0.5641799343049294,9.992007221626409e-13,0.9999999999999994,,,True,item-craft: assembling-machine-1 --> item: assembling-machine-1,False
+436,recipe: assembling-machine-1,1015.523881748873,0.5641799343049294,9.992007221626409e-13,0.9999999999999994,recipe,assembling-machine-1,False,,True
+437,__pr_graph_lp_or_to_or_and__: 10:item: assembling-machine-1 --> entity-build-item: assembling-machine-1,1015.5238817488724,0.5641799343049292,0.0,1.0,,,True,item: assembling-machine-1 --> entity-build-item: assembling-machine-1,False
+438,__pr_graph_lp_or_to_or_and__: 6722:entity-build: assembling-machine-1 --> entity: assembling-machine-1:noncoproduct-route,1015.5238817488724,0.5641799343049292,0.0,1.0,,,True,entity-build: assembling-machine-1 --> entity: assembling-machine-1,False
+439,entity-build: assembling-machine-1,1015.5238817488724,0.5641799343049292,0.0,1.0,entity-build,assembling-machine-1,False,,False
+440,__pr_graph_lp_or_to_or_and__: 7507:entity-operate: smelter-mk01 --> recipe-category: py-rawores-smelter__0__0:noncoproduct-route,1009.0588541158419,0.5605882522865788,0.0,1.0,,,True,entity-operate: smelter-mk01 --> recipe-category: py-rawores-smelter__0__0,False
+441,entity-operate: smelter-mk01,1009.0588541158419,0.5605882522865788,0.0,1.0,entity-operate,smelter-mk01,False,,False
+442,__pr_graph_lp_or_to_or_and__: 428:item: fluid-drill-mk01 --> entity-build-item: fluid-drill-mk01,965.9128792220546,0.5366182662344747,0.0,1.0,,,True,item: fluid-drill-mk01 --> entity-build-item: fluid-drill-mk01,False
+443,__pr_graph_lp_or_to_or_and__: 7044:entity-build: fluid-drill-mk01 --> entity: fluid-drill-mk01:noncoproduct-route,965.9128792220546,0.5366182662344747,0.0,1.0,,,True,entity-build: fluid-drill-mk01 --> entity: fluid-drill-mk01,False
+444,entity-build: fluid-drill-mk01,965.9128792220546,0.5366182662344747,0.0,1.0,entity-build,fluid-drill-mk01,False,,False
+445,__pr_graph_lp_or_to_or_and__: 1847:item-craft: soil-extractor-mk01 --> item: soil-extractor-mk01,963.6703393242234,0.5353724107356796,0.0,1.0,,,True,item-craft: soil-extractor-mk01 --> item: soil-extractor-mk01,False
+446,recipe: soil-extractor-mk01,963.6703393242234,0.5353724107356796,0.0,1.0,recipe,soil-extractor-mk01,False,,True
+447,__pr_graph_lp_or_to_or_and__: 7440:entity-operate: quenching-tower --> recipe-category: quenching-tower__2__2:noncoproduct-route,953.8441939214985,0.5299134410674992,1800.0,0.0,,,True,entity-operate: quenching-tower --> recipe-category: quenching-tower__2__2,False
+448,__pr_graph_lp_or_to_or_and__: 2541:item-craft: sb-grade-04 --> item: sb-grade-04,920.6349206349216,0.5114638447971787,7.993605777301127e-13,0.9999999999999996,,,True,item-craft: sb-grade-04 --> item: sb-grade-04,False
+449,__pr_graph_lp_or_to_or_and__: 7323:entity-operate: bof-mk01 --> recipe-category: bof__1__0:noncoproduct-route,920.6349206349216,0.5114638447971787,7.993605777301127e-13,0.9999999999999996,,,True,entity-operate: bof-mk01 --> recipe-category: bof__1__0,False
+450,entity-operate: bof-mk01,920.6349206349216,0.5114638447971787,7.993605777301127e-13,0.9999999999999996,entity-operate,bof-mk01,False,,False
+451,entity-operate: electrolyzer-mk01,920.6349206349212,0.5114638447971784,900.0,0.5,entity-operate,electrolyzer-mk01,False,,False
+452,recipe: concrete,859.357175346923,0.4774206529705128,0.0,1.0,recipe,concrete,False,,True
+453,recipe: clay,847.7448269311831,0.47096934829510173,1.9984014443252818e-13,0.9999999999999999,recipe,clay,False,,True
+454,__pr_graph_lp_or_to_or_and__: 7232:fluid-temperature: chlorine: 15 --> fluid-temperature-range: chlorine: nil: nil:noncoproduct-route,828.5714285713544,0.4603174603174191,1800.0,0.0,,,True,fluid-temperature: chlorine: 15 --> fluid-temperature-range: chlorine: nil: nil,False
+455,__pr_graph_lp_or_to_or_and__: 816:fluid-craft-temperature: chlorine: 15 --> fluid-create-temperature: chlorine: 15,828.5714285713544,0.4603174603174191,1800.0,0.0,,,True,fluid-craft-temperature: chlorine: 15 --> fluid-create-temperature: chlorine: 15,False
+456,fluid-temperature: chlorine: 15,828.5714285713544,0.4603174603174191,1800.0,0.0,fluid-temperature,chlorine: 15,False,,False
+457,__pr_graph_lp_or_to_or_and__: 7494:entity-operate: barrel-machine-mk01 --> recipe-category: py-unbarreling__1__0:noncoproduct-route,797.5000000000001,0.4430555555555556,1440.0,0.19999999999999998,,,True,entity-operate: barrel-machine-mk01 --> recipe-category: py-unbarreling__1__0,False
+458,__pr_graph_lp_or_to_or_and__: 2153:item-craft: pcb1 --> item: pcb1,794.1648312431693,0.44120268402398294,1.9984014443252818e-13,0.9999999999999999,,,True,item-craft: pcb1 --> item: pcb1,False
+459,recipe: pcb1,794.1648312431693,0.44120268402398294,1.9984014443252818e-13,0.9999999999999999,recipe,pcb1,False,,True
+460,__pr_graph_lp_or_to_or_and__: 2377:item-craft: fawogae-spore --> item: fawogae-spore,776.7857142857142,0.431547619047619,1297.142857142857,0.27936507936507937,,,True,item-craft: fawogae-spore --> item: fawogae-spore,False
+461,recipe: fawogae-spore,776.7857142857142,0.431547619047619,1297.142857142857,0.27936507936507937,recipe,fawogae-spore,False,,True
+462,__pr_graph_lp_or_to_or_and__: 2548:item-craft: battery-mk00 --> item: battery-mk00,729.3350491008697,0.40518613838937206,0.0,1.0,,,True,item-craft: battery-mk00 --> item: battery-mk00,False
+463,recipe: battery-mk00,729.3350491008697,0.40518613838937206,0.0,1.0,recipe,battery-mk00,False,,True
+464,recipe: electronic-circuit,729.3350491008697,0.40518613838937206,0.0,1.0,recipe,electronic-circuit,False,,True
+465,recipe: vrauks-cocoon-2,725.0,0.4027777777777778,1440.0,0.2,recipe,vrauks-cocoon-2,False,,True
+466,__pr_graph_lp_or_to_or_and__: 2534:item-craft: sb-grade-01 --> item: sb-grade-01,627.8197767559474,0.34878876486441523,0.0,1.0,,,True,item-craft: sb-grade-01 --> item: sb-grade-01,False
+467,__pr_graph_lp_or_to_or_and__: 7476:entity-operate: vacuum-pump-mk01 --> recipe-category: vacuum__1__1:noncoproduct-route,581.5837024472371,0.3231020569151317,1800.0,0.0,,,True,entity-operate: vacuum-pump-mk01 --> recipe-category: vacuum__1__1,False
+468,__pr_graph_lp_or_to_or_and__: 7498:entity-operate: electrolyzer-mk01 --> recipe-category: electrolyzer__1__2:noncoproduct-route,543.1746031745961,0.30176366843033114,274.57627118641994,0.8474576271186556,,,True,entity-operate: electrolyzer-mk01 --> recipe-category: electrolyzer__1__2,False
+469,entity-mine: tree-09-brown,539.2045555968659,0.2995580864427033,0.0,1.0,entity-mine,tree-09-brown,False,,True
+470,recipe: tar-quenching,510.0649541036036,0.28336941894644646,58.479946894195464,0.9675111406143359,recipe,tar-quenching,False,,True
+471,recipe: soil-washing,507.5,0.28194444444444444,0.0,1.0,recipe,soil-washing,False,,True
+472,recipe: warm-air-1,483.3333333333332,0.26851851851851843,1800.0,0.0,recipe,warm-air-1,False,,True
+473,recipe: vacuum,472.0418512236185,0.2622454729020103,1.9984014443252818e-13,0.9999999999999999,recipe,vacuum,False,,True
+474,__pr_graph_lp_or_to_or_and__: 45:item: soil-extractor-mk01 --> entity-build-item: soil-extractor-mk01,458.5745797885328,0.2547636554380738,0.0,1.0,,,True,item: soil-extractor-mk01 --> entity-build-item: soil-extractor-mk01,False
+475,__pr_graph_lp_or_to_or_and__: 6816:entity-build: soil-extractor-mk01 --> entity: soil-extractor-mk01:noncoproduct-route,458.5745797885328,0.2547636554380738,0.0,1.0,,,True,entity-build: soil-extractor-mk01 --> entity: soil-extractor-mk01,False
+476,entity-build: soil-extractor-mk01,458.5745797885328,0.2547636554380738,0.0,1.0,entity-build,soil-extractor-mk01,False,,False
+477,__pr_graph_lp_or_to_or_and__: 7424:entity-operate: gasifier --> recipe-category: gasifier__2__2:noncoproduct-route,453.74149659863974,0.2520786092214665,0.0,1.0,,,True,entity-operate: gasifier --> recipe-category: gasifier__2__2,False
+478,__pr_graph_lp_or_to_or_and__: 1880:item-craft: botanical-nursery --> item: botanical-nursery,443.7616826848612,0.24653426815825624,0.0,1.0,,,True,item-craft: botanical-nursery --> item: botanical-nursery,False
+479,__pr_graph_lp_or_to_or_and__: 6836:entity-build: botanical-nursery --> entity: botanical-nursery:noncoproduct-route,443.7616826848612,0.24653426815825624,0.0,1.0,,,True,entity-build: botanical-nursery --> entity: botanical-nursery,False
+480,__pr_graph_lp_or_to_or_and__: 79:item: botanical-nursery --> entity-build-item: botanical-nursery,443.7616826848612,0.24653426815825624,0.0,1.0,,,True,item: botanical-nursery --> entity-build-item: botanical-nursery,False
+481,entity-build: botanical-nursery,443.7616826848612,0.24653426815825624,0.0,1.0,entity-build,botanical-nursery,False,,False
+482,recipe: botanical-nursery,443.7616826848612,0.24653426815825624,0.0,1.0,recipe,botanical-nursery,False,,True
+483,__pr_graph_lp_or_to_or_and__: 2071:item-craft: grade-1-tin --> item: grade-1-tin,435.00000000000546,0.2416666666666697,1800.0,0.0,,,True,item-craft: grade-1-tin --> item: grade-1-tin,False
+484,recipe: grade-1-tin,435.00000000000546,0.2416666666666697,1800.0,0.0,recipe,grade-1-tin,False,,True
+485,__pr_graph_lp_or_to_or_and__: 1061:item-craft: boiler --> item: boiler,425.05648800513165,0.23614249333618426,0.0,1.0,,,True,item-craft: boiler --> item: boiler,False
+486,recipe: boiler,425.05648800513165,0.23614249333618426,0.0,1.0,recipe,boiler,False,,True
+487,recipe: iron-oxide-smelting,416.57678052367976,0.23143154473537764,103.16862570139371,0.942684096832559,recipe,iron-oxide-smelting,False,,True
+488,recipe: carbolic-oil-creosote,395.1068812155071,0.21950382289750395,0.0,1.0,recipe,carbolic-oil-creosote,False,,True
+489,recipe: tar-refining-tops,395.1068812155071,0.21950382289750395,0.0,1.0,recipe,tar-refining-tops,False,,True
+490,__pr_graph_lp_or_to_or_and__: 7496:entity-operate: electrolyzer-mk01 --> recipe-category: electrolyzer__1__1:noncoproduct-route,377.4603174603251,0.20970017636684726,1800.0,0.0,,,True,entity-operate: electrolyzer-mk01 --> recipe-category: electrolyzer__1__1,False
+491,__pr_graph_lp_or_to_or_and__: 283:item: boiler --> entity-build-item: boiler,376.33955678820047,0.20907753154900027,0.0,1.0,,,True,item: boiler --> entity-build-item: boiler,False
+492,__pr_graph_lp_or_to_or_and__: 6956:entity-build: boiler --> entity: boiler:noncoproduct-route,376.33955678820047,0.20907753154900027,0.0,1.0,,,True,entity-build: boiler --> entity: boiler,False
+493,entity-build: boiler,376.33955678820047,0.20907753154900027,0.0,1.0,entity-build,boiler,False,,False
+494,recipe: vrauks-2,362.5,0.2013888888888889,1440.0,0.2,recipe,vrauks-2,False,,True
+495,recipe: vrauks-food-01,362.5,0.2013888888888889,1440.0,0.2,recipe,vrauks-food-01,False,,True
+496,recipe: pressured-air,362.49999999999994,0.20138888888888887,1800.0,0.0,recipe,pressured-air,False,,True
+497,entity-mine: ore-nickel,345.23809523809547,0.1917989417989419,0.0,1.0,entity-mine,ore-nickel,False,,True
+498,__pr_graph_lp_or_to_or_and__: 1859:item-craft: advanced-foundry-mk01 --> item: advanced-foundry-mk01,331.21115288371135,0.1840061960465063,0.0,1.0,,,True,item-craft: advanced-foundry-mk01 --> item: advanced-foundry-mk01,False
+499,__pr_graph_lp_or_to_or_and__: 57:item: advanced-foundry-mk01 --> entity-build-item: advanced-foundry-mk01,331.21115288371135,0.1840061960465063,0.0,1.0,,,True,item: advanced-foundry-mk01 --> entity-build-item: advanced-foundry-mk01,False
+500,__pr_graph_lp_or_to_or_and__: 6824:entity-build: advanced-foundry-mk01 --> entity: advanced-foundry-mk01:noncoproduct-route,331.21115288371135,0.1840061960465063,0.0,1.0,,,True,entity-build: advanced-foundry-mk01 --> entity: advanced-foundry-mk01,False
+501,entity-build: advanced-foundry-mk01,331.21115288371135,0.1840061960465063,0.0,1.0,entity-build,advanced-foundry-mk01,False,,False
+502,recipe: advanced-foundry-mk01,331.21115288371135,0.1840061960465063,0.0,1.0,recipe,advanced-foundry-mk01,False,,True
+503,recipe: moondrop-seeds,317.66593249726765,0.17648107360959314,0.0,1.0,recipe,moondrop-seeds,False,,True
+504,__pr_graph_lp_or_to_or_and__: 2517:item-craft: moondrop-codex --> item: moondrop-codex,301.7826358724042,0.16765701992911347,0.0,1.0,,,True,item-craft: moondrop-codex --> item: moondrop-codex,False
+505,recipe: moondrop-codex,301.7826358724042,0.16765701992911347,0.0,1.0,recipe,moondrop-codex,False,,True
+506,recipe: moondrop-sample,301.7826358724042,0.16765701992911347,0.0,1.0,recipe,moondrop-sample,False,,True
+507,__pr_graph_lp_or_to_or_and__: 7444:entity-operate: evaporator --> recipe-category: evaporator__1__0:noncoproduct-route,276.1904761904763,0.15343915343915351,899.9999999999998,0.5000000000000001,,,True,entity-operate: evaporator --> recipe-category: evaporator__1__0,False
+508,entity-operate: evaporator,276.1904761904763,0.15343915343915351,899.9999999999998,0.5000000000000001,entity-operate,evaporator,False,,False
+509,recipe: nexelit-ore-1,276.19047619047626,0.1534391534391535,899.9999999999995,0.5000000000000002,recipe,nexelit-ore-1,False,,True
+510,entity-operate: biofactory-mk01,276.19047619046387,0.1534391534391466,899.9999999999592,0.5000000000000226,entity-operate,biofactory-mk01,False,,False
+511,__pr_graph_lp_or_to_or_and__: 7482:entity-operate: secondary-crusher-mk01 --> recipe-category: secondary-crusher__0__0:noncoproduct-route,261.1730271304741,0.14509612618359674,900.0,0.5,,,True,entity-operate: secondary-crusher-mk01 --> recipe-category: secondary-crusher__0__0,False
+512,entity-operate: secondary-crusher-mk01,261.1730271304741,0.14509612618359674,900.0,0.5,entity-operate,secondary-crusher-mk01,False,,False
+513,recipe: fawogae-1,258.92857142857144,0.14384920634920637,1297.1428571428573,0.2793650793650793,recipe,fawogae-1,False,,True
+514,recipe: ceramic,254.32344807935493,0.1412908044885305,3.9968028886505635e-13,0.9999999999999998,recipe,ceramic,False,,True
+515,__pr_graph_lp_or_to_or_and__: 2074:item-craft: grade-2-tin --> item: grade-2-tin,217.50000000000273,0.12083333333333485,1800.0,0.0,,,True,item-craft: grade-2-tin --> item: grade-2-tin,False
+516,__pr_graph_lp_or_to_or_and__: 1835:item-craft: hpf --> item: hpf,205.05535756975158,0.11391964309430644,0.0,1.0,,,True,item-craft: hpf --> item: hpf,False
+517,__pr_graph_lp_or_to_or_and__: 33:item: hpf --> entity-build-item: hpf,205.05535756975158,0.11391964309430644,0.0,1.0,,,True,item: hpf --> entity-build-item: hpf,False
+518,__pr_graph_lp_or_to_or_and__: 6808:entity-build: hpf --> entity: hpf:noncoproduct-route,205.05535756975158,0.11391964309430644,0.0,1.0,,,True,entity-build: hpf --> entity: hpf,False
+519,entity-build: hpf,205.05535756975158,0.11391964309430644,0.0,1.0,entity-build,hpf,False,,False
+520,recipe: hpf,205.05535756975158,0.11391964309430644,0.0,1.0,recipe,hpf,False,,True
+521,__pr_graph_lp_or_to_or_and__: 189:item: moss-farm-mk01 --> entity-build-item: moss-farm-mk01,185.56605428958156,0.10309225238310087,0.0,1.0,,,True,item: moss-farm-mk01 --> entity-build-item: moss-farm-mk01,False
+522,__pr_graph_lp_or_to_or_and__: 2251:item-craft: moss-farm-mk01 --> item: moss-farm-mk01,185.56605428958156,0.10309225238310087,0.0,1.0,,,True,item-craft: moss-farm-mk01 --> item: moss-farm-mk01,False
+523,__pr_graph_lp_or_to_or_and__: 6906:entity-build: moss-farm-mk01 --> entity: moss-farm-mk01:noncoproduct-route,185.56605428958156,0.10309225238310087,0.0,1.0,,,True,entity-build: moss-farm-mk01 --> entity: moss-farm-mk01,False
+524,entity-build: moss-farm-mk01,185.56605428958156,0.10309225238310087,0.0,1.0,entity-build,moss-farm-mk01,False,,False
+525,recipe: moss-farm-mk01,185.56605428958156,0.10309225238310087,0.0,1.0,recipe,moss-farm-mk01,False,,True
+526,__pr_graph_lp_or_to_or_and__: 1817:item-craft: distilator --> item: distilator,183.3247271661382,0.10184707064785455,0.0,1.0,,,True,item-craft: distilator --> item: distilator,False
+527,recipe: distilator,183.3247271661382,0.10184707064785455,0.0,1.0,recipe,distilator,False,,True
+528,recipe: sb-grade-03,163.23314195654632,0.09068507886474796,0.0,1.0,recipe,sb-grade-03,False,,True
+529,__pr_graph_lp_or_to_or_and__: 1259:item-craft: ash --> item: ash,151.24716553287996,0.0840262030738222,5.995204332975845e-13,0.9999999999999997,,,True,item-craft: ash --> item: ash,False
+530,recipe: syngas,151.24716553287996,0.0840262030738222,5.995204332975845e-13,0.9999999999999997,recipe,syngas,False,,True
+531,__pr_graph_lp_or_to_or_and__: 7556:entity-operate: biofactory-mk01 --> recipe-category: biofactory__2__0:noncoproduct-route,138.09523809523824,0.0767195767195768,7.993605777301127e-13,0.9999999999999996,,,True,entity-operate: biofactory-mk01 --> recipe-category: biofactory__2__0,False
+532,__pr_graph_lp_or_to_or_and__: 7558:entity-operate: biofactory-mk01 --> recipe-category: biofactory__0__0:noncoproduct-route,138.09523809522562,0.07671957671956979,1800.0,0.0,,,True,entity-operate: biofactory-mk01 --> recipe-category: biofactory__0__0,False
+533,__pr_graph_lp_or_to_or_and__: 2530:item-craft: seaweed-crop-mk01 --> item: seaweed-crop-mk01,135.04951766312215,0.07502750981284563,0.0,1.0,,,True,item-craft: seaweed-crop-mk01 --> item: seaweed-crop-mk01,False
+534,__pr_graph_lp_or_to_or_and__: 262:item: seaweed-crop-mk01 --> entity-build-item: seaweed-crop-mk01,135.04951766312215,0.07502750981284563,0.0,1.0,,,True,item: seaweed-crop-mk01 --> entity-build-item: seaweed-crop-mk01,False
+535,__pr_graph_lp_or_to_or_and__: 6944:entity-build: seaweed-crop-mk01 --> entity: seaweed-crop-mk01:noncoproduct-route,135.04951766312215,0.07502750981284563,0.0,1.0,,,True,entity-build: seaweed-crop-mk01 --> entity: seaweed-crop-mk01,False
+536,entity-build: seaweed-crop-mk01,135.04951766312215,0.07502750981284563,0.0,1.0,entity-build,seaweed-crop-mk01,False,,False
+537,recipe: seaweed-crop-mk01,135.04951766312215,0.07502750981284563,0.0,1.0,recipe,seaweed-crop-mk01,False,,True
+538,__pr_graph_lp_or_to_or_and__: 2257:item-craft: fwf-mk01 --> item: fwf-mk01,134.02109278385018,0.07445616265769454,3.9968028886505635e-13,0.9999999999999998,,,True,item-craft: fwf-mk01 --> item: fwf-mk01,False
+539,recipe: fwf-mk01,134.02109278385018,0.07445616265769454,3.9968028886505635e-13,0.9999999999999998,recipe,fwf-mk01,False,,True
+540,__pr_graph_lp_or_to_or_and__: 197:item: fwf-mk01 --> entity-build-item: fwf-mk01,134.02109278385015,0.07445616265769453,0.0,1.0,,,True,item: fwf-mk01 --> entity-build-item: fwf-mk01,False
+541,__pr_graph_lp_or_to_or_and__: 6910:entity-build: fwf-mk01 --> entity: fwf-mk01:noncoproduct-route,134.02109278385015,0.07445616265769453,0.0,1.0,,,True,entity-build: fwf-mk01 --> entity: fwf-mk01,False
+542,entity-build: fwf-mk01,134.02109278385015,0.07445616265769453,0.0,1.0,entity-build,fwf-mk01,False,,False
+543,__pr_graph_lp_or_to_or_and__: 2539:item-craft: sb-grade-03 --> item: sb-grade-03,130.58651356523706,0.07254806309179837,0.0,1.0,,,True,item-craft: sb-grade-03 --> item: sb-grade-03,False
+544,entity-mine: fluid-drill-mk01,127.67787456026906,0.07093215253348281,0.0,1.0,entity-mine,fluid-drill-mk01,False,,True
+545,recipe: sb-grade-01,125.56395535118948,0.06975775297288304,0.0,1.0,recipe,sb-grade-01,False,,True
+546,recipe: sb-grade-02,125.56395535118948,0.06975775297288304,0.0,1.0,recipe,sb-grade-02,False,,True
+547,__pr_graph_lp_or_to_or_and__: 1693:item-craft: tailings-dust --> item: tailings-dust,110.47619047619051,0.061375661375661396,899.9999999999995,0.5000000000000002,,,True,item-craft: tailings-dust --> item: tailings-dust,False
+548,__pr_graph_lp_or_to_or_and__: 1865:item-craft: borax-mine --> item: borax-mine,108.48416247676792,0.060268979153759956,0.0,1.0,,,True,item-craft: borax-mine --> item: borax-mine,False
+549,__pr_graph_lp_or_to_or_and__: 418:item: borax-mine --> entity-build-item: borax-mine,108.48416247676792,0.060268979153759956,0.0,1.0,,,True,item: borax-mine --> entity-build-item: borax-mine,False
+550,__pr_graph_lp_or_to_or_and__: 7038:entity-build: borax-mine --> entity: borax-mine:noncoproduct-route,108.48416247676792,0.060268979153759956,0.0,1.0,,,True,entity-build: borax-mine --> entity: borax-mine,False
+551,entity-build: borax-mine,108.48416247676792,0.060268979153759956,0.0,1.0,entity-build,borax-mine,False,,False
+552,recipe: borax-mine,108.48416247676792,0.060268979153759956,0.0,1.0,recipe,borax-mine,False,,True
+553,__pr_graph_lp_or_to_or_and__: 18:item: distilator --> entity-build-item: distilator,106.26715507579893,0.059037308375443846,0.0,1.0,,,True,item: distilator --> entity-build-item: distilator,False
+554,__pr_graph_lp_or_to_or_and__: 6726:entity-build: distilator --> entity: distilator:noncoproduct-route,106.26715507579893,0.059037308375443846,0.0,1.0,,,True,entity-build: distilator --> entity: distilator,False
+555,entity-build: distilator,106.26715507579893,0.059037308375443846,0.0,1.0,entity-build,distilator,False,,False
+556,__pr_graph_lp_or_to_or_and__: 2260:item-craft: micro-mine-mk01 --> item: micro-mine-mk01,96.26388888888889,0.05347993827160494,0.0,1.0,,,True,item-craft: micro-mine-mk01 --> item: micro-mine-mk01,False
+557,recipe: micro-mine-mk01,96.26388888888889,0.05347993827160494,0.0,1.0,recipe,micro-mine-mk01,False,,True
+558,__pr_graph_lp_or_to_or_and__: 1231:item-craft: plastic-bar --> item: plastic-bar,92.06349206349216,0.051146384479717866,7.993605777301127e-13,0.9999999999999996,,,True,item-craft: plastic-bar --> item: plastic-bar,False
+559,__pr_graph_lp_or_to_or_and__: 2544:item-craft: sb-oxide --> item: sb-oxide,92.06349206349216,0.051146384479717866,7.993605777301127e-13,0.9999999999999996,,,True,item-craft: sb-oxide --> item: sb-oxide,False
+560,recipe: aromatics-to-plastic,92.06349206349216,0.051146384479717866,7.993605777301127e-13,0.9999999999999996,recipe,aromatics-to-plastic,False,,True
+561,recipe: sb-oxide-01,92.06349206349216,0.051146384479717866,7.993605777301127e-13,0.9999999999999996,recipe,sb-oxide-01,False,,True
+562,__pr_graph_lp_or_to_or_and__: 2094:item-craft: sodium-hydroxide --> item: sodium-hydroxide,82.85714285713544,0.04603174603174191,1800.0,0.0,,,True,item-craft: sodium-hydroxide --> item: sodium-hydroxide,False
+563,__pr_graph_lp_or_to_or_and__: 2096:item-craft: duralumin --> item: duralumin,79.64566590991548,0.04424759217217527,0.0,1.0,,,True,item-craft: duralumin --> item: duralumin,False
+564,recipe: duralumin-1,79.64566590991548,0.04424759217217527,0.0,1.0,recipe,duralumin-1,False,,True
+565,__pr_graph_lp_or_to_or_and__: 2063:item-craft: grade-1-nickel --> item: grade-1-nickel,69.04761904761905,0.038359788359788365,0.0,1.0,,,True,item-craft: grade-1-nickel --> item: grade-1-nickel,False
+566,__pr_graph_lp_or_to_or_and__: 2065:item-craft: nickel-plate --> item: nickel-plate,69.04761904761905,0.038359788359788365,0.0,1.0,,,True,item-craft: nickel-plate --> item: nickel-plate,False
+567,recipe: grade-1-nickel,69.04761904761905,0.038359788359788365,0.0,1.0,recipe,grade-1-nickel,False,,True
+568,recipe: nickel-plate-2,69.04761904761905,0.038359788359788365,0.0,1.0,recipe,nickel-plate-2,False,,True
+569,__pr_graph_lp_or_to_or_and__: 1883:item-craft: wpu-mk01 --> item: wpu-mk01,64.76231593521936,0.0359790644084552,0.0,1.0,,,True,item-craft: wpu-mk01 --> item: wpu-mk01,False
+570,__pr_graph_lp_or_to_or_and__: 6838:entity-build: wpu-mk01 --> entity: wpu-mk01:noncoproduct-route,64.76231593521936,0.0359790644084552,0.0,1.0,,,True,entity-build: wpu-mk01 --> entity: wpu-mk01,False
+571,__pr_graph_lp_or_to_or_and__: 82:item: wpu-mk01 --> entity-build-item: wpu-mk01,64.76231593521936,0.0359790644084552,0.0,1.0,,,True,item: wpu-mk01 --> entity-build-item: wpu-mk01,False
+572,entity-build: wpu-mk01,64.76231593521936,0.0359790644084552,0.0,1.0,entity-build,wpu-mk01,False,,False
+573,recipe: wpu-mk01,64.76231593521936,0.0359790644084552,0.0,1.0,recipe,wpu-mk01,False,,True
+574,__pr_graph_lp_or_to_or_and__: 1889:item-craft: glassworks-mk01 --> item: glassworks-mk01,60.50414756985873,0.03361341531658819,0.0,1.0,,,True,item-craft: glassworks-mk01 --> item: glassworks-mk01,False
+575,__pr_graph_lp_or_to_or_and__: 6842:entity-build: glassworks-mk01 --> entity: glassworks-mk01:noncoproduct-route,60.50414756985873,0.03361341531658819,0.0,1.0,,,True,entity-build: glassworks-mk01 --> entity: glassworks-mk01,False
+576,__pr_graph_lp_or_to_or_and__: 88:item: glassworks-mk01 --> entity-build-item: glassworks-mk01,60.50414756985873,0.03361341531658819,0.0,1.0,,,True,item: glassworks-mk01 --> entity-build-item: glassworks-mk01,False
+577,entity-build: glassworks-mk01,60.50414756985873,0.03361341531658819,0.0,1.0,entity-build,glassworks-mk01,False,,False
+578,recipe: glassworks-mk01,60.50414756985873,0.03361341531658819,0.0,1.0,recipe,glassworks-mk01,False,,True
+579,__pr_graph_lp_or_to_or_and__: 1820:item-craft: gasifier --> item: gasifier,60.4638949102325,0.033591052727906946,0.0,1.0,,,True,item-craft: gasifier --> item: gasifier,False
+580,recipe: gasifier,60.4638949102325,0.033591052727906946,0.0,1.0,recipe,gasifier,False,,True
+581,__pr_graph_lp_or_to_or_and__: 202:item: micro-mine-mk01 --> entity-build-item: micro-mine-mk01,58.0,0.03222222222222222,0.0,1.0,,,True,item: micro-mine-mk01 --> entity-build-item: micro-mine-mk01,False
+582,__pr_graph_lp_or_to_or_and__: 6912:entity-build: micro-mine-mk01 --> entity: micro-mine-mk01:noncoproduct-route,58.0,0.03222222222222222,0.0,1.0,,,True,entity-build: micro-mine-mk01 --> entity: micro-mine-mk01,False
+583,entity-build: micro-mine-mk01,58.0,0.03222222222222222,0.0,1.0,entity-build,micro-mine-mk01,False,,False
+584,__pr_graph_lp_or_to_or_and__: 21:item: gasifier --> entity-build-item: gasifier,57.01151395785155,0.031673063309917524,0.0,1.0,,,True,item: gasifier --> entity-build-item: gasifier,False
+585,__pr_graph_lp_or_to_or_and__: 6800:entity-build: gasifier --> entity: gasifier:noncoproduct-route,57.01151395785155,0.031673063309917524,0.0,1.0,,,True,entity-build: gasifier --> entity: gasifier,False
+586,entity-build: gasifier,57.01151395785155,0.031673063309917524,0.0,1.0,entity-build,gasifier,False,,False
+587,entity-mine: soil-extractor-mk01,51.17786340371629,0.028432146335397937,0.0,1.0,entity-mine,soil-extractor-mk01,False,,True
+588,__pr_graph_lp_or_to_or_and__: 1715:item-craft: coal-dust --> item: coal-dust,49.88404818192049,0.02771336010106694,1800.0,0.0,,,True,item-craft: coal-dust --> item: coal-dust,False
+589,__pr_graph_lp_or_to_or_and__: 7354:item-burn: coal-dust --> item: ash:noncoproduct-route,49.88404818192049,0.02771336010106694,1800.0,0.0,,,True,item-burn: coal-dust --> item: ash,False
+590,item-burn: coal-dust,49.88404818192049,0.02771336010106694,1800.0,0.0,item-burn,coal-dust,False,,False
+591,recipe: hydrogen,46.03174603174606,0.025573192239858922,0.0,1.0,recipe,hydrogen,False,,True
+592,__pr_graph_lp_or_to_or_and__: 1723:item-craft: nexelit-plate --> item: nexelit-plate,46.03174603174603,0.025573192239858905,0.0,1.0,,,True,item-craft: nexelit-plate --> item: nexelit-plate,False
+593,__pr_graph_lp_or_to_or_and__: 2550:item-craft: fenxsb-alloy --> item: fenxsb-alloy,46.03174603174603,0.025573192239858905,0.0,1.0,,,True,item-craft: fenxsb-alloy --> item: fenxsb-alloy,False
+594,__pr_graph_lp_or_to_or_and__: 2552:item-craft: vitreloy --> item: vitreloy,46.03174603174603,0.025573192239858905,0.0,1.0,,,True,item-craft: vitreloy --> item: vitreloy,False
+595,__pr_graph_lp_or_to_or_and__: 2554:item-craft: intermetallics --> item: intermetallics,46.03174603174603,0.025573192239858905,0.0,1.0,,,True,item-craft: intermetallics --> item: intermetallics,False
+596,recipe: intermetallics,46.03174603174603,0.025573192239858905,0.0,1.0,recipe,intermetallics,False,,True
+597,__pr_graph_lp_or_to_or_and__: 2047:item-craft: crushed-coal --> item: crushed-coal,43.52883785507885,0.024182687697266027,1800.0,0.0,,,True,item-craft: crushed-coal --> item: crushed-coal,False
+598,__pr_graph_lp_or_to_or_and__: 7360:item-burn: crushed-coal --> item: ash:noncoproduct-route,43.52883785507885,0.024182687697266027,1800.0,0.0,,,True,item-burn: crushed-coal --> item: ash,False
+599,item-burn: crushed-coal,43.52883785507885,0.024182687697266027,1800.0,0.0,item-burn,crushed-coal,False,,False
+600,recipe: crushed-coal,43.52883785507885,0.024182687697266027,1800.0,0.0,recipe,crushed-coal,False,,True
+601,__pr_graph_lp_or_to_or_and__: 2311:item-craft: rc-mk01 --> item: rc-mk01,42.291666666666664,0.023495370370370368,0.0,1.0,,,True,item-craft: rc-mk01 --> item: rc-mk01,False
+602,__pr_graph_lp_or_to_or_and__: 256:item: rc-mk01 --> entity-build-item: rc-mk01,42.291666666666664,0.023495370370370368,0.0,1.0,,,True,item: rc-mk01 --> entity-build-item: rc-mk01,False
+603,__pr_graph_lp_or_to_or_and__: 6940:entity-build: rc-mk01 --> entity: rc-mk01:noncoproduct-route,42.291666666666664,0.023495370370370368,0.0,1.0,,,True,entity-build: rc-mk01 --> entity: rc-mk01,False
+604,entity-build: rc-mk01,42.291666666666664,0.023495370370370368,0.0,1.0,entity-build,rc-mk01,False,,False
+605,recipe: rc-mk01,42.29166666666666,0.023495370370370364,0.0,1.0,recipe,rc-mk01,False,,True
+606,recipe: chlorine,41.42857142856772,0.023015873015870957,1800.0,0.0,recipe,chlorine,False,,True
+607,__pr_graph_lp_or_to_or_and__: 148:item: moondrop-greenhouse-mk01 --> entity-build-item: moondrop-greenhouse-mk01,39.70824156215846,0.022060134201199146,0.0,1.0,,,True,item: moondrop-greenhouse-mk01 --> entity-build-item: moondrop-greenhouse-mk01,False
+608,__pr_graph_lp_or_to_or_and__: 6880:entity-build: moondrop-greenhouse-mk01 --> entity: moondrop-greenhouse-mk01:noncoproduct-route,39.70824156215846,0.022060134201199146,0.0,1.0,,,True,entity-build: moondrop-greenhouse-mk01 --> entity: moondrop-greenhouse-mk01,False
+609,entity-build: moondrop-greenhouse-mk01,39.70824156215846,0.022060134201199146,0.0,1.0,entity-build,moondrop-greenhouse-mk01,False,,False
+610,__pr_graph_lp_or_to_or_and__: 2183:item-craft: moondrop-greenhouse-mk01 --> item: moondrop-greenhouse-mk01,39.708241562158456,0.022060134201199143,0.0,1.0,,,True,item-craft: moondrop-greenhouse-mk01 --> item: moondrop-greenhouse-mk01,False
+611,recipe: moondrop-greenhouse-mk01,39.708241562158456,0.022060134201199143,0.0,1.0,recipe,moondrop-greenhouse-mk01,False,,True
+612,__pr_graph_lp_or_to_or_and__: 1853:item-craft: washer --> item: washer,34.144278009741576,0.01896904333874532,0.0,1.0,,,True,item-craft: washer --> item: washer,False
+613,__pr_graph_lp_or_to_or_and__: 51:item: washer --> entity-build-item: washer,34.144278009741576,0.01896904333874532,0.0,1.0,,,True,item: washer --> entity-build-item: washer,False
+614,__pr_graph_lp_or_to_or_and__: 6820:entity-build: washer --> entity: washer:noncoproduct-route,34.144278009741576,0.01896904333874532,0.0,1.0,,,True,entity-build: washer --> entity: washer,False
+615,entity-build: washer,34.144278009741576,0.01896904333874532,0.0,1.0,entity-build,washer,False,,False
+616,recipe: washer,34.144278009741576,0.01896904333874532,0.0,1.0,recipe,washer,False,,True
+617,__pr_graph_lp_or_to_or_and__: 2189:item-craft: electronics-factory-mk01 --> item: electronics-factory-mk01,32.18978766093345,0.01788321536718525,0.0,1.0,,,True,item-craft: electronics-factory-mk01 --> item: electronics-factory-mk01,False
+618,recipe: electronics-factory-mk01,32.18978766093345,0.01788321536718525,0.0,1.0,recipe,electronics-factory-mk01,False,,True
+619,recipe: tin-plate-2,29.000000000000362,0.016111111111111312,1800.0,0.0,recipe,tin-plate-2,False,,True
+620,recipe: cellulose-02,27.619047619045126,0.01534391534391396,1800.0,0.0,recipe,cellulose-02,False,,True
+621,__pr_graph_lp_or_to_or_and__: 214:item: vrauks-paddock-mk01 --> entity-build-item: vrauks-paddock-mk01,26.180555555555557,0.014544753086419754,0.0,1.0,,,True,item: vrauks-paddock-mk01 --> entity-build-item: vrauks-paddock-mk01,False
+622,__pr_graph_lp_or_to_or_and__: 2272:item-craft: vrauks-paddock-mk01 --> item: vrauks-paddock-mk01,26.180555555555557,0.014544753086419754,0.0,1.0,,,True,item-craft: vrauks-paddock-mk01 --> item: vrauks-paddock-mk01,False
+623,__pr_graph_lp_or_to_or_and__: 6920:entity-build: vrauks-paddock-mk01 --> entity: vrauks-paddock-mk01:noncoproduct-route,26.180555555555557,0.014544753086419754,0.0,1.0,,,True,entity-build: vrauks-paddock-mk01 --> entity: vrauks-paddock-mk01,False
+624,entity-build: vrauks-paddock-mk01,26.180555555555557,0.014544753086419754,0.0,1.0,entity-build,vrauks-paddock-mk01,False,,False
+625,recipe: vrauks-paddock-mk01,26.180555555555557,0.014544753086419754,0.0,1.0,recipe,vrauks-paddock-mk01,False,,True
+626,recipe: sb-grade-04,26.117302713047508,0.014509612618359726,6.794564910705958e-12,0.9999999999999962,recipe,sb-grade-04,False,,True
+627,__pr_graph_lp_or_to_or_and__: 1871:item-craft: jaw-crusher --> item: jaw-crusher,25.181788233759303,0.013989882352088501,0.0,1.0,,,True,item-craft: jaw-crusher --> item: jaw-crusher,False
+628,__pr_graph_lp_or_to_or_and__: 6830:entity-build: jaw-crusher --> entity: jaw-crusher:noncoproduct-route,25.181788233759303,0.013989882352088501,0.0,1.0,,,True,entity-build: jaw-crusher --> entity: jaw-crusher,False
+629,__pr_graph_lp_or_to_or_and__: 70:item: jaw-crusher --> entity-build-item: jaw-crusher,25.181788233759303,0.013989882352088501,0.0,1.0,,,True,item: jaw-crusher --> entity-build-item: jaw-crusher,False
+630,entity-build: jaw-crusher,25.181788233759303,0.013989882352088501,0.0,1.0,entity-build,jaw-crusher,False,,False
+631,recipe: jaw-crusher,25.181788233759303,0.013989882352088501,0.0,1.0,recipe,jaw-crusher,False,,True
+632,__pr_graph_lp_or_to_or_and__: 1823:item-craft: tar-processing-unit --> item: tar-processing-unit,24.235437023559406,0.013464131679755225,0.0,1.0,,,True,item-craft: tar-processing-unit --> item: tar-processing-unit,False
+633,recipe: tar-processing-unit,24.235437023559406,0.013464131679755225,0.0,1.0,recipe,tar-processing-unit,False,,True
+634,__pr_graph_lp_or_to_or_and__: 24:item: tar-processing-unit --> entity-build-item: tar-processing-unit,23.723973178762225,0.013179985099312348,0.0,1.0,,,True,item: tar-processing-unit --> entity-build-item: tar-processing-unit,False
+635,__pr_graph_lp_or_to_or_and__: 6802:entity-build: tar-processing-unit --> entity: tar-processing-unit:noncoproduct-route,23.723973178762225,0.013179985099312348,0.0,1.0,,,True,entity-build: tar-processing-unit --> entity: tar-processing-unit,False
+636,entity-build: tar-processing-unit,23.723973178762225,0.013179985099312348,0.0,1.0,entity-build,tar-processing-unit,False,,False
+637,__pr_graph_lp_or_to_or_and__: 156:item: electronics-factory-mk01 --> entity-build-item: electronics-factory-mk01,23.365733980453786,0.012980963322474325,0.0,1.0,,,True,item: electronics-factory-mk01 --> entity-build-item: electronics-factory-mk01,False
+638,__pr_graph_lp_or_to_or_and__: 6884:entity-build: electronics-factory-mk01 --> entity: electronics-factory-mk01:noncoproduct-route,23.365733980453786,0.012980963322474325,0.0,1.0,,,True,entity-build: electronics-factory-mk01 --> entity: electronics-factory-mk01,False
+639,entity-build: electronics-factory-mk01,23.365733980453786,0.012980963322474325,0.0,1.0,entity-build,electronics-factory-mk01,False,,False
+640,recipe: fenxsb-alloy-2,23.015873015873016,0.012786596119929453,0.0,1.0,recipe,fenxsb-alloy-2,False,,True
+641,recipe: vitreloy,23.015873015873016,0.012786596119929453,0.0,1.0,recipe,vitreloy,False,,True
+642,__pr_graph_lp_or_to_or_and__: 159:item: pulp-mill-mk01 --> entity-build-item: pulp-mill-mk01,17.648107360959315,0.009804504089421842,0.0,1.0,,,True,item: pulp-mill-mk01 --> entity-build-item: pulp-mill-mk01,False
+643,__pr_graph_lp_or_to_or_and__: 2192:item-craft: pulp-mill-mk01 --> item: pulp-mill-mk01,17.648107360959315,0.009804504089421842,0.0,1.0,,,True,item-craft: pulp-mill-mk01 --> item: pulp-mill-mk01,False
+644,__pr_graph_lp_or_to_or_and__: 6886:entity-build: pulp-mill-mk01 --> entity: pulp-mill-mk01:noncoproduct-route,17.648107360959315,0.009804504089421842,0.0,1.0,,,True,entity-build: pulp-mill-mk01 --> entity: pulp-mill-mk01,False
+645,entity-build: pulp-mill-mk01,17.648107360959315,0.009804504089421842,0.0,1.0,entity-build,pulp-mill-mk01,False,,False
+646,recipe: pulp-mill-mk01,17.648107360959315,0.009804504089421842,0.0,1.0,recipe,pulp-mill-mk01,False,,True
+647,__pr_graph_lp_or_to_or_and__: 1862:item-craft: fawogae-plantation-mk01 --> item: fawogae-plantation-mk01,14.384920634920634,0.007991622574955908,0.0,1.0,,,True,item-craft: fawogae-plantation-mk01 --> item: fawogae-plantation-mk01,False
+648,__pr_graph_lp_or_to_or_and__: 60:item: fawogae-plantation-mk01 --> entity-build-item: fawogae-plantation-mk01,14.384920634920634,0.007991622574955908,0.0,1.0,,,True,item: fawogae-plantation-mk01 --> entity-build-item: fawogae-plantation-mk01,False
+649,__pr_graph_lp_or_to_or_and__: 6826:entity-build: fawogae-plantation-mk01 --> entity: fawogae-plantation-mk01:noncoproduct-route,14.384920634920634,0.007991622574955908,0.0,1.0,,,True,entity-build: fawogae-plantation-mk01 --> entity: fawogae-plantation-mk01,False
+650,entity-build: fawogae-plantation-mk01,14.384920634920634,0.007991622574955908,0.0,1.0,entity-build,fawogae-plantation-mk01,False,,False
+651,recipe: fawogae-plantation-mk01,14.384920634920634,0.007991622574955908,0.0,1.0,recipe,fawogae-plantation-mk01,False,,True
+652,__pr_graph_lp_or_to_or_and__: 2305:item-craft: research-center-mk01 --> item: research-center-mk01,12.083333333333334,0.006712962962962963,0.0,1.0,,,True,item-craft: research-center-mk01 --> item: research-center-mk01,False
+653,__pr_graph_lp_or_to_or_and__: 253:item: research-center-mk01 --> entity-build-item: research-center-mk01,12.083333333333334,0.006712962962962963,0.0,1.0,,,True,item: research-center-mk01 --> entity-build-item: research-center-mk01,False
+654,__pr_graph_lp_or_to_or_and__: 6938:entity-build: research-center-mk01 --> entity: research-center-mk01:noncoproduct-route,12.083333333333334,0.006712962962962963,0.0,1.0,,,True,entity-build: research-center-mk01 --> entity: research-center-mk01,False
+655,entity-build: research-center-mk01,12.083333333333334,0.006712962962962963,0.0,1.0,entity-build,research-center-mk01,False,,False
+656,recipe: research-center-mk01,12.083333333333334,0.006712962962962963,0.0,1.0,recipe,research-center-mk01,False,,True
+657,__pr_graph_lp_or_to_or_and__: 1126:item-craft: refined-concrete --> item: refined-concrete,10.229276895943569,0.005682931608857538,0.0,1.0,,,True,item-craft: refined-concrete --> item: refined-concrete,False
+658,__pr_graph_lp_or_to_or_and__: 180:item: rhe --> entity-build-item: rhe,9.129629629629626,0.005072016460905348,0.0,1.0,,,True,item: rhe --> entity-build-item: rhe,False
+659,__pr_graph_lp_or_to_or_and__: 2239:item-craft: rhe --> item: rhe,9.129629629629626,0.005072016460905348,0.0,1.0,,,True,item-craft: rhe --> item: rhe,False
+660,__pr_graph_lp_or_to_or_and__: 6900:entity-build: rhe --> entity: rhe:noncoproduct-route,9.129629629629626,0.005072016460905348,0.0,1.0,,,True,entity-build: rhe --> entity: rhe,False
+661,entity-build: rhe,9.129629629629626,0.005072016460905348,0.0,1.0,entity-build,rhe,False,,False
+662,recipe: rhe,9.129629629629626,0.005072016460905348,0.0,1.0,recipe,rhe,False,,True
+663,__pr_graph_lp_or_to_or_and__: 220:item: slaughterhouse-mk01 --> entity-build-item: slaughterhouse-mk01,8.055555555555555,0.004475308641975309,0.0,1.0,,,True,item: slaughterhouse-mk01 --> entity-build-item: slaughterhouse-mk01,False
+664,__pr_graph_lp_or_to_or_and__: 2275:item-craft: slaughterhouse-mk01 --> item: slaughterhouse-mk01,8.055555555555555,0.004475308641975309,0.0,1.0,,,True,item-craft: slaughterhouse-mk01 --> item: slaughterhouse-mk01,False
+665,__pr_graph_lp_or_to_or_and__: 6922:entity-build: slaughterhouse-mk01 --> entity: slaughterhouse-mk01:noncoproduct-route,8.055555555555555,0.004475308641975309,0.0,1.0,,,True,entity-build: slaughterhouse-mk01 --> entity: slaughterhouse-mk01,False
+666,entity-build: slaughterhouse-mk01,8.055555555555555,0.004475308641975309,0.0,1.0,entity-build,slaughterhouse-mk01,False,,False
+667,recipe: slaughterhouse-mk01,8.055555555555555,0.004475308641975309,0.0,1.0,recipe,slaughterhouse-mk01,False,,True
+668,__pr_graph_lp_or_to_or_and__: 2014:item-craft: ore-titanium --> item: ore-titanium,7.365079365079367,0.004091710758377426,899.9999999999995,0.5000000000000002,,,True,item-craft: ore-titanium --> item: ore-titanium,False
+669,__pr_graph_lp_or_to_or_and__: 2067:item-craft: ore-tin --> item: ore-tin,7.365079365079367,0.004091710758377426,899.9999999999995,0.5000000000000002,,,True,item-craft: ore-tin --> item: ore-tin,False
+670,__pr_graph_lp_or_to_or_and__: 7451:entity-operate: solid-separator --> recipe-category: solid-separator__0__0:noncoproduct-route,7.365079365079367,0.004091710758377426,899.9999999999995,0.5000000000000002,,,True,entity-operate: solid-separator --> recipe-category: solid-separator__0__0,False
+671,entity-operate: solid-separator,7.365079365079367,0.004091710758377426,899.9999999999995,0.5000000000000002,entity-operate,solid-separator,False,,False
+672,recipe: tailings-classification,7.365079365079367,0.004091710758377426,899.9999999999995,0.5000000000000002,recipe,tailings-classification,False,,True
+673,__pr_graph_lp_or_to_or_and__: 1043:item-craft: electric-mining-drill --> item: electric-mining-drill,6.9757752972883,0.0038754307207157224,0.0,1.0,,,True,item-craft: electric-mining-drill --> item: electric-mining-drill,False
+674,recipe: electric-mining-drill,6.9757752972883,0.0038754307207157224,0.0,1.0,recipe,electric-mining-drill,False,,True
+675,__pr_graph_lp_or_to_or_and__: 1097:item-craft: engine-unit --> item: engine-unit,5.290492983714412,0.0029391627687302287,0.0,1.0,,,True,item-craft: engine-unit --> item: engine-unit,False
+676,recipe: engine-unit,5.290492983714412,0.0029391627687302287,0.0,1.0,recipe,engine-unit,False,,True
+677,__pr_graph_lp_or_to_or_and__: 162:item: pcb-factory-mk01 --> entity-build-item: pcb-factory-mk01,4.412026840239829,0.0024511260223554605,0.0,1.0,,,True,item: pcb-factory-mk01 --> entity-build-item: pcb-factory-mk01,False
+678,__pr_graph_lp_or_to_or_and__: 2195:item-craft: pcb-factory-mk01 --> item: pcb-factory-mk01,4.412026840239829,0.0024511260223554605,0.0,1.0,,,True,item-craft: pcb-factory-mk01 --> item: pcb-factory-mk01,False
+679,__pr_graph_lp_or_to_or_and__: 6888:entity-build: pcb-factory-mk01 --> entity: pcb-factory-mk01:noncoproduct-route,4.412026840239829,0.0024511260223554605,0.0,1.0,,,True,entity-build: pcb-factory-mk01 --> entity: pcb-factory-mk01,False
+680,entity-build: pcb-factory-mk01,4.412026840239829,0.0024511260223554605,0.0,1.0,entity-build,pcb-factory-mk01,False,,False
+681,recipe: pcb-factory-mk01,4.412026840239829,0.0024511260223554605,0.0,1.0,recipe,pcb-factory-mk01,False,,True
+682,__pr_graph_lp_or_to_or_and__: 2299:item-craft: flora-collector-mk01 --> item: flora-collector-mk01,4.0277777777777795,0.0022376543209876552,0.0,1.0,,,True,item-craft: flora-collector-mk01 --> item: flora-collector-mk01,False
+683,__pr_graph_lp_or_to_or_and__: 425:item: flora-collector-mk01 --> entity-build-item: flora-collector-mk01,4.0277777777777795,0.0022376543209876552,0.0,1.0,,,True,item: flora-collector-mk01 --> entity-build-item: flora-collector-mk01,False
+684,__pr_graph_lp_or_to_or_and__: 7042:entity-build: flora-collector-mk01 --> entity: flora-collector-mk01:noncoproduct-route,4.0277777777777795,0.0022376543209876552,0.0,1.0,,,True,entity-build: flora-collector-mk01 --> entity: flora-collector-mk01,False
+685,entity-build: flora-collector-mk01,4.0277777777777795,0.0022376543209876552,0.0,1.0,entity-build,flora-collector-mk01,False,,False
+686,recipe: flora-collector-mk01,4.0277777777777795,0.0022376543209876552,0.0,1.0,recipe,flora-collector-mk01,False,,True
+687,__pr_graph_lp_or_to_or_and__: 145:item: clay-pit-mk01 --> entity-build-item: clay-pit-mk01,3.767754786360813,0.002093197103533785,0.0,1.0,,,True,item: clay-pit-mk01 --> entity-build-item: clay-pit-mk01,False
+688,__pr_graph_lp_or_to_or_and__: 2180:item-craft: clay-pit-mk01 --> item: clay-pit-mk01,3.767754786360813,0.002093197103533785,0.0,1.0,,,True,item-craft: clay-pit-mk01 --> item: clay-pit-mk01,False
+689,__pr_graph_lp_or_to_or_and__: 6878:entity-build: clay-pit-mk01 --> entity: clay-pit-mk01:noncoproduct-route,3.767754786360813,0.002093197103533785,0.0,1.0,,,True,entity-build: clay-pit-mk01 --> entity: clay-pit-mk01,False
+690,entity-build: clay-pit-mk01,3.767754786360813,0.002093197103533785,0.0,1.0,entity-build,clay-pit-mk01,False,,False
+691,recipe: clay-pit-mk01,3.767754786360813,0.002093197103533785,0.0,1.0,recipe,clay-pit-mk01,False,,True
+692,__pr_graph_lp_or_to_or_and__: 194:item: spore-collector-mk01 --> entity-build-item: spore-collector-mk01,3.452380952380952,0.0019179894179894178,0.0,1.0,,,True,item: spore-collector-mk01 --> entity-build-item: spore-collector-mk01,False
+693,__pr_graph_lp_or_to_or_and__: 2254:item-craft: spore-collector-mk01 --> item: spore-collector-mk01,3.452380952380952,0.0019179894179894178,0.0,1.0,,,True,item-craft: spore-collector-mk01 --> item: spore-collector-mk01,False
+694,__pr_graph_lp_or_to_or_and__: 6908:entity-build: spore-collector-mk01 --> entity: spore-collector-mk01:noncoproduct-route,3.452380952380952,0.0019179894179894178,0.0,1.0,,,True,entity-build: spore-collector-mk01 --> entity: spore-collector-mk01,False
+695,entity-build: spore-collector-mk01,3.452380952380952,0.0019179894179894178,0.0,1.0,entity-build,spore-collector-mk01,False,,False
+696,recipe: spore-collector-mk01,3.452380952380952,0.0019179894179894178,0.0,1.0,recipe,spore-collector-mk01,False,,True
+697,__pr_graph_lp_or_to_or_and__: 165:item: chipshooter-mk01 --> entity-build-item: chipshooter-mk01,3.2414891071149765,0.0018008272817305426,0.0,1.0,,,True,item: chipshooter-mk01 --> entity-build-item: chipshooter-mk01,False
+698,__pr_graph_lp_or_to_or_and__: 2198:item-craft: chipshooter-mk01 --> item: chipshooter-mk01,3.2414891071149765,0.0018008272817305426,0.0,1.0,,,True,item-craft: chipshooter-mk01 --> item: chipshooter-mk01,False
+699,__pr_graph_lp_or_to_or_and__: 6890:entity-build: chipshooter-mk01 --> entity: chipshooter-mk01:noncoproduct-route,3.2414891071149765,0.0018008272817305426,0.0,1.0,,,True,entity-build: chipshooter-mk01 --> entity: chipshooter-mk01,False
+700,entity-build: chipshooter-mk01,3.2414891071149765,0.0018008272817305426,0.0,1.0,entity-build,chipshooter-mk01,False,,False
+701,recipe: chipshooter-mk01,3.2414891071149765,0.0018008272817305426,0.0,1.0,recipe,chipshooter-mk01,False,,True
+702,recipe: nexelit-plate-2,2.557319223985891,0.0014207329022143838,0.0,1.0,recipe,nexelit-plate-2,False,,True
+703,__pr_graph_lp_or_to_or_and__: 101:item: automated-screener-mk01 --> entity-build-item: automated-screener-mk01,2.511279107023789,0.0013951550594576605,0.0,1.0,,,True,item: automated-screener-mk01 --> entity-build-item: automated-screener-mk01,False
+704,__pr_graph_lp_or_to_or_and__: 1903:item-craft: automated-screener-mk01 --> item: automated-screener-mk01,2.511279107023789,0.0013951550594576605,0.0,1.0,,,True,item-craft: automated-screener-mk01 --> item: automated-screener-mk01,False
+705,__pr_graph_lp_or_to_or_and__: 6850:entity-build: automated-screener-mk01 --> entity: automated-screener-mk01:noncoproduct-route,2.511279107023789,0.0013951550594576605,0.0,1.0,,,True,entity-build: automated-screener-mk01 --> entity: automated-screener-mk01,False
+706,entity-build: automated-screener-mk01,2.511279107023789,0.0013951550594576605,0.0,1.0,entity-build,automated-screener-mk01,False,,False
+707,recipe: automated-screener-mk01,2.511279107023789,0.0013951550594576605,0.0,1.0,recipe,automated-screener-mk01,False,,True
+708,__pr_graph_lp_or_to_or_and__: 1153:item-craft: pump --> item: pump,2.5001828647990916,0.0013889904804439397,0.0,1.0,,,True,item-craft: pump --> item: pump,False
+709,recipe: pump,2.5001828647990916,0.0013889904804439397,0.0,1.0,recipe,pump,False,,True
+710,__pr_graph_lp_or_to_or_and__: 7577:entity-operate: dino-dig-site --> recipe-category: dino-dig-site__0__0:noncoproduct-route,1.45,0.0008055555555555556,1800.0,0.0,,,True,entity-operate: dino-dig-site --> recipe-category: dino-dig-site__0__0,False
+711,entity-operate: dino-dig-site,1.45,0.0008055555555555556,1800.0,0.0,entity-operate,dino-dig-site,False,,False
+712,recipe: digosaurus-hidden-recipe,1.45,0.0008055555555555556,1800.0,0.0,recipe,digosaurus-hidden-recipe,False,,True
+713,__pr_graph_lp_or_to_or_and__: 438:item: antimony-drill-mk01 --> entity-build-item: antimony-drill-mk01,1.3951550594576607,0.0007750861441431448,0.0,1.0,,,True,item: antimony-drill-mk01 --> entity-build-item: antimony-drill-mk01,False
+714,__pr_graph_lp_or_to_or_and__: 7050:entity-build: antimony-drill-mk01 --> entity: antimony-drill-mk01:noncoproduct-route,1.3951550594576607,0.0007750861441431448,0.0,1.0,,,True,entity-build: antimony-drill-mk01 --> entity: antimony-drill-mk01,False
+715,entity-build: antimony-drill-mk01,1.3951550594576607,0.0007750861441431448,0.0,1.0,entity-build,antimony-drill-mk01,False,,False
+716,__pr_graph_lp_or_to_or_and__: 2598:item-craft: antimony-drill-mk01 --> item: antimony-drill-mk01,1.39515505945766,0.0007750861441431445,0.0,1.0,,,True,item-craft: antimony-drill-mk01 --> item: antimony-drill-mk01,False
+717,recipe: antimony-drill-mk01,1.39515505945766,0.0007750861441431445,0.0,1.0,recipe,antimony-drill-mk01,False,,True
+718,__pr_graph_lp_or_to_or_and__: 1832:item-craft: quenching-tower --> item: quenching-tower,1.2500914323995458,0.0006944952402219699,0.0,1.0,,,True,item-craft: quenching-tower --> item: quenching-tower,False
+719,recipe: quenching-tower,1.2500914323995458,0.0006944952402219699,0.0,1.0,recipe,quenching-tower,False,,True
+720,__pr_graph_lp_or_to_or_and__: 116:item: smelter-mk01 --> entity-build-item: smelter-mk01,1.1211765045731699,0.0006228758358739833,0.0,1.0,,,True,item: smelter-mk01 --> entity-build-item: smelter-mk01,False
+721,__pr_graph_lp_or_to_or_and__: 2102:item-craft: smelter-mk01 --> item: smelter-mk01,1.1211765045731699,0.0006228758358739833,0.0,1.0,,,True,item-craft: smelter-mk01 --> item: smelter-mk01,False
+722,__pr_graph_lp_or_to_or_and__: 6860:entity-build: smelter-mk01 --> entity: smelter-mk01:noncoproduct-route,1.1211765045731699,0.0006228758358739833,0.0,1.0,,,True,entity-build: smelter-mk01 --> entity: smelter-mk01,False
+723,entity-build: smelter-mk01,1.1211765045731699,0.0006228758358739833,0.0,1.0,entity-build,smelter-mk01,False,,False
+724,recipe: smelter-mk01,1.1211765045731699,0.0006228758358739833,0.0,1.0,recipe,smelter-mk01,False,,True
+725,__pr_graph_lp_or_to_or_and__: 30:item: quenching-tower --> entity-build-item: quenching-tower,1.096652278960392,0.0006092512660891067,0.0,1.0,,,True,item: quenching-tower --> entity-build-item: quenching-tower,False
+726,__pr_graph_lp_or_to_or_and__: 6806:entity-build: quenching-tower --> entity: quenching-tower:noncoproduct-route,1.096652278960392,0.0006092512660891067,0.0,1.0,,,True,entity-build: quenching-tower --> entity: quenching-tower,False
+727,entity-build: quenching-tower,1.096652278960392,0.0006092512660891067,0.0,1.0,entity-build,quenching-tower,False,,False
+728,__pr_graph_lp_or_to_or_and__: 1894:item-craft: vacuum-pump-mk01 --> item: vacuum-pump-mk01,1.0489818916080411,0.0005827677175600229,0.0,1.0,,,True,item-craft: vacuum-pump-mk01 --> item: vacuum-pump-mk01,False
+729,__pr_graph_lp_or_to_or_and__: 6844:entity-build: vacuum-pump-mk01 --> entity: vacuum-pump-mk01:noncoproduct-route,1.0489818916080411,0.0005827677175600229,0.0,1.0,,,True,entity-build: vacuum-pump-mk01 --> entity: vacuum-pump-mk01,False
+730,__pr_graph_lp_or_to_or_and__: 92:item: vacuum-pump-mk01 --> entity-build-item: vacuum-pump-mk01,1.0489818916080411,0.0005827677175600229,0.0,1.0,,,True,item: vacuum-pump-mk01 --> entity-build-item: vacuum-pump-mk01,False
+731,entity-build: vacuum-pump-mk01,1.0489818916080411,0.0005827677175600229,0.0,1.0,entity-build,vacuum-pump-mk01,False,,False
+732,recipe: vacuum-pump-mk01,1.0489818916080411,0.0005827677175600229,0.0,1.0,recipe,vacuum-pump-mk01,False,,True
+733,__pr_graph_lp_or_to_or_and__: 1089:item-craft: lab --> item: lab,1.0229276895943569,0.0005682931608857538,0.0,1.0,,,True,item-craft: lab --> item: lab,False
+734,__pr_graph_lp_or_to_or_and__: 1106:item-craft: steel-furnace --> item: steel-furnace,1.0229276895943569,0.0005682931608857538,0.0,1.0,,,True,item-craft: steel-furnace --> item: steel-furnace,False
+735,__pr_graph_lp_or_to_or_and__: 138:item: bof-mk01 --> entity-build-item: bof-mk01,1.0229276895943569,0.0005682931608857538,0.0,1.0,,,True,item: bof-mk01 --> entity-build-item: bof-mk01,False
+736,__pr_graph_lp_or_to_or_and__: 2123:item-craft: bof-mk01 --> item: bof-mk01,1.0229276895943569,0.0005682931608857538,0.0,1.0,,,True,item-craft: bof-mk01 --> item: bof-mk01,False
+737,__pr_graph_lp_or_to_or_and__: 6874:entity-build: bof-mk01 --> entity: bof-mk01:noncoproduct-route,1.0229276895943569,0.0005682931608857538,0.0,1.0,,,True,entity-build: bof-mk01 --> entity: bof-mk01,False
+738,entity-build: bof-mk01,1.0229276895943569,0.0005682931608857538,0.0,1.0,entity-build,bof-mk01,False,,False
+739,recipe: bof-mk01,1.0229276895943569,0.0005682931608857538,0.0,1.0,recipe,bof-mk01,False,,True
+740,recipe: lab,1.0229276895943569,0.0005682931608857538,0.0,1.0,recipe,lab,False,,True
+741,recipe: refined-concrete,1.0229276895943569,0.0005682931608857538,0.0,1.0,recipe,refined-concrete,False,,True
+742,recipe: steel-furnace,1.0229276895943569,0.0005682931608857538,0.0,1.0,recipe,steel-furnace,False,,True
+743,__pr_graph_lp_or_to_or_and__: 1977:item-craft: barrel-machine-mk01 --> item: barrel-machine-mk01,0.8861111111111113,0.000492283950617284,0.0,1.0,,,True,item-craft: barrel-machine-mk01 --> item: barrel-machine-mk01,False
+744,__pr_graph_lp_or_to_or_and__: 359:item: barrel-machine-mk01 --> entity-build-item: barrel-machine-mk01,0.8861111111111113,0.000492283950617284,0.0,1.0,,,True,item: barrel-machine-mk01 --> entity-build-item: barrel-machine-mk01,False
+745,__pr_graph_lp_or_to_or_and__: 7000:entity-build: barrel-machine-mk01 --> entity: barrel-machine-mk01:noncoproduct-route,0.8861111111111113,0.000492283950617284,0.0,1.0,,,True,entity-build: barrel-machine-mk01 --> entity: barrel-machine-mk01,False
+746,entity-build: barrel-machine-mk01,0.8861111111111113,0.000492283950617284,0.0,1.0,entity-build,barrel-machine-mk01,False,,False
+747,recipe: barrel-machine-mk01,0.8861111111111113,0.000492283950617284,0.0,1.0,recipe,barrel-machine-mk01,False,,True
+748,__pr_graph_lp_or_to_or_and__: 132:item: electrolyzer-mk01 --> entity-build-item: electrolyzer-mk01,0.5114638447971784,0.0002841465804428769,0.0,1.0,,,True,item: electrolyzer-mk01 --> entity-build-item: electrolyzer-mk01,False
+749,__pr_graph_lp_or_to_or_and__: 2117:item-craft: electrolyzer-mk01 --> item: electrolyzer-mk01,0.5114638447971784,0.0002841465804428769,0.0,1.0,,,True,item-craft: electrolyzer-mk01 --> item: electrolyzer-mk01,False
+750,__pr_graph_lp_or_to_or_and__: 6870:entity-build: electrolyzer-mk01 --> entity: electrolyzer-mk01:noncoproduct-route,0.5114638447971784,0.0002841465804428769,0.0,1.0,,,True,entity-build: electrolyzer-mk01 --> entity: electrolyzer-mk01,False
+751,entity-build: electrolyzer-mk01,0.5114638447971784,0.0002841465804428769,0.0,1.0,entity-build,electrolyzer-mk01,False,,False
+752,recipe: electrolyzer-mk01,0.5114638447971784,0.0002841465804428769,0.0,1.0,recipe,electrolyzer-mk01,False,,True
+753,entity-mine: distilator,0.170688159596466,9.482675533136999e-05,0.0,1.0,entity-mine,distilator,False,,True
+754,__pr_graph_lp_or_to_or_and__: 39:item: evaporator --> entity-build-item: evaporator,0.15343915343915354,8.524397413286308e-05,0.0,1.0,,,True,item: evaporator --> entity-build-item: evaporator,False
+755,__pr_graph_lp_or_to_or_and__: 6812:entity-build: evaporator --> entity: evaporator:noncoproduct-route,0.15343915343915354,8.524397413286308e-05,0.0,1.0,,,True,entity-build: evaporator --> entity: evaporator,False
+756,entity-build: evaporator,0.15343915343915354,8.524397413286308e-05,0.0,1.0,entity-build,evaporator,False,,False
+757,__pr_graph_lp_or_to_or_and__: 1841:item-craft: evaporator --> item: evaporator,0.15343915343915351,8.524397413286306e-05,0.0,1.0,,,True,item-craft: evaporator --> item: evaporator,False
+758,__pr_graph_lp_or_to_or_and__: 205:item: biofactory-mk01 --> entity-build-item: biofactory-mk01,0.15343915343915351,8.524397413286306e-05,0.0,1.0,,,True,item: biofactory-mk01 --> entity-build-item: biofactory-mk01,False
+759,__pr_graph_lp_or_to_or_and__: 2263:item-craft: biofactory-mk01 --> item: biofactory-mk01,0.15343915343915351,8.524397413286306e-05,0.0,1.0,,,True,item-craft: biofactory-mk01 --> item: biofactory-mk01,False
+760,__pr_graph_lp_or_to_or_and__: 6914:entity-build: biofactory-mk01 --> entity: biofactory-mk01:noncoproduct-route,0.15343915343915351,8.524397413286306e-05,0.0,1.0,,,True,entity-build: biofactory-mk01 --> entity: biofactory-mk01,False
+761,entity-build: biofactory-mk01,0.15343915343915351,8.524397413286306e-05,0.0,1.0,entity-build,biofactory-mk01,False,,False
+762,recipe: biofactory-mk01,0.15343915343915351,8.524397413286306e-05,0.0,1.0,recipe,biofactory-mk01,False,,True
+763,recipe: evaporator,0.15343915343915351,8.524397413286306e-05,0.0,1.0,recipe,evaporator,False,,True
+764,__pr_graph_lp_or_to_or_and__: 1074:item-craft: small-lamp --> item: small-lamp,0.14509612618362927,8.060895899090514e-05,0.0,1.0,,,True,item-craft: small-lamp --> item: small-lamp,False
+765,recipe: small-lamp,0.14509612618362927,8.060895899090514e-05,0.0,1.0,recipe,small-lamp,False,,True
+766,__pr_graph_lp_or_to_or_and__: 1906:item-craft: secondary-crusher-mk01 --> item: secondary-crusher-mk01,0.14509612618359674,8.060895899088708e-05,0.0,1.0,,,True,item-craft: secondary-crusher-mk01 --> item: secondary-crusher-mk01,False
+767,recipe: secondary-crusher-mk01,0.14509612618359674,8.060895899088708e-05,3.9968028886505635e-13,0.9999999999999998,recipe,secondary-crusher-mk01,False,,True
+768,__pr_graph_lp_or_to_or_and__: 104:item: secondary-crusher-mk01 --> entity-build-item: secondary-crusher-mk01,0.1450961261835967,8.060895899088707e-05,0.0,1.0,,,True,item: secondary-crusher-mk01 --> entity-build-item: secondary-crusher-mk01,False
+769,__pr_graph_lp_or_to_or_and__: 6852:entity-build: secondary-crusher-mk01 --> entity: secondary-crusher-mk01:noncoproduct-route,0.1450961261835967,8.060895899088707e-05,0.0,1.0,,,True,entity-build: secondary-crusher-mk01 --> entity: secondary-crusher-mk01,False
+770,entity-build: secondary-crusher-mk01,0.1450961261835967,8.060895899088707e-05,0.0,1.0,entity-build,secondary-crusher-mk01,False,,False
+771,__pr_graph_lp_or_to_or_and__: 1850:item-craft: solid-separator --> item: solid-separator,0.004091710758377428,2.2731726435430155e-06,0.0,1.0,,,True,item-craft: solid-separator --> item: solid-separator,False
+772,__pr_graph_lp_or_to_or_and__: 48:item: solid-separator --> entity-build-item: solid-separator,0.004091710758377428,2.2731726435430155e-06,0.0,1.0,,,True,item: solid-separator --> entity-build-item: solid-separator,False
+773,__pr_graph_lp_or_to_or_and__: 6818:entity-build: solid-separator --> entity: solid-separator:noncoproduct-route,0.004091710758377428,2.2731726435430155e-06,0.0,1.0,,,True,entity-build: solid-separator --> entity: solid-separator,False
+774,entity-build: solid-separator,0.004091710758377428,2.2731726435430155e-06,0.0,1.0,entity-build,solid-separator,False,,False
+775,recipe: solid-separator,0.004091710758377428,2.2731726435430155e-06,0.0,1.0,recipe,solid-separator,False,,True
+776,__pr_graph_lp_or_to_or_and__: 2527:item-craft: dino-dig-site --> item: dino-dig-site,0.0008055555555555556,4.475308641975309e-07,0.0,1.0,,,True,item-craft: dino-dig-site --> item: dino-dig-site,False
+777,__pr_graph_lp_or_to_or_and__: 259:item: dino-dig-site --> entity-build-item: dino-dig-site,0.0008055555555555556,4.475308641975309e-07,0.0,1.0,,,True,item: dino-dig-site --> entity-build-item: dino-dig-site,False
+778,__pr_graph_lp_or_to_or_and__: 6942:entity-build: dino-dig-site --> entity: dino-dig-site:noncoproduct-route,0.0008055555555555556,4.475308641975309e-07,0.0,1.0,,,True,entity-build: dino-dig-site --> entity: dino-dig-site,False
+779,entity-build: dino-dig-site,0.0008055555555555556,4.475308641975309e-07,0.0,1.0,entity-build,dino-dig-site,False,,False
+780,recipe: dino-dig-site,0.0008055555555555556,4.475308641975309e-07,0.0,1.0,recipe,dino-dig-site,False,,True
+781,__pr_graph_lp_or_to_or_and__: 6408:item: treated-wood --> energy-source-burner: chemical__biomass_2_1,1.5679810564862845e-06,8.711005869368247e-10,1800.0,0.0,,,True,item: treated-wood --> energy-source-burner: chemical__biomass_2_1,False

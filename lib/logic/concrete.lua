@@ -94,7 +94,7 @@ function concrete.build(lu, extra_params)
         end
 
         ----------------------------------------
-        add_node("asteroid-chunk-mine", "AND")
+        add_node("asteroid-chunk-mine", "AND", nil, nil, { coproduct = true })
         ----------------------------------------
         -- Can we mine this asteroid chunk?
 
@@ -368,6 +368,7 @@ function concrete.build(lu, extra_params)
                 abilities = { [2] = is_automatic },
                 -- Account for one-time cost of entity
                 amount = 1 / payback_time,
+                used_payback = payback_time,
             })
             if categories.energy_sources_input[entity.type] then
                 -- Note: Entities still depend on "void" energy source even if their energy_source is nil so that randomization is still possible
@@ -448,7 +449,7 @@ function concrete.build(lu, extra_params)
                     for _, mod in pairs(data.raw.module) do
                         if mod.category == category then
                             -- The number of modules needed is factored in by the entity-operate edge from here
-                            add_edge("item", mod.name, { amount = 1 / payback_time })
+                            add_edge("item", mod.name, { amount = 1 / payback_time, used_payback = payback_time })
                         end
                     end
                 end
@@ -515,7 +516,7 @@ function concrete.build(lu, extra_params)
         -- Just check for asteroids and other critical entities now for performance
         if not categories.without_health[entity.type] and (entity.type == "asteroid" or lu.dying_spawns[key("entity", entity.name)] or (entity.loot ~= nil and #entity.loot > 0) or (entity.corpse ~= nil and lu.minable_corpses[entity.corpse])) then
             ----------------------------------------
-            add_node("entity-kill", "AND")
+            add_node("entity-kill", "AND", nil, nil, { coproduct = true })
             ----------------------------------------
             -- Can we kill this entity?
             -- Only created for things that could have health.
@@ -530,7 +531,7 @@ function concrete.build(lu, extra_params)
 
         if entity.minable ~= nil then
             ----------------------------------------
-            add_node("entity-mine", "AND")
+            add_node("entity-mine", "AND", nil, nil, { coproduct = true })
             ----------------------------------------
             -- Can we mine this entity?
 
@@ -987,7 +988,7 @@ function concrete.build(lu, extra_params)
                 if has_filter_pumps then
                     for pump_name, _ in pairs(lu.pumps_with_filter[fluid.name]) do
                         local pump = data.raw["offshore-pump"][pump_name]
-                        add_edge("entity-operate", pump_name, { amount = pump.pumping_speed })
+                        add_edge("entity-operate", pump_name, { amount = 60 * pump.pumping_speed })
                     end
                 end
 
@@ -1190,7 +1191,7 @@ function concrete.build(lu, extra_params)
 
         if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
             ----------------------------------------
-            add_node("item-burn", "AND", nil, nil, { cost = constants.cost.burnt_result_additional_cost })
+            add_node("item-burn", "AND", nil, nil, { cost = constants.cost.burnt_result_additional_cost, slot_additional_cost = constants.cost.slot_additional_burnt_result_cost })
             ----------------------------------------
             -- Can we burn this item?
 
@@ -1221,7 +1222,7 @@ function concrete.build(lu, extra_params)
             -- TODO: This if condition prevents deliveries of high-weight items *from* space platforms; fix this!
 
             ----------------------------------------
-            add_node("item-launch", "AND", true)
+            add_node("item-launch", "AND", true, nil, { coproduct = true })
             ----------------------------------------
             -- Can we launch this item into space?
             -- This node FORGETS context: launching makes item available to all reachable rooms
@@ -1334,7 +1335,7 @@ function concrete.build(lu, extra_params)
         end
 
         ----------------------------------------
-        add_node("recipe", "AND", nil, nil, { dont_randomize = dont_randomize })
+        add_node("recipe", "AND", nil, nil, { dont_randomize = dont_randomize, coproduct = true })
         ----------------------------------------
         -- Can we perform this recipe?
 
@@ -1382,7 +1383,7 @@ function concrete.build(lu, extra_params)
                 if mod.category == recipe.allowed_module_categories[1] then
                     -- We can't know the actual amount of time the recipe takes (and thus we can't actually calculate the per-module costs), because we don't know the machine
                     -- Therefore, just assume crafting speed 1
-                    add_edge("item", mod.name, { amount = (recipe.energy_required or 0.5) / payback_time })
+                    add_edge("item", mod.name, { amount = (recipe.energy_required or 0.5) / payback_time, used_payback = payback_time })
                 end
             end
         end
@@ -1857,7 +1858,7 @@ function concrete.build(lu, extra_params)
 
         if tile.minable ~= nil then
             ----------------------------------------
-            add_node("tile-mine", "AND")
+            add_node("tile-mine", "AND", nil, nil, { coproduct = true })
             ----------------------------------------
             -- Can we mine this tile?
 

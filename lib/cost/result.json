@@ -1,0 +1,550 @@
+{
+  "autoplaced_infinite_entity_keys": [
+    "entity: antimonium",
+    "entity: big-rock",
+    "entity: big-sand-rock",
+    "entity: borax",
+    "entity: copper-ore",
+    "entity: dead-dry-hairy-tree",
+    "entity: dead-grey-trunk",
+    "entity: dead-tree-desert",
+    "entity: dry-hairy-tree",
+    "entity: dry-tree",
+    "entity: fish",
+    "entity: geothermal-crack",
+    "entity: huge-rock",
+    "entity: iron-ore",
+    "entity: ore-aluminium",
+    "entity: ore-bioreserve",
+    "entity: ore-chromium",
+    "entity: ore-lead",
+    "entity: ore-nickel",
+    "entity: ore-quartz",
+    "entity: ore-tin",
+    "entity: ore-titanium",
+    "entity: ore-zinc",
+    "entity: raw-coal",
+    "entity: salt-rock",
+    "entity: seaweed",
+    "entity: stone",
+    "entity: tree-01",
+    "entity: tree-02",
+    "entity: tree-02-red",
+    "entity: tree-03",
+    "entity: tree-04",
+    "entity: tree-05",
+    "entity: tree-06",
+    "entity: tree-06-brown",
+    "entity: tree-07",
+    "entity: tree-08",
+    "entity: tree-08-brown",
+    "entity: tree-08-red",
+    "entity: tree-09",
+    "entity: tree-09-brown",
+    "entity: tree-09-red"
+  ],
+  "autoplaced_zero_edge_sources": {
+    "entity: antimonium": [
+      "room-autoplace: planet: nauvis --> entity: antimonium"
+    ],
+    "entity: big-rock": [
+      "room-autoplace: planet: nauvis --> entity: big-rock"
+    ],
+    "entity: big-sand-rock": [
+      "room-autoplace: planet: nauvis --> entity: big-sand-rock"
+    ],
+    "entity: borax": [
+      "room-autoplace: planet: nauvis --> entity: borax"
+    ],
+    "entity: copper-ore": [
+      "room-autoplace: planet: nauvis --> entity: copper-ore"
+    ],
+    "entity: dead-dry-hairy-tree": [
+      "room-autoplace: planet: nauvis --> entity: dead-dry-hairy-tree"
+    ],
+    "entity: dead-grey-trunk": [
+      "room-autoplace: planet: nauvis --> entity: dead-grey-trunk"
+    ],
+    "entity: dead-tree-desert": [
+      "room-autoplace: planet: nauvis --> entity: dead-tree-desert"
+    ],
+    "entity: dry-hairy-tree": [
+      "room-autoplace: planet: nauvis --> entity: dry-hairy-tree"
+    ],
+    "entity: dry-tree": [
+      "room-autoplace: planet: nauvis --> entity: dry-tree"
+    ],
+    "entity: fish": [
+      "room-autoplace: planet: nauvis --> entity: fish"
+    ],
+    "entity: geothermal-crack": [
+      "room-autoplace: planet: nauvis --> entity: geothermal-crack"
+    ],
+    "entity: huge-rock": [
+      "room-autoplace: planet: nauvis --> entity: huge-rock"
+    ],
+    "entity: iron-ore": [
+      "room-autoplace: planet: nauvis --> entity: iron-ore"
+    ],
+    "entity: ore-aluminium": [
+      "room-autoplace: planet: nauvis --> entity: ore-aluminium"
+    ],
+    "entity: ore-bioreserve": [
+      "room-autoplace: planet: nauvis --> entity: ore-bioreserve"
+    ],
+    "entity: ore-chromium": [
+      "room-autoplace: planet: nauvis --> entity: ore-chromium"
+    ],
+    "entity: ore-lead": [
+      "room-autoplace: planet: nauvis --> entity: ore-lead"
+    ],
+    "entity: ore-nickel": [
+      "room-autoplace: planet: nauvis --> entity: ore-nickel"
+    ],
+    "entity: ore-quartz": [
+      "room-autoplace: planet: nauvis --> entity: ore-quartz"
+    ],
+    "entity: ore-tin": [
+      "room-autoplace: planet: nauvis --> entity: ore-tin"
+    ],
+    "entity: ore-titanium": [
+      "room-autoplace: planet: nauvis --> entity: ore-titanium"
+    ],
+    "entity: ore-zinc": [
+      "room-autoplace: planet: nauvis --> entity: ore-zinc"
+    ],
+    "entity: raw-coal": [
+      "room-autoplace: planet: nauvis --> entity: raw-coal"
+    ],
+    "entity: salt-rock": [
+      "room-autoplace: planet: nauvis --> entity: salt-rock"
+    ],
+    "entity: seaweed": [
+      "room-autoplace: planet: nauvis --> entity: seaweed"
+    ],
+    "entity: stone": [
+      "room-autoplace: planet: nauvis --> entity: stone"
+    ],
+    "entity: tree-01": [
+      "room-autoplace: planet: nauvis --> entity: tree-01"
+    ],
+    "entity: tree-02": [
+      "room-autoplace: planet: nauvis --> entity: tree-02"
+    ],
+    "entity: tree-02-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-02-red"
+    ],
+    "entity: tree-03": [
+      "room-autoplace: planet: nauvis --> entity: tree-03"
+    ],
+    "entity: tree-04": [
+      "room-autoplace: planet: nauvis --> entity: tree-04"
+    ],
+    "entity: tree-05": [
+      "room-autoplace: planet: nauvis --> entity: tree-05"
+    ],
+    "entity: tree-06": [
+      "room-autoplace: planet: nauvis --> entity: tree-06"
+    ],
+    "entity: tree-06-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-06-brown"
+    ],
+    "entity: tree-07": [
+      "room-autoplace: planet: nauvis --> entity: tree-07"
+    ],
+    "entity: tree-08": [
+      "room-autoplace: planet: nauvis --> entity: tree-08"
+    ],
+    "entity: tree-08-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-08-brown"
+    ],
+    "entity: tree-08-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-08-red"
+    ],
+    "entity: tree-09": [
+      "room-autoplace: planet: nauvis --> entity: tree-09"
+    ],
+    "entity: tree-09-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-09-brown"
+    ],
+    "entity: tree-09-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-09-red"
+    ]
+  },
+  "capacity_matrix_nnz": 113,
+  "character_key": "entity: character",
+  "constraint_groups": [
+    {
+      "moment": 0,
+      "name": "endpoint_inventory",
+      "row_start": 0,
+      "row_stop_exclusive": 1991
+    },
+    {
+      "lower_moment": 0,
+      "name": "moment_monotonicity_1",
+      "row_start": 1991,
+      "row_stop_exclusive": 4944,
+      "upper_moment": 1
+    },
+    {
+      "moment": 1,
+      "name": "inventory_moment_1",
+      "row_start": 4944,
+      "row_stop_exclusive": 6935
+    },
+    {
+      "capacity_moment": 0,
+      "coefficient_factor": 0.0008333333333333334,
+      "inventory_moment": 1,
+      "name": "capacity_moment_0",
+      "row_start": 6935,
+      "row_stop_exclusive": 7039
+    },
+    {
+      "lower_moment": 1,
+      "name": "moment_monotonicity_2",
+      "row_start": 7039,
+      "row_stop_exclusive": 9992,
+      "upper_moment": 2
+    },
+    {
+      "moment": 2,
+      "name": "inventory_moment_2",
+      "row_start": 9992,
+      "row_stop_exclusive": 11983
+    },
+    {
+      "capacity_moment": 1,
+      "coefficient_factor": 0.0016666666666666668,
+      "inventory_moment": 2,
+      "name": "capacity_moment_1",
+      "row_start": 11983,
+      "row_stop_exclusive": 12087
+    },
+    {
+      "lower_moment": 2,
+      "name": "moment_monotonicity_3",
+      "row_start": 12087,
+      "row_stop_exclusive": 15040,
+      "upper_moment": 3
+    },
+    {
+      "moment": 3,
+      "name": "inventory_moment_3",
+      "row_start": 15040,
+      "row_stop_exclusive": 17031
+    },
+    {
+      "capacity_moment": 2,
+      "coefficient_factor": 0.0025,
+      "inventory_moment": 3,
+      "name": "capacity_moment_2",
+      "row_start": 17031,
+      "row_stop_exclusive": 17135
+    },
+    {
+      "name": "goal_attainability",
+      "requested_goal_amount": 4350.0,
+      "row_start": 17135,
+      "row_stop_exclusive": 17136
+    }
+  ],
+  "constraint_matrix_nnz": 54026,
+  "format": "propertyrandomizer-moment-growth-lp-v6",
+  "goal_amount_requested": 4350.0,
+  "goal_item_name": "py-science-pack-1",
+  "goal_key": "item: py-science-pack-1",
+  "goal_pruning": {
+    "edges_after": 7383,
+    "edges_before": 24462,
+    "edges_removed": 17079,
+    "enabled": true,
+    "goal_key": "item: py-science-pack-1",
+    "nodes_after": 3377,
+    "nodes_before": 10038,
+    "nodes_removed": 6661,
+    "retained_zero_markers": 44,
+    "traversed_nonzero_edges": 7339
+  },
+  "graph_normalization": {
+    "coproduct_fanout_edges_preserved": 1589,
+    "coproduct_fanout_nodes_preserved": 1342,
+    "cost_or_reification_enabled": false,
+    "explicit_zero_free_producer_edges": 1,
+    "explicit_zero_initial_stock_edges_ignored": 43,
+    "explicit_zero_into_and_ignored": 0,
+    "missing_amount_edges_ignored": 0,
+    "noncoproduct_fanout_edges_rerouted": 740,
+    "noncoproduct_fanout_nodes_normalized": 363,
+    "noncoproduct_output_nodes_normalized": 363,
+    "nonsource_cost_or_bridges": 0,
+    "or_cost_nodes_split": 0,
+    "same_and_edges_subdivided": 0,
+    "same_or_edges_subdivided": 1224,
+    "source_cost_or_detection": "disabled",
+    "source_cost_or_rows": 0,
+    "strict_nonzero_edges": 8835
+  },
+  "graph_source": "stage-specific",
+  "initial_inventory": {
+    "all_other_finite_coordinates": 0.0,
+    "autoplaced_entities": "infinite (constraint omitted)",
+    "entity: character": 1.0
+  },
+  "lower_bound_test": {
+    "interpretation": "Even the optimistic relaxation cannot reach 4350 item: py-science-pack-1 by 1200s; therefore the real game requires more time.",
+    "proved": true
+  },
+  "matrix_orientation": "S is AND/action rows x OR/material columns",
+  "method": "highs",
+  "moment_order": 3,
+  "num_actions": 2953,
+  "num_capacity_resources": 104,
+  "num_finite_capacity_resources": 104,
+  "num_finite_material_constraints": 1991,
+  "num_inequalities": 17136,
+  "num_materials": 2033,
+  "num_variables": 11812,
+  "payback_capacity_recovery": {
+    "actual_duration_seconds_range": {
+      "max": 40.0,
+      "min": 1.0
+    },
+    "capacity_edge_count": 113,
+    "formula": "actual_duration_seconds = stored_amount * used_payback",
+    "pre_capacity_subdivision": {
+      "sample": [
+        {
+          "original_edge_key": "item: fawogae --> entity-operate-py-module: fawogae-plantation-mk01",
+          "start": "item: fawogae",
+          "stop": "entity-operate-py-module: fawogae-plantation-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 130:item: fawogae --> entity-operate-py-module: fawogae-plantation-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: ralesia --> entity-operate-py-module: ralesia-plantation-mk01",
+          "start": "item: ralesia",
+          "stop": "entity-operate-py-module: ralesia-plantation-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 139:item: ralesia --> entity-operate-py-module: ralesia-plantation-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: moondrop --> entity-operate-py-module: moondrop-greenhouse-mk01",
+          "start": "item: moondrop",
+          "stop": "entity-operate-py-module: moondrop-greenhouse-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 315:item: moondrop --> entity-operate-py-module: moondrop-greenhouse-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: moss --> entity-operate-py-module: moss-farm-mk01",
+          "start": "item: moss",
+          "stop": "entity-operate-py-module: moss-farm-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 406:item: moss --> entity-operate-py-module: moss-farm-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: tree-mk01 --> entity-operate-py-module: fwf-mk01",
+          "start": "item: tree-mk01",
+          "stop": "entity-operate-py-module: fwf-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 422:item: tree-mk01 --> entity-operate-py-module: fwf-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: vrauks --> entity-operate-py-module: vrauks-paddock-mk01",
+          "start": "item: vrauks",
+          "stop": "entity-operate-py-module: vrauks-paddock-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 459:item: vrauks --> entity-operate-py-module: vrauks-paddock-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: vrauks-mk02 --> entity-operate-py-module: vrauks-paddock-mk01",
+          "start": "item: vrauks-mk02",
+          "stop": "entity-operate-py-module: vrauks-paddock-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 460:item: vrauks-mk02 --> entity-operate-py-module: vrauks-paddock-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: auog --> entity-operate-py-module: auog-paddock-mk01",
+          "start": "item: auog",
+          "stop": "entity-operate-py-module: auog-paddock-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 490:item: auog --> entity-operate-py-module: auog-paddock-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: fish --> entity-operate-py-module: fish-farm-mk01",
+          "start": "item: fish",
+          "stop": "entity-operate-py-module: fish-farm-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 499:item: fish --> entity-operate-py-module: fish-farm-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: sap-tree --> entity-operate-py-module: sap-extractor-mk01",
+          "start": "item: sap-tree",
+          "stop": "entity-operate-py-module: sap-extractor-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 508:item: sap-tree --> entity-operate-py-module: sap-extractor-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: cottongut-mk01 --> entity-operate-py-module: prandium-lab-mk01",
+          "start": "item: cottongut-mk01",
+          "stop": "entity-operate-py-module: prandium-lab-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 524:item: cottongut-mk01 --> entity-operate-py-module: prandium-lab-mk01",
+          "used_payback": 10800.0
+        },
+        {
+          "original_edge_key": "item: seaweed --> entity-operate-py-module: seaweed-crop-mk01",
+          "start": "item: seaweed",
+          "stop": "entity-operate-py-module: seaweed-crop-mk01",
+          "stored_amount": 9.25925925925926e-05,
+          "synthetic_action_key": "__pr_graph_lp_used_payback_or_to_or_and__: 554:item: seaweed --> entity-operate-py-module: seaweed-crop-mk01",
+          "used_payback": 10800.0
+        }
+      ],
+      "used_payback_or_or_subdivided": 21
+    },
+    "sample": [
+      {
+        "action_key": "entity-operate: assembling-machine-1",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: assembling-machine-1 --> entity-operate: assembling-machine-1",
+        "material_key": "entity: assembling-machine-1",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: assembling-machine-2",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: assembling-machine-2 --> entity-operate: assembling-machine-2",
+        "material_key": "entity: assembling-machine-2",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: distilator",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: distilator --> entity-operate: distilator",
+        "material_key": "entity: distilator",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: gasifier",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: gasifier --> entity-operate: gasifier",
+        "material_key": "entity: gasifier",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: tar-processing-unit",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: tar-processing-unit --> entity-operate: tar-processing-unit",
+        "material_key": "entity: tar-processing-unit",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: quenching-tower",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: quenching-tower --> entity-operate: quenching-tower",
+        "material_key": "entity: quenching-tower",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: hpf",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: hpf --> entity-operate: hpf",
+        "material_key": "entity: hpf",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: cooling-tower-mk01",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: cooling-tower-mk01 --> entity-operate: cooling-tower-mk01",
+        "material_key": "entity: cooling-tower-mk01",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: evaporator",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: evaporator --> entity-operate: evaporator",
+        "material_key": "entity: evaporator",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: olefin-plant",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: olefin-plant --> entity-operate: olefin-plant",
+        "material_key": "entity: olefin-plant",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: soil-extractor-mk01",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: soil-extractor-mk01 --> entity-operate: soil-extractor-mk01",
+        "material_key": "entity: soil-extractor-mk01",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      },
+      {
+        "action_key": "entity-operate: solid-separator",
+        "actual_duration_seconds": 1.0,
+        "edge_key": "entity: solid-separator --> entity-operate: solid-separator",
+        "material_key": "entity: solid-separator",
+        "stored_amount": 9.25925925925926e-05,
+        "used_payback": 10800.0
+      }
+    ],
+    "stored_amount_abs_range": {
+      "max": 0.0037037037037037034,
+      "min": 9.25925925925926e-05
+    },
+    "used_payback_range": {
+      "max": 10800.0,
+      "min": 10800.0
+    }
+  },
+  "phase_timings_seconds": {
+    "build_and_solve_lp": 2.574584332993254,
+    "extract_stage": 0.011553124990314245,
+    "goal_prune": 0.005032208049669862,
+    "index_log": 1.815789791988209,
+    "normalize_and_build_matrices": 0.019659125013276935,
+    "parse_graph": 5.580609041964635,
+    "total_before_write": 10.019191334024072
+  },
+  "signed_amount_convention": "AND->OR positive output; OR->AND negative consumption",
+  "solve_elapsed_seconds": 2.5724063750822097,
+  "solve_mode": "feasibility",
+  "solver_message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+  "solver_status_code": 2,
+  "stage_extraction": {
+    "cross_boundary_edges_removed": 114441,
+    "reachable_nodes": 10038,
+    "stage_cut_edges_removed": 23
+  },
+  "stage_index": 3,
+  "stage_name": "logistic-science-pack",
+  "status": "infeasible",
+  "target_hint": "item: logistic-science-pack",
+  "time_seconds": 1200.0,
+  "time_seconds_role": "active: used_payback edges are recovered as actual-duration capacity requirements; delta appears directly in moment constraints",
+  "total_elapsed_seconds": 10.019191666971892
+}

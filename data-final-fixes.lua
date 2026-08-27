@@ -164,6 +164,7 @@ randomizations.rebuild_tech_tree()
 
 do return end]]
 
+local constants = require("helper-tables/constants")
 local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
@@ -239,24 +240,24 @@ local packs_in_order = {
 }
 local payback_times = {
     30 * 60,
-    2 * 3600,
-    4 * 3600,
-    10 * 3600,
-    10 * 3600,
+    1 * 3600,
+    3 * 3600,
+    8 * 3600,
     15 * 3600,
-    25 * 3600,
-    35 * 3600,
-    50 * 3600,
-    50 * 3600,
-    50 * 3600,
-    -- Payback time goes down since you're almost done
     20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    -- Payback time goes down since you're almost done
+    10 * 3600,
 }
 for i = 1, #packs_in_order do
     log("I IS THIS VALUE " .. i)
-    logic.build(true, { payback_time = payback_times[i] })
-    log("GRAPH DUMP")
-    log(serpent.dump(logic.graph))
+    logic.build(true, { payback_time = payback_times[i], power_cost = constants.py_electricity_scaling[i] })
+    --[[log("GRAPH DUMP")
+    log(serpent.dump(logic.graph))]]
     local science_pack = packs_in_order[i]
     if science_pack ~= "full-pyrrhic-victory" then
         --gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
@@ -300,10 +301,28 @@ for i = 1, #packs_in_order do
             end
         end
         local path = top.path(logic.graph, {science_ind}, sort_info)
-        log("PATH DUMP")
+        if i > 1 then
+            local science_amount = 0
+            for ind, _ in pairs(path.in_path) do
+                local node = logic.graph[sort_info.sorted[ind].node_key]
+                if node.type == "technology" then
+                    local tech = data.raw.technology[node.name]
+                    if tech.unit ~= nil then
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            if ing[1] == packs_in_order[i - 1] then
+                                science_amount = science_amount + (tech.unit.count or 0) * ing[2]
+                            end
+                        end
+                    end
+                end
+            end
+            log(packs_in_order[i])
+            log(science_amount)
+        end
+        --[[log("PATH DUMP")
         log(serpent.dump(path))
         log("SORT INFO DUMP")
-        log(serpent.dump(sort_info))
+        log(serpent.dump(sort_info))]]
     else
         local pyrrhic_ind
         for ind, pebble in pairs(sort_info.sorted) do
@@ -314,15 +333,33 @@ for i = 1, #packs_in_order do
             end
         end
         local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
-        log("PATH DUMP")
+        if i > 1 then
+            local science_amount = 0
+            for ind, _ in pairs(path.in_path) do
+                local node = logic.graph[sort_info.sorted[ind].node_key]
+                if node.type == "technology" then
+                    local tech = data.raw.technology[node.name]
+                    if tech.unit ~= nil then
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            if ing[1] == packs_in_order[i - 1] then
+                                science_amount = science_amount + (tech.unit.count or 0) * ing[2]
+                            end
+                        end
+                    end
+                end
+            end
+            log(packs_in_order[i])
+            log(science_amount)
+        end
+        --[[log("PATH DUMP")
         log(serpent.dump(path))
         log("SORT INFO DUMP")
-        log(serpent.dump(sort_info))
+        log(serpent.dump(sort_info))]]
     end
-    local simplex_export = require("lib/cost/simplex-lp-export")
-    simplex_export.export_to_log(sort_info, i)
+    --local simplex_export = require("lib/cost/simplex-lp-export")
+    --simplex_export.export_to_log(sort_info, i)
 end
-log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+--log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 smuggle_info()
 do return end
 

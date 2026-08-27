@@ -58,7 +58,7 @@ config.unified = {
     ["mining-fluid-required"] = true,
 }
 
-ITEM_ENABLED = false
+ITEM_ENABLED = true
 RECIPE_INGS_DIR = "FORWARD"
 local enabled = {
     --["recipe-ingredients"] = true,

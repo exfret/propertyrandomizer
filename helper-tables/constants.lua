@@ -96,6 +96,21 @@ local constants = {
     unified_recipe_ingredients_cost_threshold = 1000,
     unified_recipe_results_dummy_fraction = 1,
 
+    py_electricity_scaling = { -- Roughly in GW expected for an "average" base, but the ratios are what matter anyways
+        0.1, -- pre-auto
+        0.2, -- auto
+        0.5, -- py1
+        1, -- logi
+        3, -- military
+        3, -- py2
+        6, -- chem
+        10, -- py3
+        20, -- prod
+        40, -- py4
+        65, -- utility
+        100, -- space
+    },
+
     -- For the built in graph costs
     cost = {
         default_payback_time = 10 * 3600,
@@ -114,7 +129,8 @@ local constants = {
         -- Floor on item cost to represent logistical complexity of many items, even if they're otherwise free
         per_item_cost = 0.1,
         -- Complexity cost for dealing with having to burn something
-        burnt_result_additional_cost = 2,
+        burnt_result_additional_cost = 1,
+        slot_additional_burnt_result_cost = 5,
         -- TODO: Spoilage costs not tested yet
         -- Spoilage costs are only for calculating slot cost
         -- Additional fixed cost from nuisance of getting something through spoiling
@@ -123,6 +139,8 @@ local constants = {
         slot_spoil_additional_cost_per_second = 0.0167,
         -- Penalty to operation for something having a burner energy source
         burner_energy_source_penalty = 0.1,
+        -- Let's say heat is like, 5x more annoying than electricity or so
+        heat_multiplier = 5,
     },
 }
 
