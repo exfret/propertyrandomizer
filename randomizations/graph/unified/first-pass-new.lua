@@ -145,7 +145,57 @@ first_pass.execute = function(params)
     local spoofed_graph = table.deepcopy(params.spoofed_graph)
     local subdiv_graph = table.deepcopy(params.subdiv_graph)
 
-    local init_sort = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
+    local init_sort
+    if not mods["pyalternativeenergy"] then
+        init_sort = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
+    else
+        -- For py specifically, sort based on sciences now, since tiers are very important in py
+        local packs_in_order = {
+            "automation-science-pack",
+            "py-science-pack-1",
+            "logistic-science-pack",
+            "military-science-pack",
+            "py-science-pack-2",
+            "chemical-science-pack",
+            "py-science-pack-3",
+            "production-science-pack",
+            "py-science-pack-4",
+            "utility-science-pack",
+            "space-science-pack",
+            "full-pyrrhic-victory",
+        }
+        local graph_for_init_sort = table.deepcopy(spoofed_graph)
+        local packs_to_deps = {}
+        local deps_to_falses = {}
+        for i = 1, #packs_in_order - 1 do
+            local science_node = graph_for_init_sort.nodes[key("item", packs_in_order[i])]
+            packs_to_deps[packs_in_order[i]] = {}
+            local deps_to_remove = {}
+            for dep, _ in pairs(science_node.dep) do
+                table.insert(deps_to_remove, dep)
+                local edge = graph_for_init_sort.edges[dep]
+                table.insert(packs_to_deps[packs_in_order[i]], {edge.start, edge.stop, dep})
+            end
+            for _, dep in pairs(deps_to_remove) do
+                local false_node = graph_for_init_sort.nodes[key("false", science_node.name)]
+                if false_node == nil then
+                    false_node = gutils.add_node(graph_for_init_sort, "false", science_node.name)
+                    false_node.op = "OR"
+                end
+                deps_to_falses[dep] = gutils.add_edge(graph_for_init_sort, key(false_node), graph_for_init_sort.edges[dep].stop)
+                gutils.remove_edge(graph_for_init_sort, dep)
+            end
+        end
+        init_sort = top.sort(graph_for_init_sort, nil, nil, { choose_randomly = true })
+        for i = 1, #packs_in_order - 1 do
+            for _, edge_info in pairs(packs_to_deps[packs_in_order[i]]) do
+                local false_edge = deps_to_falses[edge_info[3]]
+                gutils.remove_edge(graph_for_init_sort, gutils.ekey(false_edge))
+                gutils.add_edge(graph_for_init_sort, edge_info[1], edge_info[2])
+                init_sort = top.sort(graph_for_init_sort, init_sort, {graph_for_init_sort.nodes[edge_info[1]], graph_for_init_sort.nodes[edge_info[2]]}, { choose_randomly = true, do_new_edge_processing = true })
+            end
+        end
+    end
 
     --local in_balance_blacklist = first_pass_balance.find_balance_blacklist(spoofed_graph, init_sort)
 
@@ -1146,11 +1196,11 @@ first_pass.execute = function(params)
 
     local function update_reservations()
         -- Actually, fulfill everything if we got all the mechanics
-        if curr_mechanic_index > #ordered_mechanics then
+        --[[if curr_mechanic_index > #ordered_mechanics then
             for j = #reserved_slots, 1, -1 do
                 fulfill_reservation(j)
             end
-        end
+        end]]
 
         -- Travelers now only become fulfilled as necessary to progress with mechanics
         do return end
@@ -1456,9 +1506,13 @@ first_pass.execute = function(params)
                 end
 
                 -- Precompute traveler predicates
+                local all_travs_reachable = true
                 local precomp_travs = {}
                 for perm_ind, sorted_node_ptr in pairs(perm) do
                     local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                    if not trav_absolute_reachable(trav) or disable_reachability_checks then
+                        all_travs_reachable = false
+                    end
                     if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
                         if can_reserve(trav) or not to_be_reserved(trav) then
                             table.insert(precomp_travs, trav)
@@ -1531,34 +1585,105 @@ first_pass.execute = function(params)
 
                     -- First, try to fulfill an early reservation that now targets the current mechanic
                     local found_fulfiller = false
-                    for j = 1, #reserved_slots do
-                        local reserved_slot = reserved_slots[j]
-                        local reserved_trav_key = slot_to_trav[key(reserved_slot)]
-                        if curr_mechanic == nil or trav_to_mechanics[reserved_trav_key][curr_mechanic] then
-                            log("FOUND FULFILLER\n\t" .. reserved_trav_key .. "\nFOR \n\t" .. (curr_mechanic or "NIL"))
-                            found_fulfiller = true
-                            fulfill_reservation(j)
-                            update_reservations()
-                            break
+                    if curr_mechanic ~= nil then
+                        for j = 1, #reserved_slots do
+                            local reserved_slot = reserved_slots[j]
+                            local reserved_trav_key = slot_to_trav[key(reserved_slot)]
+                            if trav_to_mechanics[reserved_trav_key][curr_mechanic] then
+                                log("FOUND FULFILLER\n\t" .. reserved_trav_key .. "\nFOR \n\t" .. (curr_mechanic or "NIL"))
+                                found_fulfiller = true
+                                fulfill_reservation(j)
+                                update_reservations()
+                                break
+                            end
+                        end
+                        -- Cancel reservation
+                        if not found_fulfiller then
+                            for perm_ind, sorted_node_ptr in pairs(perm) do
+                                local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                                -- to_be_reserved checks that it actually satisfies the mechanic we're looking for
+                                if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) and not to_be_reserved(trav) then
+                                    for j = #reserved_slots, 1, -1 do
+                                        local slot = reserved_slots[j]
+                                        if is_compatible(slot, trav) then
+                                            replace_reservation(j, trav)
+                                            found_fulfiller = true
+                                            break
+                                        end
+                                    end
+                                end
+                                if found_fulfiller then
+                                    break
+                                end
+                            end
                         end
                     end
-                    -- Cancel reservation
-                    if not found_fulfiller then
-                        for perm_ind, sorted_node_ptr in pairs(perm) do
-                            local trav = ind_to_trav(slot_inds[sorted_node_ptr])
-                            -- to_be_reserved checks that it actually satisfies the mechanic we're looking for
-                            if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and trav_absolute_reachable(trav) and not to_be_reserved(trav) then
-                                for j = #reserved_slots, 1, -1 do
-                                    local slot = reserved_slots[j]
-                                    if is_compatible(slot, trav) then
-                                        replace_reservation(j, trav)
-                                        found_fulfiller = true
+                    if not found_fulfiller and all_travs_reachable then
+                        local slot_tries = 0
+                        for _, slot_ind in pairs(slot_inds) do
+                            local base_slot = ind_to_slot(slot_ind)
+
+                            if slot_to_trav[key(base_slot)] == nil and slot_absolute_reachable(base_slot) then
+                                slot_tries = 1 + slot_tries
+                                if slot_tries > 100 then
+                                    break
+                                end
+
+                                local slot_chain = {base_slot}
+                                local trav_chain = {}
+                                local already_in_chain = {}
+                                local curr_slot = base_slot
+                                local found_ending_trav = false
+                                for chain_length = 1, 100 do
+                                    -- First find a reserved slot to take a trav from
+                                    local found_slot_to_take_from = false
+                                    for j = #reserved_slots, 1, -1 do
+                                        local reserved_slot = reserved_slots[j]
+                                        if not already_in_chain[j] then
+                                            local trav = split_graph.nodes[slot_to_trav[key(reserved_slot)]]
+                                            if is_compatible(curr_slot, trav) then
+                                                table.insert(slot_chain, reserved_slot)
+                                                table.insert(trav_chain, trav)
+                                                already_in_chain[j] = true
+                                                curr_slot = reserved_slot
+                                                found_slot_to_take_from = true
+                                                break
+                                            end
+                                        end
+                                    end
+                                    if not found_slot_to_take_from then
+                                        break
+                                    end
+                                    -- Now see if there is a free trav for it
+                                    -- This code is largely copied from the main loop
+                                    for perm_ind, sorted_node_ptr in pairs(perm) do
+                                        local trav = ind_to_trav(slot_inds[sorted_node_ptr])
+                                        if trav_to_slot[key(trav)] == nil and trav_acceptable(trav) and is_compatible(curr_slot, trav) then
+                                            -- No need to fulfill reservations here, so make it reserved always
+                                            table.insert(trav_chain, trav)
+                                            found_ending_trav = true
+                                            break
+                                        end
+                                    end
+                                    if found_ending_trav then
                                         break
                                     end
                                 end
-                            end
-                            if found_fulfiller then
-                                break
+                                if found_ending_trav then
+                                    -- The base j = 1 case is taken care of later
+                                    for j = #slot_chain, 2, -1 do
+                                        local slot_key = key(slot_chain[j])
+                                        local trav_key = key(trav_chain[j])
+                                        slot_to_trav[slot_key] = trav_key
+                                        trav_to_slot[trav_key] = slot_key
+                                    end
+                                    is_reserved[key(base_slot)] = true
+                                    table.insert(reserved_slots, base_slot)
+                                    found_fulfiller = true
+                                    found_slot = base_slot
+                                    found_trav = trav_chain[1]
+                                    break
+                                end
                             end
                         end
                     end

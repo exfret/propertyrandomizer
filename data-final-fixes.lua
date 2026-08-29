@@ -26,7 +26,7 @@ do return end]]
 
 --[[local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
-local new_recipes = require("lib/cost/rotated-bases/FINAL_RANDOMIZED_RECIPES_seed202608250324")
+local new_recipes = require("lib/cost/recipe-randomizations/FINAL_RANDOMIZED_RECIPES_12stage_rot_10_30_50")
 local fixed_recipes = {}
 for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
     for _, machine in pairs(data.raw[machine_class]) do
@@ -70,6 +70,7 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
         local has_fluid = false
         for _, ing in pairs(recipe_data.ingredients) do
             --ing.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * ing.amount)))
+            ing.amount = math.min(65535, ing.amount)
             if ing.type == "item" then
                 local item
                 for item_class, _ in pairs(defines.prototypes.item) do
@@ -94,6 +95,7 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
         local cleaned_results = {}
         for _, result in pairs(recipe_data.results) do
             --result.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * result.amount)))
+            result.amount = math.min(65535, result.amount)
             if result.type == "item" then
                 local item
                 for item_class, _ in pairs(defines.prototypes.item) do
@@ -160,9 +162,9 @@ data.raw.recipe["stone-brick"].ingredients[1].name = "iron-ore"
 data.raw.recipe["low-grade-smelting-iron"].categories = {"crafting"}
 randomizations = {}
 require("randomizations/fixes")
-randomizations.rebuild_tech_tree()
+--randomizations.rebuild_tech_tree()
 
-do return end]]
+--do return end
 
 local constants = require("helper-tables/constants")
 local cost = require("lib/cost/simplex-lp-export")
@@ -253,62 +255,6 @@ local payback_times = {
     -- Payback time goes down since you're almost done
     10 * 3600,
 }
-if true then
-    -- For vanilla
-    logic.build(true, { character_build_time = nil })
-    log("GRAPH DUMP")
-    log(serpent.dump(logic.graph))
-    local sort_info = top.sort(logic.graph)
-
-    local pyrrhic_ind
-    for ind, pebble in pairs(sort_info.sorted) do
-        local node = logic.graph.nodes[pebble.node_key]
-        if node.type == "launch" and node.name == "" then
-            pyrrhic_ind = ind
-            break
-        end
-    end
-    local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
-    log("PATH DUMP")
-    log(serpent.dump(path))
-    log("SORT INFO DUMP")
-    log(serpent.dump(sort_info))
-
-    log("TECH CONE COSTS")
-    for _, tech in pairs(data.raw.technology) do
-        log("TECHNOLOGY: " .. tech.name)
-        local open = { tech }
-        local in_open = { [tech.name] = true }
-        local open_ind = 1
-        while open_ind <= #open do
-            local curr_tech = open[open_ind]
-            for _, prereq in pairs(curr_tech.prerequisites or {}) do
-                if not in_open[prereq] then
-                    table.insert(open, data.raw.technology[prereq])
-                    in_open[prereq] = true
-                end
-            end
-            open_ind = 1 + open_ind
-        end
-        local costs = {}
-        for _, tech in pairs(open) do
-            if tech.unit ~= nil and tech.unit.count ~= nil then
-                for _, ing in pairs(tech.unit.ingredients) do
-                    costs[ing[1] ] = costs[ing[1] ] or 0
-                    costs[ing[1] ] = costs[ing[1] ] + tech.unit.count * ing[2]
-                end
-            end
-        end
-        log(serpent.dump(costs))
-        if tech.unit ~= nil and tech.unit.count ~= nil then
-            log("TIME COST: " .. tostring(tech.unit.count * tech.unit.time))
-        end
-    end
-    log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
-    smuggle_info()
-
-    do return end
-end
 for i = 1, #packs_in_order do
     log("I IS THIS VALUE " .. i)
     -- Electricity costs are per 10MW, so pre-automation we charge 1 per 1MW due to the 0.1 multiplier in the scaling
@@ -444,7 +390,7 @@ for _, tech in pairs(data.raw.technology) do
 end
 log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 smuggle_info()
-do return end
+do return end]]
 
 
 

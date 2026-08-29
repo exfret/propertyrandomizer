@@ -520,7 +520,7 @@ function abstract.build(lu, extra_params)
     -- Can we use any rocket silo for launching?
 
     for _, silo in pairs(prots("rocket-silo")) do
-        if lu.entities[silo.name] ~= nil then
+        if lu.entities[silo.name] ~= nil and not constants.blacklisted_silos[silo.name] then
             add_edge("entity-rocket-silo", silo.name, { amount = 1 })
         end
     end

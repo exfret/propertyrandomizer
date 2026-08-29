@@ -1,34 +1,6 @@
 -- TODO: Split off explorer panel into seperate file.
 
-script.on_nth_tick(5, function(event)
-    for _, player in pairs(game.players or {}) do
-        if player.character ~= nil and player.character.valid then
-            local entities = game.surfaces.nauvis.find_entities_filtered({position = player.character.position, radius = 5, type = "unit"})
-            for _, entity in pairs(entities) do
-                local caravan_names = {
-                    ["caravan"] = true,
-                    ["caravan-turd"] = true,
-                    ["fluidavan"] = true,
-                    ["fluidavan-turd"] = true,
-                    ["fluidflyavan"] = true,
-                    ["fluidflyavan-turd"] = true,
-                    ["flyavan"] = true,
-                    ["flyavan-turd"] = true,
-                    ["nukavan"] = true,
-                    ["nukavan-turd"] = true,
-                }
-                if caravan_names[entity.name] then
-                    game.surfaces.nauvis.create_entity({name = "big-explosion", position = player.character.position})
-                    player.character.die()
-                    break
-                end
-            end
-        end
-    end
-end)
-
---[[
-local mod_gui = require("__core__.lualib.mod-gui")
+--[[local mod_gui = require("__core__.lualib.mod-gui")
 local util = require("util")
 
 local gui = require("scripts/gui")

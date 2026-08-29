@@ -15,8 +15,8 @@ local set_class = builder.set_class
 local set_prot = builder.set_prot
 
 -- Py smart farm files
+local farm_specs = {}
 if mods["pyalienlife"] then
-    local farm_specs = {}
     for _, farm_file in pairs({"arum", "bioreserve", "grod", "kicalk", "ralesia", "rennea", "tuuphra", "yotoi-fruit", "yotoi"}) do
         table.insert(farm_specs, require("__pyalienlife__/scripts/smart-farm/farm-" .. farm_file))
     end
@@ -143,7 +143,7 @@ function compat.build(graph, lu)
     -- Can we provide this biopyanoport with food?
     add_edge("item", "workers-food", { amount = 1 })
     add_edge("item", "workers-food-02", { amount = 1 })
-    add_edge("item", "workers-food-03", { amount = 1 })
+    add_edge("item", "workers-food-03", { amount = 1 }) 
 end
 
 return compat

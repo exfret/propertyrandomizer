@@ -18,7 +18,61 @@ for class, _ in pairs(defines.prototypes.item) do
         end
     end
 end
+-- Milk barrels
+for _, recipe in pairs(data.raw.recipe) do
+    if string.find(recipe.name, "milk") ~= nil and string.find(recipe.name, "barrel") ~= nil then
+        randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
+    end
+end
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if string.find(item.name, "milk") ~= nil and string.find(item.name, "barrel") ~= nil then
+                randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
+        end
+    end
+end
+-- Tholins vessels
+-- Actually not sure about these
+--[[for _, recipe in pairs(data.raw.recipe) do
+    if string.find(recipe.name, "tholins") ~= nil then
+        --randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
+    end
+end
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if string.find(item.name, "tholins") ~= nil then
+                --randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
+        end
+    end
+end]]
+-- Vatbrains (the hidden modules)
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if string.find(item.name, "vatbrain") ~= nil then
+                randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
+        end
+    end
+end
+-- Vatbrain cartridges
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if string.find(item.name, "cartridge") ~= nil then
+                randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
+            end
+        end
+    end
+end
+-- The biocomputer
+randomization_info.options.first_pass.blacklist[key("item", "vat-brain")] = true
 -- Blacklist productivity modules in py; too sensitive
+-- Actually, just make these mechanics
 --[[randomization_info.options.first_pass.blacklist[key("item", "productivity-module")] = true
 randomization_info.options.first_pass.blacklist[key("item", "productivity-module-2")] = true
 randomization_info.options.first_pass.blacklist[key("item", "productivity-module-3")] = true]]
@@ -34,7 +88,7 @@ for k, v in pairs(short_py_cost_table_additions) do
     randomization_info.options.cost.default_cost_table[k] = v
 end
 
-for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01", "py-burner", "py-gas-vent", "py-sinkhole", "compost-plant-mk01"}) do
+for _, machine_name in pairs({"barrel-machine-mk01", "slaughterhouse-mk01", "py-burner", "py-gas-vent", "py-sinkhole", "compost-plant-mk01", "vat-brain"}) do
     local machine = dutils.get_prot("entity", machine_name)
     if machine ~= nil then
         local machine_cats = machine.crafting_categories or {"crafting"}

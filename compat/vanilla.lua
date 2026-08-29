@@ -8,7 +8,6 @@ randomization_info.options.first_pass.blacklist = {}
 for _, recipe in pairs(data.raw.recipe) do
     if string.find(recipe.name, "barrel") ~= nil then
         randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
-        -- TODO: Item blacklist as well
     end
 end
 for class, _ in pairs(defines.prototypes.item) do
@@ -26,6 +25,18 @@ for class, _ in pairs(defines.prototypes.item) do
 end
 -- TODO: Do in more automatic way than hardcoding
 randomization_info.options.first_pass.blacklist[key("item", "rocket-part")] = true
+-- Also do the rocket launch products (this is in particular for py, where the mechanics system would trip up otherwise)
+for class, _ in pairs(defines.prototypes.item) do
+    if data.raw[class] ~= nil then
+        for _, item in pairs(data.raw[class]) do
+            if item.rocket_launch_products ~= nil then
+                for _, result in pairs(item.rocket_launch_products) do
+                    randomization_info.options.first_pass.blacklist[key("item", result.name)] = true
+                end
+            end
+        end
+    end
+end
 
 randomization_info.options.first_pass.always_slot_pre = {
     [key("item-craft", "item")] = true,

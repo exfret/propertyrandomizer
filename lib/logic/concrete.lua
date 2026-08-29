@@ -594,12 +594,10 @@ function concrete.build(lu, extra_params)
             end
         end
 
-        local blacklisted_silos = {
-            ["mega-farm"] = true, -- Py smart farms work via scripting and don't actually launch a rocket
-        }
+        -- blacklisted silos don't have edge to abstract rocket-silo node, but they still get a silo node to check that they work
         if entity.type == "rocket-silo" then
             ----------------------------------------
-            add_node("entity-rocket-silo", "AND")
+            add_node("entity-rocket-silo", "AND", nil, nil, { mechanic = true })
             ----------------------------------------
             -- Can we use this rocket silo for launching?
             
@@ -1334,6 +1332,9 @@ function concrete.build(lu, extra_params)
         end
         -- For some reason, methanol canisters are their own special thing
         if string.find(recipe.name, "methanol") ~= nil and string.find(recipe.name, "canister") ~= nil then
+            dont_randomize = true
+        end
+        if string.find(recipe.name, "brain-food") ~= nil then
             dont_randomize = true
         end
 

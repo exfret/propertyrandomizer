@@ -142,6 +142,10 @@ local constants = {
         -- Let's say heat is like, 5x more annoying than electricity or so
         heat_multiplier = 5,
     },
+    
+    blacklisted_silos = {
+        ["mega-farm"] = true, -- Py smart farms work via scripting and don't actually launch a rocket
+    }
 }
 
 local function set_aps_starting_planet()

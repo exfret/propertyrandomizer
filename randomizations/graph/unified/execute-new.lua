@@ -6,7 +6,7 @@
 -- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
-local DO_FIRST_PASS = false
+local DO_FIRST_PASS = true
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!

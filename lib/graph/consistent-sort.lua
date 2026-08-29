@@ -98,7 +98,11 @@ top.sort = function(graph, state, new_conn, extra)
     else
         -- Otherwise, add the dependent of the new_conn to open with the prereq's contexts
         for context, _ in pairs(node_to_context_inds[key(new_conn[1])]) do
-            add_to_open(new_conn[2], context)
+            if extra.do_new_edge_processing then
+                process_depnode(new_conn[2], context)
+            else
+                add_to_open(new_conn[2], context)
+            end
         end
     end
 

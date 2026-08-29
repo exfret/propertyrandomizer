@@ -66,14 +66,21 @@ if mods["pyalternativeenergy"] then
             recipe.enabled = true
         end
     end
+
+    -- Make something a main product if it's the only thing in the results
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.results ~= nil and #recipe.results == 1 then
+            recipe.main_product = recipe.results[1].name
+        end
+    end
 end
 
--- Make fixed recipes non-hidden and enabled
+-- Make fixed recipes enabled
 for machine_type, _ in pairs(categories.crafting_machines) do
     for _, machine in pairs(data.raw[machine_type]) do
         if machine.fixed_recipe ~= nil then
             local recipe = data.raw.recipe[machine.fixed_recipe]
-            recipe.hidden = false
+            recipe.enabled = true
         end
     end
 end

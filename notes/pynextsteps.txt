@@ -1,15 +1,13 @@
- - Next: Cost and logic
-
  - IDEA: Bring back/identify building that an item makes with item so that it requires the electricity etc. for placement at least
     * Could also just change where we consider it in the initial sort/put it later if possible
 
- - See how contexts for automatability work for eliminating issue with sap being used for science early without being automatable
-    * Will only be an issue if we do recipe rando again
-
- - Electricity in cost analysis
-
 NECESSARY:
  - Put vatbrains on critical path (they're soft required)
+    - Can item randomization go out of order in sciences?
+ - Multiply science amounts until average cost is 1
+ - Tooltip for recipe/material cost change?
+ - Calculate randomized recipe costs and store those
+ - Make sure item randomization resets recipes with special icons
 
 MEDIUM PRIORITY:
  - Finish randomizations
@@ -60,3 +58,4 @@ Notes:
  - With so many buildings per-resource in py anyways, mining category randomization doesn't seem like it buys much for the extra effort
  - Might want to add more fluidboxes to various buildings to help the randomization process
  - Make sure to be mindful of TURD recipes/buildings/etc.
+ - Check sap automatability/that it didn't pollute early recipes?
