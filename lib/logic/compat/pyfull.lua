@@ -15,9 +15,11 @@ local set_class = builder.set_class
 local set_prot = builder.set_prot
 
 -- Py smart farm files
-local farm_specs = {}
-for _, farm_file in pairs({"arum", "bioreserve", "grod", "kicalk", "ralesia", "rennea", "tuuphra", "yotoi-fruit", "yotoi"}) do
-    table.insert(farm_specs, require("__pyalienlife__/scripts/smart-farm/farm-" .. farm_file))
+if mods["pyalienlife"] then
+    local farm_specs = {}
+    for _, farm_file in pairs({"arum", "bioreserve", "grod", "kicalk", "ralesia", "rennea", "tuuphra", "yotoi-fruit", "yotoi"}) do
+        table.insert(farm_specs, require("__pyalienlife__/scripts/smart-farm/farm-" .. farm_file))
+    end
 end
 
 local compat = {}

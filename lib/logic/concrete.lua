@@ -259,6 +259,9 @@ function concrete.build(lu, extra_params)
                 -- If we wanted to get technical, we could include the price of the rail, but let's not
                 add_edge("entity-build-rail")
             end
+            if extra_params.character_build_time ~= nil then
+                add_edge("entity-operate", "character", { amount = extra_params.character_build_time })
+            end
 
             if categories.rolling_stock[entity.type] then
                 ----------------------------------------
@@ -384,9 +387,9 @@ function concrete.build(lu, extra_params)
                     if energy_source == nil or energy_source.type == "void" then
                         add_edge("energy-source-void", "")
                     elseif energy_source.type == "burner" then
-                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source), { amount = energy_amount })
+                        add_edge("energy-source-burner", lutils.fcat_combo_name(energy_source), { amount = energy_amount and (energy_amount / 1000000) })
                     elseif energy_source.type == "electric" then
-                        add_edge("energy-source-electric", "", { amount = energy_amount })
+                        add_edge("energy-source-electric", "", { amount = energy_amount and (energy_amount / 1000000) })
                     elseif energy_source.type == "fluid" then
                         if energy_source.fluid_box.filter ~= nil then
                             local fluid_name = energy_source.fluid_box.filter
@@ -399,10 +402,10 @@ function concrete.build(lu, extra_params)
                             end
                             add_edge("fluid", fluid_name, { amount = amount_of_fluid })
                         else
-                            add_edge("energy-source-fluid", "", { amount = energy_amount })
+                            add_edge("energy-source-fluid", "", { amount = energy_amount and (energy_amount / 1000000) })
                         end
                     elseif energy_source.type == "heat" then
-                        add_edge("energy-source-heat", "", { amount = energy_amount })
+                        add_edge("energy-source-heat", "", { amount = energy_amount and (energy_amount / 1000000) })
                     end
                 end
             end
@@ -1044,7 +1047,7 @@ function concrete.build(lu, extra_params)
                 for item_name, _ in pairs(items_for_fcat) do
                     local item = dutils.get_prot("item", item_name)
                     local fuel_value = util.parse_energy(item.fuel_value)
-                    add_edge("item", item_name, { amount = 1 / fuel_value })
+                    add_edge("item", item_name, { amount = 1000000 / fuel_value })
                 end
             end
         end
@@ -1053,7 +1056,7 @@ function concrete.build(lu, extra_params)
         add_node("fuel-category-burn", "OR")
         ----------------------------------------
         -- Can we burn fuel of this category?
-        -- OR over burner entities with burnt_inventory_size > 0 for this category.
+
         if lu.fcat_to_burners[fcat.name] ~= nil then
             for burner_name, _ in pairs(lu.fcat_to_burners[fcat.name]) do
                 local burner_entity = dutils.get_prot("entity", burner_name)
@@ -1072,7 +1075,7 @@ function concrete.build(lu, extra_params)
                 if energy_usage ~= nil then
                     watts_burned = 60 * util.parse_energy(energy_usage)
                 end
-                add_edge("entity-operate", burner_name, { amount = watts_burned })
+                add_edge("entity-operate", burner_name, { amount = watts_burned / 1000000 })
             end
         end
     end
@@ -1198,7 +1201,7 @@ function concrete.build(lu, extra_params)
             add_edge("item", nil, { amount = 1 })
             -- In this case, the amount is longer/more annoying for items with larger fuel values, since we're measuring machine usage, not the item usage
             -- Technically, this double counts the fuel consumption, since the item being burned is already providing fuel, but I think that's fine (burning is annoying anyways so the extra cost is probably welcome)
-            add_edge("fuel-category-burn", item.fuel_category, { amount = util.parse_energy(item.fuel_value) })
+            add_edge("fuel-category-burn", item.fuel_category, { amount = util.parse_energy(item.fuel_value) / 1000000 })
         end
 
         ----------------------------------------

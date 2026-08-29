@@ -157,7 +157,7 @@ function abstract.build(lu, extra_params)
                 if items_for_fuel ~= nil then
                     for item_name, _ in pairs(items_for_fuel) do
                         local item_prot = dutils.get_prot("item", item_name)
-                        add_edge("item", item_name, { amount = 1 / util.parse_energy(item_prot.fuel_value) })
+                        add_edge("item", item_name, { amount = 1000000 / util.parse_energy(item_prot.fuel_value) })
                     end
                 end
             end
@@ -260,7 +260,7 @@ function abstract.build(lu, extra_params)
 
     for _, fluid in pairs(lu.fluids) do
         if fluid.fuel_value ~= nil and util.parse_energy(fluid.fuel_value) > 0 then
-            add_edge("fluid", fluid.name, { amount = 1 / util.parse_energy(fluid.fuel_value) })
+            add_edge("fluid", fluid.name, { amount = 1000000 / util.parse_energy(fluid.fuel_value) })
         end
     end
 

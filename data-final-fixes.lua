@@ -253,14 +253,70 @@ local payback_times = {
     -- Payback time goes down since you're almost done
     10 * 3600,
 }
+if true then
+    -- For vanilla
+    logic.build(true, { character_build_time = nil })
+    log("GRAPH DUMP")
+    log(serpent.dump(logic.graph))
+    local sort_info = top.sort(logic.graph)
+
+    local pyrrhic_ind
+    for ind, pebble in pairs(sort_info.sorted) do
+        local node = logic.graph.nodes[pebble.node_key]
+        if node.type == "launch" and node.name == "" then
+            pyrrhic_ind = ind
+            break
+        end
+    end
+    local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
+    log("PATH DUMP")
+    log(serpent.dump(path))
+    log("SORT INFO DUMP")
+    log(serpent.dump(sort_info))
+
+    log("TECH CONE COSTS")
+    for _, tech in pairs(data.raw.technology) do
+        log("TECHNOLOGY: " .. tech.name)
+        local open = { tech }
+        local in_open = { [tech.name] = true }
+        local open_ind = 1
+        while open_ind <= #open do
+            local curr_tech = open[open_ind]
+            for _, prereq in pairs(curr_tech.prerequisites or {}) do
+                if not in_open[prereq] then
+                    table.insert(open, data.raw.technology[prereq])
+                    in_open[prereq] = true
+                end
+            end
+            open_ind = 1 + open_ind
+        end
+        local costs = {}
+        for _, tech in pairs(open) do
+            if tech.unit ~= nil and tech.unit.count ~= nil then
+                for _, ing in pairs(tech.unit.ingredients) do
+                    costs[ing[1] ] = costs[ing[1] ] or 0
+                    costs[ing[1] ] = costs[ing[1] ] + tech.unit.count * ing[2]
+                end
+            end
+        end
+        log(serpent.dump(costs))
+        if tech.unit ~= nil and tech.unit.count ~= nil then
+            log("TIME COST: " .. tostring(tech.unit.count * tech.unit.time))
+        end
+    end
+    log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+    smuggle_info()
+
+    do return end
+end
 for i = 1, #packs_in_order do
     log("I IS THIS VALUE " .. i)
-    logic.build(true, { payback_time = payback_times[i], power_cost = constants.py_electricity_scaling[i] })
-    --[[log("GRAPH DUMP")
-    log(serpent.dump(logic.graph))]]
+    -- Electricity costs are per 10MW, so pre-automation we charge 1 per 1MW due to the 0.1 multiplier in the scaling
+    logic.build(true, { payback_time = payback_times[i], power_cost = 1 / (10000000 * constants.py_electricity_scaling[i]) })
+    log("GRAPH DUMP")
+    log(serpent.dump(logic.graph))
     local science_pack = packs_in_order[i]
     if science_pack ~= "full-pyrrhic-victory" then
-        --gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key("recipe", science_pack))
         local science_node = logic.graph.nodes[gutils.key("item", science_pack)]
         local edges_to_remove = {}
         for dep, _ in pairs(science_node.dep) do
@@ -304,7 +360,7 @@ for i = 1, #packs_in_order do
         if i > 1 then
             local science_amount = 0
             for ind, _ in pairs(path.in_path) do
-                local node = logic.graph[sort_info.sorted[ind].node_key]
+                local node = logic.graph.nodes[sort_info.sorted[ind].node_key]
                 if node.type == "technology" then
                     local tech = data.raw.technology[node.name]
                     if tech.unit ~= nil then
@@ -319,10 +375,10 @@ for i = 1, #packs_in_order do
             log(packs_in_order[i])
             log(science_amount)
         end
-        --[[log("PATH DUMP")
+        log("PATH DUMP")
         log(serpent.dump(path))
         log("SORT INFO DUMP")
-        log(serpent.dump(sort_info))]]
+        log(serpent.dump(sort_info))
     else
         local pyrrhic_ind
         for ind, pebble in pairs(sort_info.sorted) do
@@ -336,7 +392,7 @@ for i = 1, #packs_in_order do
         if i > 1 then
             local science_amount = 0
             for ind, _ in pairs(path.in_path) do
-                local node = logic.graph[sort_info.sorted[ind].node_key]
+                local node = logic.graph.nodes[sort_info.sorted[ind].node_key]
                 if node.type == "technology" then
                     local tech = data.raw.technology[node.name]
                     if tech.unit ~= nil then
@@ -351,15 +407,42 @@ for i = 1, #packs_in_order do
             log(packs_in_order[i])
             log(science_amount)
         end
-        --[[log("PATH DUMP")
+        log("PATH DUMP")
         log(serpent.dump(path))
         log("SORT INFO DUMP")
-        log(serpent.dump(sort_info))]]
+        log(serpent.dump(sort_info))
     end
     --local simplex_export = require("lib/cost/simplex-lp-export")
     --simplex_export.export_to_log(sort_info, i)
 end
---log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+log("TECH CONE COSTS")
+for _, tech in pairs(data.raw.technology) do
+    log("TECHNOLOGY: " .. tech.name)
+    local open = { tech }
+    local in_open = { [tech.name] = true }
+    local open_ind = 1
+    while open_ind <= #open do
+        local curr_tech = open[open_ind]
+        for _, prereq in pairs(curr_tech.prerequisites or {}) do
+            if not in_open[prereq] then
+                table.insert(open, data.raw.technology[prereq])
+                in_open[prereq] = true
+            end
+        end
+        open_ind = 1 + open_ind
+    end
+    local costs = {}
+    for _, tech in pairs(open) do
+        if tech.unit ~= nil and tech.unit.count ~= nil then
+            for _, ing in pairs(tech.unit.ingredients) do
+                costs[ing[1] ] = costs[ing[1] ] or 0
+                costs[ing[1] ] = costs[ing[1] ] + tech.unit.count * ing[2]
+            end
+        end
+    end
+    log(serpent.dump(costs))
+end
+log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 smuggle_info()
 do return end
 

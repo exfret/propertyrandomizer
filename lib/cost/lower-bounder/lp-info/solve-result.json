@@ -1,0 +1,723 @@
+{
+  "action_lower_bound_exporter": "/Users/kylehess/Library/Application Support/factorio/mods/propertyrandomizer/lib/cost/lower-bounder/export_action_amount_lower_bounds.py",
+  "action_lower_bound_exporter_called": true,
+  "autoplaced_infinite_entity_keys": [
+    "entity: big-rock",
+    "entity: big-sand-rock",
+    "entity: coal",
+    "entity: copper-ore",
+    "entity: crude-oil",
+    "entity: dead-dry-hairy-tree",
+    "entity: dead-grey-trunk",
+    "entity: dead-tree-desert",
+    "entity: dry-hairy-tree",
+    "entity: dry-tree",
+    "entity: huge-rock",
+    "entity: iron-ore",
+    "entity: stone",
+    "entity: tree-01",
+    "entity: tree-02",
+    "entity: tree-02-red",
+    "entity: tree-03",
+    "entity: tree-04",
+    "entity: tree-05",
+    "entity: tree-06",
+    "entity: tree-06-brown",
+    "entity: tree-07",
+    "entity: tree-08",
+    "entity: tree-08-brown",
+    "entity: tree-08-red",
+    "entity: tree-09",
+    "entity: tree-09-brown",
+    "entity: tree-09-red",
+    "entity: uranium-ore"
+  ],
+  "autoplaced_zero_edge_sources": {
+    "entity: big-rock": [
+      "room-autoplace: planet: nauvis --> entity: big-rock"
+    ],
+    "entity: big-sand-rock": [
+      "room-autoplace: planet: nauvis --> entity: big-sand-rock"
+    ],
+    "entity: coal": [
+      "room-autoplace: planet: nauvis --> entity: coal"
+    ],
+    "entity: copper-ore": [
+      "room-autoplace: planet: nauvis --> entity: copper-ore"
+    ],
+    "entity: crude-oil": [
+      "room-autoplace: planet: nauvis --> entity: crude-oil"
+    ],
+    "entity: dead-dry-hairy-tree": [
+      "room-autoplace: planet: nauvis --> entity: dead-dry-hairy-tree"
+    ],
+    "entity: dead-grey-trunk": [
+      "room-autoplace: planet: nauvis --> entity: dead-grey-trunk"
+    ],
+    "entity: dead-tree-desert": [
+      "room-autoplace: planet: nauvis --> entity: dead-tree-desert"
+    ],
+    "entity: dry-hairy-tree": [
+      "room-autoplace: planet: nauvis --> entity: dry-hairy-tree"
+    ],
+    "entity: dry-tree": [
+      "room-autoplace: planet: nauvis --> entity: dry-tree"
+    ],
+    "entity: huge-rock": [
+      "room-autoplace: planet: nauvis --> entity: huge-rock"
+    ],
+    "entity: iron-ore": [
+      "room-autoplace: planet: nauvis --> entity: iron-ore"
+    ],
+    "entity: stone": [
+      "room-autoplace: planet: nauvis --> entity: stone"
+    ],
+    "entity: tree-01": [
+      "room-autoplace: planet: nauvis --> entity: tree-01"
+    ],
+    "entity: tree-02": [
+      "room-autoplace: planet: nauvis --> entity: tree-02"
+    ],
+    "entity: tree-02-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-02-red"
+    ],
+    "entity: tree-03": [
+      "room-autoplace: planet: nauvis --> entity: tree-03"
+    ],
+    "entity: tree-04": [
+      "room-autoplace: planet: nauvis --> entity: tree-04"
+    ],
+    "entity: tree-05": [
+      "room-autoplace: planet: nauvis --> entity: tree-05"
+    ],
+    "entity: tree-06": [
+      "room-autoplace: planet: nauvis --> entity: tree-06"
+    ],
+    "entity: tree-06-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-06-brown"
+    ],
+    "entity: tree-07": [
+      "room-autoplace: planet: nauvis --> entity: tree-07"
+    ],
+    "entity: tree-08": [
+      "room-autoplace: planet: nauvis --> entity: tree-08"
+    ],
+    "entity: tree-08-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-08-brown"
+    ],
+    "entity: tree-08-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-08-red"
+    ],
+    "entity: tree-09": [
+      "room-autoplace: planet: nauvis --> entity: tree-09"
+    ],
+    "entity: tree-09-brown": [
+      "room-autoplace: planet: nauvis --> entity: tree-09-brown"
+    ],
+    "entity: tree-09-red": [
+      "room-autoplace: planet: nauvis --> entity: tree-09-red"
+    ],
+    "entity: uranium-ore": [
+      "room-autoplace: planet: nauvis --> entity: uranium-ore"
+    ]
+  },
+  "energy_flow_relaxed_free": true,
+  "exact_attempt_seed_requested": null,
+  "feasibility_objective_max": 0.001,
+  "format": "propertyrandomizer-moment-growth-lp-v33",
+  "generic_u_tech_gates_enabled": false,
+  "goal_amount_requested": 72.0,
+  "goal_coordinate_kind": "action",
+  "goal_item_name": null,
+  "goal_key": "recipe: rocket-part",
+  "goal_name": "rocket-part",
+  "goal_pruning": {
+    "edges_after": 1038,
+    "edges_before": 5326,
+    "edges_removed": 4288,
+    "enabled": true,
+    "goal_keys": [
+      "entity: lab",
+      "item: automation-science-pack",
+      "item: chemical-science-pack",
+      "item: logistic-science-pack",
+      "item: production-science-pack",
+      "item: utility-science-pack",
+      "recipe: rocket-part"
+    ],
+    "modeled_technology_count": 44,
+    "nodes_after": 576,
+    "nodes_before": 2583,
+    "nodes_removed": 2007,
+    "retained_zero_markers": 30,
+    "science_goal_count": 7,
+    "technology_scope": "mandatory unique unlock of named goal recipe plus ancestors"
+  },
+  "goal_type": "recipe",
+  "graph_normalization": {
+    "coproduct_fanout_edges_preserved": 211,
+    "coproduct_fanout_nodes_preserved": 197,
+    "cost_or_reification_enabled": false,
+    "explicit_zero_free_producer_edges": 0,
+    "explicit_zero_initial_stock_edges_ignored": 30,
+    "explicit_zero_into_and_ignored": 0,
+    "missing_amount_edges_ignored": 0,
+    "noncoproduct_fanout_edges_rerouted": 194,
+    "noncoproduct_fanout_nodes_normalized": 123,
+    "noncoproduct_output_nodes_normalized": 123,
+    "nonsource_cost_or_bridges": 0,
+    "or_cost_nodes_split": 0,
+    "same_and_edges_subdivided": 68,
+    "same_or_edges_subdivided": 235,
+    "source_cost_or_detection": "disabled",
+    "source_cost_or_rows": 0,
+    "strict_nonzero_edges": 1416
+  },
+  "graph_scope_mode": "full",
+  "graph_scope_requested": "full",
+  "graph_source": "fallback",
+  "infeasible_confirmations_requested": 2,
+  "initial_inventory": {
+    "all_other_finite_coordinates": 0.0,
+    "autoplaced_entities": "infinite (constraint omitted)",
+    "entity: character": 1.0
+  },
+  "lazy_tail_max_rounds": 50,
+  "lower_bound_test": {
+    "interpretation": "The feasibility LP did not return a decisive feasible/infeasible answer; no lower-bound claim is made.",
+    "proved": false
+  },
+  "lp_package_dir": "lp-info",
+  "lp_scaling_mode": "row-column",
+  "matrix_orientation": "S is AND/action rows x OR/material columns",
+  "method": "highs-ipm",
+  "moment_order": 5,
+  "num_actions": 601,
+  "num_inequalities": 19461,
+  "num_variables": 3826,
+  "ordering_attempts_requested": 3,
+  "ordering_seed_requested": null,
+  "payback_capacity_recovery": {
+    "actual_duration_seconds_range": {
+      "max": 1.0000000000000002,
+      "min": 1.0000000000000002
+    },
+    "capacity_edge_count": 18,
+    "formula": "actual_duration_seconds = stored_amount * used_payback",
+    "pre_capacity_subdivision": {
+      "sample": [],
+      "used_payback_or_or_subdivided": 0
+    },
+    "sample": [
+      {
+        "action_key": "entity-operate: assembling-machine-1",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: assembling-machine-1 --> entity-operate: assembling-machine-1",
+        "material_key": "entity: assembling-machine-1",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: assembling-machine-2",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: assembling-machine-2 --> entity-operate: assembling-machine-2",
+        "material_key": "entity: assembling-machine-2",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: assembling-machine-3",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: assembling-machine-3 --> entity-operate: assembling-machine-3",
+        "material_key": "entity: assembling-machine-3",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: oil-refinery",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: oil-refinery --> entity-operate: oil-refinery",
+        "material_key": "entity: oil-refinery",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: chemical-plant",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: chemical-plant --> entity-operate: chemical-plant",
+        "material_key": "entity: chemical-plant",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: centrifuge",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: centrifuge --> entity-operate: centrifuge",
+        "material_key": "entity: centrifuge",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: boiler",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: boiler --> entity-operate: boiler",
+        "material_key": "entity: boiler",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: heat-exchanger",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: heat-exchanger --> entity-operate: heat-exchanger",
+        "material_key": "entity: heat-exchanger",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: character",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: character --> entity-operate: character",
+        "material_key": "entity: character",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: stone-furnace",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: stone-furnace --> entity-operate: stone-furnace",
+        "material_key": "entity: stone-furnace",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: electric-furnace",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: electric-furnace --> entity-operate: electric-furnace",
+        "material_key": "entity: electric-furnace",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      },
+      {
+        "action_key": "entity-operate: steel-furnace",
+        "actual_duration_seconds": 1.0000000000000002,
+        "edge_key": "entity: steel-furnace --> entity-operate: steel-furnace",
+        "material_key": "entity: steel-furnace",
+        "stored_amount": 2.7777777777777782e-05,
+        "used_payback": 36000.0
+      }
+    ],
+    "stored_amount_abs_range": {
+      "max": 2.7777777777777782e-05,
+      "min": 2.7777777777777782e-05
+    },
+    "used_payback_range": {
+      "max": 36000.0,
+      "min": 36000.0
+    }
+  },
+  "phase_timings_seconds": {
+    "action_amount_lower_bound_export": 0.4182142911013216,
+    "build_and_solve_lp": 0.2810212499462068,
+    "extract_stage": 0.0006967498920857906,
+    "goal_prune": 0.0013630830217152834,
+    "index_log": 0.015498874941840768,
+    "normalize_and_build_matrices": 0.008201541844755411,
+    "parse_graph": 0.3053752910345793,
+    "parse_technology_costs": 0.011274541961029172,
+    "total_before_write": 1.0427496668417007
+  },
+  "recipe_tail_capacity": {
+    "enabled": true,
+    "formulation": "2*D*q_r,0 - 2*delta*q_r,1 <= (D^2/c_r) * sum_m speed[m,category]*(initial_m + gross_entity_production_m)",
+    "lazy_max_normalized_violation_before_cut": 0.0,
+    "lazy_rounds": 0,
+    "lazy_rows_added": 0,
+    "minimum_window_seconds": 0.016666666666666666,
+    "mode": "lazy_continuous_separation",
+    "recipe_category_pair_count": 79,
+    "skipped": {},
+    "window_seconds": []
+  },
+  "signed_amount_convention": "AND->OR positive output; OR->AND negative consumption",
+  "solve_mode": "feasibility",
+  "solver_message": "LP package built; HiGHS was not invoked",
+  "stage_extraction": {
+    "cross_boundary_edges_removed": 1325,
+    "reachable_nodes": 2583,
+    "science_stage_cuts_enabled": false,
+    "stage_cut_edges_removed": 0
+  },
+  "stage_index": 1,
+  "stage_name": "full-graph",
+  "standalone_solver": "solve_saved_moment_lp_v1.py",
+  "status": "built",
+  "target_hint": "launch: ",
+  "technology_model": {
+    "ambiguous_or_alternative_recipe_unlock_count": 5,
+    "ambiguous_or_alternative_recipe_unlocks": {
+      "iron-stick": "4 technology producers",
+      "passive-provider-chest": "2 technology producers",
+      "roboport": "2 technology producers",
+      "rocket-part": "alternative non-tech unlock",
+      "storage-chest": "2 technology producers"
+    },
+    "building_placement_rate_per_second": 60.0,
+    "cone_cost_record_count": 196,
+    "direct_science_costs": {
+      "advanced-circuit": {
+        "automation-science-pack": 200.0,
+        "logistic-science-pack": 200.0
+      },
+      "advanced-material-processing": {
+        "automation-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "advanced-material-processing-2": {
+        "automation-science-pack": 250.0,
+        "chemical-science-pack": 250.0,
+        "logistic-science-pack": 250.0
+      },
+      "advanced-oil-processing": {
+        "automation-science-pack": 75.0,
+        "chemical-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "automation": {
+        "automation-science-pack": 10.0
+      },
+      "automation-2": {
+        "automation-science-pack": 40.0,
+        "logistic-science-pack": 40.0
+      },
+      "automation-science-pack": {},
+      "battery": {
+        "automation-science-pack": 150.0,
+        "logistic-science-pack": 150.0
+      },
+      "chemical-science-pack": {
+        "automation-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "concrete": {
+        "automation-science-pack": 250.0,
+        "logistic-science-pack": 250.0
+      },
+      "electric-energy-accumulators": {
+        "automation-science-pack": 150.0,
+        "logistic-science-pack": 150.0
+      },
+      "electric-energy-distribution-1": {
+        "automation-science-pack": 120.0,
+        "logistic-science-pack": 120.0
+      },
+      "electric-engine": {
+        "automation-science-pack": 50.0,
+        "chemical-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "electronics": {},
+      "engine": {
+        "automation-science-pack": 100.0,
+        "logistic-science-pack": 100.0
+      },
+      "flammables": {
+        "automation-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "fluid-handling": {
+        "automation-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "logistic-science-pack": {
+        "automation-science-pack": 75.0
+      },
+      "logistics": {
+        "automation-science-pack": 20.0
+      },
+      "logistics-2": {
+        "automation-science-pack": 200.0,
+        "logistic-science-pack": 200.0
+      },
+      "low-density-structure": {
+        "automation-science-pack": 300.0,
+        "chemical-science-pack": 300.0,
+        "logistic-science-pack": 300.0
+      },
+      "lubricant": {
+        "automation-science-pack": 50.0,
+        "chemical-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "modules": {
+        "automation-science-pack": 100.0,
+        "logistic-science-pack": 100.0
+      },
+      "oil-gathering": {
+        "automation-science-pack": 100.0,
+        "logistic-science-pack": 100.0
+      },
+      "oil-processing": {},
+      "plastics": {
+        "automation-science-pack": 200.0,
+        "logistic-science-pack": 200.0
+      },
+      "processing-unit": {
+        "automation-science-pack": 300.0,
+        "chemical-science-pack": 300.0,
+        "logistic-science-pack": 300.0
+      },
+      "production-science-pack": {
+        "automation-science-pack": 100.0,
+        "chemical-science-pack": 100.0,
+        "logistic-science-pack": 100.0
+      },
+      "productivity-module": {
+        "automation-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "productivity-module-2": {
+        "automation-science-pack": 75.0,
+        "chemical-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "productivity-module-3": {
+        "automation-science-pack": 300.0,
+        "chemical-science-pack": 300.0,
+        "logistic-science-pack": 300.0,
+        "production-science-pack": 300.0
+      },
+      "radar": {
+        "automation-science-pack": 20.0
+      },
+      "railway": {
+        "automation-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "robotics": {
+        "automation-science-pack": 75.0,
+        "chemical-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "rocket-fuel": {
+        "automation-science-pack": 300.0,
+        "chemical-science-pack": 300.0,
+        "logistic-science-pack": 300.0
+      },
+      "rocket-silo": {
+        "automation-science-pack": 1000.0,
+        "chemical-science-pack": 1000.0,
+        "logistic-science-pack": 1000.0,
+        "production-science-pack": 1000.0,
+        "utility-science-pack": 1000.0
+      },
+      "solar-energy": {
+        "automation-science-pack": 250.0,
+        "logistic-science-pack": 250.0
+      },
+      "speed-module": {
+        "automation-science-pack": 50.0,
+        "logistic-science-pack": 50.0
+      },
+      "speed-module-2": {
+        "automation-science-pack": 75.0,
+        "chemical-science-pack": 75.0,
+        "logistic-science-pack": 75.0
+      },
+      "speed-module-3": {
+        "automation-science-pack": 300.0,
+        "chemical-science-pack": 300.0,
+        "logistic-science-pack": 300.0,
+        "production-science-pack": 300.0
+      },
+      "steam-power": {},
+      "steel-processing": {
+        "automation-science-pack": 50.0
+      },
+      "sulfur-processing": {
+        "automation-science-pack": 150.0,
+        "logistic-science-pack": 150.0
+      },
+      "utility-science-pack": {
+        "automation-science-pack": 100.0,
+        "chemical-science-pack": 100.0,
+        "logistic-science-pack": 100.0
+      }
+    },
+    "enabled": true,
+    "generic_recipe_technology_constraint_count": 59,
+    "item_deliver_ignored_in_unique_goal_recipe_check": true,
+    "lab_material_key": "entity: lab",
+    "mandatory_goal_unlock_technology": "rocket-silo",
+    "mandatory_technology_cone": [
+      "advanced-circuit",
+      "advanced-material-processing",
+      "advanced-material-processing-2",
+      "advanced-oil-processing",
+      "automation",
+      "automation-2",
+      "automation-science-pack",
+      "battery",
+      "chemical-science-pack",
+      "concrete",
+      "electric-energy-accumulators",
+      "electric-energy-distribution-1",
+      "electric-engine",
+      "electronics",
+      "engine",
+      "flammables",
+      "fluid-handling",
+      "logistic-science-pack",
+      "logistics",
+      "logistics-2",
+      "low-density-structure",
+      "lubricant",
+      "modules",
+      "oil-gathering",
+      "oil-processing",
+      "plastics",
+      "processing-unit",
+      "production-science-pack",
+      "productivity-module",
+      "productivity-module-2",
+      "productivity-module-3",
+      "radar",
+      "railway",
+      "robotics",
+      "rocket-fuel",
+      "rocket-silo",
+      "solar-energy",
+      "speed-module",
+      "speed-module-2",
+      "speed-module-3",
+      "steam-power",
+      "steel-processing",
+      "sulfur-processing",
+      "utility-science-pack"
+    ],
+    "modeled_technology_count": 44,
+    "optional_technology_policy": "ignored/free in optimistic relaxation",
+    "required_goal_action": null,
+    "required_goal_recipe": {
+      "action_index": 600,
+      "proof_condition": "the requested goal is the recipe action itself",
+      "recipe": "rocket-part",
+      "recipe_key": "recipe: rocket-part",
+      "required_runs": 72.0,
+      "source_action_index": 535,
+      "source_action_key": "recipe: rocket-part",
+      "technology": "rocket-silo",
+      "yield_per_run": 1.0
+    },
+    "required_timed_actions": [
+      {
+        "action_index": 600,
+        "proof_condition": "the requested goal is the recipe action itself",
+        "recipe": "rocket-part",
+        "recipe_key": "recipe: rocket-part",
+        "required_runs": 72.0,
+        "source_action_index": 535,
+        "source_action_key": "recipe: rocket-part",
+        "technology": "rocket-silo",
+        "yield_per_run": 1.0
+      }
+    ],
+    "research_speed_factor": 1.0,
+    "research_time_cost_record_count": 180,
+    "research_time_costs_base_lab_seconds": {
+      "advanced-circuit": 3000.0,
+      "advanced-material-processing": 2250.0,
+      "advanced-material-processing-2": 7500.0,
+      "advanced-oil-processing": 2250.0,
+      "automation": 100.0,
+      "automation-2": 600.0,
+      "automation-science-pack": 0.0,
+      "battery": 4500.0,
+      "chemical-science-pack": 750.0,
+      "concrete": 7500.0,
+      "electric-energy-accumulators": 4500.0,
+      "electric-energy-distribution-1": 3600.0,
+      "electric-engine": 1500.0,
+      "electronics": 0.0,
+      "engine": 1500.0,
+      "flammables": 1500.0,
+      "fluid-handling": 750.0,
+      "logistic-science-pack": 375.0,
+      "logistics": 300.0,
+      "logistics-2": 6000.0,
+      "low-density-structure": 13500.0,
+      "lubricant": 1500.0,
+      "modules": 3000.0,
+      "oil-gathering": 3000.0,
+      "oil-processing": 0.0,
+      "plastics": 6000.0,
+      "processing-unit": 9000.0,
+      "production-science-pack": 3000.0,
+      "productivity-module": 1500.0,
+      "productivity-module-2": 2250.0,
+      "productivity-module-3": 18000.0,
+      "radar": 200.0,
+      "railway": 2250.0,
+      "robotics": 2250.0,
+      "rocket-fuel": 13500.0,
+      "rocket-silo": 60000.0,
+      "solar-energy": 7500.0,
+      "speed-module": 1500.0,
+      "speed-module-2": 2250.0,
+      "speed-module-3": 18000.0,
+      "steam-power": 0.0,
+      "steel-processing": 250.0,
+      "sulfur-processing": 4500.0,
+      "utility-science-pack": 3000.0
+    },
+    "research_time_costs_effective_lab_seconds": {
+      "advanced-circuit": 3000.0,
+      "advanced-material-processing": 2250.0,
+      "advanced-material-processing-2": 7500.0,
+      "advanced-oil-processing": 2250.0,
+      "automation": 100.0,
+      "automation-2": 600.0,
+      "automation-science-pack": 0.0,
+      "battery": 4500.0,
+      "chemical-science-pack": 750.0,
+      "concrete": 7500.0,
+      "electric-energy-accumulators": 4500.0,
+      "electric-energy-distribution-1": 3600.0,
+      "electric-engine": 1500.0,
+      "electronics": 0.0,
+      "engine": 1500.0,
+      "flammables": 1500.0,
+      "fluid-handling": 750.0,
+      "logistic-science-pack": 375.0,
+      "logistics": 300.0,
+      "logistics-2": 6000.0,
+      "low-density-structure": 13500.0,
+      "lubricant": 1500.0,
+      "modules": 3000.0,
+      "oil-gathering": 3000.0,
+      "oil-processing": 0.0,
+      "plastics": 6000.0,
+      "processing-unit": 9000.0,
+      "production-science-pack": 3000.0,
+      "productivity-module": 1500.0,
+      "productivity-module-2": 2250.0,
+      "productivity-module-3": 18000.0,
+      "radar": 200.0,
+      "railway": 2250.0,
+      "robotics": 2250.0,
+      "rocket-fuel": 13500.0,
+      "rocket-silo": 60000.0,
+      "solar-energy": 7500.0,
+      "speed-module": 1500.0,
+      "speed-module-2": 2250.0,
+      "speed-module-3": 18000.0,
+      "steam-power": 0.0,
+      "steel-processing": 250.0,
+      "sulfur-processing": 4500.0,
+      "utility-science-pack": 3000.0
+    },
+    "unique_recipe_unlock_count": 185
+  },
+  "time_seconds": 400.0,
+  "time_seconds_role": "active: used_payback edges are recovered as actual-duration capacity requirements; delta appears directly in moment constraints",
+  "total_elapsed_seconds": 1.0427499578800052
+}

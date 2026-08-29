@@ -1,0 +1,1557 @@
+{
+  "backend": "highspy",
+  "base_dimensions": {
+    "cols": 3826,
+    "rows": 19461
+  },
+  "builder_format": "propertyrandomizer-moment-growth-lp-v33",
+  "certificate": {
+    "available": true,
+    "backend_attempts": [
+      {
+        "available": true,
+        "method": "multi_basis_box_aware_farkas_plus_exact_fraction_verification",
+        "reason": "no candidate basis/order produced an exactly verified row multiplier",
+        "rounds": [
+          {
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 1,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 2.235407375032082,
+              "iterations": 87,
+              "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "infeasible"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 2,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 60.02762925019488,
+              "iterations": 29464,
+              "message": "Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "nondecisive"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "candidate_min_lambda_scaled": -9.005359410149773e-09,
+            "candidate_objective_negative_gap": -0.2574760526166279,
+            "lambda_negative_clip_limit": 1.0500000000000001e-08,
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 3,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 6.773894291836768,
+              "iterations": 25045,
+              "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+              "objective": -0.2574760526166277,
+              "search_method": "ipm",
+              "status": "optimal"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 0.0,
+              "upper_only_primal_columns": 0
+            },
+            "verification": {
+              "aggregate_coefficient_float": -6.6732549684972346e-21,
+              "coefficient_sign": -1,
+              "exact_verification_seconds": 0.01784808305092156,
+              "lower_bound": 0.0,
+              "nonzero_row_multipliers": 1082,
+              "reason": "aggregate direction is unbounded over a variable box",
+              "unbounded_column": 39,
+              "upper_bound": null,
+              "verified": false
+            }
+          },
+          {
+            "ordering_attempt": 2,
+            "ordering_seed": 1023,
+            "round": 4,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 10.907918208045885,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 2,
+            "ordering_seed": 1023,
+            "round": 5,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 11.935400249902159,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 3,
+            "ordering_seed": 1023,
+            "round": 6,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 18.063893125159666,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 3,
+            "ordering_seed": 1023,
+            "round": 7,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 18.6067155408673,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 4,
+            "ordering_seed": 1023,
+            "round": 8,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 30.422875500051305,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 4,
+            "ordering_seed": 1023,
+            "round": 9,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 31.19037933414802,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 5,
+            "ordering_seed": 1023,
+            "round": 10,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 24.86485920799896,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 5,
+            "ordering_seed": 1023,
+            "round": 11,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 2.4021078750956804,
+              "iterations": 81,
+              "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "infeasible"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 6,
+            "ordering_seed": 1023,
+            "round": 12,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 9.045362917007878,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 6,
+            "ordering_seed": 1023,
+            "round": 13,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 10.717947291908786,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          }
+        ],
+        "search_backend": "scipy",
+        "verified": false
+      }
+    ],
+    "method": "multi_basis_box_aware_farkas_plus_exact_fraction_verification",
+    "reason": "no candidate basis/order produced an exactly verified row multiplier",
+    "rounds": [
+      {
+        "ordering_attempt": 1,
+        "ordering_seed": 1023,
+        "round": 1,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 2.235407375032082,
+          "iterations": 87,
+          "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "infeasible"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 1,
+        "ordering_seed": 1023,
+        "round": 2,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 60.02762925019488,
+          "iterations": 29464,
+          "message": "Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "nondecisive"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "candidate_min_lambda_scaled": -9.005359410149773e-09,
+        "candidate_objective_negative_gap": -0.2574760526166279,
+        "lambda_negative_clip_limit": 1.0500000000000001e-08,
+        "ordering_attempt": 1,
+        "ordering_seed": 1023,
+        "round": 3,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 6.773894291836768,
+          "iterations": 25045,
+          "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+          "objective": -0.2574760526166277,
+          "search_method": "ipm",
+          "status": "optimal"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 0.0,
+          "upper_only_primal_columns": 0
+        },
+        "verification": {
+          "aggregate_coefficient_float": -6.6732549684972346e-21,
+          "coefficient_sign": -1,
+          "exact_verification_seconds": 0.01784808305092156,
+          "lower_bound": 0.0,
+          "nonzero_row_multipliers": 1082,
+          "reason": "aggregate direction is unbounded over a variable box",
+          "unbounded_column": 39,
+          "upper_bound": null,
+          "verified": false
+        }
+      },
+      {
+        "ordering_attempt": 2,
+        "ordering_seed": 1023,
+        "round": 4,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 10.907918208045885,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 2,
+        "ordering_seed": 1023,
+        "round": 5,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 11.935400249902159,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 3,
+        "ordering_seed": 1023,
+        "round": 6,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 18.063893125159666,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 3,
+        "ordering_seed": 1023,
+        "round": 7,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 18.6067155408673,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 4,
+        "ordering_seed": 1023,
+        "round": 8,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 30.422875500051305,
+          "iterations": 0,
+          "message": "(HiGHS Status 4: Solve error)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 4,
+        "ordering_seed": 1023,
+        "round": 9,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 31.19037933414802,
+          "iterations": 0,
+          "message": "(HiGHS Status 4: Solve error)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 5,
+        "ordering_seed": 1023,
+        "round": 10,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 24.86485920799896,
+          "iterations": 0,
+          "message": "(HiGHS Status 4: Solve error)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 5,
+        "ordering_seed": 1023,
+        "round": 11,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 2.4021078750956804,
+          "iterations": 81,
+          "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "infeasible"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 6,
+        "ordering_seed": 1023,
+        "round": 12,
+        "search_method": "dual-simplex",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 9.045362917007878,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "dual-simplex",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      },
+      {
+        "ordering_attempt": 6,
+        "ordering_seed": 1023,
+        "round": 13,
+        "search_method": "ipm",
+        "solve": {
+          "backend": "scipy",
+          "elapsed_seconds": 10.717947291908786,
+          "iterations": 0,
+          "message": "(HiGHS Status 0: Not Set)",
+          "objective": null,
+          "search_method": "ipm",
+          "status": "numerical_difficulty"
+        },
+        "structure": {
+          "bounded_aux_variables": 307,
+          "doubly_bounded_primal_columns": 307,
+          "equalities": 1,
+          "free_primal_columns": 0,
+          "inequalities": 4133,
+          "lower_only_primal_columns": 3519,
+          "ordinary_row_multiplier_variables": 19461,
+          "sign_buffer_relative": 1e-08,
+          "upper_only_primal_columns": 0
+        }
+      }
+    ],
+    "search_backend": "scipy",
+    "verified": false
+  },
+  "elapsed_seconds": 238.6445934160147,
+  "final_candidate_validation": null,
+  "final_dimensions": {
+    "cols": 3826,
+    "nnz": 95832,
+    "rows": 19461
+  },
+  "final_lp_file_sha256": {
+    "A_original": "62fafa9924cb17f8bb5964b5e8ca13a6a4fef3acc89d24642f508250567147c1",
+    "A_scaled": "f89f5a853449d346dd51dd44ac6301a4e778ef0732b37999bd0d976ac33130a7",
+    "b_original": "7b13c448f6d1817f4bd17ee8248995d0e8b6e34291589b23f8f7f99efdbe2759",
+    "b_scaled": "f1269d5d88654004b8d9a22a97aac0883210d0a05f3c661efc5755ee77ebffad",
+    "bounds_scaled": "71900c98fcb1bd1acb1adb739c2a63d7faf635c454885a4b90672cdcdf63320b",
+    "column_scale": "89bf9a8f0ec86bcfad23a8c1e552a428d820d3985547b0fd7b7a9b05ff9b7cf2",
+    "lazy_cuts": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "row_scale": "756604ae27d6e9163e1f9559d3dc0d88b676bd39bbc238ab92832ad1feef020c"
+  },
+  "goal_coordinate_kind": "action",
+  "goal_key": "recipe: rocket-part",
+  "lazy_tail": {
+    "enabled": true,
+    "rounds_with_cuts": 0,
+    "rows_added": 0
+  },
+  "lp_dir": "/Users/kylehess/Library/Application Support/factorio/mods/propertyrandomizer/lib/cost/lower-bounder/lp-info",
+  "moment_order": 5,
+  "package_schema": "propertyrandomizer-saved-moment-lp-v1",
+  "proof_semantics": "status=infeasible is emitted only after exact Fraction arithmetic verifies a strict Farkas aggregate contradiction against the final original unscaled float64 LP. An IPM infeasible status alone is never promoted to a proof.",
+  "proved_infeasible": false,
+  "reason": "IPM reported infeasible, but no certificate candidate passed exact verification",
+  "schema": "propertyrandomizer-standalone-moment-lp-solver-v2",
+  "solve_rounds": [
+    {
+      "certificate": {
+        "available": true,
+        "backend_attempts": [
+          {
+            "available": true,
+            "method": "multi_basis_box_aware_farkas_plus_exact_fraction_verification",
+            "reason": "no candidate basis/order produced an exactly verified row multiplier",
+            "rounds": [
+              {
+                "ordering_attempt": 1,
+                "ordering_seed": 1023,
+                "round": 1,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 2.235407375032082,
+                  "iterations": 87,
+                  "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "infeasible"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 1,
+                "ordering_seed": 1023,
+                "round": 2,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 60.02762925019488,
+                  "iterations": 29464,
+                  "message": "Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "nondecisive"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "candidate_min_lambda_scaled": -9.005359410149773e-09,
+                "candidate_objective_negative_gap": -0.2574760526166279,
+                "lambda_negative_clip_limit": 1.0500000000000001e-08,
+                "ordering_attempt": 1,
+                "ordering_seed": 1023,
+                "round": 3,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 6.773894291836768,
+                  "iterations": 25045,
+                  "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+                  "objective": -0.2574760526166277,
+                  "search_method": "ipm",
+                  "status": "optimal"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 0.0,
+                  "upper_only_primal_columns": 0
+                },
+                "verification": {
+                  "aggregate_coefficient_float": -6.6732549684972346e-21,
+                  "coefficient_sign": -1,
+                  "exact_verification_seconds": 0.01784808305092156,
+                  "lower_bound": 0.0,
+                  "nonzero_row_multipliers": 1082,
+                  "reason": "aggregate direction is unbounded over a variable box",
+                  "unbounded_column": 39,
+                  "upper_bound": null,
+                  "verified": false
+                }
+              },
+              {
+                "ordering_attempt": 2,
+                "ordering_seed": 1023,
+                "round": 4,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 10.907918208045885,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 2,
+                "ordering_seed": 1023,
+                "round": 5,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 11.935400249902159,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 3,
+                "ordering_seed": 1023,
+                "round": 6,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 18.063893125159666,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 3,
+                "ordering_seed": 1023,
+                "round": 7,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 18.6067155408673,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 4,
+                "ordering_seed": 1023,
+                "round": 8,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 30.422875500051305,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 4: Solve error)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 4,
+                "ordering_seed": 1023,
+                "round": 9,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 31.19037933414802,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 4: Solve error)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 5,
+                "ordering_seed": 1023,
+                "round": 10,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 24.86485920799896,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 4: Solve error)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 5,
+                "ordering_seed": 1023,
+                "round": 11,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 2.4021078750956804,
+                  "iterations": 81,
+                  "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "infeasible"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 6,
+                "ordering_seed": 1023,
+                "round": 12,
+                "search_method": "dual-simplex",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 9.045362917007878,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "dual-simplex",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              },
+              {
+                "ordering_attempt": 6,
+                "ordering_seed": 1023,
+                "round": 13,
+                "search_method": "ipm",
+                "solve": {
+                  "backend": "scipy",
+                  "elapsed_seconds": 10.717947291908786,
+                  "iterations": 0,
+                  "message": "(HiGHS Status 0: Not Set)",
+                  "objective": null,
+                  "search_method": "ipm",
+                  "status": "numerical_difficulty"
+                },
+                "structure": {
+                  "bounded_aux_variables": 307,
+                  "doubly_bounded_primal_columns": 307,
+                  "equalities": 1,
+                  "free_primal_columns": 0,
+                  "inequalities": 4133,
+                  "lower_only_primal_columns": 3519,
+                  "ordinary_row_multiplier_variables": 19461,
+                  "sign_buffer_relative": 1e-08,
+                  "upper_only_primal_columns": 0
+                }
+              }
+            ],
+            "search_backend": "scipy",
+            "verified": false
+          }
+        ],
+        "method": "multi_basis_box_aware_farkas_plus_exact_fraction_verification",
+        "reason": "no candidate basis/order produced an exactly verified row multiplier",
+        "rounds": [
+          {
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 1,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 2.235407375032082,
+              "iterations": 87,
+              "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "infeasible"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 2,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 60.02762925019488,
+              "iterations": 29464,
+              "message": "Time limit reached. (HiGHS Status 13: model_status is Time limit reached; primal_status is None)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "nondecisive"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "candidate_min_lambda_scaled": -9.005359410149773e-09,
+            "candidate_objective_negative_gap": -0.2574760526166279,
+            "lambda_negative_clip_limit": 1.0500000000000001e-08,
+            "ordering_attempt": 1,
+            "ordering_seed": 1023,
+            "round": 3,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 6.773894291836768,
+              "iterations": 25045,
+              "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+              "objective": -0.2574760526166277,
+              "search_method": "ipm",
+              "status": "optimal"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 0.0,
+              "upper_only_primal_columns": 0
+            },
+            "verification": {
+              "aggregate_coefficient_float": -6.6732549684972346e-21,
+              "coefficient_sign": -1,
+              "exact_verification_seconds": 0.01784808305092156,
+              "lower_bound": 0.0,
+              "nonzero_row_multipliers": 1082,
+              "reason": "aggregate direction is unbounded over a variable box",
+              "unbounded_column": 39,
+              "upper_bound": null,
+              "verified": false
+            }
+          },
+          {
+            "ordering_attempt": 2,
+            "ordering_seed": 1023,
+            "round": 4,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 10.907918208045885,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 2,
+            "ordering_seed": 1023,
+            "round": 5,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 11.935400249902159,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 3,
+            "ordering_seed": 1023,
+            "round": 6,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 18.063893125159666,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 3,
+            "ordering_seed": 1023,
+            "round": 7,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 18.6067155408673,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 4,
+            "ordering_seed": 1023,
+            "round": 8,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 30.422875500051305,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 4,
+            "ordering_seed": 1023,
+            "round": 9,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 31.19037933414802,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 5,
+            "ordering_seed": 1023,
+            "round": 10,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 24.86485920799896,
+              "iterations": 0,
+              "message": "(HiGHS Status 4: Solve error)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 5,
+            "ordering_seed": 1023,
+            "round": 11,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 2.4021078750956804,
+              "iterations": 81,
+              "message": "The problem is infeasible. (HiGHS Status 8: model_status is Infeasible; primal_status is None)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "infeasible"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 6,
+            "ordering_seed": 1023,
+            "round": 12,
+            "search_method": "dual-simplex",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 9.045362917007878,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "dual-simplex",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          },
+          {
+            "ordering_attempt": 6,
+            "ordering_seed": 1023,
+            "round": 13,
+            "search_method": "ipm",
+            "solve": {
+              "backend": "scipy",
+              "elapsed_seconds": 10.717947291908786,
+              "iterations": 0,
+              "message": "(HiGHS Status 0: Not Set)",
+              "objective": null,
+              "search_method": "ipm",
+              "status": "numerical_difficulty"
+            },
+            "structure": {
+              "bounded_aux_variables": 307,
+              "doubly_bounded_primal_columns": 307,
+              "equalities": 1,
+              "free_primal_columns": 0,
+              "inequalities": 4133,
+              "lower_only_primal_columns": 3519,
+              "ordinary_row_multiplier_variables": 19461,
+              "sign_buffer_relative": 1e-08,
+              "upper_only_primal_columns": 0
+            }
+          }
+        ],
+        "search_backend": "scipy",
+        "verified": false
+      },
+      "round": 1,
+      "scaling": {
+        "abs_coefficient_range": [
+          1.3888888888888888e-09,
+          1.0
+        ],
+        "coefficients_le_1e12": 0,
+        "column_dynamic_range": {
+          "count": 3826,
+          "max": 720000000.0,
+          "p50": 10.0,
+          "p90": 2529.8221281347032,
+          "p99": 79745.6376375675
+        },
+        "row_dynamic_range": {
+          "count": 19429,
+          "max": 720000000.0,
+          "p50": 2.0,
+          "p90": 10.0,
+          "p99": 5000.0
+        }
+      },
+      "solve": {
+        "backend": "highspy",
+        "columns": 3826,
+        "crossover_iteration_count": 0,
+        "elapsed_seconds": 0.7870770830195397,
+        "global_scheduler_reset_after": {
+          "attempted": true,
+          "ok": true
+        },
+        "global_scheduler_reset_before": {
+          "attempted": true,
+          "ok": true
+        },
+        "highspy_version": "1.15.1",
+        "ipm_iteration_count": 34,
+        "max_dual_infeasibility": Infinity,
+        "max_primal_infeasibility": Infinity,
+        "model_status": "Infeasible",
+        "nnz": 95832,
+        "num_dual_infeasibilities": -1,
+        "num_primal_infeasibilities": -1,
+        "option_statuses": {
+          "dual_feasibility_tolerance": "HighsStatus.kOk",
+          "ipm_optimality_tolerance": "HighsStatus.kOk",
+          "output_flag": "HighsStatus.kOk",
+          "parallel": "HighsStatus.kOk",
+          "presolve": "HighsStatus.kOk",
+          "primal_feasibility_tolerance": "HighsStatus.kOk",
+          "random_seed": "HighsStatus.kOk",
+          "run_crossover": "HighsStatus.kOk",
+          "small_matrix_value": "HighsStatus.kOk",
+          "solver": "HighsStatus.kOk",
+          "threads": "HighsStatus.kOk",
+          "time_limit": "HighsStatus.kOk"
+        },
+        "pass_model_status": "HighsStatus.kOk",
+        "rows": 19461,
+        "run_status": "HighsStatus.kOk",
+        "simplex_iteration_count": 0,
+        "solver": "ipm",
+        "status": "infeasible"
+      }
+    }
+  ],
+  "status": "inconclusive",
+  "time_seconds": 400.0
+}

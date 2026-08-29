@@ -1,23 +1,60 @@
-python solve_staged_growth_lower_bound_v6.py factorio-current.log \
+python solve_staged_growth_lower_bound_v16.py factorio-current.log \
     --stage 3 \
-    --goal py-science-pack-1 \
-    --goal-amount 4350 \
-    --time-seconds 1200 \
-    --moment-order 3 \
+    --goal logistic-science-pack \
+    --goal-amount 1 \
+    --time-seconds 3000 \
+    --moment-order 5 \
     --output result.json \
     --actions-csv actions.csv \
     --solve-mode feasibility \
+    --lp-scaling row-column \
+    --solver-log \
+    --save-lp-dir lp-debug
+
+
+
+python solve_staged_growth_lower_bound_v33.py factorio-current-vanilla.log \
+    --graph-scope full \
+    --goal-type recipe \
+    --goal rocket-part \
+    --goal-amount 72 \
+    --time-seconds 400 \
+    --moment-order 5 \
+    --solve-mode feasibility \
+    --save-lp-dir lp-info \
+    --output build-result.json \
+    --build-only
+
+python solve_saved_moment_lp_v3.py lp-info \
+    --backend highspy \
+    --certificate-backend scipy \
+    --solver-time-limit 30 \
+    --certificate-time-limit 60 \
+    --certificate-ordering-attempts 6 \
     --solver-log
 
 
 
-
-python solve_staged_growth_lower_bound_v3.py factorio-current.log \
-    --stage 2 \
-    --goal automation-science-pack \
-    --goal-amount 2009 \
-    --time-seconds 200 \
+python solve_staged_growth_lower_bound_v31.py factorio-current-vanilla.log \
+    --graph-scope full \
+    --goal-type item \
+    --goal rocket-part \
+    --goal-amount 72 \
+    --time-seconds 300 \
+    --moment-order 5 \
     --output result.json \
-    --actions-csv actions.csv
+    --actions-csv actions.csv \
+    --solve-mode feasibility \
+    --solver-log \
+    --save-lp-dir lp-debug \
+    --solver-time-limit 30 \
+    --ordering-attempts 10 \
+    --infeasible-confirmations 1 \
+    --certificate-time-limit 0 \
+    --exact-attempt-seed 23
+
+
+8 iron plates, 1 wood, 1 stone furnace, 1 burner mining drill
 
 Amount of auto needed: 2009
+Amount of py1 needed: 4350

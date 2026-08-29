@@ -1,0 +1,1961 @@
+{
+  "base_matrix": "A-ub.npz",
+  "base_rhs": "b-ub.npy",
+  "bounds": "bounds-original.npy",
+  "builder_format": "propertyrandomizer-moment-growth-lp-v33",
+  "column_scale": "column-scale.npy",
+  "goal_coordinate_kind": "action",
+  "goal_key": "recipe: rocket-part",
+  "lazy_tail": {
+    "enabled": true,
+    "formulation": "2*D*q_r,0 - 2*delta*q_r,1 <= (D^2/c_r) * sum_m speed[m,category]*(initial_m + gross_entity_production_m)",
+    "max_rounds_default": 50,
+    "minimum_window_seconds": 0.016666666666666666,
+    "separation_tolerance": 1e-06,
+    "specs": [
+      {
+        "category_seconds_per_run": 6.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 474,
+        "recipe_action_key": "recipe: advanced-circuit",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: oil-refinery"
+          }
+        ],
+        "rate_coeff": {
+          "164": 1.0
+        },
+        "recipe_action_index": 475,
+        "recipe_action_key": "recipe: advanced-oil-processing",
+        "recipe_category_key": "recipe-category: oil-processing__2__3"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 476,
+        "recipe_action_key": "recipe: assembling-machine-1",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 477,
+        "recipe_action_key": "recipe: assembling-machine-2",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 478,
+        "recipe_action_key": "recipe: assembling-machine-3",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 479,
+        "recipe_action_key": "recipe: automation-science-pack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 480,
+        "recipe_action_key": "recipe: barrel",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: oil-refinery"
+          }
+        ],
+        "rate_coeff": {
+          "164": 1.0
+        },
+        "recipe_action_index": 481,
+        "recipe_action_key": "recipe: basic-oil-processing",
+        "recipe_category_key": "recipe-category: oil-processing__1__1"
+      },
+      {
+        "category_seconds_per_run": 4.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 482,
+        "recipe_action_key": "recipe: battery",
+        "recipe_category_key": "recipe-category: chemistry__1__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 483,
+        "recipe_action_key": "recipe: boiler",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 2.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 484,
+        "recipe_action_key": "recipe: burner-mining-drill",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 4.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 485,
+        "recipe_action_key": "recipe: centrifuge",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 486,
+        "recipe_action_key": "recipe: chemical-plant",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 24.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 487,
+        "recipe_action_key": "recipe: chemical-science-pack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: oil-refinery"
+          }
+        ],
+        "rate_coeff": {
+          "164": 1.0
+        },
+        "recipe_action_index": 488,
+        "recipe_action_key": "recipe: coal-liquefaction",
+        "recipe_category_key": "recipe-category: oil-processing__2__3"
+      },
+      {
+        "category_seconds_per_run": 10.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 489,
+        "recipe_action_key": "recipe: concrete",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 490,
+        "recipe_action_key": "recipe: copper-cable",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 3.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: electric-furnace"
+          },
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: steel-furnace"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: stone-furnace"
+          }
+        ],
+        "rate_coeff": {
+          "170": 1.0,
+          "171": 2.0,
+          "172": 2.0
+        },
+        "recipe_action_index": 491,
+        "recipe_action_key": "recipe: copper-plate",
+        "recipe_category_key": "recipe-category: smelting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 492,
+        "recipe_action_key": "recipe: crude-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 10.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 493,
+        "recipe_action_key": "recipe: electric-engine-unit",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 494,
+        "recipe_action_key": "recipe: electric-furnace",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 2.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 495,
+        "recipe_action_key": "recipe: electric-mining-drill",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 496,
+        "recipe_action_key": "recipe: electronic-circuit",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 497,
+        "recipe_action_key": "recipe: empty-crude-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 498,
+        "recipe_action_key": "recipe: empty-heavy-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 499,
+        "recipe_action_key": "recipe: empty-light-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 500,
+        "recipe_action_key": "recipe: empty-lubricant-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 501,
+        "recipe_action_key": "recipe: empty-petroleum-gas-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 502,
+        "recipe_action_key": "recipe: empty-sulfuric-acid-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 503,
+        "recipe_action_key": "recipe: empty-water-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__0__1"
+      },
+      {
+        "category_seconds_per_run": 10.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 504,
+        "recipe_action_key": "recipe: engine-unit",
+        "recipe_category_key": "recipe-category: advanced-crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 20.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 505,
+        "recipe_action_key": "recipe: flying-robot-frame",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 3.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 506,
+        "recipe_action_key": "recipe: heat-exchanger",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 507,
+        "recipe_action_key": "recipe: heavy-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 2.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 508,
+        "recipe_action_key": "recipe: heavy-oil-cracking",
+        "recipe_category_key": "recipe-category: chemistry__2__1"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 509,
+        "recipe_action_key": "recipe: inserter",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 510,
+        "recipe_action_key": "recipe: iron-gear-wheel",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 3.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: electric-furnace"
+          },
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: steel-furnace"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: stone-furnace"
+          }
+        ],
+        "rate_coeff": {
+          "170": 1.0,
+          "171": 2.0,
+          "172": 2.0
+        },
+        "recipe_action_index": 511,
+        "recipe_action_key": "recipe: iron-plate",
+        "recipe_category_key": "recipe-category: smelting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 512,
+        "recipe_action_key": "recipe: iron-stick",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 60.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: centrifuge"
+          }
+        ],
+        "rate_coeff": {
+          "166": 1.0
+        },
+        "recipe_action_index": 513,
+        "recipe_action_key": "recipe: kovarex-enrichment-process",
+        "recipe_category_key": "recipe-category: centrifuging__0__0"
+      },
+      {
+        "category_seconds_per_run": 2.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 514,
+        "recipe_action_key": "recipe: lab",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 515,
+        "recipe_action_key": "recipe: light-oil-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 2.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 516,
+        "recipe_action_key": "recipe: light-oil-cracking",
+        "recipe_category_key": "recipe-category: chemistry__2__1"
+      },
+      {
+        "category_seconds_per_run": 6.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 517,
+        "recipe_action_key": "recipe: logistic-science-pack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 15.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 518,
+        "recipe_action_key": "recipe: low-density-structure",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 519,
+        "recipe_action_key": "recipe: lubricant",
+        "recipe_category_key": "recipe-category: chemistry__1__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 520,
+        "recipe_action_key": "recipe: lubricant-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 90.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: centrifuge"
+          }
+        ],
+        "rate_coeff": {
+          "166": 1.0
+        },
+        "recipe_action_index": 521,
+        "recipe_action_key": "recipe: nuclear-fuel",
+        "recipe_category_key": "recipe-category: centrifuging__0__0"
+      },
+      {
+        "category_seconds_per_run": 60.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: centrifuge"
+          }
+        ],
+        "rate_coeff": {
+          "166": 1.0
+        },
+        "recipe_action_index": 522,
+        "recipe_action_key": "recipe: nuclear-fuel-reprocessing",
+        "recipe_category_key": "recipe-category: centrifuging__0__0"
+      },
+      {
+        "category_seconds_per_run": 8.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 523,
+        "recipe_action_key": "recipe: nuclear-reactor",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 524,
+        "recipe_action_key": "recipe: offshore-pump",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 8.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 525,
+        "recipe_action_key": "recipe: oil-refinery",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 526,
+        "recipe_action_key": "recipe: petroleum-gas-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 527,
+        "recipe_action_key": "recipe: pipe",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 528,
+        "recipe_action_key": "recipe: plastic-bar",
+        "recipe_category_key": "recipe-category: chemistry__1__0"
+      },
+      {
+        "category_seconds_per_run": 10.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 529,
+        "recipe_action_key": "recipe: processing-unit",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 21.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 530,
+        "recipe_action_key": "recipe: production-science-pack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 15.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 531,
+        "recipe_action_key": "recipe: productivity-module",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 5.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 532,
+        "recipe_action_key": "recipe: pumpjack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 533,
+        "recipe_action_key": "recipe: rail",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 15.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 534,
+        "recipe_action_key": "recipe: rocket-fuel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 3.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: rocket-silo"
+          }
+        ],
+        "rate_coeff": {
+          "181": 1.0
+        },
+        "recipe_action_index": 535,
+        "recipe_action_key": "recipe: rocket-part",
+        "recipe_category_key": "recipe-category: rocket-building__0__0"
+      },
+      {
+        "category_seconds_per_run": 30.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 536,
+        "recipe_action_key": "recipe: rocket-silo",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 537,
+        "recipe_action_key": "recipe: solid-fuel-from-heavy-oil",
+        "recipe_category_key": "recipe-category: chemistry__1__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 538,
+        "recipe_action_key": "recipe: solid-fuel-from-light-oil",
+        "recipe_category_key": "recipe-category: chemistry__1__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 539,
+        "recipe_action_key": "recipe: solid-fuel-from-petroleum-gas",
+        "recipe_category_key": "recipe-category: chemistry__1__0"
+      },
+      {
+        "category_seconds_per_run": 15.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 540,
+        "recipe_action_key": "recipe: speed-module",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 3.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 541,
+        "recipe_action_key": "recipe: steel-furnace",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 16.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: electric-furnace"
+          },
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: steel-furnace"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: stone-furnace"
+          }
+        ],
+        "rate_coeff": {
+          "170": 1.0,
+          "171": 2.0,
+          "172": 2.0
+        },
+        "recipe_action_index": 542,
+        "recipe_action_key": "recipe: steel-plate",
+        "recipe_category_key": "recipe-category: smelting__0__0"
+      },
+      {
+        "category_seconds_per_run": 3.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: electric-furnace"
+          },
+          {
+            "crafting_speed_for_category": 2.0,
+            "entity_key": "entity: steel-furnace"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: stone-furnace"
+          }
+        ],
+        "rate_coeff": {
+          "170": 1.0,
+          "171": 2.0,
+          "172": 2.0
+        },
+        "recipe_action_index": 543,
+        "recipe_action_key": "recipe: stone-brick",
+        "recipe_category_key": "recipe-category: smelting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 544,
+        "recipe_action_key": "recipe: stone-furnace",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 545,
+        "recipe_action_key": "recipe: sulfur",
+        "recipe_category_key": "recipe-category: chemistry__2__0"
+      },
+      {
+        "category_seconds_per_run": 1.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: chemical-plant"
+          }
+        ],
+        "rate_coeff": {
+          "165": 1.0
+        },
+        "recipe_action_index": 546,
+        "recipe_action_key": "recipe: sulfuric-acid",
+        "recipe_category_key": "recipe-category: chemistry__1__1"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 547,
+        "recipe_action_key": "recipe: sulfuric-acid-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      },
+      {
+        "category_seconds_per_run": 0.5,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 548,
+        "recipe_action_key": "recipe: transport-belt",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 10.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 549,
+        "recipe_action_key": "recipe: uranium-fuel-cell",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 12.0,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: centrifuge"
+          }
+        ],
+        "rate_coeff": {
+          "166": 1.0
+        },
+        "recipe_action_index": 550,
+        "recipe_action_key": "recipe: uranium-processing",
+        "recipe_category_key": "recipe-category: centrifuging__0__0"
+      },
+      {
+        "category_seconds_per_run": 21.0,
+        "constant_rate": 1.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.5,
+            "entity_key": "entity: assembling-machine-1"
+          },
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          },
+          {
+            "crafting_speed_for_category": 1.0,
+            "entity_key": "entity: character"
+          }
+        ],
+        "rate_coeff": {
+          "157": 0.5,
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 551,
+        "recipe_action_key": "recipe: utility-science-pack",
+        "recipe_category_key": "recipe-category: crafting__0__0"
+      },
+      {
+        "category_seconds_per_run": 0.2,
+        "constant_rate": 0.0,
+        "machines": [
+          {
+            "crafting_speed_for_category": 0.75,
+            "entity_key": "entity: assembling-machine-2"
+          },
+          {
+            "crafting_speed_for_category": 1.25,
+            "entity_key": "entity: assembling-machine-3"
+          }
+        ],
+        "rate_coeff": {
+          "162": 0.75,
+          "163": 1.25
+        },
+        "recipe_action_index": 552,
+        "recipe_action_key": "recipe: water-barrel",
+        "recipe_category_key": "recipe-category: crafting-with-fluid__1__0"
+      }
+    ]
+  },
+  "lp_scaling_mode": "row-column",
+  "metadata": "lp-metadata.json",
+  "moment_order": 5,
+  "n_actions": 601,
+  "schema": "propertyrandomizer-saved-moment-lp-v1",
+  "time_seconds": 400.0,
+  "total_variables": 3826
+}
