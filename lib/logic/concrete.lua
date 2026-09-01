@@ -1337,6 +1337,14 @@ function concrete.build(lu, extra_params)
         if string.find(recipe.name, "brain-food") ~= nil then
             dont_randomize = true
         end
+        -- Salt/molten salt loop
+        if string.find(recipe.name, "salt") ~= nil then
+            dont_randomize = true
+        end
+        -- Anything about cooling
+        if string.find(recipe.name, "cooling") ~= nil then
+            dont_randomize = true
+        end
 
         ----------------------------------------
         add_node("recipe", "AND", nil, nil, { dont_randomize = dont_randomize, coproduct = true })

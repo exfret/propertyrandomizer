@@ -24,11 +24,75 @@ log(serpent.block(flow_amounts_ingredients))
 log(serpent.block(flow_amounts_results))
 do return end]]
 
---[[local dutils = require("lib/data-utils")
+local constants = require("helper-tables/constants")
+local cost = require("lib/cost/simplex-lp-export")
+local top = require("lib/graph/consistent-sort")
+local logic = require("lib/logic/init")
+local gutils = require("lib/graph/graph-utils")
+randomization_info = {
+    warnings = {},
+    touched = {},
+    options = {
+        cost = {},
+        logic = {},
+        unified = {},
+        first_pass = {},
+    },
+}
+data:extend({
+    {
+        type = "mod-data",
+        name = "propertyrandomizer-reachability-data",
+        data = {
+            ["reachable"] = 1,
+            ["total"] = 1,
+        }
+    }
+})
+local reformat = require("lib/reformat")
+reformat.initial()
+randomizations = {}
+
+local unified_info
+local function smuggle_info()
+    log("Smuggling control info")
+
+    logic.build(true)
+
+    local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    warnings_selection_tool.type = "selection-tool"
+    warnings_selection_tool.name = "propertyrandomizer-warnings"
+    warnings_selection_tool.select.entity_type_filters = {serpent.dump(randomization_info.warnings)}
+    local graph_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    graph_selection_tool.type = "selection-tool"
+    graph_selection_tool.name = "propertyrandomizer-graph"
+    graph_selection_tool.select.entity_type_filters = {serpent.dump(logic.graph)}
+    local logic_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    logic_selection_tool.type = "selection-tool"
+    logic_selection_tool.name = "propertyrandomizer-logic"
+    logic_selection_tool.select.entity_type_filters = {serpent.dump(logic.type_info)}
+    local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
+    slot_to_trav_selection_tool.type = "selection-tool"
+    slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
+    if type(unified_info) == "table" and unified_info.first_pass_info ~= nil then
+        slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.first_pass_info.slot_to_trav)}
+    else
+        slot_to_trav_selection_tool.select.entity_type_filters = {}
+    end
+    data:extend({
+        warnings_selection_tool,
+        graph_selection_tool,
+        logic_selection_tool,
+        slot_to_trav_selection_tool,
+    })
+end
+
+local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
-local new_recipes = require("lib/cost/recipe-randomizations/FINAL_RANDOMIZED_RECIPES_12stage_rot_10_30_50")
+local new_recipes = require("lib/cost/recipe-randomizations/semantic_slots_v22_followup_degree4_angles_10_30_50_integerized_postfixed")
 local fixed_recipes = {}
-for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
+-- Not necessary anymore
+--[[for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
     for _, machine in pairs(data.raw[machine_class]) do
         if machine.fixed_recipe ~= nil then
             fixed_recipes[machine.fixed_recipe] = true
@@ -60,7 +124,7 @@ for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) 
             })
         end
     end
-end
+end]]
 for recipe_name, recipe_data in pairs(new_recipes.recipes) do
     local blacklisted_recipes = {
     }
@@ -80,11 +144,13 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
                 end
                 if not dutils.is_stackable(item) then
                     ing.amount = 1
+                    ing.extra_count_fraction = 0
                 end
             else
                 has_fluid = true
                 if ing.name == "steam" then
-                    ing.amount = ing.amount * 1 / 5
+                    -- Hotfix that I think might not be necessary anymore
+                    --ing.amount = ing.amount * 1 / 5
                 end
             end
             if ing.amount > 0 then
@@ -105,6 +171,7 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
                 end
                 if not dutils.is_stackable(item) then
                     result.amount = 1
+                    result.extra_count_fraction = 0
                 end
                 if result.amount < 1 then
                     result.independent_probability = result.amount
@@ -112,7 +179,6 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
                 end
             end
             if result.amount > 0 then
-                
                 table.insert(cleaned_results, result)
             end
         end
@@ -158,15 +224,15 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
     end
 end
 
-data.raw.recipe["stone-brick"].ingredients[1].name = "iron-ore"
-data.raw.recipe["low-grade-smelting-iron"].categories = {"crafting"}
-randomizations = {}
+-- Required after so it can fix burner etc. recipe
+require("randomizations/prefixes")
 require("randomizations/fixes")
 --randomizations.rebuild_tech_tree()
 
+--smuggle_info()
 --do return end
 
-local constants = require("helper-tables/constants")
+--[[local constants = require("helper-tables/constants")
 local cost = require("lib/cost/simplex-lp-export")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
@@ -224,7 +290,7 @@ local function smuggle_info()
         logic_selection_tool,
         slot_to_trav_selection_tool,
     })
-end
+end]]
 
 local packs_in_order = {
     "automation-science-pack",
@@ -390,7 +456,7 @@ for _, tech in pairs(data.raw.technology) do
 end
 log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 smuggle_info()
-do return end]]
+do return end
 
 
 

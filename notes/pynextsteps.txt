@@ -1,61 +1,22 @@
- - IDEA: Bring back/identify building that an item makes with item so that it requires the electricity etc. for placement at least
-    * Could also just change where we consider it in the initial sort/put it later if possible
+I. Recipe randomization finishing off
+  A. Keep special keys like temperatures/ignored_by_stats in ings/products that I currently clobber in recipe randomization
+  B. Freeze current randomized version, calculate randomized recipe costs and store those
+  C. Create tooltip for recipe/material cost change
+II. Finish randomizations
+  A. Include fluids with first pass item randomization
+  B. Polish and confirm recipe category randomization is working well
+  C. Recipe first pass randomization
+  D. Machine size randomization (additive)
+III. UX
+  A. Explorer testing for "abilities" like electricity production
+  B. Item/icon fixes (semantic don't item randomize for some recipes that are more semantic like salt, make sure to mark mechanics as needed)
+  C. Rename single resource mines based off what they mine (just overwrite locale)
+  D. Basic pass over TURD researches and ability to randomize them
+  E. Trim fluid boxes as needed
+  F. Tech tree doesn't scale up all icons
+  G. Give appropriate prereqs to TURD/other bonus-only techs
+IV. Playtest through circuits
 
-NECESSARY:
- - Put vatbrains on critical path (they're soft required)
-    - Can item randomization go out of order in sciences?
- - Multiply science amounts until average cost is 1
- - Tooltip for recipe/material cost change?
- - Calculate randomized recipe costs and store those
- - Make sure item randomization resets recipes with special icons
-
-MEDIUM PRIORITY:
- - Finish randomizations
-    - Try fluid orand randomization
-       - Or maybe just include fluids with item rando?
-    - Fuel category randomization
-       - Defer
- - Final touches for Frodo playthrough
-    - Create a modpack including customized recommended QOL mods
-    - Don't randomize slaughterhouse recipe category (CHECK)
-    - Don't randomize barreling recipe categories (or canisters etc.) (CHECK)
-    - Recipe randomization for building/science pack recipe ingredients subset
-    - Playtest through circuits
-
-LOW PRIORITY:
- - Explorer improvements
-    - Dynamic explorer (shows green for currently reachable, red for currently unreachable, and purple for never reachable/softlock)
-    - Some very basic UI improvements (close on e, close button, maybe others)
-    - Abilities (check for how you can make power)
- - UX improvements
-    - Improve recipe icons that are hardcoded to be more representative of the actual things involved
-    - Rename mines for single resources based off what they mine
-    - Put TURD researches at appropriate points of game
-    - Just trim useless items/fluids?
- - Random things
-    - TURD randomizations (bhoddos explosions)
- - Fix that technology tree reconstruction doesn't scale up all icons
- - Machine sizes (additive)
- - Randomize how TURD's are grouped
-
-ALGORITHMIC:
- - Basic keeping similar things together (this doesn't seem as big an issue, but still necessary for a good experience)
-    - Module buildings with their modules
- - Local recipe randomization
-    - Switching/local-based recipe randomization
-    - Complete randomization of buildings/other end products
- - Recipe graph considerations
-    - Moving items around messes with burner recipes, probably should modify them to burn anything and work with void energy source (consumability will be hard otherwise)
-    - Be careful about requiring non-starting ores in beginning
-
-Notes:
- - With just item rando, most of the buildings you unlock aren't really used, could work on recipe category randomization to change that
-    - Will have to be careful though with fluid boxes
-    - Also with the fact that a lot of buildings later use tons of power, so we could have some things like power inherited by slot
- - Testing with pyAE is too slow, can test each feature with vanilla, then medium py, then long py
- - Keep an eye on softlocks; hopefully they're either rare or specific to space age, but have a good chance of cropping up again
- - Don't do entity randomization since almost all py buildings are placed anyways
- - With so many buildings per-resource in py anyways, mining category randomization doesn't seem like it buys much for the extra effort
- - Might want to add more fluidboxes to various buildings to help the randomization process
- - Make sure to be mindful of TURD recipes/buildings/etc.
- - Check sap automatability/that it didn't pollute early recipes?
+DEFERRED:
+ - Fuel category randomization (most fuels are either semantically *only* fuels and should be kept as such for their semantics, or otherwise have little other use and so it would have the same "icon change" issue with item randomization really, not much benefit)
+ - Entity randomization (there are very few ways to get entities other than building them with their specific item anyways)

@@ -14,13 +14,15 @@ if mods["pyalternativeenergy"] then
     end
 
     -- Give all burner energy sources burnt result inventory
-    for _, entity in pairs(lu.entities) do
-        if categories.energy_sources_input[entity.type] ~= nil then
-            for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
-                local energy_source = entity[energy_prop]
-                if energy_source ~= nil and energy_source.type == "burner" then
-                    if energy_source.burnt_inventory_size == 0 or energy_source.burnt_inventory_size == nil then
-                        energy_source.burnt_inventory_size = 1
+    for class, _ in pairs(defines.prototypes.entity) do
+        for _, entity in pairs(data.raw[class] or {}) do
+            if categories.energy_sources_input[entity.type] ~= nil then
+                for _, energy_prop in pairs(dutils.tablize(categories.energy_sources_input[entity.type])) do
+                    local energy_source = entity[energy_prop]
+                    if energy_source ~= nil and energy_source.type == "burner" then
+                        if energy_source.burnt_inventory_size == 0 or energy_source.burnt_inventory_size == nil then
+                            energy_source.burnt_inventory_size = 1
+                        end
                     end
                 end
             end
@@ -81,6 +83,7 @@ for machine_type, _ in pairs(categories.crafting_machines) do
         if machine.fixed_recipe ~= nil then
             local recipe = data.raw.recipe[machine.fixed_recipe]
             recipe.enabled = true
+            recipe.hide_from_player_crafting = true
         end
     end
 end

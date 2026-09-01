@@ -1,3 +1,4 @@
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local dutils = require("lib/data-utils")
@@ -195,6 +196,18 @@ local function get_primary_icon(prot)
 end
 
 item.reflect = function(graph, head_to_base, head_to_handler)
+    local is_spoil_or_burnt_result = {}
+    for class, _ in pairs(defines.prototypes.item) do
+        for _, item in pairs(data.raw[class] or {}) do
+            if item.spoil_result ~= nil then
+                is_spoil_or_burnt_result[item.spoil_result] = true
+            end
+            if item.burnt_result ~= nil then
+                is_spoil_or_burnt_result[item.burnt_result] = true
+            end
+        end
+    end
+
     local num_times_changed_graphics_of_simple_entity = {}
     for trav_key, slot_key in pairs(trav_to_slot) do
     --for head_key, base_key in pairs(head_to_base) do
@@ -227,6 +240,9 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 if item.spoil_result ~= nil then
                     return false
                 end
+                if is_spoil_or_burnt_result[item.name] then
+                    return false
+                end
                 local is_science_pack
                 for _, lab in pairs(data.raw.lab) do
                     for _, input in pairs(lab.inputs) do
@@ -253,7 +269,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         local curr_trav_slot_item = dutils.get_prot("item", curr_trav_slot.name)
                         local curr_trav_slot_trav = split_graph.nodes[slot_to_trav[gutils.key(curr_trav_slot)]]
                         local curr_trav_slot_trav_item = dutils.get_prot("item", split_graph.nodes[curr_trav_slot_trav.old_slot].name)
-                        if is_useless_item(curr_trav_slot_item) then
+                        if is_useless_item(curr_trav_slot_trav_item) then
+                            log(trav_item.name .. " NOW WITH " .. slot_item.name)
                             slot_item = curr_trav_slot_item
                             break
                         else
@@ -290,87 +307,93 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 end
 
                 for _, recipe in pairs(data.raw.recipe) do
-                    -- Fix ingredients/results
-                    for _, material_property in pairs({"ingredients", "results"}) do
-                        if recipe[material_property] ~= nil then
-                            for _, ing_or_prod in pairs(recipe[material_property]) do
-                                if ing_or_prod.type == "item" and ing_or_prod.name == slot_item.name then
-                                    table.insert(changes, {
-                                        tbl = ing_or_prod,
-                                        prop = "name",
-                                        new_val = trav_item.name
-                                    })
-                                    for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
-                                        if ing_or_prod[amount_key] ~= nil then
-                                            table.insert(changes, {
-                                                tbl = ing_or_prod,
-                                                prop = amount_key,
-                                                multiplier = exact_multiplier,
-                                                is_ing_or_result = true,
-                                                ingredients = (material_property == "ingredients"),
-                                                recipe = recipe,
-                                            })
+                    local function dont_process_recipe(recipe)
+                        -- Try just checking recipe's dont_randomize property
+                        -- Needs handling in first pass as well
+                        -- CRITICAL TODO (need this so we don't get like slaughterhouse recipes with confusing names)
+                        return false
+                    end
+
+                    if not dont_process_recipe(recipe) then
+                        -- Fix ingredients/results
+                        for _, material_property in pairs({"ingredients", "results"}) do
+                            if recipe[material_property] ~= nil then
+                                for _, ing_or_prod in pairs(recipe[material_property]) do
+                                    if ing_or_prod.type == "item" and ing_or_prod.name == slot_item.name then
+                                        table.insert(changes, {
+                                            tbl = ing_or_prod,
+                                            prop = "name",
+                                            new_val = trav_item.name
+                                        })
+                                        for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
+                                            if ing_or_prod[amount_key] ~= nil then
+                                                table.insert(changes, {
+                                                    tbl = ing_or_prod,
+                                                    prop = amount_key,
+                                                    multiplier = exact_multiplier,
+                                                    is_ing_or_result = true,
+                                                    ingredients = (material_property == "ingredients"),
+                                                    recipe = recipe,
+                                                })
+                                            end
                                         end
                                     end
                                 end
                             end
                         end
-                    end
 
-                    local fix_localised = false
-                    if recipe.results ~= nil and #recipe.results >= 1 and recipe.results[1].name == slot_item.name then
-                        -- Fix main product for localisations
-                        table.insert(changes, {
-                            tbl = recipe,
-                            prop = "main_product",
-                            new_val = trav_item.name
-                        })
-                        fix_localised = true
-                    end
-                    if recipe.main_product == slot_item.name then
-                        table.insert(changes, {
-                            tbl = recipe,
-                            prop = "main_product",
-                            new_val = trav_item.name
-                        })
-                        fix_localised = true
-                    end
-                    if fix_localised then
-                        -- Find original recipe prototype from dupes if applicable
-                        local orig_recipe = recipe
-                        if orig_recipe.orig_name ~= nil then
-                            orig_recipe = data.raw.recipe[orig_recipe.orig_name]
-                        end
-                        --if orig_recipe.localised_name == nil then
-                            -- TODO: Should I check recipe-name?
+                        local fix_localised = false
+                        if recipe.main_product == slot_item.name or (recipe.results ~= nil and #recipe.results >= 1 and recipe.results[1].name == slot_item.name) then
                             table.insert(changes, {
                                 tbl = recipe,
-                                prop = "localised_name",
-                                new_val = locale_utils.find_localised_name(trav_item)
+                                prop = "main_product",
+                                new_val = trav_item.name
                             })
-                        --end
-                        -- If the original recipe had no icon, recreate the icon as the new item's
-                        if orig_recipe.icons == nil and orig_recipe.icon == nil then
-                            local recipe_icons
-                            if trav_item.icons ~= nil then
-                                table.insert(changes, {
-                                    tbl = recipe,
-                                    prop = "icons",
-                                    new_val = table.deepcopy(trav_item.icons)
-                                })
-                            else
-                                local icon_filename, icon_size = get_primary_icon(trav_item)
-                                table.insert(changes, {
-                                    tbl = recipe,
-                                    prop = "icons",
-                                    new_val = {
-                                        {
-                                            icon = icon_filename,
-                                            icon_size = icon_size
-                                        }
-                                    }
-                                })
+                            fix_localised = true
+                        end
+                        -- If this is a weird recipe, like it has dont_randomize, then I think that's a good signal not to change the name and icons
+                        local recipe_node = split_graph.nodes[gutils.key("recipe", recipe.name)]
+                        if recipe_node.dont_randomize then
+                            log("IT WORKED")
+                            fix_localised = false
+                        end
+                        if fix_localised then
+                            -- Find original recipe prototype from dupes if applicable
+                            local orig_recipe = recipe
+                            if orig_recipe.orig_name ~= nil then
+                                orig_recipe = data.raw.recipe[orig_recipe.orig_name]
                             end
+                            --if orig_recipe.localised_name == nil then
+                                -- TODO: Should I check recipe-name?
+                                table.insert(changes, {
+                                    tbl = recipe,
+                                    prop = "localised_name",
+                                    new_val = {"", constants.funny_recipe_prefixes[rng.int(rng.key({id = "unified-item"}), #constants.funny_recipe_prefixes)], " ", locale_utils.find_localised_name(trav_item)}
+                                })
+                            --end
+                            -- If the original recipe had no icon, recreate the icon as the new item's
+                            --if orig_recipe.icons == nil and orig_recipe.icon == nil then
+                                local recipe_icons
+                                if trav_item.icons ~= nil then
+                                    table.insert(changes, {
+                                        tbl = recipe,
+                                        prop = "icons",
+                                        new_val = table.deepcopy(trav_item.icons)
+                                    })
+                                else
+                                    local icon_filename, icon_size = get_primary_icon(trav_item)
+                                    table.insert(changes, {
+                                        tbl = recipe,
+                                        prop = "icons",
+                                        new_val = {
+                                            {
+                                                icon = icon_filename,
+                                                icon_size = icon_size
+                                            }
+                                        }
+                                    })
+                                end
+                            --end
                         end
                     end
                 end

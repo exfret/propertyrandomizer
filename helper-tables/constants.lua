@@ -145,8 +145,74 @@ local constants = {
     
     blacklisted_silos = {
         ["mega-farm"] = true, -- Py smart farms work via scripting and don't actually launch a rocket
-    }
+    },
+
+    funny_recipe_prefixes_keys = {
+        ["Discombobulate"] = true,
+        ["Throw together"] = true,
+        ["Invent"] = true,
+        ["Materialize"] = true,
+        ["Order online"] = true,
+        ["Discover"] = true,
+        ["Scavenge"] = true,
+        ["'Borrow'"] = true,
+        ["Receive"] = true,
+        ["Steal"] = true,
+        ["Create"] = true,
+        ["Manifest"] = true,
+        ["Conjure"] = true,
+        ["exfretiate"] = true,
+        ["Factorioize"] = true,
+        ["Spawn"] = true,
+        ["Evoke"] = true,
+        ["Make"] = true,
+        ["Concatenate"] = true,
+        ["Realize"] = true,
+        ["Find"] = true,
+        ["Demand"] = true,
+        ["Beg for"] = true,
+        ["Devaporize"] = true,
+        ["Spit out"] = true,
+        ["Assemble"] = true,
+        ["Give birth to"] = true,
+        ["Lure"] = true,
+        ["Inherit"] = true,
+        ["Ask for"] = true,
+        ["Undestroy"] = true,
+        ["Forge"] = true,
+        ["Barter for"] = true,
+        ["Buy"] = true,
+        ["Stumble upon"] = true,
+        ["Predict"] = true,
+        ["Refine stuff into"] = true,
+        ["exfret enrichment of"] = true,
+        ["Doshingtonize"] = true,
+        ["Polish"] = true,
+        ["Differentiate"] = true,
+        ["Achieve"] = true,
+        ["Breed"] = true,
+        ["Conjure"] = true,
+        ["Wish for"] = true,
+        ["Dream of"] = true,
+        ["Expertly craft"] = true,
+        ["Begrudgingly craft"] = true,
+        ["Rescue"] = true,
+        ["Craft"] = true,
+        ["Workshop"] = true,
+        ["Ferment"] = true,
+        ["Cook up"] = true,
+        ["Bake"] = true,
+        ["Sautee"] = true,
+        ["Notice you have"] = true,
+        ["Dig up"] = true,
+        ["Search for"] = true,
+        ["Forage for"] = true,
+    },
 }
+constants.funny_recipe_prefixes = {}
+for k, _ in pairs(constants.funny_recipe_prefixes_keys) do
+    table.insert(constants.funny_recipe_prefixes, k)
+end
 
 local function set_aps_starting_planet()
     if settings.startup["aps-planet"].value ~= "none" then

@@ -6,14 +6,14 @@ local key = gutils.key
 randomization_info.options.first_pass.blacklist = {}
 -- Blacklist barrels
 for _, recipe in pairs(data.raw.recipe) do
-    if string.find(recipe.name, "barrel") ~= nil then
+    if string.sub(recipe.name, -6, -1) == "barrel" then
         randomization_info.options.first_pass.blacklist[key("recipe", recipe.name)] = true
     end
 end
 for class, _ in pairs(defines.prototypes.item) do
     if data.raw[class] ~= nil then
         for _, item in pairs(data.raw[class]) do
-            if string.find(item.name, "barrel") ~= nil then
+            if string.sub(item.name, -6, -1) == "barrel" then
                 randomization_info.options.first_pass.blacklist[key("item", item.name)] = true
             end
             -- Armors with grids all get their own electric network, potentially lagging the game; don't randomize them!

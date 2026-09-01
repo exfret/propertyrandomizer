@@ -1026,6 +1026,7 @@ local spec = {
             val = "more"
         }
     },]]
+    -- CRITICAL TODO: Make not affect enemy HP!
     -- Affects everything, including enemy HP
     max_health = {
         category = "numerical",
