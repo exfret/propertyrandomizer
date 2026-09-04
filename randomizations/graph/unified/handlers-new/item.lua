@@ -56,6 +56,9 @@ local sticks_with_trav = {
 local slot_to_trav
 local trav_to_slot
 local split_graph
+local mechanics_sets_to_ordered
+local mechanics_sets_to_nodes
+local trav_to_mechanics_key
 local material_to_cost
 local orig_graph
 local node_science_level
@@ -76,6 +79,9 @@ item.initialize = function()
     slot_to_trav = nil
     trav_to_slot = nil
     split_graph = nil
+    mechanics_sets_to_ordered = nil
+    mechanics_sets_to_nodes = nil
+    trav_to_mechanics_key = nil
     material_to_cost = material_costs.costs
     orig_graph = nil
     node_science_level = {}
@@ -172,6 +178,9 @@ item.custom_prereq_search = function(params)
     slot_to_trav = params.slot_to_trav
     trav_to_slot = params.trav_to_slot
     split_graph = params.split_graph
+    mechanics_sets_to_ordered = params.mechanics_sets_to_ordered
+    mechanics_sets_to_nodes = params.mechanics_sets_to_nodes
+    trav_to_mechanics_key = params.trav_to_mechanics_key
 end
 
 item.validate = false
@@ -196,17 +205,11 @@ local function get_primary_icon(prot)
 end
 
 item.reflect = function(graph, head_to_base, head_to_handler)
-    local is_spoil_or_burnt_result = {}
-    for class, _ in pairs(defines.prototypes.item) do
-        for _, item in pairs(data.raw[class] or {}) do
-            if item.spoil_result ~= nil then
-                is_spoil_or_burnt_result[item.spoil_result] = true
-            end
-            if item.burnt_result ~= nil then
-                is_spoil_or_burnt_result[item.burnt_result] = true
-            end
-        end
-    end
+    dutils.recalculate_spoil_burnt_results()
+
+    -- Order mk's to go in order (solves certain cost problems)
+
+    local item_to_new_item = {}
 
     local num_times_changed_graphics_of_simple_entity = {}
     for trav_key, slot_key in pairs(trav_to_slot) do
@@ -227,35 +230,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             local slot_item = dutils.get_prot("item", slot.name)
             local trav_item = dutils.get_prot("item", split_graph.nodes[trav.old_slot].name)
 
-            local function is_useless_item(item)
-                if item.type ~= "item" then
-                    return false
-                end
-                if item.fuel_value ~= nil and util.parse_energy(item.fuel_value) ~= 0 then
-                    return false
-                end
-                if item.place_result ~= nil or item.plant_result ~= nil or item.place_as_tile ~= nil or item.place_as_equipment_result ~= nil then
-                    return false
-                end
-                if item.spoil_result ~= nil then
-                    return false
-                end
-                if is_spoil_or_burnt_result[item.name] then
-                    return false
-                end
-                local is_science_pack
-                for _, lab in pairs(data.raw.lab) do
-                    for _, input in pairs(lab.inputs) do
-                        if input == item.name then
-                            return false
-                        end
-                    end
-                end
-                if item.rocket_launch_products ~= nil then
-                    return false
-                end
-                return true
-            end
+            local is_useless_item = dutils.is_useless_item
 
             local trav_trav = split_graph.nodes[slot_to_trav[trav.old_slot]]
             local trav_trav_item = dutils.get_prot("item", split_graph.nodes[trav_trav.old_slot].name)
@@ -278,6 +253,9 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         end
                     end
                 end
+                
+                item_to_new_item[slot_item.name] = trav_item.name
+
                 if mods["pypostprocessing"] then
                     if trav_item.place_result ~= nil then
                         local energy_factor = py_scaling[1 + node_science_level[gutils.key("item", slot_item.name)]] / py_scaling[1 + node_science_level[gutils.key("item", trav_item.name)]]
@@ -295,10 +273,18 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             end
                         end
                     end
+
+                    if slot_item.name == "ash" then
+                        trav_item.stack_size = 1000
+                    end
                 end
-                
+
+                -- Find cost relative to position where this satisfies a mechanic, not the "actual" cost, which could be inflated too early in the game
+                local trav_mechanics_key = trav_to_mechanics_key[gutils.key(trav)]
+                local to_use_for_trav_cost = split_graph.nodes[mechanics_sets_to_ordered[trav_mechanics_key][mechanics_sets_to_nodes[trav_mechanics_key][gutils.key(trav)]]]
+
                 local slot_cost = material_to_cost[gutils.key("item", slot_item.name)]
-                local trav_cost = material_to_cost[gutils.key("item", trav_item.name)]
+                local trav_cost = material_to_cost[gutils.key("item", to_use_for_trav_cost.name)]
                 local multiplier = 1
                 local exact_multiplier = 1
                 if slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
@@ -354,7 +340,6 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         -- If this is a weird recipe, like it has dont_randomize, then I think that's a good signal not to change the name and icons
                         local recipe_node = split_graph.nodes[gutils.key("recipe", recipe.name)]
                         if recipe_node.dont_randomize then
-                            log("IT WORKED")
                             fix_localised = false
                         end
                         if fix_localised then
@@ -363,6 +348,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             if orig_recipe.orig_name ~= nil then
                                 orig_recipe = data.raw.recipe[orig_recipe.orig_name]
                             end
+                            orig_recipe.subgroup = nil
+                            orig_recipe.order = nil
                             --if orig_recipe.localised_name == nil then
                                 -- TODO: Should I check recipe-name?
                                 table.insert(changes, {
@@ -649,6 +636,44 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         
                         trav_item.burnt_result = "ash"
                     end
+                end
+            end
+        end
+    end
+
+    -- Change single-resource mining drills to be named after their new item
+    for _, drill in pairs(data.raw["mining-drill"]) do
+        if #drill.resource_categories == 1 then
+            local unique_resource
+            local not_unique = false
+            for _, resource in pairs(data.raw.resource) do
+                if resource.category ~= nil and resource.category == drill.resource_categories[1] then
+                    if unique_resource ~= nil then
+                        not_unique = true
+                    end
+                    if resource.minable ~= nil then
+                        if resource.minable.result ~= nil or (resource.minable.results ~= nil and #resource.minable.results == 1) then
+                            unique_resource = resource.minable.result or resource.minable.results[1].name
+                        else
+                            not_unique = true
+                        end
+                    else
+                        not_unique = true
+                    end
+                end
+            end
+            if not not_unique and unique_resource ~= nil then
+                local new_item_name = item_to_new_item[unique_resource]
+                if new_item_name ~= nil then
+                    local new_item = dutils.get_prot("item", new_item_name)
+                    local suffix = ""
+                    if string.len(drill.name) >= 4 then
+                        local old_suffix = string.sub(drill.name, -4, -1)
+                        if string.sub(old_suffix, 1, 2) == "mk" then
+                            suffix = " " .. old_suffix
+                        end
+                    end
+                    drill.localised_name = {"", locale_utils.find_localised_name(new_item), " mine", suffix}
                 end
             end
         end

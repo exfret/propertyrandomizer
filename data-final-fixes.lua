@@ -89,52 +89,58 @@ end
 
 local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
-local new_recipes = require("lib/cost/recipe-randomizations/semantic_slots_v22_followup_degree4_angles_10_30_50_integerized_postfixed")
+local new_recipes = require("lib/cost/recipe-randomizations/semantic_slots_v22_followup_degree4_angles_10_30_50_integerized_2")
 local fixed_recipes = {}
--- Not necessary anymore
---[[for _, machine_class in pairs({"assembling-machine", "furnace", "rocket-silo"}) do
-    for _, machine in pairs(data.raw[machine_class]) do
-        if machine.fixed_recipe ~= nil then
-            fixed_recipes[machine.fixed_recipe] = true
-        end
-        machine.fluid_boxes = machine.fluid_boxes or {}
-        local has_input_already = false
-        if machine.type == "furnace" then
-            for _, box in pairs(machine.fluid_boxes) do
-                if box.production_type == "input" then
-                    has_input_already = true
-                end
-            end
-        end
-        local available = pipe_conns.get_available_pipe_connections(machine)
-        -- Alternately add input and output boxes
-        for ind, conn in pairs(available) do
-            local input_type = "input"
-            if ind % 2 == 0 or (machine.type == "furnace" and has_input_already) then
-                input_type = "output"
-            else
-                has_input_already = true
-            end
-            conn.flow_direction = input_type
-            table.insert(machine.fluid_boxes, {
-                volume = 100,
-                pipe_connections = { conn },
-                production_type = input_type,
-                conn,
-            })
-        end
-    end
-end]]
+
 for recipe_name, recipe_data in pairs(new_recipes.recipes) do
-    local blacklisted_recipes = {
-    }
-    if not blacklisted_recipes[recipe_name] and not fixed_recipes[recipe_name] then
-        local recipe = data.raw.recipe[recipe_name]
+    local recipe = data.raw.recipe[recipe_name]
+    local dont_randomize = false
+    -- Let's not mess with tholins
+    if string.find(recipe.name, "tholins") ~= nil then
+        dont_randomize = true
+    end
+    -- For some reason, methanol canisters are their own special thing
+    if string.find(recipe.name, "methanol") ~= nil and string.find(recipe.name, "canister") ~= nil then
+        dont_randomize = true
+    end
+    -- For vatbrains
+    if string.find(recipe.name, "brain-food") ~= nil then
+        dont_randomize = true
+    end
+    -- Salt/molten salt loop
+    if string.find(recipe.name, "salt") ~= nil then
+        dont_randomize = true
+    end
+    -- Anything about cooling
+    if string.find(recipe.name, "cooling") ~= nil then
+        dont_randomize = true
+    end
+    -- Applies to MOX stuff
+    if string.find(recipe.name, "uncraft") ~= nil then
+        dont_randomize = true
+    end
+    -- There shouldn't be recycling recipes, but just in case
+    if string.find(recipe.name, "recycling") ~= nil then
+        dont_randomize = true
+    end
+    if string.find(recipe.name, "recharge") ~= nil then
+        dont_randomize = true
+    end
+    -- Other potential loop keywords
+    if string.find(recipe.name, "filled") ~= nil then
+        dont_randomize = true
+    end
+    if string.find(recipe.name, "used") ~= nil then
+        dont_randomize = true
+    end
+
+    if not dont_randomize and not fixed_recipes[recipe_name] then
         local cleaned_ings = {}
         local has_fluid = false
         for _, ing in pairs(recipe_data.ingredients) do
             --ing.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * ing.amount)))
             ing.amount = math.min(65535, ing.amount)
+            --ing.fluidbox_index = nil
             if ing.type == "item" then
                 local item
                 for item_class, _ in pairs(defines.prototypes.item) do
@@ -148,20 +154,16 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
                 end
             else
                 has_fluid = true
-                if ing.name == "steam" then
-                    -- Hotfix that I think might not be necessary anymore
-                    --ing.amount = ing.amount * 1 / 5
-                end
             end
-            if ing.amount > 0 then
-                table.insert(cleaned_ings, ing)
-            end
+            table.insert(cleaned_ings, ing)
         end
         recipe.ingredients = cleaned_ings
         local cleaned_results = {}
         for _, result in pairs(recipe_data.results) do
-            --result.amount = math.min(65535, math.max(1, math.floor(0.5 + 100 * result.amount)))
-            result.amount = math.min(65535, result.amount)
+            -- amount could be nil if there is amount min and max
+            if result.amount ~= nil then
+                result.amount = math.min(65535, result.amount)
+            end
             if result.type == "item" then
                 local item
                 for item_class, _ in pairs(defines.prototypes.item) do
@@ -171,16 +173,16 @@ for recipe_name, recipe_data in pairs(new_recipes.recipes) do
                 end
                 if not dutils.is_stackable(item) then
                     result.amount = 1
+                    result.amount_min = 0
+                    result.amount_max = 0
                     result.extra_count_fraction = 0
                 end
-                if result.amount < 1 then
+                if result.amount ~= nil and result.amount < 1 then
                     result.independent_probability = result.amount
                     result.amount = 1
                 end
             end
-            if result.amount > 0 then
-                table.insert(cleaned_results, result)
-            end
+            table.insert(cleaned_results, result)
         end
         recipe.main_product = nil
         if recipe.results ~= nil and #recipe.results >= 1 then
@@ -226,7 +228,7 @@ end
 
 -- Required after so it can fix burner etc. recipe
 require("randomizations/prefixes")
-require("randomizations/fixes")
+--require("randomizations/fixes")
 --randomizations.rebuild_tech_tree()
 
 --smuggle_info()
@@ -292,7 +294,7 @@ local function smuggle_info()
     })
 end]]
 
-local packs_in_order = {
+--[[local packs_in_order = {
     "automation-science-pack",
     "py-science-pack-1",
     "logistic-science-pack",
@@ -456,16 +458,17 @@ for _, tech in pairs(data.raw.technology) do
 end
 log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
 smuggle_info()
-do return end
+do return end]]
 
 
 
+DO_FRODO_FIXES = true
 
 local constants = require("helper-tables/constants")
 
 -- Global information for control stage and other uses for communicating between processes
 -- TODO: Reorganize globals?
-randomization_info = {
+--[[randomization_info = {
     warnings = {},
     -- Whether this prototype has been randomized
     -- Useful for references to other prototypes, like projectiles and spider legs
@@ -477,7 +480,7 @@ randomization_info = {
         unified = {},
         first_pass = {},
     },
-}
+}]]
 
 -- Initial reformats to smooth along everything else
 local reformat = require("lib/reformat")
@@ -519,7 +522,7 @@ end
 end]]
 
 -- Special prototype fixes
-require("randomizations/prefixes")
+--require("randomizations/prefixes")
 
 old_data_raw = table.deepcopy(data.raw)
 
@@ -598,6 +601,9 @@ for i = 1, config.unified_num_retries do
     end
 end
 
+-- Do old data raw for derandomization here so that necessary graph randomization tweaks stay
+old_data_raw_for_derandomization = table.deepcopy(data.raw)
+
 -- NOTE: When adding a dependency graph randomization, add it to constants.lua!
 
 log("Building dependency graph (if applicable)")
@@ -636,7 +642,7 @@ log("Applying graph-based randomizations")
 -- Fix recycling recipes in case modified by unified rando
 --randomizations.fix_recycling_recipes()
 -- Rebuild tech tree
-randomizations.rebuild_tech_tree()
+--randomizations.rebuild_tech_tree()
 
 
 
@@ -782,6 +788,9 @@ log("Applying fixes")
 randomizations.fixes()
 do_overrides_postfixes()
 
+-- Rebuild tech tree post-fixes
+randomizations.rebuild_tech_tree()
+
 -- Final check for completability
 
 new_logic.build(true)
@@ -852,14 +861,181 @@ if reachability_warning_to_insert ~= nil then
     table.insert(randomization_info.warnings, reachability_warning_to_insert)
 end]]
 
--- Add old versions
+-- Add old versions and postfixes
 randomizations.add_old_versions()
+randomizations.post_fixes()
 
 -- Add warnings for control stage
 smuggle_info()
 
--- TODO: REMOVE
+-- Used for extracting data.raw
+-- Make sure this is commented out during releases
 --log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+
+-- Get info for cost analysis etc.
+--[[local packs_in_order = {
+    "automation-science-pack",
+    "py-science-pack-1",
+    "logistic-science-pack",
+    "military-science-pack",
+    "py-science-pack-2",
+    "chemical-science-pack",
+    "py-science-pack-3",
+    "production-science-pack",
+    "py-science-pack-4",
+    "utility-science-pack",
+    "space-science-pack",
+    "full-pyrrhic-victory",
+}
+local payback_times = {
+    30 * 60,
+    1 * 3600,
+    3 * 3600,
+    8 * 3600,
+    15 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    20 * 3600,
+    -- Payback time goes down since you're almost done
+    10 * 3600,
+}
+for i = 1, #packs_in_order do
+    log("I IS THIS VALUE " .. i)
+    -- Electricity costs are per 10MW, so pre-automation we charge 1 per 1MW due to the 0.1 multiplier in the scaling
+    logic.build(true, { payback_time = payback_times[i], power_cost = 1 / (10000000 * constants.py_electricity_scaling[i]) })
+    log("GRAPH DUMP")
+    log(serpent.dump(logic.graph))
+    local science_pack = packs_in_order[i]
+    if science_pack ~= "full-pyrrhic-victory" then
+        local science_node = logic.graph.nodes[gutils.key("item", science_pack)]
+        local edges_to_remove = {}
+        for dep, _ in pairs(science_node.dep) do
+            table.insert(edges_to_remove, dep)
+        end
+        for _, dep in pairs(edges_to_remove) do
+            local depnode = logic.graph.nodes[logic.graph.edges[dep].stop]
+            if depnode.op == "AND" then
+                gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key(depnode.type, depnode.name))
+            end
+            gutils.remove_edge(logic.graph, dep)
+        end
+        if packs_in_order[i] == "military-science-pack" then
+            -- Also blacklist py2
+            local science_node_2 = logic.graph.nodes[gutils.key("item", "py-science-pack-2")]
+            local edges_to_remove_2 = {}
+            for dep, _ in pairs(science_node_2.dep) do
+                table.insert(edges_to_remove_2, dep)
+            end
+            for _, dep in pairs(edges_to_remove_2) do
+                local depnode = logic.graph.nodes[logic.graph.edges[dep].stop]
+                if depnode.op == "AND" then
+                    gutils.add_edge(logic.graph, gutils.key("false", ""), gutils.key(depnode.type, depnode.name))
+                end
+                gutils.remove_edge(logic.graph, dep)
+            end
+        end
+    end
+    local sort_info = top.sort(logic.graph)
+    if i < #packs_in_order then
+        -- Find required materials for this science at this level
+        local science_ind
+        for ind, pebble in pairs(sort_info.sorted) do
+            local node = logic.graph.nodes[pebble.node_key]
+            if node.type == "item" and node.name == packs_in_order[i] then
+                science_ind = ind
+                break
+            end
+        end
+        local path = top.path(logic.graph, {science_ind}, sort_info)
+        if i > 1 then
+            local science_amount = 0
+            for ind, _ in pairs(path.in_path) do
+                local node = logic.graph.nodes[sort_info.sorted[ind].node_key]
+                if node.type == "technology" then
+                    local tech = data.raw.technology[node.name]
+                    if tech.unit ~= nil then
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            if ing[1] == packs_in_order[i - 1] then
+                                science_amount = science_amount + (tech.unit.count or 0) * ing[2]
+                            end
+                        end
+                    end
+                end
+            end
+            log(packs_in_order[i])
+            log(science_amount)
+        end
+        log("PATH DUMP")
+        log(serpent.dump(path))
+        log("SORT INFO DUMP")
+        log(serpent.dump(sort_info))
+    else
+        local pyrrhic_ind
+        for ind, pebble in pairs(sort_info.sorted) do
+            local node = logic.graph.nodes[pebble.node_key]
+            if node.type == "technology" and node.name == "pyrrhic" then
+                pyrrhic_ind = ind
+                break
+            end
+        end
+        local path = top.path(logic.graph, {pyrrhic_ind}, sort_info)
+        if i > 1 then
+            local science_amount = 0
+            for ind, _ in pairs(path.in_path) do
+                local node = logic.graph.nodes[sort_info.sorted[ind].node_key]
+                if node.type == "technology" then
+                    local tech = data.raw.technology[node.name]
+                    if tech.unit ~= nil then
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            if ing[1] == packs_in_order[i - 1] then
+                                science_amount = science_amount + (tech.unit.count or 0) * ing[2]
+                            end
+                        end
+                    end
+                end
+            end
+            log(packs_in_order[i])
+            log(science_amount)
+        end
+        log("PATH DUMP")
+        log(serpent.dump(path))
+        log("SORT INFO DUMP")
+        log(serpent.dump(sort_info))
+    end
+    --local simplex_export = require("lib/cost/simplex-lp-export")
+    --simplex_export.export_to_log(sort_info, i)
+end
+log("TECH CONE COSTS")
+for _, tech in pairs(data.raw.technology) do
+    log("TECHNOLOGY: " .. tech.name)
+    local open = { tech }
+    local in_open = { [tech.name] = true }
+    local open_ind = 1
+    while open_ind <= #open do
+        local curr_tech = open[open_ind]
+        for _, prereq in pairs(curr_tech.prerequisites or {}) do
+            if not in_open[prereq] then
+                table.insert(open, data.raw.technology[prereq])
+                in_open[prereq] = true
+            end
+        end
+        open_ind = 1 + open_ind
+    end
+    local costs = {}
+    for _, tech in pairs(open) do
+        if tech.unit ~= nil and tech.unit.count ~= nil then
+            for _, ing in pairs(tech.unit.ingredients) do
+                costs[ing[1] ] = costs[ing[1] ] or 0
+                costs[ing[1] ] = costs[ing[1] ] + tech.unit.count * ing[2]
+            end
+        end
+    end
+    log(serpent.dump(costs))
+end
+log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")]]
 
 log("Done!")
 

@@ -37,6 +37,10 @@ top.sort = function(graph, state, new_conn, extra)
     local open = state.open or {}
     -- ind is no longer needed since we already separate open and sorted
     extra = extra or {}
+    -- Don't choose randomly for backwards compatibility with Frodo version
+    if not DO_FRODO_FIXES and extra.choose_randomly == false then
+        extra.choose_randomly = true
+    end
 
     -- Initialize node_to_context_inds on *all* nodes, etc.
     -- Only do this on new sorts
@@ -117,6 +121,8 @@ top.sort = function(graph, state, new_conn, extra)
                 table.insert(open_keys, open_key)
             end
             -- Since this is mainly just for testing and rng for graph randomization doesn't matter as much anyways, just use built in math.random
+            -- CRITICAL TODO: This is not actually just for testing anymore, and it could cause issues if other mods use math.random, so let's revert
+            -- In general, we should make behavior more deterministic...
             node_key = open_keys[math.random(#open_keys)]
         else
             local curr_priority

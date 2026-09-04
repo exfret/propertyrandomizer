@@ -174,7 +174,7 @@ randomizations.rebuild_tech_tree = function()
                 table.insert(new_effects, effect)
             end
         end
-        if #new_effects == 0 then
+        if (#new_effects == 0 or tech.name == "cliff-explosives" or tech.name == "construction-robotics" or tech.name == "logistic-robotics" or tech.name == "logistic-system" or tech.name == "bulk-inserter") and tech.name ~= "pyrrhic" then
             tech.hidden = true
             tech.hidden_in_factoriopedia = true
         end
@@ -185,6 +185,8 @@ randomizations.rebuild_tech_tree = function()
         -- TODO: Delete techs from potentially rebuilding it earlier?
     end
 
+    local new_techs_with_unit = {}
+    local is_new_tech = {}
     for recipe_name, prev_recipes in pairs(recipe_to_prev) do
         local recipe = data.raw.recipe[recipe_name]
 
@@ -198,6 +200,10 @@ randomizations.rebuild_tech_tree = function()
                 end
             end
 
+            if recipe_to_unit[recipe_name] then
+                table.insert(new_techs_with_unit, "exfret-rebuilt-" .. recipe_name .. "-suffix")
+            end
+            is_new_tech["exfret-rebuilt-" .. recipe_name .. "-suffix"] = true
             local new_tech = {
                 type = "technology",
                 name = "exfret-rebuilt-" .. recipe_name .. "-suffix",
@@ -227,6 +233,35 @@ randomizations.rebuild_tech_tree = function()
                 data:extend({
                     new_tech
                 })
+            end
+        end
+    end
+
+    -- Add prereqs back to non-unlock recipes
+    for _, tech in pairs(data.raw.technology) do
+        if not is_new_tech[tech.name] and tech.name ~= "pyrrhic" then
+            local prereq = data.raw.technology[new_techs_with_unit[math.random(1, #new_techs_with_unit)]]
+            tech.prerequisites = { prereq.name }
+            if tech.unit ~= nil then
+                tech.unit.ingredients = prereq.unit.ingredients
+            end
+        end
+    end
+
+    if mods["pyalternativeenergy"] then
+        -- Make pyrrhic come after each later thing with some probability
+        local has_dependent = {}
+        for _, tech in pairs(data.raw.technology) do
+            for _, prereq in pairs(tech.prerequisites or {}) do
+                has_dependent[prereq] = true
+            end
+        end
+        data.raw.technology.pyrrhic.prerequisites = {}
+        for _, tech in pairs(data.raw.technology) do
+            if not has_dependent[tech.name] and is_new_tech[tech.name] then
+                if math.random() < 0.01 then
+                    table.insert(data.raw.technology.pyrrhic.prerequisites, tech.name)
+                end
             end
         end
     end
@@ -670,15 +705,129 @@ randomizations.fixes = function()
         -- Was causing localised string to be too large
         --tech.localised_name = {"", tech_localised_name, suffix}
     end]=]
+
+    if mods["pypostprocessing"] then
+        -- Hotfix: Turn burner inserter energy sources back to void in py
+        for _, inserter in pairs(data.raw.inserter) do
+            if inserter.energy_source.type == "burner" then
+                inserter.energy_source.type = "void"
+            end
+        end
+
+        if DO_FRODO_FIXES then
+            -- Change roboport to earlier since it was placed too late (I think it put a construction extender in the normal place)
+            data.raw.recipe["bio-reactor-mk03"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["bio-reactor-mk03"].enabled = true
+            data.raw.recipe["bio-reactor-mk03"].categories = nil
+            -- Change local radar to be earlier since not having radar so long isn't really an interesting challenge
+            data.raw.recipe["earth-wolf-sample"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["earth-wolf-sample"].enabled = true
+            data.raw.recipe["earth-wolf-sample"].categories = nil
+            -- Sap automation earlier
+            data.raw.recipe["sap-01"].enabled = true
+            data.raw.recipe["sap-01"].categories = {"sap-extractor"}
+            data.raw.recipe["sap-01"].hide_from_player_crafting = true
+            data.raw.recipe["charged-auog"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["charged-auog"].enabled = true
+            data.raw.recipe["charged-auog"].categories = nil
+            data.raw.recipe["filtration-media"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["filtration-media"].enabled = true
+            data.raw.recipe["filtration-media"].categories = nil
+            -- Moss
+            data.raw.recipe["Moss-1"].enabled = true
+            data.raw.recipe["Moss-1"].ingredients = {{type = "item", name = "wooden-chest", amount = 1}}
+            data.raw.recipe["Moss-1"].categories = {"wpu"}
+            -- Seaweed
+            data.raw.recipe["seaweed-1"].enabled = true
+            data.raw.recipe["seaweed-1"].categories = {"soil-extraction"}
+            -- 50% chance for something that used to be a crafting recipe to return to one, to reduce the number of things that can't be handcrafted
+            for _, recipe in pairs(data.raw.recipe) do
+
+                -- I think there are mysterious reference problems, so let's do a deepcopy to get rid of those
+                recipe.categories = table.deepcopy(recipe.categories)
+
+                local old_recipe = old_data_raw.recipe[recipe.name]
+                local has_crafting = false
+                for _, cat in pairs(old_recipe.categories or {"crafting"}) do
+                    if cat == "crafting" then
+                        has_crafting = true
+                    end
+                end
+                if has_crafting then
+                    local already_crafting = false
+                    for _, cat in pairs(recipe.categories or {"crafting"}) do
+                        if cat == "crafting" then
+                            already_crafting = true
+                        end
+                    end
+                    if not already_crafting then
+                        local has_fluid_ing = false
+                        for _, ing in pairs(recipe.ingredients or {}) do
+                            if ing.type == "fluid" then
+                                has_fluid_ing = true
+                                break
+                            end
+                        end
+                        if not has_fluid_ing then
+                            -- 50% chance
+                            if math.random() < 0.5 then
+                                -- categories is non-nil here
+                                table.insert(recipe.categories, "crafting")
+                            end
+                        end
+                    end
+                end
+            end
+            -- Remove fish equivalent in logistic bots
+            for _, ing in pairs(data.raw.recipe["planter-box"].ingredients) do
+                if ing.name == "incubator-mk01" then
+                    ing.name = "anemometer-mk01"
+                    ing.amount = 1
+                end
+            end
+            -- Reduce nexelit amounts
+            for _, recipe in pairs(data.raw.recipe) do
+                for _, ing in pairs(recipe.ingredients or {}) do
+                    if ing.name == "nexelit-ore" then
+                        ing.amount = math.ceil((ing.amount or 0) / 10)
+                    end
+                end
+                for _, result in pairs(recipe.results or {}) do
+                    if result.name == "nexelit-ore" then
+                        result.amount = math.ceil((result.amount or 0) / 10)
+                        result.amount_min = math.ceil((result.amount_min or 0) / 10)
+                        result.amount_max = math.ceil((result.amount_max or 0) / 10)
+                    end
+                end
+            end
+        end
+    end
+end
+
+randomizations.post_fixes = function()
+    if DO_FRODO_FIXES then
+    -- Reduce large amounts of ingredients
+        for _, recipe in pairs(data.raw.recipe) do
+            for _, ing in pairs(recipe.ingredients or {}) do
+                if ing.amount >= 500 then
+                    ing.amount = math.floor(ing.amount / 10)
+                elseif ing.amount >= 150 then
+                    ing.amount = math.floor(ing.amount / 5)
+                elseif ing.amount >= 30 then
+                    ing.amount = math.floor(ing.amount / 2)
+                end
+            end
+        end
+    end
 end
 
 randomizations.add_old_versions = function()
-    -- old_data_raw is a global
+    -- old_data_raw_for_derandomization is a global
 
     -- Add any entity with a crafting recipe of the same name
     for entity_class, _ in pairs(defines.prototypes.entity) do
-        for _, entity in pairs(old_data_raw[entity_class] or {}) do
-            if old_data_raw.recipe[entity.name] ~= nil and old_data_raw.recipe[entity.name].results ~= nil and #old_data_raw.recipe[entity.name].results == 1 and old_data_raw.recipe[entity.name].results[1].name == entity.name then
+        for _, entity in pairs(old_data_raw_for_derandomization[entity_class] or {}) do
+            if old_data_raw_for_derandomization.recipe[entity.name] ~= nil and old_data_raw_for_derandomization.recipe[entity.name].results ~= nil and #old_data_raw_for_derandomization.recipe[entity.name].results == 1 and old_data_raw.recipe[entity.name].results[1].name == entity.name then
                 local copy = table.deepcopy(entity)
                 copy.name = "old-" .. entity.name
                 copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
@@ -686,8 +835,8 @@ randomizations.add_old_versions = function()
                 local old_item
                 local old_data_item
                 for item_class, _ in pairs(defines.prototypes.item) do
-                    if old_data_raw[item_class] ~= nil and old_data_raw[item_class][entity.name] ~= nil then
-                        old_item = old_data_raw[item_class][entity.name]
+                    if old_data_raw_for_derandomization[item_class] ~= nil and old_data_raw_for_derandomization[item_class][entity.name] ~= nil then
+                        old_item = old_data_raw_for_derandomization[item_class][entity.name]
                     end
                     if data.raw[item_class] ~= nil and data.raw[item_class][entity.name] ~= nil then
                         old_data_item = data.raw[item_class][entity.name]
@@ -760,20 +909,102 @@ randomizations.add_old_versions = function()
                 item_copy.subgroup = data.raw[old_data_item.type][old_data_item.name].subgroup
                 copy.order = (curr_entity.order or "z-" .. data.raw[old_data_item.type][old_data_item.name].order or "") .. "z"
                 copy.subgroup = curr_entity.subgroup
+
+                copy.hidden_in_factoriopedia = true
+                item_copy.hidden_in_factoriopedia = true
                 data:extend({
                     copy,
                     item_copy,
                     {
                         type = "recipe",
                         name = "derandomized-" .. "entity" .. "--" .. entity.name, -- We can't use gutils.key because colons aren't allowed
+                        localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"},
                         ingredients = {{type = "item", name = entity.name, amount = 1}},
-                        results = {{type = "item", name = copy.name, amount = 1}},
-                        main_product = copy.name,
+                        results = {{type = "item", name = item_copy.name, amount = 1}},
+                        main_product = item_copy.name,
                         energy_required = 0.5,
                         enabled = false,
-                        subgroup = old_data_raw.recipe[entity.name].subgroup,
-                        order = (old_data_raw.recipe[entity.name].order or data.raw[old_data_item.type][old_data_item.name].order or "") .. "z",
+                        subgroup = old_data_raw_for_derandomization.recipe[entity.name].subgroup,
+                        order = (old_data_raw_for_derandomization.recipe[entity.name].order or data.raw[old_data_item.type][old_data_item.name].order or "") .. "z",
+                        hidden_in_factoriopedia = true,
                     },
+                })
+            end
+        end
+    end
+
+    -- Special recipe fixes for Frodo; changes back time AND category
+    if DO_FRODO_FIXES then
+        for _, recipe in pairs(old_data_raw_for_derandomization.recipe) do
+            local copy = table.deepcopy(recipe)
+            copy.name = "derandomized-" .. "recipe" .. "--" .. recipe.name
+            copy.localised_name = {"", locale_utils.find_localised_name(recipe), " [color=254,20,101](Old Recipe)[/color]"}
+            copy.enabled = false
+            -- Apply tint
+            if copy.icons ~= nil then
+                for _, layer in pairs(copy.icons) do
+                    layer.tint = {r = 1, g = 0, b = 0, a = 1}
+                end
+            elseif copy.icon ~= nil then
+                copy.icons = {
+                    {
+                        icon = copy.icon,
+                        icon_size = copy.icon_size or 64,
+                        tint = {r = 1, g = 0, b = 0, a = 1},
+                    }
+                }
+                copy.icon = nil
+            end
+            -- Get the old old category
+            copy.categories = table.deepcopy(old_data_raw.recipe[recipe.name].categories)
+            -- Hide in factoriopedia
+            copy.hidden_in_factoriopedia = true
+            data:extend({
+                copy,
+            })
+        end
+        -- Free item samples crafting recipe
+        for item_class, _ in pairs(defines.prototypes.item) do
+            for _, item in pairs(data.raw[item_class] or {}) do
+                local subgroup = item.subgroup
+                local order = item.order
+                if item.place_result ~= nil then
+                    local entity = dutils.get_prot("entity", item.place_result)
+                    subgroup = subgroup or entity.subgroup
+                    order = order or entity.order
+                end
+                -- Apply tint
+                local icons = table.deepcopy(item.icons or {})
+                if next(icons) ~= nil then
+                    for _, layer in pairs(icons) do
+                        layer.tint = {r = 0, g = 1, b = 0, a = 1}
+                    end
+                elseif item.icon ~= nil then
+                    icons = {
+                        {
+                            icon = item.icon,
+                            icon_size = item.icon_size or 64,
+                            tint = {r = 0, g = 1, b = 0, a = 1},
+                        }
+                    }
+                end
+                local new_recipe = {
+                    type = "recipe",
+                    name = "derandomized-" .. "item" .. "--" .. item.name,
+                    localised_name = {"", locale_utils.find_localised_name(item), " [color=61,154,0](Free!)[/color]"},
+                    icons = icons,
+                    ingredients = {},
+                    results = {{type = "item", name = item.name, amount = 1}},
+                    main_product = item.name,
+                    energy_required = 10,
+                    categories = {"hand-crafting"},
+                    enabled = false,
+                    subgroup = subgroup,
+                    order = (order or "") .. "z",
+                    hidden_in_factoriopedia = true,
+                }
+                data:extend({
+                    new_recipe,
                 })
             end
         end

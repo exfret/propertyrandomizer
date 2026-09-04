@@ -64,11 +64,15 @@ end
 
 local function add_derandomizer_amount_caption(element)
     local color = "white"
-    if storage.num_derandomizations == 0 then
+    if storage.num_derandomizations == 0 and not script.active_mods["pyalternativeenergy"] then
         color = "red"
     end
-    local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]You currently have this many derandomizations left: " .. tostring(storage.num_derandomizations) .. "[/color]"})
-    local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = "Number techs until next derandomization: " .. tostring(storage.techs_until_derandomization)})
+    if script.active_mods["pyalternativeenergy"] then
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]Number of derandomizations used: " .. tostring(-storage.num_derandomizations) .. "[/color]"})
+    else
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]You currently have this many derandomizations left: " .. tostring(storage.num_derandomizations) .. "[/color]"})
+        local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = "Number techs until next derandomization: " .. tostring(storage.techs_until_derandomization)})
+    end
 end
 
 local function reset_derandomizer(element)
@@ -161,7 +165,7 @@ local function toggle_randomizer_panel(event)
     explorer_flow.style.horizontally_stretchable = true
     explorer_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(explorer_tab, explorer_flow)
-    local explorer_intro = explorer_flow.add({type = "label", name = "randomizer-explorer-intro", caption = "Select something to see what's needed to get it."})
+    local explorer_intro = explorer_flow.add({type = "label", name = "randomizer-explorer-intro", caption = "Select something to see what's needed to get it. Use the list to select the general class, and click on the square for the exact choice."})
     local explorer_flow_main = explorer_flow.add({type = "flow", name = "randomizer-explorer-flow-main", direction = "horizontal"})
     explorer_flow_main.style.horizontally_stretchable = true
     explorer_flow_main.style.vertically_stretchable = true
@@ -433,7 +437,7 @@ script.on_event(defines.events.on_gui_click, function(event)
         end
     end
     if event.element.name == "randomizer-explorer-derandomizer-button" then
-        if storage.num_derandomizations > 0 then
+        if storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"] then
             storage.num_derandomizations = -1 + storage.num_derandomizations
             local prot_choice = event.element.parent.parent["randomizer-explorer-flow-choice"]["randomizer-explorer-prot-choice"]
             game.forces.player.recipes["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].enabled = true
@@ -557,7 +561,7 @@ local function expand_node_dropdown(event, node)
             ["warmth"] = true,
             ["false"] = true,
         }
-        if not is_confusing_node_type[leaf.type] then
+        if not is_confusing_node_type[leaf.type] and string.find(leaf.name, "derandomized") == nil then
             if not is_hidden then
                 if not already_has_rep[leaf_to_concat[gutils.key(leaf)]] then
                     already_has_rep[leaf_to_concat[gutils.key(leaf)]] = true
@@ -611,12 +615,27 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
             if storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] then
                 local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]You already acquired the derandomized version of this.[/color]"})
             elseif can_be_derandomized(prot_choice) then
-                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=green]This prototype can be derandomized![/color]"})
+                if prot_choice.elem_type == "item" and next(storage.tech_sort_info.node_to_context_inds[gutils.key("item", prot_choice.elem_value)]) == nil then
+                    explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]Items must be accessible before you can derandomize them.[/color]"})
+                else
+                    local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=green]This prototype can be derandomized![/color]"})
+                    if prot_choice.elem_type == "entity" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to reset its stats."})
+                    elseif prot_choice.elem_type == "recipe" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to reset crafting time and restore these recipe categories:"})
+                        for _, cat in pairs(prototypes.recipe["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].categories) do
+                            explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-" .. cat, caption = "    " .. cat})
+                        end
+                    elseif prot_choice.elem_type == "item" then
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to get access to a handcrafting recipe to make this for free."})
+                        local explorer_derandomizer_prot_caption_desc_2 = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-2", caption = "(Not really 'derandomizing' but whatever)."})
+                    end
+                end
             else
                 local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]This prototype is not derandomizable.[/color]"})
             end
             add_derandomizer_amount_caption(explorer_derandomizer)
-            if not storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] and can_be_derandomized(prot_choice) and storage.num_derandomizations > 0 then
+            if not storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] and can_be_derandomized(prot_choice) and (storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"]) then
                 local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = "Derandomize!"})
             end
 

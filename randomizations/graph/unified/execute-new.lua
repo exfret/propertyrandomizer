@@ -68,10 +68,10 @@ local enabled = {
     --["recipe-ingredients-first-pass"] = true,
     --["entity-autoplace"] = true,
 
-    --["recipe-category"] = true,
+    ["recipe-category"] = true,
     ["item"] = ITEM_ENABLED,
-    --["entity-energy-source"] = true,
-    --["mining-fluid-required"] = true,
+    ["entity-energy-source"] = true,
+    ["mining-fluid-required"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do
@@ -588,6 +588,9 @@ unified.execute = function()
                 trav_to_slot = (first_pass_info or {}).trav_to_slot,
                 slot_to_trav = (first_pass_info or {}).slot_to_trav,
                 do_first_pass = DO_FIRST_PASS,
+                mechanics_sets_to_ordered = (first_pass_info or {}).mechanics_sets_to_ordered,
+                mechanics_sets_to_nodes = (first_pass_info or {}).mechanics_sets_to_nodes,
+                trav_to_mechanics_key = (first_pass_info or {}).trav_to_mechanics_key,
             })
             if search_result == false then
                 log("Failure at ?%")

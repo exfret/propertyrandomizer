@@ -1,22 +1,29 @@
+Playtest notes:
+1. Beginning still seems grindy?
+2. Make saving use less memory
+
 I. Recipe randomization finishing off
-  A. Keep special keys like temperatures/ignored_by_stats in ings/products that I currently clobber in recipe randomization
-  B. Freeze current randomized version, calculate randomized recipe costs and store those
-  C. Create tooltip for recipe/material cost change
-II. Finish randomizations
-  A. Include fluids with first pass item randomization
-  B. Polish and confirm recipe category randomization is working well
-  C. Recipe first pass randomization
-  D. Machine size randomization (additive)
-III. UX
-  A. Explorer testing for "abilities" like electricity production
-  B. Item/icon fixes (semantic don't item randomize for some recipes that are more semantic like salt, make sure to mark mechanics as needed)
-  C. Rename single resource mines based off what they mine (just overwrite locale)
-  D. Basic pass over TURD researches and ability to randomize them
-  E. Trim fluid boxes as needed
-  F. Tech tree doesn't scale up all icons
-  G. Give appropriate prereqs to TURD/other bonus-only techs
-IV. Playtest through circuits
+  A. Freeze current randomized version, calculate randomized recipe costs and store those
+  B. Create tooltip for recipe/material cost change
+II. UX
+  A. (MAYBE?) Explorer testing for "abilities" like electricity production
+III. Playtest through circuits
+
+Future dev:
+ - Autosense good roboports (I think construction extenders right now are being counted)
+ - Favor more normal crafting things (potentially also add multiple categories?)
+ - Remove table references from recipe category randomization
+ - Investigate fish getting into automation science recipe
+ - Don't item randomize out of slaughterhouse recipes due to confusion/scripting
+ - Recipe category randomization taking into account sap/manual things
+ - Low-cost recipe/bootstrap improvements (like the ash pain I had to go through)
 
 DEFERRED:
+ - Basic pass over TURD researches and ability to randomize them (not looking into new features now)
+ - Tech tree rebuild doesn't scale up all icons (such a small issue; just want it done for now)
+ - Machine size randomization additively (funny, but unnecessary)
+ - Recipe first pass randomization (forgot what this was even for)
+ - Rescaling energy_required from recipe-category randomization based on entity-operate costs as well (I can probably get away with not doing this)
+ - Include fluids with first pass item randomization (holding off on new features now)
  - Fuel category randomization (most fuels are either semantically *only* fuels and should be kept as such for their semantics, or otherwise have little other use and so it would have the same "icon change" issue with item randomization really, not much benefit)
  - Entity randomization (there are very few ways to get entities other than building them with their specific item anyways)

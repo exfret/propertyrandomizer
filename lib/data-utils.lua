@@ -87,4 +87,48 @@ dutils.boiler_output_amount = function(boiler)
     return dutils.boiler_input_amount(boiler) * util.parse_energy(input_fluid.heat_capacity or "1kJ") / util.parse_energy(output_fluid.heat_capacity or "1kJ")
 end
 
+local is_spoil_or_burnt_result = {}
+dutils.recalculate_spoil_burnt_results = function()
+    for class, _ in pairs(defines.prototypes.item) do
+        for _, item in pairs(data.raw[class] or {}) do
+            if item.spoil_result ~= nil then
+                is_spoil_or_burnt_result[item.spoil_result] = true
+            end
+            if item.burnt_result ~= nil then
+                is_spoil_or_burnt_result[item.burnt_result] = true
+            end
+        end
+    end
+end
+
+dutils.is_useless_item = function(item)
+    if item.type ~= "item" then
+        return false
+    end
+    if item.fuel_value ~= nil and util.parse_energy(item.fuel_value) ~= 0 then
+        return false
+    end
+    if item.place_result ~= nil or item.plant_result ~= nil or item.place_as_tile ~= nil or item.place_as_equipment_result ~= nil then
+        return false
+    end
+    if item.spoil_result ~= nil then
+        return false
+    end
+    if is_spoil_or_burnt_result[item.name] then
+        return false
+    end
+    local is_science_pack
+    for _, lab in pairs(data.raw.lab) do
+        for _, input in pairs(lab.inputs) do
+            if input == item.name then
+                return false
+            end
+        end
+    end
+    if item.rocket_launch_products ~= nil then
+        return false
+    end
+    return true
+end
+
 return dutils

@@ -70,11 +70,23 @@ script.on_init(function(event)
 
     -- Give ability to mine fluid immediately to make things easier
     game.forces.player.mining_with_fluid = true
+    game.forces.player.cliff_deconstruction_enabled = true
+    game.forces.player.unlock_logistic_network = true
+    game.forces.player.character_logistic_requests = true
+    game.forces.player.vehicle_logistics = true
+    game.forces.player.create_ghost_on_entity_death = true
+    -- Make bulk inserters actually bulk when you unlock them
+    game.forces.player.bulk_inserter_capacity_bonus = 3
 
     load_dep_graph()
-
-    storage.num_derandomizations = 2
-    storage.techs_until_derandomization = 10
+    
+    if script.active_mods["pyalternativeenergy"] then
+        storage.num_derandomizations = 0
+        storage.techs_until_derandomization = 0
+    else
+        storage.num_derandomizations = 3
+        storage.techs_until_derandomization = 10
+    end
     storage.already_derandomized = {}
 
     for data, _ in pairs(prototypes.item["propertyrandomizer-slot-to-trav"].get_entity_type_filters(defines.selection_mode.select)) do
@@ -90,7 +102,7 @@ script.on_init(function(event)
             local debris_items = remote.call("freeplay", "get_debris_items")
             local respawn_items = remote.call("freeplay", "get_respawn_items")
 
-            if slot_to_trav ~= nil then
+            if storage.slot_to_trav ~= nil then
                 for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
                     local new_item_list = {}
                     local old_item_names = {}
@@ -127,6 +139,8 @@ script.on_init(function(event)
             items["assembling-machine-1"] = 5
             items["pipe"] = 50
             items["small-electric-pole"] = 50
+            -- wood processing unit has manual ingredients and so could be painful to get the first few
+            items["wpu-mk01"] = 5
 
             remote.call("freeplay", "set_created_items", items)
             remote.call("freeplay", "set_ship_items", ship_items)
@@ -140,6 +154,10 @@ script.on_configuration_changed(function(event)
     game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Mod configuration was changed; keep in mind that updates may break pre-existing runs.\nYou can sync the exact versions of mods by Ctrl + Left Click on the \"Sync mods\" button on the top right when selecting a save to load.\nIf you need any help, message exfret on discord or on the mod's website - mods.factorio.com/mod/propertyrandomizer")
 
     load_dep_graph()
+
+    for prototype_name, _ in pairs(storage.already_derandomized) do
+        game.forces.player.recipes["derandomized-" .. prototype_name].enabled = true
+    end
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
@@ -151,7 +169,11 @@ script.on_event(defines.events.on_research_finished, function(event)
 
     storage.techs_until_derandomization = -1 + storage.techs_until_derandomization
     if storage.techs_until_derandomization == 0 then
-        storage.techs_until_derandomization = 10
+        if script.active_mods["pyalternativeenergy"] then
+            storage.techs_until_derandomization = 0
+        else
+            storage.techs_until_derandomization = 10
+        end
         storage.num_derandomizations = 1 + storage.num_derandomizations
     end
 

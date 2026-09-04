@@ -1334,6 +1334,7 @@ function concrete.build(lu, extra_params)
         if string.find(recipe.name, "methanol") ~= nil and string.find(recipe.name, "canister") ~= nil then
             dont_randomize = true
         end
+        -- For vatbrains
         if string.find(recipe.name, "brain-food") ~= nil then
             dont_randomize = true
         end
@@ -1343,6 +1344,21 @@ function concrete.build(lu, extra_params)
         end
         -- Anything about cooling
         if string.find(recipe.name, "cooling") ~= nil then
+            dont_randomize = true
+        end
+        -- Applies to MOX stuff
+        if string.find(recipe.name, "uncraft") ~= nil then
+            dont_randomize = true
+        end
+        -- Battery recharging
+        if string.find(recipe.name, "recharge") ~= nil then
+            dont_randomize = true
+        end
+        -- Other potential loop keywords
+        if string.find(recipe.name, "filled") ~= nil then
+            dont_randomize = true
+        end
+        if string.find(recipe.name, "used") ~= nil then
             dont_randomize = true
         end
 

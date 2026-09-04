@@ -29,28 +29,6 @@ if mods["pyalternativeenergy"] then
         end
     end
 
-    -- Add pipe connections to assembling machines
-    for _, machine in pairs(data.raw["assembling-machine"]) do
-        machine.fluid_boxes = machine.fluid_boxes or {}
-        local available = pipe_conns.get_available_pipe_connections(machine)
-        -- Alternately add input and output boxes
-        -- Keep three fluid boxes free; one for input, one for output, and one for energy source
-        for ind = 1, #available - 3 do
-            local conn = available[ind]
-            local input_type = "input"
-            if ind % 2 == 0 then
-                input_type = "output"
-            end
-            conn.flow_direction = input_type
-            table.insert(machine.fluid_boxes, {
-                volume = 100,
-                pipe_connections = { conn },
-                production_type = input_type,
-                conn,
-            })
-        end
-    end
-
     -- Make furnaces crafting machines
     -- I think this is really all that's needed?
     for _, furnace_name in pairs({"stone-furnace", "steel-furnace", "electric-furnace"}) do
@@ -62,10 +40,83 @@ if mods["pyalternativeenergy"] then
         })
     end
 
-    -- Enable hidden recipes; these are all now crafted by machines that should grant you the ability to do them immediately anyways
+    -- Make other furnace recipes always unlocked
+    for _, furnace in pairs(data.raw.furnace) do
+        for _, category in pairs(furnace.crafting_categories) do
+            for _, recipe in pairs(data.raw.recipe) do
+                local should_enable = false
+                for _, other_category in pairs(recipe.categories or {"crafting"}) do
+                    if category == other_category then
+                        should_enable = true
+                    end
+                end
+                if should_enable then
+                    recipe.enabled = true
+                end
+            end
+        end
+    end
+
+    -- Add pipe connections to assembling machines
+    -- Make sure to change volume in recipe randomization/fluid multiplier too if this changes
+    local default_volume = 500
+    for _, machine in pairs(data.raw["assembling-machine"]) do
+        machine.fluid_boxes = machine.fluid_boxes or {}
+        machine.fluid_boxes_off_when_no_fluid_recipe = true
+        -- Remove excess pipe connections from fluid boxes so that we have more room for other fluid boxes
+        for _, fluid_box in pairs(machine.fluid_boxes) do
+            fluid_box.draw_only_when_connected = true
+            fluid_box.pipe_connections = { fluid_box.pipe_connections[1] }
+            -- Increase volume just in case a recipe gets that much fluid
+            fluid_box.volume = default_volume
+        end
+        local available = pipe_conns.get_available_pipe_connections(machine)
+        -- Alternately add input and output boxes
+        -- Keep three fluid boxes free; one for input, one for output, and one for energy source
+        for ind = 1, #available - 3 do
+            local conn = available[ind]
+            local input_type = "input"
+            if ind % 2 == 0 then
+                input_type = "output"
+            end
+            conn.flow_direction = input_type
+            conn.connection_category = {
+                "default",
+                "pipe",
+                "niobium-pipe",
+                "ht-pipes",
+            }
+            table.insert(machine.fluid_boxes, {
+                volume = default_volume,
+                pipe_connections = { conn },
+                draw_only_when_connected = true,
+                production_type = input_type,
+                conn,
+            })
+        end
+    end
+
+    -- Enable hidden enableable reachable recipes; these are all now crafted by machines that should grant you the ability to do them immediately anyways
+    local is_enableable = {}
+    for _, tech in pairs(data.raw.technology) do
+        if not tech.hidden then
+            for _, effect in pairs(tech.effects) do
+                if effect.type == "unlock-recipe" then
+                    is_enableable[effect.recipe] = true
+                end
+            end
+        end
+    end
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.enabled ~= false then
+            is_enableable[recipe.name] = true
+        end
+    end
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.hidden then
-            recipe.enabled = true
+            if is_enableable[recipe.name] then
+                recipe.enabled = true
+            end
         end
     end
 
@@ -75,6 +126,20 @@ if mods["pyalternativeenergy"] then
             recipe.main_product = recipe.results[1].name
         end
     end
+
+    -- QOL
+    data.raw.character.character.inventory_size = 200
+    for _, armor in pairs(data.raw.armor) do
+        armor.inventory_size_bonus = (armor.inventory_size_bonus or 10) * 5
+    end
+    data.raw.character.character.crafting_speed = 5
+    data.raw.character.character.mining_speed = 2
+    data.raw.technology.toolbelt.effects = {
+        {
+            type = "character-inventory-slots-bonus",
+            modifier = 100,
+        },
+    }
 end
 
 -- Make fixed recipes enabled

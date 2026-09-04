@@ -33,6 +33,9 @@ for class, _ in pairs(defines.prototypes.item) do
         end
     end
 end
+for _, item_name in pairs({"py-burner", "py-gas-vent", "py-sinkhole", "assembling-machine-1"}) do
+    randomization_info.options.first_pass.blacklist[key("item", item_name)] = true
+end
 -- Tholins vessels
 -- Actually not sure about these
 --[[for _, recipe in pairs(data.raw.recipe) do

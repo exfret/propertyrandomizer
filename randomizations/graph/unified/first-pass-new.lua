@@ -829,6 +829,27 @@ first_pass.execute = function(params)
             ind = ind + 1
         end
     end
+    
+    -- Want to go: trav key, to new trav position, to old trav
+    -- So, key to position on new, position to key on old
+    local mechanics_sets_to_ordered = {}
+    local trav_to_mechanics_key = {}
+    for _, pebble in pairs(init_sort.sorted) do
+        local node = split_graph.nodes[pebble.node_key]
+        if node.slot then
+            local mechanics_set = trav_to_mechanics[node.old_trav]
+            local mechanics_list = {}
+            for mechanic, _ in pairs(mechanics_set) do
+                table.insert(mechanics_list, mechanic)
+            end
+            table.sort(mechanics_list)
+            local mechanics_list_key = gutils.concat(mechanics_list)
+            trav_to_mechanics_key[key(node.type, make_trav_name(node.name))] = mechanics_list_key
+            mechanics_sets_to_ordered[mechanics_list_key] = mechanics_sets_to_ordered[mechanics_list_key] or {}
+            table.insert(mechanics_sets_to_ordered[mechanics_list_key], key(node))
+        end
+    end
+
     if REQUIRE_MECHANICS_FOR_IMPORTANCE then
         local new_important = table.deepcopy(is_important)
         local unimportant_removed = 0
@@ -915,6 +936,18 @@ first_pass.execute = function(params)
     -- TODO: Redo if needed; was just used for recipes, which we aren't first-passing anymore
     --local vanilla_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
 
+    local is_resource_item = {}
+    for _, resource in pairs(data.raw.resource) do
+        if resource.minable ~= nil then
+            if resource.minable.result ~= nil then
+                is_resource_item[resource.minable.result] = true
+            elseif #resource.minable.results == 1 then
+                is_resource_item[resource.minable.results[1].name] = true
+            end
+        end
+    end
+
+    dutils.recalculate_spoil_burnt_results()
     -- Not strictly necessary; this check makes sure the node replacing another is of the same type, increasing probability that valid previous prereqs can be found
     local function is_compatible(slot, trav)
         -- Check that slot and trav are of the same type
@@ -1004,6 +1037,16 @@ first_pass.execute = function(params)
                 -- Be more permissive about putting cheat travelers in expensive slots
                 if math.log(trav_cost) - math.log(slot_cost) > constants.first_pass_max_cost_log_difference_expensive or math.log(slot_cost) - math.log(trav_cost) > constants.first_pass_max_cost_log_difference_cheap then
                     return false
+                end
+            end
+            -- Enforce that ores get interesting items more often
+            if is_resource_item[slot.name] then
+                local trav_item = dutils.get_prot("item", string.sub(trav.name, 1, -6))
+                if dutils.is_useless_item(trav_item) then
+                    -- 90% chance to reject a random uninteresting thing then
+                    if math.random() < 0.9 then
+                        return false
+                    end
                 end
             end
         end
@@ -1510,7 +1553,7 @@ first_pass.execute = function(params)
                 local precomp_travs = {}
                 for perm_ind, sorted_node_ptr in pairs(perm) do
                     local trav = ind_to_trav(slot_inds[sorted_node_ptr])
-                    if not trav_absolute_reachable(trav) or disable_reachability_checks then
+                    if not trav_absolute_reachable(trav) or disable_reachability_check then
                         all_travs_reachable = false
                     end
                     if trav_acceptable(trav) and trav_to_slot[key(trav)] == nil and (trav_absolute_reachable(trav) or disable_reachability_check) then
@@ -1786,12 +1829,34 @@ first_pass.execute = function(params)
         ordered_sort = connect_slot_trav(old_split_graph, ordered_sort, slot, trav)
     end
 
+    local mechanics_sets_to_nodes = {}
+    local mechanics_sets_to_size = {}
+    for _, pebble in pairs(ordered_sort.sorted) do
+        local node = old_split_graph.nodes[pebble.node_key]
+        if node.trav then
+            local mechanics_set = trav_to_mechanics[key(node)]
+            local mechanics_list = {}
+            for mechanic, _ in pairs(mechanics_set) do
+                table.insert(mechanics_list, mechanic)
+            end
+            table.sort(mechanics_list)
+            local mechanics_list_key = gutils.concat(mechanics_list)
+            mechanics_sets_to_nodes[mechanics_list_key] = mechanics_sets_to_nodes[mechanics_list_key] or {}
+            mechanics_sets_to_size[mechanics_list_key] = mechanics_sets_to_size[mechanics_list_key] or 0
+            mechanics_sets_to_size[mechanics_list_key] = 1 + mechanics_sets_to_size[mechanics_list_key]
+            mechanics_sets_to_nodes[mechanics_list_key][key(node)] = mechanics_sets_to_size[mechanics_list_key]
+        end
+    end
+
     return {
         slot_to_trav = slot_to_trav,
         trav_to_slot = trav_to_slot,
         -- CRITICAL TODO: Decide on sort after heuristics (ordered_sort or split_sort or init_sort)
         sort = ordered_sort,
         graph = old_split_graph,
+        mechanics_sets_to_ordered = mechanics_sets_to_ordered,
+        mechanics_sets_to_nodes = mechanics_sets_to_nodes,
+        trav_to_mechanics_key = trav_to_mechanics_key,
     }
 end
 

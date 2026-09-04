@@ -99,16 +99,16 @@ local constants = {
     py_electricity_scaling = { -- Roughly in GW expected for an "average" base, but the ratios are what matter anyways
         0.1, -- pre-auto
         0.2, -- auto
-        0.5, -- py1
-        1, -- logi
-        3, -- military
-        3, -- py2
-        6, -- chem
-        10, -- py3
-        20, -- prod
-        40, -- py4
-        65, -- utility
-        100, -- space
+        0.35, -- py1
+        0.5, -- logi
+        0.5, -- military
+        1.5, -- py2
+        2.5, -- chem
+        4.5, -- py3
+        7.5, -- prod
+        12, -- py4
+        18, -- utility
+        25, -- space
     },
 
     -- For the built in graph costs
