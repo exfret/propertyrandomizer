@@ -11,5 +11,4 @@ __pycache__/
 .venv/
 
 # Any logs
-factorio-current.log
-factorio-current-frodo.log
+*.log

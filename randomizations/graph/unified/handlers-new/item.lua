@@ -299,28 +299,36 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         -- CRITICAL TODO (need this so we don't get like slaughterhouse recipes with confusing names)
                         return false
                     end
+                    local function dont_process_recipe_ings(recipe)
+                        if string.find(recipe.name, "pyvoid") then
+                            return true
+                        end
+                        return false
+                    end
 
                     if not dont_process_recipe(recipe) then
                         -- Fix ingredients/results
                         for _, material_property in pairs({"ingredients", "results"}) do
-                            if recipe[material_property] ~= nil then
-                                for _, ing_or_prod in pairs(recipe[material_property]) do
-                                    if ing_or_prod.type == "item" and ing_or_prod.name == slot_item.name then
-                                        table.insert(changes, {
-                                            tbl = ing_or_prod,
-                                            prop = "name",
-                                            new_val = trav_item.name
-                                        })
-                                        for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
-                                            if ing_or_prod[amount_key] ~= nil then
-                                                table.insert(changes, {
-                                                    tbl = ing_or_prod,
-                                                    prop = amount_key,
-                                                    multiplier = exact_multiplier,
-                                                    is_ing_or_result = true,
-                                                    ingredients = (material_property == "ingredients"),
-                                                    recipe = recipe,
-                                                })
+                            if not (material_property == "ingredients" and dont_process_recipe_ings(recipe)) then
+                                if recipe[material_property] ~= nil then
+                                    for _, ing_or_prod in pairs(recipe[material_property]) do
+                                        if ing_or_prod.type == "item" and ing_or_prod.name == slot_item.name then
+                                            table.insert(changes, {
+                                                tbl = ing_or_prod,
+                                                prop = "name",
+                                                new_val = trav_item.name
+                                            })
+                                            for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
+                                                if ing_or_prod[amount_key] ~= nil then
+                                                    table.insert(changes, {
+                                                        tbl = ing_or_prod,
+                                                        prop = amount_key,
+                                                        multiplier = exact_multiplier,
+                                                        is_ing_or_result = true,
+                                                        ingredients = (material_property == "ingredients"),
+                                                        recipe = recipe,
+                                                    })
+                                                end
                                             end
                                         end
                                     end

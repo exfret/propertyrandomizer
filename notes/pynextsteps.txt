@@ -17,6 +17,11 @@ Future dev:
  - Don't item randomize out of slaughterhouse recipes due to confusion/scripting
  - Recipe category randomization taking into account sap/manual things
  - Low-cost recipe/bootstrap improvements (like the ash pain I had to go through)
+ - Properly fix item rando touching pyvoid/other recipes that are item-specific not really recipes
+ - Reproductive complexes blacklisted
+ - Caged things not blacklisted
+ - Mechanics for: pump, logi chests of each type, rails, cargo/fluid wagon, locomotive, train stop, signals, car, caravans (fluid/item), caravan outposts (fluid/item)
+ - Science pack respecting sort with py for prereq shuffle
 
 DEFERRED:
  - Basic pass over TURD researches and ability to randomize them (not looking into new features now)

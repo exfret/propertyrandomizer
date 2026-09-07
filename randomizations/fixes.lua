@@ -79,6 +79,55 @@ randomizations.rebuild_tech_tree = function()
     local recipe_to_unit = {}
     local recipe_to_research_trigger = {}
     local with_tech_sort_info = top.sort(graph)
+    if mods["pyalternativeenergy"] then
+        with_tech_sort_info = nil
+        -- For py specifically, sort based on sciences now, since tiers are very important in py
+        local packs_in_order = {
+            "automation-science-pack",
+            "py-science-pack-1",
+            "logistic-science-pack",
+            "military-science-pack",
+            "py-science-pack-2",
+            "chemical-science-pack",
+            "py-science-pack-3",
+            "production-science-pack",
+            "py-science-pack-4",
+            "utility-science-pack",
+            "space-science-pack",
+            "full-pyrrhic-victory",
+        }
+        local graph_for_init_sort = table.deepcopy(graph)
+        local packs_to_deps = {}
+        local deps_to_falses = {}
+        for i = 1, #packs_in_order - 1 do
+            local science_node = graph_for_init_sort.nodes[gutils.key("item", packs_in_order[i])]
+            packs_to_deps[packs_in_order[i]] = {}
+            local deps_to_remove = {}
+            for dep, _ in pairs(science_node.dep) do
+                table.insert(deps_to_remove, dep)
+                local edge = graph_for_init_sort.edges[dep]
+                table.insert(packs_to_deps[packs_in_order[i]], {edge.start, edge.stop, dep})
+            end
+            for _, dep in pairs(deps_to_remove) do
+                local false_node = graph_for_init_sort.nodes[gutils.key("false", science_node.name)]
+                if false_node == nil then
+                    false_node = gutils.add_node(graph_for_init_sort, "false", science_node.name)
+                    false_node.op = "OR"
+                end
+                deps_to_falses[dep] = gutils.add_edge(graph_for_init_sort, gutils.key(false_node), graph_for_init_sort.edges[dep].stop)
+                gutils.remove_edge(graph_for_init_sort, dep)
+            end
+        end
+        with_tech_sort_info = top.sort(graph_for_init_sort, nil, nil, { choose_randomly = true })
+        for i = 1, #packs_in_order - 1 do
+            for _, edge_info in pairs(packs_to_deps[packs_in_order[i]]) do
+                local false_edge = deps_to_falses[edge_info[3]]
+                gutils.remove_edge(graph_for_init_sort, gutils.ekey(false_edge))
+                gutils.add_edge(graph_for_init_sort, edge_info[1], edge_info[2])
+                with_tech_sort_info = top.sort(graph_for_init_sort, with_tech_sort_info, {graph_for_init_sort.nodes[edge_info[1]], graph_for_init_sort.nodes[edge_info[2]]}, { choose_randomly = true, do_new_edge_processing = true })
+            end
+        end
+    end
     local science_pack_marked = {}
     local is_essential_recipe = {}
     for _, node_info in pairs(with_tech_sort_info.sorted) do
@@ -140,6 +189,55 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     local no_tech_sort_info = top.sort(graph)
+    if mods["pyalternativeenergy"] then
+        no_tech_sort_info = nil
+        -- For py specifically, sort based on sciences now, since tiers are very important in py
+        local packs_in_order = {
+            "automation-science-pack",
+            "py-science-pack-1",
+            "logistic-science-pack",
+            "military-science-pack",
+            "py-science-pack-2",
+            "chemical-science-pack",
+            "py-science-pack-3",
+            "production-science-pack",
+            "py-science-pack-4",
+            "utility-science-pack",
+            "space-science-pack",
+            "full-pyrrhic-victory",
+        }
+        local graph_for_init_sort = table.deepcopy(graph)
+        local packs_to_deps = {}
+        local deps_to_falses = {}
+        for i = 1, #packs_in_order - 1 do
+            local science_node = graph_for_init_sort.nodes[gutils.key("item", packs_in_order[i])]
+            packs_to_deps[packs_in_order[i]] = {}
+            local deps_to_remove = {}
+            for dep, _ in pairs(science_node.dep) do
+                table.insert(deps_to_remove, dep)
+                local edge = graph_for_init_sort.edges[dep]
+                table.insert(packs_to_deps[packs_in_order[i]], {edge.start, edge.stop, dep})
+            end
+            for _, dep in pairs(deps_to_remove) do
+                local false_node = graph_for_init_sort.nodes[gutils.key("false", science_node.name)]
+                if false_node == nil then
+                    false_node = gutils.add_node(graph_for_init_sort, "false", science_node.name)
+                    false_node.op = "OR"
+                end
+                deps_to_falses[dep] = gutils.add_edge(graph_for_init_sort, gutils.key(false_node), graph_for_init_sort.edges[dep].stop)
+                gutils.remove_edge(graph_for_init_sort, dep)
+            end
+        end
+        no_tech_sort_info = top.sort(graph_for_init_sort, nil, nil, { choose_randomly = true })
+        for i = 1, #packs_in_order - 1 do
+            for _, edge_info in pairs(packs_to_deps[packs_in_order[i]]) do
+                local false_edge = deps_to_falses[edge_info[3]]
+                gutils.remove_edge(graph_for_init_sort, gutils.ekey(false_edge))
+                gutils.add_edge(graph_for_init_sort, edge_info[1], edge_info[2])
+                no_tech_sort_info = top.sort(graph_for_init_sort, no_tech_sort_info, {graph_for_init_sort.nodes[edge_info[1]], graph_for_init_sort.nodes[edge_info[2]]}, { choose_randomly = true, do_new_edge_processing = true })
+            end
+        end
+    end
 
     local recipe_to_prev = {}
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
@@ -261,6 +359,58 @@ randomizations.rebuild_tech_tree = function()
             if not has_dependent[tech.name] and is_new_tech[tech.name] then
                 if math.random() < 0.01 then
                     table.insert(data.raw.technology.pyrrhic.prerequisites, tech.name)
+                end
+            end
+        end
+
+        if DO_FRODO_FIXES then
+            -- Make things with lower tech cost not depend on things with higher tech cost
+            -- This fixes some of how recipe category rando puts automation in later science packs than it should
+            local tech_to_deps = {}
+            for _, tech in pairs(data.raw.technology) do
+                tech_to_deps[tech.name] = tech_to_deps[tech.name] or {}
+                for _, prereq in pairs(tech.prerequisites or {}) do
+                    tech_to_deps[prereq] = tech_to_deps[prereq] or {}
+                    tech_to_deps[prereq][tech.name] = true
+                end
+            end
+            logic.build(true)
+            local sort_for_tech_pack_fixes = top.sort(logic.graph, nil, nil, { choose_randomly = true })
+            for i = #sort_for_tech_pack_fixes.sorted, 1, -1 do
+                local pebble = sort_for_tech_pack_fixes.sorted[i]
+                local node = logic.graph.nodes[pebble.node_key]
+                if node.type == "technology" then
+                    local tech = data.raw.technology[node.name]
+                    if tech.unit ~= nil then
+                        -- Take intersection of ingredients of this tech and deps
+                        local is_ing = {}
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            is_ing[ing[1]] = true
+                        end
+                        for dep, _ in pairs(tech_to_deps[tech.name]) do
+                            local dep_tech = data.raw.technology[dep]
+                            if dep_tech.unit ~= nil then
+                                local dep_ings = {}
+                                for _, dep_ing in pairs(dep_tech.unit.ingredients) do
+                                    dep_ings[dep_ing[1]] = true
+                                end
+                                local new_is_ing = {}
+                                for ing, _ in pairs(is_ing) do
+                                    if dep_ings[ing] then
+                                        new_is_ing[ing] = true
+                                    end
+                                end
+                                is_ing = new_is_ing
+                            end
+                        end
+                        local new_tech_ings = {}
+                        for _, ing in pairs(tech.unit.ingredients) do
+                            if is_ing[ing[1]] then
+                                table.insert(new_tech_ings, ing)
+                            end
+                        end
+                        tech.unit.ingredients = new_tech_ings
+                    end
                 end
             end
         end
@@ -800,6 +950,99 @@ randomizations.fixes = function()
                     end
                 end
             end
+
+            -- Make new reproductive complexes to avoid the scripting things for them I didn't account for
+            for _, machine in pairs(data.raw["assembling-machine"]) do
+                local is_reproductive_complex = false
+                for _, cat in pairs(machine.crafting_categories) do
+                    if cat == "rc" then
+                        is_reproductive_complex = true
+                    end
+                end
+                if is_reproductive_complex then
+                    local new_complex = table.deepcopy(machine)
+                    new_complex.name = "new-" .. machine.name
+                    new_complex.localised_name = locale_utils.find_localised_name(machine)
+                    new_complex.crafting_categories = {"parameters", "new-rc"}
+                    -- Check for items placing this
+                    for item_class, _ in pairs(defines.prototypes.item) do
+                        for _, item in pairs(data.raw[item_class] or {}) do
+                            if item.place_result == machine.name then
+                                item.place_result = new_complex.name
+                            end
+                        end
+                    end
+                    machine.next_upgrade = nil
+                    -- Modify the old data raw version too for the derandomization feature
+                    old_data_raw_for_derandomization[machine.type][machine.name].next_upgrade = nil
+                    if new_complex.next_upgrade ~= nil then
+                        new_complex.next_upgrade = "new-" .. new_complex.next_upgrade
+                    end
+                    data:extend({
+                        new_complex
+                    })
+                end
+            end
+            local rc_cat_copy = table.deepcopy(data.raw["recipe-category"].rc)
+            rc_cat_copy.name = "new-" .. rc_cat_copy.name
+            for _, recipe in pairs(data.raw.recipe) do
+                local has_reproductive_cat = false
+                for _, cat in pairs(recipe.categories or {}) do
+                    if cat == "rc" then
+                        has_reproductive_cat = true
+                    end
+                end
+                if has_reproductive_cat then
+                    table.insert(recipe.categories, rc_cat_copy.name)
+                end
+            end
+            data:extend({
+                rc_cat_copy
+            })
+            -- Signals
+            data.raw.recipe["grade-4-chromite"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["grade-4-chromite"].enabled = true
+            data.raw.recipe["grade-4-chromite"].categories = nil
+            data.raw.recipe["quartz-crucible"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["quartz-crucible"].enabled = true
+            data.raw.recipe["quartz-crucible"].categories = nil
+            -- Locomotive
+            data.raw.recipe["gobachov"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["gobachov"].enabled = true
+            data.raw.recipe["gobachov"].categories = nil
+            -- Wagons
+            data.raw.recipe["zipir-improved-5"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["zipir-improved-5"].enabled = true
+            data.raw.recipe["zipir-improved-5"].categories = nil
+            data.raw.recipe["moondrop-seeds-mk04"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["moondrop-seeds-mk04"].enabled = true
+            data.raw.recipe["moondrop-seeds-mk04"].categories = nil
+            -- Train stop
+            data.raw.recipe["ammonium-oxalate"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["ammonium-oxalate"].enabled = true
+            data.raw.recipe["ammonium-oxalate"].categories = nil
+            -- Rail
+            data.raw.recipe["simik-tin"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["simik-tin"].enabled = true
+            data.raw.recipe["simik-tin"].categories = nil
+            -- Car
+            data.raw.recipe["py-heat-exchanger-mk02"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["py-heat-exchanger-mk02"].enabled = true
+            data.raw.recipe["py-heat-exchanger-mk02"].categories = nil
+            -- Caravan outposts
+            data.raw.recipe["cottongut-mk03"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["cottongut-mk03"].enabled = true
+            data.raw.recipe["cottongut-mk03"].categories = nil
+            data.raw.recipe["inductor3"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["inductor3"].enabled = true
+            data.raw.recipe["inductor3"].categories = nil
+            -- Caravans
+            data.raw.recipe["arthurian-11"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["arthurian-11"].enabled = true
+            data.raw.recipe["arthurian-11"].categories = nil
+            data.raw.recipe["gearbox-mk01"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
+            data.raw.recipe["gearbox-mk01"].enabled = true
+            data.raw.recipe["gearbox-mk01"].categories = nil
         end
     end
 end
