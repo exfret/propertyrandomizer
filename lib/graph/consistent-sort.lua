@@ -6,7 +6,7 @@
 -- I made new terminology here: a *pebble* is a node_key/context_name pair (as a parallel to pebbling games in theoretical computer science)
 
 -- NOTE: I may want to actually give undiscovered things priority if it would result in things being in a "more consistent" order, or something along those lines, I'll have to see how this comes out
--- NOTE: I'm removing the "true/all optimization" since I don't think it actually does mucb
+-- NOTE: I'm removing the "true/all optimization" since I don't think it actually does much
 
 local contutils = require("lib/graph/context-utils")
 local gutils = require("lib/graph/graph-utils")

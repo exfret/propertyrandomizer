@@ -12,7 +12,6 @@ local cutils = require("lib/cost/cost-utils")
 -- Later, I will want a refactored cost library
 local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
-local recipe_whitelist = require("randomizations/graph/recipe-whitelist")
 
 local key = gutils.key
 
@@ -35,13 +34,6 @@ recipe_ingredients.initialize = function()
     claimed_recipes = {}
 
     init_aggregate_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
-
-    local ing_in_whitelist = whitelist.build()
-
-    -- Don't worry about resource balancing with py
-    if mods["pyalternativeenergy"] then
-        randomization_info.options.cost.major_raw_resources = {}
-    end
 end
 
 recipe_ingredients.claim = function(graph, prereq, dep, edge)
@@ -80,9 +72,6 @@ local function is_unrandomized_ing(ind, is_result_of_this_recipe, recipe)
 
     local ing = recipe.ingredients[ind]
 
-    if not ing_in_whitelist[recipe.name][ind] then
-        return true
-    end
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
     end

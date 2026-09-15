@@ -869,7 +869,7 @@ randomizations.fixes = function()
             data.raw.recipe["bio-reactor-mk03"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
             data.raw.recipe["bio-reactor-mk03"].enabled = true
             data.raw.recipe["bio-reactor-mk03"].categories = nil
-            -- Change local radar to be earlier since not having radar so long isn't really an interesting challenge
+            -- Change radar to be earlier since not having radar so long isn't really an interesting challenge
             data.raw.recipe["earth-wolf-sample"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}
             data.raw.recipe["earth-wolf-sample"].enabled = true
             data.raw.recipe["earth-wolf-sample"].categories = nil

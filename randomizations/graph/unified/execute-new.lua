@@ -6,7 +6,7 @@
 -- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
-local DO_FIRST_PASS = true
+local DO_FIRST_PASS = false
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
@@ -58,7 +58,7 @@ config.unified = {
     ["mining-fluid-required"] = true,
 }
 
-ITEM_ENABLED = true
+ITEM_ENABLED = false
 RECIPE_INGS_DIR = "FORWARD"
 local enabled = {
     --["recipe-ingredients"] = true,
@@ -72,6 +72,7 @@ local enabled = {
     ["item"] = ITEM_ENABLED,
     ["entity-energy-source"] = true,
     ["mining-fluid-required"] = true,
+    ["recipe-ingredients"] = true,
 }
 
 -- for _, id in pairs(all_handler_ids) do

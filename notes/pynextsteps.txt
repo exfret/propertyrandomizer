@@ -3,8 +3,6 @@ Playtest notes:
 2. Make saving use less memory
 
 I. Recipe randomization finishing off
-  A. Freeze current randomized version, calculate randomized recipe costs and store those
-  B. Create tooltip for recipe/material cost change
 II. UX
   A. (MAYBE?) Explorer testing for "abilities" like electricity production
 III. Playtest through circuits
@@ -14,7 +12,7 @@ Future dev:
  - Favor more normal crafting things (potentially also add multiple categories?)
  - Remove table references from recipe category randomization
  - Investigate fish getting into automation science recipe
- - Don't item randomize out of slaughterhouse recipes due to confusion/scripting
+ - Don't item randomize ingredients of slaughterhouse recipes due to confusion/scripting
  - Recipe category randomization taking into account sap/manual things
  - Low-cost recipe/bootstrap improvements (like the ash pain I had to go through)
  - Properly fix item rando touching pyvoid/other recipes that are item-specific not really recipes
