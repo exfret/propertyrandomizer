@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Blocks commits with style errors on staged Lua lines (warnings are printed but don't block)
+# Enabled with: git config core.hooksPath dev/git-hooks
+# Skip once with: git commit --no-verify
+python3 "$(git rev-parse --show-toplevel)/dev/style-check.py" --staged

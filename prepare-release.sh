@@ -12,6 +12,8 @@ IGNORE_ITEMS=(
     ".gitignore"
     ".DS_Store"
     ".vscode"
+    ".claude"
+    "dev"
     "notes"
     "run-tests.sh"
     "prepare-release.sh"
