@@ -173,7 +173,8 @@ end
 local function produces_final_products(recipe)
     if recipe.results ~= nil then
         for _, result in pairs(recipe.results) do
-            if used_mats[flow_cost.get_prot_id(result)] ~= nil then
+            -- Science packs aren't ingredients of anything, but their resource costs are what matter most
+            if used_mats[flow_cost.get_prot_id(result)] ~= nil or (result.type == "item" and is_science_pack[result.name]) then
                 return false
             end
         end
@@ -211,10 +212,6 @@ randomizations.recipe_ingredients = function(id)
 
     local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
     local old_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max"})
-    local old_resource_costs = {}
-    for _, resource_id in pairs(major_raw_resources) do
-        old_resource_costs[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0)
-    end
 
     -- Used for making sure there aren't repeat ingredients for furnaces
     local smelting_ingredients = {}
@@ -531,19 +528,20 @@ randomizations.recipe_ingredients = function(id)
     log("Initial cost calculations")
 
     -- Updated to reflect costs at each stage
-    local curr_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings})
+    -- Resource costs are the bills of major raw resources along the aggregate-cheapest recipes (tracked by the aggregate costs)
+    local curr_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, track_resources = major_raw_resources})
     local curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings})
     local curr_resource_costs = {}
     for _, resource_id in pairs(major_raw_resources) do
-        curr_resource_costs[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings})
+        curr_resource_costs[resource_id] = flow_cost.resource_cost_view(curr_aggregate_cost, resource_id)
     end
 
     -- Also updated to reflect costs at each stage, but with respect to old recipes
-    local old_aggregate_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings})
+    local old_aggregate_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, track_resources = major_raw_resources})
     local old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings})
     local old_resource_costs_staged = {}
     for _, resource_id in pairs(major_raw_resources) do
-        old_resource_costs_staged[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings})
+        old_resource_costs_staged[resource_id] = flow_cost.resource_cost_view(old_aggregate_cost_staged, resource_id)
     end
 
     log("Initial item recipe maps construction")
@@ -828,11 +826,6 @@ randomizations.recipe_ingredients = function(id)
 
         flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent_recipe.name}, flow_cost_updates, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-        if not config.only_randomize_science_recipes then
-            for _, resource_id in pairs(major_raw_resources) do
-                flow_cost.update_recipe_item_costs(old_resource_costs_staged[resource_id], {dependent_recipe.name}, flow_cost_updates, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-            end
-        end
 
         log("Gathering recipe info")
 
@@ -888,7 +881,7 @@ randomizations.recipe_ingredients = function(id)
                     has_costs = false
                 end
                 for _, resource_id in pairs(major_raw_resources) do
-                    if curr_resource_costs[resource_id].material_to_cost[prereq_prot_id] == nil then
+                    if curr_resource_costs[resource_id][prereq_prot_id] == nil then
                         has_costs = false
                     end
                 end
@@ -997,7 +990,7 @@ randomizations.recipe_ingredients = function(id)
         old_material_to_costs.complexity_cost = old_complexity_cost_staged.material_to_cost
         old_material_to_costs.resource_costs = {}
         for _, resource_id in pairs(major_raw_resources) do
-            old_material_to_costs.resource_costs[resource_id] = old_resource_costs_staged[resource_id].material_to_cost
+            old_material_to_costs.resource_costs[resource_id] = old_resource_costs_staged[resource_id]
         end
         local old_recipe_costs = get_costs_from_ings(old_material_to_costs, dependent_recipe.ingredients)
         local curr_material_costs = {}
@@ -1005,7 +998,7 @@ randomizations.recipe_ingredients = function(id)
         curr_material_costs.complexity_cost = curr_complexity_cost.material_to_cost
         curr_material_costs.resource_costs = {}
         for _, resource_id in pairs(major_raw_resources) do
-            curr_material_costs.resource_costs[resource_id] = curr_resource_costs[resource_id].material_to_cost
+            curr_material_costs.resource_costs[resource_id] = curr_resource_costs[resource_id]
         end
 
         log("Finding valid prereqs")
@@ -1069,6 +1062,19 @@ randomizations.recipe_ingredients = function(id)
         end
 
         log("Found ings with total points " .. best_search_info.points)
+        -- Local resource bills of the old and new ingredients, for dev/check-resources.py
+        if not config.only_randomize_science_recipes then
+            local new_recipe_costs = get_costs_from_ings(curr_material_costs, best_search_info.ings)
+            local bill_parts = {}
+            for _, resource_id in pairs(major_raw_resources) do
+                table.insert(bill_parts, resource_id .. "=" .. old_recipe_costs.resource_costs[resource_id] .. "/" .. new_recipe_costs.resource_costs[resource_id])
+            end
+            local preserved = "preserved"
+            if dont_preserve_resource_costs then
+                preserved = "unpreserved"
+            end
+            log("RECIPEBILL " .. dependent_recipe.name .. " " .. preserved .. " " .. table.concat(bill_parts, " "))
+        end
 
         log("Updating dependencies")
 
@@ -1126,11 +1132,6 @@ randomizations.recipe_ingredients = function(id)
         log("Updating complexity cost")
         curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
         log("Finished updating complexity cost")
-        if not config.only_randomize_science_recipes then
-            for _, resource_id in pairs(major_raw_resources) do
-                flow_cost.update_recipe_item_costs(curr_resource_costs[resource_id], {dependent_recipe.name}, flow_cost_updates, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-            end
-        end
 
         log("Next loop")
     end

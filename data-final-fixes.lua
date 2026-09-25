@@ -226,9 +226,12 @@ end
 if config.graph.recipe then
     log("Applying recipe ingredients randomization")
 
+    local resource_report = require("lib/cost/resource-report")
+    resource_report.run("before")
     randomizations.recipe_ingredients("recipe_ingredients")
     -- Fix recycling recipes first so that dependency graph is an accurate reflection of reality
     randomizations.fix_recycling_recipes()
+    resource_report.run("after")
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph

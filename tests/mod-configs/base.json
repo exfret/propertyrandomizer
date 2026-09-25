@@ -17,6 +17,10 @@
       "enabled": false
     },
     {
+      "name": "recycler",
+      "enabled": false
+    },
+    {
       "name": "flib",
       "enabled": false
     },
