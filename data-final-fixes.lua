@@ -51,6 +51,8 @@ require("config")
 -- Load compat code
 require("compat/master")
 
+local new_logic = require("lib/logic/init")
+
 local unified_info
 local function smuggle_info()
     log("Smuggling control info")
@@ -100,7 +102,6 @@ old_data_raw = table.deepcopy(data.raw)
 
 log("Loading in new dependency graph file")
 
-local new_logic = require("lib/logic/init")
 local unified = require("randomizations/graph/unified/execute-new")
 
 log("Initial reachability check")

@@ -36,8 +36,22 @@ recipe_ingredients.initialize = function()
     init_aggregate_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity)
 end
 
+-- Fluid ingredients enter recipes through fluid-temperature-range nodes, so report those as the fluid itself
+local function as_material(node)
+    if node.type == "fluid-temperature-range" then
+        return { type = "fluid", name = gutils.deconstruct(node.name).type }
+    end
+    return node
+end
+
+-- Like gutils.get_owner, but with fluid-temperature-range owners reported as their fluid
+local function get_material_owner(graph, conn_node)
+    return as_material(gutils.get_owner(graph, conn_node))
+end
+
 recipe_ingredients.claim = function(graph, prereq, dep, edge)
-    if (prereq.type == "item" or prereq.type == "fluid") and dep.type == "recipe" then
+    if (prereq.type == "item" or prereq.type == "fluid" or prereq.type == "fluid-temperature-range") and dep.type == "recipe" then
+        prereq = as_material(prereq)
         local recipe = data.raw.recipe[dep.name]
         if recipe.hidden then
             return false
@@ -166,6 +180,18 @@ recipe_ingredients.custom_prereq_search = function(params)
             end
         end
     end
+    -- Also add back recipes that went unclaimed only because all their ingredients are blacklisted_pre (e.g. yumako-processing)
+    -- Recipes missing from ing_overrides are treated as nonexistent by flow_cost, which would leave their products without costs
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        if dependent_to_new_ings[recipe_name] == nil and not recipe.hidden and init_aggregate_costs.recipe_to_cost[recipe_name] ~= nil then
+            dependent_to_new_ings[recipe_name] = {}
+            dependent_to_old_ings[recipe_name] = {}
+            for _, ing in pairs(recipe.ingredients or {}) do
+                table.insert(dependent_to_new_ings[recipe_name], ing)
+                table.insert(dependent_to_old_ings[recipe_name], ing)
+            end
+        end
+    end
     local major_raw_resources = randomization_info.options.cost.major_raw_resources
     local vanilla_aggregate_costs = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings})
     local vanilla_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings})
@@ -251,7 +277,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                     for prereq_index, prereq in pairs(shuffled_prereqs) do
                         -- Make sure this prereq has currently calculable costs
                         local prereq_node = random_graph.nodes[prereq]
-                        local prereq_owner = gutils.get_owner(random_graph, prereq_node)
+                        local prereq_owner = get_material_owner(random_graph, prereq_node)
                         local prereq_prot = dutils.get_prot(prereq_owner.type, prereq_owner.name)
                         local prereq_prot_id = flow_cost.get_prot_id(prereq_owner)
                         local has_costs = true
@@ -427,7 +453,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                     else
                         local prereq_ind_of_ing = valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]
                         local prereq_of_ing = shuffled_prereqs[prereq_ind_of_ing]
-                        local prereq_owner = gutils.get_owner(random_graph, random_graph.nodes[prereq_of_ing])
+                        local prereq_owner = get_material_owner(random_graph, random_graph.nodes[prereq_of_ing])
 
                         table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
                         ind_to_used[prereq_ind_of_ing] = true
@@ -529,13 +555,13 @@ end
 end]]
 
 recipe_ingredients.validate = function(graph, base, head, extra)
-    local base_owner = gutils.get_owner(graph, base)
+    local base_owner = get_material_owner(graph, base)
     if base_owner.type ~= "fluid" and base_owner.type ~= "item" then
         return false
     end
 
     -- Only allow fluids in fluid bases and items in item bases for now
-    local old_prereq = gutils.get_owner(graph, graph.nodes[head.old_base])
+    local old_prereq = get_material_owner(graph, graph.nodes[head.old_base])
     if old_prereq.type ~= base_owner.type then
         return false
     end

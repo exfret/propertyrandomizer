@@ -3,6 +3,18 @@ local gutils = require("lib/graph/graph-utils")
 
 local key = gutils.key
 
+-- Handlers not in helper-tables/handler-ids.lua don't have options tables yet at this point, so create them here
+-- (otherwise the blacklists below would be written into throwaway tables and silently lost)
+local function unified_options(id)
+    if randomization_info.options.unified[id] == nil then
+        randomization_info.options.unified[id] = {
+            blacklisted_pre = {},
+            blacklisted_dep = {},
+        }
+    end
+    return randomization_info.options.unified[id]
+end
+
 randomization_info.options.first_pass.blacklist = {}
 -- Blacklist barrels
 for _, recipe in pairs(data.raw.recipe) do
@@ -52,11 +64,11 @@ randomization_info.options.first_pass.always_slot_dep = {
     [key("item", "recipe")] = true,
 }
 
-(randomization_info.options.unified["entity-autoplace"] or {}).blacklisted_dep = {
+unified_options("entity-autoplace").blacklisted_dep = {
     [key("entity", "fulgoran-ruin-attractor")] = true,
 }
 
-(randomization_info.options.unified["recipe-ingredients"] or {}).blacklisted_pre = {
+unified_options("recipe-ingredients").blacklisted_pre = {
     [key("fluid", "water")] = true,
     [key("item", "spoilage")] = true,
     [key("item", "yumako")] = true,
@@ -67,7 +79,7 @@ randomization_info.options.first_pass.always_slot_dep = {
     [key("item", "carbonic-asteroid-chunk")] = true,
     [key("item", "oxide-asteroid-chunk")] = true,
 }
-(randomization_info.options.unified["recipe-ingredients"] or {}).blacklisted_dep = {
+unified_options("recipe-ingredients").blacklisted_dep = {
     [key("recipe", "iron-plate")] = true,
     [key("recipe", "copper-plate")] = true,
     [key("recipe", "stone-brick")] = true,
@@ -107,14 +119,14 @@ for _, recipe in pairs(data.raw.recipe) do
         end
     end
     if is_recycling then
-        ((randomization_info.options.unified["recipe-ingredients"] or {}).blacklisted_dep or {})[key("recipe", recipe.name)] = true
+        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
     end
 end
 -- Add barreling recipes
 -- Sensed by whether "barrel" is in the name
 for _, recipe in pairs(data.raw.recipe) do
     if string.sub(recipe.name, -6, -1) == "barrel" then
-        ((randomization_info.options.unified["recipe-ingredients"] or {}).blacklisted_dep or {})[key("recipe", recipe.name)] = true
+        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
     end
 end
 -- Add crushing-only recipes (space stuff is too sensitive I think?)
@@ -127,7 +139,7 @@ for _, recipe in pairs(data.raw.recipe) do
         end
     end
     if is_only_crushing then
-        ((randomization_info.options.unified["recipe-ingredients"] or {}).blacklisted_dep or {})[key("recipe", recipe.name)] = true
+        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
     end
 end
 
@@ -136,7 +148,7 @@ randomization_info.options.unified["spoiling"].blacklisted_pre = {
     [key("item", "iron-bacteria")] = true,
 }
 
-(randomization_info.options.unified["recipe-category"] or {}).blacklisted_dep = {}
+unified_options("recipe-category").blacklisted_dep = {}
 
 -- I don't know if this actually is needed right now (which is a good thing)
 randomization_info.options.logic.contexts_in_order = {}

@@ -70,8 +70,13 @@ cutils.find_amount_in_recipe = function(recipe, material, ing_overrides, use_dat
     -- Check use_data to see if we should not be paying attention to the overrides
     if ing_overrides ~= nil and ing_overrides[recipe.name] ~= nil and not use_data then
         ing_amount = 0
+        -- Ingredient entries use "item" for all item subtypes (like capsules), so compare the same way find_amount_in_ing_or_prod does
+        local material_type = "item"
+        if material.type == "fluid" then
+            material_type = "fluid"
+        end
         for _, prereq in pairs(ing_overrides[recipe.name]) do
-            if prereq.type == material.type and prereq.name == material.name then
+            if prereq.type == material_type and prereq.name == material.name then
                 ing_amount = cutils.find_amount_in_entry(prereq)
             end
         end

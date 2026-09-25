@@ -15,6 +15,8 @@ local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 local SWITCH_PLANETS = false
 local REMOVE_TECH_PREREQS = true
+-- Log witness skeleton stats (randomizations/graph/unified/skeleton/stats.lua); measurement only
+local SKELETON_STATS = true
 
 -- 0 means nothing except on errors (in case I decide to stop polluting log in the future), 1 means default/important things, 2 means lots
 local LOGGING_LEVEL = 2
@@ -273,6 +275,17 @@ unified.execute = function()
             gutils.add_edge(pool_graph, old_base, head)
             sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
         end
+    end
+
+    -- SKELETON EXPERIMENT (measurement only; see randomizations/graph/unified/skeleton/)
+    if SKELETON_STATS then
+        require("randomizations/graph/unified/skeleton/stats").run({
+            graph = pool_graph,
+            sort_info = sort_for_pool,
+            sorted_deps = sorted_deps,
+            dep_to_heads = dep_to_heads,
+            head_to_handler = head_to_handler,
+        })
     end
 
     ----------------------------------------------------------------------------------------------------
