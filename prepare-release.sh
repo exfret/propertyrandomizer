@@ -17,6 +17,7 @@ IGNORE_ITEMS=(
     "notes"
     "run-tests.sh"
     "prepare-release.sh"
+    "*.log"
 )
 
 PROJECT_DIR="$(pwd)"
