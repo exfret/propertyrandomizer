@@ -17,6 +17,11 @@
                     {
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/style-check.py\" --hook stop"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/check-seeds.py\" --hook stop",
+                        "timeout": 600
                     }
                 ]
             }
