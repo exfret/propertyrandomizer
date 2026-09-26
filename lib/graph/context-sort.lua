@@ -5,6 +5,8 @@
 --      These are encoded as a single string (see top.context_key) so the rest of the sort treats them just like rooms
 --   2. Contexts are now also transmitted through edges, since edges can add/remove abilities (edge.abilities)
 --   3. Random selection from open is O(1) using a list of open keys, rather than rebuilding that list every step
+--   4. Pass extra.home_contexts = true to also track home contexts (see Home contexts below), with or without complex contexts
+--      Their home sets come from extra.home_sets if given (see top.home_sets), then logic.home_sets (the vanilla ones, stored by data-final-fixes.lua before randomization), and otherwise from the graph being sorted
 -- Without complex contexts, this should behave exactly like consistent-sort.lua except for which random node is picked
 -- I kept the pebble terminology: a *pebble* is a node_key/context pair
 
@@ -24,6 +26,8 @@ local AUTOMATABILITY = 2
 local NUM_ABILITIES = 2
 -- Can't appear in room keys
 local CONTEXT_SEPARATOR = " | "
+-- Separates a home context's home set id from the context it rides on; can't appear in room keys or ability strings
+local HOME_SEPARATOR = " @ "
 
 local top = {}
 
@@ -41,6 +45,8 @@ for _ = 1, NUM_ABILITIES do
     ability_strs = longer_strs
 end
 top.ability_strs = ability_strs
+-- The weakest ability string: no edge takes it away, so a node with any context in a room also has this one there
+local NO_ABILITIES = string.rep("0", NUM_ABILITIES)
 
 local function has_ability(ability_str, ability)
     return string.sub(ability_str, ability, ability) == "1"
@@ -56,7 +62,29 @@ top.context_key = function(room, ability_str)
     return room .. CONTEXT_SEPARATOR .. ability_str
 end
 
+-- Home contexts
+-- A home set is a set of rooms (see top.home_sets), and a pebble's home context for it means the pebble can be had using only those rooms
+-- This is what removing every other room's node and sorting again would give, but for every home set in the same sort
+-- Home contexts ride on each room's weakest context (the room itself for simple contexts, the room with no abilities for complex ones), and are written like "planet: vulcanus | 00 @ home1"
+-- With complex contexts, they replace the order-dependent discovery rule: once a room is discovered, techs with a home context of its home set are isolatable there (see discover_home_rooms in top.sort)
+
+-- The home context riding on a context
+top.home_context_key = function(context, home_id)
+    return context .. HOME_SEPARATOR .. home_id
+end
+
+-- The context a home context rides on, or the context itself if it isn't one
+local function without_home(context)
+    local i = string.find(context, HOME_SEPARATOR, 1, true)
+    if i == nil then
+        return context
+    end
+    return string.sub(context, 1, i - 1)
+end
+top.context_without_home = without_home
+
 top.context_room = function(context)
+    context = without_home(context)
     local i = string.find(context, CONTEXT_SEPARATOR, 1, true)
     if i == nil then
         return context
@@ -66,7 +94,17 @@ end
 
 -- Returns nil for simple contexts
 top.context_abilities = function(context)
+    context = without_home(context)
     local _, j = string.find(context, CONTEXT_SEPARATOR, 1, true)
+    if j == nil then
+        return nil
+    end
+    return string.sub(context, j + 1, -1)
+end
+
+-- Home set id of a home context, or nil for other contexts
+top.context_home = function(context)
+    local _, j = string.find(context, HOME_SEPARATOR, 1, true)
     if j == nil then
         return nil
     end
@@ -75,18 +113,24 @@ end
 
 -- Gets the lookup tables for the contexts used in a sort
 -- For simple contexts, the contexts are just the rooms, exactly as in consistent-sort.lua
-local function build_context_info(complex)
+-- home_sets (from top.home_sets) adds home contexts, or is nil for none
+local function build_context_info(complex, home_sets)
     local context_info = {
         complex = complex,
         -- Every context
         list = {},
-        -- The following are only for complex contexts
-        -- context --> room
+        -- context --> room (complex and home contexts only)
         room = {},
-        -- context --> ability string
+        -- context --> ability string (complex contexts only)
         abilities = {},
-        -- room --> ability string --> context
+        -- room --> ability string --> context (complex contexts only)
         of = {},
+        -- context --> home set id (home contexts only)
+        home = {},
+        -- room --> home set id --> context (home contexts only)
+        home_of = {},
+        -- home set id --> room --> true for the rooms in it (home contexts only)
+        home_rooms = {},
     }
     for room, _ in pairs(logic.contexts) do
         if complex then
@@ -100,6 +144,29 @@ local function build_context_info(complex)
             end
         else
             table.insert(context_info.list, room)
+        end
+        if home_sets ~= nil then
+            -- Home contexts ride on the room's weakest context
+            local base = room
+            if complex then
+                base = context_info.of[room][NO_ABILITIES]
+            end
+            context_info.home_of[room] = {}
+            for _, home_id in pairs(home_sets.ids) do
+                local context = top.home_context_key(base, home_id)
+                table.insert(context_info.list, context)
+                context_info.room[context] = room
+                if complex then
+                    context_info.abilities[context] = NO_ABILITIES
+                end
+                context_info.home[context] = home_id
+                context_info.home_of[room][home_id] = context
+            end
+        end
+    end
+    if home_sets ~= nil then
+        for _, home_id in pairs(home_sets.ids) do
+            context_info.home_rooms[home_id] = home_sets.sets[home_id].rooms
         end
     end
     return context_info
@@ -171,8 +238,9 @@ local function edge_ability_tables(abilities)
 end
 
 -- Contexts arriving at edge.stop when context leaves edge.start
+-- Home contexts go through edges unchanged: they have no abilities to lose, and abilities an edge adds come from the context they ride on
 local function edge_transmit(context_info, edge, context)
-    if not context_info.complex or edge.abilities == nil then
+    if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return { context }
     end
     local forward = edge_ability_tables(edge.abilities)
@@ -186,7 +254,7 @@ end
 
 -- Contexts leaving edge.start that would make context arrive at edge.stop
 local function edge_sources(context_info, edge, context)
-    if not context_info.complex or edge.abilities == nil then
+    if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return { context }
     end
     local _, inverse = edge_ability_tables(edge.abilities)
@@ -201,7 +269,7 @@ end
 -- Earliest index in sorted of a pebble on edge.start that gets context to edge.stop, or nil if none
 local function edge_ind(context_info, node_to_context_inds, edge, context)
     local start_inds = node_to_context_inds[edge.start]
-    if not context_info.complex or edge.abilities == nil then
+    if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return start_inds[context]
     end
     local earliest_ind
@@ -214,10 +282,44 @@ local function edge_ind(context_info, node_to_context_inds, edge, context)
     return earliest_ind
 end
 
+-- Contexts leaving node when a home context arrives at it
+-- Home contexts go through nodes like the contexts they ride on, except that a room only sends them for the home sets containing it
+-- A pebble has a home context exactly when it can be had using only the rooms in that home set
+local function home_transmit(context_info, node, incoming, home_id)
+    local context_type = logic.type_info[node.type].context
+    if context_type == nil then
+        return { incoming }
+    elseif context_type == true then
+        -- Home sets aren't tied to a room, so forgetters send them to every room (like automatability)
+        local outgoing = {}
+        for room, _ in pairs(context_info.home_of) do
+            table.insert(outgoing, context_info.home_of[room][home_id])
+        end
+        return outgoing
+    elseif type(context_type) == "string" then
+        -- Rooms use node.name for the room, see contutils.transmit
+        local room_contexts = context_info.home_of[node.name]
+        if room_contexts == nil then
+            error("Room node " .. node.name .. " is not a context")
+        end
+        if context_info.home_rooms[home_id][node.name] ~= nil then
+            return { room_contexts[home_id] }
+        end
+        return {}
+    else
+        -- Unhandled
+        error()
+    end
+end
+
 -- Contexts leaving node when incoming arrives at it
 -- For simple contexts this is just contutils.transmit
 -- For complex contexts this follows extended-sort.lua's transmit_through_node
 local function node_transmit(context_info, node, incoming)
+    local home_id = context_info.home[incoming]
+    if home_id ~= nil then
+        return home_transmit(context_info, node, incoming, home_id)
+    end
     if not context_info.complex then
         return contutils.transmit(node, incoming)
     end
@@ -255,7 +357,7 @@ local function node_transmit(context_info, node, incoming)
 end
 
 -- Rooms (as context keys) whose space locations this tech unlocks
--- Nodes that discover rooms for the isolatability discovery rule (see discover_space_locations in top.sort)
+-- Nodes that discover rooms for the isolatability discovery rule (see discover_space_locations and discover_home_rooms in top.sort)
 -- Techs discover the space locations they unlock, and a spaceship discovers space platforms (the platform's techs count from when it can fly, not from when platforms are unlocked)
 top.is_discoverer = function(node)
     return node.type == "technology" or node.type == "spaceship"
@@ -305,23 +407,350 @@ top.discovered_rooms = function(tech_node)
     return rooms
 end
 
--- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file
-local context_info_cache = {}
-local function cached_context_info(complex)
-    if context_info_cache[complex] == nil then
-        context_info_cache[complex] = build_context_info(complex)
+-- Room --> node keys of the room's discoverers in the graph
+top.room_discoverers = function(graph)
+    local room_discoverers = {}
+    for node_key, node in pairs(graph.nodes) do
+        if top.is_discoverer(node) then
+            for _, discovered in pairs(top.discovered_rooms(node)) do
+                room_discoverers[discovered.room] = room_discoverers[discovered.room] or {}
+                table.insert(room_discoverers[discovered.room], node_key)
+            end
+        end
     end
-    return context_info_cache[complex]
+    return room_discoverers
+end
+
+-- The discovery rule for callers that reason about backings (like promotion), so that it lives only in this file
+-- A tech pebble in an isolatable context can come from the rule, backed by an earlier pebble of the tech itself and an earlier pebble of a discoverer of the context's room
+-- Returns the ranks of those candidates as { own = sorted list, discoverers = sorted list }, or nil if the rule can't give the pebble
+-- With home contexts, the tech's own pebble has to be in a home context of the room's home set (see discover_home_rooms in top.sort); without them, any of its pebbles counts (see discover_space_locations)
+-- room_discoverers comes from top.room_discoverers
+top.discovery_candidates = function(sort_info, room_discoverers, tech_node, context)
+    if sort_info.complex ~= true or tech_node.type ~= "technology" or top.context_home(context) ~= nil then
+        return nil
+    end
+    local abilities = top.context_abilities(context)
+    if abilities == nil or not has_ability(abilities, ISOLATABILITY) then
+        return nil
+    end
+    local room = top.context_room(context)
+    local home_id
+    if sort_info.home_sets ~= nil then
+        home_id = sort_info.home_sets.of[room]
+        if home_id == nil then
+            return nil
+        end
+    end
+    local nci = sort_info.node_to_context_inds
+    local own = {}
+    for own_context, ind in pairs(nci[key(tech_node)] or {}) do
+        if home_id == nil or top.context_home(own_context) == home_id then
+            table.insert(own, ind)
+        end
+    end
+    local discoverers = {}
+    for _, discoverer_key in pairs(room_discoverers[room] or {}) do
+        for _, ind in pairs(nci[discoverer_key] or {}) do
+            table.insert(discoverers, ind)
+        end
+    end
+    table.sort(own)
+    table.sort(discoverers)
+    return {
+        own = own,
+        discoverers = discoverers,
+    }
+end
+
+-- Rooms needed: for every pebble of a sort without complex contexts, the rooms it can't be reached without, all found in one pass rather than a sort per room
+-- They follow the sort's own rules, where a room's node is the only way to use that room:
+--   * Sources need no rooms, and a room's node needs its own room on top of what satisfied it
+--   * An incoming context satisfies an OR node needing what all its satisfying prerequisites need in common, and an AND node needing what any of its prerequisites needs
+--   * Forgetters and rooms send the same contexts whichever incoming context satisfied them, so they need what all those incoming contexts need in common
+-- Starting every pebble at all rooms and shrinking until nothing changes gives exactly the rooms each pebble can't be reached without
+-- (The true answer follows these rules, and by induction along a sort without the room, any answer that follows them is contained in it; so it's the largest one, which is where shrinking ends up)
+-- Sets of rooms are strings with a "0" or "1" per room, like ability strings, so that they're cheap to compare and memoize
+local function compute_rooms_needed(graph)
+    local sort_info = top.sort(graph)
+
+    -- Rooms in a fixed order, so that sets of them can be strings
+    local rooms = {}
+    for room, _ in pairs(logic.contexts) do
+        table.insert(rooms, room)
+    end
+    table.sort(rooms)
+    local room_ind = {}
+    for i = 1, #rooms do
+        room_ind[rooms[i]] = i
+    end
+    local all_rooms = string.rep("1", #rooms)
+    local no_rooms = string.rep("0", #rooms)
+
+    -- Memoized, since there are only a few distinct sets
+    local memos = {
+        intersection = {},
+        union = {},
+    }
+    local function combine(op, set1, set2)
+        if set1 == set2 then
+            return set1
+        end
+        local memo = memos[op]
+        memo[set1] = memo[set1] or {}
+        local result = memo[set1][set2]
+        if result == nil then
+            local chars = {}
+            for i = 1, #rooms do
+                local in_set1 = string.sub(set1, i, i) == "1"
+                local in_set2 = string.sub(set2, i, i) == "1"
+                if (op == "intersection" and in_set1 and in_set2) or (op == "union" and (in_set1 or in_set2)) then
+                    chars[i] = "1"
+                else
+                    chars[i] = "0"
+                end
+            end
+            result = table.concat(chars)
+            memo[set1][set2] = result
+        end
+        return result
+    end
+    -- nil stands for no set yet, so that this can fold over alternatives
+    local function intersect(set1, set2)
+        if set1 == nil then
+            return set2
+        end
+        return combine("intersection", set1, set2)
+    end
+    local function with_room(set, room)
+        local i = room_ind[room]
+        return combine("union", set, string.rep("0", i - 1) .. "1" .. string.rep("0", #rooms - i))
+    end
+
+    -- node_key --> context --> rooms needed, for every pebble the sort reached
+    -- Pebbles start at all rooms (sources at their final sets), so a prerequisite pebble has a set exactly when the sort reached it
+    local needed = {}
+    for node_key, inds in pairs(sort_info.node_to_context_inds) do
+        if next(inds) ~= nil then
+            local node = graph.nodes[node_key]
+            local start_set = all_rooms
+            if gutils.is_source(graph, node) then
+                start_set = no_rooms
+                if type(logic.type_info[node.type].context) == "string" then
+                    start_set = with_room(no_rooms, node.name)
+                end
+            end
+            needed[node_key] = {}
+            for context, _ in pairs(inds) do
+                needed[node_key][context] = start_set
+            end
+        end
+    end
+
+    -- Recomputes a node's sets from its prerequisites' sets, and returns whether any shrank
+    local function update(node_key)
+        local node = graph.nodes[node_key]
+        local node_needed = needed[node_key]
+        if node_needed == nil or gutils.is_source(graph, node) then
+            return false
+        end
+
+        -- Rooms needed by each incoming context that satisfies the node (edges don't change simple contexts)
+        local incoming = {}
+        for _, context in pairs(rooms) do
+            local set
+            local is_satisfied = node.op == "AND"
+            for pre, _ in pairs(node.pre) do
+                local pre_set = (needed[graph.edges[pre].start] or {})[context]
+                if node.op == "OR" then
+                    if pre_set ~= nil then
+                        is_satisfied = true
+                        set = intersect(set, pre_set)
+                    end
+                elseif pre_set == nil then
+                    is_satisfied = false
+                    break
+                else
+                    set = combine("union", set or no_rooms, pre_set)
+                end
+            end
+            if is_satisfied then
+                incoming[context] = set
+            end
+        end
+
+        local new_needed = {}
+        local context_type = logic.type_info[node.type].context
+        if context_type == nil then
+            new_needed = incoming
+        else
+            local common
+            for _, set in pairs(incoming) do
+                common = intersect(common, set)
+            end
+            if common ~= nil then
+                if context_type == true then
+                    for context, _ in pairs(node_needed) do
+                        new_needed[context] = common
+                    end
+                else
+                    -- Rooms use node.name for the room, see contutils.transmit
+                    new_needed[node.name] = with_room(common, node.name)
+                end
+            end
+        end
+        local has_shrunk = false
+        for context, set in pairs(new_needed) do
+            if node_needed[context] ~= set then
+                node_needed[context] = set
+                has_shrunk = true
+            end
+        end
+        return has_shrunk
+    end
+
+    -- Going in sort order first means most nodes see their prerequisites' final sets on the first visit
+    local queue = {}
+    local is_queued = {}
+    local function push(node_key)
+        if is_queued[node_key] == nil then
+            is_queued[node_key] = true
+            table.insert(queue, node_key)
+        end
+    end
+    for _, pebble in pairs(sort_info.sorted) do
+        push(pebble.node_key)
+    end
+    local queue_pos = 1
+    while queue_pos <= #queue do
+        local node_key = queue[queue_pos]
+        queue_pos = queue_pos + 1
+        is_queued[node_key] = nil
+        if update(node_key) then
+            for dep, _ in pairs(graph.nodes[node_key].dep) do
+                push(graph.edges[dep].stop)
+            end
+        end
+    end
+
+    return {
+        needed = needed,
+        intersect = intersect,
+        -- Set string --> room --> true
+        decode = function(set)
+            local decoded = {}
+            for i = 1, #rooms do
+                if string.sub(set, i, i) == "1" then
+                    decoded[rooms[i]] = true
+                end
+            end
+            return decoded
+        end,
+    }
+end
+
+-- For every pebble of a sort without complex contexts, the rooms it can't be reached without (see compute_rooms_needed)
+-- Returns a function (node_key, context) --> { room --> true }, which gives nil for a pebble that can't be reached at all
+top.rooms_needed = function(graph)
+    local info = compute_rooms_needed(graph)
+    return function(node_key, context)
+        local set = (info.needed[node_key] or {})[context]
+        if set == nil then
+            return nil
+        end
+        return info.decode(set)
+    end
+end
+
+-- Keys of a set, sorted, for logging
+local function sorted_keys(set)
+    local keys = {}
+    for set_key, _ in pairs(set) do
+        table.insert(keys, set_key)
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- Home sets: a room's home set is the rooms its discoverers (see top.is_discoverer) can't be reached without, like Nauvis and space platforms for Vulcanus
+-- Those rooms have been used by the time the room is discovered, so with home contexts, a tech that can be had using only them is isolatable there once it's discovered (see discover_home_rooms in top.sort)
+-- Returns { ids = list of home set ids, sets = id --> { rooms = room --> true, discovered = room --> true for the rooms it's the home set of }, of = room --> home set id }
+-- Rooms with the same home set share it, and rooms with no reachable discoverer have none
+-- Home sets are meant to come from the vanilla graph, so a sort of a randomized graph should pass the vanilla ones as extra.home_sets
+top.home_sets = function(graph)
+    local info = compute_rooms_needed(graph)
+
+    -- Room --> rooms that all its discoverers need
+    local needs_of_room = {}
+    for node_key, node in pairs(graph.nodes) do
+        if top.is_discoverer(node) and info.needed[node_key] ~= nil then
+            -- A discoverer counts once it's reached in any context
+            local node_needs
+            for _, set in pairs(info.needed[node_key]) do
+                node_needs = info.intersect(node_needs, set)
+            end
+            for _, discovered in pairs(top.discovered_rooms(node)) do
+                if logic.contexts[discovered.room] ~= nil then
+                    -- Any one of a room's discoverers discovers it
+                    needs_of_room[discovered.room] = info.intersect(needs_of_room[discovered.room], node_needs)
+                end
+            end
+        end
+    end
+
+    -- Group rooms with the same home set, and number the sets in a fixed order
+    local rooms_with_needs = {}
+    local needs_list = {}
+    for room, needs in pairs(needs_of_room) do
+        if rooms_with_needs[needs] == nil then
+            rooms_with_needs[needs] = {}
+            table.insert(needs_list, needs)
+        end
+        rooms_with_needs[needs][room] = true
+    end
+    table.sort(needs_list)
+    local home_sets = {
+        ids = {},
+        sets = {},
+        of = {},
+    }
+    for i = 1, #needs_list do
+        local needs = needs_list[i]
+        local home_id = "home" .. tostring(i)
+        table.insert(home_sets.ids, home_id)
+        home_sets.sets[home_id] = {
+            rooms = info.decode(needs),
+            discovered = rooms_with_needs[needs],
+        }
+        for room, _ in pairs(rooms_with_needs[needs]) do
+            home_sets.of[room] = home_id
+        end
+        log("Home set " .. home_id .. " of " .. table.concat(sorted_keys(rooms_with_needs[needs]), ", ") .. ": " .. table.concat(sorted_keys(home_sets.sets[home_id].rooms), ", "))
+    end
+    return home_sets
+end
+
+-- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file
+-- Cached as complex --> home sets (false for none) --> context info
+local context_info_cache = {}
+local function cached_context_info(sort_info)
+    local complex = sort_info.complex == true
+    local home_key = sort_info.home_sets or false
+    context_info_cache[complex] = context_info_cache[complex] or {}
+    if context_info_cache[complex][home_key] == nil then
+        context_info_cache[complex][home_key] = build_context_info(complex, sort_info.home_sets)
+    end
+    return context_info_cache[complex][home_key]
 end
 
 -- Contexts leaving edge.start that would make context arrive at edge.stop, for a sort made by top.sort
 top.edge_source_contexts = function(sort_info, edge, context)
-    return edge_sources(cached_context_info(sort_info.complex == true), edge, context)
+    return edge_sources(cached_context_info(sort_info), edge, context)
 end
 
 -- Contexts leaving node when incoming arrives at it, for a sort made by top.sort
 top.node_transmit = function(sort_info, node, incoming)
-    return node_transmit(cached_context_info(sort_info.complex == true), node, incoming)
+    return node_transmit(cached_context_info(sort_info), node, incoming)
 end
 
 top.sort = function(graph, state, new_conn, extra)
@@ -341,7 +770,17 @@ top.sort = function(graph, state, new_conn, extra)
         end
         complex = state.complex
     end
-    local context_info = build_context_info(complex)
+    -- Home sets for home contexts, or nil for none, which a cached sort also keeps
+    local home_sets
+    if state.complex ~= nil then
+        if extra.home_contexts ~= nil and extra.home_contexts ~= (state.home_sets ~= nil) then
+            error("Cached sort was made with a different home_contexts setting")
+        end
+        home_sets = state.home_sets
+    elseif extra.home_contexts == true then
+        home_sets = extra.home_sets or logic.home_sets or top.home_sets(graph)
+    end
+    local context_info = build_context_info(complex, home_sets)
     -- node_to_context_inds goes node_key --> { context --> index | nil }, where index is when the node_key/context combo was added in sorted, nil if nonexistent
     -- Represents the OUTGOING contexts
     -- To check incoming, check node_to_context_inds on the prerequisite nodes (through the edge, which could change abilities)
@@ -355,6 +794,9 @@ top.sort = function(graph, state, new_conn, extra)
     local open_pos = state.open_pos or {}
     -- Space locations whose discovery has already been handled (complex contexts only)
     local discovered_space_locations = state.discovered_space_locations or {}
+    -- With home contexts instead: rooms discovered so far, and home set id --> techs with a pebble in one of its home contexts (see discover_home_rooms)
+    local home_discovered = state.home_discovered or {}
+    local home_techs = state.home_techs or {}
     -- Don't choose randomly for backwards compatibility with Frodo version
     if not DO_FRODO_FIXES and extra.choose_randomly == false then
         extra.choose_randomly = true
@@ -446,6 +888,44 @@ top.sort = function(graph, state, new_conn, extra)
         end
     end
 
+    -- Gives a tech the isolatable contexts of a room that it doesn't have yet
+    local function add_isolatable_contexts(tech_node, room)
+        local tech_key = key(tech_node)
+        for ability_str, context in pairs(context_info.of[room]) do
+            if has_ability(ability_str, ISOLATABILITY) and node_to_context_inds[tech_key][context] == nil then
+                add_to_open(tech_node, context)
+            end
+        end
+    end
+
+    -- The discovery rule with home contexts, which doesn't depend on order: once a room is discovered, every tech that can be had using only its home set is isolatable there
+    -- This half runs when a discoverer is reached, and add_home_tech when a tech gets a home context, so the rule applies whichever comes first
+    local function discover_home_rooms(discoverer)
+        for _, discovered in pairs(top.discovered_rooms(discoverer)) do
+            local room = discovered.room
+            local home_id = home_sets.of[room]
+            if home_id ~= nil and home_discovered[room] == nil then
+                home_discovered[room] = true
+                for tech_key, _ in pairs(home_techs[home_id] or {}) do
+                    add_isolatable_contexts(graph.nodes[tech_key], room)
+                end
+            end
+        end
+    end
+
+    local function add_home_tech(tech_node, home_id)
+        local tech_key = key(tech_node)
+        home_techs[home_id] = home_techs[home_id] or {}
+        if home_techs[home_id][tech_key] == nil then
+            home_techs[home_id][tech_key] = true
+            for room, _ in pairs(home_sets.sets[home_id].discovered) do
+                if home_discovered[room] ~= nil then
+                    add_isolatable_contexts(tech_node, room)
+                end
+            end
+        end
+    end
+
     -- Now we can add starting nodes in open
     if new_conn == nil then
         for _, node in pairs(gutils.sources(graph)) do
@@ -505,6 +985,8 @@ top.sort = function(graph, state, new_conn, extra)
         remove_from_open(node_key)
         -- Transmit contexts to each dependent
         local node = graph.nodes[node_key]
+        -- Home sets that this node got a home context of
+        local new_home_ids
         for context, _ in pairs(contexts) do
             -- Add this node-context pebble to sorted
             table.insert(sorted, {
@@ -521,10 +1003,28 @@ top.sort = function(graph, state, new_conn, extra)
                     process_depnode(depnode, arriving)
                 end
             end
+
+            local home_id = context_info.home[context]
+            if home_id ~= nil then
+                new_home_ids = new_home_ids or {}
+                new_home_ids[home_id] = true
+            end
         end
 
-        if complex and top.is_discoverer(node) then
-            discover_space_locations(node)
+        -- The discovery rules run after the whole batch, so a context they add isn't one this node is still processing
+        if complex then
+            if home_sets ~= nil then
+                if node.type == "technology" then
+                    for home_id, _ in pairs(new_home_ids or {}) do
+                        add_home_tech(node, home_id)
+                    end
+                end
+                if top.is_discoverer(node) then
+                    discover_home_rooms(node)
+                end
+            elseif top.is_discoverer(node) then
+                discover_space_locations(node)
+            end
         end
     end
 
@@ -538,40 +1038,21 @@ top.sort = function(graph, state, new_conn, extra)
         -- Every context this sort uses, for iterating over in place of logic.contexts
         contexts = context_info.list,
         discovered_space_locations = discovered_space_locations,
+        home_sets = home_sets,
+        home_discovered = home_discovered,
+        home_techs = home_techs,
     }
 end
 
--- For a tech pebble in an isolatable context on a space location that it could have gotten by discovery: the earliest earlier pebble of the tech itself and of a tech unlocking that location, or nil
-local function find_discovery_preinds(graph, node_to_context_inds, tech_node, context, curr_ind)
-    local abilities = top.context_abilities(context)
-    if abilities == nil or not has_ability(abilities, ISOLATABILITY) then
+-- For a tech pebble in an isolatable context that it could have gotten by discovery (see top.discovery_candidates): the earliest earlier pebble of the tech itself and of a discoverer of the room, or nil
+local function find_discovery_preinds(sort_info, room_discoverers, tech_node, context, curr_ind)
+    local candidates = top.discovery_candidates(sort_info, room_discoverers, tech_node, context)
+    if candidates == nil then
         return nil
     end
-    local room = top.context_room(context)
-    local own_ind
-    for _, ind in pairs(node_to_context_inds[key(tech_node)]) do
-        if ind < curr_ind and (own_ind == nil or ind < own_ind) then
-            own_ind = ind
-        end
-    end
-    if own_ind == nil then
-        return nil
-    end
-    local discoverer_ind
-    for node_key, node in pairs(graph.nodes) do
-        if top.is_discoverer(node) then
-            for _, discovered in pairs(top.discovered_rooms(node)) do
-                if discovered.room == room then
-                    for _, ind in pairs(node_to_context_inds[node_key]) do
-                        if ind < curr_ind and (discoverer_ind == nil or ind < discoverer_ind) then
-                            discoverer_ind = ind
-                        end
-                    end
-                end
-            end
-        end
-    end
-    if discoverer_ind == nil then
+    local own_ind = candidates.own[1]
+    local discoverer_ind = candidates.discoverers[1]
+    if own_ind == nil or own_ind >= curr_ind or discoverer_ind == nil or discoverer_ind >= curr_ind then
         return nil
     end
     return { own_ind, discoverer_ind }
@@ -583,9 +1064,11 @@ end
 top.path = function(graph, goal_inds, sort_info, extra_params)
     local sorted = sort_info.sorted
     local node_to_context_inds = sort_info.node_to_context_inds
-    local context_info = build_context_info(sort_info.complex == true)
+    local context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
     extra_params = extra_params or {}
     local stop_if = extra_params.stop_if or function(pebble) return false end
+    -- Only needed for the discovery rule, so found when first used
+    local room_discoverers
 
     local path = goal_inds
     -- Whether an index is in the path yet
@@ -688,10 +1171,11 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
                     end
                 end
             end
-            -- Isolatable contexts of techs can also come from discovering their space location (see discover_space_locations in top.sort)
-            -- Then the path goes through the tech itself in an earlier context and an earlier pebble of a tech that unlocks the location
+            -- Isolatable contexts of techs can also come from discovering their space location (see discover_space_locations and discover_home_rooms in top.sort)
+            -- Then the path goes through the tech itself in an earlier context (a home context of the location with home contexts) and an earlier pebble of a tech that unlocks the location
             if earliest_context_ind == curr_ind and context_info.complex and curr_node.type == "technology" then
-                discovery_preinds = find_discovery_preinds(graph, node_to_context_inds, curr_node, outgoing_context, curr_ind)
+                room_discoverers = room_discoverers or top.room_discoverers(graph)
+                discovery_preinds = find_discovery_preinds(sort_info, room_discoverers, curr_node, outgoing_context, curr_ind)
             end
             -- If nothing was earlier, that's a contradiction
             if earliest_context_ind == curr_ind and discovery_preinds == nil then

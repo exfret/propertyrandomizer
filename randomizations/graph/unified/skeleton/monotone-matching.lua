@@ -10,7 +10,7 @@
 -- Needs only grow and the current matching always passes, so every round ends with a valid matching
 -- The proofs pick one provider per OR (the earliest that works), so an identity is only pinned where the proof actually uses it: another provider that comes first frees it in the next round
 -- The gate is what guarantees the result; the proofs only make the proposals likely to pass
--- The tech discovery rule isn't monotone, so first pass's own gate afterward still checks with a fresh sort and retries if needed
+-- Sorts use home contexts, so the tech discovery rule is monotone too (see context-sort.lua); first pass's own gate afterward still checks with a fresh sort and retries if needed
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
@@ -26,6 +26,7 @@ local function complex_sort(graph)
     return top.sort(graph, nil, nil, {
         choose_randomly = true,
         complex_contexts = true,
+        home_contexts = true,
     })
 end
 
@@ -42,7 +43,7 @@ local function connect(graph, params, assignment)
     return graph
 end
 
--- Hard pebbles: protected mechanic pebbles (see protection.lua), plus each reachable recipe's earliest pebble asking for no abilities (which only the gate checks)
+-- Hard pebbles: protected mechanic pebbles (see protection.lua), plus each reachable recipe's earliest pebble asking for no abilities and not in a home context (which only the gate checks)
 local function hard_pebbles(graph, sort_info)
     local mechanics = {}
     local recipes = {}
@@ -61,7 +62,7 @@ local function hard_pebbles(graph, sort_info)
             local best_context
             local best_ind
             for context, ind in pairs(context_inds) do
-                if string.find(top.context_abilities(context) or "", "1", 1, true) == nil and (best_ind == nil or ind < best_ind) then
+                if string.find(top.context_abilities(context) or "", "1", 1, true) == nil and top.context_home(context) == nil and (best_ind == nil or ind < best_ind) then
                     best_ind = ind
                     best_context = context
                 end
@@ -116,21 +117,8 @@ local function make_prover(graph, sort_info)
     local nci = sort_info.node_to_context_inds
     local memo = {}
 
+    -- Nodes that discover each room (for the discovery rule), found when first needed
     local room_discoverers
-    local function get_room_discoverers(room)
-        if room_discoverers == nil then
-            room_discoverers = {}
-            for node_key, node in pairs(graph.nodes) do
-                if top.is_discoverer(node) then
-                    for _, discovered in pairs(top.discovered_rooms(node)) do
-                        room_discoverers[discovered.room] = room_discoverers[discovered.room] or {}
-                        table.insert(room_discoverers[discovered.room], node_key)
-                    end
-                end
-            end
-        end
-        return room_discoverers[room] or {}
-    end
 
     -- Ranks of the pebbles of an edge's start that get context through the edge, earliest first
     local function pre_inds(edge_key, context)
@@ -241,21 +229,21 @@ local function make_prover(graph, sort_info)
             end
         end
 
-        -- Isolatable tech contexts can also come from the space location discovery rule (the tech in an earlier context plus an earlier discovering tech)
-        local abilities = top.context_abilities(pebble.context)
-        if node.type == "technology" and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+        -- Isolatable tech contexts can also come from the discovery rule (see top.discovery_candidates): an earlier pebble of the tech itself (in a home context of the room's home set) plus an earlier pebble of a discoverer of the room
+        room_discoverers = room_discoverers or top.room_discoverers(graph)
+        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble.context)
+        if candidates ~= nil then
             local own_ind
-            for _, i in pairs(nci[pebble.node_key]) do
-                if i < ind and (own_ind == nil or i < own_ind) and establish(i) then
+            for _, i in pairs(candidates.own) do
+                if i < ind and establish(i) then
                     own_ind = i
+                    break
                 end
             end
             if own_ind ~= nil then
-                for _, discoverer_key in pairs(get_room_discoverers(top.context_room(pebble.context))) do
-                    for _, i in pairs(nci[discoverer_key] or {}) do
-                        if i < ind and establish(i) then
-                            return { own_ind, i }
-                        end
+                for _, i in pairs(candidates.discoverers) do
+                    if i < ind and establish(i) then
+                        return { own_ind, i }
                     end
                 end
             end

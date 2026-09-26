@@ -13,6 +13,13 @@ package.loaded["lib/graph/context-sort"] = {
     context_room = function(context)
         return string.match(context, "^(.-) | ") or context
     end,
+    -- Home contexts are written like "nauvis | 00 @ home1"
+    context_home = function(context)
+        return string.match(context, " @ (.*)$")
+    end,
+    context_without_home = function(context)
+        return string.match(context, "^(.-) @ ") or context
+    end,
 }
 data = {
     raw = {
@@ -146,6 +153,14 @@ test("the global switch protects everything", function()
     assert(protection.protects_isolatability(make_node("balance-starter-ammo", "", nil)))
     assert(protection.kept_part(make_node("item", "fake-science-pack", nil), "nauvis | 11") == "nauvis | 11")
     constants.keep_isolatability = false
+end)
+
+test("home contexts aren't mechanic contexts of their own, even on protected nodes", function()
+    for _, is_flagged in pairs({ true, false }) do
+        local node = make_node("item", "automation-science-pack", is_flagged)
+        assert(not protection.is_hard_mechanic_pebble(node, "nauvis | 00 @ home1"))
+        assert(protection.kept_part(node, "nauvis | 00 @ home1") == protection.kept_part(node, "nauvis | 00"))
+    end
 end)
 
 print(num_passed .. " tests passed")

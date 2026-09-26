@@ -114,9 +114,14 @@ log("Initial reachability check")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 new_logic.build(true)
+-- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
+new_logic.home_sets = top.home_sets(new_logic.graph)
 local init_sort_info = top.sort(new_logic.graph)
 -- With room/ability contexts (isolatability, automatability), for the mechanic context check at the end
-local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, { complex_contexts = true })
+local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
+    complex_contexts = true,
+    home_contexts = true,
+})
 
 ----------------------------------------------------------------------
 -- Setup done!
@@ -321,7 +326,10 @@ do_overrides_postfixes()
 new_logic.build(true)
 local final_sort_info = top.sort(new_logic.graph)
 -- Mechanic context check (randomizations/graph/unified/skeleton/check.lua), over room/ability contexts; logging only
-local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, { complex_contexts = true })
+local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
+    complex_contexts = true,
+    home_contexts = true,
+})
 require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_complex_sort_info, final_complex_sort_info)
 
 local reachable = 0

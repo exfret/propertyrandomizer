@@ -103,11 +103,13 @@ first_pass.execute = function(params)
     local spoofed_graph = table.deepcopy(params.spoofed_graph)
     local subdiv_graph = table.deepcopy(params.subdiv_graph)
 
+    -- Sorts here use home contexts, so the tech discovery rule doesn't depend on order (see context-sort.lua)
     local init_sort
     if not mods["pyalternativeenergy"] then
         init_sort = top.sort(spoofed_graph, nil, nil, {
             choose_randomly = true,
             complex_contexts = true,
+            home_contexts = true,
         })
     else
         -- For py specifically, sort based on sciences now, since tiers are very important in py
@@ -150,6 +152,7 @@ first_pass.execute = function(params)
         init_sort = top.sort(graph_for_init_sort, nil, nil, {
             choose_randomly = true,
             complex_contexts = true,
+            home_contexts = true,
         })
         for i = 1, #packs_in_order - 1 do
             for _, edge_info in pairs(packs_to_deps[packs_in_order[i]]) do
@@ -440,9 +443,10 @@ first_pass.execute = function(params)
     local ordered_sort = top.sort(split_graph, nil, nil, {
         choose_randomly = true,
         complex_contexts = true,
+        home_contexts = true,
     })
 
-    -- Mechanics must keep every context they had in vanilla; monotone matching assumes monotone logic, which the tech discovery rule isn't, so check it
+    -- Mechanics must keep every context they had in vanilla; monotone matching's proofs only make that likely, so check it
     -- Only the protected part of each context counts (see protection.lua)
     local lost = {}
     local kept_by_node = {}

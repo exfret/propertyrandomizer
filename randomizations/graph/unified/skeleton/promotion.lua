@@ -26,7 +26,7 @@ local function is_ingredient_owner_type(node_type)
     return node_type == "item" or node_type == "fluid-temperature-range"
 end
 
--- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting), complex (use complex room/ability contexts)
+-- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting), complex (use complex room/ability contexts, with home contexts for the discovery rule)
 -- Which mechanic contexts are promised follows protection.lua
 -- With first pass, the split graph must be used: it's the model reflection builds (e.g. item identities swapped), so reasoning over the unsplit graph would be about a different game
 promotion.new = function(params)
@@ -50,9 +50,11 @@ promotion.new = function(params)
         end
     end
     local complex = params.complex == true
+    -- With complex contexts, home contexts give the order-independent discovery rule (see context-sort.lua), using the vanilla home sets
     local sort_info = top.sort(graph, nil, nil, {
         choose_randomly = true,
         complex_contexts = complex,
+        home_contexts = complex,
     })
     local sorted = sort_info.sorted
     local nci = sort_info.node_to_context_inds
@@ -267,22 +269,8 @@ promotion.new = function(params)
         return pres
     end
 
-    -- Technologies that unlock each room's space location (for the isolatability discovery rule in context-sort.lua)
+    -- Nodes that discover each room (for the isolatability discovery rule in context-sort.lua), found when first needed
     local room_discoverers
-    local function get_room_discoverers(room)
-        if room_discoverers == nil then
-            room_discoverers = {}
-            for node_key, node in pairs(graph.nodes) do
-                if top.is_discoverer(node) then
-                    for _, discovered in pairs(top.discovered_rooms(node)) do
-                        room_discoverers[discovered.room] = room_discoverers[discovered.room] or {}
-                        table.insert(room_discoverers[discovered.room], node_key)
-                    end
-                end
-            end
-        end
-        return room_discoverers[room] or {}
-    end
 
     local establish
 
@@ -350,8 +338,9 @@ promotion.new = function(params)
         -- Try those incoming contexts in order of how early their prereqs are (mirrors top.path)
         local contexts = {}
         for _, context in pairs(sort_info.contexts) do
-            local transmits = not complex
-            if complex then
+            -- Only plain room contexts send every context to forgetters and emitters
+            local transmits = not complex and sort_info.home_sets == nil
+            if not transmits then
                 for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
                     if outgoing == pebble.context then
                         transmits = true
@@ -387,22 +376,21 @@ promotion.new = function(params)
             end
         end
 
-        -- Isolatable contexts on a space location can also come from researching a tech that unlocks it, which makes every tech had so far isolatable there
-        -- The backing is then the tech itself in some other earlier context, plus an earlier pebble of a discovering tech
-        local abilities = top.context_abilities(pebble.context)
-        if complex and node.type == "technology" and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+        -- Isolatable tech contexts can also come from the discovery rule (see top.discovery_candidates): the backing is then an earlier pebble of the tech itself (in a home context of the room's home set) and an earlier pebble of a discoverer of the room
+        room_discoverers = room_discoverers or top.room_discoverers(graph)
+        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble.context)
+        if candidates ~= nil then
             local own_ind
-            for _, i in pairs(nci[pebble.node_key]) do
-                if i < ind and (own_ind == nil or i < own_ind) and establish(i) then
+            for _, i in pairs(candidates.own) do
+                if i < ind and establish(i) then
                     own_ind = i
+                    break
                 end
             end
             if own_ind ~= nil then
-                for _, discoverer_key in pairs(get_room_discoverers(top.context_room(pebble.context))) do
-                    for _, i in pairs(nci[discoverer_key] or {}) do
-                        if i < ind and establish(i) then
-                            return { own_ind, i }
-                        end
+                for _, i in pairs(candidates.discoverers) do
+                    if i < ind and establish(i) then
+                        return { own_ind, i }
                     end
                 end
             end
@@ -428,13 +416,18 @@ promotion.new = function(params)
     end
 
     -- Contexts in the same room asking for strictly fewer abilities (e.g. "room | 00" and "room | 01" for "room | 11")
+    -- A home context also asks for more than the context it rides on (being able to do something with only the home set's rooms means being able to do it at all)
     local function weaker_contexts(context)
-        local abilities = top.context_abilities(context)
-        if abilities == nil then
-            return {}
-        end
-        local room = top.context_room(context)
+        local base = top.context_without_home(context)
         local weaker = {}
+        if base ~= context then
+            table.insert(weaker, base)
+        end
+        local abilities = top.context_abilities(base)
+        if abilities == nil then
+            return weaker
+        end
+        local room = top.context_room(base)
         for _, ability_str in pairs(top.ability_strs) do
             if ability_str ~= abilities then
                 local is_subset = true
@@ -622,9 +615,12 @@ promotion.new = function(params)
         end
     end
 
-    -- Whether context asks for no abilities (always true for plain room contexts)
+    -- Whether context asks for no abilities (always true for plain room contexts), and isn't a home context, which asks for the home set's rooms only
     -- Anything reachable with abilities is also reachable without them, so these are the most useful contexts to keep something reachable in
     local function is_weakest_context(context)
+        if top.context_home(context) ~= nil then
+            return false
+        end
         local abilities = top.context_abilities(context)
         return abilities == nil or string.find(abilities, "1", 1, true) == nil
     end
