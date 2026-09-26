@@ -181,8 +181,10 @@ log("Applying graph-based randomizations")
 
 -- Fix recycling recipes in case modified by unified rando
 randomizations.fix_recycling_recipes()
--- Rebuild tech tree
---randomizations.rebuild_tech_tree()
+-- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild)
+if config.tech_tree_rebuild then
+    randomizations.rebuild_tech_tree()
+end
 
 build_graph.load()
 dep_graph = build_graph.graph
@@ -322,7 +324,9 @@ randomizations.fixes()
 do_overrides_postfixes()
 
 -- Rebuild tech tree post-fixes
---randomizations.rebuild_tech_tree()
+if config.tech_tree_rebuild then
+    randomizations.rebuild_tech_tree()
+end
 
 -- Final check for completability
 

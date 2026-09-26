@@ -59,7 +59,10 @@ function abstract.build(lu, extra_params)
             add_edge("space-location", room.name)
 
             ----------------------------------------
-            add_node("room-launch", "AND", nil, nil, { mechanic = true })
+            add_node("room-launch", "AND", nil, nil, {
+                mechanic = true,
+                keep_planetary_isolatability = true,
+            })
             ----------------------------------------
             -- Can we launch from this specific planet?
             -- Requires: room + launch capability
@@ -71,7 +74,10 @@ function abstract.build(lu, extra_params)
             add_edge("room-create-platform", room_key)
 
             ----------------------------------------
-            add_node("room-create-platform", "AND", nil, room_key, nil, nil, { mechanic = true })
+            add_node("room-create-platform", "AND", nil, room_key, {
+                mechanic = true,
+                keep_planetary_isolatability = true,
+            })
             ----------------------------------------
             -- Can we create an instance of this space surface room via launch?
             -- Requires: starter pack + launch capability + tech unlock
@@ -81,7 +87,10 @@ function abstract.build(lu, extra_params)
             add_edge("launch", "")
 
             ----------------------------------------
-            add_node("room-create-platform-starter-pack", "OR", nil, room_key, { mechanic = true })
+            add_node("room-create-platform-starter-pack", "OR", nil, room_key, {
+                mechanic = true,
+                keep_planetary_isolatability = true,
+            })
             ----------------------------------------
             -- Can we get a starter pack that creates this space surface?
             -- OR over all starter packs for this surface (with weight check)
@@ -165,7 +174,12 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric", "AND", nil, "", { cost = extra_params.power_cost , canonical = "energy-source-electric", mechanic = true })
+    add_node("energy-source-electric", "AND", nil, "", {
+        cost = extra_params.power_cost,
+        canonical = "energy-source-electric",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we power an entity with an electric energy source?
 
@@ -173,7 +187,11 @@ function abstract.build(lu, extra_params)
     add_edge("energy-source-electric-production", "")
 
     ----------------------------------------
-    add_node("energy-source-electric-distribution", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
+    add_node("energy-source-electric-distribution", "OR", nil, "", {
+        canonical = "energy-source-electric",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we distribute power?
 
@@ -197,7 +215,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production", "OR", nil, "", { canonical = "energy-source-electric", mechanic = true })
+    add_node("energy-source-electric-production", "OR", nil, "", {
+        canonical = "energy-source-electric",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we produce power?
 
@@ -218,7 +240,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning", "AND", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
+    add_node("energy-source-electric-production-lightning", "AND", nil, "", {
+        canonical = "energy-source-electric-production-lightning",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we produce power from lightning?
     -- Requires: lightning existence + capture
@@ -227,7 +253,11 @@ function abstract.build(lu, extra_params)
     add_edge("energy-source-electric-production-lightning-capture", "")
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning-existence", "OR", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
+    add_node("energy-source-electric-production-lightning-existence", "OR", nil, "", {
+        canonical = "energy-source-electric-production-lightning",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we see lightning in the air?
     -- Note that this has the same canonical and name as just production-lightning, so it will be blocked with that
@@ -242,7 +272,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("energy-source-electric-production-lightning-capture", "OR", nil, "", { canonical = "energy-source-electric-production-lightning", mechanic = true })
+    add_node("energy-source-electric-production-lightning-capture", "OR", nil, "", {
+        canonical = "energy-source-electric-production-lightning",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we capture lightning?
     -- Also has the same canonical and name as production-lightning, so will be blocked with that
@@ -510,7 +544,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("create-platform", "OR", nil, "", { canonical = "create-platform", mechanic = true })
+    add_node("create-platform", "OR", nil, "", {
+        canonical = "create-platform",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we create any space platform?
 
@@ -521,7 +559,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("rocket-silo", "OR", nil, "", { canonical = "launch", mechanic = true })
+    add_node("rocket-silo", "OR", nil, "", {
+        canonical = "launch",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we use any rocket silo for launching?
 
@@ -532,7 +574,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("cargo-landing-pad", "OR", nil, "", { canonical = "launch", mechanic = true })
+    add_node("cargo-landing-pad", "OR", nil, "", {
+        canonical = "launch",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we operate some cargo landing pad?
 
@@ -541,7 +587,11 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("launch", "AND", nil, "", { canonical = "launch", mechanic = true })
+    add_node("launch", "AND", nil, "", {
+        canonical = "launch",
+        mechanic = true,
+        keep_planetary_isolatability = true,
+    })
     ----------------------------------------
     -- Can we launch something into space?
     -- Requires: planet + rocket silo + cargo landing pad

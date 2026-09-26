@@ -617,7 +617,10 @@ function concrete.build(lu, extra_params)
         -- blacklisted silos don't have edge to abstract rocket-silo node, but they still get a silo node to check that they work
         if entity.type == "rocket-silo" then
             ----------------------------------------
-            add_node("entity-rocket-silo", "AND", nil, nil, { mechanic = true })
+            add_node("entity-rocket-silo", "AND", nil, nil, {
+                mechanic = true,
+                keep_planetary_isolatability = true,
+            })
             ----------------------------------------
             -- Can we use this rocket silo for launching?
             
@@ -1000,7 +1003,10 @@ function concrete.build(lu, extra_params)
             -- If so, that might be something we want to account for (though we have no logic for temperature specific pipes now)
             if temp == fluid.default_temperature and (has_filter_pumps or has_tiles) then
                 ----------------------------------------
-                add_node("fluid-create-offshore-temperature", "OR", nil, fluid_temp_name, { mechanic = true })
+                add_node("fluid-create-offshore-temperature", "OR", nil, fluid_temp_name, {
+                    mechanic = true,
+                    planetary_feature = "oceans",
+                })
                 ----------------------------------------
                 -- Can we pump this fluid using an offshore pump?
                 -- Still counted as a "temperature" node even though this only exists at one temperature point in logic technically
@@ -1513,8 +1519,18 @@ function concrete.build(lu, extra_params)
         local spoofed_cats = lu.vanilla_to_rcats[cat.name]
         if spoofed_cats ~= nil then
             for rcat_name, _ in pairs(spoofed_cats) do
+                -- A category rocket silos craft in (rocket parts) is part of rocket building, which keeps its isolatability through planetary changes (randomizations/planetary)
+                local is_rocket_building = false
+                for crafter_name, _ in pairs(lu.rcat_to_crafters[rcat_name] or {}) do
+                    if dutils.get_prot("entity", crafter_name).type == "rocket-silo" then
+                        is_rocket_building = true
+                    end
+                end
                 ----------------------------------------
-                add_node("recipe-category", "OR", nil, rcat_name, { mechanic = true })
+                add_node("recipe-category", "OR", nil, rcat_name, {
+                    mechanic = true,
+                    keep_planetary_isolatability = is_rocket_building or nil,
+                })
                 ----------------------------------------
                 -- Can we craft recipes in this spoofed category?
 
@@ -1558,7 +1574,10 @@ function concrete.build(lu, extra_params)
         if spoofed_cats ~= nil then
             for mcat_key, _ in pairs(spoofed_cats) do
                 ----------------------------------------
-                add_node("resource-category", "OR", nil, mcat_key, { mechanic = true })
+                add_node("resource-category", "OR", nil, mcat_key, {
+                    mechanic = true,
+                    planetary_feature = "resources",
+                })
                 ----------------------------------------
                 -- Can we mine resources in this category with these fluid requirements?
 

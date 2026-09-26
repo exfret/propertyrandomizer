@@ -68,6 +68,7 @@ config.misc.colors = settings.startup["propertyrandomizer-colors"].value
 
 config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
+config.tech_tree_rebuild = settings.startup["propertyrandomizer-tech-tree-rebuild"].value
 config.planetary_oceans = settings.startup["propertyrandomizer-planetary-oceans"].value
 config.planetary_resources = settings.startup["propertyrandomizer-planetary-resources"].value
 

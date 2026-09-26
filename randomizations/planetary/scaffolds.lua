@@ -373,9 +373,10 @@ end
 
 -- Adds scaffolding for the swap, keeping only what check.required needs; logic is the logic module (lib/logic/init), rebuilt from data.raw for each sort
 -- The fast way takes three sorts: sort without scaffolding to see what the swap breaks, then with every recipe variant to keep only the variants on the witnesses (earliest-provider paths) of what broke.
--- Kept variants whose original was only ever used on that planet become edits of the original instead of duplicates; then one sort checks the result.
--- Returns original recipe name --> kept variant names, and the sort of the result
-scaffolds.execute = function(assignment, oceans, logic, before)
+-- Kept variants whose original was only ever used on that planet become edits of the original instead of duplicates; then, with should_verify, one sort checks the result.
+-- Without should_verify, the result is left for a later sort to check (see planetary.execute).
+-- Returns original recipe name --> kept variant names, and the sort of the result (nil if it wasn't checked)
+scaffolds.execute = function(assignment, oceans, logic, before, should_verify)
     local candidates = scaffolds.candidates(assignment, oceans, before)
     local variants = {}
     -- Every variant each original could have, for the failures to know which variants would count as fixing them
@@ -454,8 +455,7 @@ scaffolds.execute = function(assignment, oceans, logic, before)
         end
     end
 
-    local after = planetary_check.sort(logic)
-    if planetary_check.required(before, after, variants_of(), true) then
+    local function log_kept()
         log("Planetary scaffolds: " .. #kept .. " of " .. #variants .. " recipe variants needed, " .. #edits .. " of them as edits of the original recipe")
         for _, edit in pairs(edits) do
             log("Planetary scaffold on " .. edit.candidate.planet .. ": " .. edit.candidate.original .. " now uses " .. edit.candidate.new_fluid)
@@ -463,6 +463,14 @@ scaffolds.execute = function(assignment, oceans, logic, before)
         for _, candidate in pairs(scaffolds.kept) do
             log("Planetary scaffold kept on " .. candidate.planet .. ": " .. candidate.recipe_name)
         end
+    end
+    if not should_verify then
+        log_kept()
+        return variants_of(), nil
+    end
+    local after = planetary_check.sort(logic)
+    if planetary_check.required(before, after, variants_of(), true) then
+        log_kept()
         return variants_of(), after
     end
 

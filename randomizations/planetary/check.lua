@@ -2,23 +2,40 @@
 -- check.required is what a planetary change must keep:
 --   1. Every recipe that was reachable stays reachable somewhere.
 --   2. Recipes locked to one planet by surface conditions (its science pack, pentapod eggs, soils, the foundry...) keep every context they had there (isolatable and automatable included), as themselves or as a variant.
---   3. Every mechanic keeps its rooms and automatability, and rocket building and electricity also keep their isolatability, except the moved features themselves (offshore fluids), which follow their feature.
+--   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building and electricity also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
 --      Other isolatability (like another planet's science or steam power) may be lost; that's the gameplay change.
+-- Sorts use home contexts (the order-independent discovery rule, see lib/graph/context-sort.lua), like the rest of randomization and its checks.
 -- check.tiles_unchanged makes sure tile collision (so where offshore pumps work) is exactly as before.
 -- check.run is a fuller report: which planets each science pack is isolatable on, and which mechanic contexts moved.
 -- All output goes to the log with the prefix PLANETCHECK
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local check = {}
 
--- Builds the logic from the current data.raw and sorts it with room/ability contexts
+-- Home sets of the game before any planetary change, kept fixed for every later sort (like logic.home_sets for the rest of randomization)
+check.home_sets = nil
+
+-- Builds the logic from the current data.raw and sorts it with room/ability contexts and home contexts
+-- The first sort (of the game before planetary changes) sets the home sets the later ones use
+-- How many sorts planetary changes took, since sorts are most of what they cost (logged by planetary.execute)
+check.num_sorts = 0
+
 check.sort = function(logic)
+    check.num_sorts = check.num_sorts + 1
     logic.build(true)
+    if check.home_sets == nil then
+        check.home_sets = top.home_sets(logic.graph)
+    end
     return {
         graph = logic.graph,
-        sort_info = top.sort(logic.graph, nil, nil, { complex_contexts = true }),
+        sort_info = top.sort(logic.graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = check.home_sets,
+        }),
     }
 end
 
@@ -114,49 +131,9 @@ check.tiles_unchanged = function(old_raw, clone_to_slot)
     return problems
 end
 
--- Mechanics that keep their isolatability through a planetary change: a planet must still build and launch rockets and make electricity from its own resources
-local isolatability_protected = {
-    "^launch",
-    "^room%-launch:",
-    "^create%-platform",
-    "^room%-create%-platform",
-    "^rocket%-silo",
-    "^entity%-rocket%-silo:",
-    "^cargo%-landing%-pad",
-    "^recipe%-category: rocket%-building",
-    "^energy%-source%-electric",
-}
-
-local function protects_isolatability(node_key)
-    for _, pattern in pairs(isolatability_protected) do
-        if string.find(node_key, pattern) ~= nil then
-            return true
-        end
-    end
-    return false
-end
-
--- The context that must still exist for a mechanic pebble: itself if its isolatability is protected, or else its non-isolatable counterpart (anything reachable isolatably is also reachable without isolatability)
-local function kept_context(node_key, context)
-    local abilities = top.context_abilities(context)
-    if abilities == nil or protects_isolatability(node_key) then
-        return context
-    end
-    return top.context_room(context) .. " | 0" .. string.sub(abilities, 2)
-end
-
--- Logic node types (by prefix) whose nodes belong to a feature a planetary stage moves, so their rooms are expected to change
--- Each stage adds its own: ocean swaps move offshore fluids, resource swaps move resource categories (like hard-solid mining)
-check.moved_feature_prefixes = {}
-
-local function is_moved_feature(node)
-    for _, prefix in pairs(check.moved_feature_prefixes) do
-        if string.find(node.type, prefix, 1, true) == 1 then
-            return true
-        end
-    end
-    return false
-end
+-- Features (planetary_feature names declared on logic nodes) that a planetary stage moves, so their nodes' rooms are expected to change
+-- Each stage adds its own: ocean swaps move offshore fluids ("oceans"), and resource swaps move resource categories ("resources")
+check.moved_features = {}
 
 -- Rooms a node's contexts are in, and whether any context in that room is isolatable
 local function rooms_of(contexts)
@@ -204,8 +181,9 @@ check.required_failures = function(before, after, variants_of)
             for _, variant_name in pairs((variants_of or {})[recipe_name] or {}) do
                 table.insert(keys, gutils.key("recipe", variant_name))
             end
+            -- Home contexts only back the discovery rule, so they aren't kept for their own sake (see protection.planetary_kept_context)
             for context, _ in pairs(contexts) do
-                local works = false
+                local works = top.context_home(context) ~= nil
                 for _, key in pairs(keys) do
                     if (after_contexts[key] or {})[context] ~= nil then
                         works = true
@@ -222,13 +200,13 @@ check.required_failures = function(before, after, variants_of)
         end
     end
 
-    -- 3. Mechanics keep their rooms and automatability, and protected ones their isolatability
+    -- 3. Mechanics keep what protection.planetary_kept_context says
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]
-        if node ~= nil and node.mechanic and node.type ~= "orand" and not is_moved_feature(node) then
+        if node ~= nil and node.mechanic and node.type ~= "orand" then
             for context, _ in pairs(contexts) do
-                local kept = kept_context(node_key, context)
-                if (after_contexts[node_key] or {})[kept] == nil then
+                local kept = protection.planetary_kept_context(node, context, check.moved_features)
+                if kept ~= nil and (after_contexts[node_key] or {})[kept] == nil then
                     table.insert(failures, {
                         text = "mechanic " .. node_key .. " @ " .. kept,
                         keys = {
@@ -383,7 +361,7 @@ check.run = function(before, after, is_quiet)
         local node = before.graph.nodes[node_key]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             for context, _ in pairs(contexts) do
-                if (after_contexts[node_key] or {})[context] == nil then
+                if top.context_home(context) == nil and (after_contexts[node_key] or {})[context] == nil then
                     num_lost = num_lost + 1
                     note(node_key, "-", context)
                 end
@@ -394,7 +372,7 @@ check.run = function(before, after, is_quiet)
         local node = after.graph.nodes[node_key]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             for context, _ in pairs(contexts) do
-                if (before_contexts[node_key] or {})[context] == nil then
+                if top.context_home(context) == nil and (before_contexts[node_key] or {})[context] == nil then
                     num_gained = num_gained + 1
                     note(node_key, "+", context)
                 end

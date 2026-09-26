@@ -173,6 +173,35 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
+    -- A recipe the sort above never reached an unlocking tech for (its tech is unreachable, or only unlocked through a count_formula tech) still costs what some tech unlocking it costs, so it doesn't start enabled
+    -- A count_formula unit is copied as is: the rebuilt tech's name doesn't end in a level number, so the formula is taken at level 1 (TechnologyUnit.count_formula)
+    local tech_names = {}
+    for tech_name, _ in pairs(data.raw.technology) do
+        table.insert(tech_names, tech_name)
+    end
+    table.sort(tech_names)
+    for _, tech_name in pairs(tech_names) do
+        local tech = data.raw.technology[tech_name]
+        local num_recipe_unlocks = 0
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type == "unlock-recipe" then
+                num_recipe_unlocks = 1 + num_recipe_unlocks
+            end
+        end
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type == "unlock-recipe" and recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
+                if tech.unit ~= nil then
+                    recipe_to_unit[effect.recipe] = table.deepcopy(tech.unit)
+                    if tech.unit.count ~= nil then
+                        recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * tech.unit.count)
+                    end
+                elseif tech.research_trigger ~= nil then
+                    recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
+                end
+            end
+        end
+    end
+
     -- Remove all tech prereqs so that they are reachable, do a top sort, then use short path
     -- Since we're preserving tech research packs/triggers anyways, just keep those on
     for _, node in pairs(graph.nodes) do
@@ -240,29 +269,48 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
+    -- The recipes the pebble at ind directly needs: the recipes on its witness, not looking past them
+    local function prev_recipes_of(ind)
+        local path_info = top.path(graph, {ind}, no_tech_sort_info, {
+            stop_if = function(pebble)
+                local node = graph.nodes[pebble.node_key]
+                if node.type == "recipe" then
+                    return true
+                end
+            end,
+        })
+        local prev_recipes = {}
+        for other_node_ind, _ in pairs(path_info.in_path) do
+            -- Don't count ind itself
+            if other_node_ind < ind then
+                local other_node_key = no_tech_sort_info.sorted[other_node_ind].node_key
+                local other_node = graph.nodes[other_node_key]
+                if other_node.type == "recipe" then
+                    prev_recipes[other_node.name] = true
+                end
+            end
+        end
+        return prev_recipes
+    end
+
+    -- Techs that unlock a space location (planet discovery), which keep their place in progression instead of getting a random prereq below
+    local function unlocks_space_location(tech)
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type == "unlock-space-location" then
+                return true
+            end
+        end
+        return false
+    end
+
     local recipe_to_prev = {}
+    local space_location_tech_to_prev = {}
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
-            local path_info = top.path(graph, {ind}, no_tech_sort_info, {
-                stop_if = function(pebble)
-                    local node = graph.nodes[pebble.node_key]
-                    if node.type == "recipe" then
-                        return true
-                    end
-                end
-            })
-            recipe_to_prev[node.name] = {}
-            for other_node_ind, _ in pairs(path_info.in_path) do
-                -- Don't count ind itself
-                if other_node_ind < ind then
-                    local other_node_key = no_tech_sort_info.sorted[other_node_ind].node_key
-                    local other_node = graph.nodes[other_node_key]
-                    if other_node.type == "recipe" then
-                        recipe_to_prev[node.name][other_node.name] = true
-                    end
-                end
-            end
+            recipe_to_prev[node.name] = prev_recipes_of(ind)
+        elseif node.type == "technology" and space_location_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and unlocks_space_location(data.raw.technology[node.name]) then
+            space_location_tech_to_prev[node.name] = prev_recipes_of(ind)
         end
     end
 
@@ -317,18 +365,13 @@ randomizations.rebuild_tech_tree = function()
                     },
                 },
             }
+            -- A recipe no tech unlocks at all gets no tech and stays disabled, as it was (enabling it would hand the player something the game never gave)
             if recipe_to_unit[recipe_name] ~= nil then
                 new_tech.unit = recipe_to_unit[recipe_name]
             elseif recipe_to_research_trigger[recipe_name] ~= nil then
                 new_tech.research_trigger = recipe_to_research_trigger[recipe_name]
-            else
-                -- This should only happen if the recipe is gotten first through a tech with count formula, which is kind of dumb, but let's just enable the recipe then
-                recipe.enabled = true
             end
-
-            -- Check if we just enabled recipe (see above), and if so we no longer need the tech
-            -- (Or if it was enabled from the start)
-            if recipe.enabled == false then
+            if new_tech.unit ~= nil or new_tech.research_trigger ~= nil then
                 data:extend({
                     new_tech
                 })
@@ -339,10 +382,23 @@ randomizations.rebuild_tech_tree = function()
     -- Add prereqs back to non-unlock recipes
     for _, tech in pairs(data.raw.technology) do
         if not is_new_tech[tech.name] and tech.name ~= "pyrrhic" then
-            local prereq = data.raw.technology[new_techs_with_unit[math.random(1, #new_techs_with_unit)]]
-            tech.prerequisites = { prereq.name }
-            if tech.unit ~= nil then
-                tech.unit.ingredients = prereq.unit.ingredients
+            if space_location_tech_to_prev[tech.name] ~= nil then
+                -- A planet unlock comes as early as it can be researched: right after the rebuilt techs of the recipes it needs (its science packs), keeping its own science packs
+                -- A random prereq could need the planet itself (like one of its science packs), which would make the planet undiscoverable
+                local prereqs = {}
+                for prev_recipe_name, _ in pairs(space_location_tech_to_prev[tech.name]) do
+                    if data.raw.technology["exfret-rebuilt-" .. prev_recipe_name .. "-suffix"] ~= nil then
+                        table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                    end
+                end
+                table.sort(prereqs)
+                tech.prerequisites = prereqs
+            else
+                local prereq = data.raw.technology[new_techs_with_unit[math.random(1, #new_techs_with_unit)]]
+                tech.prerequisites = { prereq.name }
+                if tech.unit ~= nil then
+                    tech.unit.ingredients = prereq.unit.ingredients
+                end
             end
         end
     end
