@@ -2,20 +2,32 @@
 -- It also checks that every originally reachable recipe is still reachable somewhere
 -- All output goes to the log with the prefix MECHCHECK
 
+local top = require("lib/graph/context-sort")
+local protection = require("randomizations/graph/unified/skeleton/protection")
+
 local check = {}
 
--- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs
+-- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
+-- Only the protected part of each mechanic context counts (see protection.lua)
 check.run = function(graph, init_sort_info, final_sort_info)
     local num_checked = 0
     local lost = {}
     for node_key, init_context_inds in pairs(init_sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
-            local final_context_inds = final_sort_info.node_to_context_inds[node_key] or {}
+            local final_kept = {}
+            for context, _ in pairs(final_sort_info.node_to_context_inds[node_key] or {}) do
+                final_kept[protection.kept_part(node, context)] = true
+            end
+            local is_checked = {}
             for context, _ in pairs(init_context_inds) do
-                num_checked = num_checked + 1
-                if final_context_inds[context] == nil then
-                    table.insert(lost, node_key .. " @ " .. context)
+                local kept = protection.kept_part(node, context)
+                if is_checked[kept] == nil then
+                    is_checked[kept] = true
+                    num_checked = num_checked + 1
+                    if final_kept[kept] == nil then
+                        table.insert(lost, node_key .. " @ " .. kept)
+                    end
                 end
             end
         end
@@ -56,6 +68,27 @@ check.run = function(graph, init_sort_info, final_sort_info)
         for i = 1, math.min(20, #mismatches) do
             log("MECHCHECK promised but missing: " .. mismatches[i].node_key .. " @ " .. mismatches[i].context .. " (model rank " .. mismatches[i].rank .. ")")
         end
+    end
+
+    -- Also report how much unprotected isolatability was kept (informational, not a failure)
+    do
+        local num_isolatable = 0
+        local num_isolatable_lost = 0
+        for node_key, init_context_inds in pairs(init_sort_info.node_to_context_inds) do
+            local node = graph.nodes[node_key]
+            if node ~= nil and node.mechanic and node.type ~= "orand" then
+                local final_context_inds = final_sort_info.node_to_context_inds[node_key] or {}
+                for context, _ in pairs(init_context_inds) do
+                    if protection.is_isolatable_context(context) and not protection.protects_isolatability(node) then
+                        num_isolatable = num_isolatable + 1
+                        if final_context_inds[context] == nil then
+                            num_isolatable_lost = num_isolatable_lost + 1
+                        end
+                    end
+                end
+            end
+        end
+        log("MECHCHECK unprotected isolatable mechanic contexts (not required): " .. num_isolatable .. "; lost " .. num_isolatable_lost)
     end
 
     table.sort(lost)

@@ -8,6 +8,7 @@ local top = require("lib/graph/context-sort")
 -- Needed for recipe icons logic
 local dupe = require("lib/dupe")
 local cutils = require("lib/cost/cost-utils")
+local recycling_sources_lib = require("lib/logic/recycling-sources")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -422,230 +423,94 @@ randomizations.fix_recycling_recipes = function()
     -- Fix recycling recipes
     ----------------------------------------------------------------------
 
-    -- First, some constants
-    local recycling_category_name = "recycling"
+    -- Each vanilla recycling recipe that returns a recipe's ingredients returns that recipe's current item ingredients
+    -- Which recipe it inverts comes from vanilla (lib/logic/recycling-sources.lua), the same mapping promotion uses for derived recycling edges, so the logic model and the final game agree
+    -- Other recycling recipes (like self-recycling) are left as they are
     local type_item = "item"
+    local recycling_sources = recycling_sources_lib.get(old_data_raw.recipe)
 
-    -- Create lookup table for recycling recipes
-    local item_to_recycling_recipe = {}
-    for _, recipe in pairs(data.raw.recipe) do
-        local has_recycling = false
-        for _, category in pairs(recipe.categories or {"crafting"}) do
-            if category == recycling_category_name then
-                has_recycling = true
-            end
-        end
-        if has_recycling and recipe.ingredients ~= nil and #recipe.ingredients == 1 then
-            item_to_recycling_recipe[recipe.ingredients[1].name] = recipe
-        end
+    local recycling_names = {}
+    for recycling_name, _ in pairs(recycling_sources) do
+        table.insert(recycling_names, recycling_name)
     end
+    table.sort(recycling_names)
 
-    -- A little helper function
-    --[[local amount_expected_value = function (product_or_ingredient)
-        local expected_value = product_or_ingredient.amount
-        if product_or_ingredient.amount == nil then
-            local amount_max = product_or_ingredient.amount_max
-            if product_or_ingredient.amount_max < product_or_ingredient.amount_min then
-                amount_max = product_or_ingredient.amount_min
-            end
-            expected_value = (product_or_ingredient.amount_min + amount_max) / 2
-        end
-        if product_or_ingredient.extra_count_fraction ~= nil then
-            expected_value = expected_value + product_or_ingredient.extra_count_fraction
-        end
-        if product_or_ingredient.ignored_by_stats ~= nil then
-            expected_value = expected_value - product_or_ingredient.ignored_by_stats
-        end
-        -- CRITICAL TODO: Implement shared probabilities too...
-        if product_or_ingredient.independent_probability ~= nil then
-            expected_value = expected_value * product_or_ingredient.independent_probability
-        end
-        return expected_value
-    end]]
-
-    -- Define some lists to define what recipes recyclers can reverse
-    local reversible_category_blacklist = {
-        ["recycling"] = true,
-        ["smelting"] = true,
-        ["chemistry-or-cryogenics"] = true,
-        ["crushing"] = true,
-        ["metallurgy"] = true,
-        ["organic"] = true,
-        ["cryogenics"] = true,
-    }
-    local reversible_subgroup_blacklist = {
-        ["empty-barrel"] = true,
-    }
-    local reversible_name_blacklist = {
-        ["tungsten-carbide"] = true,
-        ["superconductor"] = true,
-        ["biolab"] = true,
-    }
-    local reversible_name_keyword_blacklist = {
-        "science", "pack"
-    }
-    local reversible_name_exceptions = {
-        ["battery"] = true,
-        ["big-mining-drill"] = true,
-        ["turbo-transport-belt"] = true,
-        ["turbo-underground-belt"] = true,
-        ["turbo-splitter"] = true,
-        ["railgun-turret"] = true,
-        ["railgun"] = true,
-        ["cryogenic-plant"] = true,
-        ["fusion-reactor"] = true,
-        ["fusion-generator"] = true,
-    }
-
-    local default_can_recycle = function(recipe)
-        if reversible_name_exceptions[recipe.name] then return true end
-        if recipe.auto_recycle == false then return false end
-
-        local in_category_blacklist = false
-        for _, category in pairs(recipe.categories or {"crafting"}) do
-            if reversible_category_blacklist[category] then
-                in_category_blacklist = true
-            end
-        end
-
-        if in_category_blacklist then return false end
-        if reversible_subgroup_blacklist[recipe.subgroup] then return false end
-        if reversible_name_blacklist[recipe.name] then return false end
-        local match = true
-        for _, keyword in pairs(reversible_name_keyword_blacklist) do
-            if not string.find(recipe.name, keyword) then
-                match = false
-            end
-        end
-        if match then return false end
-        return true
-    end
-
-    -- Go through all recipes looking for reversible ones to modify recycling recipes based on
-    local reversed_items = {}
-    for _, recipe in pairs(data.raw.recipe) do
-        -- Use rules defined by quality mod to decide if a recipe is worth considering, also exclude recipes without results or ingredients
-        if default_can_recycle(recipe) and recipe.results ~= nil and recipe.ingredients ~= nil then
-            local elegible_recipe = true
-            -- Check the recipe products to see if it's elegible for reversing into a recycling recipe
-            local elegible_results = {}
-            for _, product in pairs(recipe.results) do
-                if product.type == type_item and cutils.find_amount_in_entry(product) > 0 then
-                    elegible_results[#elegible_results+1] = product
-                end
-                -- Recycling recipes don't take fluids as ingredients
-                if product.type ~= type_item and cutils.find_amount_in_entry(product) > 0 then
-                    elegible_recipe = false
+    for _, recycling_name in pairs(recycling_names) do
+        local recycling_recipe = data.raw.recipe[recycling_name]
+        local recipe = data.raw.recipe[recycling_sources[recycling_name]]
+        if recycling_recipe ~= nil and recipe ~= nil and recipe.results ~= nil and recipe.ingredients ~= nil then
+            -- The recipe's item result, for how many recycling returns per craft
+            local product
+            for _, result in pairs(recipe.results) do
+                if result.type == type_item and product == nil then
+                    product = result
                 end
             end
-            local elegible_ingredients = {}
-            -- Check the ingredients to see if any can be the product of recycling
+            -- Every item ingredient is returned, since the logic model counts on each of them (see promotion.lua)
+            local item_ingredients = {}
             for _, ingredient in pairs(recipe.ingredients) do
-                -- Fluid ingredients don't affect anything, so ignore
-                if ingredient.type == type_item
-                and (ingredient.ignored_by_stats == nil or ingredient.ignored_by_stats < ingredient.amount) then
-                    elegible_ingredients[#elegible_ingredients+1] = ingredient
+                if ingredient.type == type_item then
+                    table.insert(item_ingredients, ingredient)
                 end
             end
-            -- Recycling recipes always have 1 ingredient and at least one product
-            if #elegible_results ~= 1 or #elegible_ingredients < 1 then
-                elegible_recipe = false
-            end
-            if elegible_recipe then
-                local product = elegible_results[1]
-                -- Find the corresponding recycling recipe that has this product as ingredient
-                local recycling_recipe = item_to_recycling_recipe[product.name]
-                if recycling_recipe ~= nil then
-                    -- Find out how many products to account for
-                    -- Adjust in case of increased maximum_productivity
-                    local max_productivity_factor = 4
-                    if recipe.maximum_productivity ~= nil then
-                        max_productivity_factor = 1 + recipe.maximum_productivity
-                    end
-                    local max_products = cutils.find_amount_in_entry(product) * max_productivity_factor
-                    local recycling_yield_factor = 1 / max_products
-                    -- Create new set of recycling results
-                    local new_recycling_results = {}
-                    for _, ingredient in pairs(elegible_ingredients) do
-                        local recycle_product_yield = cutils.find_amount_in_entry(ingredient) * recycling_yield_factor
-                        local consistent_amount = math.floor(recycle_product_yield)
-                        local extra_count_fraction = recycle_product_yield - consistent_amount
-                        -- I added this checking for stackability, but then realized it's only really needed if there was an oopsie in the ingredients
-                        -- So, it can probably get taken down at a later date
-                        local ing_as_item
-                        for item_class, _ in pairs(defines.prototypes.item) do
-                            if data.raw[item_class] ~= nil then
-                                if data.raw[item_class][ingredient.name] ~= nil then
-                                    ing_as_item = data.raw[item_class][ingredient.name]
-                                    break
-                                end
+            if product ~= nil and cutils.find_amount_in_entry(product) > 0 and #item_ingredients > 0 then
+                local max_productivity_factor = 4
+                if recipe.maximum_productivity ~= nil then
+                    max_productivity_factor = 1 + recipe.maximum_productivity
+                end
+                local max_products = cutils.find_amount_in_entry(product) * max_productivity_factor
+                local recycling_yield_factor = 1 / max_products
+                local new_recycling_results = {}
+                for _, ingredient in pairs(item_ingredients) do
+                    local recycle_product_yield = cutils.find_amount_in_entry(ingredient) * recycling_yield_factor
+                    local consistent_amount = math.floor(recycle_product_yield)
+                    local extra_count_fraction = recycle_product_yield - consistent_amount
+                    -- I added this checking for stackability, but then realized it's only really needed if there was an oopsie in the ingredients
+                    -- So, it can probably get taken down at a later date
+                    local ing_as_item
+                    for item_class, _ in pairs(defines.prototypes.item) do
+                        if data.raw[item_class] ~= nil then
+                            if data.raw[item_class][ingredient.name] ~= nil then
+                                ing_as_item = data.raw[item_class][ingredient.name]
+                                break
                             end
                         end
-                        local not_stackable = false
-                        if ing_as_item.flags ~= nil then
-                            for _, flag in pairs(ing_as_item.flags) do
-                                if flag == "not-stackable" then
-                                    not_stackable = true
-                                    break
-                                end
+                    end
+                    local not_stackable = false
+                    if ing_as_item.flags ~= nil then
+                        for _, flag in pairs(ing_as_item.flags) do
+                            if flag == "not-stackable" then
+                                not_stackable = true
+                                break
                             end
                         end
-                        if ing_as_item.type == "armor" and ing_as_item.equipment_grid ~= nil then
-                            not_stackable = true
-                        end
-                        local new_recycling_result = {
-                            type = type_item,
-                            name = ingredient.name,
-                        }
-                        if consistent_amount > 0 and not_stackable then
-                            consistent_amount = 1
-                        end
-                        if not_stackable then
-                            extra_count_fraction = 0
-                        end
-                        -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
-                        if consistent_amount < 1 then
-                            new_recycling_result.amount = 1
-                            new_recycling_result.independent_probability = extra_count_fraction
-                        else
-                            new_recycling_result.amount = consistent_amount
-                            new_recycling_result.extra_count_fraction = extra_count_fraction
-                        end
-                        new_recycling_results[#new_recycling_results+1] = new_recycling_result
                     end
-                    recycling_recipe.results = new_recycling_results
-                    -- Also remove main product, because that sometimes needs to be fixed for some reason
-                    recycling_recipe.main_product = nil
-                    -- Remove number from recycling recipe name (removed in 2.1)
-                    --recycling_recipe.show_amount_in_title = false
-                    -- Keep track of what items we have fixed the recycling recipes for
-                    reversed_items[product.name] = true
-                end
-            end
-        end
-    end
-
-    -- Go through all items to look for items that weren't reversible
-    for class_name, _ in pairs(defines.prototypes.item) do
-        if data.raw[class_name] ~= nil then
-            for _, item in pairs(data.raw[class_name]) do
-                if reversed_items[item.name] == nil then
-                    local recycling_recipe = item_to_recycling_recipe[item.name]
-                    if recycling_recipe ~= nil and default_can_recycle(recycling_recipe) then
-                        -- Create new set of recycling results only containing 25% chance of getting the sole ingredient back
-                        recycling_recipe.results = {
-                            {
-                                type = type_item,
-                                name = item.name,
-                                amount = 1,
-                                independent_probability = 1 / 4,
-                                ignored_by_stats = 1,
-                            },
-                        }
-                        -- Also remove main product, because that sometimes needs to be fixed for some reason
-                        recycling_recipe.main_product = nil
+                    if ing_as_item.type == "armor" and ing_as_item.equipment_grid ~= nil then
+                        not_stackable = true
                     end
+                    local new_recycling_result = {
+                        type = type_item,
+                        name = ingredient.name,
+                    }
+                    if consistent_amount > 0 and not_stackable then
+                        consistent_amount = 1
+                    end
+                    if not_stackable then
+                        extra_count_fraction = 0
+                    end
+                    -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
+                    if consistent_amount < 1 then
+                        new_recycling_result.amount = 1
+                        new_recycling_result.independent_probability = extra_count_fraction
+                    else
+                        new_recycling_result.amount = consistent_amount
+                        new_recycling_result.extra_count_fraction = extra_count_fraction
+                    end
+                    new_recycling_results[#new_recycling_results+1] = new_recycling_result
                 end
+                recycling_recipe.results = new_recycling_results
+                -- Also remove main product, because that sometimes needs to be fixed for some reason
+                recycling_recipe.main_product = nil
             end
         end
     end

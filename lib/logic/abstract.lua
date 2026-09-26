@@ -303,7 +303,10 @@ function abstract.build(lu, extra_params)
 
     for set_name, set_packs in pairs(lu.science_sets) do
         ----------------------------------------
-        add_node("science-pack-set-science", "AND", nil, set_name, { mechanic = true })
+        add_node("science-pack-set-science", "AND", nil, set_name, {
+            mechanic = true,
+            keep_isolatability = true,
+        })
         ----------------------------------------
         -- Can we create all these science packs?
 
@@ -312,7 +315,10 @@ function abstract.build(lu, extra_params)
         end
 
         ----------------------------------------
-        add_node("science-pack-set-lab", "OR", nil, set_name, { mechanic = true })
+        add_node("science-pack-set-lab", "OR", nil, set_name, {
+            mechanic = true,
+            keep_isolatability = true,
+        })
         ----------------------------------------
         -- Can we research with this combination of science packs?
         -- OR over labs that can hold all packs in the set.

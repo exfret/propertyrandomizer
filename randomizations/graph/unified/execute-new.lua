@@ -17,6 +17,8 @@ local SWITCH_PLANETS = false
 local REMOVE_TECH_PREREQS = true
 -- Keep mechanic contexts and recipe reachability with promotion (randomizations/graph/unified/skeleton/promotion.lua) for both generic handlers and recipe ingredients, instead of comparing orders in a sort
 local USE_PROMOTION = true
+-- Have promotion keep room/ability contexts (isolatability, automatability), not just rooms
+local PROMOTION_COMPLEX_CONTEXTS = true
 -- Log witness skeleton stats (randomizations/graph/unified/skeleton/stats.lua); measurement only
 local SKELETON_STATS = false
 
@@ -28,10 +30,11 @@ local function log_info(level, info)
     end
 end
 
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 -- Which first pass implementation to use; first-pass-exp.lua is an experimental copy
 local FIRST_PASS_MODULE = "randomizations/graph/unified/first-pass-exp"
@@ -486,6 +489,7 @@ unified.execute = function()
         prom = promotion.new({
             graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
             pool_sort_info = sort_for_pool,
+            complex = PROMOTION_COMPLEX_CONTEXTS,
         })
         local failed = prom.promise_mechanics()
         local num_single_context_recipes = prom.promise_single_context_recipes()
@@ -617,30 +621,9 @@ unified.execute = function()
                     log(head_key)
                     local percentage = math.floor(100 * dep_ind / #sorted_deps)
                     log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
-
-
-
-
-
-
-                    --return false
-
-
-
-
-                    
                 end
             end
         end
-
-        --[[for handler_id, head_list in pairs(handler_to_heads) do
-            handler_id_to_handler[handler_id].custom_prereq_search({
-                split_graph = first_pass_info.graph,
-                slot_to_trav = first_pass_info.slot_to_trav,
-                trav_to_slot = first_pass_info.trav_to_slot,
-                dep = dep,
-            })
-        end]]
     end
     for _, handler in pairs(handlers) do
         if handler.custom_prereq_search ~= false then

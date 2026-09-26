@@ -148,7 +148,10 @@ balance.build = function(lu)
     })
 
     ----------------------------------------
-    add_node("balance-gun-turret", "OR", nil, "", { mechanic = true })
+    add_node("balance-gun-turret", "OR", nil, "", {
+        mechanic = true,
+        keep_isolatability = true,
+    })
     ----------------------------------------
     -- Can we use gun turrets? (Currently just tests base gun turret)
     

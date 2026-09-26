@@ -247,7 +247,7 @@ function concrete.build(lu, extra_params)
             -- Can we build this entity using an item?
             -- Entities that can be planted are counted as being built, though later during randomization we might have to condition on it being a planted or built entity
 
-            add_edge("entity-build-item", nil, { amount = 1 })
+            add_edge("entity-build-architecture")
             -- We could include a cost for special tiles needed here, but we already factor in space costs in the entity-operate
             add_edge("entity-build-tile")
             if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
@@ -278,6 +278,26 @@ function concrete.build(lu, extra_params)
                     end
                 end]]
             end
+
+            ----------------------------------------
+            add_node("entity-build-architecture", "OR")
+            ----------------------------------------
+            -- Can we get the item that builds this entity, counting one-time building costs as free on space platforms?
+
+            add_edge("entity-build-item", nil, { amount = 1 })
+            add_edge("entity-build-architecture-space")
+
+            ----------------------------------------
+            add_node("entity-build-architecture-space", "AND")
+            ----------------------------------------
+            -- Special rule for space platforms: building a machine there is a one-time cost, so it doesn't count against the platform's isolatability even though the item was delivered
+
+            add_edge("entity-build-item", nil, {
+                abilities = { [1] = true },
+                amount = 1,
+            })
+            -- Makes this only apply in space surface contexts
+            add_edge("space-surface", "")
 
             ----------------------------------------
             add_node("entity-build-item", "OR")
@@ -1084,23 +1104,19 @@ function concrete.build(lu, extra_params)
 
     set_class("item")
 
+    local lab_inputs = dutils.lab_inputs()
     for _, item in pairs(lu.items) do
         set_prot(item)
 
-        local is_science_pack = false
-        for _, lab in pairs(data.raw.lab) do
-            for _, input in pairs(lab.inputs) do
-                if input == item.name then
-                    is_science_pack = true
-                end
-            end
-        end
+        local is_science_pack = lab_inputs[item.name] ~= nil
         local should_be_mechanic = is_science_pack or (lu.burnt_result_to_items[item.name] ~= nil) or (lu.rocket_results_to_items[item.name] ~= nil)
 
         ----------------------------------------
         add_node("item", "OR", nil, item.name, {
             item = item.name,
             mechanic = should_be_mechanic,
+            -- Science packs keep their isolatable contexts (see skeleton/protection.lua)
+            keep_isolatability = is_science_pack or nil,
             cost = constants.cost.per_item_cost,
         })
         ----------------------------------------
@@ -1607,7 +1623,10 @@ function concrete.build(lu, extra_params)
         -- This is an AND over space-location-reachable and space nodes to enforce that we're on a surface
 
         add_edge("space-surface", "")
-        add_edge("space-location-reachable", loc.name)
+        -- Special rule for space platforms: flying a platform to a location is a one-time cost, so it doesn't count against the platform's isolatability
+        add_edge("space-location-reachable", loc.name, {
+            abilities = { [1] = true },
+        })
 
         ----------------------------------------
         add_node("space-location-reachable", "OR", true)
@@ -1753,6 +1772,14 @@ function concrete.build(lu, extra_params)
 
     set_class("tile")
 
+    -- Tiles a space platform starter pack lays down (the platform foundation), which every platform has from the start
+    local is_starter_pack_tile = {}
+    for _, starter_pack in pairs(data.raw["space-platform-starter-pack"] or {}) do
+        for _, tile_entry in pairs(starter_pack.tiles or {}) do
+            is_starter_pack_tile[tile_entry.tile] = true
+        end
+    end
+
     for _, tile in pairs(prots("tile")) do
         set_prot(tile)
 
@@ -1768,6 +1795,12 @@ function concrete.build(lu, extra_params)
                     abilities = { [1] = true },
                 })
             end
+        end
+        -- Platform foundation is there on every space platform from the start, so it doesn't break isolatability there even though more of it is delivered
+        if is_starter_pack_tile[tile.name] then
+            add_edge("space-surface", "", {
+                abilities = { [1] = true },
+            })
         end
 
         local buildable = lu.buildables[key(tile)]

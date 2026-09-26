@@ -101,6 +101,17 @@ dutils.recalculate_spoil_burnt_results = function()
     end
 end
 
+-- Science packs: every item some lab accepts, as item name --> true (not anything with "science-pack" in its name)
+dutils.lab_inputs = function()
+    local lab_inputs = {}
+    for _, lab in pairs(data.raw.lab or {}) do
+        for _, input in pairs(lab.inputs or {}) do
+            lab_inputs[input] = true
+        end
+    end
+    return lab_inputs
+end
+
 dutils.is_useless_item = function(item)
     if item.type ~= "item" then
         return false

@@ -82,10 +82,17 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
     end
 end
 
+-- Ingredients the current recipe must keep because promised recycling relies on them (see promotion.lua), as material key --> true
+local current_pins = {}
+
 local function is_unrandomized_ing(ind, is_result_of_this_recipe, recipe)
     -- If this is special in any way, don't randomize
 
     local ing = recipe.ingredients[ind]
+
+    if current_pins[key(ing)] ~= nil then
+        return true
+    end
 
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
@@ -239,6 +246,7 @@ recipe_ingredients.custom_prereq_search = function(params)
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
             log("Processing " .. node.name)
+            current_pins = prom ~= nil and prom.pins_for(dep) or {}
             local required_contexts
             if prom ~= nil then
                 required_contexts = prom.required_contexts(dep)
@@ -516,7 +524,22 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                 if prom ~= nil and #required_contexts > 0 then
                     prom.resolve(dep, new_owner_keys, required_contexts)
+                elseif prom ~= nil then
+                    prom.record_ingredients(dep, new_owner_keys)
                 end
+                -- Pins on fixed prereqs (not randomized edges) are kept anyway
+                for material_key, _ in pairs(current_pins) do
+                    local kept = prom.vanilla_owner(dep, gutils.deconstruct(material_key)) == nil
+                    for _, owner_key in pairs(new_owner_keys) do
+                        if owner_key == material_key then
+                            kept = true
+                        end
+                    end
+                    if not kept then
+                        error("Recipe " .. dep .. " dropped pinned ingredient " .. material_key)
+                    end
+                end
+                current_pins = {}
 
                 do
                     local is_old_ing = {}
@@ -555,6 +578,7 @@ recipe_ingredients.custom_prereq_search = function(params)
 
     log(string.format("RECIPESTATS recipes=%d mean_valid_prereqs=%.1f changed_ings=%d/%d", num_processed, total_valid_prereqs / math.max(num_processed, 1), num_changed_ings, num_ings))
     if prom ~= nil then
+        prom.log_pins()
         local unreachable = prom.anchor_remaining_recipes()
         -- For skeleton/check.lua: what promotion claims will be reachable
         UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()

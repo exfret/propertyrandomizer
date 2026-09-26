@@ -87,7 +87,10 @@ function groups.build(lu)
     end
 
     ----------------------------------------
-    add_node("balance-gun-turret", "OR", nil, "", { mechanic = true })
+    add_node("balance-gun-turret", "OR", nil, "", {
+        mechanic = true,
+        keep_isolatability = true,
+    })
     ----------------------------------------
     -- Can we use a gun turret?
 
@@ -189,7 +192,10 @@ function groups.build(lu)
     end
 
     ----------------------------------------
-    add_node("group-starter-ammo", "OR", nil, "", { mechanic = true })
+    add_node("group-starter-ammo", "OR", nil, "", {
+        mechanic = true,
+        keep_isolatability = true,
+    })
     ----------------------------------------
     -- Can we use ammo that works with a reasonable gun?
     

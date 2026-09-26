@@ -50,6 +50,16 @@ local REPORT_PATH = false
 local REPORT_SIZE_STATS = true
 local REPORT_STARTING_TRAVS = false
 local REPORT_SLOTS_FAILED = false
+-- EXP: Sort with room/ability contexts (isolatability, automatability), so mechanics are ordered and kept per ability too
+local FP_COMPLEX_CONTEXTS = true
+-- EXP: Target every mechanic pebble, not just those on the path to the starting planet's science packs (untargeted ones weren't protected at all)
+local TARGET_ALL_MECHANICS = false
+-- EXP: Choose the whole slot/trav matching at once with monotone matching (skeleton/monotone-matching.lua) instead of the greedy forward fill below
+local MONOTONE_MATCHING = true
+-- EXP: How many rounds of monotone matching to iterate (each starts from the last round's matching)
+local MONOTONE_MATCHING_ROUNDS = 3
+-- EXP: Fail first pass (so the attempt is retried) if its result loses any vanilla mechanic context
+local GATE_MECHANIC_CONTEXTS = true
 
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
@@ -60,8 +70,10 @@ local logic = require("lib/logic/init")
 local lutils = require("lib/logic/logic-utils")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 local first_pass_balance = require("randomizations/graph/unified/first-pass-balance")
+local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
+local protection = require("randomizations/graph/unified/skeleton/protection")
 local test_graph_invariants = require("tests/graph-invariants")
 
 local base_costs = require("lib/cost/material-costs/sa")
@@ -150,7 +162,10 @@ first_pass.execute = function(params)
 
     local init_sort
     if not mods["pyalternativeenergy"] then
-        init_sort = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
+        init_sort = top.sort(spoofed_graph, nil, nil, {
+            choose_randomly = true,
+            complex_contexts = FP_COMPLEX_CONTEXTS,
+        })
     else
         -- For py specifically, sort based on sciences now, since tiers are very important in py
         local packs_in_order = {
@@ -189,7 +204,10 @@ first_pass.execute = function(params)
                 gutils.remove_edge(graph_for_init_sort, dep)
             end
         end
-        init_sort = top.sort(graph_for_init_sort, nil, nil, { choose_randomly = true })
+        init_sort = top.sort(graph_for_init_sort, nil, nil, {
+            choose_randomly = true,
+            complex_contexts = FP_COMPLEX_CONTEXTS,
+        })
         for i = 1, #packs_in_order - 1 do
             for _, edge_info in pairs(packs_to_deps[packs_in_order[i]]) do
                 local false_edge = deps_to_falses[edge_info[3]]
@@ -320,7 +338,7 @@ first_pass.execute = function(params)
     local starting_planet_context = key("planet", constants.starting_planet)
     local goal_inds = {}
     for ind, pebble in pairs(init_sort.sorted) do
-        if is_science_pack[pebble.node_key] and pebble.context == starting_planet_context then
+        if is_science_pack[pebble.node_key] and top.context_room(pebble.context) == starting_planet_context then
             table.insert(goal_inds, ind)
         end
     end
@@ -342,7 +360,7 @@ first_pass.execute = function(params)
     for ind, pebble in pairs(init_sort.sorted) do
         local node = spoofed_graph.nodes[pebble.node_key]
         local pebble_key = pebble.node_key .. " @ " .. pebble.context
-        if (path_info.in_path[ind] or node.important) and node.mechanic and node.type ~= "orand" and not already_included_in_ordered_mechanics[pebble_key] then
+        if (TARGET_ALL_MECHANICS or path_info.in_path[ind] or node.important) and node.mechanic and node.type ~= "orand" and not already_included_in_ordered_mechanics[pebble_key] then
             already_included_in_ordered_mechanics[pebble_key] = true
             table.insert(ordered_mechanics, pebble)
         end
@@ -521,7 +539,11 @@ first_pass.execute = function(params)
     end
 
     local old_split_graph = table.deepcopy(split_graph)
-    local split_sort = top.sort(split_graph, nil, nil, { choose_randomly = true })
+
+    local split_sort = top.sort(split_graph, nil, nil, {
+        choose_randomly = true,
+        complex_contexts = FP_COMPLEX_CONTEXTS,
+    })
 
     ----------------------------------------------------------------------------------------------------
     -- HELPER FUNCTIONS
@@ -544,7 +566,7 @@ first_pass.execute = function(params)
     -- Tests if the graph prenodes of node have a shared context in the *split sort* (regardless of the graph)
     -- Ignores heads (we assume we can make those the right context)
     local function node_prenodes_share_context(graph, node)
-        for context, _ in pairs(logic.contexts) do
+        for _, context in pairs(split_sort.contexts) do
             local has_context = true
             for _, prenode in pairs(gutils.prenodes(graph, node)) do
                 -- Don't involve the dangling connections for trav nodes
@@ -846,9 +868,12 @@ first_pass.execute = function(params)
     -- So, key to position on new, position to key on old
     local mechanics_sets_to_ordered = {}
     local trav_to_mechanics_key = {}
+    -- EXP: A node has a pebble per context, but these lists order nodes, so only count each slot once (at its first pebble)
+    local is_slot_ordered = {}
     for _, pebble in pairs(init_sort.sorted) do
         local node = split_graph.nodes[pebble.node_key]
-        if node.slot then
+        if node.slot and is_slot_ordered[pebble.node_key] == nil then
+            is_slot_ordered[pebble.node_key] = true
             local mechanics_set = trav_to_mechanics[node.old_trav]
             local mechanics_list = {}
             for mechanic, _ in pairs(mechanics_set) do
@@ -1630,7 +1655,39 @@ first_pass.execute = function(params)
         log("\nFirst pass failed at " .. tostring(math.floor(100 * i / #slot_inds)) .. "%\n")
     end
 
-    for i = 1, #slot_inds do
+    -- EXP: Monotone matching picks the whole matching at once, replacing the greedy forward fill below
+    if MONOTONE_MATCHING then
+        local slot_keys = {}
+        for slot_key, _ in pairs(node_in_sorted) do
+            table.insert(slot_keys, slot_key)
+        end
+        table.sort(slot_keys)
+        local assignment = monotone_matching.run({
+            slot_keys = slot_keys,
+            unconnected_graph = old_split_graph,
+            slot_to_base = slot_to_base,
+            trav_to_head = trav_to_head,
+            cost_ok = function(slot, trav)
+                local slot_cost = material_costs.costs[key(slot)]
+                local trav_cost = material_costs.costs[trav.old_slot]
+                if type(slot_cost) ~= type(trav_cost) then
+                    return false
+                end
+                if slot_cost ~= nil then
+                    return math.log(trav_cost) - math.log(slot_cost) <= constants.first_pass_max_cost_log_difference_expensive and math.log(slot_cost) - math.log(trav_cost) <= constants.first_pass_max_cost_log_difference_cheap
+                end
+                return true
+            end,
+            rounds = MONOTONE_MATCHING_ROUNDS,
+        })
+        for _, slot_key in pairs(slot_keys) do
+            slot_to_trav[slot_key] = assignment[slot_key]
+            trav_to_slot[assignment[slot_key]] = slot_key
+            table.insert(new_slot_order, slot_key)
+        end
+    end
+
+    for i = 1, (MONOTONE_MATCHING and 0 or #slot_inds) do
         log(tostring(i) .. " / " .. tostring(#slot_inds))
 
         local found_slot
@@ -1982,18 +2039,48 @@ first_pass.execute = function(params)
     end
 
     -- Need to do a new sort since the reservations can make it out of order
-    local ordered_sort = top.sort(old_split_graph, nil, nil, { choose_randomly = true })
+    local ordered_sort = top.sort(old_split_graph, nil, nil, {
+        choose_randomly = true,
+        complex_contexts = FP_COMPLEX_CONTEXTS,
+    })
     for _, slot_key in pairs(new_slot_order) do
         local slot = old_split_graph.nodes[slot_key]
         local trav = old_split_graph.nodes[slot_to_trav[slot_key]]
         ordered_sort = connect_slot_trav(old_split_graph, ordered_sort, slot, trav)
     end
 
+    -- EXP: Mechanics must keep every context they had in vanilla; first pass's steering doesn't guarantee that, so check it
+    -- Only the protected part of each context counts (see protection.lua)
+    if GATE_MECHANIC_CONTEXTS then
+        local lost = {}
+        local kept_by_node = {}
+        for _, pebble in pairs(ordered_sort.sorted) do
+            -- Protection is declared on the original nodes (split graph travs don't carry it, and aren't mechanics)
+            local node = spoofed_graph.nodes[pebble.node_key] or old_split_graph.nodes[pebble.node_key]
+            kept_by_node[pebble.node_key] = kept_by_node[pebble.node_key] or {}
+            kept_by_node[pebble.node_key][protection.kept_part(node, pebble.context)] = true
+        end
+        for _, pebble in pairs(init_sort.sorted) do
+            local node = spoofed_graph.nodes[pebble.node_key]
+            local kept = protection.kept_part(node, pebble.context)
+            if node.mechanic and node.type ~= "orand" and (kept_by_node[pebble.node_key] or {})[kept] == nil then
+                table.insert(lost, pebble.node_key .. " @ " .. kept)
+            end
+        end
+        if #lost > 0 then
+            log("First pass lost " .. #lost .. " mechanic contexts, e.g. " .. table.concat(lost, ", ", 1, math.min(5, #lost)))
+            return false
+        end
+    end
+
     local mechanics_sets_to_nodes = {}
     local mechanics_sets_to_size = {}
+    -- EXP: Count each trav once (at its first pebble), matching mechanics_sets_to_ordered
+    local is_trav_ordered = {}
     for _, pebble in pairs(ordered_sort.sorted) do
         local node = old_split_graph.nodes[pebble.node_key]
-        if node.trav then
+        if node.trav and is_trav_ordered[pebble.node_key] == nil then
+            is_trav_ordered[pebble.node_key] = true
             local mechanics_set = trav_to_mechanics[key(node)]
             local mechanics_list = {}
             for mechanic, _ in pairs(mechanics_set) do

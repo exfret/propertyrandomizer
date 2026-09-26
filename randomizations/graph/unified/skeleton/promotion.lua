@@ -6,10 +6,17 @@
 -- Promised pebbles are established by construction, so the search stops at them
 -- Promising an unresolved recipe pebble (r, c) promises its vanilla ingredient pebbles in c too (they're in its backing), which keeps r's vanilla ingredients a valid fallback when r is finally resolved
 -- Since ranks strictly decrease along backings, induction on rank shows every promised pebble is reachable at the end
+--
+-- Derived recycling: recycling X returns the current ingredients of the recipe it inverts (lib/logic/recycling-sources.lua, also used by fixes.lua)
+-- So an edge "X-recycling --> item-craft Y" only exists while Y is still an ingredient of that recipe
+-- Promising something that uses such an edge before that recipe is resolved pins Y to it, and recipe randomization keeps pinned ingredients (vanilla ingredients contain every pin, so the fallback still works)
+-- Mechanics that don't need derived recycling are promised first, so pins only come from ones that really do
 
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
+local protection = require("randomizations/graph/unified/skeleton/protection")
+local recycling_sources = require("lib/logic/recycling-sources")
 
 local key = gutils.key
 
@@ -19,7 +26,8 @@ local function is_ingredient_owner_type(node_type)
     return node_type == "item" or node_type == "fluid-temperature-range"
 end
 
--- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting)
+-- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting), complex (use complex room/ability contexts)
+-- Which mechanic contexts are promised follows protection.lua
 -- With first pass, the split graph must be used: it's the model reflection builds (e.g. item identities swapped), so reasoning over the unsplit graph would be about a different game
 promotion.new = function(params)
     local head_to_base = params.head_to_base or {}
@@ -41,7 +49,11 @@ promotion.new = function(params)
             end
         end
     end
-    local sort_info = top.sort(graph, nil, nil, { choose_randomly = true })
+    local complex = params.complex == true
+    local sort_info = top.sort(graph, nil, nil, {
+        choose_randomly = true,
+        complex_contexts = complex,
+    })
     local sorted = sort_info.sorted
     local nci = sort_info.node_to_context_inds
 
@@ -53,7 +65,7 @@ promotion.new = function(params)
         resolved = {},
     }
 
-    -- recipe node key --> { fixed = list of non-ingredient prenode keys, vanilla_owners = list of ingredient owner keys }
+    -- recipe node key --> { fixed = list of non-ingredient prereqs ({ key, edge }), vanilla_owners = list of ingredient owner keys }
     -- Ingredient heads are the subdivided item/fluid --> recipe edges; they are cut in the random graph
     local recipe_info = {}
     local function get_recipe_info(recipe_key)
@@ -63,7 +75,8 @@ promotion.new = function(params)
                 vanilla_owners = {},
                 vanilla_owner_by_material = {},
             }
-            for _, prenode in pairs(gutils.prenodes(graph, graph.nodes[recipe_key])) do
+            for pre, _ in pairs(graph.nodes[recipe_key].pre) do
+                local prenode = gutils.prenode(graph, pre)
                 local owner
                 if prenode.type == "head" and prenode.old_base ~= nil then
                     local base = graph.nodes[prenode.old_base]
@@ -82,12 +95,107 @@ promotion.new = function(params)
                     end
                     info.vanilla_owner_by_material[material_key] = key(owner)
                 else
-                    table.insert(info.fixed, key(prenode))
+                    table.insert(info.fixed, {
+                        key = key(prenode),
+                        edge_key = pre,
+                    })
                 end
             end
             recipe_info[recipe_key] = info
         end
         return recipe_info[recipe_key]
+    end
+
+    -- Derived recycling edges, as orand key --> { source = key of the inverted recipe R, material = key of the returned item Y, recycling = key of the recycling recipe }
+    local derived_orand = {}
+    -- recipe key --> set of keys of the recycling recipes that invert it
+    local recycling_of = {}
+    local num_derived_edges = 0
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "orand" then
+            local child_key = graph.orand_to_child[node_key]
+            local parent_key = graph.orand_to_parent[node_key]
+            local child = child_key ~= nil and graph.nodes[child_key] or nil
+            local parent = parent_key ~= nil and graph.nodes[parent_key] or nil
+            if child ~= nil and parent ~= nil and child.type == "recipe" and parent.type == "item-craft" then
+                local source_name = recycling_sources.get(old_data_raw.recipe)[child.name]
+                local source_key = source_name ~= nil and key("recipe", source_name) or nil
+                if source_key ~= nil and graph.nodes[source_key] ~= nil then
+                    derived_orand[node_key] = {
+                        source = source_key,
+                        material = key("item", parent.name),
+                        recycling = child_key,
+                    }
+                    recycling_of[source_key] = recycling_of[source_key] or {}
+                    recycling_of[source_key][child_key] = true
+                    num_derived_edges = num_derived_edges + 1
+                end
+            end
+        end
+    end
+    log("Promotion: " .. num_derived_edges .. " derived recycling edges")
+
+    -- recipe key --> material key --> true: ingredients a recipe must keep because a promise relies on its recycling returning them
+    local pins = {}
+    local num_pins = 0
+    -- item-craft key --> list of recycling recipe keys that return it only because of a resolved recipe's new ingredients
+    local new_providers = {}
+    -- Turned off while promising mechanics that don't need derived recycling
+    local allow_derived = true
+
+    local function recipe_has_material(recipe_key, material_key)
+        local owners = state.resolved[recipe_key]
+        if owners == nil then
+            return true
+        end
+        for _, owner_key in pairs(owners) do
+            if owner_key == material_key then
+                return true
+            end
+        end
+        for _, pre in pairs(get_recipe_info(recipe_key).fixed) do
+            if pre.key == material_key then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- Whether node_key isn't a derived recycling edge that has been lost (or is currently disallowed)
+    local function derived_valid(node_key)
+        local d = derived_orand[node_key]
+        if d == nil then
+            return true
+        end
+        if not allow_derived then
+            return false
+        end
+        return recipe_has_material(d.source, d.material)
+    end
+
+    -- New ingredients of a recipe are now returned by the recycling recipes that invert it
+    local function note_new_ingredients(recipe_key, owner_keys)
+        for recycling_key, _ in pairs(recycling_of[recipe_key] or {}) do
+            for _, owner_key in pairs(owner_keys) do
+                local owner = gutils.deconstruct(owner_key)
+                if owner.type == "item" then
+                    local item_craft_key = key("item-craft", owner.name)
+                    local item_craft = graph.nodes[item_craft_key]
+                    if item_craft ~= nil then
+                        local exists = false
+                        for pre, _ in pairs(item_craft.pre) do
+                            if graph.orand_to_child[graph.edges[pre].start] == recycling_key then
+                                exists = true
+                            end
+                        end
+                        if not exists then
+                            new_providers[item_craft_key] = new_providers[item_craft_key] or {}
+                            table.insert(new_providers[item_craft_key], recycling_key)
+                        end
+                    end
+                end
+            end
+        end
     end
 
     -- Establishability cache; only valid until the next resolve/commit
@@ -98,59 +206,113 @@ promotion.new = function(params)
         support = {}
     end
 
-    local function pre_ind(pre_key, context)
-        local context_inds = nci[pre_key]
+    -- Ranks of the pebbles of prereq pre that get context to its dependent, earliest first
+    -- pre is { key, edge_key }; with complex contexts the edge can add or remove abilities (see top.edge_source_contexts)
+    -- Substituted prereqs (ingredient owners, chosen bases) have no edge_key: those edges never carry abilities
+    local function pre_inds(pre, context)
+        local context_inds = nci[pre.key]
         if context_inds == nil then
-            return nil
+            return {}
         end
-        return context_inds[context]
+        local edge = pre.edge_key ~= nil and graph.edges[pre.edge_key] or nil
+        if not complex or edge == nil or edge.abilities == nil then
+            return { context_inds[context] }
+        end
+        local inds = {}
+        for _, source in pairs(top.edge_source_contexts(sort_info, edge, context)) do
+            if context_inds[source] ~= nil then
+                table.insert(inds, context_inds[source])
+            end
+        end
+        table.sort(inds)
+        return inds
     end
 
-    -- Prereq keys of a node in the current random graph
+    -- Earliest such pebble, or nil
+    local function pre_ind(pre, context)
+        return pre_inds(pre, context)[1]
+    end
+
+    -- Rank of a node's own pebble in context (for substituted prereqs and heads, which have no edge abilities)
+    local function node_ind(node_key, context)
+        return pre_ind({ key = node_key }, context)
+    end
+
+    -- Prereqs ({ key, edge_key }) of a node in the current random graph
     -- Recipe ingredient heads are replaced by ingredient owners (new if resolved, vanilla otherwise)
     -- Other cut heads get the base chosen by their generic handler, or their vanilla base if none was chosen
-    local function get_pre_keys(node)
-        local pre_keys = {}
+    local function get_pres(node)
+        local pres = {}
         if node.type == "recipe" then
             local info = get_recipe_info(key(node))
-            for _, pre_key in pairs(info.fixed) do
-                table.insert(pre_keys, pre_key)
+            for _, pre in pairs(info.fixed) do
+                table.insert(pres, pre)
             end
             for _, owner_key in pairs(state.resolved[key(node)] or info.vanilla_owners) do
-                table.insert(pre_keys, owner_key)
+                table.insert(pres, { key = owner_key })
             end
         elseif node.type == "head" and next(node.pre) == nil then
-            table.insert(pre_keys, head_to_base[key(node)] or node.old_base)
+            table.insert(pres, { key = head_to_base[key(node)] or node.old_base })
         else
-            for _, prenode in pairs(gutils.prenodes(graph, node)) do
-                table.insert(pre_keys, key(prenode))
+            for pre, _ in pairs(node.pre) do
+                table.insert(pres, {
+                    key = graph.edges[pre].start,
+                    edge_key = pre,
+                })
+            end
+            for _, recycling_key in pairs(new_providers[key(node)] or {}) do
+                table.insert(pres, { key = recycling_key })
             end
         end
-        return pre_keys
+        return pres
+    end
+
+    -- Technologies that unlock each room's space location (for the isolatability discovery rule in context-sort.lua)
+    local room_discoverers
+    local function get_room_discoverers(room)
+        if room_discoverers == nil then
+            room_discoverers = {}
+            for node_key, node in pairs(graph.nodes) do
+                if top.is_discoverer(node) then
+                    for _, discovered in pairs(top.discovered_rooms(node)) do
+                        room_discoverers[discovered.room] = room_discoverers[discovered.room] or {}
+                        table.insert(room_discoverers[discovered.room], node_key)
+                    end
+                end
+            end
+        end
+        return room_discoverers[room] or {}
     end
 
     local establish
 
     -- Tries to find a backing for pebble ind among the given prereq keys in the given context
     -- Returns the list of support inds, or nil if there's none (op is "AND" or "OR")
-    local function back_with(ind, pre_keys, op, context)
+    local function back_with(ind, pres, op, context)
         if op == "AND" then
             local inds = {}
-            for _, pre_key in pairs(pre_keys) do
-                local i = pre_ind(pre_key, context)
-                if i == nil or i >= ind or not establish(i) then
+            for _, pre in pairs(pres) do
+                local found
+                for _, i in pairs(pre_inds(pre, context)) do
+                    if i < ind and establish(i) then
+                        found = i
+                        break
+                    end
+                end
+                if found == nil then
                     return nil
                 end
-                table.insert(inds, i)
+                table.insert(inds, found)
             end
             return inds
         else
             -- Earliest provider first, falling back to later providers
             local candidates = {}
-            for _, pre_key in pairs(pre_keys) do
-                local i = pre_ind(pre_key, context)
-                if i ~= nil and i < ind then
-                    table.insert(candidates, i)
+            for _, pre in pairs(pres) do
+                for _, i in pairs(pre_inds(pre, context)) do
+                    if i < ind then
+                        table.insert(candidates, i)
+                    end
                 end
             end
             table.sort(candidates)
@@ -166,10 +328,13 @@ promotion.new = function(params)
     local function compute_support(ind)
         local pebble = sorted[ind]
         local node = graph.nodes[pebble.node_key]
+        if not derived_valid(pebble.node_key) then
+            return nil
+        end
 
-        local pre_keys = get_pre_keys(node)
+        local pres = get_pres(node)
 
-        if #pre_keys == 0 then
+        if #pres == 0 then
             -- Sources: AND with no prereqs is vacuously satisfied, OR with none never is
             if node.op == "AND" then
                 return {}
@@ -178,16 +343,25 @@ promotion.new = function(params)
         end
 
         if logic.type_info[node.type].context == nil then
-            return back_with(ind, pre_keys, node.op, pebble.context)
+            return back_with(ind, pres, node.op, pebble.context)
         end
 
-        -- Forgetters and emitters send their context regardless of incoming context, so any incoming context works
-        -- Try contexts in order of how early their prereqs are (mirrors top.path)
+        -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
+        -- Try those incoming contexts in order of how early their prereqs are (mirrors top.path)
         local contexts = {}
-        for context, _ in pairs(logic.contexts) do
+        for _, context in pairs(sort_info.contexts) do
+            local transmits = not complex
+            if complex then
+                for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
+                    if outgoing == pebble.context then
+                        transmits = true
+                        break
+                    end
+                end
+            end
             local score
-            for _, pre_key in pairs(pre_keys) do
-                local i = pre_ind(pre_key, context)
+            for _, pre in pairs(transmits and pres or {}) do
+                local i = pre_ind(pre, context)
                 if node.op == "AND" then
                     if i == nil then
                         score = nil
@@ -207,9 +381,30 @@ promotion.new = function(params)
         end
         table.sort(contexts, function(a, b) return a.score < b.score end)
         for _, entry in pairs(contexts) do
-            local inds = back_with(ind, pre_keys, node.op, entry.context)
+            local inds = back_with(ind, pres, node.op, entry.context)
             if inds ~= nil then
                 return inds
+            end
+        end
+
+        -- Isolatable contexts on a space location can also come from researching a tech that unlocks it, which makes every tech had so far isolatable there
+        -- The backing is then the tech itself in some other earlier context, plus an earlier pebble of a discovering tech
+        local abilities = top.context_abilities(pebble.context)
+        if complex and node.type == "technology" and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+            local own_ind
+            for _, i in pairs(nci[pebble.node_key]) do
+                if i < ind and (own_ind == nil or i < own_ind) and establish(i) then
+                    own_ind = i
+                end
+            end
+            if own_ind ~= nil then
+                for _, discoverer_key in pairs(get_room_discoverers(top.context_room(pebble.context))) do
+                    for _, i in pairs(nci[discoverer_key] or {}) do
+                        if i < ind and establish(i) then
+                            return { own_ind, i }
+                        end
+                    end
+                end
             end
         end
         return nil
@@ -232,7 +427,32 @@ promotion.new = function(params)
         return memo[ind]
     end
 
+    -- Contexts in the same room asking for strictly fewer abilities (e.g. "room | 00" and "room | 01" for "room | 11")
+    local function weaker_contexts(context)
+        local abilities = top.context_abilities(context)
+        if abilities == nil then
+            return {}
+        end
+        local room = top.context_room(context)
+        local weaker = {}
+        for _, ability_str in pairs(top.ability_strs) do
+            if ability_str ~= abilities then
+                local is_subset = true
+                for i = 1, #ability_str do
+                    if string.sub(ability_str, i, i) == "1" and string.sub(abilities, i, i) ~= "1" then
+                        is_subset = false
+                    end
+                end
+                if is_subset then
+                    table.insert(weaker, top.context_key(room, ability_str))
+                end
+            end
+        end
+        return weaker
+    end
+
     -- Promise ind and its whole (cached) backing
+    -- Promises are downward closed: something promised with some abilities is also promised with fewer (being able to do something isolatably means being able to do it at all), since things that need it may not need those abilities
     local function commit(ind)
         local stack = { ind }
         while #stack > 0 do
@@ -243,8 +463,27 @@ promotion.new = function(params)
                 end
                 state.is_promised[curr] = true
                 state.num_promised = state.num_promised + 1
+                local d = derived_orand[sorted[curr].node_key]
+                if d ~= nil and state.resolved[d.source] == nil then
+                    pins[d.source] = pins[d.source] or {}
+                    if pins[d.source][d.material] == nil then
+                        pins[d.source][d.material] = true
+                        num_pins = num_pins + 1
+                    end
+                end
                 for _, i in pairs(support[curr]) do
                     table.insert(stack, i)
+                end
+                local pebble = sorted[curr]
+                for _, context in pairs(weaker_contexts(pebble.context)) do
+                    local i = nci[pebble.node_key][context]
+                    if i ~= nil and not state.is_promised[i] then
+                        if establish(i) then
+                            table.insert(stack, i)
+                        else
+                            log("Promotion: " .. pebble.node_key .. " @ " .. pebble.context .. " is promised but can't be established @ " .. context)
+                        end
+                    end
                 end
             end
         end
@@ -253,6 +492,17 @@ promotion.new = function(params)
     ----------------------------------------------------------------------------------------------------
     -- Public interface
     ----------------------------------------------------------------------------------------------------
+
+    -- Whether the node has a pebble in the room of pool_context (the pool sort and this sort may use different kinds of contexts)
+    local function has_room(node_key, pool_context)
+        local room = top.context_room(pool_context)
+        for context, _ in pairs(nci[node_key] or {}) do
+            if top.context_room(context) == room then
+                return true
+            end
+        end
+        return false
+    end
 
     -- Promise every mechanic pebble that can currently be established; returns list of pebble inds that couldn't be
     state.promise_mechanics = function()
@@ -263,7 +513,7 @@ promotion.new = function(params)
                 local node = graph.nodes[node_key]
                 if node ~= nil and node.mechanic and node.type ~= "orand" then
                     for context, _ in pairs(context_inds) do
-                        if nci[node_key] == nil or nci[node_key][context] == nil then
+                        if not has_room(node_key, context) then
                             num_lost = num_lost + 1
                             log("Promotion: mechanic context lost before recipe randomization: " .. node_key .. " @ " .. context)
                         end
@@ -282,10 +532,24 @@ promotion.new = function(params)
             end
             state.num_recipes_lost_before = num_recipes_lost
         end
+        local function is_promised_mechanic(pebble)
+            local node = graph.nodes[pebble.node_key]
+            return node ~= nil and node.mechanic and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble.context)
+        end
+        -- First promise everything that doesn't need derived recycling, so pins only come from pebbles that do
+        allow_derived = false
+        clear_cache()
+        for ind, pebble in pairs(sorted) do
+            if is_promised_mechanic(pebble) and establish(ind) then
+                commit(ind)
+            end
+        end
+        allow_derived = true
+        clear_cache()
+        log("Promotion: " .. num_pins .. " pins after promising mechanics without derived recycling")
         local failed = {}
         for ind, pebble in pairs(sorted) do
-            local node = graph.nodes[pebble.node_key]
-            if node ~= nil and node.mechanic and node.type ~= "orand" then
+            if is_promised_mechanic(pebble) then
                 if establish(ind) then
                     commit(ind)
                 else
@@ -307,11 +571,11 @@ promotion.new = function(params)
         for depth = 1, max_depth do
             local pebble = sorted[curr]
             local node = graph.nodes[pebble.node_key]
-            local pre_keys = get_pre_keys(node)
             local strs = {}
             local next_ind
-            for _, pre_key in pairs(pre_keys) do
-                local i = pre_ind(pre_key, pebble.context)
+            for _, pre in pairs(get_pres(node)) do
+                local pre_key = pre.key
+                local i = pre_ind(pre, pebble.context)
                 local status
                 if i == nil then
                     status = "no-pebble"
@@ -339,8 +603,9 @@ promotion.new = function(params)
     local function log_recipe_prereqs(recipe_key)
         for context, recipe_ind in pairs(nci[recipe_key] or {}) do
             local strs = {}
-            for _, pre_key in pairs(get_pre_keys(graph.nodes[recipe_key])) do
-                local i = pre_ind(pre_key, context)
+            for _, pre in pairs(get_pres(graph.nodes[recipe_key])) do
+                local pre_key = pre.key
+                local i = pre_ind(pre, context)
                 local status
                 if i == nil then
                     status = "none"
@@ -357,16 +622,30 @@ promotion.new = function(params)
         end
     end
 
+    -- Whether context asks for no abilities (always true for plain room contexts)
+    -- Anything reachable with abilities is also reachable without them, so these are the most useful contexts to keep something reachable in
+    local function is_weakest_context(context)
+        local abilities = top.context_abilities(context)
+        return abilities == nil or string.find(abilities, "1", 1, true) == nil
+    end
+
     -- Earliest context in which the recipe can currently be established with its current ingredients, or nil
+    -- Contexts that ask for no abilities come first, so anchoring a recipe keeps it (and its products) usable by as much as possible
     local function earliest_establishable_context(recipe_key)
         local entries = {}
         for context, ind in pairs(nci[recipe_key] or {}) do
             table.insert(entries, {
                 context = context,
                 ind = ind,
+                weakest = is_weakest_context(context),
             })
         end
-        table.sort(entries, function(a, b) return a.ind < b.ind end)
+        table.sort(entries, function(a, b)
+            if a.weakest ~= b.weakest then
+                return a.weakest
+            end
+            return a.ind < b.ind
+        end)
         for _, entry in pairs(entries) do
             if establish(entry.ind) then
                 return entry.context
@@ -380,7 +659,7 @@ promotion.new = function(params)
         return next(nci[recipe_key] or {}) ~= nil
     end
 
-    -- Promise every recipe that is reachable in exactly one context, returning how many were promised
+    -- Promise every recipe that is reachable in exactly one room (in its earliest context there asking for no abilities), returning how many were promised
     -- Anchoring recipes lazily keeps flexibility in which context they end up in, but with only one option there's nothing to choose
     -- Waiting would only let earlier choices (e.g. another handler changing something only that context has) cut the recipe off before its turn
     state.promise_single_context_recipes = function()
@@ -388,12 +667,19 @@ promotion.new = function(params)
         for node_key, node in pairs(graph.nodes) do
             if node.type == "recipe" then
                 local only_ind
-                local num_contexts = 0
-                for _, ind in pairs(nci[node_key] or {}) do
-                    num_contexts = num_contexts + 1
-                    only_ind = ind
+                local rooms = {}
+                local num_rooms = 0
+                for context, ind in pairs(nci[node_key] or {}) do
+                    local room = top.context_room(context)
+                    if rooms[room] == nil then
+                        rooms[room] = true
+                        num_rooms = num_rooms + 1
+                    end
+                    if is_weakest_context(context) and (only_ind == nil or ind < only_ind) then
+                        only_ind = ind
+                    end
                 end
-                if num_contexts == 1 and not state.is_promised[only_ind] and establish(only_ind) then
+                if num_rooms == 1 and only_ind ~= nil and not state.is_promised[only_ind] and establish(only_ind) then
                     commit(only_ind)
                     num_promised_recipes = num_promised_recipes + 1
                 end
@@ -429,7 +715,7 @@ promotion.new = function(params)
     state.candidate_ok = function(recipe_key, owner_key, required_contexts)
         assert(#required_contexts > 0, "candidate_ok needs required contexts (from required_contexts) for " .. recipe_key)
         for _, context in pairs(required_contexts) do
-            local i = pre_ind(owner_key, context)
+            local i = node_ind(owner_key, context)
             if i == nil or i >= nci[recipe_key][context] or not establish(i) then
                 return false
             end
@@ -450,9 +736,10 @@ promotion.new = function(params)
     -- Candidates must have passed candidate_ok (or be the vanilla fallback) since the last resolve
     state.resolve = function(recipe_key, owner_keys, required_contexts)
         assert(#required_contexts > 0, "resolve needs required contexts (from required_contexts) for " .. recipe_key)
+        log("Promotion: resolving " .. recipe_key .. " in " .. table.concat(required_contexts, ", "))
         for _, context in pairs(required_contexts) do
             for _, owner_key in pairs(owner_keys) do
-                local i = pre_ind(owner_key, context)
+                local i = node_ind(owner_key, context)
                 if i == nil or i >= nci[recipe_key][context] or not establish(i) then
                     error("Resolving recipe " .. recipe_key .. " with unestablished ingredient " .. owner_key .. " in " .. context)
                 end
@@ -460,6 +747,7 @@ promotion.new = function(params)
             end
         end
         state.resolved[recipe_key] = owner_keys
+        note_new_ingredients(recipe_key, owner_keys)
         clear_cache()
 
         -- Already promised for mechanic contexts; this is what anchors the rest
@@ -474,13 +762,47 @@ promotion.new = function(params)
         clear_cache()
     end
 
+    -- Ingredients the recipe must keep because promised recycling relies on them, as material key --> true
+    state.pins_for = function(recipe_key)
+        return pins[recipe_key] or {}
+    end
+
+    -- Record new ingredients of a recipe randomized without required contexts, which still changes what its recycling returns
+    state.record_ingredients = function(recipe_key, owner_keys)
+        if state.resolved[recipe_key] == nil then
+            state.resolved[recipe_key] = owner_keys
+            note_new_ingredients(recipe_key, owner_keys)
+            clear_cache()
+        end
+    end
+
+    -- Logs every pin
+    state.log_pins = function()
+        local lines = {}
+        local num_recipes = 0
+        for recipe_key, materials in pairs(pins) do
+            local list = {}
+            for material_key, _ in pairs(materials) do
+                table.insert(list, material_key)
+            end
+            table.sort(list)
+            table.insert(lines, recipe_key .. " keeps " .. table.concat(list, ", "))
+            num_recipes = num_recipes + 1
+        end
+        table.sort(lines)
+        log("Promotion: " .. num_pins .. " pinned ingredients on " .. num_recipes .. " recipes (" .. num_derived_edges .. " derived recycling edges)")
+        for _, line in pairs(lines) do
+            log("Promotion: pin " .. line)
+        end
+    end
+
     -- Checks a candidate base for a generic handler head (e.g. energy source --> entity-operate)
     -- The base must be establishable before the head in each required context of the head's dependent (from required_contexts(dep))
     state.head_candidate_ok = function(head_key, base_key, required_contexts)
         assert(#required_contexts > 0, "head_candidate_ok needs required contexts (from required_contexts) for " .. head_key)
         for _, context in pairs(required_contexts) do
-            local i = pre_ind(base_key, context)
-            local head_ind = pre_ind(head_key, context)
+            local i = node_ind(base_key, context)
+            local head_ind = node_ind(head_key, context)
             if i == nil or head_ind == nil or i >= head_ind or not establish(i) then
                 return false
             end
@@ -493,8 +815,8 @@ promotion.new = function(params)
     -- With no required contexts (dependent not reachable anyway), this only repoints the head
     state.resolve_head = function(head_key, base_key, required_contexts)
         for _, context in pairs(required_contexts) do
-            local i = pre_ind(base_key, context)
-            local head_ind = pre_ind(head_key, context)
+            local i = node_ind(base_key, context)
+            local head_ind = node_ind(head_key, context)
             if i == nil or head_ind == nil or i >= head_ind or not establish(i) then
                 error("Resolving head " .. head_key .. " with unestablished base " .. base_key .. " in " .. context)
             end
@@ -518,6 +840,85 @@ promotion.new = function(params)
             end
         end
         clear_cache()
+    end
+
+    -- Keys of the nodes currently feeding node_key in promotion's graph
+    state.pre_keys_of = function(node_key)
+        local pre_keys = {}
+        for pre, _ in pairs(graph.nodes[node_key].pre) do
+            table.insert(pre_keys, graph.edges[pre].start)
+        end
+        return pre_keys
+    end
+
+    -- Try rewiring edges and check that every promised pebble of each rewired node can still be established
+    -- changes is a list of { node_key, remove = list of prereq keys whose edges to node_key are removed, add = prereq key or nil }
+    -- With should_commit, a successful rewire is kept and the new backings are promised; otherwise (or on failure) everything is reverted
+    -- This is for choices that aren't recipe ingredients or generic handler heads, like first pass's slot/trav assignments
+    state.try_rewires = function(changes, should_commit)
+        local removed_edges = {}
+        local added_edges = {}
+        for _, change in pairs(changes) do
+            for _, pre_key in pairs(change.remove or {}) do
+                local edge_key = gutils.ekey({
+                    start = pre_key,
+                    stop = change.node_key,
+                })
+                if graph.edges[edge_key] ~= nil then
+                    table.insert(removed_edges, table.deepcopy(graph.edges[edge_key]))
+                    gutils.remove_edge(graph, edge_key)
+                end
+            end
+            if change.add ~= nil and graph.edges[gutils.ekey({
+                start = change.add,
+                stop = change.node_key,
+            })] == nil then
+                table.insert(added_edges, gutils.ekey(gutils.add_edge(graph, change.add, change.node_key)))
+            end
+        end
+        -- Only pebbles of rewired nodes can have lost their backing (removed edges end at them), so they must find new backings: un-promise them while checking
+        local unpromised = {}
+        for _, change in pairs(changes) do
+            for _, ind in pairs(nci[change.node_key] or {}) do
+                if state.is_promised[ind] then
+                    state.is_promised[ind] = nil
+                    state.num_promised = state.num_promised - 1
+                    table.insert(unpromised, ind)
+                end
+            end
+        end
+        clear_cache()
+
+        local ok = true
+        for _, ind in pairs(unpromised) do
+            if not establish(ind) then
+                ok = false
+                break
+            end
+        end
+
+        if ok and should_commit then
+            for _, ind in pairs(unpromised) do
+                commit(ind)
+            end
+        else
+            for _, ind in pairs(unpromised) do
+                if not state.is_promised[ind] then
+                    state.is_promised[ind] = true
+                    state.num_promised = state.num_promised + 1
+                end
+            end
+        end
+        if not (ok and should_commit) then
+            for _, edge_key in pairs(added_edges) do
+                gutils.remove_edge(graph, edge_key)
+            end
+            for _, edge in pairs(removed_edges) do
+                gutils.add_edge(graph, edge.start, edge.stop, edge)
+            end
+        end
+        clear_cache()
+        return ok
     end
 
     -- Every promised pebble with its rank, in rank order (for checking the model against the final game)

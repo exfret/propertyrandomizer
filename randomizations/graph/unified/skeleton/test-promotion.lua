@@ -44,7 +44,7 @@ local promotion = require("randomizations/graph/unified/skeleton/promotion")
 
 local key = gutils.key
 
-local function build_graph(p_is_mechanic)
+local function build_graph(p_is_mechanic, x_not_automatable)
     local graph = {
         nodes = {},
         edges = {},
@@ -72,7 +72,14 @@ local function build_graph(p_is_mechanic)
         for _, pre in pairs(pres) do
             gutils.add_edge(graph, pre, mine)
         end
-        gutils.add_edge(graph, mine, node("item", name, "OR"))
+        -- Optionally, x can only be gotten in a way that can't be automated (like picking up loot)
+        local extra
+        if name == "x" and x_not_automatable then
+            extra = {
+                abilities = { [2] = false },
+            }
+        end
+        gutils.add_edge(graph, mine, node("item", name, "OR"), extra)
     end
     -- r's ingredient edge from z is subdivided and cut, as in the random graph
     local recipe = node("recipe", "r", "AND")
@@ -140,6 +147,28 @@ test("recipe needed for a mechanic in both contexts only accepts ingredients ava
     assert(#contexts == 2)
     assert(not prom.candidate_ok(r, x, contexts))
     assert(not prom.candidate_ok(r, y, contexts))
+    assert(prom.candidate_ok(r, z, contexts))
+end)
+
+test("with complex contexts, an ingredient that can't be automated can't feed a mechanic that must stay automatable", function()
+    -- Make x reachable in both rooms so only automatability tells x and z apart
+    local graph = build_graph(true, true)
+    gutils.add_edge(graph, key("room", "B"), key("mine", "x"))
+    local prom = promotion.new({
+        graph = graph,
+        complex = true,
+    })
+    local failed = prom.promise_mechanics()
+    assert(#failed == 0)
+    local contexts = prom.required_contexts(r)
+    local has_automatable = false
+    for _, context in pairs(contexts) do
+        if string.sub(context, -1) == "1" then
+            has_automatable = true
+        end
+    end
+    assert(has_automatable)
+    assert(not prom.candidate_ok(r, x, contexts))
     assert(prom.candidate_ok(r, z, contexts))
 end)
 

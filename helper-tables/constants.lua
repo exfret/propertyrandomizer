@@ -92,6 +92,10 @@ local constants = {
     -- These are base e, so something 150x more expensive is rejected, and something 3000x cheaper is rejected
     first_pass_max_cost_log_difference_expensive = 5,
     first_pass_max_cost_log_difference_cheap = 8,
+    -- Whether graph randomization must keep every mechanic isolatable wherever it was (rooms and automatability are always kept)
+    -- When off, only nodes built with keep_isolatability = true (like science packs) keep it
+    -- See randomizations/graph/unified/skeleton/protection.lua for how this is applied
+    keep_isolatability = false,
 
     unified_recipe_ingredients_cost_threshold = 1000,
     unified_recipe_results_dummy_fraction = 1,
