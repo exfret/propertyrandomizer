@@ -1,6 +1,7 @@
 -- Planetary ocean swaps (vanilla Space Age only for now)
 -- Each planet's ocean is a slot: its ocean tiles keep their names, where they generate, collision, which tiles landfill/foundation/ice platforms/soils go on, neighbor rules, pollution absorption, and walking and vehicle speed.
 -- Each planet's family of ocean tiles is a traveler: its look and the fluid offshore pumps get from it.
+-- Ocean tiles drawn as water only get looks drawn as water, so no ocean looks like land.
 -- A permutation moves travelers onto slots by reskinning the slot tiles, so map gen keeps its vanilla shape and every slot keeps its own rules.
 -- Planets whose ocean fluid changed get scaffolding recipes (randomizations/planetary/scaffolds.lua) so their progression still works from local resources.
 
@@ -181,6 +182,11 @@ local traveler_fields = {
     "localised_description",
 }
 
+-- Whether a tile is drawn in the water render layers (TileRenderLayer "water" and "water-overlay", which draw under the ground layers) rather than as ground
+local function drawn_as_water(tile)
+    return tile.layer_group == "water" or tile.layer_group == "water-overlay"
+end
+
 -- Noise names get referenced inside other expressions, so they need underscores (hyphens would parse as subtraction)
 local function noise_name(prefix, tile_name)
     return "propertyrandomizer_ocean_" .. prefix .. "_" .. string.gsub(tile_name, "-", "_")
@@ -237,13 +243,44 @@ oceans.apply = function(assignment)
         end
     end
 
+    -- The traveler tiles whose looks a slot depth shows: the traveler family's tiles of the same depth
+    -- A slot drawn as water only shows looks drawn as water, taken from the family's other depth if needed, so it never looks like land where offshore pumps work (Fulgora's shallow oil is drawn as ground)
+    local function looks_for(slot_planet, depth)
+        local family = oceans.families[assignment[slot_planet]]
+        local slot_is_water = false
+        for _, slot_tile in pairs(oceans.families[slot_planet][depth]) do
+            if drawn_as_water(original[slot_tile]) then
+                slot_is_water = true
+            end
+        end
+        if not slot_is_water then
+            return family[depth]
+        end
+        -- The family's looks drawn as water at these depths, or nil if there are none
+        local function water_looks(look_depths)
+            local looks = {}
+            for _, look_depth in pairs(look_depths) do
+                for _, look in pairs(family[look_depth]) do
+                    if drawn_as_water(original[look]) then
+                        table.insert(looks, look)
+                    end
+                end
+            end
+            if #looks == 0 then
+                return nil
+            end
+            return looks
+        end
+        return water_looks({ depth }) or water_looks(depths) or family[depth]
+    end
+
     -- Slot tile --> the traveler tiles whose looks it shows
     -- Looks are dealt out over the slot tiles; if there are fewer looks than slot tiles, they repeat
     local looks_of = {}
     for _, slot_planet in pairs(oceans.planet_order) do
         for _, depth in pairs(depths) do
             local slots = oceans.families[slot_planet][depth]
-            local looks = oceans.families[assignment[slot_planet]][depth]
+            local looks = looks_for(slot_planet, depth)
             for _, slot_tile in pairs(slots) do
                 looks_of[slot_tile] = {}
             end
