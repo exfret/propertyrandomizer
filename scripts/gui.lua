@@ -105,7 +105,7 @@ local function update_explorer_choice(player_index, explorer_type_choice)
 end
 
 -- Fraction of the screen the main panel takes up in each direction
-local MAIN_PANEL_FRAC = 0.6
+local MAIN_PANEL_FRAC = 0.5
 -- The frame's content padding plus the tab content's padding, left and right (see frame and tabbed_pane in core's style.lua)
 local MAIN_PANEL_PADDING = 8 + 8 + 12 + 12
 

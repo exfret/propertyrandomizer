@@ -31,6 +31,18 @@
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/check-seeds.py\" --hook stop",
                         "timeout": 900
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/hardcoded-names.py\" --hook stop",
+                        "timeout": 120
+                    },
+                    {
+                        "type": "prompt",
+                        "prompt": "You review the final reply of a coding assistant working on a Factorio mod (a randomizer). The user wants the assistant to never assume how Factorio works: every fact about the game must either say where it was verified, or be asked as a question to the user.\n\nHook input (JSON): $ARGUMENTS\n\nReview only `last_assistant_message`. If `stop_hook_active` is true, respond {\"ok\": true} without reviewing.\n\nFlag a statement when it presents a specific fact about Factorio as true and gives no source for it. Game facts include engine rules and limits, Lua API behavior, prototype properties and their defaults, what vanilla (base/Space Age) data contains, which prototype types exist or have some property, and how mechanics interact.\nA source is any of: a link to the Factorio API docs or wiki, a path into the installed game data or API docs (e.g. /Applications/factorio.app/Contents/data/... or doc-html), output of a test or game run from this session, or something the user said.\nDon't flag: statements about this mod's own code, design, logic graph or test results; questions to the user; statements marked unverified that come with a question to the user; basic gameplay facts no player would dispute (iron plates are smelted from iron ore); general programming facts; plans to check something.\n\nIf nothing is flagged, respond {\"ok\": true}.\nOtherwise respond {\"ok\": false, \"reason\": \"...\"} where the reason is: \"Unverified game facts in your reply:\" followed by each flagged statement as a short quote on its own line, then \"Verify each against the Factorio 2.1 docs (lua-api.factorio.com/latest) or the installed game data under /Applications/factorio.app/Contents and cite the source, or ask the user instead of assuming. Then give your corrected reply.\"",
+                        "model": "claude-sonnet-5",
+                        "timeout": 60,
+                        "statusMessage": "Checking the reply for unverified game facts"
                     }
                 ]
             }
@@ -51,6 +63,21 @@
                     {
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/ai-files.py\" --hook pre-bash"
+                    },
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/hardcoded-names.py\" --hook pre-bash",
+                        "timeout": 120
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/hardcoded-names.py\" --hook prompt"
                     }
                 ]
             }
