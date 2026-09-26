@@ -36,9 +36,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
--- Which first pass implementation to use; first-pass-exp.lua is an experimental copy
-local FIRST_PASS_MODULE = "randomizations/graph/unified/first-pass-exp"
-local first_pass = require(FIRST_PASS_MODULE)
+local first_pass = require("randomizations/graph/unified/first-pass-new")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")

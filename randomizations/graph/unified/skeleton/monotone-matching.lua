@@ -27,7 +27,8 @@ local function complex_sort(graph)
     })
 end
 
--- Connect each slot to its assigned trav, the same way first pass's connect_slot_trav does
+-- Connect each slot to its assigned trav: slot base --> trav head, plus trav --> slot for items, since reflection makes them the same physical item (so the slot's consumers also get the trav's identity-based sources, like delivery and spoilage)
+-- The slot_to_base and trav_to_head connectors come from params
 local function connect(graph, params, assignment)
     for slot_key, trav_key in pairs(assignment) do
         local slot = graph.nodes[slot_key]
@@ -192,6 +193,8 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
     end
     return blocked
 end
+
+matching.connect = connect
 
 -- params:
 --   slot_keys: every slot
