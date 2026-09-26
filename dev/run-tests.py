@@ -73,6 +73,7 @@ PAIRWISE_CANDIDATES = 30
 # The user's guidance on failures, as in dev/check-seeds.py and CLAUDE.md
 FAILURE_GUIDANCE = (
     "Some failing seeds and configs are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable."
+    " But a seed whose MECHCHECK verdict FAILED (an unreachable recipe, or a mechanic context lost beyond isolatability) is a softlock, which is never acceptable on any seed: fix the model that allowed it."
     " Don't overfit on making every run pass. Look into a failure when your change could have caused it (compare with --ref HEAD if unsure), and fix it only at its root cause."
     " Don't add hotfixes or special cases to get a run through: a patch that quietly breaks something else is worse than a failing run."
 )

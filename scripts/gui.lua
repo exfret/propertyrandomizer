@@ -27,6 +27,7 @@ local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local common = require("scripts/common")
 local explorer_sorts = require("scripts/explorer-sorts")
+local events = require("scripts/events")
 local customizer = require("scripts/customizer")
 local derandomizer = require("scripts/derandomizer")
 
@@ -171,10 +172,24 @@ local function toggle_randomizer_panel(event)
     local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
     if reachable < total then
         reachability_text = "[color=red]Potential critical softlock found: Only " .. tostring(reachable) .. "/" .. tostring(total) .. " science packs seem reachable.[/color]"
+    elseif prototypes.mod_data["propertyrandomizer-reachability-data"].data["check_ok"] == false then
+        -- The mechanic context check (skeleton/check.lua) found something a player needs lost, like a recipe no longer reachable
+        reachability_text = "[color=red]Potential softlock found: randomization lost something the original game had, so you could get stuck. Consider starting over with another seed (MECHCHECK lines in the log have details).[/color]"
     else
         reachability_text = "[color=green]No critical softlocks discovered. All " .. tostring(total) .. " science packs seem reachable.[/color]"
     end
     local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
+    -- What randomization warned about at startup (randomization_info.warnings, smuggled by data-final-fixes.lua), without the chat-style prefix each one starts with
+    for data, _ in pairs(prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)) do
+        local _, warnings = serpent.load(data)
+        for ind, warning in pairs(warnings or {}) do
+            if type(warning) == "string" then
+                local message = string.gsub(warning, "^%[img=item%.propertyrandomizer%-gear%] %[color=[^%]]*%]exfret's Randomizer:%[/color%] ", "")
+                home_flow.add({type = "label", name = "randomizer-home-flow-startup-warning-" .. ind, caption = "[color=orange]Warning:[/color] " .. message})
+            end
+        end
+        break
+    end
     if settings.startup["propertyrandomizer-seed"].value == 0 then
         local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = "[color=orange]Warning:[/color] You are on the default seed. If this is unintended, see mod settings for customization."})
         local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = "Note that some randomizations like recipes are off by default due to slow load times."})
@@ -217,14 +232,14 @@ local function on_display_changed(event)
         main_frame.force_auto_center()
     end
 end
-script.on_event(defines.events.on_player_display_resolution_changed, on_display_changed)
-script.on_event(defines.events.on_player_display_scale_changed, on_display_changed)
+events.on_event(defines.events.on_player_display_resolution_changed, on_display_changed)
+events.on_event(defines.events.on_player_display_scale_changed, on_display_changed)
 
-script.on_event("randomizer-panel", function(event)
+events.on_event("randomizer-panel", function(event)
     toggle_randomizer_panel(event)
 end)
 
-script.on_event(defines.events.on_gui_selection_state_changed, function(event)
+events.on_event(defines.events.on_gui_selection_state_changed, function(event)
     customizer.update_selector(event)
     customizer.update_configuration_event(event)
 
@@ -656,7 +671,7 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
     return checkbox
 end
 
-script.on_event(defines.events.on_gui_click, function(event)
+events.on_event(defines.events.on_gui_click, function(event)
     if string.find(event.element.name, "randomizer%-explorer%-description%-name") ~= nil then
         local hor_flow = event.element.parent.parent.parent
         local prot_node = storage.gui_element_to_node[event.player_index][hor_flow.name]
@@ -711,7 +726,7 @@ script.on_event(defines.events.on_gui_click, function(event)
     end
 end)
 
-script.on_event(defines.events.on_gui_closed, function(event)
+events.on_event(defines.events.on_gui_closed, function(event)
     if event.element ~= nil and event.element.name == "randomizer-main-panel" then
         event.element.visible = false
         local player = game.players[event.player_index]
@@ -845,7 +860,7 @@ local function expand_node_dropdown(event, node)
     end
 end
 
-script.on_event(defines.events.on_gui_elem_changed, function(event)
+events.on_event(defines.events.on_gui_elem_changed, function(event)
     local graph = storage.graph
 
     if event.element.name == "randomizer-explorer-prot-choice" then
@@ -927,7 +942,7 @@ script.on_event(defines.events.on_gui_elem_changed, function(event)
     end
 end)
 
-script.on_event(defines.events.on_gui_checked_state_changed, function(event)
+events.on_event(defines.events.on_gui_checked_state_changed, function(event)
     local graph = storage.graph
 
     if string.find(event.element.name, "randomizer%-explorer%-dropdowns") ~= nil then

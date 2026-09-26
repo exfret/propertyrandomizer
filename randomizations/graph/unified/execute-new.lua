@@ -82,6 +82,11 @@ local enabled = {
     ["mining-fluid-required"] = true,
     ["recipe-ingredients"] = true,
 }
+-- Entity randomization (handlers-new/entity.lua) is behind its own startup setting
+if config.entity_randomization then
+    config.unified["entity"] = true
+    enabled["entity"] = true
+end
 
 -- for _, id in pairs(all_handler_ids) do
 for id, _ in pairs(config.unified) do
@@ -278,8 +283,11 @@ unified.execute = function()
         for _, head_key in pairs(dep_to_heads[dep]) do
             local head = pool_graph.nodes[head_key]
             local old_base = pool_graph.nodes[head.old_base]
-            gutils.add_edge(pool_graph, old_base, head)
-            sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
+            -- Heads that start detached have a vanilla base only so their edge could be claimed (see promotion.new)
+            if head.starts_detached == nil then
+                gutils.connect_base_head(pool_graph, head.old_base, head_key, old_base.abilities)
+                sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
+            end
         end
     end
 
@@ -344,6 +352,9 @@ unified.execute = function()
 
         local spoofed_graph_to_pass = table.deepcopy(spoofed_graph)
         local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
+        -- Heads that start detached (like friendly biters') are only there to be claimed, so first pass can't count on them, as the pool graph and promotion don't
+        gutils.detach_starting_heads(spoofed_graph_to_pass)
+        gutils.detach_starting_heads(subdiv_graph_to_pass)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
             --switch_vulcanus_nauvis(spoofed_graph_to_pass)
@@ -488,6 +499,14 @@ unified.execute = function()
             graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
             pool_sort_info = sort_for_pool,
             complex = PROMOTION_COMPLEX_CONTEXTS,
+            -- A head's handler says what connecting a base to it gains or loses (e.g. entity randomization's pairing table)
+            connection_abilities = function(base, head)
+                local handler = head_to_handler[key(head)]
+                if handler == nil then
+                    return base.abilities
+                end
+                return handler.connection_abilities(base, head)
+            end,
         })
         local failed = prom.promise_mechanics()
         local num_single_context_recipes = prom.promise_single_context_recipes()
@@ -653,11 +672,20 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     changes = {}
-    if handlers["recipe-ingredients-first-pass"] ~= nil then
-        handlers["recipe-ingredients-first-pass"].reflect(random_graph, head_to_base, head_to_handler)
+    -- Entity randomization reflects before item randomization, which copies item names and icons into recipes (see handlers.md)
+    local reflect_first = {
+        "recipe-ingredients-first-pass",
+        "entity",
+    }
+    local reflects_first = {}
+    for _, handler_id in pairs(reflect_first) do
+        reflects_first[handler_id] = true
+        if handlers[handler_id] ~= nil then
+            handlers[handler_id].reflect(random_graph, head_to_base, head_to_handler)
+        end
     end
     for handler_id, handler in pairs(handlers) do
-        if handler_id ~= "recipe-ingredients-first-pass" then
+        if reflects_first[handler_id] == nil then
             handler.reflect(random_graph, head_to_base, head_to_handler)
         end
     end

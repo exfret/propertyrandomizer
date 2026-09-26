@@ -1,6 +1,23 @@
 local locale = require("lib/locale")
+local common = require("randomizations/graph/entity/common")
 
 local unit = {}
+
+-- corpse can be one EntityID or an array of them; returns the first that's actually a corpse prototype, if any
+local function get_corpse(entity)
+    local corpse_names = entity.corpse
+    if type(corpse_names) ~= "table" then
+        corpse_names = {
+            corpse_names,
+        }
+    end
+    for _, corpse_name in pairs(corpse_names) do
+        if data.raw.corpse[corpse_name] ~= nil then
+            return data.raw.corpse[corpse_name]
+        end
+    end
+    return nil
+end
 
 local function extract_sprite_layer(source)
     if source == nil then
@@ -180,7 +197,7 @@ local blacklisted_unit_types = {
 
 unit.validate = function(slot, trav)
     -- Trav must have corpse to validate
-    if trav.corpse == nil then
+    if get_corpse(trav) == nil then
         return false
     end
     if blacklisted_unit_types[trav.type] then
@@ -275,7 +292,7 @@ unit.reflect = function(slot, trav)
     -- TODO/idea: Add red tint to show anger?
     -- TODO/idea: If they die again while pacified, they turn back to enemies
     -- Create new corpse
-    local unit_corpse = table.deepcopy(data.raw.corpse[trav.corpse])
+    local unit_corpse = table.deepcopy(get_corpse(trav))
     unit_corpse.localised_name = {"", locale.find_localised_name(trav), " (Pacified)"}
     unit_corpse.name = unit_corpse.name .. "-exfret-corpse"
     unit_corpse.minable = {
@@ -306,7 +323,7 @@ unit.reflect = function(slot, trav)
         new_place_item.icon = trav.icon
         new_place_item.icon_size = trav.icon_size or 64
     end
-    data.raw[trav.type][trav.name].placeable_by = {item = new_place_item.name, count = 1}
+    common.add_placeable_by(data.raw[trav.type][trav.name], new_place_item.name)
     data:extend({new_place_item})
     data:extend({unit})
 end

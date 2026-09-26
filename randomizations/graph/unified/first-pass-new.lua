@@ -289,7 +289,8 @@ first_pass.execute = function(params)
                 always_on_slot = true
                 keeps_replacement_fuel = true
             end
-            if depnode.type ~= "base" and not always_on_slot then
+            -- Identity bases (entity randomization's build slots, see handlers-new/entity.lua) belong to the item itself, so they move with the trav
+            if (depnode.type ~= "base" or depnode.identity_base ~= nil) and not always_on_slot then
                 fixed_dep[dep] = true
             end
         end

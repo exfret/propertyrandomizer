@@ -92,6 +92,7 @@ local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
 local balance = require(lib_name .. "/logic/balance")
 local balance_mechanics = require(lib_name .. "/logic/balance-mechanics")
+local entity_supply = require(lib_name .. "/logic/entity-supply")
 local compat_bobs = require(lib_name .. "/logic/compat/bobs")
 local compat_krastorio = require(lib_name .. "/logic/compat/krastorio")
 local compat_pyfull = require(lib_name .. "/logic/compat/pyfull")
@@ -189,6 +190,10 @@ logic.build = function(ignore_balance_nodes, extra_params)
         balance.build(lu)
     end
     balance_mechanics.build(lu)
+    -- Entity randomization needs some member of each bulk entity class to stay suppliable automatically
+    if config.entity_randomization then
+        entity_supply.build(lu)
+    end
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

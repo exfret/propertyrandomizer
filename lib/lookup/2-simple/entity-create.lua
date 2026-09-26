@@ -20,6 +20,8 @@ end
 
 -- END repeated header
 
+local acquisition = require("lib/logic/acquisition")
+
 -- Creator tables (which prototypes create which)
 local function get_default_creator_table(prototype)
     return {
@@ -178,7 +180,8 @@ stage.capsule_spawns = function()
     local capsule_spawns = {}
     local capsule_spawns_reverse = {}
 
-    local function add_spawn(item_name, entity_name)
+    -- The reverse table also says whether the entity is ours (see entity-own in lib/logic/concrete.lua), which it is unless every effect creating it makes it an enemy (as_enemy)
+    local function add_spawn(item_name, entity_name, as_enemy)
         if capsule_spawns[item_name] == nil then
             capsule_spawns[item_name] = {}
         end
@@ -187,18 +190,23 @@ stage.capsule_spawns = function()
         if capsule_spawns_reverse[entity_name] == nil then
             capsule_spawns_reverse[entity_name] = {}
         end
-        capsule_spawns_reverse[entity_name][item_name] = true
+        local spawn = capsule_spawns_reverse[entity_name][item_name] or {
+            ours = false,
+        }
+        spawn.ours = spawn.ours or not as_enemy
+        capsule_spawns_reverse[entity_name][item_name] = spawn
     end
 
     for item_name, item in pairs(lu.items) do
         if item.type == "capsule" then
+            -- Only what using the capsule does; entities it spoils into are in spoil_spawns
             local structs = {}
-            tutils.gather_capsule_structs(structs, item, nil)
+            tutils.gather_capsule_use_structs(structs, item, nil)
 
             if structs["trigger-effect"] ~= nil then
                 for _, te in pairs(structs["trigger-effect"]) do
                     if te.type == "create-entity" and te.entity_name ~= nil then
-                        add_spawn(item_name, te.entity_name)
+                        add_spawn(item_name, te.entity_name, te.as_enemy == true)
                     end
                 end
             end
@@ -214,7 +222,8 @@ stage.ammo_spawns = function()
     local ammo_spawns = {}
     local ammo_spawns_reverse = {}
 
-    local function add_spawn(item_name, entity_name)
+    -- The reverse table also says whether the entity is ours (see entity-own in lib/logic/concrete.lua), which it is unless every effect creating it makes it an enemy (as_enemy)
+    local function add_spawn(item_name, entity_name, as_enemy)
         if ammo_spawns[item_name] == nil then
             ammo_spawns[item_name] = {}
         end
@@ -223,13 +232,55 @@ stage.ammo_spawns = function()
         if ammo_spawns_reverse[entity_name] == nil then
             ammo_spawns_reverse[entity_name] = {}
         end
-        ammo_spawns_reverse[entity_name][item_name] = true
+        local spawn = ammo_spawns_reverse[entity_name][item_name] or {
+            ours = false,
+        }
+        spawn.ours = spawn.ours or not as_enemy
+        ammo_spawns_reverse[entity_name][item_name] = spawn
     end
 
     for item_name, item in pairs(lu.items) do
         if item.type == "ammo" then
+            -- Only what firing the ammo does; entities it spoils into are in spoil_spawns
             local structs = {}
-            tutils.gather_ammo_structs(structs, item, nil)
+            tutils.gather_ammo_use_structs(structs, item, nil)
+
+            if structs["trigger-effect"] ~= nil then
+                for _, te in pairs(structs["trigger-effect"]) do
+                    if te.type == "create-entity" and te.entity_name ~= nil then
+                        add_spawn(item_name, te.entity_name, te.as_enemy == true)
+                    end
+                end
+            end
+        end
+    end
+
+    lu.ammo_spawns = ammo_spawns
+    lu.ammo_spawns_reverse = ammo_spawns_reverse
+end
+
+-- Maps items to entities they create when they spoil (spoil_to_trigger_result), like biter eggs hatching
+stage.spoil_spawns = function()
+    local spoil_spawns = {}
+    local spoil_spawns_reverse = {}
+
+    local function add_spawn(item_name, entity_name)
+        if spoil_spawns[item_name] == nil then
+            spoil_spawns[item_name] = {}
+        end
+        spoil_spawns[item_name][entity_name] = true
+
+        if spoil_spawns_reverse[entity_name] == nil then
+            spoil_spawns_reverse[entity_name] = {}
+        end
+        spoil_spawns_reverse[entity_name][item_name] = true
+    end
+
+    for item_name, item in pairs(lu.items) do
+        -- spoil_to_trigger_result is only used if the item spoils at all
+        if item.spoil_to_trigger_result ~= nil and item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
+            local structs = {}
+            tutils.gather_trigger_structs(structs, item.spoil_to_trigger_result.trigger, nil)
 
             if structs["trigger-effect"] ~= nil then
                 for _, te in pairs(structs["trigger-effect"]) do
@@ -241,8 +292,46 @@ stage.ammo_spawns = function()
         end
     end
 
-    lu.ammo_spawns = ammo_spawns
-    lu.ammo_spawns_reverse = ammo_spawns_reverse
+    lu.spoil_spawns = spoil_spawns
+    lu.spoil_spawns_reverse = spoil_spawns_reverse
+end
+
+-- Maps unit spawners to what they spawn (result_units), keyed by the spawned entity's name
+-- Each spawn has its class from lib/logic/acquisition.lua (persistent, transient or late); result_units can name any entity, not just units
+stage.unit_spawns = function()
+    local unit_spawns = {}
+    local unit_spawns_reverse = {}
+
+    -- If a spawner lists the same entity twice, keep the class that spawns it most
+    local class_rank = {
+        late = 1,
+        transient = 2,
+        persistent = 3,
+    }
+
+    for _, spawner in pairs(prots("unit-spawner")) do
+        for _, definition in pairs(spawner.result_units) do
+            local unit_name, points = acquisition.read_spawn_definition(definition)
+            if lu.entities[unit_name] ~= nil then
+                local class = acquisition.spawn_class(points)
+                unit_spawns[spawner.name] = unit_spawns[spawner.name] or {}
+                local old_spawn = unit_spawns[spawner.name][unit_name]
+                if old_spawn == nil or class_rank[class] > class_rank[old_spawn.class] then
+                    local spawn = {
+                        spawner = spawner.name,
+                        unit = unit_name,
+                        class = class,
+                    }
+                    unit_spawns[spawner.name][unit_name] = spawn
+                    unit_spawns_reverse[unit_name] = unit_spawns_reverse[unit_name] or {}
+                    unit_spawns_reverse[unit_name][spawner.name] = spawn
+                end
+            end
+        end
+    end
+
+    lu.unit_spawns = unit_spawns
+    lu.unit_spawns_reverse = unit_spawns_reverse
 end
 
 -- Minable corpses to entities that create them

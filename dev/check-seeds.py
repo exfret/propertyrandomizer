@@ -42,6 +42,7 @@ TIMEOUT_SECONDS = 600
 # The user's guidance on seed failures, repeated in dev/run-tests.py and CLAUDE.md
 FAILURE_GUIDANCE = (
     "Some seeds failing is expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable."
+    " But a seed whose MECHCHECK verdict FAILED (an unreachable recipe, or a mechanic context lost beyond isolatability) is a softlock, which is never acceptable on any seed: fix the model that allowed it."
     " Don't overfit on making every seed pass. Look into a failure when your change could have caused it (compare with a run before your change if unsure), and fix it only at its root cause."
     " Don't add hotfixes or special cases to get a seed through: a patch that quietly breaks something else is worse than a failing seed."
 )

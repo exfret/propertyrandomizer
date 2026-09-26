@@ -455,6 +455,13 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
+    add_node("enemy-evolution", "OR", nil, "", { canonical = "enemy-evolution" })
+    ----------------------------------------
+    -- Can we count on enemies evolving past evolution 0?
+    -- No: evolution can be turned off in map settings, and how fast it rises isn't tied to progression, so this has no prereqs and is never satisfied.
+    -- Spawns that need higher evolution (like big biters) depend on this, so logic never relies on them.
+
+    ----------------------------------------
     add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock", mechanic = true })
     ----------------------------------------
     -- Have we unlocked the ability to mine resources that require fluid?

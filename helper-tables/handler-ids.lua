@@ -9,4 +9,5 @@ return { -- Finished unified randomizations
     --"recipe-ingredients",
     --"item-ingredients",
     --"item",
+    --"entity",
 }

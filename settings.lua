@@ -271,6 +271,20 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-entity",
+        default_value = false,
+        order = "e-k[entity]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-entity-biters",
+        default_value = false,
+        order = "e-ka[entity-biters]",
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-unified-technology-delinearization",
         allowed_values = {

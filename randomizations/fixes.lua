@@ -172,7 +172,6 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
-
     -- A recipe the sort above never reached an unlocking tech for (its tech is unreachable, or only unlocked through a count_formula tech) still costs what some tech unlocking it costs, so it doesn't start enabled
     -- A count_formula unit is copied as is: the rebuilt tech's name doesn't end in a level number, so the formula is taken at level 1 (TechnologyUnit.count_formula)
     local tech_names = {}
@@ -1007,20 +1006,113 @@ end
 randomizations.add_old_versions = function()
     -- old_data_raw_for_derandomization is a global
 
+    -- An item in a copy of data.raw (from), or nil
+    local function item_in(from, item_name)
+        for item_class, _ in pairs(defines.prototypes.item) do
+            local item = (from[item_class] or {})[item_name]
+            if item ~= nil then
+                return item
+            end
+        end
+        return nil
+    end
+
+    -- Whether graph randomization left alone what the item named like an entity places
+    local function placement_unchanged(entity_name)
+        local item = item_in(old_data_raw_for_derandomization, entity_name)
+        if item == nil then
+            return false
+        end
+        local unrandomized_item = item_in(old_data_raw, entity_name)
+        return unrandomized_item ~= nil and item.place_result == unrandomized_item.place_result
+    end
+
+    -- Entity name --> names of the items that place it after graph randomization
+    local placers_of = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        for _, item in pairs(old_data_raw_for_derandomization[item_class] or {}) do
+            if item.place_result ~= nil then
+                placers_of[item.place_result] = placers_of[item.place_result] or {}
+                placers_of[item.place_result][item.name] = true
+            end
+        end
+    end
+
+    -- The item that places an entity after graph randomization (entity randomization can give it to another item), or nil if none does
+    -- Prefers the item the entity names in placeable_by or mines into, since entity randomization points those at the entity's main placer
+    local function current_placer(entity)
+        local placers = placers_of[entity.name] or {}
+        local preferred = {}
+        local placeable_by = entity.placeable_by
+        if placeable_by ~= nil and placeable_by.item ~= nil then
+            placeable_by = {
+                placeable_by,
+            }
+        end
+        for _, item_to_place in pairs(placeable_by or {}) do
+            table.insert(preferred, item_to_place.item)
+        end
+        if entity.minable ~= nil then
+            if entity.minable.result ~= nil then
+                table.insert(preferred, entity.minable.result)
+            end
+            for _, product in pairs(entity.minable.results or {}) do
+                table.insert(preferred, product.name)
+            end
+        end
+        for _, item_name in pairs(preferred) do
+            if placers[item_name] ~= nil then
+                return item_name
+            end
+        end
+        local names = {}
+        for item_name, _ in pairs(placers) do
+            table.insert(names, item_name)
+        end
+        table.sort(names)
+        return names[1]
+    end
+
+    -- The item an entity's old version copies, and the item its recipe turns into the old version, or nil if it has no old version
+    -- Usually both are the item named like the entity
+    -- If entity randomization changed what that item places, the old version copies the item as it was before graph randomization instead, so it doesn't take on the change
+    local function old_version_items(entity)
+        if placement_unchanged(entity.name) then
+            return item_in(old_data_raw_for_derandomization, entity.name), entity.name
+        end
+        local unrandomized_item = item_in(old_data_raw, entity.name)
+        if unrandomized_item == nil then
+            return nil
+        end
+        -- The item placed the entity, which something else places now, so the recipe takes that
+        if unrandomized_item.place_result == entity.name then
+            local placer_name = current_placer(entity)
+            if placer_name == nil then
+                return nil
+            end
+            return unrandomized_item, placer_name
+        end
+        -- The entity was never placed (like a grenade's projectile, whose item places something else now as a spoof placer), so the recipe takes the item as usual
+        return unrandomized_item, entity.name
+    end
+
     -- Add any entity with a crafting recipe of the same name
     for entity_class, _ in pairs(defines.prototypes.entity) do
         for _, entity in pairs(old_data_raw_for_derandomization[entity_class] or {}) do
+            local old_item
+            local placer_name
             if old_data_raw_for_derandomization.recipe[entity.name] ~= nil and old_data_raw_for_derandomization.recipe[entity.name].results ~= nil and #old_data_raw_for_derandomization.recipe[entity.name].results == 1 and old_data_raw.recipe[entity.name].results[1].name == entity.name then
+                old_item, placer_name = old_version_items(entity)
+            end
+            if old_item ~= nil then
                 local copy = table.deepcopy(entity)
                 copy.name = "old-" .. entity.name
                 copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
                 copy.localised_description = "Just like old."
-                local old_item
+                -- Entity randomization can have the entity found in the wild (salvage), but its old version is only ever built
+                copy.autoplace = nil
                 local old_data_item
                 for item_class, _ in pairs(defines.prototypes.item) do
-                    if old_data_raw_for_derandomization[item_class] ~= nil and old_data_raw_for_derandomization[item_class][entity.name] ~= nil then
-                        old_item = old_data_raw_for_derandomization[item_class][entity.name]
-                    end
                     if data.raw[item_class] ~= nil and data.raw[item_class][entity.name] ~= nil then
                         old_data_item = data.raw[item_class][entity.name]
                     end
@@ -1032,23 +1124,30 @@ randomizations.add_old_versions = function()
                 if item_copy.place_result == entity.name then
                     item_copy.place_result = copy.name
                 end
+                if item_copy.plant_result == entity.name then
+                    item_copy.plant_result = copy.name
+                end
+                -- Mining the old version and blueprints of it give its own item instead of the entity's
+                local function is_entity_item(item_name)
+                    return item_name == old_item.name or item_name == placer_name
+                end
                 if copy.minable ~= nil then
-                    if copy.minable.result == old_item.name then
+                    if is_entity_item(copy.minable.result) then
                         copy.minable.result = copy.name
                     elseif copy.minable.results ~= nil then
                         for _, result in pairs(copy.minable.results) do
-                            if result.name == old_item.name then
+                            if is_entity_item(result.name) then
                                 result.name = copy.name
                             end
                         end
                     end
                 end
                 if copy.placeable_by ~= nil then
-                    if copy.placeable_by.item == entity.name then
+                    if is_entity_item(copy.placeable_by.item) then
                         copy.placeable_by.item = copy.name
                     elseif copy.placeable_by.item == nil then
                         for _, placeable in pairs(copy.placeable_by) do
-                            if placeable.item == entity.name then
+                            if is_entity_item(placeable.item) then
                                 placeable.item = copy.name
                             end
                         end
@@ -1102,7 +1201,7 @@ randomizations.add_old_versions = function()
                         type = "recipe",
                         name = "derandomized-" .. "entity" .. "--" .. entity.name, -- We can't use gutils.key because colons aren't allowed
                         localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"},
-                        ingredients = {{type = "item", name = entity.name, amount = 1}},
+                        ingredients = {{type = "item", name = placer_name, amount = 1}},
                         results = {{type = "item", name = item_copy.name, amount = 1}},
                         main_product = item_copy.name,
                         energy_required = 0.5,

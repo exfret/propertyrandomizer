@@ -441,17 +441,27 @@ export.gather_delayed_active_trigger_structs = function (structs, delayed_active
     end
 end
 
-export.gather_ammo_structs = function (structs, ammo, stop_prototype)
-    export.gather_item_structs(structs, ammo, stop_prototype)
+-- Just what firing the ammo does, without the triggers it has as an item (like spoiling)
+export.gather_ammo_use_structs = function (structs, ammo, stop_prototype)
     local ammo_types = to_array(ammo.ammo_type)
     for _, ammo_type in pairs(ammo_types) do
         gather_ammo_type_structs(structs, ammo_type, stop_prototype)
     end
 end
 
+export.gather_ammo_structs = function (structs, ammo, stop_prototype)
+    export.gather_item_structs(structs, ammo, stop_prototype)
+    export.gather_ammo_use_structs(structs, ammo, stop_prototype)
+end
+
+-- Just what using the capsule does, without the triggers it has as an item (like spoiling)
+export.gather_capsule_use_structs = function (structs, capsule, stop_prototype)
+    gather_capsule_action_structs(structs, capsule.capsule_action, stop_prototype)
+end
+
 export.gather_capsule_structs = function (structs, capsule, stop_prototype)
     export.gather_item_structs(structs, capsule, stop_prototype)
-    gather_capsule_action_structs(structs, capsule.capsule_action, stop_prototype)
+    export.gather_capsule_use_structs(structs, capsule, stop_prototype)
 end
 
 export.gather_combat_robot_structs = function (structs, combat_robot, stop_prototype)

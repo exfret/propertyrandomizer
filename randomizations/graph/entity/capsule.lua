@@ -92,7 +92,7 @@ capsule.reflect = function(slot, trav)
         capsule.radius_color = nil
         -- Apply gray tint
         if capsule.icons ~= nil then
-            for _, layer in pair(capsule.icons) do
+            for _, layer in pairs(capsule.icons) do
                 layer.tint = {r = 0.5, g = 0.5, b = 0.5, a = 1}
             end
         else
@@ -163,8 +163,9 @@ capsule.reflect = function(slot, trav)
     capsule.icons = new_icons
     capsule.localised_name = {"", locale.find_localised_name(trav), " (Throwable)"}
 
+    -- Mining the created entity gives the capsule back
     if common.entity_to_place_item[trav.name] ~= nil then
-        data.raw[trav.type][trav.name].minable.result = capsule.name
+        common.set_mining_result(data.raw[trav.type][trav.name], capsule.name)
     end
 end
 

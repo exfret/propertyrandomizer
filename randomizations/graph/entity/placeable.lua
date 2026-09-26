@@ -153,20 +153,18 @@ placeable.reflect = function(slot, trav)
     end
 
     -- Update minable result
-    local trav_entity = data.raw[trav.type][trav.name]
-    if trav_entity.minable ~= nil then
-        trav_entity.minable.result = place_item.name
-        trav_entity.minable.count = 1
-        trav_entity.minable.results = nil
-    end
+    common.set_mining_result(data.raw[trav.type][trav.name], place_item.name)
 
     return true
 end
 
 placeable.fix = function(entity)
-    -- Remove next_upgrade property (hotfix for now)
-    -- TODO: Fix properly!
-    entity.next_upgrade = nil
+    -- Changing what items place can make an upgrade invalid (e.g. its target is no longer built by any item), which is a load error, so drop only those
+    local problem = common.next_upgrade_problem(entity)
+    if problem ~= nil then
+        log("Removing next_upgrade " .. entity.next_upgrade .. " from " .. entity.name .. ": " .. problem)
+        entity.next_upgrade = nil
+    end
 end
 
 return placeable

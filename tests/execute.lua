@@ -5,6 +5,8 @@ local test = {}
 test.execute = function()
     logic.build()
 
+    require("tests/entity-acquisition").run(logic.graph)
+
     local graph_op_test = require("tests/graph-operations")
     graph_op_test.init(logic.graph)
     graph_op_test.pre_depnode()

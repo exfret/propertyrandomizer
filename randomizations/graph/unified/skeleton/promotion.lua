@@ -27,15 +27,33 @@ local function is_ingredient_owner_type(node_type)
 end
 
 -- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting), complex (use complex room/ability contexts, with home contexts for the discovery rule)
+-- params.connection_abilities (optional) is function(base, head) giving the abilities of the edge that connects a base to a head (see gutils.connect_base_head); by default a base keeps its original edge's abilities
 -- Which mechanic contexts are promised follows protection.lua
 -- With first pass, the split graph must be used: it's the model reflection builds (e.g. item identities swapped), so reasoning over the unsplit graph would be about a different game
 promotion.new = function(params)
     local head_to_base = params.head_to_base or {}
 
+    local graph = table.deepcopy(params.graph)
+
+    -- Abilities of the edge connecting base_key to head_key, like a spawn slot's loot not being automatable
+    local function connection_abilities(base_key, head_key)
+        local base = graph.nodes[base_key]
+        if base.type ~= "base" then
+            return nil
+        end
+        if params.connection_abilities ~= nil then
+            return params.connection_abilities(base, graph.nodes[head_key])
+        end
+        return base.abilities
+    end
+
+    -- Heads a rewire left without a base (see try_rewires), which are unreachable rather than falling back to their vanilla base
+    -- Heads whose edge says starts_detached begin this way: their vanilla base is only there so the edge could be claimed, like a unit's placing slot no item fills in vanilla
+    local detached = {}
+
     -- Ranks come from a random sort of the current hybrid graph: generic handlers' choices applied, recipe ingredients still vanilla
     -- The pool sort is of the vanilla graph, which generic handlers have already rewired, so its ranks don't fit
-    -- Heads chosen by a generic handler get that base, other cut heads get their vanilla base, and connected heads that no handler reassigned (like first pass's own slot/trav heads) stay as they are
-    local graph = table.deepcopy(params.graph)
+    -- Heads chosen by a generic handler get that base, other cut heads get their vanilla base (unless they start detached), and connected heads that no handler reassigned (like first pass's own slot/trav heads) stay as they are
     for node_key, node in pairs(graph.nodes) do
         if node.type == "head" and node.name ~= "" then
             local new_base = head_to_base[node_key]
@@ -43,9 +61,14 @@ promotion.new = function(params)
                 for pre, _ in pairs(table.deepcopy(node.pre)) do
                     gutils.remove_edge(graph, pre)
                 end
-                gutils.add_edge(graph, new_base, node_key)
+                gutils.connect_base_head(graph, new_base, node_key, connection_abilities(new_base, node_key))
+            elseif node.starts_detached ~= nil then
+                for pre, _ in pairs(table.deepcopy(node.pre)) do
+                    gutils.remove_edge(graph, pre)
+                end
+                detached[node_key] = true
             elseif next(node.pre) == nil then
-                gutils.add_edge(graph, node.old_base, node_key)
+                gutils.connect_base_head(graph, node.old_base, node_key, connection_abilities(node.old_base, node_key))
             end
         end
     end
@@ -210,13 +233,16 @@ promotion.new = function(params)
 
     -- Ranks of the pebbles of prereq pre that get context to its dependent, earliest first
     -- pre is { key, edge_key }; with complex contexts the edge can add or remove abilities (see top.edge_source_contexts)
-    -- Substituted prereqs (ingredient owners, chosen bases) have no edge_key: those edges never carry abilities
+    -- Substituted prereqs have no edge_key: ingredient owners never carry abilities, and chosen bases carry their connection's as pre.abilities
     local function pre_inds(pre, context)
         local context_inds = nci[pre.key]
         if context_inds == nil then
             return {}
         end
-        local edge = pre.edge_key ~= nil and graph.edges[pre.edge_key] or nil
+        local edge = pre
+        if pre.edge_key ~= nil then
+            edge = graph.edges[pre.edge_key]
+        end
         if not complex or edge == nil or edge.abilities == nil then
             return { context_inds[context] }
         end
@@ -235,9 +261,17 @@ promotion.new = function(params)
         return pre_inds(pre, context)[1]
     end
 
-    -- Rank of a node's own pebble in context (for substituted prereqs and heads, which have no edge abilities)
+    -- Rank of a node's own pebble in context (for ingredient owners and heads, which have no edge abilities)
     local function node_ind(node_key, context)
         return pre_ind({ key = node_key }, context)
+    end
+
+    -- A base as a prereq of a head, carrying the abilities of the edge connecting them
+    local function base_pre(base_key, head_key)
+        return {
+            key = base_key,
+            abilities = connection_abilities(base_key, head_key),
+        }
     end
 
     -- Prereqs ({ key, edge_key }) of a node in the current random graph
@@ -254,7 +288,9 @@ promotion.new = function(params)
                 table.insert(pres, { key = owner_key })
             end
         elseif node.type == "head" and next(node.pre) == nil then
-            table.insert(pres, { key = head_to_base[key(node)] or node.old_base })
+            if detached[key(node)] == nil then
+                table.insert(pres, base_pre(head_to_base[key(node)] or node.old_base, key(node)))
+            end
         else
             for pre, _ in pairs(node.pre) do
                 table.insert(pres, {
@@ -689,6 +725,18 @@ promotion.new = function(params)
     -- These are its promised contexts; a recipe with none gets one anchor context chosen now, the earliest it can currently be established in with its vanilla ingredients, so they remain a valid fallback there
     -- Ingredients are always checked against these explicit contexts, since ingredients checked separately against "some context" could share none, and every recipe must stay reachable
     -- Returns an empty list only if the recipe can't be reached anywhere anymore
+    -- Contexts a node is promised in; unlike required_contexts, there's no anchor context when there are none
+    state.promised_contexts = function(node_key)
+        local contexts = {}
+        for context, ind in pairs(nci[node_key] or {}) do
+            if state.is_promised[ind] then
+                table.insert(contexts, context)
+            end
+        end
+        table.sort(contexts)
+        return contexts
+    end
+
     state.required_contexts = function(recipe_key)
         local contexts = {}
         for context, ind in pairs(nci[recipe_key] or {}) do
@@ -792,14 +840,26 @@ promotion.new = function(params)
         end
     end
 
+    -- Earliest established pebble of base_key before the head's pebble in context that gets context to the head through their connection (so its abilities count), or nil
+    local function base_backing(base_key, head_key, context)
+        local head_ind = node_ind(head_key, context)
+        if head_ind == nil then
+            return nil
+        end
+        for _, i in pairs(pre_inds(base_pre(base_key, head_key), context)) do
+            if i < head_ind and establish(i) then
+                return i
+            end
+        end
+        return nil
+    end
+
     -- Checks a candidate base for a generic handler head (e.g. energy source --> entity-operate)
     -- The base must be establishable before the head in each required context of the head's dependent (from required_contexts(dep))
     state.head_candidate_ok = function(head_key, base_key, required_contexts)
         assert(#required_contexts > 0, "head_candidate_ok needs required contexts (from required_contexts) for " .. head_key)
         for _, context in pairs(required_contexts) do
-            local i = node_ind(base_key, context)
-            local head_ind = node_ind(head_key, context)
-            if i == nil or head_ind == nil or i >= head_ind or not establish(i) then
+            if base_backing(base_key, head_key, context) == nil then
                 return false
             end
         end
@@ -811,9 +871,8 @@ promotion.new = function(params)
     -- With no required contexts (dependent not reachable anyway), this only repoints the head
     state.resolve_head = function(head_key, base_key, required_contexts)
         for _, context in pairs(required_contexts) do
-            local i = node_ind(base_key, context)
-            local head_ind = node_ind(head_key, context)
-            if i == nil or head_ind == nil or i >= head_ind or not establish(i) then
+            local i = base_backing(base_key, head_key, context)
+            if i == nil then
                 error("Resolving head " .. head_key .. " with unestablished base " .. base_key .. " in " .. context)
             end
             commit(i)
@@ -822,7 +881,8 @@ promotion.new = function(params)
         for pre, _ in pairs(table.deepcopy(head.pre)) do
             gutils.remove_edge(graph, pre)
         end
-        gutils.add_edge(graph, base_key, head_key)
+        gutils.connect_base_head(graph, base_key, head_key, connection_abilities(base_key, head_key))
+        detached[head_key] = nil
         clear_cache()
 
         local dep_key = key(gutils.unique_depnode(graph, head))
@@ -848,13 +908,24 @@ promotion.new = function(params)
     end
 
     -- Try rewiring edges and check that every promised pebble of each rewired node can still be established
-    -- changes is a list of { node_key, remove = list of prereq keys whose edges to node_key are removed, add = prereq key or nil }
+    -- changes is a list of { node_key, remove = list of prereq keys whose edges to node_key are removed, add = prereq key or nil, detach = whether a head is left without a base }
+    -- A detached head is unreachable, like an entity no longer found in the wild; only a head that's detached can have no base
     -- With should_commit, a successful rewire is kept and the new backings are promised; otherwise (or on failure) everything is reverted
     -- This is for choices that aren't recipe ingredients or generic handler heads, like first pass's slot/trav assignments
     state.try_rewires = function(changes, should_commit)
         local removed_edges = {}
         local added_edges = {}
+        -- Detached state of each rewired head before this rewire, to restore on revert
+        local was_detached = {}
         for _, change in pairs(changes) do
+            if was_detached[change.node_key] == nil then
+                was_detached[change.node_key] = detached[change.node_key] or false
+            end
+            if change.detach then
+                detached[change.node_key] = true
+            elseif change.add ~= nil then
+                detached[change.node_key] = nil
+            end
             for _, pre_key in pairs(change.remove or {}) do
                 local edge_key = gutils.ekey({
                     start = pre_key,
@@ -869,7 +940,8 @@ promotion.new = function(params)
                 start = change.add,
                 stop = change.node_key,
             })] == nil then
-                table.insert(added_edges, gutils.ekey(gutils.add_edge(graph, change.add, change.node_key)))
+                -- A base connecting to a head carries the connection's abilities
+                table.insert(added_edges, gutils.ekey(gutils.connect_base_head(graph, change.add, change.node_key, connection_abilities(change.add, change.node_key))))
             end
         end
         -- Only pebbles of rewired nodes can have lost their backing (removed edges end at them), so they must find new backings: un-promise them while checking
@@ -906,6 +978,13 @@ promotion.new = function(params)
             end
         end
         if not (ok and should_commit) then
+            for node_key, value in pairs(was_detached) do
+                if value then
+                    detached[node_key] = true
+                else
+                    detached[node_key] = nil
+                end
+            end
             for _, edge_key in pairs(added_edges) do
                 gutils.remove_edge(graph, edge_key)
             end

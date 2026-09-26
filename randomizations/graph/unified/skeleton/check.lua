@@ -1,17 +1,40 @@
 -- Correctness check, independent of how randomization works: compares each mechanic's contexts in a sort of the final randomized game against a sort of the original game, and logs any mechanic contexts that were lost
 -- It also checks that every originally reachable recipe is still reachable somewhere
--- All output goes to the log with the prefix MECHCHECK
+-- Output goes to the log with the prefix MECHCHECK (or the given label)
+-- The verdict says whether the game is safe to hand out: unified randomization retries attempts that fail it, and a game that still fails it loads with a warning in the randomizer panel (a softlock must never be silent, and a startup error would make them reset their settings)
 
 local top = require("lib/graph/context-sort")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local check = {}
 
+-- Whether a node missing context in the final game only lost isolatability there: it still has the context's room and automatability (final_has(context) says whether the final game has a context)
+-- Losing only isolatability means importing something, not a softlock, so it's logged but doesn't fail the check
+-- Home contexts only back isolatability, so losing one never fails the check either
+local function only_isolatability_lost(context, final_has)
+    if top.context_home(context) ~= nil then
+        return true
+    end
+    local abilities = top.context_abilities(context)
+    if abilities == nil or not protection.is_isolatable_context(context) then
+        return false
+    end
+    local without_isolatability = string.sub(abilities, 1, top.ISOLATABILITY - 1) .. "0" .. string.sub(abilities, top.ISOLATABILITY + 1)
+    return final_has(top.context_key(top.context_room(context), without_isolatability))
+end
+
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
 -- Only the protected part of each mechanic context counts (see protection.lua)
-check.run = function(graph, init_sort_info, final_sort_info)
+-- label (optional) replaces MECHCHECK in the log lines
+-- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability }
+check.run = function(graph, init_sort_info, final_sort_info, label)
+    label = label or "MECHCHECK"
+    local function log_check(message)
+        log(label .. " " .. message)
+    end
     local num_checked = 0
     local lost = {}
+    local num_hard_lost = 0
     for node_key, init_context_inds in pairs(init_sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
@@ -26,7 +49,14 @@ check.run = function(graph, init_sort_info, final_sort_info)
                     is_checked[kept] = true
                     num_checked = num_checked + 1
                     if final_kept[kept] == nil then
-                        table.insert(lost, node_key .. " @ " .. kept)
+                        if only_isolatability_lost(kept, function(other)
+                            return final_kept[other] ~= nil
+                        end) then
+                            table.insert(lost, node_key .. " @ " .. kept .. " (only isolatability)")
+                        else
+                            table.insert(lost, node_key .. " @ " .. kept)
+                            num_hard_lost = num_hard_lost + 1
+                        end
                     end
                 end
             end
@@ -45,13 +75,14 @@ check.run = function(graph, init_sort_info, final_sort_info)
         end
     end
     table.sort(lost_recipes)
-    log("MECHCHECK checked " .. num_recipes .. " recipes; unreachable " .. #lost_recipes)
+    log_check("checked " .. num_recipes .. " recipes; unreachable " .. #lost_recipes)
     for _, recipe_key in pairs(lost_recipes) do
-        log("MECHCHECK unreachable recipe " .. recipe_key)
+        log_check("unreachable recipe " .. recipe_key)
     end
 
     -- Promised pebbles missing from the final game show where promotion's model and the reflected game disagree
     -- Item-derived nodes (item, item-craft, item-launch, entity-build-item, ...) are skipped since first pass renames items: the model keys them by position, the final game by the item now at that position
+    local num_hard_missing = 0
     if UNIFIED_PROMISED_PEBBLES ~= nil then
         local num_compared = 0
         local mismatches = {}
@@ -59,14 +90,20 @@ check.run = function(graph, init_sort_info, final_sort_info)
             local node = graph.nodes[pebble.node_key]
             if node ~= nil and string.find(node.type, "item", 1, true) == nil then
                 num_compared = num_compared + 1
-                if (final_sort_info.node_to_context_inds[pebble.node_key] or {})[pebble.context] == nil then
+                local final_contexts = final_sort_info.node_to_context_inds[pebble.node_key] or {}
+                if final_contexts[pebble.context] == nil then
                     table.insert(mismatches, pebble)
+                    if not only_isolatability_lost(pebble.context, function(other)
+                        return final_contexts[other] ~= nil
+                    end) then
+                        num_hard_missing = num_hard_missing + 1
+                    end
                 end
             end
         end
-        log("MECHCHECK promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches)
+        log_check("promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches .. " (" .. num_hard_missing .. " beyond isolatability)")
         for i = 1, math.min(20, #mismatches) do
-            log("MECHCHECK promised but missing: " .. mismatches[i].node_key .. " @ " .. mismatches[i].context .. " (model rank " .. mismatches[i].rank .. ")")
+            log_check("promised but missing: " .. mismatches[i].node_key .. " @ " .. mismatches[i].context .. " (model rank " .. mismatches[i].rank .. ")")
         end
     end
 
@@ -88,11 +125,11 @@ check.run = function(graph, init_sort_info, final_sort_info)
                 end
             end
         end
-        log("MECHCHECK unprotected isolatable mechanic contexts (not required): " .. num_isolatable .. "; lost " .. num_isolatable_lost)
+        log_check("unprotected isolatable mechanic contexts (not required): " .. num_isolatable .. "; lost " .. num_isolatable_lost)
     end
 
     table.sort(lost)
-    log("MECHCHECK checked " .. num_checked .. " mechanic contexts; lost " .. #lost)
+    log_check("checked " .. num_checked .. " mechanic contexts; lost " .. #lost .. " (" .. num_hard_lost .. " beyond isolatability)")
     if #lost > 0 or #lost_recipes > 0 then
         -- Earliest nodes (by original sort) that became unreachable everywhere; the first few are likely the root cause
         local newly_unreachable = {}
@@ -115,7 +152,7 @@ check.run = function(graph, init_sort_info, final_sort_info)
         end
         table.sort(newly_unreachable, function(a, b) return a.ind < b.ind end)
         for i = 1, math.min(15, #newly_unreachable) do
-            log("MECHCHECK root? " .. newly_unreachable[i].key .. " (orig rank " .. newly_unreachable[i].ind .. ")")
+            log_check("root? " .. newly_unreachable[i].key .. " (orig rank " .. newly_unreachable[i].ind .. ")")
         end
 
         -- Walk back from the earliest root through prereqs that are unreachable in the final game, to show where it bottoms out
@@ -131,7 +168,7 @@ check.run = function(graph, init_sort_info, final_sort_info)
                 for _, _ in pairs(node.pre) do
                     num_pre = num_pre + 1
                 end
-                log("MECHCHECK walk " .. indent .. node_key .. " op=" .. tostring(node.op) .. " num_pre=" .. num_pre)
+                log_check("walk " .. indent .. node_key .. " op=" .. tostring(node.op) .. " num_pre=" .. num_pre)
                 for pre, _ in pairs(node.pre) do
                     local pre_key = graph.edges[pre].start
                     if next(final_sort_info.node_to_context_inds[pre_key] or {}) == nil then
@@ -143,9 +180,16 @@ check.run = function(graph, init_sort_info, final_sort_info)
         end
     end
     for _, str in pairs(lost) do
-        log("MECHCHECK lost " .. str)
+        log_check("lost " .. str)
     end
-    return lost
+    local verdict = {
+        ok = #lost_recipes == 0 and num_hard_lost == 0 and num_hard_missing == 0,
+        unreachable = #lost_recipes,
+        lost = num_hard_lost,
+        missing = num_hard_missing,
+    }
+    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", not counting isolatability)")
+    return verdict
 end
 
 return check

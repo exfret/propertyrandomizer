@@ -35,7 +35,7 @@ autoplace.validate = function(slot, trav)
     return true
 end
 
--- Used to make sure we only zero out an autoplace once
+-- Entities (and per planet, entity settings) that have received an autoplace from some slot, so they aren't cleared when their own old autoplace moves elsewhere
 local processed_autoplaces = {}
 local processed_entity_autoplace = {}
 autoplace.reflect = function(slot, trav)
@@ -48,32 +48,31 @@ autoplace.reflect = function(slot, trav)
         error("Disallowed autoplace type")
     end
 
+    -- Clear the slot's own autoplace before giving it to trav, so an entity assigned to its own slot keeps it
+    -- The slot passed in is a copy of the old prototype, so the clearing has to happen on data.raw
+    if not processed_entity_autoplace[slot.name] then
+        data.raw[slot.type][slot.name].autoplace = nil
+    end
     local trav_entity = data.raw[trav.type][trav.name]
-    trav_entity.autoplace = old_data_raw[slot.type][slot.name].autoplace
+    -- Copy so the force change below doesn't also change old_data_raw
+    trav_entity.autoplace = table.deepcopy(old_data_raw[slot.type][slot.name].autoplace)
     -- Make player so it can be decon'd
     trav_entity.autoplace.force = "player"
-    if not processed_entity_autoplace[slot.name] then
-        slot.autoplace = nil
-    end
-    -- Make sure we don't set trav's autoplace to nil later
     processed_entity_autoplace[trav.name] = true
-    -- Update planet map_gen_settings
+    -- Update planet map_gen_settings the same way
     for _, planet in pairs(old_data_raw.planet) do
+        -- TODO: Account for autoplace controls as well
         local map_gen_settings = planet.map_gen_settings
-        if map_gen_settings ~= nil then
-            -- TODO: Account for autoplace controls as well
-            local autoplace_settings = map_gen_settings.autoplace_settings
-            if autoplace_settings ~= nil then
-                local entity_settings = autoplace_settings.entity.settings
-                if entity_settings[slot.name] ~= nil then
-                    local data_raw_settings = data.raw.planet[planet.name].map_gen_settings.autoplace_settings.entity.settings
-                    data_raw_settings[trav.name] = entity_settings[slot.name]
-                    processed_autoplaces[planet.name] = processed_autoplaces[planet.name] or {}
-                    if not processed_autoplaces[planet.name][slot.name] then
-                        processed_autoplaces[planet.name][slot.name] = true
-                        data_raw_settings[slot.name] = nil
-                    end
+        if map_gen_settings ~= nil and map_gen_settings.autoplace_settings ~= nil and map_gen_settings.autoplace_settings.entity ~= nil then
+            local entity_settings = map_gen_settings.autoplace_settings.entity.settings
+            if entity_settings[slot.name] ~= nil then
+                local data_raw_settings = data.raw.planet[planet.name].map_gen_settings.autoplace_settings.entity.settings
+                processed_autoplaces[planet.name] = processed_autoplaces[planet.name] or {}
+                if not processed_autoplaces[planet.name][slot.name] then
+                    data_raw_settings[slot.name] = nil
                 end
+                data_raw_settings[trav.name] = table.deepcopy(entity_settings[slot.name])
+                processed_autoplaces[planet.name][trav.name] = true
             end
         end
     end
@@ -89,9 +88,7 @@ autoplace.reflect = function(slot, trav)
         new_place_item.name = new_place_item.name .. "-exfret-autoplace"
         new_place_item.localised_name = locale.find_localised_name(old_item_to_place)
         new_place_item.localised_description = locale.find_localised_description(old_item_to_place)
-        trav_entity.minable.results = nil
-        trav_entity.minable.result = new_place_item.name
-        trav_entity.minable.count = 1
+        common.set_mining_result(trav_entity, new_place_item.name)
         data:extend({new_place_item})
     end
 end

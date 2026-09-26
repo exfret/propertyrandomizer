@@ -10,6 +10,7 @@ local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
+local acquisition = require(lib_name .. "/logic/acquisition")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -166,50 +167,77 @@ function concrete.build(lu, extra_params)
         ----------------------------------------
         -- Can we encounter this entity in the wild?
 
+        -- Each way of encountering the entity is tagged with its acquisition kind (see lib/logic/acquisition.lua), except building, whose tag is on the item edges into entity-build-item
+        -- Ways that make the entity ours go through entity-own instead, since only those let us operate it
         -- TODO: Should any of these turn off automatability?
         local buildable = lu.buildables[key(entity)]
-        if buildable ~= nil then
-            add_edge("entity-build", nil, { amount = 1 })
+        -- Units a spawner spawns get a build chain even though no item places them, so entity randomization can give them one (friendly biters); with no items in it, it's unreachable
+        if buildable == nil and lu.unit_spawns_reverse[entity.name] ~= nil then
+            buildable = {}
         end
+        add_edge("entity-own", nil)
+        -- Map generation places entities for the force in their autoplace, which is neutral by default (AutoplaceSpecification.force)
+        local autoplace_is_ours = entity.autoplace ~= nil and entity.autoplace.force == "player"
         -- Check if the entity is put automatically in a room (planet/space surface)
-        for room_key, room in pairs(lu.rooms) do
-            if room.type ~= "control" then
-                if lutils.check_in_room(room, entity) then
-                    -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed there
-                    add_edge("room-autoplace", room_key, {
-                        entity = entity.name,
-                        abilities = { [1] = true },
-                        amount = 0, -- Zero amount to trigger the creation of this entity as an OR node
-                    }) -- Being from a room leads to isolatability
+        local function add_autoplace_edges()
+            for room_key, room in pairs(lu.rooms) do
+                if room.type ~= "control" then
+                    if lutils.check_in_room(room, entity) then
+                        -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed there
+                        add_edge("room-autoplace", room_key, acquisition.tag("autoplace", {
+                            entity = entity.name,
+                            abilities = { [1] = true },
+                            amount = 0, -- Zero amount to trigger the creation of this entity as an OR node
+                        })) -- Being from a room leads to isolatability
+                    end
                 end
+            end
+        end
+        if not autoplace_is_ours then
+            add_autoplace_edges()
+        end
+        -- Check if a unit spawner spawns this entity
+        if lu.unit_spawns_reverse[entity.name] ~= nil then
+            for spawner_name, _ in pairs(lu.unit_spawns_reverse[entity.name]) do
+                -- Spawning doesn't use up the spawner, like autoplace doesn't use up the room
+                add_edge("entity-spawn", concat({spawner_name, entity.name}), acquisition.tag("spawn", {
+                    spawner = spawner_name,
+                    entity = entity.name,
+                    amount = 0,
+                }))
+            end
+        end
+        -- Check if an item spoils into this entity, like a biter egg hatching
+        if lu.spoil_spawns_reverse[entity.name] ~= nil then
+            for item_name, _ in pairs(lu.spoil_spawns_reverse[entity.name]) do
+                add_edge("item", item_name, acquisition.tag("spoil", {
+                    amount = 1,
+                }))
             end
         end
         -- Check if entity could be the corpse of another entity
         if categories.corpse[entity.type] and lu.minable_corpses[entity.name] ~= nil then
             for other_entity, _ in pairs(lu.minable_corpses[entity.name]) do
                 -- Technically we could spawn multiple corpses (thus costing a fraction of an entity), but this doesn't account for that yet
-                add_edge("entity-kill", other_entity, { amount = 1 })
+                add_edge("entity-kill", other_entity, acquisition.tag("corpse", { amount = 1 }))
             end
         end
-        -- Check if for spawners that capture into this entity
-        if lu.unit_spawner_captures[entity.name] ~= nil then
-            for _, spawner in pairs(lu.unit_spawner_captures[entity.name]) do
-                add_edge("entity-capture-spawner", spawner.name, { amount = 1 })
+        -- Check if entity spawns from a capsule (only on planets) or from firing ammo, where ours says whether to add the spawns that make it ours (see entity-own) or the ones that make it an enemy
+        local function add_used_item_edges(ours)
+            for item_name, spawn in pairs(lu.capsule_spawns_reverse[entity.name] or {}) do
+                if spawn.ours == ours then
+                    -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
+                    add_edge("item-capsule", item_name, acquisition.tag("capsule", { amount = 1 }))
+                end
+            end
+            for item_name, spawn in pairs(lu.ammo_spawns_reverse[entity.name] or {}) do
+                if spawn.ours == ours then
+                    -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
+                    add_edge("item-ammo", item_name, acquisition.tag("ammo", { amount = 1 }))
+                end
             end
         end
-        -- Check if entity spawns from a capsule (only on planets)
-        if lu.capsule_spawns_reverse[entity.name] ~= nil then
-            for item_name, _ in pairs(lu.capsule_spawns_reverse[entity.name]) do
-                -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
-                add_edge("item-capsule", item_name, { amount = 1 })
-            end
-        end
-        if lu.ammo_spawns_reverse[entity.name] ~= nil then
-            for item_name, _ in pairs(lu.ammo_spawns_reverse[entity.name]) do
-                -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
-                add_edge("item-ammo", item_name, { amount = 1 })
-            end
-        end
+        add_used_item_edges(false)
         -- Asteroid spawning in space
         if lu.asteroid_to_place[key("entity", entity.name)] ~= nil then
             for place_name, place in pairs(lu.asteroid_to_place[key("entity", entity.name)]) do
@@ -219,7 +247,7 @@ function concrete.build(lu, extra_params)
                 else
                     node_type = "space-location"
                 end
-                add_edge(node_type, place.name)
+                add_edge(node_type, place.name, acquisition.tag("asteroid"))
             end
         end
         -- Check if entity spawns from dying trigger effects
@@ -228,16 +256,36 @@ function concrete.build(lu, extra_params)
                 local dying_info = gutils.deconstruct(dying_entity_key)
                 if dying_info.type == "entity" then
                     -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
-                    add_edge("entity-kill", dying_info.name, { amount = 1 })
+                    add_edge("entity-kill", dying_info.name, acquisition.tag("dying", { amount = 1 }))
                 end
+            end
+        end
+
+        ----------------------------------------
+        add_node("entity-own", "OR")
+        ----------------------------------------
+        -- Is this entity ours to operate?
+        -- Only what we build, capture or play as is; what's found in the wild or spawned by enemies isn't, like a machine map generation placed for the neutral force, which has to be mined and placed again
+
+        if buildable ~= nil then
+            add_edge("entity-build", nil, { amount = 1 })
+        end
+        if autoplace_is_ours then
+            add_autoplace_edges()
+        end
+        add_used_item_edges(true)
+        -- Check if for spawners that capture into this entity
+        if lu.unit_spawner_captures[entity.name] ~= nil then
+            for _, spawner in pairs(lu.unit_spawner_captures[entity.name]) do
+                add_edge("entity-capture-spawner", spawner.name, acquisition.tag("capture", { amount = 1 }))
             end
         end
         -- Check if we can get access this through it being our character
         if entity.type == "character" then
-            add_edge("entity-character", entity.name, {
+            add_edge("entity-character", entity.name, acquisition.tag("character", {
                 abilities = { [1] = true }, -- Characters are always "local"
                 amount = 0,
-            })
+            }))
         end
 
         if buildable ~= nil then
@@ -305,11 +353,11 @@ function concrete.build(lu, extra_params)
             -- Can we get an item needed to build this entity?
 
             for item, prop in pairs(buildable) do
-                add_edge("item", item, {
+                add_edge("item", item, acquisition.tag("build", {
                     build_key = prop,
                     -- TODO: Support for item build place amount as defined by placeable_by
                     amount = 1,
-                })
+                }))
             end
 
             if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
@@ -387,7 +435,8 @@ function concrete.build(lu, extra_params)
                 is_automatic = false
             end
 
-            add_edge("entity", entity.name, {
+            -- Only an entity that's ours can be operated (see entity-own)
+            add_edge("entity-own", entity.name, {
                 abilities = { [2] = is_automatic },
                 -- Account for one-time cost of entity
                 amount = 1 / payback_time,
@@ -633,6 +682,22 @@ function concrete.build(lu, extra_params)
             else
                 -- Just add the entity-operate without a cost if no fixed recipe
                 add_edge("entity-operate")
+            end
+        end
+
+        if lu.unit_spawns[entity.name] ~= nil then
+            for unit_name, spawn in pairs(lu.unit_spawns[entity.name]) do
+                ----------------------------------------
+                add_node("entity-spawn", "AND", nil, concat({entity.name, unit_name}), { spawn_class = spawn.class })
+                ----------------------------------------
+                -- Does this spawner spawn this entity?
+                -- Spawning happens on its own, so abilities pass through unchanged
+
+                add_edge("entity", entity.name)
+                -- Only spawns that happen at evolution 0 can be counted on (see spawn_class in lib/logic/acquisition.lua)
+                if spawn.class == "late" then
+                    add_edge("enemy-evolution", "")
+                end
             end
         end
     end

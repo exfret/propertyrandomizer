@@ -129,9 +129,27 @@ local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
 
 -- Do unified randomizations first
 
+local unified_check = require("randomizations/graph/unified/skeleton/check")
 for i = 1, config.unified_num_retries do
     unified_info = unified.execute()
+    if unified_info then
+        -- Unified randomization's model can be wrong about the game it builds, so check the game itself (logic rebuilt from it) against the original
+        -- An attempt that lost something a player needs fails like any other, so it's retried or errors instead of loading as a softlock
+        new_logic.build(true)
+        local verdict = unified_check.run(new_logic.graph, init_complex_sort_info, top.sort(new_logic.graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+        }), "UNIFIEDCHECK")
+        -- The last attempt is kept even then, since a startup error would make the player reset their settings; the final check below warns them instead
+        if not verdict.ok and i < config.unified_num_retries then
+            log("Unified randomization attempt " .. i .. " built a game that loses what the original had (see the UNIFIEDCHECK lines), so it's retried")
+            unified_info = false
+        elseif not verdict.ok then
+            log("Unified randomization's last attempt built a game that loses what the original had (see the UNIFIEDCHECK lines), and it's kept")
+        end
+    end
     if not unified_info then
+        -- The next attempt rebuilds logic from this (see unified.execute)
         data.raw = table.deepcopy(old_data_raw)
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
@@ -332,12 +350,13 @@ end
 
 new_logic.build(true)
 local final_sort_info = top.sort(new_logic.graph)
--- Mechanic context check (randomizations/graph/unified/skeleton/check.lua), over room/ability contexts; logging only
+-- Mechanic context check (randomizations/graph/unified/skeleton/check.lua), over room/ability contexts
 local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
     complex_contexts = true,
     home_contexts = true,
 })
-require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_complex_sort_info, final_complex_sort_info)
+-- A game that lost something a player needs could softlock, so the randomizer panel tells the player (reachability data below); a startup error would make them reset their settings
+local final_check_ok = require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_complex_sort_info, final_complex_sort_info).ok
 
 local reachable = 0
 local total = 0
@@ -363,6 +382,8 @@ data:extend({
         data = {
             ["reachable"] = reachable,
             ["total"] = total,
+            -- Whether the mechanic context check found nothing a player needs lost (see skeleton/check.lua)
+            ["check_ok"] = final_check_ok,
         }
     }
 })

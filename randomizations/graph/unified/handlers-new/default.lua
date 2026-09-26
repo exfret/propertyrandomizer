@@ -57,6 +57,12 @@ end
 default.process = function(graph, base, head)
 end
 
+-- Abilities of the edge connecting a base to one of this handler's heads (see gutils.connect_base_head), which promotion uses when reasoning
+-- By default a base keeps its original edge's abilities, which fits edges whose abilities come from how their prereq is gotten
+default.connection_abilities = function(base, head)
+    return base.abilities
+end
+
 -- Mandatory
 default.reflect = function(graph, head_to_base, head_to_handler)
 end

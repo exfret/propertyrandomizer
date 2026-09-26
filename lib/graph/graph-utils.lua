@@ -464,6 +464,33 @@ gutils.make_orands = function(graph)
     end
 end
 
+-- Connects a base to a head with the edge that the pairing represents
+-- The edge's abilities are what getting through it gains or loses (see lib/graph/context-sort.lua): the original edge's for a vanilla pair, and what its handler says for a new pair (e.g. acquisition.pairing)
+gutils.connect_base_head = function(graph, base_key, head_key, abilities)
+    local extra
+    if abilities ~= nil then
+        extra = {
+            abilities = table.deepcopy(abilities),
+        }
+    end
+    return gutils.add_edge(graph, base_key, head_key, extra)
+end
+
+-- Removes what feeds each head that starts detached (see promotion.new), so no model built from the graph counts on it
+-- Before subdividing, that's the claimed edge itself (it carries starts_detached); after, it's the connection from the head's vanilla base (the head carries it)
+gutils.detach_starting_heads = function(graph)
+    local edge_keys = {}
+    for edge_key, edge in pairs(graph.edges) do
+        local stop = graph.nodes[edge.stop]
+        if edge.starts_detached ~= nil or (stop.type == "head" and stop.starts_detached ~= nil) then
+            table.insert(edge_keys, edge_key)
+        end
+    end
+    for _, edge_key in pairs(edge_keys) do
+        gutils.remove_edge(graph, edge_key)
+    end
+end
+
 -- Divide an edge into a head and a base
 gutils.subdivide_base_head = function(graph, edge_key)
     local edge = graph.edges[edge_key]
@@ -477,8 +504,8 @@ gutils.subdivide_base_head = function(graph, edge_key)
     head.old_base = gutils.key(base)
     gutils.add_edge(graph, gutils.key(node1), gutils.key(base))
     gutils.add_edge(graph, gutils.key(head), gutils.key(node2))
-    -- base and head begin connected
-    gutils.add_edge(graph, gutils.key(base), gutils.key(head))
+    -- base and head begin connected, gaining or losing what the edge did
+    gutils.connect_base_head(graph, gutils.key(base), gutils.key(head), edge.abilities)
     gutils.remove_edge(graph, edge_key)
 
     -- Add any extra info that was on the edge to the base and head nodes themselves
