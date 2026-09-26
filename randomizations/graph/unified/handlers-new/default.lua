@@ -61,4 +61,8 @@ end
 default.reflect = function(graph, head_to_base, head_to_handler)
 end
 
+-- Called once every handler's reflect changes have been applied to data.raw, for fixes that need the final game
+default.after_changes = function()
+end
+
 return default

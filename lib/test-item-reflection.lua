@@ -142,4 +142,67 @@ test("item reflection and first pass both use the shared rules", function()
     assert(string.find(first_pass, "dutils.mining_keeps_item_names(", 1, true) ~= nil)
 end)
 
+-- Item reflection renames a recipe after its new item only when the recipe was named after the old one
+test("a recipe's main product is the one main_product names, or its only product", function()
+    local function product(name)
+        return {
+            type = "item",
+            name = name,
+            amount = 1,
+        }
+    end
+    local function main_name(recipe)
+        local main_product = dutils.recipe_main_product(recipe)
+        return main_product ~= nil and main_product.name or nil
+    end
+    assert(main_name({results = {product("gear")}}) == "gear")
+    -- Several products and no main_product, like recycling, isn't named after any of them, even the first
+    assert(main_name({results = {product("gear"), product("plate")}}) == nil)
+    assert(main_name({main_product = "plate", results = {product("gear"), product("plate")}}) == "plate")
+    assert(main_name({main_product = "", results = {product("gear")}}) == nil)
+    assert(main_name({results = {}}) == nil)
+    assert(main_name({}) == nil)
+    -- Two entries for the same item are still several products
+    assert(main_name({results = {product("gear"), product("gear")}}) == nil)
+end)
+
+test("a recycling recipe is named after its single ingredient, not a product", function()
+    local recycling_sources = require("lib/logic/recycling-sources")
+    local function entry(name)
+        return {
+            type = "item",
+            name = name,
+            amount = 1,
+        }
+    end
+    local vanilla_recipes = {
+        ["gear-recycling"] = {categories = {"recycling"}, ingredients = {entry("gear")}, results = {entry("plate")}},
+        ["plate-recycling"] = {categories = {"recycling"}, ingredients = {entry("plate")}, results = {entry("plate")}},
+        ["gear"] = {ingredients = {entry("plate")}, results = {entry("gear")}},
+    }
+    assert(recycling_sources.named_after_ingredient(vanilla_recipes, "gear-recycling") == "gear")
+    assert(recycling_sources.named_after_ingredient(vanilla_recipes, "plate-recycling") == "plate")
+    assert(recycling_sources.named_after_ingredient(vanilla_recipes, "gear") == nil)
+    -- Recipes made during randomization aren't vanilla recycling recipes
+    assert(recycling_sources.named_after_ingredient(vanilla_recipes, "new-recipe") == nil)
+end)
+
+test("both item randomizations rename recipes by the shared main product rule", function()
+    local function source(path)
+        local handle = assert(io.open(path))
+        local text = handle:read("*a")
+        handle:close()
+        return text
+    end
+    for _, path in pairs({"randomizations/graph/unified/handlers-new/item.lua", "randomizations/graph/item.lua"}) do
+        local text = source(path)
+        assert(string.find(text, "dutils.recipe_main_product(", 1, true) ~= nil, path)
+        assert(string.find(text, "results[1].name ==", 1, true) == nil, path .. " matches recipes by their first result")
+        assert(string.find(text, "recycling_sources.named_after_ingredient(", 1, true) ~= nil, path .. " renames recycling recipes after a product")
+    end
+    assert(string.find(source("data-final-fixes.lua"), "randomizations.fix_recycling_names()", 1, true) ~= nil)
+    -- The unified item handler names recipes once it can count how many are named after each item
+    assert(string.find(source("randomizations/graph/unified/execute-new.lua"), "handler.after_changes()", 1, true) ~= nil)
+end)
+
 print(num_passed .. " tests passed")

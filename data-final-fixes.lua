@@ -274,6 +274,9 @@ if config.graph.item then
     build_graph.add_dependents(dep_graph)
 end
 
+-- Both unified and old item randomization change what recycling recipes recycle
+randomizations.fix_recycling_names()
+
 log("Done applying graph-based randomizations")
 
 log("Applying numerical/misc randomizations")

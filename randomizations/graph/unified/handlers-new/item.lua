@@ -1,6 +1,8 @@
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local dupe = require("lib/dupe")
+local recycling_sources = require("lib/logic/recycling-sources")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
@@ -62,6 +64,8 @@ local trav_to_mechanics_key
 local material_to_cost
 local orig_graph
 local node_science_level
+-- Recipe name --> name of the item reflect made it named after
+local renamed_recipes
 local py_scaling = { -- Roughly in GW expected for an "average" base, but the ratios are what matter anyways
     0.1, -- pre-auto
     0.2, -- auto
@@ -85,6 +89,7 @@ item.initialize = function()
     material_to_cost = material_costs.costs
     orig_graph = nil
     node_science_level = {}
+    renamed_recipes = {}
 end
 
 item.spoof = function(graph)
@@ -330,14 +335,17 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             end
                         end
 
-                        local fix_localised = false
-                        if recipe.main_product == slot_item.name or (recipe.results ~= nil and #recipe.results >= 1 and recipe.results[1].name == slot_item.name) then
+                        -- Only a recipe named after this item gets renamed; one with several products and no main product keeps its own name
+                        -- Recycling recipes are named after what they recycle instead, and fixes.lua renames them after all item randomization
+                        local main_product = dutils.recipe_main_product(recipe)
+                        local fix_localised = main_product ~= nil and main_product.type == "item" and main_product.name == slot_item.name
+                            and recycling_sources.named_after_ingredient(old_data_raw.recipe, recipe.name) == nil
+                        if recipe.main_product == slot_item.name then
                             table.insert(changes, {
                                 tbl = recipe,
                                 prop = "main_product",
                                 new_val = trav_item.name
                             })
-                            fix_localised = true
                         end
                         -- If this is a weird recipe, like it has dont_randomize, then I think that's a good signal not to change the name and icons
                         local recipe_node = split_graph.nodes[gutils.key("recipe", recipe.name)]
@@ -352,37 +360,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             end
                             orig_recipe.subgroup = nil
                             orig_recipe.order = nil
-                            --if orig_recipe.localised_name == nil then
-                                -- TODO: Should I check recipe-name?
-                                table.insert(changes, {
-                                    tbl = recipe,
-                                    prop = "localised_name",
-                                    new_val = {"", constants.funny_recipe_prefixes[rng.int(rng.key({id = "unified-item"}), #constants.funny_recipe_prefixes)], " ", locale_utils.find_localised_name(trav_item)}
-                                })
-                            --end
-                            -- If the original recipe had no icon, recreate the icon as the new item's
-                            --if orig_recipe.icons == nil and orig_recipe.icon == nil then
-                                local recipe_icons
-                                if trav_item.icons ~= nil then
-                                    table.insert(changes, {
-                                        tbl = recipe,
-                                        prop = "icons",
-                                        new_val = table.deepcopy(trav_item.icons)
-                                    })
-                                else
-                                    local icon_filename, icon_size = get_primary_icon(trav_item)
-                                    table.insert(changes, {
-                                        tbl = recipe,
-                                        prop = "icons",
-                                        new_val = {
-                                            {
-                                                icon = icon_filename,
-                                                icon_size = icon_size
-                                            }
-                                        }
-                                    })
-                                end
-                            --end
+                            -- Named in after_changes, once it's known how many recipes share the item
+                            renamed_recipes[recipe.name] = trav_item.name
                         end
                     end
                 end
@@ -673,6 +652,55 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 end
             end
         end
+    end
+end
+
+-- Renamed recipes take their new item's name and icon, since they may have had their own
+-- When several recipes are named after the same item, the renamed ones also get a prefix and a number badge to tell them apart
+item.after_changes = function()
+    -- Item name --> how many recipes are named after it, counting ones reflect didn't rename (recycling recipes are named after what they recycle)
+    local num_named_after = {}
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        local main_product = dutils.recipe_main_product(recipe)
+        if main_product ~= nil and main_product.type == "item" and recycling_sources.named_after_ingredient(old_data_raw.recipe, recipe_name) == nil then
+            num_named_after[main_product.name] = (num_named_after[main_product.name] or 0) + 1
+        end
+    end
+
+    local recipe_names = {}
+    for recipe_name, _ in pairs(renamed_recipes) do
+        table.insert(recipe_names, recipe_name)
+    end
+    table.sort(recipe_names)
+    -- Item name --> how many of its renamed recipes have been numbered so far
+    local num_numbered = {}
+    for _, recipe_name in pairs(recipe_names) do
+        local recipe = data.raw.recipe[recipe_name]
+        local new_item = dutils.get_prot("item", renamed_recipes[recipe_name])
+        local recipe_icons
+        if new_item.icons ~= nil then
+            recipe_icons = table.deepcopy(new_item.icons)
+        else
+            local icon_filename, icon_size = get_primary_icon(new_item)
+            recipe_icons = {
+                {
+                    icon = icon_filename,
+                    icon_size = icon_size,
+                },
+            }
+        end
+        if (num_named_after[new_item.name] or 0) >= 2 then
+            recipe.localised_name = {"", constants.funny_recipe_prefixes[rng.int(rng.key({id = "unified-item"}), #constants.funny_recipe_prefixes)], " ", locale_utils.find_localised_name(new_item)}
+            num_numbered[new_item.name] = (num_numbered[new_item.name] or 0) + 1
+            -- Only single digit badges exist, so any past that keep the plain item icon
+            if num_numbered[new_item.name] <= dupe.max_icon_number then
+                table.insert(recipe_icons, dupe.recipe_number_icon(num_numbered[new_item.name]))
+            end
+        else
+            recipe.localised_name = locale_utils.find_localised_name(new_item)
+        end
+        recipe.icon = nil
+        recipe.icons = recipe_icons
     end
 end
 

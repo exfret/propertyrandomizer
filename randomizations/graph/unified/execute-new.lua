@@ -712,6 +712,9 @@ unified.execute = function()
             end
         end
     end
+    for _, handler in pairs(handlers) do
+        handler.after_changes()
+    end
 
     if SWITCH_PLANETS then
         local old_nauvis = table.deepcopy(data.raw.planet.nauvis)

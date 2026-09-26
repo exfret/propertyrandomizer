@@ -516,6 +516,25 @@ randomizations.fix_recycling_recipes = function()
     end
 end
 
+-- Vanilla names and draws a recycling recipe after the item it recycles, so one whose ingredient item randomization changed follows its new item
+-- Item randomization leaves these recipes' names alone (see recycling_sources.named_after_ingredient), so this runs after all of it
+randomizations.fix_recycling_names = function()
+    -- The recycler's icon generator (recycler/recycling.lua), a global in the prototype stage's shared Lua state
+    local generate_icons = generate_recycling_recipe_icons_from_item
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        local old_ingredient = recycling_sources_lib.named_after_ingredient(old_data_raw.recipe, recipe_name)
+        if old_ingredient ~= nil and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" and recipe.ingredients[1].name ~= old_ingredient then
+            local item = dutils.get_prot("item", recipe.ingredients[1].name)
+            -- Same name as the recycler gives its recycling recipes
+            recipe.localised_name = {"recipe-name.recycling", locale_utils.find_localised_name(item)}
+            if generate_icons ~= nil then
+                recipe.icon = nil
+                recipe.icons = generate_icons(item)
+            end
+        end
+    end
+end
+
 randomizations.fixes = function()
     -- Fix electric pole supply area to be at least as large as distribution range
     --[[ only a RATIONAL INDIVIDUAL would resort to such PRACTICAL CONVENIENCE in the face of ANGUISH AND TURMOIL

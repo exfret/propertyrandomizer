@@ -27,6 +27,17 @@ local dupe_number_to_filename = {
     "number_eight.png",
     "number_nine.png",
 }
+dupe.max_icon_number = #dupe_number_to_filename
+
+-- Number badge layer for the top right of a recipe icon (items put theirs on the top left so the two don't overlap)
+dupe.recipe_number_icon = function(number)
+    return {
+        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[number],
+        icon_size = 120,
+        scale = 1 / 6,
+        shift = {7, -7},
+    }
+end
 
 -- Keep track of things that were already duplicated if needed
 -- Also counts duplicates as having been duplicated
@@ -140,12 +151,7 @@ dupe.recipe = function(recipe, extra_info)
         -- Also need to do icon
         local recipe_icons = dupe.get_recipe_icons(new_recipe)
         new_recipe.icons = recipe_icons
-        table.insert(new_recipe.icons, {
-            icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[extra_info],
-            icon_size = 120,
-            scale = 1 / 6,
-            shift = {7, -7}
-        })
+        table.insert(new_recipe.icons, dupe.recipe_number_icon(extra_info))
     end
 
     return new_recipe

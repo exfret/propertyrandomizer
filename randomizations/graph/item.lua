@@ -7,6 +7,7 @@ local path = require("lib/old-logic/path")
 local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local recycling_sources = require("lib/logic/recycling-sources")
 
 local function get_primary_icon(prot)
     if prot.icon ~= nil then
@@ -620,23 +621,17 @@ randomizations.item_new = function(id)
                 end
             end
 
-            local fix_localised = false
-            if recipe.results ~= nil and #recipe.results >= 1 and --[[#recipe.results == 1 and]] recipe.results[1].name == old_node.name then
-                -- Fix main product for localisations
-                table.insert(changes, {
-                    tbl = recipe,
-                    prop = "main_product",
-                    new_val = item_node.name
-                })
-                fix_localised = true
-            end
+            -- Only a recipe named after this item gets renamed; one with several products and no main product keeps its own name
+            -- Recycling recipes are named after what they recycle instead, and fixes.lua renames them after all item randomization
+            local main_product = dutils.recipe_main_product(recipe)
+            local fix_localised = main_product ~= nil and main_product.type == "item" and main_product.name == old_node.name
+                and recycling_sources.named_after_ingredient(old_data_raw.recipe, recipe.name) == nil
             if recipe.main_product == old_node.name then
                 table.insert(changes, {
                     tbl = recipe,
                     prop = "main_product",
                     new_val = item_node.name
                 })
-                fix_localised = true
             end
             if fix_localised then
                 -- Find original recipe prototype from dupes if applicable

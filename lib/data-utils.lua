@@ -156,6 +156,24 @@ dutils.realized_item_assignment = function(identity_at)
     return realized
 end
 
+-- The results entry a recipe takes its name, icon and subgroup from, or nil if it uses its own (see RecipePrototype::main_product)
+-- That's the product main_product names, or the only product when main_product is nil; with several products and no main_product, or main_product set to "", there's none
+dutils.recipe_main_product = function(recipe)
+    local results = recipe.results or {}
+    if recipe.main_product == nil then
+        if #results == 1 then
+            return results[1]
+        end
+        return nil
+    end
+    for _, result in pairs(results) do
+        if result.name == recipe.main_product then
+            return result
+        end
+    end
+    return nil
+end
+
 -- Science packs: every item some lab accepts, as item name --> true (not anything with "science-pack" in its name)
 dutils.lab_inputs = function()
     local lab_inputs = {}

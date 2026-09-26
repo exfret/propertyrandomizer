@@ -28,6 +28,16 @@ local function single_item_result(recipe)
     return name
 end
 
+-- Vanilla names and draws a recycling recipe after its single ingredient, the item being recycled, not after a product
+-- Returns the name of that ingredient in vanilla, or nil if recipe_name isn't a vanilla recycling recipe
+sources.named_after_ingredient = function(vanilla_recipes, recipe_name)
+    local recipe = vanilla_recipes[recipe_name]
+    if recipe == nil or not is_recycling(recipe) or recipe.ingredients == nil or #recipe.ingredients ~= 1 then
+        return nil
+    end
+    return recipe.ingredients[1].name
+end
+
 local cache
 
 -- Returns recycling recipe name --> name of the recipe whose current item ingredients it should return
