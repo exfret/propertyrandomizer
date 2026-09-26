@@ -1,55 +1,189 @@
--- Planetary randomization stage (setting propertyrandomizer-planetary-oceans)
--- Runs before the rest of randomization, so everything after it, including the mechanic context check, treats the changed world as the starting point.
--- For now it swaps oceans between planets (oceans.lua), then adds only the scaffolding recipes each planet needs to keep its requirements possible locally (scaffolds.lua), checked with the logic graph (check.lua).
--- It never stops the game from loading: anything that goes wrong (including errors, for mod compatibility) undoes the whole stage instead.
+-- Planetary randomization stages (settings propertyrandomizer-planetary-oceans and propertyrandomizer-planetary-resources)
+-- They run before the rest of randomization, so everything after them, including the mechanic context check, treats the changed world as the starting point.
+-- Ocean swaps (oceans.lua) come with the scaffolding recipes each planet needs (scaffolds.lua); resource swaps (resources.lua) come with edits to the recipes belonging to that planet, then the extra resource patches each planet still needs.
+-- Both are checked against the game before them with the logic graph (check.lua).
+-- Neither ever stops the game from loading: anything that goes wrong (including errors, for mod compatibility) undoes that stage instead.
 
+local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
 local planetary_check = require("randomizations/planetary/check")
 local oceans = require("randomizations/planetary/oceans")
+local resources = require("randomizations/planetary/resources")
 local scaffolds = require("randomizations/planetary/scaffolds")
 
 local planetary = {}
 
-local function warn(message)
-    log("Planetary oceans: " .. message)
-    table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Planetary ocean swaps " .. message)
+local function sorted_keys(tbl)
+    local keys = {}
+    for key, _ in pairs(tbl) do
+        table.insert(keys, key)
+    end
+    table.sort(keys)
+    return keys
 end
 
--- Returns nil if the swap worked, or else why it has to be undone
-local function run(logic, old_raw)
-    local before = planetary_check.sort(logic)
+local function warn(what, message)
+    log("Planetary " .. what .. ": " .. message)
+    table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Planetary " .. what .. " swaps " .. message)
+end
+
+-- Each stage returns nil if it worked, or else why it has to be undone
+-- state holds what the stages share: the sort of the game before them (before), the scaffold variants that count as their originals, and the sort of the latest result (after)
+
+local function run_oceans(logic, state, old_raw)
+    table.insert(planetary_check.moved_feature_prefixes, "fluid-create-offshore")
     local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
-    local variants_of, after = scaffolds.execute(assignment, oceans, logic, before)
+    local variants_of, after = scaffolds.execute(assignment, oceans, logic, state.before)
     -- Tile collision staying exactly as it was is part of how the swap works, so a difference means something unexpected happened
     local tile_problems = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
     if #tile_problems > 0 then
         return "tile collision changed (" .. table.concat(tile_problems, "; ") .. ")"
     end
-    if after == nil then
-        after = planetary_check.sort(logic)
-    end
-    planetary_check.run(before, after)
-    if not planetary_check.required(before, after, variants_of) then
+    state.variants_of = variants_of
+    state.after = after or planetary_check.sort(logic)
+    if not planetary_check.required(state.before, state.after, state.variants_of) then
         return "a planet lost something it must keep (see PLANETCHECK in the log)"
     end
     return nil
 end
 
--- logic is the logic module (lib/logic/init), rebuilt from data.raw for each check
-planetary.execute = function(logic)
-    local problem = oceans.problem()
-    if problem ~= nil then
-        warn("were skipped, since " .. problem .. ".")
-        return
+local function log_edits(edits)
+    log("Planetary resources: " .. #edits .. " recipes edited to follow the swap")
+    for _, edit in pairs(edits) do
+        log("Planetary resource edit: " .. resources.describe_edit(edit))
     end
+end
+
+local function run_resources(logic, state)
+    table.insert(planetary_check.moved_feature_prefixes, "resource-category")
+    local slots, assignment, lost = resources.execute("planetary-resources")
+
+    -- Recipes belonging to one planet follow that planet's swap, including the ocean stage's planet variants
+    local planet_recipes = {}
+    for _, candidate in pairs(scaffolds.kept) do
+        planet_recipes[candidate.planet] = planet_recipes[candidate.planet] or {}
+        planet_recipes[candidate.planet][candidate.recipe_name] = true
+    end
+    local edits = resources.edits(resources.substitutions(slots, assignment, lost), state.before, planet_recipes)
+    for _, edit in pairs(edits) do
+        resources.add_edit(edit)
+    end
+
+    -- What the swap still breaks without any extra patches
+    local without = planetary_check.sort(logic)
+    local failures = planetary_check.required_failures(state.before, without, state.variants_of)
+    if #failures == 0 then
+        log_edits(edits)
+        log("Planetary resources: no extra patches needed")
+        state.after = without
+        return nil
+    end
+    for _, failure in pairs(failures) do
+        log("Planetary resources: without extra patches, failing " .. failure.text)
+    end
+
+    -- Every extra patch that could help (each resource a planet lost), then only those on the witnesses (earliest-provider paths) of what broke
+    local repairs = {}
+    for _, planet_name in pairs(sorted_keys(lost)) do
+        for _, resource_name in pairs(sorted_keys(lost[planet_name])) do
+            local repair = resources.repair(planet_name, resource_name)
+            if repair ~= nil then
+                resources.add_repair(repair)
+                table.insert(repairs, repair)
+            end
+        end
+    end
+    local with_all = planetary_check.sort(logic)
+    local used = {}
+    for ind, _ in pairs(top.path(with_all.graph, planetary_check.goal_inds(failures, with_all), with_all.sort_info).in_path) do
+        local pebble = with_all.sort_info.sorted[ind]
+        used[pebble.node_key .. " @ " .. top.context_room(pebble.context)] = true
+    end
+    local kept = {}
+    for _, repair in pairs(repairs) do
+        if used[gutils.key("entity", repair.resource_name) .. " @ " .. gutils.key("planet", repair.planet_name)] ~= nil then
+            table.insert(kept, repair)
+        else
+            resources.remove_repair(repair)
+        end
+    end
+    state.after = planetary_check.sort(logic)
+    if not planetary_check.required(state.before, state.after, state.variants_of, true) then
+        -- The witnesses missed something, so try every extra patch
+        for _, repair in pairs(repairs) do
+            resources.add_repair(repair)
+        end
+        kept = repairs
+        state.after = planetary_check.sort(logic)
+        if not planetary_check.required(state.before, state.after, state.variants_of, true) then
+            -- The edits themselves may be what's in the way (like a new ingredient only a later drill can mine), so try the original recipes
+            log("Planetary resources: every extra patch still wasn't enough, so trying without recipe edits")
+            for _, edit in pairs(edits) do
+                resources.remove_edit(edit)
+            end
+            edits = {}
+            state.after = planetary_check.sort(logic)
+            if not planetary_check.required(state.before, state.after, state.variants_of) then
+                return "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)"
+            end
+        end
+    end
+    log_edits(edits)
+    log("Planetary resources: " .. #kept .. " of " .. #repairs .. " possible extra patches needed")
+    for _, repair in pairs(kept) do
+        log("Planetary resources: extra " .. repair.resource_name .. " patches on " .. repair.planet_name)
+    end
+    return nil
+end
+
+-- Runs a stage, undoing it (data.raw and the shared state back to how they were) if it fails or errors
+local function run_stage(what, stage, logic, state)
     local old_raw = table.deepcopy(data.raw)
-    local is_ok, reason = pcall(run, logic, old_raw)
+    local old_state = {
+        after = state.after,
+        variants_of = state.variants_of,
+    }
+    local old_prefixes = table.deepcopy(planetary_check.moved_feature_prefixes)
+    local is_ok, reason = pcall(stage, logic, state, old_raw)
     if not is_ok then
         reason = "of an error: " .. tostring(reason)
     end
     if reason ~= nil then
         data.raw = old_raw
-        scaffolds.kept = {}
-        warn("were undone, since " .. reason .. ".")
+        state.after = old_state.after
+        state.variants_of = old_state.variants_of
+        planetary_check.moved_feature_prefixes = old_prefixes
+        warn(what, "were undone, since " .. reason .. ".")
+        return false
+    end
+    return true
+end
+
+-- logic is the logic module (lib/logic/init), rebuilt from data.raw for each check
+planetary.execute = function(logic)
+    local state = {
+        variants_of = {},
+    }
+    local is_ok = pcall(function()
+        state.before = planetary_check.sort(logic)
+    end)
+    if not is_ok then
+        warn("ocean and resource", "were skipped, since the logic couldn't be sorted.")
+        return
+    end
+    if config.planetary_oceans then
+        local problem = oceans.problem()
+        if problem ~= nil then
+            warn("ocean", "were skipped, since " .. problem .. ".")
+        elseif not run_stage("ocean", run_oceans, logic, state) then
+            scaffolds.kept = {}
+        end
+    end
+    if config.planetary_resources then
+        run_stage("resource", run_resources, logic, state)
+    end
+    if state.after ~= nil then
+        planetary_check.run(state.before, state.after)
     end
 end
 

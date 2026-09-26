@@ -69,6 +69,7 @@ config.misc.colors = settings.startup["propertyrandomizer-colors"].value
 config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
 config.planetary_oceans = settings.startup["propertyrandomizer-planetary-oceans"].value
+config.planetary_resources = settings.startup["propertyrandomizer-planetary-resources"].value
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100

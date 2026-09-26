@@ -347,21 +347,6 @@ local function prune_groups(groups, passes, remove_fn, add_fn)
     return kept
 end
 
--- Whether a recipe was only ever reachable on the given planet in the given sort (so editing it can't cost another planet anything)
-local function only_on(sort, recipe_name, planet_name)
-    local room = gutils.key("planet", planet_name)
-    local contexts = sort.sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
-    if next(contexts) == nil then
-        return false
-    end
-    for context, _ in pairs(contexts) do
-        if top.context_room(context) ~= room then
-            return false
-        end
-    end
-    return true
-end
-
 -- The slow way, only used if the fast way's result doesn't pass: drops candidates one check (logic rebuild and sort) at a time
 -- Conversions go first, so recipe variants are preferred, then variants whose original wasn't isolatable on its planet anyway, then the rest one at a time
 local function prune_slowly(candidates, before, logic, variants_of)
@@ -456,7 +441,7 @@ scaffolds.execute = function(assignment, oceans, logic, before)
     local edits = {}
     scaffolds.kept = {}
     for _, candidate in pairs(kept) do
-        if only_on(before, candidate.original, candidate.planet) then
+        if planetary_check.only_on(before, candidate.original, candidate.planet) then
             local original = data.raw.recipe[candidate.original]
             table.insert(edits, {
                 candidate = candidate,

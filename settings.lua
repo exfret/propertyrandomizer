@@ -299,6 +299,13 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-planetary-resources",
+        default_value = false,
+        order = "f-d[planetary-resources]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-icon",
         default_value = false,
         order = "g-a[icon]",

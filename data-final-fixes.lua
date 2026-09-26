@@ -99,7 +99,7 @@ end
 require("randomizations/prefixes")
 
 -- Planetary randomization goes first, so the rest of randomization and its checks treat the changed world as the starting point
-if config.planetary_oceans then
+if config.planetary_oceans or config.planetary_resources then
     require("randomizations/planetary/execute").execute(new_logic)
 end
 

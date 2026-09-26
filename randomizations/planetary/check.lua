@@ -54,6 +54,40 @@ local function deep_equal(a, b)
     return true
 end
 
+-- Whether a recipe was only ever reachable on the given planet in the given sort (so editing it can't cost another planet anything)
+check.only_on = function(sort, recipe_name, planet_name)
+    local room = gutils.key("planet", planet_name)
+    local contexts = sort.sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
+    if next(contexts) == nil then
+        return false
+    end
+    for context, _ in pairs(contexts) do
+        if top.context_room(context) ~= room then
+            return false
+        end
+    end
+    return true
+end
+
+-- Whether a recipe belongs to the given planet in the given sort: only that planet could make it at all (check.only_on), or only that planet could make it from its own resources (every isolatable context is there, like tungsten carbide on Vulcanus)
+-- Other planets could only make such a recipe with imports
+check.specific_to = function(sort, recipe_name, planet_name)
+    if check.only_on(sort, recipe_name, planet_name) then
+        return true
+    end
+    local room = gutils.key("planet", planet_name)
+    local is_isolatable_there = false
+    for context, _ in pairs(sort.sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}) do
+        if is_isolatable(context) then
+            if top.context_room(context) ~= room then
+                return false
+            end
+            is_isolatable_there = true
+        end
+    end
+    return is_isolatable_there
+end
+
 -- Offshore pumps (and anything else going by tile collision) only work where they originally did.
 -- Every tile keeps its collision and whether it has a fluid, and cloned tiles match the tile they were cloned from.
 -- Offshore pump prototypes themselves aren't compared, since other mods may change them.
@@ -111,9 +145,17 @@ local function kept_context(node_key, context)
     return top.context_room(context) .. " | 0" .. string.sub(abilities, 2)
 end
 
--- Mechanic nodes that belong to a moved feature, so their rooms are expected to change
+-- Logic node types (by prefix) whose nodes belong to a feature a planetary stage moves, so their rooms are expected to change
+-- Each stage adds its own: ocean swaps move offshore fluids, resource swaps move resource categories (like hard-solid mining)
+check.moved_feature_prefixes = {}
+
 local function is_moved_feature(node)
-    return string.find(node.type, "fluid-create-offshore", 1, true) == 1
+    for _, prefix in pairs(check.moved_feature_prefixes) do
+        if string.find(node.type, prefix, 1, true) == 1 then
+            return true
+        end
+    end
+    return false
 end
 
 -- Rooms a node's contexts are in, and whether any context in that room is isolatable
