@@ -46,12 +46,17 @@ PARSER = Parser(Language(tree_sitter_lua.language()))
 
 
 class Finding:
-    def __init__(self, severity, rule, row, message):
+    def __init__(self, severity, rule, row, message, last_row=None):
         self.severity = severity
         self.rule = rule
         # 0-indexed
         self.row = row
         self.message = message
+        # Findings spanning several lines count as touched if any of their lines are
+        self.last_row = last_row if last_row is not None else row
+
+    def touches(self, rows):
+        return any(row in rows for row in range(self.row, self.last_row + 1))
 
 
 def walk(node):
@@ -131,6 +136,68 @@ def truthiness_operands(node):
             yield from truthiness_operands(node.child_by_field_name("right"))
 
 
+SEPARATOR_COMMENT = re.compile(r"^-+$")
+CODE_IN_COMMENT = re.compile(r"^(local\s|[{}])|\s=\s")
+# Words that leave a sentence unfinished when they end a line
+DANGLING_WORD = re.compile(r"\b(a|an|the|and|or|but|of|to|for|with|in|on|at|by|from|that|which|so|if|when|than|as|is|are|be)$", re.IGNORECASE)
+
+
+def line_comment_text(line):
+    return line.strip()[2:].strip()
+
+
+def is_commented_code(line):
+    # Commented-out code is written "--code" (no space), while prose is "-- text"
+    body = line.strip()[2:]
+    return body != "" and not body[0].isspace() and body[0] != "-"
+
+
+def is_prose_start(text):
+    # A lowercase start that reads as a continuation, not a list item ("a) ...") or an identifier ("handler.id ...")
+    first_word = text.split(" ")[0]
+    if re.match(r"^[a-z0-9]\)", text) or re.search(r"[._(:\[]", first_word):
+        return False
+    return text[0].islower()
+
+
+def continues_onto_next(line, next_line):
+    # Whether a comment line looks like a sentence wrapped onto the next line rather than complete by itself
+    if is_commented_code(line) or is_commented_code(next_line):
+        return False
+    text = line_comment_text(line)
+    next_text = line_comment_text(next_line)
+    if text == "" or next_text == "" or SEPARATOR_COMMENT.match(text) or SEPARATOR_COMMENT.match(next_text):
+        return False
+    if next_text.startswith(("*", "-")):
+        return False
+    # Example code inside prose comments (e.g. "-- scale = size / 2" or "-- {")
+    if CODE_IN_COMMENT.search(text) or CODE_IN_COMMENT.search(next_text):
+        return False
+    if text.endswith((",", "(", "[", "{", "/")) or DANGLING_WORD.search(text):
+        return True
+    return is_prose_start(next_text)
+
+
+def check_comment_runs(root, lines):
+    # Rows with "--" line comments that sit on their own line (not trailing after code); block comments are skipped
+    comment_rows = set()
+    for node in walk(root):
+        if node.type != "comment":
+            continue
+        if lines[node.start_point.row][:node.start_point.column].strip() != "":
+            continue
+        if node.start_point.row != node.end_point.row or lines[node.start_point.row].strip().startswith("--[["):
+            continue
+        comment_rows.add(node.start_point.row)
+
+    # Multi-line comments are fine as long as each line is a complete sentence; flag lines that continue onto the next
+    findings = []
+    for row in sorted(comment_rows):
+        if row + 1 in comment_rows and continues_onto_next(lines[row], lines[row + 1]):
+            findings.append(Finding("warning", "wrapped-comment", row, "Comment line continues onto the next line; multi-line comments are fine, but each line should be a complete sentence rather than text wrapped at a fixed width (a long line is fine)", row + 1))
+    return findings
+
+
 def check_source(source):
     global current_source
     current_source = source
@@ -145,6 +212,8 @@ def check_source(source):
             findings.append(Finding("error", "trailing-whitespace", row, "Trailing whitespace"))
         if line.startswith("\t"):
             findings.append(Finding("error", "indent", row, "Indent with 4 spaces, not tabs"))
+
+    findings.extend(check_comment_runs(root, lines))
 
     for node in walk(root):
         if node.type == "ERROR" or node.is_missing:
@@ -196,8 +265,9 @@ def check_source(source):
                 func_name = node_text(func).decode() if func is not None else ""
                 if func_name == "pairs" and len(variables) == 1:
                     findings.append(Finding("error", "pairs-underscore", node.start_point.row, "Write `for k, _ in pairs(...)` rather than omitting the value variable"))
-                elif func_name == "ipairs":
-                    findings.append(Finding("warning", "ipairs", node.start_point.row, "This codebase uses pairs rather than ipairs"))
+
+        elif node.type == "identifier" and node_text(node) == b"ipairs":
+            findings.append(Finding("error", "ipairs", node.start_point.row, "Use pairs, not ipairs: Factorio has a special version of Lua where pairs and ipairs have the same behavior (pairs iterates arrays in order)"))
 
         elif node.type == "function_call":
             func = node.child_by_field_name("name")
@@ -284,7 +354,7 @@ def check_file(path, staged=False, all_rows=False):
     if rows is None:
         return findings
     # Syntax errors are always relevant
-    return [finding for finding in findings if finding.row in rows or finding.rule == "syntax"]
+    return [finding for finding in findings if finding.touches(rows) or finding.rule == "syntax"]
 
 
 def format_findings(path, findings):
@@ -316,10 +386,10 @@ def hook_post_edit(payload):
     source = read_source(path, False)
     findings = check_source(source)
     rows = changed_rows(path, False)
-    errors = [f for f in findings if f.severity == "error" and (rows is None or f.row in rows or f.rule == "syntax")]
+    errors = [f for f in findings if f.severity == "error" and (rows is None or f.touches(rows) or f.rule == "syntax")]
     # Warnings only for what this edit touched, so they aren't repeated on every later edit to the file
     warning_rows = edit_rows(source, tool_input) if "new_string" in tool_input or "edits" in tool_input else rows
-    warnings = [f for f in findings if f.severity == "warning" and (warning_rows is None or f.row in warning_rows)]
+    warnings = [f for f in findings if f.severity == "warning" and (warning_rows is None or f.touches(warning_rows))]
 
     warning_text = ""
     if len(warnings) > 0:
