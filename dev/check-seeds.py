@@ -49,7 +49,7 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
-DETAIL = re.compile(r"MECHCHECK (unreachable recipe|lost|root\?) .*")
+DETAIL = re.compile(r"MECHCHECK (unreachable recipe|lost|root\?|furnace collision) .*")
 
 
 def run_seed(seed, root):

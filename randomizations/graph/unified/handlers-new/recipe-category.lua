@@ -1,10 +1,8 @@
--- No overlapping ingredients for smelting categories
+-- No overlapping ingredients for furnace categories
 -- Account for limited fluidboxes
 -- CRITICAL TODO: Later, also account for costs maybe
 -- CRITICAL TODO: Figure out things that should stick to crafting category, if any (ask discord maybe)
--- CRITICAL TODO: Blacklist some categories, like rocket parts (be generic; so rocket silo categories in general)
--- CRITICAL TODO: Blacklist recycler from claiming anything? (Also the smelting categories checks maybe aren't checking for non-randomized recipes?)
--- I think we capture the rocket parts with the fixed recipe check
+-- Recipes a machine has as its fixed recipe (like rocket parts) are never claimed, so they keep their category
 
 -- Furnaces don't get many recipes; I tried fixing but was unsuccessful
 -- NOTE: Furnaces fixed! I did it! I'm so great!
@@ -13,6 +11,7 @@
 local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local lu = require("lib/lookup/init")
+local furnace_selection = require("lib/furnace-selection")
 
 local recipe_category = {}
 
@@ -20,23 +19,64 @@ recipe_category.id = "recipe_category"
 
 recipe_category.with_replacement = true
 
--- TODO: In the future, maybe consider machines with multiple categories
--- For now, let's just check each vanilla category doesn't get multiple of the same single ingredient
-local smelting_cat_to_ings
+-- Furnaces pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (see lib/furnace-selection.lua)
+-- taken[pool index][ingredient key] marks ingredients of recipes that pool's furnaces craft; recipe-ingredients then checks again with the final ingredients
+local pools
+local taken
+-- Recipes whose category this handler randomizes; the rest stay where they are
+local claimed_recipes
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
 local claimed_category
 recipe_category.initialize = function()
-    smelting_cat_to_ings = {}
+    pools = furnace_selection.pools()
+    taken = nil
+    claimed_recipes = {}
     claimed_category = {}
+end
+
+-- Recipes that keep their category keep their ingredients in its furnaces; only known once claiming is done, so this runs on first use
+local function get_taken()
+    if taken == nil then
+        taken = {}
+        for pool_ind, _ in pairs(pools) do
+            taken[pool_ind] = {}
+        end
+        for recipe_name, recipe in pairs(lu.recipes) do
+            if claimed_recipes[recipe_name] == nil then
+                for _, pool_ind in pairs(furnace_selection.pools_for(pools, furnace_selection.recipe_categories(recipe))) do
+                    for _, ing in pairs(recipe.ingredients or {}) do
+                        taken[pool_ind][gutils.key(ing)] = true
+                    end
+                end
+            end
+        end
+    end
+    return taken
+end
+
+-- Recycling is a distinguished category: recycling recipes keep it, and no other recipe gets it
+-- Its machine (the recycler) picks recipes by ingredient, so a recipe moved there would collide with the recycling recipe for that ingredient
+local function has_recycling(rcat_name)
+    for _, cat in pairs(lu.rcats[rcat_name].cats) do
+        if cat == "recycling" then
+            return true
+        end
+    end
+    return false
 end
 
 recipe_category.claim = function(graph, prereq, dep, edge)
     -- Just don't claim fixed recipes, or hidden recipes
 
     if prereq.type == "recipe-category" and dep.type == "recipe" then
+        -- A recycling recipe's only category edge is from a recycling category, so this keeps both directions out
+        if has_recycling(prereq.name) then
+            return false
+        end
         if not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
             local recipe_prot = lu.recipes[dep.name]
             if not recipe_prot.hidden then
+                claimed_recipes[dep.name] = true
                 if claimed_category[prereq.name] then
                     return 0
                 else
@@ -63,18 +103,19 @@ recipe_category.validate = function(graph, base, head, extra)
         local vanilla_rcats = base_rcat.cats
         local recipe_prot = lu.recipes[head_owner.name]
 
-        -- First, if it's a smelting rcat, make sure the recipe has exactly one ingredient and output
+        -- First, if a furnace crafts this rcat, make sure the recipe has exactly one ingredient and output
         -- This is technically incorrect, but I don't keep track of input/output bases of furnaces in logic now, so I'll leave that as a later problem
         -- TODO: Fix this problem later
-        if lu.smelting_rcats[base_owner.name] then
+        local base_pools = furnace_selection.pools_for(pools, vanilla_rcats)
+        if #base_pools > 0 then
             if recipe_prot.ingredients == nil or #recipe_prot.ingredients ~= 1 or recipe_prot.results == nil or #recipe_prot.results ~= 1 then
                 return false
             end
 
-            -- Also check that this one ingredient isn't used in another recipe for this category
+            -- Also check that this one ingredient isn't used by another recipe these furnaces craft
             local unique_ing = recipe_prot.ingredients[1]
-            for _, cat in pairs(vanilla_rcats) do
-                if smelting_cat_to_ings[cat] ~= nil and smelting_cat_to_ings[cat][gutils.key(unique_ing)] then
+            for _, pool_ind in pairs(base_pools) do
+                if get_taken()[pool_ind][gutils.key(unique_ing)] then
                     return false
                 end
             end
@@ -103,14 +144,13 @@ recipe_category.process = function(graph, base, head)
 
     local base_owner = gutils.get_owner(graph, base)
 
-    if lu.smelting_rcats[base_owner.name] then
-        local vanilla_rcats = lu.rcats[base_owner.name].cats
+    local base_pools = furnace_selection.pools_for(pools, lu.rcats[base_owner.name].cats)
+    if #base_pools > 0 then
         local recipe_prot = lu.recipes[head_owner.name]
         local unique_ing = recipe_prot.ingredients[1]
 
-        for _, cat in pairs(vanilla_rcats) do
-            smelting_cat_to_ings[cat] = smelting_cat_to_ings[cat] or {}
-            smelting_cat_to_ings[cat][gutils.key(unique_ing)] = true
+        for _, pool_ind in pairs(base_pools) do
+            get_taken()[pool_ind][gutils.key(unique_ing)] = true
         end
     end
 end

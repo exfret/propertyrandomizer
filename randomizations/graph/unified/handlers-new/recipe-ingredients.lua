@@ -12,6 +12,7 @@ local cutils = require("lib/cost/cost-utils")
 -- Later, I will want a refactored cost library
 local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
+local furnace_selection = require("lib/furnace-selection")
 
 
 local key = gutils.key
@@ -245,18 +246,56 @@ recipe_ingredients.custom_prereq_search = function(params)
     end
     local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
-    -- Used for making sure there aren't repeat ingredients for furnaces
-    -- This logic is technically too strict now, since it doesn't allow ingredient repeats across all smelting categories
-    -- However, countering this is difficult, since recipe categories can overlap in what machines have them
-    -- TODO: Deal with this complexity
-    local smelting_ingredients = {}
-    for recipe_node_key, _ in pairs(randomization_info.options.unified["recipe-ingredients"].blacklisted_dep) do
-        local recipe_node = random_graph.nodes[recipe_node_key]
-        if recipe_node ~= nil then
-            local recipe = data.raw.recipe[recipe_node.name]
-            if lu.smelting_rcats[lutils.rcat_name(recipe)] and recipe.ingredients ~= nil then
-                for _, ing in pairs(recipe.ingredients) do
-                    smelting_ingredients[key(ing)] = true
+    -- Furnaces (the recycler too) pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (see lib/furnace-selection.lua)
+    -- taken[pool index][material key] marks ingredients used by a recipe that pool's furnaces craft
+    -- Any shared ingredient counts, which is stricter than the selection rules but never lets a collision through
+    local pools = furnace_selection.pools()
+    local taken = {}
+    for pool_ind, _ in pairs(pools) do
+        taken[pool_ind] = {}
+    end
+    -- Categories are where recipe-category randomization put them, which it decided before this search
+    local final_categories = {}
+    for head_key, base_key in pairs(params.head_to_base or {}) do
+        local head_owner = gutils.get_owner(random_graph, random_graph.nodes[head_key])
+        local base_owner = gutils.get_owner(random_graph, random_graph.nodes[base_key])
+        if head_owner.type == "recipe" and not head_owner.spoof and base_owner.type == "recipe-category" and lu.rcats[base_owner.name] ~= nil then
+            final_categories[head_owner.name] = lu.rcats[base_owner.name].cats
+        end
+    end
+    local function furnace_pools_of(recipe)
+        return furnace_selection.pools_for(pools, final_categories[recipe.name] or furnace_selection.recipe_categories(recipe))
+    end
+    local function take(recipe, ing)
+        for _, pool_ind in pairs(furnace_pools_of(recipe)) do
+            taken[pool_ind][key(ing)] = true
+        end
+    end
+    local function is_taken(pool_inds, material)
+        for _, pool_ind in pairs(pool_inds) do
+            if taken[pool_ind][key(material)] then
+                return true
+            end
+        end
+        return false
+    end
+    -- Ingredients that won't change: all of those in recipes this search leaves alone, and those kept in recipes it randomizes
+    local to_process = {}
+    for _, dep in pairs(sorted_deps) do
+        local node = random_graph.nodes[dep]
+        if node.type == "recipe" and claimed_recipes[node.name] then
+            to_process[node.name] = true
+        end
+    end
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        for _, ing in pairs(recipe.ingredients or {}) do
+            if to_process[recipe_name] == nil or randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(ing)] then
+                take(recipe, ing)
+            else
+                for _, result in pairs(recipe.results or {}) do
+                    if result.type == ing.type and result.name == ing.name then
+                        take(recipe, ing)
+                    end
                 end
             end
         end
@@ -336,9 +375,21 @@ recipe_ingredients.custom_prereq_search = function(params)
                 end
 
                 -- Gather information about this recipe
-                -- TODO: Being "a smelting recipe" is up in the air; depends on recipe category randomization as well!
-                -- Need to act based on how recipe category previously randomized
-                local is_smelting_recipe = lu.smelting_rcats[lutils.rcat_name(dependent_recipe)]
+                local dependent_pools = furnace_pools_of(dependent_recipe)
+                local is_smelting_recipe = #dependent_pools > 0
+                -- Pinned ingredients stay, so this search can't help if another recipe here took them already; the built-game check reports it
+                for material_key, _ in pairs(current_pins) do
+                    local material = gutils.deconstruct(material_key)
+                    local pin_is_own = false
+                    for _, ing in pairs(dependent_recipe.ingredients or {}) do
+                        if key(ing) == material_key then
+                            pin_is_own = true
+                        end
+                    end
+                    if not pin_is_own and is_taken(dependent_pools, material) then
+                        log("Furnace selection: pinned ingredient " .. material_key .. " of " .. dependent_recipe.name .. " is already used by another recipe its furnaces craft")
+                    end
+                end
                 local is_result_of_this_recipe = {}
                 if dependent_recipe.results ~= nil then
                     for _, result in pairs(dependent_recipe.results) do
@@ -407,8 +458,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                                 return false
                             end
 
-                            -- Don't repeat ingredients in smelting recipes
-                            if is_smelting_recipe and smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] then
+                            -- Don't share an ingredient with another recipe the same furnace crafts
+                            if is_taken(dependent_pools, prereq_owner) then
                                 return false
                             end
 
@@ -574,6 +625,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                     -- In this case, this is an unrandomized ing
                     if is_fallback or index_in_best_search_info > #reordered_ings_randomized then
                         table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+                        take(dependent_recipe, ing)
                         -- Unrandomized ings that aren't randomized edges (e.g. blacklisted) stay as fixed prereqs, so have no owner here
                         if prom ~= nil then
                             local owner_key = prom.vanilla_owner(dep, ing)
@@ -591,9 +643,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                         ind_to_used[prereq_ind_of_ing] = true
                         -- Add prereq to end of shuffled_prereqs (doing with replacement)
                         table.insert(shuffled_prereqs, prereq_of_ing)
-                        if is_smelting_recipe then
-                            smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] = true
-                        end
+                        take(dependent_recipe, prereq_owner)
                     end
                 end
 

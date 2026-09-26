@@ -5,6 +5,7 @@
 
 local top = require("lib/graph/context-sort")
 local protection = require("randomizations/graph/unified/skeleton/protection")
+local furnace_selection = require("lib/furnace-selection")
 
 local check = {}
 
@@ -26,7 +27,7 @@ end
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
 -- Only the protected part of each mechanic context counts (see protection.lua)
 -- label (optional) replaces MECHCHECK in the log lines
--- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability }
+-- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by }
 check.run = function(graph, init_sort_info, final_sort_info, label)
     label = label or "MECHCHECK"
     local function log_check(message)
@@ -182,13 +183,23 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
     for _, str in pairs(lost) do
         log_check("lost " .. str)
     end
+
+    -- Furnaces (the recycler too) pick their recipe by ingredient, which the logic graph doesn't model, so check the game itself
+    -- Two recipes one furnace can craft that share an ingredient can't both be used there; only collisions the original game (old_data_raw) didn't have count
+    local furnace_collisions = furnace_selection.new_collisions(old_data_raw)
+    log_check("checked furnace recipe selection; collisions " .. #furnace_collisions)
+    for _, collision in pairs(furnace_collisions) do
+        log_check("furnace collision on " .. collision.ingredient .. ": " .. table.concat(collision.recipes, ", "))
+    end
+
     local verdict = {
-        ok = #lost_recipes == 0 and num_hard_lost == 0 and num_hard_missing == 0,
+        ok = #lost_recipes == 0 and num_hard_lost == 0 and num_hard_missing == 0 and #furnace_collisions == 0,
         unreachable = #lost_recipes,
         lost = num_hard_lost,
         missing = num_hard_missing,
+        furnace_collisions = #furnace_collisions,
     }
-    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", not counting isolatability)")
+    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", furnace collisions " .. verdict.furnace_collisions .. ", not counting isolatability)")
     return verdict
 end
 

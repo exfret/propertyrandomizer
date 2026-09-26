@@ -373,6 +373,19 @@ recycling.regenerate = function(old_raw)
         end
     end
 
+    -- The recycler generates no recycling for an item whose "<item>-recycling" name a hand-written recipe has taken, like scrap's (recycler/data-updates.lua)
+    -- Item randomization renames the item such a recipe takes, so follow the recipe to the item it takes now; otherwise the recycler, which picks its recipe by ingredient, would have two for that item
+    local hand_recycled = {}
+    for recipe_name, recipe in pairs(raw.recipe) do
+        local old_recipe = old_raw.recipe[recipe_name]
+        if old_recipe ~= nil and has_recycling_category(recipe) and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" then
+            local old_ingredients = old_recipe.ingredients or {}
+            if #old_ingredients == 1 and old_ingredients[1].type == "item" and old_ingredients[1].name .. "-recycling" == recipe_name then
+                hand_recycled[recipe.ingredients[1].name] = true
+            end
+        end
+    end
+
     -- Item randomization changes which item each recycling recipe recycles, and the logic model follows each recipe by its name, so an item's recycling keeps the name of the recipe that recycles it now
     -- Item name --> name of the generated recipe recycling it now, preferring the one named after it
     local name_for_item = {}
@@ -399,7 +412,9 @@ recycling.regenerate = function(old_raw)
     local unnamed = {}
     for default_name, entry in pairs(recycling.generate(raw, preferred_by_default_name)) do
         local item_name = entry.recipe.ingredients[1].name
-        if name_for_item[item_name] ~= nil then
+        if hand_recycled[item_name] ~= nil then
+            -- Recycled by hand already (see above)
+        elseif name_for_item[item_name] ~= nil then
             entry.recipe.name = name_for_item[item_name]
             generated[entry.recipe.name] = entry
         else

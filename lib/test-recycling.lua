@@ -283,6 +283,43 @@ test("recycling recipes are unlocked from the start, and no technology unlocks t
     assert(#effects == 1 and effects[1].recipe == "gear")
 end)
 
+test("an item a hand-written recycling recipe recycles gets no generated one, even after item randomization renames it", function()
+    local old_raw = game(base_recipes(), item_names)
+    -- Like scrap recycling, which the recycler doesn't generate self-recycling over, since its name is taken (recycler/data-updates.lua)
+    old_raw.recipe["junk-recycling"] = old_raw.recipe.junk
+    old_raw.recipe["junk-recycling"].name = "junk-recycling"
+    old_raw.recipe.junk = nil
+    local raw = randomize(old_raw)
+    local swap = {
+        junk = "new-item",
+        ["new-item"] = "junk",
+    }
+    for _, recipe in pairs(raw.recipe) do
+        for _, list in pairs({recipe.ingredients or {}, recipe.results or {}}) do
+            for _, material in pairs(list) do
+                material.name = swap[material.name] or material.name
+            end
+        end
+    end
+    recycling.regenerate(old_raw)
+    -- The recycler picks its recipe by ingredient, so only the hand-written one may take what's now called new-item
+    local recycling_new_item = {}
+    for name, recipe in pairs(raw.recipe) do
+        local is_recycling = false
+        for _, category in pairs(recipe.categories or {}) do
+            if category == "recycling" then
+                is_recycling = true
+            end
+        end
+        if is_recycling and #recipe.ingredients == 1 and recipe.ingredients[1].name == "new-item" then
+            table.insert(recycling_new_item, name)
+        end
+    end
+    assert(#recycling_new_item == 1 and recycling_new_item[1] == "junk-recycling", table.concat(recycling_new_item, ", "))
+    -- What's now called junk isn't recycled by hand, so it keeps the recycling that followed it
+    assert(raw.recipe["new-item-recycling"].ingredients[1].name == "junk")
+end)
+
 test("regenerating twice changes nothing", function()
     local old_raw = game(base_recipes(), item_names)
     local raw = randomize(old_raw)
