@@ -23,7 +23,10 @@
 local locale = require("lib/locale")
 local cutils = require("lib/cost/cost-utils")
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
+local logic = require("lib/logic/init")
 local common = require("scripts/common")
+local explorer_sorts = require("scripts/explorer-sorts")
 local customizer = require("scripts/customizer")
 local derandomizer = require("scripts/derandomizer")
 
@@ -100,6 +103,30 @@ local function update_explorer_choice(player_index, explorer_type_choice)
     return true
 end
 
+-- Fraction of the screen the main panel takes up in each direction
+local MAIN_PANEL_FRAC = 0.6
+-- The frame's content padding plus the tab content's padding, left and right (see frame and tabbed_pane in core's style.lua)
+local MAIN_PANEL_PADDING = 8 + 8 + 12 + 12
+
+-- Sizes that depend on the player's screen; redone when their resolution or UI scale changes
+local function size_main_panel(player, main_frame)
+    set_width_height(main_frame, player, MAIN_PANEL_FRAC, MAIN_PANEL_FRAC)
+    local tabbed_pane = main_frame["randomizer-main-tabbed-pane"]
+    -- Labels are single line by default, and a long one widens the whole tabbed pane past the frame, so wrap them at the panel's width
+    local inner_width = common.screen_size(player).width * MAIN_PANEL_FRAC - MAIN_PANEL_PADDING
+    for _, child in pairs(tabbed_pane["randomizer-home-flow"].children) do
+        if child.type == "label" then
+            child.style.single_line = false
+            child.style.maximal_width = inner_width
+        end
+    end
+    local explorer_intro = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-intro"]
+    explorer_intro.style.single_line = false
+    explorer_intro.style.maximal_width = inner_width
+    local explorer_flow_left = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-flow-main"]["randomizer-explorer-flow-left"]
+    explorer_flow_left.style.maximal_width = common.screen_size(player).width / 6
+end
+
 local function toggle_randomizer_panel(event)
     local player = game.players[event.player_index]
     local gui = player.gui.screen
@@ -129,8 +156,6 @@ local function toggle_randomizer_panel(event)
     drag_space.drag_target = main_frame
     title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
     --player.opened = main_frame
-    set_width_height(main_frame, player, 1 / 2.5, 1 / 2.5)
-    main_frame.force_auto_center()
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
     main_tabbed_pane.style.horizontally_stretchable = true
     main_tabbed_pane.style.vertically_stretchable = true
@@ -170,7 +195,6 @@ local function toggle_randomizer_panel(event)
     explorer_flow_main.style.horizontally_stretchable = true
     explorer_flow_main.style.vertically_stretchable = true
     local explorer_flow_left = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-left", direction = "vertical"})
-    explorer_flow_left.style.maximal_width = player.display_resolution.width / 6
     local explorer_flow_choice = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
     local explorer_type_choice = explorer_flow_choice.add({type = "list-box", name = "randomizer-explorer-type-choice", selected_index = 1, items = {"Entity", "Fluid", "Item", "Recipe", "Technology", "Tile", "Asteroid Chunk"}})
     update_explorer_choice(event.player_index, explorer_type_choice)
@@ -180,7 +204,21 @@ local function toggle_randomizer_panel(event)
     explorer_dropdowns_scroll.style.horizontally_stretchable = true
     explorer_dropdowns_scroll.style.vertically_stretchable = true
     local explorer_dropdowns = explorer_dropdowns_scroll.add({type = "flow", name = "randomizer-explorer-dropdowns", direction = "vertical"})
+
+    size_main_panel(player, main_frame)
+    main_frame.force_auto_center()
 end
+
+local function on_display_changed(event)
+    local player = game.players[event.player_index]
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if main_frame ~= nil then
+        size_main_panel(player, main_frame)
+        main_frame.force_auto_center()
+    end
+end
+script.on_event(defines.events.on_player_display_resolution_changed, on_display_changed)
+script.on_event(defines.events.on_player_display_scale_changed, on_display_changed)
 
 script.on_event("randomizer-panel", function(event)
     toggle_randomizer_panel(event)
@@ -347,6 +385,206 @@ local function get_node_caption(node)
     end
 end
 
+
+-- Contexts panel: clicking a node's reachability button shows its complex contexts (room + ability string) in each room
+
+-- Same order and colors as the reachability buttons in expand_prereq_dropdown
+local reach_levels = {
+    {sort = "tech", color = "green", caption = "Now", tooltip = "Reachable with the technologies you've already researched."},
+    {sort = "science_pack", color = "yellow", caption = "With your science", tooltip = "Reachable by researching with science packs you've already made."},
+    {sort = "full", color = "red", caption = "Later", tooltip = "Reachable, but only after making science packs you haven't made yet."},
+    {color = "pink", caption = "Never", tooltip = "Not reachable in the randomizer's logic."},
+}
+
+local ability_names = {
+    [top.ISOLATABILITY] = "Isolated",
+    [top.AUTOMATABILITY] = "Automated",
+}
+local ability_tooltips = {
+    [top.ISOLATABILITY] = "Made in this room without shipping anything in from other rooms (technologies researched by the time you get here still count).",
+    [top.AUTOMATABILITY] = "Can be automated, not just handcrafted or taken from non-resource entities.",
+}
+
+-- Ability strings with fewer abilities first, so "Reachable" leads and "Isolated + Automated" ends
+local function ordered_ability_strs()
+    local strs = {}
+    for _, ability_str in pairs(top.ability_strs) do
+        table.insert(strs, ability_str)
+    end
+    local function num_abilities(ability_str)
+        return select(2, string.gsub(ability_str, "1", ""))
+    end
+    table.sort(strs, function(a, b)
+        if num_abilities(a) ~= num_abilities(b) then
+            return num_abilities(a) < num_abilities(b)
+        end
+        return a > b
+    end)
+    return strs
+end
+
+local function ability_str_caption(ability_str)
+    local caption = ""
+    local tooltip = ""
+    for ability, name in pairs(ability_names) do
+        if string.sub(ability_str, ability, ability) == "1" then
+            if caption ~= "" then
+                caption = caption .. " + "
+                tooltip = tooltip .. "\n"
+            end
+            caption = caption .. name
+            tooltip = tooltip .. "[font=default-semibold]" .. name .. ":[/font] " .. ability_tooltips[ability]
+        end
+    end
+    if caption == "" then
+        return {caption = "Reachable", tooltip = "Can be had in this room at all."}
+    end
+    return {caption = caption, tooltip = tooltip}
+end
+
+-- Room keys are prototype keys of planets and surfaces (see logic.contexts)
+local function room_info(room)
+    local deconstructed = gutils.deconstruct(room)
+    local prot = prototypes.space_location[deconstructed.name]
+    local sprite = "space-location/" .. deconstructed.name
+    if deconstructed.type == "surface" then
+        prot = prototypes.surface[deconstructed.name]
+        sprite = "surface/" .. deconstructed.name
+    end
+    if not helpers.is_valid_sprite_path(sprite) then
+        sprite = nil
+    end
+    return {
+        room = room,
+        localised_name = prot.localised_name,
+        order = prot.order,
+        is_surface = deconstructed.type == "surface",
+        sprite = sprite,
+    }
+end
+
+local function reach_level_of(complex_inds, node_key, context)
+    for _, level in pairs(reach_levels) do
+        if level.sort == nil or complex_inds[level.sort][node_key][context] ~= nil then
+            return level
+        end
+    end
+end
+
+local function add_level_square(parent, level, tooltip)
+    local square = parent.add({type = "button", style = "randomizer_slot_button_" .. level.color, tooltip = tooltip})
+    square.style.size = 24
+    square.ignored_by_interaction = tooltip == nil
+    return square
+end
+
+local function show_contexts_panel(player, node)
+    local gui = player.gui.screen
+    if gui["randomizer-contexts-panel"] ~= nil then
+        gui["randomizer-contexts-panel"].destroy()
+    end
+    local complex_inds = explorer_sorts.inds()
+    local node_key = gutils.key(node)
+
+    local frame = gui.add({type = "frame", name = "randomizer-contexts-panel", direction = "vertical"})
+    local title_flow = frame.add({type = "flow", direction = "horizontal"})
+    title_flow.drag_target = frame
+    local title_caption = {"", get_node_type_caption(node), get_node_caption(node)}
+    -- The node caption is just an icon for prototypes, so spell out the name too
+    if node.prot ~= nil then
+        local prot_info = decon_to_prot(gutils.deconstruct(node.prot))
+        if is_elem_type[prot_info.top_level_class] then
+            table.insert(title_caption, " ")
+            table.insert(title_caption, prot_info.prot.localised_name)
+        end
+    end
+    local title_label = title_flow.add({type = "label", caption = title_caption, style = "frame_title"})
+    title_label.drag_target = frame
+    local drag_space = title_flow.add({type = "empty-widget", style = "draggable_space_header"})
+    drag_space.style.horizontally_stretchable = true
+    drag_space.style.height = 24
+    drag_space.drag_target = frame
+    title_flow.add({type = "sprite-button", name = "randomizer-contexts-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
+
+    local inside = frame.add({type = "frame", style = "inside_shallow_frame_with_padding", direction = "vertical"})
+    inside.add({type = "label", caption = "Where this can be had, and how. Hover a square for details."})
+
+    local ability_strs = ordered_ability_strs()
+    local table_elt = inside.add({type = "table", style = "bordered_table", column_count = 1 + #ability_strs})
+    table_elt.style.top_margin = 8
+    table_elt.add({type = "label", style = "bold_label", caption = "Room"})
+    for _, ability_str in pairs(ability_strs) do
+        local info = ability_str_caption(ability_str)
+        local header = table_elt.add({type = "label", style = "bold_label", caption = info.caption, tooltip = info.tooltip})
+        header.style.minimal_width = 72
+        header.style.horizontal_align = "center"
+    end
+
+    -- Planets in their usual order, then platforms
+    local rooms = {}
+    for room, _ in pairs(logic.contexts) do
+        table.insert(rooms, room_info(room))
+    end
+    table.sort(rooms, function(a, b)
+        if a.is_surface ~= b.is_surface then
+            return b.is_surface
+        end
+        if a.order ~= b.order then
+            return a.order < b.order
+        end
+        return a.room < b.room
+    end)
+
+    for _, info in pairs(rooms) do
+        local room_flow = table_elt.add({type = "flow", direction = "horizontal"})
+        room_flow.style.vertical_align = "center"
+        if info.sprite ~= nil then
+            local icon = room_flow.add({type = "sprite", sprite = info.sprite})
+            icon.style.size = 24
+            icon.style.stretch_image_to_widget_size = true
+        end
+        local reached_anywhere = false
+        for _, ability_str in pairs(ability_strs) do
+            if reach_level_of(complex_inds, node_key, top.context_key(info.room, ability_str)).sort ~= nil then
+                reached_anywhere = true
+            end
+        end
+        local room_label = room_flow.add({type = "label", caption = info.localised_name})
+        if not reached_anywhere then
+            room_label.style.font_color = {0.5, 0.5, 0.5}
+        end
+
+        for _, ability_str in pairs(ability_strs) do
+            local level = reach_level_of(complex_inds, node_key, top.context_key(info.room, ability_str))
+            local cell = table_elt.add({type = "flow", direction = "horizontal"})
+            cell.style.horizontally_stretchable = true
+            cell.style.horizontal_align = "center"
+            add_level_square(cell, level, {"", "[font=default-semibold]", info.localised_name, ", ", ability_str_caption(ability_str).caption, ":[/font] ", level.tooltip})
+        end
+    end
+
+    local legend = inside.add({type = "flow", direction = "horizontal"})
+    legend.style.top_margin = 8
+    legend.style.vertical_align = "center"
+    legend.style.horizontal_spacing = 6
+    for _, level in pairs(reach_levels) do
+        add_level_square(legend, level)
+        local legend_label = legend.add({type = "label", caption = level.caption, tooltip = level.tooltip})
+        legend_label.style.right_margin = 8
+    end
+
+    -- Offset down and right from the main panel, so it reads as a popup of it and the explorer tree stays partly in view
+    -- Locations are in pixels, so the offset is scaled like the rest of the GUI
+    local main_frame = gui["randomizer-main-panel"]
+    if main_frame ~= nil and main_frame.visible and main_frame.location ~= nil then
+        local offset = 48 * player.display_scale
+        frame.location = {x = math.floor(main_frame.location.x + offset), y = math.floor(main_frame.location.y + offset)}
+    else
+        frame.force_auto_center()
+    end
+    return frame
+end
+
 -- gui_elt.parent[gui_elt.name .. "-flow"][gui_elt.name .. "-flow-down"]
 local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node, extra)
     local extra = extra or {}
@@ -377,7 +615,7 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
     elseif next(storage.sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
         style_to_use = "randomizer_slot_button_red"
     end
-    local reachability_button = description.add({type = "button", style = style_to_use})
+    local reachability_button = description.add({type = "button", name = new_name .. "-randomizer-explorer-contexts-button", style = style_to_use, tooltip = "Click to see where this can be had in each room."})
     local description_label_amount
     if amount ~= nil then
         -- Ignore recipe nodes since their amounts might cause confusion
@@ -435,6 +673,15 @@ script.on_event(defines.events.on_gui_click, function(event)
                 end
             end
         end
+    end
+    if string.find(event.element.name, "randomizer%-explorer%-contexts%-button") ~= nil then
+        local hor_flow = event.element.parent.parent.parent
+        show_contexts_panel(game.players[event.player_index], storage.gui_element_to_node[event.player_index][hor_flow.name])
+        return
+    end
+    if event.element.name == "randomizer-contexts-close" then
+        event.element.parent.parent.destroy()
+        return
     end
     if event.element.name == "randomizer-explorer-derandomizer-button" then
         if storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"] then

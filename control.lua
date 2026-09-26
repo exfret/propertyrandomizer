@@ -6,6 +6,7 @@ local util = require("util")
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("lib/graph/consistent-sort")
+local explorer_sorts = require("scripts/explorer-sorts")
 -- Used for getting key
 local gutils = require("lib/graph/graph-utils")
 
@@ -62,6 +63,8 @@ local function load_dep_graph()
         end
     end
     storage.science_pack_sort_info = top.sort(science_graph)
+
+    explorer_sorts.build()
 end
 
 script.on_init(function(event)
@@ -185,6 +188,7 @@ script.on_event(defines.events.on_research_finished, function(event)
         gutils.remove_edge(tech_graph, remove_edge_key)
         local new_edge = gutils.add_edge(tech_graph, gutils.key("true", ""), node)
         storage.tech_sort_info = top.sort(tech_graph, storage.tech_sort_info, {tech_graph.nodes[new_edge.start], tech_graph.nodes[new_edge.stop]})
+        explorer_sorts.add_edge("tech_complex_sort_info", tech_graph, new_edge)
     end
 end)
 
@@ -285,6 +289,7 @@ script.on_nth_tick(10, function(event)
                     storage.science_pack_crafted[science_name] = true
                     local new_edge = gutils.add_edge(storage.science_pack_graph, gutils.key("true", ""), gutils.key("item", science_name))
                     storage.science_pack_sort_info = top.sort(storage.science_pack_graph, storage.science_pack_sort_info, {storage.science_pack_graph.nodes[new_edge.start], storage.science_pack_graph.nodes[new_edge.stop]})
+                    explorer_sorts.add_edge("science_pack_complex_sort_info", storage.science_pack_graph, new_edge)
                 end
             end
         end

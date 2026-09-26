@@ -278,13 +278,24 @@ top.discovered_rooms = function(tech_node)
     if tech_node.type ~= "technology" then
         return rooms
     end
-    local tech_prot = data.raw.technology[tech_node.name]
+    -- Control stage (the explorer's complex sorts) reads the runtime prototypes, which have the same effect fields
+    local tech_prot
+    if data ~= nil then
+        tech_prot = data.raw.technology[tech_node.name]
+    else
+        tech_prot = prototypes.technology[tech_node.name]
+    end
     if tech_prot == nil or tech_prot.effects == nil then
         return rooms
     end
     for _, effect in pairs(tech_prot.effects) do
         if effect.type == "unlock-space-location" then
-            local loc_prot = dutils.get_prot("space-location", effect.space_location)
+            local loc_prot
+            if data ~= nil then
+                loc_prot = dutils.get_prot("space-location", effect.space_location)
+            else
+                loc_prot = prototypes.space_location[effect.space_location]
+            end
             table.insert(rooms, {
                 location = effect.space_location,
                 room = key(loc_prot.type, loc_prot.name),
