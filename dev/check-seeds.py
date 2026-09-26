@@ -30,6 +30,8 @@ MOD_LIST = os.path.join(REPO, "tests", "mod-configs", "sa.json")
 SETTINGS_TOOL = os.path.join(REPO, "dev", "mod-settings.py")
 CACHE_DIR = os.path.join(tempfile.gettempdir(), "propertyrandomizer-check-seeds")
 STAMP = os.path.join(CACHE_DIR, "last-run.json")
+# Full failure report from the last hook run, for the agent to read; the hook message itself stays short
+REPORT = os.path.join(CACHE_DIR, "last-report.txt")
 
 DEFAULT_SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
 # Each Space Age data stage run takes a couple GB of memory
@@ -95,15 +97,26 @@ def run_seeds(seeds):
     return root, results
 
 
-def format_results(results):
+def format_results(results, limit=25):
     lines = []
     for result in results:
         if result["ok"]:
             lines.append("seed " + str(result["seed"]) + ": ok (" + str(result["seconds"]) + "s)")
         else:
             lines.append("seed " + str(result["seed"]) + ": FAILED, log at " + result["log"])
-            for problem in result["problems"][:25]:
+            for problem in result["problems"][:limit]:
                 lines.append("    " + problem)
+    return "\n".join(lines)
+
+
+def format_summary(results):
+    # One line per seed, with the first problem (usually the MECHCHECK counts)
+    lines = []
+    for result in results:
+        if result["ok"]:
+            lines.append("seed " + str(result["seed"]) + ": ok")
+        else:
+            lines.append("seed " + str(result["seed"]) + ": FAILED, " + result["problems"][0])
     return "\n".join(lines)
 
 
@@ -139,22 +152,28 @@ def hook_stop(payload):
         if os.path.exists(STAMP):
             with open(STAMP) as f:
                 stamp = json.load(f)
-        if stamp is not None and stamp["hash"] == current:
-            ok, report = stamp["ok"], stamp["report"]
+        if stamp is not None and stamp["hash"] == current and "summary" in stamp:
+            ok, report, summary = stamp["ok"], stamp["report"], stamp["summary"]
         else:
             _, results = run_seeds(DEFAULT_SEEDS)
             ok = all(result["ok"] for result in results)
-            report = format_results(results)
+            report = format_results(results, limit=None)
+            summary = format_summary(results)
             with open(STAMP, "w") as f:
-                json.dump({"hash": current, "ok": ok, "report": report}, f)
+                json.dump({"hash": current, "ok": ok, "report": report, "summary": summary}, f)
+        with open(REPORT, "w") as f:
+            f.write(report + "\n")
     if ok:
         return 0
-    message = "Multi-seed logic check (dev/check-seeds.py) FAILED on the current code:\n" + report
-    # Block once so the agent sees it; after that, let it stop but make sure the user sees the failure too
+    # Hook messages are shown to the user too, so only a summary goes in them; the agent reads the full report from REPORT
+    # Block once so the agent sees it; after that, let it stop but make sure the user sees a one-line notice
     if payload.get("stop_hook_active"):
-        print(json.dumps({"systemMessage": message}))
+        print(json.dumps({"systemMessage": "Multi-seed logic check (dev/check-seeds.py) still fails; full report in " + REPORT}))
         return 0
-    print(message + "\n\nFix this before reporting the task as done. If you can't, say plainly in your reply that the multi-seed check fails and include the failures above.", file=sys.stderr)
+    message = "Multi-seed logic check (dev/check-seeds.py) FAILED on the current code:\n" + summary
+    message += "\n\nRead the full report (every lost context/unreachable recipe and each seed's log path) at " + REPORT + " before doing anything else."
+    message += " Fix this before reporting the task as done. If you can't, say plainly in your reply that the multi-seed check fails, with a short summary of the failures rather than the full list."
+    print(message, file=sys.stderr)
     return 2
 
 
