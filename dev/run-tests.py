@@ -5,8 +5,9 @@
 #   - creating a map works (the data stage, randomization included, then on_init)
 #   - the game used the settings the config asked for
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
+#   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
 #   - the new map runs some ticks without errors (the control stage)
-# MECHCHECK counts (randomizations/graph/unified/skeleton/check.lua) are shown as notes but don't fail a run; dev/check-seeds.py gates on those
+# Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (randomizations/planetary/check.lua)
 #
 # Configs and suites are described in tests/configs.txt, and mod sets are the mod lists in tests/mod-configs; every config runs on every mod set
 # The mod is snapshotted when the run starts, so edits made during a long run don't mix in
@@ -61,7 +62,7 @@ ROOT_LOCK = None
 
 SUITES = ["smoke", "settings", "unified"]
 # Checks a hand-picked config can turn off with nocheck=
-OPTIONAL_CHECKS = ["reachability", "control"]
+OPTIONAL_CHECKS = ["reachability", "mechcheck", "control"]
 UNIFIED_SEEDS = [1, 2, 3, 4]
 CONTROL_TICKS = 600
 # A run with every setting on takes about 5 minutes on an unloaded machine
@@ -76,8 +77,8 @@ FAILURE_GUIDANCE = (
     " Don't add hotfixes or special cases to get a run through: a patch that quietly breaks something else is worse than a failing run."
 )
 
-RECIPE_SUMMARY = re.compile(r"MECHCHECK checked (\d+) recipes; unreachable (\d+)")
-CONTEXT_SUMMARY = re.compile(r"MECHCHECK checked (\d+) mechanic contexts; lost (\d+)")
+# The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
+VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
 SETTING_LINE = re.compile(r"PRTEST setting " + re.escape(PREFIX) + r"(\S+) = (.*)$", re.MULTILINE)
 REACHABILITY = re.compile(r"PRTEST reachability (\d+) of (\d+)")
 GAME_VERSION = re.compile(r"Factorio (\d+)\.(\d+)\.(\d+) \(build")
@@ -542,15 +543,14 @@ def check_reachability(text):
     return []
 
 
-def mechcheck_notes(text):
-    notes = []
-    recipes = RECIPE_SUMMARY.search(text)
-    contexts = CONTEXT_SUMMARY.search(text)
-    if recipes is not None and int(recipes.group(2)) > 0:
-        notes.append("MECHCHECK: " + recipes.group(2) + " of " + recipes.group(1) + " recipes unreachable")
-    if contexts is not None and int(contexts.group(2)) > 0:
-        notes.append("MECHCHECK: " + contexts.group(2) + " of " + contexts.group(1) + " mechanic contexts lost")
-    return notes
+def check_verdict(text):
+    # The last verdict is the end-of-load one; unified randomization also logs one per attempt, under another label
+    verdicts = VERDICT.findall(text)
+    if len(verdicts) == 0:
+        return ["the MECHCHECK verdict is missing from the log (the check didn't run)"]
+    if verdicts[-1][0] != "ok":
+        return ["MECHCHECK verdict " + verdicts[-1][0] + " " + verdicts[-1][1]]
+    return []
 
 
 def run_one(run, ctx):
@@ -584,7 +584,6 @@ def run_one(run, ctx):
     create_log = os.path.join(run_dir, "create.log")
     code = ctx.processes.run(base_args + ["--create", save], create_log)
     text = read(create_log)
-    notes = mechcheck_notes(text)
     problems.extend(check_game_version(text, ctx))
     if code != 0:
         problems.append("map creation failed (exit " + str(code) + ")")
@@ -593,6 +592,8 @@ def run_one(run, ctx):
         problems.extend(check_settings(text, run, ctx))
         if "reachability" not in run.config.nocheck:
             problems.extend(check_reachability(text))
+        if "mechcheck" not in run.config.nocheck:
+            problems.extend(check_verdict(text))
         if "control" not in run.config.nocheck:
             control_log = os.path.join(run_dir, "control.log")
             code = ctx.processes.run(base_args + ["--benchmark", save, "--benchmark-ticks", str(CONTROL_TICKS)], control_log)
@@ -607,7 +608,7 @@ def run_one(run, ctx):
     shutil.rmtree(data_dir, ignore_errors=True)
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "notes": notes, "dir": run_dir, "seconds": time.time() - start}
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start}
 
 
 def duration(seconds):
@@ -659,12 +660,6 @@ def summarize(results, test_file, elapsed):
             for problem in result["problems"]:
                 lines.append("      " + problem)
             lines.append("      logs in " + result["dir"])
-    noted = [result for result in results if len(result["notes"]) > 0]
-    if len(noted) > 0:
-        lines.append("")
-        lines.append("Notes (don't fail the run):")
-        for result in noted:
-            lines.append("  " + result["run"].name + ": " + "; ".join(result["notes"]))
     counted = [result for result in failures if result["run"].config.suite not in test_file.wip]
     lines.append("")
     if len(counted) == 0:

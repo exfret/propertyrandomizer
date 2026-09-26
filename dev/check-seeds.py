@@ -46,8 +46,8 @@ FAILURE_GUIDANCE = (
     " Don't add hotfixes or special cases to get a seed through: a patch that quietly breaks something else is worse than a failing seed."
 )
 
-RECIPE_SUMMARY = re.compile(r"MECHCHECK checked (\d+) recipes; unreachable (\d+)")
-CONTEXT_SUMMARY = re.compile(r"MECHCHECK checked (\d+) mechanic contexts; lost (\d+)")
+# The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
+VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
 DETAIL = re.compile(r"MECHCHECK (unreachable recipe|lost|root\?) .*")
 
 
@@ -79,15 +79,11 @@ def run_seed(seed, root):
         problems.append("Factorio exited with " + str(exit_code))
         errors = [line.strip() for line in text.splitlines() if "Error" in line]
         problems.extend(errors[:5])
-    recipes = RECIPE_SUMMARY.search(text)
-    contexts = CONTEXT_SUMMARY.search(text)
-    if recipes is None or contexts is None:
-        problems.append("MECHCHECK summary missing from log (check didn't run)")
-    else:
-        if int(recipes.group(2)) > 0:
-            problems.append(recipes.group(2) + " of " + recipes.group(1) + " recipes unreachable")
-        if int(contexts.group(2)) > 0:
-            problems.append(contexts.group(2) + " of " + contexts.group(1) + " mechanic contexts lost")
+    verdicts = VERDICT.findall(text)
+    if len(verdicts) == 0:
+        problems.append("MECHCHECK verdict missing from log (check didn't run)")
+    elif verdicts[-1][0] != "ok":
+        problems.append("MECHCHECK verdict " + verdicts[-1][0] + " " + verdicts[-1][1])
     if len(problems) > 0:
         problems.extend(match.group(0) for match in DETAIL.finditer(text))
     return {"seed": seed, "ok": len(problems) == 0, "problems": problems, "log": log_path, "seconds": round(time.time() - start)}

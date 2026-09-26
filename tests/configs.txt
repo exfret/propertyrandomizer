@@ -31,9 +31,9 @@ requires recipe-science-pack recipe=true
 requires unified-entity-biters unified-entity=true
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
-# nocheck turns off the reachability or control check (see dev/run-tests.py)
-# In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data
-config unit-tests smoke nocheck=reachability test-unit=true
+# nocheck turns off the reachability, mechcheck or control check (see dev/run-tests.py)
+# In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data or MECHCHECK verdict
+config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
 # Override syntax is documented in OVERRIDES.md; the first two are its own examples
 config overrides-toggles settings overrides=belt_speed;!crafting_machine_speed
