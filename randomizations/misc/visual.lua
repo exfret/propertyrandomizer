@@ -291,7 +291,6 @@ randomizations.colors = function(id)
 
     local uconsts = data.raw["utility-constants"].default
     uconsts.daytime_color_lookup = {{0, lut_path}}
-    uconsts.zoom_to_world_daytime_color_lookup = {{1, lut_path}}
     uconsts.frozen_color_lookup = lut_path
 end
 

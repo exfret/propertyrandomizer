@@ -63,6 +63,17 @@ lutils.rcat_name = function(recipe)
     return gutils.concat({gutils.concat(cats_table), fluids.input, fluids.output})
 end
 
+-- Spoofed fuel category for burning an item: its fuel categories as one sorted key, so a burner of any of them can burn it
+-- An item with one category keeps that category's name
+lutils.item_fcats_name = function(item)
+    local fcats = {}
+    for _, fcat in pairs(item.fuel_categories or {}) do
+        table.insert(fcats, fcat)
+    end
+    table.sort(fcats)
+    return gutils.concat(fcats)
+end
+
 lutils.find_mining_fluids = function(resource)
     if resource.minable == nil then
         return nil

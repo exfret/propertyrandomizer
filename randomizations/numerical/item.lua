@@ -1,4 +1,5 @@
 local categories = require("helper-tables/categories")
+local dutils = require("lib/data-utils")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
 local randbool = require("lib/random/randbool")
@@ -481,7 +482,7 @@ end
 randomizations.item_fuel_acceleration = function(id)
     for _, item in pairs(items) do
         -- Change this if vehicles ever use other types of fuel
-        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+        if item.fuel_value ~= nil and dutils.has_fuel_category(item, "chemical") then
             if item.fuel_acceleration_multiplier == nil then
                 item.fuel_acceleration_multiplier = 1.0
             end
@@ -508,7 +509,7 @@ end
 randomizations.item_fuel_top_speed = function(id)
     for _, item in pairs(items) do
         -- Change this if vehicles ever use other types of fuel
-        if item.fuel_value ~= nil and item.fuel_category == "chemical" then
+        if item.fuel_value ~= nil and dutils.has_fuel_category(item, "chemical") then
             if item.fuel_top_speed_multiplier == nil then
                 item.fuel_top_speed_multiplier = 1.0
             end

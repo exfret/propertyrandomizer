@@ -191,7 +191,7 @@ simplex_cost.make_recipe_material_matrix = function(sort_info)
     -- Burnt results
     for item_class, _ in pairs(defines.prototypes.item) do
         for _, item in pairs(data.raw[item_class] or {}) do
-            if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
+            if #dutils.fuel_categories(item) > 0 and item.burnt_result ~= nil and item.burnt_result ~= "" then
                 if reachable("item-burn", item.name) then
                     local row = {}
                     row[material_to_ind[gutils.key("item", item.name)]] = -1

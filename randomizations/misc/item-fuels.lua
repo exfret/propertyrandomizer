@@ -1,4 +1,5 @@
 local locale_utils = require("lib/locale")
+local dutils = require("lib/data-utils")
 local rng = require("lib/random/rng")
 local randbool = require("lib/random/randbool")
 local randnum = require("lib/random/randnum")
@@ -35,7 +36,7 @@ randomizations.item_fuels = function(id)
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
-                    if item.fuel_category == "chemical" then
+                    if dutils.has_fuel_category(item, "chemical") then
                         chemical_fuel_count = chemical_fuel_count + 1
                         local key = rng.key({id = id, prototype = item})
                         if randbool.rand_bias_chaos(key, remove_fuel_p, -1) then
@@ -43,10 +44,10 @@ randomizations.item_fuels = function(id)
                             item.fuel_acceleration_multiplier = nil
                             item.fuel_top_speed_multiplier = nil
                             item.fuel_glow_color = nil
-                            item.fuel_category = nil
+                            item.fuel_categories = nil
                             item._nonreactive = true
                         end
-                    elseif item.fuel_category == nil then
+                    elseif #dutils.fuel_categories(item) == 0 then
                         non_fuel_count = non_fuel_count + 1
                     end
                 end
@@ -61,7 +62,7 @@ randomizations.item_fuels = function(id)
             for _, item in pairs(data.raw[item_class]) do
                 if not is_resource_item[item.name] then
                     local key = rng.key({id = id, prototype = item})
-                    if item.fuel_category == nil and randbool.rand_bias_chaos(key, fuel_p * add_fuel_p, 1) then
+                    if #dutils.fuel_categories(item) == 0 and randbool.rand_bias_chaos(key, fuel_p * add_fuel_p, 1) then
                         -- actual space age fuel statistics
                         local possible_fuel_values = {
                             "100kJ",
@@ -101,16 +102,16 @@ randomizations.item_fuels = function(id)
                         }
                         item.fuel_top_speed_multiplier = possible_top_speed_multipliers[rng.int(key, #possible_top_speed_multipliers)]
 
-                        item.fuel_category = "chemical"
+                        item.fuel_categories = {"chemical"}
                         item._nonreactive = nil
                         -- item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Burnable)[/color]"}
                     end
-                    if item.fuel_category == nil and item._nonreactive then
+                    if #dutils.fuel_categories(item) == 0 and item._nonreactive then
                         item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Not combustible)[/color]"}
                         item._nonreactive = nil
                     end
                 end
-                if item.fuel_category == "chemical" then
+                if dutils.has_fuel_category(item, "chemical") then
                     item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Combustible)[/color]"}
                 end
             end

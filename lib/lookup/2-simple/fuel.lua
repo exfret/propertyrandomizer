@@ -24,20 +24,46 @@ stage.fcat_to_items = function()
     local fcat_to_items = {}
 
     for _, item in pairs(lu.items) do
-        if item.fuel_category ~= nil and item.fuel_value ~= nil and util.parse_energy(item.fuel_value) > 0 then
+        if item.fuel_value ~= nil and util.parse_energy(item.fuel_value) > 0 then
             local burnt = 0
             if item.burnt_result ~= nil and item.burnt_result ~= "" then
                 burnt = 1
             end
-            local fcat_key = gutils.concat({item.fuel_category, burnt})
-            if fcat_to_items[fcat_key] == nil then
-                fcat_to_items[fcat_key] = {}
+            -- An item with several fuel categories is a fuel of each
+            for _, fcat in pairs(dutils.fuel_categories(item)) do
+                local fcat_key = gutils.concat({fcat, burnt})
+                if fcat_to_items[fcat_key] == nil then
+                    fcat_to_items[fcat_key] = {}
+                end
+                fcat_to_items[fcat_key][item.name] = true
             end
-            fcat_to_items[fcat_key][item.name] = true
         end
     end
 
     lu.fcat_to_items = fcat_to_items
+end
+
+-- Spoofed fuel categories for burning items with burnt results (all of an item's fuel categories as one key)
+stage.burn_fcats = function()
+    local burn_fcats = {}
+    -- Vanilla fuel category to burn_fcats names that include it
+    local vanilla_to_burn_fcats = {}
+
+    for _, item in pairs(lu.items) do
+        if #dutils.fuel_categories(item) > 0 and item.burnt_result ~= nil and item.burnt_result ~= "" then
+            local name = lutils.item_fcats_name(item)
+            if burn_fcats[name] == nil then
+                burn_fcats[name] = dutils.fuel_categories(item)
+                for _, vanilla_name in pairs(dutils.fuel_categories(item)) do
+                    vanilla_to_burn_fcats[vanilla_name] = vanilla_to_burn_fcats[vanilla_name] or {}
+                    vanilla_to_burn_fcats[vanilla_name][name] = true
+                end
+            end
+        end
+    end
+
+    lu.burn_fcats = burn_fcats
+    lu.vanilla_to_burn_fcats = vanilla_to_burn_fcats
 end
 
 -- Combinations of fuel categories and burnt inventory size
@@ -65,7 +91,7 @@ stage.fcat_combos = function()
     lu.fcat_combos = fcat_combos
 end
 
--- Maps fuel_category to burner entities that have burnt_inventory_size > 0
+-- Maps fuel category to burner entities that have burnt_inventory_size > 0
 stage.fcat_to_burners = function()
     local fcat_to_burners = {}
 

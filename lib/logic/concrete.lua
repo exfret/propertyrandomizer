@@ -1060,7 +1060,7 @@ function concrete.build(lu, extra_params)
                 add_node("fuel-category", "OR", nil, spoofed_key)
                 ----------------------------------------
                 -- Can we provide items of this (spoofed) fuel category?
-                -- OR over all items with this fuel_category and burnt flag.
+                -- OR over all items with this fuel category (among others) and burnt flag.
 
                 for item_name, _ in pairs(items_for_fcat) do
                     local item = dutils.get_prot("item", item_name)
@@ -1070,30 +1070,38 @@ function concrete.build(lu, extra_params)
             end
         end
 
-        ----------------------------------------
-        add_node("fuel-category-burn", "OR")
-        ----------------------------------------
-        -- Can we burn fuel of this category?
+        -- Burn nodes are spoofed like recipe-category: one per set of fuel categories some burnable item has
+        -- The node named after just this category always exists; sets with other categories only if an item has them
+        local burn_fcat_names = { [fcat.name] = true }
+        for burn_fcat_name, _ in pairs(lu.vanilla_to_burn_fcats[fcat.name] or {}) do
+            burn_fcat_names[burn_fcat_name] = true
+        end
+        for burn_fcat_name, _ in pairs(burn_fcat_names) do
+            ----------------------------------------
+            add_node("fuel-category-burn", "OR", nil, burn_fcat_name)
+            ----------------------------------------
+            -- Can we burn fuel of any of these categories?
 
-        if lu.fcat_to_burners[fcat.name] ~= nil then
-            for burner_name, _ in pairs(lu.fcat_to_burners[fcat.name]) do
-                local burner_entity = dutils.get_prot("entity", burner_name)
-                local energy_usage
-                -- TODO: Double check that we got all energy usage keys for burner things
-                if burner_entity.max_power_output ~= nil then
-                    energy_usage = burner_entity.max_power_output
-                elseif burner_entity.energy_consumption ~= nil then
-                    energy_usage = burner_entity.energy_consumption
-                elseif burner_entity.consumption ~= nil then
-                    energy_usage = burner_entity.consumption
-                elseif burner_entity.energy_usage ~= nil then
-                    energy_usage = burner_entity.energy_usage
+            for _, member_fcat in pairs(lu.burn_fcats[burn_fcat_name] or { fcat.name }) do
+                for burner_name, _ in pairs(lu.fcat_to_burners[member_fcat] or {}) do
+                    local burner_entity = dutils.get_prot("entity", burner_name)
+                    local energy_usage
+                    -- TODO: Double check that we got all energy usage keys for burner things
+                    if burner_entity.max_power_output ~= nil then
+                        energy_usage = burner_entity.max_power_output
+                    elseif burner_entity.energy_consumption ~= nil then
+                        energy_usage = burner_entity.energy_consumption
+                    elseif burner_entity.consumption ~= nil then
+                        energy_usage = burner_entity.consumption
+                    elseif burner_entity.energy_usage ~= nil then
+                        energy_usage = burner_entity.energy_usage
+                    end
+                    local watts_burned = 0
+                    if energy_usage ~= nil then
+                        watts_burned = 60 * util.parse_energy(energy_usage)
+                    end
+                    add_edge("entity-operate", burner_name, { amount = watts_burned / 1000000 })
                 end
-                local watts_burned = 0
-                if energy_usage ~= nil then
-                    watts_burned = 60 * util.parse_energy(energy_usage)
-                end
-                add_edge("entity-operate", burner_name, { amount = watts_burned / 1000000 })
             end
         end
     end
@@ -1222,7 +1230,7 @@ function concrete.build(lu, extra_params)
             end
         end
 
-        if item.fuel_category ~= nil and item.burnt_result ~= nil and item.burnt_result ~= "" then
+        if #dutils.fuel_categories(item) > 0 and item.burnt_result ~= nil and item.burnt_result ~= "" then
             ----------------------------------------
             add_node("item-burn", "AND", nil, nil, { cost = constants.cost.burnt_result_additional_cost, slot_additional_cost = constants.cost.slot_additional_burnt_result_cost })
             ----------------------------------------
@@ -1231,7 +1239,7 @@ function concrete.build(lu, extra_params)
             add_edge("item", nil, { amount = 1 })
             -- In this case, the amount is longer/more annoying for items with larger fuel values, since we're measuring machine usage, not the item usage
             -- Technically, this double counts the fuel consumption, since the item being burned is already providing fuel, but I think that's fine (burning is annoying anyways so the extra cost is probably welcome)
-            add_edge("fuel-category-burn", item.fuel_category, { amount = util.parse_energy(item.fuel_value) / 1000000 })
+            add_edge("fuel-category-burn", lutils.item_fcats_name(item), { amount = util.parse_energy(item.fuel_value) / 1000000 })
         end
 
         ----------------------------------------

@@ -112,6 +112,20 @@ dutils.lab_inputs = function()
     return lab_inputs
 end
 
+-- An item's fuel categories as a list (empty if it isn't a fuel); since 2.1.20 an item can have several, and a burner takes it if they share any
+dutils.fuel_categories = function(item)
+    return item.fuel_categories or {}
+end
+
+dutils.has_fuel_category = function(item, fcat)
+    for _, item_fcat in pairs(dutils.fuel_categories(item)) do
+        if item_fcat == fcat then
+            return true
+        end
+    end
+    return false
+end
+
 dutils.is_useless_item = function(item)
     if item.type ~= "item" then
         return false

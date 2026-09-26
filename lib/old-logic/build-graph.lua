@@ -584,16 +584,21 @@ local function load()
     local burnt_result_to_fuels = {}
     -- lookup for finding fuel per fuel category
     local fuel_category_to_fuels = {}
+    -- items with at least one fuel category
+    local fuels_list = {}
     -- lookup for finding items that spoil into the item
     local spoil_result_to_items = {}
     -- lookup for finding items that have the item as a rocket launch product
     local rocket_launch_product_to_items = {}
     for _, item in pairs(items) do
-        if item.fuel_category ~= nil and item.burnt_result ~= nil then
-            mtm_insert(burnt_result_to_fuels, item.burnt_result, item)
-        end
-        if item.fuel_category ~= nil then
-            mtm_insert(fuel_category_to_fuels, item.fuel_category, item)
+        if item.fuel_categories ~= nil and next(item.fuel_categories) ~= nil then
+            if item.burnt_result ~= nil then
+                mtm_insert(burnt_result_to_fuels, item.burnt_result, item)
+            end
+            table.insert(fuels_list, item)
+            for _, fuel_category in pairs(item.fuel_categories) do
+                mtm_insert(fuel_category_to_fuels, fuel_category, item)
+            end
         end
         if item.spoil_result ~= nil then
             mtm_insert(spoil_result_to_items, item.spoil_result, item)
@@ -1142,44 +1147,43 @@ local function load()
     --log("Adding: burn-item")
     -- Do we have all we need to use this item as fuel somewhere?
 
-    for _, fuels in pairs(fuel_category_to_fuels) do
-        for _, fuel in pairs(fuels) do
-            prereqs = {}
+    for _, fuel in pairs(fuels_list) do
+        prereqs = {}
 
-            for surface_key, _ in pairs(surfaces) do
-                table.insert(prereqs, {
-                    type = "burn-item-surface",
-                    name = compound_key({fuel.name, surface_key})
-                })
-            end
-
-            add_to_graph("burn-item", fuel.name, prereqs)
+        for surface_key, _ in pairs(surfaces) do
+            table.insert(prereqs, {
+                type = "burn-item-surface",
+                name = compound_key({fuel.name, surface_key})
+            })
         end
+
+        add_to_graph("burn-item", fuel.name, prereqs)
     end
 
     -- burn-item-surface
     --log("Adding: burn-item-surface")
     -- Do we have all we need to use this item as fuel on this surface?
 
-    for _, fuels in pairs(fuel_category_to_fuels) do
-        for _, fuel in pairs(fuels) do
-            for surface_key, surface in pairs(surfaces) do
-                prereqs = {}
+    for _, fuel in pairs(fuels_list) do
+        for surface_key, surface in pairs(surfaces) do
+            prereqs = {}
 
-                table.insert(prereqs, {
-                    type = "item-surface",
-                    name = compound_key({fuel.name, surface_key})
-                })
+            table.insert(prereqs, {
+                type = "item-surface",
+                name = compound_key({fuel.name, surface_key})
+            })
+            -- A fuel with several categories burns in a burner of any of them, but this node is an AND, so require all (stricter, so still sound)
+            for _, fuel_category in pairs(fuel.fuel_categories) do
                 table.insert(prereqs, {
                     type = "fuel-category-burner-surface",
-                    name = compound_key({fuel.fuel_category, surface_key})
-                })
-
-                add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs, {
-                    item = fuel.name,
-                    surface = surface_key
+                    name = compound_key({fuel_category, surface_key})
                 })
             end
+
+            add_to_graph("burn-item-surface", compound_key({fuel.name, surface_key}), prereqs, {
+                item = fuel.name,
+                surface = surface_key
+            })
         end
     end
 

@@ -1,4 +1,5 @@
 local constants = require("helper-tables/constants")
+local dutils = require("lib/data-utils")
 local build_graph = require("lib/old-logic/build-graph")
 local flow_cost = require("lib/cost/flow-cost")
 local graph_utils = require("lib/old-logic/graph-utils")
@@ -275,7 +276,7 @@ randomizations.item_new = function(id)
 
         local function is_boring(node)
             local item_prototype = items[node.name]
-            return not (item_prototype.type ~= "item" or item_prototype.place_result ~= nil or item_prototype.place_as_equipment_result ~= nil or (item_prototype.fuel_category ~= nil and item_prototype.fuel_category ~= "chemical") or item_prototype.plant_result ~= nil or item_prototype.place_as_tile ~= nil)
+            return not (item_prototype.type ~= "item" or item_prototype.place_result ~= nil or item_prototype.place_as_equipment_result ~= nil or (#dutils.fuel_categories(item_prototype) > 0 and not dutils.has_fuel_category(item_prototype, "chemical")) or item_prototype.plant_result ~= nil or item_prototype.place_as_tile ~= nil)
         end
 
         local desperate_reachability_disable = false
@@ -966,8 +967,8 @@ randomizations.item_new = function(id)
         })
         table.insert(post_changes, {
             tbl = item_prototype,
-            prop = "fuel_category",
-            new_val = old_item.fuel_category
+            prop = "fuel_categories",
+            new_val = old_item.fuel_categories
         })
         table.insert(post_changes, {
             tbl = item_prototype,
@@ -1039,12 +1040,12 @@ randomizations.item_new = function(id)
         -- If this is a coal replacement, give it a fuel value
         if old_item.name == "coal" then
             -- TODO: Need to do something special if this is the only non-chemical fuel for something...
-            if item_prototype.fuel_category == nil then
+            if #dutils.fuel_categories(item_prototype) == 0 then
                 item_prototype.localised_description = {"", locale_utils.find_localised_description(item_prototype), "\n[color=green](Combustible)[/color]"}
             end
 
-            if item_prototype.fuel_category ~= "chemical" then
-                item_prototype.fuel_category = "chemical"
+            if not dutils.has_fuel_category(item_prototype, "chemical") then
+                item_prototype.fuel_categories = {"chemical"}
                 item_prototype.fuel_value = "4MJ"
             elseif util.parse_energy(item_prototype.fuel_value) < 1000000 then
                 item_prototype.fuel_value = "1MJ"
