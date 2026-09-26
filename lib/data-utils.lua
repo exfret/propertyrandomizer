@@ -185,6 +185,204 @@ dutils.lab_inputs = function()
     return lab_inputs
 end
 
+-- Materials straight from the map: mined from a resource entity or an asteroid chunk (ores, crude oil, chunks, ...) or pumped from a tile (water, lava, ...)
+-- As {type, name} keyed by "type-name"
+dutils.resource_materials = function()
+    local materials = {}
+    for _, class in pairs({"resource", "asteroid-chunk"}) do
+        for _, prot in pairs(dutils.prots(class)) do
+            if prot.minable ~= nil then
+                if prot.minable.results ~= nil then
+                    for _, result in pairs(prot.minable.results) do
+                        if result.type == "item" or result.type == "fluid" then
+                            materials[result.type .. "-" .. result.name] = { type = result.type, name = result.name }
+                        end
+                    end
+                elseif prot.minable.result ~= nil then
+                    materials["item-" .. prot.minable.result] = { type = "item", name = prot.minable.result }
+                end
+            end
+        end
+    end
+    for _, tile in pairs(dutils.prots("tile")) do
+        if tile.fluid ~= nil then
+            materials["fluid-" .. tile.fluid] = { type = "fluid", name = tile.fluid }
+        end
+    end
+    return materials
+end
+
+local function is_recycling_recipe(recipe)
+    for _, cat in pairs(recipe.categories or { recipe.category or "crafting" }) do
+        if cat == "recycling" then
+            return true
+        end
+    end
+    return false
+end
+
+-- Round trips: conversions that another conversion undoes, like filling and emptying a barrel, or cooling fluoroketone that a fusion reactor and generator heat back up
+-- Changing one side's ingredients breaks the loop (the returned material has no sink, or comes from nowhere)
+-- Returns { recipes = recipe name --> true, materials = "type-name" --> {type, name} }, where materials are those carried around single-material loops
+-- Recycling is left out, since it inverts nearly everything by design
+dutils.round_trips = function()
+    local recipes = {}
+    local materials = {}
+
+    -- Recipes that are exact inverses of each other, amounts included
+    local function signature(list)
+        local parts = {}
+        for _, entry in pairs(list or {}) do
+            table.insert(parts, entry.type .. "-" .. entry.name .. "=" .. tostring(entry.amount))
+        end
+        table.sort(parts)
+        return table.concat(parts, ",")
+    end
+    local by_ingredients = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        if not is_recycling_recipe(recipe) and recipe.ingredients ~= nil and #recipe.ingredients > 0 then
+            local sig = signature(recipe.ingredients)
+            by_ingredients[sig] = by_ingredients[sig] or {}
+            table.insert(by_ingredients[sig], recipe.name)
+        end
+    end
+    for _, recipe in pairs(data.raw.recipe) do
+        if not is_recycling_recipe(recipe) and recipe.results ~= nil and #recipe.results > 0 and recipe.ingredients ~= nil then
+            for _, other_name in pairs(by_ingredients[signature(recipe.results)] or {}) do
+                if other_name ~= recipe.name and signature(data.raw.recipe[other_name].results) == signature(recipe.ingredients) then
+                    recipes[recipe.name] = true
+                    recipes[other_name] = true
+                end
+            end
+        end
+    end
+
+    -- Single-material conversions: X --> Y where X is the only thing consumed and Y the only thing made (catalysts, on both sides, don't count)
+    -- edges[X][Y] = list of recipe names (entity conversions have none)
+    local edges = {}
+    local function add_edge(from, to, recipe_name)
+        edges[from] = edges[from] or {}
+        edges[from][to] = edges[from][to] or {}
+        if recipe_name ~= nil then
+            table.insert(edges[from][to], recipe_name)
+        end
+    end
+    for _, recipe in pairs(data.raw.recipe) do
+        if not is_recycling_recipe(recipe) then
+            local ins = {}
+            local outs = {}
+            for _, ing in pairs(recipe.ingredients or {}) do
+                ins[ing.type .. "-" .. ing.name] = true
+            end
+            for _, result in pairs(recipe.results or {}) do
+                if result.type == "item" or result.type == "fluid" then
+                    outs[result.type .. "-" .. result.name] = true
+                end
+            end
+            local only_in, only_out
+            local num_in, num_out = 0, 0
+            for mat, _ in pairs(ins) do
+                if not outs[mat] then
+                    only_in = mat
+                    num_in = num_in + 1
+                end
+            end
+            for mat, _ in pairs(outs) do
+                if not ins[mat] then
+                    only_out = mat
+                    num_out = num_out + 1
+                end
+            end
+            if num_in == 1 and num_out == 1 then
+                add_edge(only_in, only_out, recipe.name)
+            end
+        end
+    end
+    -- Entities that take in one filtered fluid and put out another (fluid boxes are found by their production_type, directly or in a list)
+    for class, _ in pairs(defines.prototypes.entity) do
+        for _, entity in pairs(dutils.prots(class)) do
+            local ins = {}
+            local outs = {}
+            local function visit_box(box)
+                if type(box) == "table" and box.production_type ~= nil and box.filter ~= nil then
+                    if box.production_type == "input" or box.production_type == "input-output" then
+                        ins["fluid-" .. box.filter] = true
+                    end
+                    if box.production_type == "output" or box.production_type == "input-output" then
+                        outs["fluid-" .. box.filter] = true
+                    end
+                end
+            end
+            for _, value in pairs(entity) do
+                if type(value) == "table" then
+                    visit_box(value)
+                    if value.production_type == nil then
+                        for _, sub in pairs(value) do
+                            visit_box(sub)
+                        end
+                    end
+                end
+            end
+            local num_in, num_out = 0, 0
+            local only_in, only_out
+            for mat, _ in pairs(ins) do
+                if not outs[mat] then
+                    num_in = num_in + 1
+                    only_in = mat
+                end
+            end
+            for mat, _ in pairs(outs) do
+                if not ins[mat] then
+                    num_out = num_out + 1
+                    only_out = mat
+                end
+            end
+            if num_in == 1 and num_out == 1 then
+                add_edge(only_in, only_out, nil)
+            end
+        end
+    end
+
+    local function as_material(mat_key)
+        if mat_key:sub(1, 5) == "item-" then
+            return { type = "item", name = mat_key:sub(6) }
+        end
+        return { type = "fluid", name = mat_key:sub(7) }
+    end
+
+    -- A conversion is on a loop when its output can be converted back to its input
+    local function reaches(from, target)
+        local seen = { [from] = true }
+        local stack = { from }
+        while #stack > 0 do
+            local mat = table.remove(stack)
+            if mat == target then
+                return true
+            end
+            for next_mat, _ in pairs(edges[mat] or {}) do
+                if not seen[next_mat] then
+                    seen[next_mat] = true
+                    table.insert(stack, next_mat)
+                end
+            end
+        end
+        return false
+    end
+    for from, tos in pairs(edges) do
+        for to, recipe_names in pairs(tos) do
+            if reaches(to, from) then
+                materials[from] = as_material(from)
+                materials[to] = as_material(to)
+                for _, recipe_name in pairs(recipe_names) do
+                    recipes[recipe_name] = true
+                end
+            end
+        end
+    end
+
+    return { recipes = recipes, materials = materials }
+end
+
 -- An item's fuel categories as a list (empty if it isn't a fuel); since 2.1.20 an item can have several, and a burner takes it if they share any
 dutils.fuel_categories = function(item)
     return item.fuel_categories or {}

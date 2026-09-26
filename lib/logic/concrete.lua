@@ -972,7 +972,7 @@ function concrete.build(lu, extra_params)
         end
 
         ----------------------------------------
-        add_node("fluid-craft-temperature", "OR", nil, fluid_temp_name)
+        add_node("fluid-craft", "OR")
         ----------------------------------------
         -- Can we produce this fluid via recipe?
         -- Needed for tech triggers

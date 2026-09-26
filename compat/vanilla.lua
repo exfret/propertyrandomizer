@@ -1,5 +1,6 @@
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
 
 local key = gutils.key
 
@@ -69,47 +70,29 @@ unified_options("entity-autoplace").blacklisted_dep = {
 }
 
 unified_options("recipe-ingredients").blacklisted_pre = {
-    [key("fluid", "water")] = true,
     [key("item", "spoilage")] = true,
     [key("item", "yumako")] = true,
     [key("item", "jellynut")] = true,
-    [key("fluid", "fluoroketone-cold")] = true,
-    [key("fluid", "lava")] = true,
-    [key("item", "metallic-asteroid-chunk")] = true,
-    [key("item", "carbonic-asteroid-chunk")] = true,
-    [key("item", "oxide-asteroid-chunk")] = true,
 }
+-- Whatever mining a resource or asteroid chunk or pumping a tile gives stays where it is, so the recipes that process it keep it (smelting plates, plastic's coal, oil processing, crushing, ...)
+for _, material in pairs(dutils.resource_materials()) do
+    unified_options("recipe-ingredients").blacklisted_pre[key(material.type, material.name)] = true
+end
 unified_options("recipe-ingredients").blacklisted_dep = {
-    [key("recipe", "iron-plate")] = true,
-    [key("recipe", "copper-plate")] = true,
-    [key("recipe", "stone-brick")] = true,
     [key("recipe", "basic-oil-processing")] = true,
     -- Preserve fuel sinks for fluids
     [key("recipe", "solid-fuel-from-heavy-oil")] = true,
     [key("recipe", "solid-fuel-from-light-oil")] = true,
     [key("recipe", "solid-fuel-from-petroleum-gas")] = true,
-    -- Sensitive due to being only place coal is truly needed
-    [key("recipe", "plastic-bar")] = true,
-    [key("recipe", "uranium-processing")] = true,
-    -- Technically redundant due to other checks
-    [key("recipe", "kovarex-enrichment-process")] = true,
     -- Scrap recycling is captured by recycling recipe checks
     -- I would do jellynut/yumako, but it was throwing weird errors, so I just made them unrandomized as ingredients instead
     --[key("recipe", "jellynut-processing")] = true,
     --[key("recipe", "yumako-processing")] = true,
-    [key("recipe", "tungsten-plate")] = true,
-    [key("recipe", "iron-bacteria-cultivation")] = true,
-    [key("recipe", "copper-bacteria-cultivation")] = true,
-    [key("recipe", "fluoroketone-cooling")] = true,
     [key("recipe", "ammoniacal-solution-separation")] = true,
-    [key("recipe", "thruster-fuel")] = true,
-    [key("recipe", "thruster-oxidizer")] = true,
     [key("recipe", "ice-melting")] = true,
     [key("recipe", "holmium-solution")] = true,
     [key("recipe", "holmium-plate")] = true,
     [key("recipe", "lithium-plate")] = true,
-    -- For asteroids
-    [key("recipe", "firearm-magazine")] = true,
 }
 for _, recipe in pairs(data.raw.recipe) do
     local is_recycling = false
@@ -122,23 +105,20 @@ for _, recipe in pairs(data.raw.recipe) do
         (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
     end
 end
+-- Round trips (like fluoroketone cooling, which undoes what fusion does to it) break if one side's ingredients change
+local round_trips = dutils.round_trips()
+for recipe_name, _ in pairs(round_trips.recipes) do
+    log("Round trip recipe: " .. recipe_name)
+    unified_options("recipe-ingredients").blacklisted_dep[key("recipe", recipe_name)] = true
+end
+for material_key, material in pairs(round_trips.materials) do
+    log("Round trip material: " .. material_key)
+    unified_options("recipe-ingredients").blacklisted_pre[key(material.type, material.name)] = true
+end
 -- Add barreling recipes
 -- Sensed by whether "barrel" is in the name
 for _, recipe in pairs(data.raw.recipe) do
     if string.sub(recipe.name, -6, -1) == "barrel" then
-        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
-    end
-end
--- Add crushing-only recipes (space stuff is too sensitive I think?)
-for _, recipe in pairs(data.raw.recipe) do
-    local is_only_crushing = true
-    for _, cat in pairs(recipe.categories or {"crafting"}) do
-        if cat ~= "crushing" then
-            is_only_crushing = false
-            break
-        end
-    end
-    if is_only_crushing then
         (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
     end
 end

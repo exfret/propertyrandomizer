@@ -214,6 +214,35 @@ recipe_ingredients.custom_prereq_search = function(params)
         randomized_resource_costs[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings})
     end
     local vanilla_item_recipe_maps = flow_cost.construct_item_recipe_maps()
+    -- Unstaged vanilla costs, for slot recipes whose ingredients the staged vanilla world hasn't reached yet (see below)
+    local full_vanilla_costs
+    local function get_full_vanilla_costs()
+        if full_vanilla_costs == nil then
+            full_vanilla_costs = {
+                aggregate = flow_cost.determine_recipe_item_cost(randomization_info.options.cost.default_cost_table, constants.cost_params.time, constants.cost_params.complexity),
+                complexity = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max"}),
+                resources = {},
+            }
+            for _, resource_id in pairs(major_raw_resources) do
+                full_vanilla_costs.resources[resource_id] = flow_cost.determine_recipe_item_cost(flow_cost.get_single_resource_table(resource_id), 0, 0)
+            end
+        end
+        return full_vanilla_costs
+    end
+    -- Whether a staged world (vanilla or randomized) already has aggregate and resource costs for a material
+    -- Both worlds are built up in this run's processing order, which needn't be the order their recipes' ingredients get made in
+    local function is_costed(aggregate_costs, resource_costs, material)
+        local material_id = flow_cost.get_prot_id(material)
+        if aggregate_costs.material_to_cost[material_id] == nil then
+            return false
+        end
+        for _, resource_id in pairs(major_raw_resources) do
+            if resource_costs[resource_id].material_to_cost[material_id] == nil then
+                return false
+            end
+        end
+        return true
+    end
     local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
     -- Used for making sure there aren't repeat ingredients for furnaces
@@ -276,14 +305,34 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- TODO
 
             else
+                -- The staged vanilla world only has costs for what the slot recipes processed so far make
+                -- Processing follows this run's sort, not vanilla's, so a slot recipe can come before the recipes making its ingredients (e.g. on other planet starts)
+                local slot_is_staged = true
+                for _, ing in pairs(slot_recipe.ingredients) do
+                    if not is_costed(vanilla_aggregate_costs, vanilla_resource_costs, ing) then
+                        slot_is_staged = false
+                    end
+                end
+                -- Either way, the slot recipe now counts in the staged vanilla world; if it's not reachable yet, cost updates pick it up once its ingredients are
                 dependent_to_old_ings[slot_recipe.name] = {}
                 for _, ing in pairs(slot_recipe.ingredients) do
                     table.insert(dependent_to_old_ings[slot_recipe.name], ing)
                 end
-                flow_cost.update_recipe_item_costs(vanilla_aggregate_costs, {slot_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
-                vanilla_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
-                for _, resource_id in pairs(major_raw_resources) do
-                    flow_cost.update_recipe_item_costs(vanilla_resource_costs[resource_id], {slot_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                local slot_vanilla
+                if slot_is_staged then
+                    flow_cost.update_recipe_item_costs(vanilla_aggregate_costs, {slot_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                    vanilla_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                    for _, resource_id in pairs(major_raw_resources) do
+                        flow_cost.update_recipe_item_costs(vanilla_resource_costs[resource_id], {slot_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = vanilla_item_recipe_maps})
+                    end
+                    slot_vanilla = {
+                        aggregate = vanilla_aggregate_costs,
+                        complexity = vanilla_complexity_costs,
+                        resources = vanilla_resource_costs,
+                    }
+                else
+                    log("Staged vanilla costs don't reach " .. slot_recipe.name .. " yet; comparing against full vanilla costs")
+                    slot_vanilla = get_full_vanilla_costs()
                 end
 
                 -- Gather information about this recipe
@@ -369,7 +418,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                             end
 
                             -- If the cost is too high, return false
-                            if randomized_aggregate_costs.material_to_cost[prereq_prot_id] > vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                            if randomized_aggregate_costs.material_to_cost[prereq_prot_id] > slot_vanilla.aggregate.recipe_to_cost[slot_recipe.name] then
                                 return false
                             end
 
@@ -380,7 +429,7 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                             -- Make sure the ingredient isn't too cheap, but don't worry about it for very expensive recipes
                             local should_check_costs = true
-                            if constants.unified_recipe_ingredients_cost_threshold < vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                            if constants.unified_recipe_ingredients_cost_threshold < slot_vanilla.aggregate.recipe_to_cost[slot_recipe.name] then
                                 should_check_costs = false
                             end
                             if should_check_costs then
@@ -388,7 +437,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                                 if prereq_owner.type == "fluid" then
                                     largeness_okay_multiplier = 0.1
                                 end
-                                if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * vanilla_aggregate_costs.recipe_to_cost[slot_recipe.name] then
+                                if randomized_aggregate_costs.material_to_cost[prereq_owner.type .. "-" .. prereq_owner.name] < largeness_okay_multiplier * 0.001 * slot_vanilla.aggregate.recipe_to_cost[slot_recipe.name] then
                                     return false
                                 end
                             end
@@ -408,11 +457,11 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                 -- Extract material_to_costs
                 local vanilla_material_to_costs = {}
-                vanilla_material_to_costs.aggregate_cost = vanilla_aggregate_costs.material_to_cost
-                vanilla_material_to_costs.complexity_cost = vanilla_complexity_costs.material_to_cost
+                vanilla_material_to_costs.aggregate_cost = slot_vanilla.aggregate.material_to_cost
+                vanilla_material_to_costs.complexity_cost = slot_vanilla.complexity.material_to_cost
                 vanilla_material_to_costs.resource_costs = {}
                 for _, resource_id in pairs(major_raw_resources) do
-                    vanilla_material_to_costs.resource_costs[resource_id] = vanilla_resource_costs[resource_id].material_to_cost
+                    vanilla_material_to_costs.resource_costs[resource_id] = slot_vanilla.resources[resource_id].material_to_cost
                 end
                 local vanilla_recipe_costs = cost_lib.get_costs_from_ings(vanilla_material_to_costs, slot_recipe.ingredients)
                 local randomized_material_costs = {}
@@ -473,6 +522,32 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                 -- TODO: Should I put in part about not preserving resource costs post-nauvis or for final products?
                 -- I decided to leave that part out here
+
+                -- Ingredients kept as they are may not have randomized costs yet (their recipes come later in this run), so price those with full vanilla costs
+                local uncosted_kept = {}
+                for _, ing in pairs(unrandomized_ings) do
+                    if not is_costed(randomized_aggregate_costs, randomized_resource_costs, ing) then
+                        table.insert(uncosted_kept, flow_cost.get_prot_id(ing))
+                    end
+                end
+                if #uncosted_kept > 0 then
+                    log("Randomized costs don't reach kept ingredients " .. table.concat(uncosted_kept, ", ") .. " yet; using full vanilla costs for them")
+                    local full = get_full_vanilla_costs()
+                    local function with_full(staged, full_material_to_cost)
+                        local overlay = {}
+                        for _, material_id in pairs(uncosted_kept) do
+                            if staged[material_id] == nil then
+                                overlay[material_id] = full_material_to_cost[material_id]
+                            end
+                        end
+                        return setmetatable(overlay, {__index = staged})
+                    end
+                    randomized_material_costs.aggregate_cost = with_full(randomized_material_costs.aggregate_cost, full.aggregate.material_to_cost)
+                    randomized_material_costs.complexity_cost = with_full(randomized_material_costs.complexity_cost, full.complexity.material_to_cost)
+                    for _, resource_id in pairs(major_raw_resources) do
+                        randomized_material_costs.resource_costs[resource_id] = with_full(randomized_material_costs.resource_costs[resource_id], full.resources[resource_id].material_to_cost)
+                    end
+                end
 
                 -- Finally, search for the best ingredients
                 local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable})
@@ -564,14 +639,25 @@ recipe_ingredients.custom_prereq_search = function(params)
                 flow_cost.update_item_recipe_maps(randomized_item_recipe_maps, {deepcopied_recipe}, dependent_to_new_ings, true)
 
                 -- Update costs
-                -- I changed use_data to false, not sure why it was true
-                flow_cost.update_recipe_item_costs(randomized_aggregate_costs, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                -- If some new ingredient has no randomized cost yet, the recipe isn't reachable in the randomized world so far; it's no longer blacklisted, so cost updates pick it up once it is
+                local new_ings_costed = true
+                for _, ing in pairs(dependent_to_new_ings[dependent_recipe.name]) do
+                    if not is_costed(randomized_aggregate_costs, randomized_resource_costs, ing) then
+                        new_ings_costed = false
+                    end
+                end
+                if new_ings_costed then
+                    -- I changed use_data to false, not sure why it was true
+                    flow_cost.update_recipe_item_costs(randomized_aggregate_costs, {dependent_recipe.name}, 100, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                    for _, resource_id in pairs(major_raw_resources) do
+                        flow_cost.update_recipe_item_costs(randomized_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
+                    end
+                else
+                    log("Randomized costs don't reach " .. dependent_recipe.name .. "'s new ingredients yet; its costs come once they do")
+                end
                 -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
                 -- I was having bugs with update_recipe_item_costs which is why I do it this way
                 randomized_complexity_costs = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
-                for _, resource_id in pairs(major_raw_resources) do
-                    flow_cost.update_recipe_item_costs(randomized_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
-                end
             end
         end
     end
