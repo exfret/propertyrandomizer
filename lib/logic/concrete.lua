@@ -1104,6 +1104,16 @@ function concrete.build(lu, extra_params)
 
     set_class("item")
 
+    -- Items a space platform starter pack puts in the hub, which every platform has from the start
+    local is_starter_pack_item = {}
+    for _, starter_pack in pairs(data.raw["space-platform-starter-pack"] or {}) do
+        for _, item_entry in pairs(starter_pack.initial_items or {}) do
+            if item_entry.type == nil or item_entry.type == "item" then
+                is_starter_pack_item[item_entry.name] = true
+            end
+        end
+    end
+
     local lab_inputs = dutils.lab_inputs()
     for _, item in pairs(lu.items) do
         set_prot(item)
@@ -1154,6 +1164,12 @@ function concrete.build(lu, extra_params)
                 abilities = { [1] = false },
                 amount = 1,
                 -- TODO: Deliver cost
+            })
+        end
+        -- Starter pack contents are there on every space platform from the start, so they don't break isolatability there even though more of them is delivered
+        if is_starter_pack_item[item.name] then
+            add_edge("space-surface", "", {
+                abilities = { [1] = true },
             })
         end
         -- Edge from items that spoil into this item
