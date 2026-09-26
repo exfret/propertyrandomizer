@@ -114,14 +114,15 @@ local function planet_only_condition(planet_name)
         end
         return a < b
     end)
+    local planet = data.raw.planet[planet_name]
     for _, property_name in pairs(property_names) do
-        local value = property_value(data.raw.planet[planet_name], property_name)
+        local value = property_value(planet, property_name)
         local is_unique = true
-        for _, class in pairs({ "planet", "surface" }) do
-            for room_name, room in pairs(data.raw[class] or {}) do
-                if not (class == "planet" and room_name == planet_name) and property_value(room, property_name) == value then
-                    is_unique = false
-                end
+        -- Rooms as the logic defines them (lib/lookup/1-raw.lua, built by the logic build before this runs), so the condition matches what the logic checks
+        for _, room in pairs(lookups.rooms) do
+            local prototype = (data.raw[room.type] or {})[room.name]
+            if prototype ~= nil and prototype ~= planet and property_value(prototype, property_name) == value then
+                is_unique = false
             end
         end
         if is_unique then
