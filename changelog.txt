@@ -4,6 +4,9 @@ Date: ?
   Features:
     - Ability to get back originals for some prototypes in case something rolls too poorly; you get two "derandomizations" at the start and an extra one every ten techs researched
     - Randomizer panel improvements and more visibility for ease of use
+    - Better resource balancing (oil is still not used very much; oh well)
+    - Preliminary unified multipass randomization with complex contexts (don't worry if you don't know what that means; I know what that means and that's all that matters)
+    - With item randomization, a pure intermediate (i.e.- no uses other than in recipes) replaced by a pure intermediate results in no swap, since that would essentially just be a visual change anyways
   Changes:
     - Inserter offsets are now on by default
   Bugfixes:
