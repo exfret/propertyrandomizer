@@ -130,9 +130,12 @@ local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
 -- Do unified randomizations first
 
 local unified_check = require("randomizations/graph/unified/skeleton/check")
+local recycling = require("lib/recycling")
 for i = 1, config.unified_num_retries do
     unified_info = unified.execute()
     if unified_info then
+        -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
+        recycling.regenerate(old_data_raw)
         -- Unified randomization's model can be wrong about the game it builds, so check the game itself (logic rebuilt from it) against the original
         -- An attempt that lost something a player needs fails like any other, so it's retried or errors instead of loading as a softlock
         new_logic.build(true)
@@ -197,8 +200,6 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
--- Fix recycling recipes in case modified by unified rando
-randomizations.fix_recycling_recipes()
 -- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild)
 if config.tech_tree_rebuild then
     randomizations.rebuild_tech_tree()
@@ -294,9 +295,6 @@ if config.graph.item then
     build_graph.add_dependents(dep_graph)
 end
 
--- Both unified and old item randomization change what recycling recipes recycle
-randomizations.fix_recycling_names()
-
 log("Done applying graph-based randomizations")
 
 log("Applying numerical/misc randomizations")
@@ -311,6 +309,11 @@ for _, order_group in pairs(randomizations_to_perform) do
 end
 
 log("Done applying numerical/misc randomizations")
+
+-- Numerical randomization changes recipe amounts and times too, so recycling recipes are generated again from the game as it is now (lib/recycling.lua)
+randomizations.fix_recycling_recipes()
+-- Both unified and old item randomization change what hand-written recycling recipes recycle
+randomizations.fix_recycling_names()
 
 log("Applying extra randomizations")
 

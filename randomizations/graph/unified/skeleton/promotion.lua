@@ -143,7 +143,7 @@ promotion.new = function(params)
             local child = child_key ~= nil and graph.nodes[child_key] or nil
             local parent = parent_key ~= nil and graph.nodes[parent_key] or nil
             if child ~= nil and parent ~= nil and child.type == "recipe" and parent.type == "item-craft" then
-                local source_name = recycling_sources.get(old_data_raw.recipe)[child.name]
+                local source_name = recycling_sources.get(old_data_raw)[child.name]
                 local source_key = source_name ~= nil and key("recipe", source_name) or nil
                 if source_key ~= nil and graph.nodes[source_key] ~= nil then
                     derived_orand[node_key] = {

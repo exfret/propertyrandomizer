@@ -7,7 +7,7 @@ local logic = require("lib/logic/init")
 local top = require("lib/graph/context-sort")
 -- Needed for recipe icons logic
 local dupe = require("lib/dupe")
-local cutils = require("lib/cost/cost-utils")
+local recycling_lib = require("lib/recycling")
 local recycling_sources_lib = require("lib/logic/recycling-sources")
 
 randomizations.rebuild_tech_tree = function()
@@ -473,102 +473,10 @@ randomizations.rebuild_tech_tree = function()
     end
 end
 
+-- Recycling recipes as the recycler would generate them from the game as it is now (see lib/recycling.lua)
+-- Which recipe each one inverts stays the vanilla one while it still makes the item (lib/logic/recycling-sources.lua), the same mapping promotion uses for derived recycling edges
 randomizations.fix_recycling_recipes = function()
-    ----------------------------------------------------------------------
-    -- Fix recycling recipes
-    ----------------------------------------------------------------------
-
-    -- Each vanilla recycling recipe that returns a recipe's ingredients returns that recipe's current item ingredients
-    -- Which recipe it inverts comes from vanilla (lib/logic/recycling-sources.lua), the same mapping promotion uses for derived recycling edges, so the logic model and the final game agree
-    -- Other recycling recipes (like self-recycling) are left as they are
-    local type_item = "item"
-    local recycling_sources = recycling_sources_lib.get(old_data_raw.recipe)
-
-    local recycling_names = {}
-    for recycling_name, _ in pairs(recycling_sources) do
-        table.insert(recycling_names, recycling_name)
-    end
-    table.sort(recycling_names)
-
-    for _, recycling_name in pairs(recycling_names) do
-        local recycling_recipe = data.raw.recipe[recycling_name]
-        local recipe = data.raw.recipe[recycling_sources[recycling_name]]
-        if recycling_recipe ~= nil and recipe ~= nil and recipe.results ~= nil and recipe.ingredients ~= nil then
-            -- The recipe's item result, for how many recycling returns per craft
-            local product
-            for _, result in pairs(recipe.results) do
-                if result.type == type_item and product == nil then
-                    product = result
-                end
-            end
-            -- Every item ingredient is returned, since the logic model counts on each of them (see promotion.lua)
-            local item_ingredients = {}
-            for _, ingredient in pairs(recipe.ingredients) do
-                if ingredient.type == type_item then
-                    table.insert(item_ingredients, ingredient)
-                end
-            end
-            if product ~= nil and cutils.find_amount_in_entry(product) > 0 and #item_ingredients > 0 then
-                local max_productivity_factor = 4
-                if recipe.maximum_productivity ~= nil then
-                    max_productivity_factor = 1 + recipe.maximum_productivity
-                end
-                local max_products = cutils.find_amount_in_entry(product) * max_productivity_factor
-                local recycling_yield_factor = 1 / max_products
-                local new_recycling_results = {}
-                for _, ingredient in pairs(item_ingredients) do
-                    local recycle_product_yield = cutils.find_amount_in_entry(ingredient) * recycling_yield_factor
-                    local consistent_amount = math.floor(recycle_product_yield)
-                    local extra_count_fraction = recycle_product_yield - consistent_amount
-                    -- I added this checking for stackability, but then realized it's only really needed if there was an oopsie in the ingredients
-                    -- So, it can probably get taken down at a later date
-                    local ing_as_item
-                    for item_class, _ in pairs(defines.prototypes.item) do
-                        if data.raw[item_class] ~= nil then
-                            if data.raw[item_class][ingredient.name] ~= nil then
-                                ing_as_item = data.raw[item_class][ingredient.name]
-                                break
-                            end
-                        end
-                    end
-                    local not_stackable = false
-                    if ing_as_item.flags ~= nil then
-                        for _, flag in pairs(ing_as_item.flags) do
-                            if flag == "not-stackable" then
-                                not_stackable = true
-                                break
-                            end
-                        end
-                    end
-                    if ing_as_item.type == "armor" and ing_as_item.equipment_grid ~= nil then
-                        not_stackable = true
-                    end
-                    local new_recycling_result = {
-                        type = type_item,
-                        name = ingredient.name,
-                    }
-                    if consistent_amount > 0 and not_stackable then
-                        consistent_amount = 1
-                    end
-                    if not_stackable then
-                        extra_count_fraction = 0
-                    end
-                    -- Define probability instead of extra_count_fraction if amount is low. Looks nicer in-game
-                    if consistent_amount < 1 then
-                        new_recycling_result.amount = 1
-                        new_recycling_result.independent_probability = extra_count_fraction
-                    else
-                        new_recycling_result.amount = consistent_amount
-                        new_recycling_result.extra_count_fraction = extra_count_fraction
-                    end
-                    new_recycling_results[#new_recycling_results+1] = new_recycling_result
-                end
-                recycling_recipe.results = new_recycling_results
-                -- Also remove main product, because that sometimes needs to be fixed for some reason
-                recycling_recipe.main_product = nil
-            end
-        end
-    end
+    recycling_lib.regenerate(old_data_raw)
 end
 
 -- Vanilla names and draws a recycling recipe after the item it recycles, so one whose ingredient item randomization changed follows its new item
