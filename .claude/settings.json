@@ -30,7 +30,7 @@
                     {
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/check-seeds.py\" --hook stop",
-                        "timeout": 600
+                        "timeout": 900
                     }
                 ]
             }

@@ -33,10 +33,18 @@ STAMP = os.path.join(CACHE_DIR, "last-run.json")
 # Full failure report from the last hook run, for the agent to read; the hook message itself stays short
 REPORT = os.path.join(CACHE_DIR, "last-report.txt")
 
-DEFAULT_SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
+# As many seeds as parallel jobs, so the Stop hook takes about one run's time; dev/run-tests.py and its pre-commit tier cover more
+DEFAULT_SEEDS = [1, 2, 3]
 # Each Space Age data stage run takes a couple GB of memory
 JOBS = 3
-TIMEOUT_SECONDS = 300
+TIMEOUT_SECONDS = 600
+
+# The user's guidance on seed failures, repeated in dev/run-tests.py and CLAUDE.md
+FAILURE_GUIDANCE = (
+    "Some seeds failing is expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable."
+    " Don't overfit on making every seed pass. Look into a failure when your change could have caused it (compare with a run before your change if unsure), and fix it only at its root cause."
+    " Don't add hotfixes or special cases to get a seed through: a patch that quietly breaks something else is worse than a failing seed."
+)
 
 RECIPE_SUMMARY = re.compile(r"MECHCHECK checked (\d+) recipes; unreachable (\d+)")
 CONTEXT_SUMMARY = re.compile(r"MECHCHECK checked (\d+) mechanic contexts; lost (\d+)")
@@ -172,7 +180,8 @@ def hook_stop(payload):
         return 0
     message = "Multi-seed logic check (dev/check-seeds.py) FAILED on the current code:\n" + summary
     message += "\n\nRead the full report (every lost context/unreachable recipe and each seed's log path) at " + REPORT + " before doing anything else."
-    message += " Fix this before reporting the task as done. If you can't, say plainly in your reply that the multi-seed check fails, with a short summary of the failures rather than the full list."
+    message += "\n\n" + FAILURE_GUIDANCE
+    message += " In your reply, say plainly which seeds fail, with a short summary of the failures rather than the full list."
     print(message, file=sys.stderr)
     return 2
 

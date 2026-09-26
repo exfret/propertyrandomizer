@@ -1,0 +1,12 @@
+{
+	"name": "propertyrandomizer-test-helper",
+	"version": "0.1.0",
+	"title": "exfret's Randomizer test helper",
+	"author": "exfret",
+	"factorio_version": "2.1",
+	"description": "Only for dev/run-tests.py: lets test settings files set the randomizer's hidden settings and logs what the randomizer panel would warn about.",
+	"dependencies": [
+		"base",
+		"? propertyrandomizer"
+	]
+}

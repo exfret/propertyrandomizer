@@ -108,6 +108,15 @@ def save(path, header, tree):
         f.write(out)
 
 
+def build(path, version, values):
+    # Writes a new file with only the given startup settings, as (name, property tree type, value); Factorio uses defaults for the rest
+    # version is the game's (major, minor, patch), which goes in the header
+    header = struct.pack("<HHHHB", version[0], version[1], version[2], 0, 0)
+    startup = [(name, (DICT, [("value", (kind, value))])) for name, kind, value in values]
+    tree = (DICT, [("startup", (DICT, startup)), ("runtime-global", (DICT, [])), ("runtime-per-user", (DICT, []))])
+    save(path, header, tree)
+
+
 def startup_settings(tree):
     for key, child in tree[1]:
         if key == "startup":
