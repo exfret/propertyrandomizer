@@ -2,6 +2,15 @@
     "hooks": {
         "PostToolUse": [
             {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/ai-files.py\" --hook post-edit"
+                    }
+                ]
+            },
+            {
                 "matcher": "Edit|Write|MultiEdit",
                 "hooks": [
                     {
@@ -22,6 +31,26 @@
                         "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/check-seeds.py\" --hook stop",
                         "timeout": 600
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Write|Edit|MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/ai-files.py\" --hook pre-edit"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/ai-files.py\" --hook pre-bash"
                     }
                 ]
             }
