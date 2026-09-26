@@ -57,7 +57,7 @@ local logic = require("lib/logic/init")
 local lutils = require("lib/logic/logic-utils")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 local first_pass_balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 

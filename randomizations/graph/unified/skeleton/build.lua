@@ -3,7 +3,7 @@
 -- Witnesses are traced with top.path, which already implements the earliest-provider rule for ORs
 
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 
 local key = gutils.key
 

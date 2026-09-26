@@ -3,7 +3,7 @@ local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 
 local base_costs = require("lib/cost/material-costs/sa")
 local py_costs = require("lib/cost/material-costs/py-full")

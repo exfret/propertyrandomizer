@@ -6,7 +6,7 @@
 
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
-local top = require("lib/graph/top-sort")
+local top = require("lib/graph/context-sort")
 
 local spoiling = {}
 
@@ -41,8 +41,8 @@ spoiling.spoof = function(graph)
     local sort_info = top.sort(graph)
 
     local already_checked = {}
-    for _, node_info in pairs(sort_info.open) do
-        local node = graph.nodes[node_info.node]
+    for _, pebble in pairs(sort_info.sorted) do
+        local node = graph.nodes[pebble.node_key]
         if node.type == "item" and not already_checked[node.name] then
             already_checked[node.name] = true
             local node_prot = gutils.deconstruct(node.prot)

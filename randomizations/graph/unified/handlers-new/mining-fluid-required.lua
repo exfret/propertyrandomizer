@@ -3,7 +3,7 @@
 
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/top-sort")
+local top = require("lib/graph/context-sort")
 local rng = require("lib/random/rng")
 
 local mining_fluid_required = {}
@@ -27,8 +27,8 @@ mining_fluid_required.spoof = function(graph)
 
     local already_checked_fluid = {}
     local already_checked_resource = {}
-    for _, node_info in pairs(sort_info.open) do
-        local node = graph.nodes[node_info.node]
+    for _, pebble in pairs(sort_info.sorted) do
+        local node = graph.nodes[pebble.node_key]
         if node.type == "fluid" and not already_checked_fluid[node.name] then
             already_checked_fluid[node.name] = true
 

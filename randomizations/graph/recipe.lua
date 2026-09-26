@@ -18,7 +18,7 @@ local rng = require("lib/random/rng")
 local DO_SURFACE_PRESERVATION = true
 local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/init")
-local extended_sort = require("lib/graph/extended-sort")
+local context_sort = require("lib/graph/context-sort")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
 
@@ -277,7 +277,7 @@ randomizations.recipe_ingredients = function(id)
     -- Find previously reachable
     -- Ignore balance nodes here
     logic.build(true)
-    local extended_info = extended_sort.sort(logic.graph)
+    local isolation_sort_info = context_sort.sort(logic.graph, nil, nil, { complex_contexts = true })
 
     ----------------------------------------------------------------------
     -- Prereq shuffle
@@ -568,13 +568,12 @@ randomizations.recipe_ingredients = function(id)
             local dep_surface = build_graph.surfaces[dependent.surface]
             local this_context = gutils.key(dep_surface.prototype.type, dep_surface.prototype.name)
             local function new_logic_node_isolatable(node, context)
-                local node_key = gutils.key(node)
-                local node_to_contexts = extended_info.node_to_contexts
-                if node_to_contexts[node_key] == true then
-                    return true
-                elseif node_to_contexts[node_key] ~= nil and node_to_contexts[node_key][context] ~= nil then
-                    local contexts = node_to_contexts[node_key][context]
-                    if contexts == true or contexts["10"] or contexts["11"] then
+                local context_inds = isolation_sort_info.node_to_context_inds[gutils.key(node)]
+                if context_inds == nil then
+                    return false
+                end
+                for _, ability_str in pairs(context_sort.ability_strs) do
+                    if string.sub(ability_str, context_sort.ISOLATABILITY, context_sort.ISOLATABILITY) == "1" and context_inds[context_sort.context_key(context, ability_str)] ~= nil then
                         return true
                     end
                 end

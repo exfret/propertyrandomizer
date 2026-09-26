@@ -1,6 +1,6 @@
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 -- Used for getting contexts
 local logic = require("lib/logic/init")
 

@@ -4,7 +4,7 @@ local locale_utils = require("lib/locale")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/init")
-local top = require("lib/graph/consistent-sort")
+local top = require("lib/graph/context-sort")
 -- Needed for recipe icons logic
 local dupe = require("lib/dupe")
 local cutils = require("lib/cost/cost-utils")
