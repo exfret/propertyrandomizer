@@ -29,11 +29,6 @@
                     },
                     {
                         "type": "command",
-                        "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/check-seeds.py\" --hook stop",
-                        "timeout": 900
-                    },
-                    {
-                        "type": "command",
                         "command": "python3 \"$CLAUDE_PROJECT_DIR/dev/hardcoded-names.py\" --hook stop",
                         "timeout": 120
                     },

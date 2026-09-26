@@ -13,7 +13,7 @@
 
 ## Test failures: don't overfit
 
-- Some failing seeds (the `dev/check-seeds.py` Stop hook) and failing configs (`dev/run-tests.py`) are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable.
+- Some failing seeds (`dev/check-seeds.py`) and failing configs (`dev/run-tests.py`, also run by the pre-commit hook) are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable.
 - A failing seed is fine only when unified randomization notices and retries. A built game that lost something a player needs (an unreachable recipe, or a mechanic context lost beyond isolatability) is a softlock, and that's never acceptable on any seed. It means the randomizer's model was wrong about the game it built: fix the model. `data-final-fixes.lua` checks the built game after each unified attempt (UNIFIEDCHECK; a failure retries) and at the end (MECHCHECK). If it still fails there, the game loads and the randomizer panel's home tab warns the player (warnings go in the panel, not chat), never a startup error, since that would make them reset their settings.
 - Look into a failure when your change could have caused it, and fix it only at its root cause. Don't add hotfixes or special cases to get a seed through: a patch that quietly breaks something else is worse than a failing seed.
 - Report failures plainly with a short summary instead of chasing every one.

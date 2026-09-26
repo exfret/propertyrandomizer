@@ -9,7 +9,7 @@
 # Usage:
 #   dev/check-seeds.py                 run the default seeds
 #   dev/check-seeds.py 5 17 42         run specific seeds (values of the propertyrandomizer-seed setting)
-#   dev/check-seeds.py --hook stop     Claude Code hook mode (reads hook JSON on stdin); skipped if no Lua changed since the last run
+#   dev/check-seeds.py --hook stop     Claude Code Stop hook mode (reads hook JSON on stdin; no longer wired up, seeds are tested before commits); skipped if no Lua changed since the last run
 
 import concurrent.futures
 import fcntl
