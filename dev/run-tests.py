@@ -149,6 +149,8 @@ class TestFile:
         self.wip = set()
         self.skip = set()
         self.requires = {}
+        # (setting, value text, suite or config names): configs in one of these suites or with one of these names get this setting's value
+        self.pins = []
         self.configs = []
         # Tier name -> run name patterns
         self.tiers = {}
@@ -166,6 +168,9 @@ class TestFile:
                     self.tiers[words[1]] = words[2:]
                 elif words[0] == "requires" and len(words) == 3 and "=" in words[2]:
                     self.requires[words[1]] = tuple(words[2].split("=", 1))
+                elif words[0] == "pin" and len(words) >= 3 and "=" in words[1]:
+                    name, text = words[1].split("=", 1)
+                    self.pins.append((name, text, set(words[2:])))
                 elif words[0] == "config" and len(words) >= 3:
                     seeds = None
                     nocheck = set()
@@ -228,6 +233,12 @@ class Plan:
 
     def add(self, suite, name, values, seeds=None, nocheck=frozenset()):
         values = self.with_requirements(values)
+        for pinned, text, names in self.test_file.pins:
+            if suite in names or name in names:
+                if pinned not in self.settings:
+                    self.notes.append("didn't pin " + pinned + " in " + name + ": this version has no such setting")
+                    continue
+                values[pinned] = self.settings[pinned].parse(text)
         values = {key: value for key, value in values.items() if value != self.settings[key].default}
         for seed in seeds if seeds is not None else [None]:
             if seed is None:
@@ -270,7 +281,6 @@ class Plan:
         all_unified = {setting.name: True for setting in self.unified if setting.type == "bool-setting"}
         if len(all_unified) > 0:
             self.add("unified", "unified-all", all_unified, seeds=UNIFIED_SEEDS)
-            self.add("unified", "everything", dict(top, **all_unified))
 
     def pairwise(self, settings, rng):
         # Greedy covering array: configs until every pair of values of two different settings is in some config

@@ -100,6 +100,30 @@ if [[ ! -d "$RELEASE_PATH" ]]; then
 fi
 
 # -------------------------------------------------------------------
+# 4.4. Turn off the unified randomizations still in development
+#      (the hidden setting propertyrandomizer-dev-unified, in the copied settings.lua)
+# -------------------------------------------------------------------
+python3 - "$RELEASE_PATH/settings.lua" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as f:
+    text = f.read()
+
+# forced_value makes sure it's off: for a hidden bool setting it forces the value (https://wiki.factorio.com/Tutorial:Mod_settings)
+pattern = r'(name = "propertyrandomizer-dev-unified",(?:[^{}])*?)default_value = true,'
+new_text, count = re.subn(pattern, r"\g<1>default_value = false,\n        forced_value = false,", text)
+if count != 1:
+    print("Error: could not turn off propertyrandomizer-dev-unified in settings.lua", file=sys.stderr)
+    sys.exit(1)
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write(new_text)
+PY
+echo "Turned off development unified randomizations in the release"
+
+# -------------------------------------------------------------------
 # 4.5. Show Lua line counts by file/folder in tree form
 #      Counts all lines in .lua files in the copied release folder
 # -------------------------------------------------------------------

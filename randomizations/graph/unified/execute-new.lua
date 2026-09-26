@@ -49,39 +49,43 @@ local unified = {}
 local all_handler_ids = require("helper-tables/handler-ids")
 local handler_ids = {}
 
--- CRITICAL TODO: REMOVE!
-config.unified = {
-    ["recipe-ingredients"] = true,
-    ["recipe-tech-unlocks"] = true,
-    ["spoiling"] = true,
-    ["tech-prereqs"] = true,
-    ["tech-science-packs"] = true,
-    ["item-ingredients"] = true,
-    ["recipe-ingredients-first-pass"] = true,
-    ["entity-autoplace"] = true,
-
-    ["recipe-category"] = true,
-    ["item"] = true,
-    ["entity-energy-source"] = true,
-    ["mining-fluid-required"] = true,
-}
-
-ITEM_ENABLED = true
+-- Handlers still in development, forced on in every game while the hidden setting propertyrandomizer-dev-unified is (config.dev_unified; off in releases)
 RECIPE_INGS_DIR = "FORWARD"
-local enabled = {
-    --["recipe-ingredients"] = true,
-    --["tech-science-packs"] = true,
-    --["tech-prereqs"] = true,
-    --["recipe-tech-unlocks"] = true,
-    --["recipe-ingredients-first-pass"] = true,
-    --["entity-autoplace"] = true,
+local enabled = {}
+if config.dev_unified then
+    -- CRITICAL TODO: REMOVE!
+    config.unified = {
+        ["recipe-ingredients"] = true,
+        ["recipe-tech-unlocks"] = true,
+        ["spoiling"] = true,
+        ["tech-prereqs"] = true,
+        ["tech-science-packs"] = true,
+        ["item-ingredients"] = true,
+        ["recipe-ingredients-first-pass"] = true,
+        ["entity-autoplace"] = true,
 
-    ["recipe-category"] = true,
-    ["item"] = ITEM_ENABLED,
-    ["entity-energy-source"] = true,
-    ["mining-fluid-required"] = true,
-    ["recipe-ingredients"] = true,
-}
+        ["recipe-category"] = true,
+        ["item"] = true,
+        ["entity-energy-source"] = true,
+        ["mining-fluid-required"] = true,
+    }
+
+    ITEM_ENABLED = true
+    enabled = {
+        --["recipe-ingredients"] = true,
+        --["tech-science-packs"] = true,
+        --["tech-prereqs"] = true,
+        --["recipe-tech-unlocks"] = true,
+        --["recipe-ingredients-first-pass"] = true,
+        --["entity-autoplace"] = true,
+
+        ["recipe-category"] = true,
+        ["item"] = ITEM_ENABLED,
+        ["entity-energy-source"] = true,
+        ["mining-fluid-required"] = true,
+        ["recipe-ingredients"] = true,
+    }
+end
 -- Entity randomization (handlers-new/entity.lua) is behind its own startup setting
 if config.entity_randomization then
     config.unified["entity"] = true
@@ -119,6 +123,9 @@ for _, handler_id in pairs(handler_ids) do
 
     handlers[handler_id] = handler
 end
+
+-- Whether any handler is on, so there's anything for unified randomization to do
+unified.has_handlers = #handler_ids > 0
 
 unified.execute = function()
     for _, handler in pairs(handlers) do

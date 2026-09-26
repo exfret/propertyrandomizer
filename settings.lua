@@ -182,6 +182,16 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-dev-unified",
+        -- Runs the unified randomizations still in development (the forced handlers in randomizations/graph/unified/execute-new.lua) in every game
+        -- prepare-release.sh turns it off in releases, and tests/configs.txt turns it off for some tests
+        default_value = true,
+        order = "e-[unified]-a",
+        hidden = true,
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-unified-tech-prereqs",
         default_value = false,
         order = "e-a[tech-prereqs]",

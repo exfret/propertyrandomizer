@@ -1054,8 +1054,14 @@ randomizations.item_new = function(id)
     for _, change in pairs(post_changes) do
         change.tbl[change.prop] = change.new_val
     end
-    for _, change in pairs(post_changes_spoil) do
-        change.tbl[change.prop] = change.old_node_item[change.prop]
+    -- Read every slot's spoil result before writing any, since a slot's old item can itself be moved into another slot, and writing its new spoil result first would hand this slot that one instead
+    -- Otherwise an item could get a spoil result without the spoil ticks that go with it
+    local spoil_values = {}
+    for ind, change in pairs(post_changes_spoil) do
+        spoil_values[ind] = change.old_node_item[change.prop]
+    end
+    for ind, change in pairs(post_changes_spoil) do
+        change.tbl[change.prop] = spoil_values[ind]
     end
 
     -- return the maps between slots and items and vice versa to show we succeeded and keep track of old item positions

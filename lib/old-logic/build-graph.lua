@@ -600,7 +600,8 @@ local function load()
                 mtm_insert(fuel_category_to_fuels, fuel_category, item)
             end
         end
-        if item.spoil_result ~= nil then
+        -- The game only loads spoil_result when spoil_ticks is above 0 (its default is 0)
+        if item.spoil_result ~= nil and (item.spoil_ticks or 0) > 0 then
             mtm_insert(spoil_result_to_items, item.spoil_result, item)
         end
         if item.rocket_launch_products ~= nil then

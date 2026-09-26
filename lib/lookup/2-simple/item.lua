@@ -76,7 +76,8 @@ stage.spoil_result_to_items = function()
     local spoil_result_to_items = {}
 
     for _, item in pairs(lu.items) do
-        if item.spoil_result ~= nil and item.spoil_result ~= "" then
+        -- The game only loads spoil_result when spoil_ticks is above 0 (its default is 0)
+        if item.spoil_result ~= nil and item.spoil_result ~= "" and (item.spoil_ticks or 0) > 0 then
             if spoil_result_to_items[item.spoil_result] == nil then
                 spoil_result_to_items[item.spoil_result] = {}
             end

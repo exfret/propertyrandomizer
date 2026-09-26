@@ -6,7 +6,7 @@
 # A setting also needs a finite set of values to be covered: a bool, a list of allowed values, or a minimum and a maximum
 #   smoke:    defaults, and every covered visible setting at its last value (true for bools, the maximum for numbers)
 #   settings: each non-default value of each covered visible setting on its own, then pairwise combinations (every two values of two settings meet in some config)
-#   unified:  each non-default value of each unified-* setting on its own, all unified-* bools on over several seeds, and everything on at once
+#   unified:  each non-default value of each unified-* setting on its own, and all unified-* bools on over several seeds (never with other settings: randomizations still in development are only tested in isolation)
 # Plus the hand-picked configs at the bottom
 
 # wip SUITE: the suite is still being worked on, so its failures are reported but don't fail the run
@@ -29,6 +29,10 @@ skip unified-entity-biters
 requires item-percent item=true
 requires recipe-science-pack recipe=true
 requires unified-entity-biters unified-entity=true
+
+# pin SETTING=VALUE NAME...: configs in one of these suites or with one of these names (generated or hand-picked) get SETTING=VALUE on top of their own settings
+# The unified randomizations still in development (dev-unified, on by default in the repo) are only tested in isolation, in the unified suite
+pin dev-unified=false smoke settings
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
 # nocheck turns off the reachability, mechcheck or control check (see dev/run-tests.py)

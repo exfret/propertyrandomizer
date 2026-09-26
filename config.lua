@@ -80,6 +80,8 @@ config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
 
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
+-- Whether the unified randomizations still in development run (see settings.lua)
+config.dev_unified = settings.startup["propertyrandomizer-dev-unified"].value
 
 config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value

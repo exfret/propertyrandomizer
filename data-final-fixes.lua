@@ -127,11 +127,11 @@ local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
 -- Setup done!
 ----------------------------------------------------------------------
 
--- Do unified randomizations first
+-- Do unified randomizations first (skipped when no handler is on, see config.dev_unified)
 
 local unified_check = require("randomizations/graph/unified/skeleton/check")
 local recycling = require("lib/recycling")
-for i = 1, config.unified_num_retries do
+for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
     unified_info = unified.execute()
     if unified_info then
         -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
