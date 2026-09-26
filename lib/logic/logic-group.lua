@@ -70,55 +70,10 @@ logic_group.build = function(graph, type_info)
     --         To enforce finding the chunk all at once, we could use and AND node gating all the prerequisites
 
     ----------------------------------------------------------------------
-    -- Power
+    -- Fuel
     ----------------------------------------------------------------------
 
-    ----------------------------------------
-    add_node("steam-power", "AND", nil, nil, { mechanic = true })
-    ----------------------------------------
-    -- Can we produce steam power?
-    -- With blockification, these will return to items or recipes, making them easier to satisfy
-
-    add_edge("steam-engine")
-    add_edge("boiler")
-    add_edge("offshore-pump")
-    add_edge("chemical-fuel")
-
-    ----------------------------------------
-    add_node("steam-engine", "OR")
-    ----------------------------------------
-    -- Can we operate a steam engine?
-
-    for _, generator in pairs(prots("generator")) do
-        -- I'm going to be lazy about checking if things are in lu.entities
-        if generator.fluid_box.filter == "steam" then
-            add_edge("entity-operate", generator.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("boiler", "OR")
-    ----------------------------------------
-    -- Can we operate a steam boiler?
-
-    -- Any energy source works, since energy source randomization can change it
-    -- Operating the boiler (entity-operate) already requires its energy source, so it doesn't need to be checked here
-    for _, boiler in pairs(prots("boiler")) do
-        if boiler.output_fluid_box.filter == "steam" then
-            add_edge("entity-operate", boiler.name)
-        end
-    end
-
-    ----------------------------------------
-    add_node("offshore-pump", "OR")
-    ----------------------------------------
-    -- Can we operate an unfiltered offshore pump?
-
-    for _, pump in pairs(prots("offshore-pump")) do
-        if pump.fluid_box.filter == nil then
-            add_edge("entity-operate", pump.name)
-        end
-    end
+    -- There's no steam power mechanic: it's one route to electricity, and energy-source-electric-production already protects electricity itself, so steam engines are free to come later when something else provides power
 
     ----------------------------------------
     add_node("chemical-fuel", "OR", nil, nil, { mechanic = true })

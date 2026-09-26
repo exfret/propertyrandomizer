@@ -11,6 +11,8 @@ local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
 -- How many rounds of monotone matching to iterate (each starts from the last round's matching)
 local MONOTONE_MATCHING_ROUNDS = 3
+-- Chance that a resource slot (what mining a resource gives) is given an interesting item, like the old first pass's ore roll
+local INTERESTING_RESOURCE_CHANCE = 0.9
 
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
@@ -233,9 +235,17 @@ first_pass.execute = function(params)
             if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] ~= nil then
                 always_on_slot = true
                 if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then
-                    local item_prot = dutils.get_prot("item", node.name)
-                    -- If the item and entity/tile are supposed to correspond to each other, don't put on slot
-                    if (prenode.type == "entity-mine" and item_prot.place_result == prenode.name) or (prenode.type == "tile-mine" and item_prot.place_as_tile ~= nil and item_prot.place_as_tile.result == prenode.name) then
+                    -- Mining a building or a tile gives items under their own names (item reflection doesn't rename them), so it belongs to the item's identity
+                    local mined
+                    if prenode.type == "tile-mine" then
+                        mined = data.raw.tile[prenode.name]
+                    else
+                        mined = dutils.get_prot("entity", prenode.name)
+                    end
+                    if mined == nil then
+                        error("First pass: no prototype for " .. key(prenode))
+                    end
+                    if dutils.mining_keeps_item_names(mined) then
                         always_on_slot = false
                     end
                 end
@@ -373,6 +383,18 @@ first_pass.execute = function(params)
         table.insert(slot_keys, slot_key)
     end
     table.sort(slot_keys)
+    -- Items that mining a resource gives, which should usually become something interesting
+    local is_resource_item = {}
+    for _, resource in pairs(data.raw.resource) do
+        if resource.minable ~= nil then
+            if resource.minable.result ~= nil then
+                is_resource_item[resource.minable.result] = true
+            elseif resource.minable.results ~= nil and #resource.minable.results == 1 then
+                is_resource_item[resource.minable.results[1].name] = true
+            end
+        end
+    end
+    dutils.recalculate_spoil_burnt_results()
     local assignment = monotone_matching.run({
         slot_keys = slot_keys,
         unconnected_graph = split_graph,
@@ -380,6 +402,30 @@ first_pass.execute = function(params)
         trav_to_head = trav_to_head,
         cost_ok = cost_ok,
         rounds = MONOTONE_MATCHING_ROUNDS,
+        is_resource_slot = function(slot_key)
+            local slot = split_graph.nodes[slot_key]
+            return slot.type == "item" and is_resource_item[slot.name] == true
+        end,
+        -- Uses the same notion of useless as item reflection, which skips swaps between two useless items
+        is_interesting = function(trav_key)
+            local item = dutils.get_prot("item", gutils.deconstruct(split_graph.nodes[trav_key].old_slot).name)
+            return item ~= nil and not dutils.is_useless_item(item)
+        end,
+        interesting_resource_chance = INTERESTING_RESOURCE_CHANCE,
+        -- Item reflection places useless items differently from the matching (see dutils.reflected_item_position), so each matching is replaced by the one reflection realizes before it's gated
+        realize = function(assignment)
+            local identity_at = {}
+            for slot_key, trav_key in pairs(assignment) do
+                if split_graph.nodes[slot_key].type == "item" then
+                    identity_at[split_graph.nodes[slot_key].name] = gutils.deconstruct(split_graph.nodes[trav_key].old_slot).name
+                end
+            end
+            local realized = table.deepcopy(assignment)
+            for position, identity in pairs(dutils.realized_item_assignment(identity_at)) do
+                realized[key("item", position)] = split_graph.nodes[key("item", identity)].old_trav
+            end
+            return realized
+        end,
     })
     local slot_to_trav = {}
     local trav_to_slot = {}

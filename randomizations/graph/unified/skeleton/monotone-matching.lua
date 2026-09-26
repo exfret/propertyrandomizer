@@ -2,18 +2,20 @@
 -- Based on the other session's report (scratchpad REPORT-multipass-complex-contexts.md) and its exp-iter.lua prototype
 --
 -- A round starts from a valid matching (the identity matching in round 1) and its graph:
---   1. Take a random complex sort of that graph, and the earliest-provider skeleton (witnesses) of the hard mechanic pebbles
---   2. A trav's needs are the contexts in which the skeleton goes through the trav
+--   1. Take a random complex sort of that graph, and prove every hard mechanic pebble in it (backings go to strictly earlier pebbles)
+--   2. A trav's needs are the contexts in which those proofs use the identity (see needs_from_proof for which uses count)
 --   3. A slot is admissible for a trav if its type and cost fit and, for each need, the slot has a pebble in that context ranked before the trav's; the trav's current slot is always admissible
---   4. Take a random perfect matching of the admissibility graph (it exists, since the current matching is one)
+--   4. Take a random perfect matching of the admissibility graph (it exists, since the current matching is one), and replace it by the one reflection realizes (params.realize)
 --   5. Gate: sort the new graph, and if a hard pebble was lost, add the blocked trav pebbles of its witness to the needs and redo 3-5
 -- Needs only grow and the current matching always passes, so every round ends with a valid matching
--- Soundness: each hard pebble's witness still works with its trav steps now proven by earlier slot pebbles (by induction on rank), assuming monotone logic
+-- The proofs pick one provider per OR (the earliest that works), so an identity is only pinned where the proof actually uses it: another provider that comes first frees it in the next round
+-- The gate is what guarantees the result; the proofs only make the proposals likely to pass
 -- The tech discovery rule isn't monotone, so first pass's own gate afterward still checks with a fresh sort and retries if needed
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local rng = require("lib/random/rng")
+local logic = require("lib/logic/init")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local key = gutils.key
@@ -92,8 +94,7 @@ local function lost_pebbles(mechanics, recipes, sort_info)
     return lost
 end
 
--- trav key --> set of contexts the skeleton of the given pebbles goes through the trav in
-local function needs_from_skeleton(graph, sort_info, pebbles)
+local function goal_inds_of(pebbles, sort_info)
     local goal_inds = {}
     for _, pebble in pairs(pebbles) do
         local ind = (sort_info.node_to_context_inds[pebble.node_key] or {})[pebble.context]
@@ -101,19 +102,320 @@ local function needs_from_skeleton(graph, sort_info, pebbles)
             table.insert(goal_inds, ind)
         end
     end
-    local needs = {}
-    for ind, _ in pairs(top.path(graph, goal_inds, sort_info).in_path) do
-        local pebble = sort_info.sorted[ind]
-        if graph.nodes[pebble.node_key].trav then
-            needs[pebble.node_key] = needs[pebble.node_key] or {}
-            needs[pebble.node_key][pebble.context] = true
-        end
-    end
-    return needs
+    return goal_inds
 end
 
+----------------------------------------------------------------------------------------------------
+-- Prover
+----------------------------------------------------------------------------------------------------
+
+-- Finds backings of pebbles in a sort: each pebble is proven by pebbles of strictly lower rank, as in promotion.lua's compute_support (without its recipe and head handling)
+-- Unlike top.path, it backtracks, so when a provider's pebble can't be proven it falls back to other providers
+local function make_prover(graph, sort_info)
+    local sorted = sort_info.sorted
+    local nci = sort_info.node_to_context_inds
+    local memo = {}
+
+    local room_discoverers
+    local function get_room_discoverers(room)
+        if room_discoverers == nil then
+            room_discoverers = {}
+            for node_key, node in pairs(graph.nodes) do
+                if top.is_discoverer(node) then
+                    for _, discovered in pairs(top.discovered_rooms(node)) do
+                        room_discoverers[discovered.room] = room_discoverers[discovered.room] or {}
+                        table.insert(room_discoverers[discovered.room], node_key)
+                    end
+                end
+            end
+        end
+        return room_discoverers[room] or {}
+    end
+
+    -- Ranks of the pebbles of an edge's start that get context through the edge, earliest first
+    local function pre_inds(edge_key, context)
+        local edge = graph.edges[edge_key]
+        local context_inds = nci[edge.start] or {}
+        if edge.abilities == nil then
+            return { context_inds[context] }
+        end
+        local inds = {}
+        for _, source in pairs(top.edge_source_contexts(sort_info, edge, context)) do
+            if context_inds[source] ~= nil then
+                table.insert(inds, context_inds[source])
+            end
+        end
+        table.sort(inds)
+        return inds
+    end
+
+    local establish
+
+    local function back_with(ind, node, context)
+        if node.op == "AND" then
+            local support = {}
+            for pre, _ in pairs(node.pre) do
+                local found
+                for _, i in pairs(pre_inds(pre, context)) do
+                    if i < ind and establish(i) then
+                        found = i
+                        break
+                    end
+                end
+                if found == nil then
+                    return nil
+                end
+                table.insert(support, found)
+            end
+            return support
+        end
+        -- Earliest provider first, falling back to later ones
+        local candidates = {}
+        for pre, _ in pairs(node.pre) do
+            for _, i in pairs(pre_inds(pre, context)) do
+                if i < ind then
+                    table.insert(candidates, i)
+                end
+            end
+        end
+        table.sort(candidates)
+        for _, i in pairs(candidates) do
+            if establish(i) then
+                return { i }
+            end
+        end
+        return nil
+    end
+
+    local function compute_support(ind)
+        local pebble = sorted[ind]
+        local node = graph.nodes[pebble.node_key]
+        if next(node.pre) == nil then
+            -- Sources: AND with no prereqs is vacuously satisfied, OR with none never is
+            if node.op == "AND" then
+                return {}
+            end
+            return nil
+        end
+        if logic.type_info[node.type].context == nil then
+            return back_with(ind, node, pebble.context)
+        end
+
+        -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
+        local contexts = {}
+        for _, context in pairs(sort_info.contexts) do
+            local transmits = false
+            for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
+                if outgoing == pebble.context then
+                    transmits = true
+                    break
+                end
+            end
+            if transmits then
+                local score
+                for pre, _ in pairs(node.pre) do
+                    local i = pre_inds(pre, context)[1]
+                    if node.op == "AND" then
+                        if i == nil then
+                            score = nil
+                            break
+                        end
+                        score = math.max(score or 0, i)
+                    elseif i ~= nil and (score == nil or i < score) then
+                        score = i
+                    end
+                end
+                if score ~= nil and score < ind then
+                    table.insert(contexts, {
+                        context = context,
+                        score = score,
+                    })
+                end
+            end
+        end
+        table.sort(contexts, function(a, b) return a.score < b.score end)
+        for _, entry in pairs(contexts) do
+            local support = back_with(ind, node, entry.context)
+            if support ~= nil then
+                return support
+            end
+        end
+
+        -- Isolatable tech contexts can also come from the space location discovery rule (the tech in an earlier context plus an earlier discovering tech)
+        local abilities = top.context_abilities(pebble.context)
+        if node.type == "technology" and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+            local own_ind
+            for _, i in pairs(nci[pebble.node_key]) do
+                if i < ind and (own_ind == nil or i < own_ind) and establish(i) then
+                    own_ind = i
+                end
+            end
+            if own_ind ~= nil then
+                for _, discoverer_key in pairs(get_room_discoverers(top.context_room(pebble.context))) do
+                    for _, i in pairs(nci[discoverer_key] or {}) do
+                        if i < ind and establish(i) then
+                            return { own_ind, i }
+                        end
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    establish = function(ind)
+        local cached = memo[ind]
+        if cached ~= nil then
+            return cached ~= false
+        end
+        memo[ind] = false
+        local support = compute_support(ind)
+        if support ~= nil then
+            memo[ind] = support
+        end
+        return support ~= nil
+    end
+
+    return {
+        -- Proves the goals
+        -- Returns the closure of their backings (ind --> true), each pebble's backing (ind --> list of inds), and the goals that couldn't be proven
+        prove = function(goal_inds)
+            memo = {}
+            local closure = {}
+            local failed = {}
+            local stack = {}
+            for _, goal in pairs(goal_inds) do
+                if establish(goal) then
+                    table.insert(stack, goal)
+                else
+                    table.insert(failed, goal)
+                end
+            end
+            while #stack > 0 do
+                local i = table.remove(stack)
+                if not closure[i] then
+                    closure[i] = true
+                    for _, j in pairs(memo[i]) do
+                        if not closure[j] then
+                            table.insert(stack, j)
+                        end
+                    end
+                end
+            end
+            return closure, memo, failed
+        end,
+    }
+end
+
+----------------------------------------------------------------------------------------------------
+-- Needs
+----------------------------------------------------------------------------------------------------
+
+-- The nodes of each trav's launch chain: trav --> item-launch --> item-deliver --> orand --> trav (delivery to other rooms)
+-- Returns node key --> the trav whose chain it's on
+local function launch_chains(graph, travs)
+    local chain_of = {}
+    for _, trav_key in pairs(travs) do
+        for dep, _ in pairs(graph.nodes[trav_key].dep) do
+            local launch = graph.nodes[graph.edges[dep].stop]
+            if launch.type == "item-launch" then
+                chain_of[key(launch)] = trav_key
+                for dep2, _ in pairs(launch.dep) do
+                    local deliver = graph.nodes[graph.edges[dep2].stop]
+                    if deliver.type == "item-deliver" then
+                        chain_of[key(deliver)] = trav_key
+                        for dep3, _ in pairs(deliver.dep) do
+                            local mid = graph.nodes[graph.edges[dep3].stop]
+                            if mid.type == "orand" then
+                                chain_of[key(mid)] = trav_key
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return chain_of
+end
+
+-- Needs from a proof: trav key --> set of contexts, plus slot key --> true for slots whose delivered contents need a launchable trav
+-- A trav pebble is a need only if its users lead to a real use of the identity
+-- If its only use is delivering its own slot's contents to other rooms, the slot needs whatever trav it holds to be launchable instead, since reflection makes the slot's item that trav
+-- Delivered contexts of a trav aren't needs themselves: they follow from its origin context through the same launch chain
+local function needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
+    local sorted = sort_info.sorted
+    local users = {}
+    for i, _ in pairs(closure) do
+        for _, j in pairs(support[i]) do
+            users[j] = users[j] or {}
+            table.insert(users[j], i)
+        end
+    end
+    local slot_of = {}
+    for slot_key, trav_key in pairs(assignment) do
+        slot_of[trav_key] = slot_key
+    end
+
+    local function is_delivered(q, trav_key)
+        for _, j in pairs(support[q] or {}) do
+            if chain_of[sorted[j].node_key] == trav_key then
+                return true
+            end
+        end
+        return false
+    end
+
+    local requires_launchable = {}
+    local genuine = {}
+    local function is_genuine(q, trav_key)
+        if genuine[q] ~= nil then
+            return genuine[q]
+        end
+        genuine[q] = false
+        local result = false
+        for _, u in pairs(users[q] or {}) do
+            local u_key = sorted[u].node_key
+            if u_key == slot_of[trav_key] then
+                if is_delivered(q, trav_key) then
+                    requires_launchable[u_key] = true
+                else
+                    result = true
+                end
+            elseif chain_of[u_key] == trav_key or u_key == trav_key then
+                if is_genuine(u, trav_key) then
+                    result = true
+                end
+            else
+                result = true
+            end
+        end
+        genuine[q] = result
+        return result
+    end
+
+    local needs = {}
+    for q, _ in pairs(closure) do
+        local pebble = sorted[q]
+        local node = graph.nodes[pebble.node_key]
+        if node.trav and slot_of[pebble.node_key] ~= nil then
+            if is_genuine(q, pebble.node_key) and not is_delivered(q, pebble.node_key) then
+                needs[pebble.node_key] = needs[pebble.node_key] or {}
+                needs[pebble.node_key][pebble.context] = true
+            end
+        end
+    end
+    return needs, requires_launchable
+end
+
+----------------------------------------------------------------------------------------------------
+-- Matching
+----------------------------------------------------------------------------------------------------
+
 -- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)
-local function random_matching(params, graph, sort_info, needs, assignment, rng_key)
+-- With params.is_resource_slot, each resource slot first takes a random admissible interesting trav (params.is_interesting) with chance params.interesting_resource_chance, like the old first pass's ore roll.
+-- Reflection skips swaps between two useless items, and ores count as useless, so without this ores rarely visibly change.
+-- Returns the matching and how many resource slots were prefilled
+local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key)
     local current_slot = {}
     local slots = {}
     local travs = {}
@@ -134,6 +436,9 @@ local function random_matching(params, graph, sort_info, needs, assignment, rng_
             if slot_key ~= current_slot[trav_key] then
                 local slot = graph.nodes[slot_key]
                 local is_admissible = slot.type == trav.type and params.cost_ok(slot, trav)
+                if is_admissible and requires_launchable[slot_key] and not params.is_launchable(trav_key) then
+                    is_admissible = false
+                end
                 if is_admissible then
                     for context, _ in pairs(needs[trav_key] or {}) do
                         local slot_ind = (nci[slot_key] or {})[context]
@@ -151,30 +456,91 @@ local function random_matching(params, graph, sort_info, needs, assignment, rng_
         end
     end
 
-    local slot_match = {}
-    local function try(trav_key, visited)
-        local candidates = table.deepcopy(admissible[trav_key])
-        rng.shuffle(rng_key, candidates)
-        table.insert(candidates, current_slot[trav_key])
-        for _, slot_key in pairs(candidates) do
-            if not visited[slot_key] then
-                visited[slot_key] = true
-                if slot_match[slot_key] == nil or try(slot_match[slot_key], visited) then
-                    slot_match[slot_key] = trav_key
-                    return true
+    -- Kuhn's algorithm around the prefilled pairs, which stay fixed; nil if some trav can't be matched
+    local function complete(prefilled)
+        local slot_match = {}
+        local is_fixed = {}
+        local is_matched = {}
+        for slot_key, trav_key in pairs(prefilled) do
+            slot_match[slot_key] = trav_key
+            is_fixed[slot_key] = true
+            is_matched[trav_key] = true
+        end
+        local function try(trav_key, visited)
+            local candidates = table.deepcopy(admissible[trav_key])
+            rng.shuffle(rng_key, candidates)
+            table.insert(candidates, current_slot[trav_key])
+            for _, slot_key in pairs(candidates) do
+                if not visited[slot_key] and not is_fixed[slot_key] then
+                    visited[slot_key] = true
+                    if slot_match[slot_key] == nil or try(slot_match[slot_key], visited) then
+                        slot_match[slot_key] = trav_key
+                        return true
+                    end
+                end
+            end
+            return false
+        end
+        local order = table.deepcopy(travs)
+        rng.shuffle(rng_key, order)
+        for _, trav_key in pairs(order) do
+            if not is_matched[trav_key] and not try(trav_key, {}) then
+                return nil
+            end
+        end
+        return slot_match
+    end
+
+    -- Resource slots take interesting travs first
+    local prefilled = {}
+    local num_prefilled = 0
+    if params.is_resource_slot ~= nil then
+        local admitted_travs = {}
+        for _, trav_key in pairs(travs) do
+            for _, slot_key in pairs(admissible[trav_key]) do
+                admitted_travs[slot_key] = admitted_travs[slot_key] or {}
+                table.insert(admitted_travs[slot_key], trav_key)
+            end
+        end
+        local resource_slots = {}
+        for _, slot_key in pairs(slots) do
+            if params.is_resource_slot(slot_key) then
+                table.insert(resource_slots, slot_key)
+            end
+        end
+        rng.shuffle(rng_key, resource_slots)
+        local is_taken = {}
+        for _, slot_key in pairs(resource_slots) do
+            if rng.value(rng_key) < params.interesting_resource_chance then
+                local candidates = {}
+                for _, trav_key in pairs(admitted_travs[slot_key] or {}) do
+                    if not is_taken[trav_key] and params.is_interesting(trav_key) then
+                        table.insert(candidates, trav_key)
+                    end
+                end
+                -- The slot's current trav is always admissible, so it can stay if it's already interesting
+                if not is_taken[assignment[slot_key]] and params.is_interesting(assignment[slot_key]) then
+                    table.insert(candidates, assignment[slot_key])
+                end
+                rng.shuffle(rng_key, candidates)
+                -- Keep the first candidate that still leaves a perfect matching, since early items like iron ore often have nowhere else to go
+                for i = 1, math.min(#candidates, 5) do
+                    prefilled[slot_key] = candidates[i]
+                    if complete(prefilled) ~= nil then
+                        is_taken[candidates[i]] = true
+                        num_prefilled = num_prefilled + 1
+                        break
+                    end
+                    prefilled[slot_key] = nil
                 end
             end
         end
-        return false
     end
-    local order = table.deepcopy(travs)
-    rng.shuffle(rng_key, order)
-    for _, trav_key in pairs(order) do
-        if not try(trav_key, {}) then
-            error("Monotone matching failed although the current matching is admissible")
-        end
+    local slot_match = complete(prefilled)
+    if slot_match == nil then
+        error("Monotone matching failed although every prefilled pair was checked")
     end
-    return slot_match
+    return slot_match, num_prefilled
 end
 
 -- Trav pebbles on the witnesses (in the previous graph) of the lost pebbles that are missing from the new sort
@@ -194,6 +560,15 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
     return blocked
 end
 
+-- The matching the game will actually have: params.realize (optional) maps a matching to the one reflection realizes, which is what gets gated and returned
+-- The result is still a perfect matching, and realizing the identity matching gives it back, so the "current matching always passes" argument still holds
+local function realize(params, assignment)
+    if params.realize == nil then
+        return assignment
+    end
+    return params.realize(assignment)
+end
+
 matching.connect = connect
 
 -- params:
@@ -202,26 +577,50 @@ matching.connect = connect
 --   slot_to_base, trav_to_head: first pass's connector nodes
 --   cost_ok(slot, trav): whether the pair's costs fit
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
+--   is_resource_slot(slot_key), is_interesting(trav_key), interesting_resource_chance (optional): see random_matching
+--   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
 -- Returns slot key --> trav key
 matching.run = function(params)
     local assignment = {}
+    local travs = {}
     for _, slot_key in pairs(params.slot_keys) do
         assignment[slot_key] = params.unconnected_graph.nodes[slot_key].old_trav
+        table.insert(travs, assignment[slot_key])
     end
+    table.sort(travs)
     local graph = connect(table.deepcopy(params.unconnected_graph), params, assignment)
     local sort_info = complex_sort(graph)
     local mechanics, recipes = hard_pebbles(graph, sort_info)
     log("Monotone matching: " .. #mechanics .. " hard mechanic pebbles, " .. #recipes .. " recipes")
 
+    -- Launch chains and launchability are properties of the travs themselves, so they're the same in every round
+    local chain_of = launch_chains(graph, travs)
+    local is_launchable = {}
+    for node_key, trav_key in pairs(chain_of) do
+        if graph.nodes[node_key].type == "item-launch" then
+            is_launchable[trav_key] = true
+        end
+    end
+    params.is_launchable = function(trav_key)
+        return is_launchable[trav_key] == true
+    end
+
     for round = 1, params.rounds do
         -- Recipes are left to the gate (needs from recipe anchors are too strict)
-        local needs = needs_from_skeleton(graph, sort_info, mechanics)
+        local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(mechanics, sort_info))
+        if #failed > 0 then
+            -- Those pebbles get no needs, so the gate is all that protects them this round
+            log("Monotone matching: round " .. round .. " couldn't prove " .. #failed .. " hard pebbles in its own sort")
+        end
+        local needs, requires_launchable = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
         local num_refinements = 0
         local new_assignment
         local new_graph
         local new_sort
+        local num_prefilled = 0
         while true do
-            new_assignment = random_matching(params, graph, sort_info, needs, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
+            new_assignment, num_prefilled = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
+            new_assignment = realize(params, new_assignment)
             new_graph = connect(table.deepcopy(params.unconnected_graph), params, new_assignment)
             new_sort = complex_sort(new_graph)
             local lost = lost_pebbles(mechanics, recipes, new_sort)
@@ -243,6 +642,7 @@ matching.run = function(params)
                 new_assignment = assignment
                 new_graph = graph
                 new_sort = sort_info
+                num_prefilled = 0
                 break
             end
         end
@@ -252,7 +652,7 @@ matching.run = function(params)
                 num_moved = num_moved + 1
             end
         end
-        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved")
+        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved; " .. num_prefilled .. " resource slots given interesting travs")
         assignment = new_assignment
         graph = new_graph
         sort_info = new_sort

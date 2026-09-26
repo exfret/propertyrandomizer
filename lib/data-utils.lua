@@ -101,6 +101,61 @@ dutils.recalculate_spoil_burnt_results = function()
     end
 end
 
+-- Whether mining this entity or tile gives items under their own names, whatever item first pass put in their positions
+-- Item reflection leaves the mining results of player creations alone (so you get back the buildings you place down) and never changes tiles', so first pass models those results as part of the items' identities
+dutils.mining_keeps_item_names = function(prot)
+    if prot.type == "tile" then
+        return true
+    end
+    for _, flag in pairs(prot.flags or {}) do
+        if flag == "placeable-player" or flag == "player-creation" then
+            return true
+        end
+    end
+    return false
+end
+
+-- Item reflection's placement rule, shared with first pass so that first pass models the game reflection builds
+-- identity_at: item position name --> name of the item identity assigned there (a permutation of the same names)
+-- Reflection doesn't swap two useless items (see is_useless_item), since that would only change names
+-- A useless identity instead goes to the first position along its cycle whose assigned identity is useless, so non-useless identities always land where they were assigned
+-- Returns the position where reflection puts identity (assigned to position), or nil if reflection leaves it alone
+dutils.reflected_item_position = function(identity_at, position, identity)
+    local function is_useless(name)
+        return dutils.is_useless_item(dutils.get_prot("item", name))
+    end
+    if is_useless(identity_at[identity]) and is_useless(identity) then
+        return nil
+    end
+    if not is_useless(identity) then
+        return position
+    end
+    local curr = identity_at[identity]
+    while not is_useless(identity_at[curr]) do
+        curr = identity_at[curr]
+    end
+    return curr
+end
+
+-- The assignment reflection realizes, as item position name --> identity name
+-- It's a permutation that agrees with identity_at on every non-useless identity, and realizing it again changes nothing, so first pass can gate and model this one instead
+dutils.realized_item_assignment = function(identity_at)
+    local realized = {}
+    for position, identity in pairs(identity_at) do
+        local reflected = dutils.reflected_item_position(identity_at, position, identity)
+        if reflected ~= nil then
+            realized[reflected] = identity
+        end
+    end
+    -- Positions reflection doesn't rename keep their own items
+    for position, _ in pairs(identity_at) do
+        if realized[position] == nil then
+            realized[position] = position
+        end
+    end
+    return realized
+end
+
 -- Science packs: every item some lab accepts, as item name --> true (not anything with "science-pack" in its name)
 dutils.lab_inputs = function()
     local lab_inputs = {}

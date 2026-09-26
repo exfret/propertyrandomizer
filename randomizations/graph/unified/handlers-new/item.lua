@@ -212,6 +212,14 @@ item.reflect = function(graph, head_to_base, head_to_handler)
     local item_to_new_item = {}
 
     local num_times_changed_graphics_of_simple_entity = {}
+    -- Item position name --> name of the item identity first pass assigned there
+    local item_identity_at = {}
+    for slot_key, trav_key in pairs(slot_to_trav) do
+        local slot = split_graph.nodes[slot_key]
+        if slot ~= nil and slot.type == "item" then
+            item_identity_at[slot.name] = split_graph.nodes[split_graph.nodes[trav_key].old_slot].name
+        end
+    end
     for trav_key, slot_key in pairs(trav_to_slot) do
     --for head_key, base_key in pairs(head_to_base) do
         -- Since items are OR nodes, first pass actually deals with orands
@@ -230,28 +238,14 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             local slot_item = dutils.get_prot("item", slot.name)
             local trav_item = dutils.get_prot("item", split_graph.nodes[trav.old_slot].name)
 
-            local is_useless_item = dutils.is_useless_item
-
-            local trav_trav = split_graph.nodes[slot_to_trav[trav.old_slot]]
-            local trav_trav_item = dutils.get_prot("item", split_graph.nodes[trav_trav.old_slot].name)
-            if is_useless_item(trav_trav_item) and is_useless_item(trav_item) then
+            -- Useless items aren't swapped with each other, so a useless identity can go to a different position (see dutils.reflected_item_position, which first pass models too)
+            local reflected_position = dutils.reflected_item_position(item_identity_at, slot_item.name, trav_item.name)
+            if reflected_position == nil then
                 -- Don't actually do the switch in this case
             else
-                if is_useless_item(trav_item) then
-                    -- Back up slot until we get something that would have had a useless trav in it
-                    local curr_trav_slot = split_graph.nodes[trav_trav.old_slot]
-                    while true do
-                        local curr_trav_slot_item = dutils.get_prot("item", curr_trav_slot.name)
-                        local curr_trav_slot_trav = split_graph.nodes[slot_to_trav[gutils.key(curr_trav_slot)]]
-                        local curr_trav_slot_trav_item = dutils.get_prot("item", split_graph.nodes[curr_trav_slot_trav.old_slot].name)
-                        if is_useless_item(curr_trav_slot_trav_item) then
-                            log(trav_item.name .. " NOW WITH " .. slot_item.name)
-                            slot_item = curr_trav_slot_item
-                            break
-                        else
-                            curr_trav_slot = split_graph.nodes[curr_trav_slot_trav.old_slot]
-                        end
-                    end
+                if reflected_position ~= slot_item.name then
+                    log(trav_item.name .. " NOW WITH " .. slot_item.name)
+                    slot_item = dutils.get_prot("item", reflected_position)
                 end
                 
                 item_to_new_item[slot_item.name] = trav_item.name
@@ -417,17 +411,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 for entity_class, _ in pairs(minable_things) do
                     if data.raw[entity_class] ~= nil then
                         for _, entity in pairs(data.raw[entity_class]) do
-                            -- Don't replace entities that are player creations, so that you still get the buildings back you place down
-                            local is_building = false
-                            if entity.flags ~= nil then
-                                for _, flag in pairs(entity.flags) do
-                                    if flag == "placeable-player" or flag == "player-creation" then
-                                        is_building = true
-                                    end
-                                end
-                            end
-
-                            if not is_building then
+                            -- Don't replace entities that are player creations, so that you still get the buildings back you place down (first pass models these results the same way)
+                            if not dutils.mining_keeps_item_names(entity) then
                                 local has_result = false
 
                                 if entity.minable ~= nil then
