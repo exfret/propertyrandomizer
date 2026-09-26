@@ -6,7 +6,7 @@
 -- TODO: Some tests targeting areas where I might have forgotten about orands
 -- TODO: Do a more thorough look through handlers for terminology changes etc.
 
-local DO_FIRST_PASS = false
+local DO_FIRST_PASS = true
 -- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
 -- Maybe could cause softlocks?
 -- CRITICAL TODO: Think about this more!
@@ -15,8 +15,10 @@ local DO_TESTS = false
 local ONLY_TEST_FIRST_CONTEXT_ORDER = true
 local SWITCH_PLANETS = false
 local REMOVE_TECH_PREREQS = true
+-- Keep mechanic contexts and recipe reachability with promotion (randomizations/graph/unified/skeleton/promotion.lua) for both generic handlers and recipe ingredients, instead of comparing orders in a sort
+local USE_PROMOTION = true
 -- Log witness skeleton stats (randomizations/graph/unified/skeleton/stats.lua); measurement only
-local SKELETON_STATS = true
+local SKELETON_STATS = false
 
 -- 0 means nothing except on errors (in case I decide to stop polluting log in the future), 1 means default/important things, 2 means lots
 local LOGGING_LEVEL = 2
@@ -31,7 +33,10 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/consistent-sort")
 local logic = require("lib/logic/init")
-local first_pass = require("randomizations/graph/unified/first-pass-new")
+-- Which first pass implementation to use; first-pass-exp.lua is an experimental copy
+local FIRST_PASS_MODULE = "randomizations/graph/unified/first-pass-exp"
+local first_pass = require(FIRST_PASS_MODULE)
+local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 local test_sort = require("tests/consistent-sort")
@@ -60,7 +65,7 @@ config.unified = {
     ["mining-fluid-required"] = true,
 }
 
-ITEM_ENABLED = false
+ITEM_ENABLED = true
 RECIPE_INGS_DIR = "FORWARD"
 local enabled = {
     --["recipe-ingredients"] = true,
@@ -474,6 +479,20 @@ unified.execute = function()
         end
     end
 
+    -- One promotion state shared by the generic handlers below and custom searches (like recipe ingredients) after
+    -- With first pass, it must reason over first pass's split graph, which is the model reflection builds
+    local prom
+    if USE_PROMOTION then
+        prom = promotion.new({
+            graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
+            pool_sort_info = sort_for_pool,
+        })
+        local failed = prom.promise_mechanics()
+        local num_single_context_recipes = prom.promise_single_context_recipes()
+        log("Promotion: promised " .. num_single_context_recipes .. " recipes that are reachable in only one context")
+        log("Promotion: promised " .. prom.num_promised .. " pebbles for mechanics; " .. #failed .. " mechanic pebbles could not be established; " .. tostring(prom.num_lost_before) .. " mechanic contexts and " .. tostring(prom.num_recipes_lost_before) .. " recipes already lost before randomization")
+    end
+
     -- TODO: Tech delinearization (pull out to a helper)
     -- Might be defunct now that I'm doing tech tree reconstruction
 
@@ -517,6 +536,21 @@ unified.execute = function()
 
         local handler_to_heads = {}
 
+        -- Contexts this dep must keep; computed only if a generic handler randomizes one of its heads
+        local required_contexts
+        if prom ~= nil then
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                if head_to_handler[head_key].custom_prereq_search == false and required_contexts == nil then
+                    required_contexts = prom.required_contexts(dep)
+                    if #required_contexts == 0 and random_graph.nodes[dep].type == "recipe" and prom.initially_reachable(dep) then
+                        -- Every recipe must stay reachable
+                        log("Promotion: " .. dep .. " can no longer be reached in any context")
+                        return false
+                    end
+                end
+            end
+        end
+
         for _, head_key in pairs(dep_to_heads[dep]) do
             local head = random_graph.nodes[head_key]
             local found_prereq = false
@@ -539,7 +573,12 @@ unified.execute = function()
                         error("Randomization assertion failed! Tell exfret he's a dumbo.")
                     end
 
-                    local is_context_reachable = get_context_reachable(base, head)
+                    local is_context_reachable
+                    if prom ~= nil then
+                        is_context_reachable = #required_contexts == 0 or prom.head_candidate_ok(head_key, base_key, required_contexts)
+                    else
+                        is_context_reachable = get_context_reachable(base, head)
+                    end
 
                     if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
                         -- Have head's handler validate this base
@@ -552,6 +591,9 @@ unified.execute = function()
                             found_prereq = true
                             handler_to_used_prereq_inds[handler_id][ind] = true
                             head_to_base[head_key] = base_key
+                            if prom ~= nil then
+                                prom.resolve_head(head_key, base_key, required_contexts)
+                            end
 
                             if head_to_handler[head_key].with_replacement then
                                 table.insert(shuffled_prereqs, base_key)
@@ -560,6 +602,15 @@ unified.execute = function()
                             break
                         end
                     end
+                end
+                if not found_prereq and prom ~= nil then
+                    -- Fall back to the vanilla base, which promotion guarantees is valid in the required contexts
+                    local base_key = head.old_base
+                    log("Prereq shuffle found nothing for " .. head_key .. "; falling back to vanilla base")
+                    head_to_handler[head_key].process(random_graph, random_graph.nodes[base_key], head)
+                    head_to_base[head_key] = base_key
+                    prom.resolve_head(head_key, base_key, required_contexts)
+                    found_prereq = true
                 end
                 if not found_prereq then
                     --log_info(2, serpent.block(shuffled_prereqs))
@@ -595,6 +646,9 @@ unified.execute = function()
         if handler.custom_prereq_search ~= false then
             local search_result = handler.custom_prereq_search({
                 random_graph = random_graph,
+                -- Generic handlers' choices, which aren't added as edges to random_graph
+                head_to_base = head_to_base,
+                promotion = prom,
                 split_graph = (first_pass_info or {}).graph,
                 sorted_deps = sorted_deps,
                 shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],

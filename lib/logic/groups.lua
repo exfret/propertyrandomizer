@@ -64,8 +64,9 @@ function groups.build(lu)
     ----------------------------------------
     add_node("group-electric-mining-drill", "OR", nil, "", { mechanic = true })
     ----------------------------------------
-    -- Can we have access some electric-powered mining drill?
-    -- This is pretty opinion-based, but I just like them not being too late since burner mining drills just get such bad rolls a lot
+    -- Can we have access to some basic-solid mining drill other than the burner mining drill?
+    -- This is pretty opinion-based, but I just like them not being too late since the burner mining drill specifically gets such bad rolls a lot
+    -- Any energy source is fine (energy source randomization can change it); it's the burner mining drill prototype that's too weak
 
     for _, drill in pairs(prots("mining-drill")) do
         -- Check this can mine basic-solid
@@ -75,7 +76,7 @@ function groups.build(lu)
                 valid = true
             end
         end
-        if not (drill.energy_source.type == "void" or drill.energy_source.type == "electric") then
+        if drill.name == "burner-mining-drill" then
             valid = false
         end
         if valid then

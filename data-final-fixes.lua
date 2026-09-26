@@ -313,6 +313,8 @@ do_overrides_postfixes()
 
 new_logic.build(true)
 local final_sort_info = top.sort(new_logic.graph)
+-- Mechanic context check (randomizations/graph/unified/skeleton/check.lua); logging only
+require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_sort_info, final_sort_info)
 
 local reachable = 0
 local total = 0

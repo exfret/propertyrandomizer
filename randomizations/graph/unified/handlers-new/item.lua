@@ -397,11 +397,13 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 for _, entity in pairs(dutils.get_all_prots("entity")) do
                     if entity.loot ~= nil then
                         for ind_in_loot, loot_entry in pairs(entity.loot) do
-                            if loot_entry.item == slot_item.name then
+                            -- Loot entries name their item with "name" in 2.0 (older data used "item")
+                            local loot_item_prop = loot_entry.name ~= nil and "name" or "item"
+                            if loot_entry[loot_item_prop] == slot_item.name then
                                 table.insert(changes, {
                                     tbl = entity.loot[ind_in_loot],
-                                    prop = "item",
-                                    new_val = trav_item.name
+                                    prop = loot_item_prop,
+                                    new_val = trav_item.name,
                                 })
                             end
                         end
@@ -626,10 +628,11 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         trav_item.localised_description = {"", locale_utils.find_localised_description(trav_item), "\n[color=green](Combustible)[/color]"}
                     end
 
-                    if trav_item.fuel_category ~= "chemical" then
+                    -- Don't override another fuel category (e.g. fusion power cells), since logic relies on the item keeping it
+                    if trav_item.fuel_category == nil then
                         trav_item.fuel_category = "chemical"
                         trav_item.fuel_value = "4MJ"
-                    elseif util.parse_energy(trav_item.fuel_value) < 2000000 then
+                    elseif trav_item.fuel_category == "chemical" and util.parse_energy(trav_item.fuel_value) < 2000000 then
                         trav_item.fuel_value = "2MJ"
                     end
 

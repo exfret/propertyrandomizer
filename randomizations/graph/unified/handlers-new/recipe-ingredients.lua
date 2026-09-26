@@ -13,6 +13,7 @@ local cutils = require("lib/cost/cost-utils")
 local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
 
+
 local key = gutils.key
 
 local recipe_ingredients = {}
@@ -225,11 +226,31 @@ recipe_ingredients.custom_prereq_search = function(params)
         end
     end
 
+    -- Shared promotion state from execute-new.lua (nil means use the old every-context ordering check)
+    local prom = params.promotion
+    local num_fallbacks = 0
+
+    local num_processed = 0
+    local total_valid_prereqs = 0
+    local num_changed_ings = 0
+    local num_ings = 0
     local ind_to_used = {}
     for _, dep in pairs(sorted_deps) do
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
             log("Processing " .. node.name)
+            local required_contexts
+            if prom ~= nil then
+                required_contexts = prom.required_contexts(dep)
+                if #required_contexts == 0 then
+                    if prom.initially_reachable(dep) then
+                        -- Every recipe must stay reachable, so this is a failure
+                        log("Promotion: " .. dep .. " can no longer be reached in any context")
+                        return false
+                    end
+                    log("Promotion: " .. dep .. " was already unreachable before recipe randomization")
+                end
+            end
             local dependent_recipe = data.raw.recipe[node.name]
             assert(dependent_recipe ~= nil)
             -- Ignore the heads etc., just find good ings via search
@@ -291,10 +312,16 @@ recipe_ingredients.custom_prereq_search = function(params)
                         end
 
                         local function do_recipe_checks()
+                            if prom ~= nil and #required_contexts > 0 then
+                                -- Must be promotable in each context the recipe is required in
+                                if not prom.candidate_ok(dep, key(gutils.get_owner(random_graph, prereq_node)), required_contexts) then
+                                    return false
+                                end
+                            end
                             -- Test for reachability at all contexts
                             local key1 = prereq
                             local key2 = dep
-                            for context, _ in pairs(logic.contexts) do
+                            for context, _ in pairs(prom ~= nil and {} or logic.contexts) do
                                 local index1 = sort_for_pool.node_to_context_inds[key1][context]
                                 local index2 = sort_for_pool.node_to_context_inds[key2][context]
                                 -- TODO: Should I ignore nil contexts?
@@ -390,6 +417,8 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                 local potential_ings = {}
                 local valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
+                num_processed = num_processed + 1
+                total_valid_prereqs = total_valid_prereqs + #valid_prereq_list_info.prereq_list
                 for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
                     local prereq_node = random_graph.nodes[prereq]
                     -- TODO: In the future, maybe some less painful way of getting the actual ings?
@@ -440,27 +469,64 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- Finally, search for the best ingredients
                 local best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable})
                 -- Test for failure
+                local is_fallback = false
                 if type(best_search_info) == "string" then
-                    log("Recipe randomization failed")
-                    return false
+                    if prom == nil then
+                        log("Recipe randomization failed")
+                        return false
+                    end
+                    -- Fall back to vanilla ingredients, which promotion guarantees are valid in every promised context
+                    log("Recipe randomization failed; falling back to vanilla ingredients")
+                    num_fallbacks = num_fallbacks + 1
+                    is_fallback = true
+                    best_search_info = {
+                        ings = table.deepcopy(slot_recipe.ingredients or {}),
+                        inds = {},
+                    }
                 end
-                
+
                 -- Update dependencies
+                local new_owner_keys = {}
                 for index_in_best_search_info, ing in pairs(best_search_info.ings) do
                     -- In this case, this is an unrandomized ing
-                    if index_in_best_search_info > #reordered_ings_randomized then
+                    if is_fallback or index_in_best_search_info > #reordered_ings_randomized then
                         table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+                        -- Unrandomized ings that aren't randomized edges (e.g. blacklisted) stay as fixed prereqs, so have no owner here
+                        if prom ~= nil then
+                            local owner_key = prom.vanilla_owner(dep, ing)
+                            if owner_key ~= nil then
+                                table.insert(new_owner_keys, owner_key)
+                            end
+                        end
                     else
                         local prereq_ind_of_ing = valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]
                         local prereq_of_ing = shuffled_prereqs[prereq_ind_of_ing]
                         local prereq_owner = get_material_owner(random_graph, random_graph.nodes[prereq_of_ing])
 
                         table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+                        table.insert(new_owner_keys, key(gutils.get_owner(random_graph, random_graph.nodes[prereq_of_ing])))
                         ind_to_used[prereq_ind_of_ing] = true
                         -- Add prereq to end of shuffled_prereqs (doing with replacement)
                         table.insert(shuffled_prereqs, prereq_of_ing)
                         if is_smelting_recipe then
                             smelting_ingredients[prereq_owner.type .. "-" .. prereq_owner.name] = true
+                        end
+                    end
+                end
+
+                if prom ~= nil and #required_contexts > 0 then
+                    prom.resolve(dep, new_owner_keys, required_contexts)
+                end
+
+                do
+                    local is_old_ing = {}
+                    for _, ing in pairs(slot_recipe.ingredients or {}) do
+                        is_old_ing[key(ing)] = true
+                    end
+                    for _, ing in pairs(best_search_info.ings) do
+                        num_ings = num_ings + 1
+                        if is_old_ing[key(ing)] == nil then
+                            num_changed_ings = num_changed_ings + 1
                         end
                     end
                 end
@@ -484,6 +550,20 @@ recipe_ingredients.custom_prereq_search = function(params)
                     flow_cost.update_recipe_item_costs(randomized_resource_costs[resource_id], {dependent_recipe.name}, 100, flow_cost.get_single_resource_table(resource_id), 0, 0, {ing_overrides = dependent_to_new_ings, use_data = false, item_recipe_maps = randomized_item_recipe_maps})
                 end
             end
+        end
+    end
+
+    log(string.format("RECIPESTATS recipes=%d mean_valid_prereqs=%.1f changed_ings=%d/%d", num_processed, total_valid_prereqs / math.max(num_processed, 1), num_changed_ings, num_ings))
+    if prom ~= nil then
+        local unreachable = prom.anchor_remaining_recipes()
+        -- For skeleton/check.lua: what promotion claims will be reachable
+        UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
+        log("Promotion: done; promised " .. prom.num_promised .. " pebbles total; " .. num_fallbacks .. " recipes fell back to vanilla ingredients; " .. #unreachable .. " other recipes can no longer be reached")
+        for _, recipe_key in pairs(unreachable) do
+            log("Promotion: unreachable recipe " .. recipe_key)
+        end
+        if #unreachable > 0 then
+            return false
         end
     end
 end

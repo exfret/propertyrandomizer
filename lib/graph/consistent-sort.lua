@@ -10,6 +10,7 @@
 
 local contutils = require("lib/graph/context-utils")
 local gutils = require("lib/graph/graph-utils")
+local rng = require("lib/random/rng")
 -- Used for contexts and such; actual logic dependency graph is passed in
 local logic = require("lib/logic/init")
 
@@ -120,10 +121,8 @@ top.sort = function(graph, state, new_conn, extra)
             for open_key, _ in pairs(open) do
                 table.insert(open_keys, open_key)
             end
-            -- Since this is mainly just for testing and rng for graph randomization doesn't matter as much anyways, just use built in math.random
-            -- CRITICAL TODO: This is not actually just for testing anymore, and it could cause issues if other mods use math.random, so let's revert
-            -- In general, we should make behavior more deterministic...
-            node_key = open_keys[math.random(#open_keys)]
+            -- Use the mod's rng so the sort follows the seed setting
+            node_key = open_keys[rng.int("consistent-sort", #open_keys)]
         else
             local curr_priority
             for candidate_node_key, contexts in pairs(open) do

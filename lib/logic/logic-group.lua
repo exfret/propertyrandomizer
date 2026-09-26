@@ -101,8 +101,10 @@ logic_group.build = function(graph, type_info)
     ----------------------------------------
     -- Can we operate a steam boiler?
 
+    -- Any energy source works, since energy source randomization can change it
+    -- Operating the boiler (entity-operate) already requires its energy source, so it doesn't need to be checked here
     for _, boiler in pairs(prots("boiler")) do
-        if boiler.output_fluid_box.filter == "steam" and boiler.energy_source.type == "burner" then
+        if boiler.output_fluid_box.filter == "steam" then
             add_edge("entity-operate", boiler.name)
         end
     end
