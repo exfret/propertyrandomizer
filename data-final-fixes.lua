@@ -98,6 +98,11 @@ end
 -- Special prototype fixes
 require("randomizations/prefixes")
 
+-- Planetary randomization goes first, so the rest of randomization and its checks treat the changed world as the starting point
+if config.planetary_oceans then
+    require("randomizations/planetary/execute").execute(new_logic)
+end
+
 old_data_raw = table.deepcopy(data.raw)
 
 log("Loading in new dependency graph file")
