@@ -12,7 +12,9 @@ defines = {
 }
 util = {
     parse_energy = function(energy)
-        return tonumber(string.match(energy, "^[%d%.]+")) or 0
+        local number, prefix = string.match(energy, "^([%d%.]+)(%a?)[JW]$")
+        local scale = { [""] = 1, k = 1e3, M = 1e6, G = 1e9, T = 1e12 }
+        return (tonumber(number) or 0) * (scale[prefix] or 1)
     end,
 }
 data = {
@@ -140,6 +142,52 @@ test("item reflection and first pass both use the shared rules", function()
     assert(string.find(item_reflection, "dutils.mining_keeps_item_names(", 1, true) ~= nil)
     assert(string.find(first_pass, "dutils.realized_item_assignment(", 1, true) ~= nil)
     assert(string.find(first_pass, "dutils.mining_keeps_item_names(", 1, true) ~= nil)
+    -- Coal's replacement becomes a fuel, which first pass models on coal's position
+    assert(string.find(item_reflection, "dutils.replacement_gets_fuel(", 1, true) ~= nil)
+    assert(string.find(item_reflection, "dutils.give_replacement_fuel(", 1, true) ~= nil)
+    assert(string.find(first_pass, "dutils.replacement_gets_fuel(", 1, true) ~= nil)
+end)
+
+test("whatever replaces coal becomes a fuel of its category, and keeps its own fuel categories", function()
+    local fcat = dutils.REPLACEMENT_FUEL_CATEGORY
+    local plain = {
+        type = "item",
+        name = "widget",
+    }
+    assert(dutils.give_replacement_fuel(plain))
+    assert(dutils.has_fuel_category(plain, fcat) and plain.fuel_value == "4MJ")
+    -- Another kind of fuel (like fusion power cells) keeps its category, and its fuel value unless that's too small
+    local other_fuel = {
+        type = "item",
+        name = "power-cell",
+        fuel_categories = { "exotic" },
+        fuel_value = "40GJ",
+    }
+    assert(dutils.give_replacement_fuel(other_fuel))
+    assert(dutils.has_fuel_category(other_fuel, "exotic") and dutils.has_fuel_category(other_fuel, fcat) and other_fuel.fuel_value == "40GJ")
+    local weak_other_fuel = {
+        type = "item",
+        name = "pellet",
+        fuel_categories = { "exotic" },
+        fuel_value = "500kJ",
+    }
+    assert(dutils.give_replacement_fuel(weak_other_fuel))
+    assert(dutils.has_fuel_category(weak_other_fuel, fcat) and weak_other_fuel.fuel_value == "2MJ")
+    -- A weak fuel of the category (like spoilage) gets more energy, and a strong one is left alone
+    local weak = {
+        type = "item",
+        name = "twig",
+        fuel_categories = { fcat },
+        fuel_value = "1MJ",
+    }
+    assert(not dutils.give_replacement_fuel(weak) and weak.fuel_value == "2MJ")
+    local strong = {
+        type = "item",
+        name = "log",
+        fuel_categories = { fcat },
+        fuel_value = "5MJ",
+    }
+    assert(not dutils.give_replacement_fuel(strong) and strong.fuel_value == "5MJ")
 end)
 
 -- Item reflection renames a recipe after its new item only when the recipe was named after the old one

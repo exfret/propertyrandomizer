@@ -399,10 +399,15 @@ end
 -- Matching
 ----------------------------------------------------------------------------------------------------
 
+-- Whether a resource slot's trav makes the resource mine something new: an interesting trav (params.is_interesting) other than the slot's own identity
+-- Reflection keeps interesting travs where the matching puts them, but doesn't swap two useless items (ores count as useless), so a useless trav usually leaves the resource as it was
+local function is_new_resource_trav(params, slot_key, trav_key)
+    return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key)
+end
+
 -- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)
--- With params.is_resource_slot, each resource slot first takes a random admissible interesting trav (params.is_interesting) with chance params.interesting_resource_chance, like the old first pass's ore roll.
--- Reflection skips swaps between two useless items, and ores count as useless, so without this ores rarely visibly change.
--- Returns the matching and how many resource slots were prefilled
+-- With params.is_resource_slot, resource slots then get travs that make them mine something new (see is_new_resource_trav) wherever the matching allows it
+-- Returns the matching
 local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key)
     local current_slot = {}
     local slots = {}
@@ -423,7 +428,7 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
         for _, slot_key in pairs(slots) do
             if slot_key ~= current_slot[trav_key] then
                 local slot = graph.nodes[slot_key]
-                local is_admissible = slot.type == trav.type and params.cost_ok(slot, trav)
+                local is_admissible = slot.type == trav.type and params.pair_ok(slot, trav)
                 if is_admissible and requires_launchable[slot_key] and not params.is_launchable(trav_key) then
                     is_admissible = false
                 end
@@ -479,48 +484,51 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
         return slot_match
     end
 
-    -- Resource slots take interesting travs first
-    local prefilled = {}
-    local num_prefilled = 0
+    local resource_slots = {}
     if params.is_resource_slot ~= nil then
-        local admitted_travs = {}
-        for _, trav_key in pairs(travs) do
-            for _, slot_key in pairs(admissible[trav_key]) do
-                admitted_travs[slot_key] = admitted_travs[slot_key] or {}
-                table.insert(admitted_travs[slot_key], trav_key)
-            end
-        end
-        local resource_slots = {}
         for _, slot_key in pairs(slots) do
             if params.is_resource_slot(slot_key) then
                 table.insert(resource_slots, slot_key)
             end
         end
-        rng.shuffle(rng_key, resource_slots)
-        local is_taken = {}
-        for _, slot_key in pairs(resource_slots) do
-            if rng.value(rng_key) < params.interesting_resource_chance then
-                local candidates = {}
-                for _, trav_key in pairs(admitted_travs[slot_key] or {}) do
-                    if not is_taken[trav_key] and params.is_interesting(trav_key) then
-                        table.insert(candidates, trav_key)
-                    end
+    end
+
+    -- Resource slots that already mine something new keep their travs, so later rounds never lose that (the current matching has all these pairs at once, so this can't fail)
+    local prefilled = {}
+    local is_taken = {}
+    for _, slot_key in pairs(resource_slots) do
+        if is_new_resource_trav(params, slot_key, assignment[slot_key]) then
+            prefilled[slot_key] = assignment[slot_key]
+            is_taken[assignment[slot_key]] = true
+        end
+    end
+    -- Each other resource slot takes a random admissible new trav (see is_new_resource_trav) if a perfect matching still exists with it
+    -- Left to Kuhn's algorithm instead, resource slots would mostly get the early identities whose only other admissible slots they are
+    local admitted_travs = {}
+    for _, trav_key in pairs(travs) do
+        for _, slot_key in pairs(admissible[trav_key]) do
+            admitted_travs[slot_key] = admitted_travs[slot_key] or {}
+            table.insert(admitted_travs[slot_key], trav_key)
+        end
+    end
+    rng.shuffle(rng_key, resource_slots)
+    for _, slot_key in pairs(resource_slots) do
+        if prefilled[slot_key] == nil then
+            local candidates = {}
+            for _, trav_key in pairs(admitted_travs[slot_key] or {}) do
+                if not is_taken[trav_key] and is_new_resource_trav(params, slot_key, trav_key) then
+                    table.insert(candidates, trav_key)
                 end
-                -- The slot's current trav is always admissible, so it can stay if it's already interesting
-                if not is_taken[assignment[slot_key]] and params.is_interesting(assignment[slot_key]) then
-                    table.insert(candidates, assignment[slot_key])
+            end
+            rng.shuffle(rng_key, candidates)
+            -- A few tries are enough: when the first fails, the rest usually do too (the slot's own trav can't move), and the repair below handles that
+            for i = 1, math.min(#candidates, 5) do
+                prefilled[slot_key] = candidates[i]
+                if complete(prefilled) ~= nil then
+                    is_taken[candidates[i]] = true
+                    break
                 end
-                rng.shuffle(rng_key, candidates)
-                -- Keep the first candidate that still leaves a perfect matching, since early items like iron ore often have nowhere else to go
-                for i = 1, math.min(#candidates, 5) do
-                    prefilled[slot_key] = candidates[i]
-                    if complete(prefilled) ~= nil then
-                        is_taken[candidates[i]] = true
-                        num_prefilled = num_prefilled + 1
-                        break
-                    end
-                    prefilled[slot_key] = nil
-                end
+                prefilled[slot_key] = nil
             end
         end
     end
@@ -528,7 +536,62 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
     if slot_match == nil then
         error("Monotone matching failed although every prefilled pair was checked")
     end
-    return slot_match, num_prefilled
+
+    -- Then each resource slot still without a new trav gets one if some perfect matching allows it while every resource slot that mines something new keeps doing so
+    -- It searches breadth-first for a cycle of moves through the slot: the trav at a slot moves to a slot it's admissible for, and that slot's trav moves on, until one can move into the resource slot as a new trav
+    -- A resource slot that mines something new only takes travs that keep it so, which still lets a trav whose needs pin it to early slots move to another resource slot and free its own
+    local is_admissible = {}
+    for _, trav_key in pairs(travs) do
+        is_admissible[trav_key] = {
+            [current_slot[trav_key]] = true,
+        }
+        for _, slot_key in pairs(admissible[trav_key]) do
+            is_admissible[trav_key][slot_key] = true
+        end
+    end
+    local function keeps_resources_new(trav_key, slot_key)
+        return not params.is_resource_slot(slot_key) or not is_new_resource_trav(params, slot_key, slot_match[slot_key]) or is_new_resource_trav(params, slot_key, trav_key)
+    end
+    for _, resource_slot in pairs(resource_slots) do
+        if not is_new_resource_trav(params, resource_slot, slot_match[resource_slot]) then
+            -- Slot --> the slot whose trav moves into it
+            local prev = {
+                [resource_slot] = resource_slot,
+            }
+            local queue = { resource_slot }
+            local last
+            local i = 1
+            while i <= #queue and last == nil do
+                local trav_key = slot_match[queue[i]]
+                local options = table.deepcopy(admissible[trav_key])
+                table.insert(options, current_slot[trav_key])
+                rng.shuffle(rng_key, options)
+                for _, slot_key in pairs(options) do
+                    if prev[slot_key] == nil and keeps_resources_new(trav_key, slot_key) then
+                        prev[slot_key] = queue[i]
+                        local closing = slot_match[slot_key]
+                        if is_admissible[closing][resource_slot] and is_new_resource_trav(params, resource_slot, closing) then
+                            last = slot_key
+                            break
+                        end
+                        table.insert(queue, slot_key)
+                    end
+                end
+                i = i + 1
+            end
+            if last ~= nil then
+                -- Each slot on the cycle takes the trav of the slot before it, and the resource slot takes the last slot's
+                local closing = slot_match[last]
+                local slot_key = last
+                while slot_key ~= resource_slot do
+                    slot_match[slot_key] = slot_match[prev[slot_key]]
+                    slot_key = prev[slot_key]
+                end
+                slot_match[resource_slot] = closing
+            end
+        end
+    end
+    return slot_match
 end
 
 -- Trav pebbles on the witnesses (in the previous graph) of the lost pebbles that are missing from the new sort
@@ -558,14 +621,16 @@ local function realize(params, assignment)
 end
 
 matching.connect = connect
+-- For tests (test-monotone-matching.lua)
+matching.random_matching = random_matching
 
 -- params:
 --   slot_keys: every slot
 --   unconnected_graph: first pass's split graph with no slot/trav connections
 --   slot_to_base, trav_to_head: first pass's connector nodes
---   cost_ok(slot, trav): whether the pair's costs fit
+--   pair_ok(slot, trav): whether the trav can go in the slot (their costs fit, and item reflection's special rules allow it)
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
---   is_resource_slot(slot_key), is_interesting(trav_key), interesting_resource_chance (optional): see random_matching
+--   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
 -- Returns slot key --> trav key
 matching.run = function(params)
@@ -605,9 +670,8 @@ matching.run = function(params)
         local new_assignment
         local new_graph
         local new_sort
-        local num_prefilled = 0
         while true do
-            new_assignment, num_prefilled = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
+            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
             new_assignment = realize(params, new_assignment)
             new_graph = connect(table.deepcopy(params.unconnected_graph), params, new_assignment)
             new_sort = complex_sort(new_graph)
@@ -630,17 +694,24 @@ matching.run = function(params)
                 new_assignment = assignment
                 new_graph = graph
                 new_sort = sort_info
-                num_prefilled = 0
                 break
             end
         end
         local num_moved = 0
+        local num_resources = 0
+        local num_new_resources = 0
         for slot_key, trav_key in pairs(new_assignment) do
             if params.unconnected_graph.nodes[trav_key].old_slot ~= slot_key then
                 num_moved = num_moved + 1
             end
+            if params.is_resource_slot ~= nil and params.is_resource_slot(slot_key) then
+                num_resources = num_resources + 1
+                if is_new_resource_trav(params, slot_key, trav_key) then
+                    num_new_resources = num_new_resources + 1
+                end
+            end
         end
-        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved; " .. num_prefilled .. " resource slots given interesting travs")
+        log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved; " .. num_new_resources .. " of " .. num_resources .. " resource slots mine something new")
         assignment = new_assignment
         graph = new_graph
         sort_info = new_sort

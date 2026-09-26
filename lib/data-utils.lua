@@ -199,6 +199,34 @@ dutils.has_fuel_category = function(item, fcat)
     return false
 end
 
+-- Item reflection makes whatever replaces coal (raw coal with py) a fuel of this category (see handlers-new/item.lua), so first pass treats that fuel as part of coal's position
+-- TODO: Do this for fuel ores in general, not by name
+dutils.REPLACEMENT_FUEL_CATEGORY = "chemical"
+dutils.replacement_gets_fuel = function(item_name)
+    if mods["pypostprocessing"] then
+        return item_name == "raw-coal"
+    end
+    return item_name == "coal"
+end
+
+-- Makes an item a fuel of that category, as item reflection does to whatever replaces coal; returns whether it wasn't one before
+dutils.give_replacement_fuel = function(item)
+    local fcat = dutils.REPLACEMENT_FUEL_CATEGORY
+    local was_fuel = dutils.has_fuel_category(item, fcat)
+    if #dutils.fuel_categories(item) == 0 then
+        item.fuel_categories = { fcat }
+        item.fuel_value = "4MJ"
+    elseif not was_fuel then
+        -- An item can have several fuel categories, so it keeps its own (e.g. fusion power cells'), which logic relies on
+        table.insert(item.fuel_categories, fcat)
+    end
+    -- Large fuel values are fine, but a weak fuel (like spoilage) gets enough energy to be worth burning
+    if item.fuel_value == nil or util.parse_energy(item.fuel_value) < 2000000 then
+        item.fuel_value = "2MJ"
+    end
+    return not was_fuel
+end
+
 dutils.is_useless_item = function(item)
     if item.type ~= "item" then
         return false

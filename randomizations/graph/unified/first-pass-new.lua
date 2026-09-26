@@ -11,8 +11,6 @@ local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
 -- How many rounds of monotone matching to iterate (each starts from the last round's matching)
 local MONOTONE_MATCHING_ROUNDS = 3
--- Chance that a resource slot (what mining a resource gives) is given an interesting item, like the old first pass's ore roll
-local INTERESTING_RESOURCE_CHANCE = 0.9
 
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
@@ -89,6 +87,19 @@ local function cost_ok(slot, trav)
     if slot_cost ~= nil then
         -- Be more permissive about putting cheap travelers in expensive slots
         return math.log(trav_cost) - math.log(slot_cost) <= constants.first_pass_max_cost_log_difference_expensive and math.log(slot_cost) - math.log(trav_cost) <= constants.first_pass_max_cost_log_difference_cheap
+    end
+    return true
+end
+
+-- Whether a trav can go in a slot: their costs fit, and coal's slot only takes travs that item reflection makes the same kind of fuel as coal (see dutils.replacement_gets_fuel)
+-- Fuels with burnt results are a separate kind (see lib/lookup/2-simple/fuel.lua), and the rule doesn't remove burnt results
+local function pair_ok(slot, trav)
+    if not cost_ok(slot, trav) then
+        return false
+    end
+    if slot.type == "item" and dutils.replacement_gets_fuel(slot.name) then
+        local item = dutils.get_prot("item", gutils.deconstruct(trav.old_slot).name)
+        return item ~= nil and (item.burnt_result == nil or item.burnt_result == "")
     end
     return true
 end
@@ -261,18 +272,32 @@ first_pass.execute = function(params)
             gutils.redirect_edge_stop(split_graph, pre, key(trav))
         end
         local fixed_dep = {}
+        -- Whatever replaces coal becomes a fuel like coal (see dutils.replacement_gets_fuel), so that fuel stays on coal's slot, and coal's identity gets its own edge since it's still a fuel wherever it goes
+        -- Otherwise coal's identity would be pinned to the earliest slots wherever proofs need early fuel
+        local replacement_fuel
+        if node.type == "item" and dutils.replacement_gets_fuel(node.name) then
+            replacement_fuel = key("fuel-category", gutils.concat({ dutils.REPLACEMENT_FUEL_CATEGORY, 0 }))
+        end
+        local keeps_replacement_fuel = false
         for dep, _ in pairs(node.dep) do
             local depnode = gutils.depnode(split_graph, dep)
             if depnode.type == "orand" then
                 depnode = gutils.unique_depnode(split_graph, depnode)
             end
             local always_on_slot = randomization_info.options.first_pass.always_slot_dep[key(node.type, depnode.type)] ~= nil
+            if key(depnode) == replacement_fuel then
+                always_on_slot = true
+                keeps_replacement_fuel = true
+            end
             if depnode.type ~= "base" and not always_on_slot then
                 fixed_dep[dep] = true
             end
         end
         for dep, _ in pairs(fixed_dep) do
             gutils.redirect_edge_start(split_graph, dep, key(trav))
+        end
+        if keeps_replacement_fuel then
+            gutils.add_edge(split_graph, key(trav), replacement_fuel)
         end
 
         -- The slot --> trav edge, cut into a base and head, is what gets rewired to match slots and travs
@@ -386,7 +411,7 @@ first_pass.execute = function(params)
         table.insert(slot_keys, slot_key)
     end
     table.sort(slot_keys)
-    -- Items that mining a resource gives, which should usually become something interesting
+    -- Items that mining a resource gives, which should become something interesting whenever the matching allows it
     local is_resource_item = {}
     for _, resource in pairs(data.raw.resource) do
         if resource.minable ~= nil then
@@ -403,7 +428,7 @@ first_pass.execute = function(params)
         unconnected_graph = split_graph,
         slot_to_base = slot_to_base,
         trav_to_head = trav_to_head,
-        cost_ok = cost_ok,
+        pair_ok = pair_ok,
         rounds = MONOTONE_MATCHING_ROUNDS,
         is_resource_slot = function(slot_key)
             local slot = split_graph.nodes[slot_key]
@@ -414,7 +439,6 @@ first_pass.execute = function(params)
             local item = dutils.get_prot("item", gutils.deconstruct(split_graph.nodes[trav_key].old_slot).name)
             return item ~= nil and not dutils.is_useless_item(item)
         end,
-        interesting_resource_chance = INTERESTING_RESOURCE_CHANCE,
         -- Item reflection places useless items differently from the matching (see dutils.reflected_item_position), so each matching is replaced by the one reflection realizes before it's gated
         realize = function(assignment)
             local identity_at = {}

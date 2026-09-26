@@ -582,22 +582,11 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     end
                 end
 
-                -- TODO: Make this check less ad-hoc
-                -- If this is a coal replacement, give it a fuel value
-                -- Also test for raw coal as a hotfix py replacement
-                -- TODO: Just do this for fuel ores in general!
-                if (not mods["pypostprocessing"] and slot_item.name == "coal") or (mods["pypostprocessing"] and slot_item.name == "raw-coal") then
-                    -- TODO: Need to do something special if this is the only non-chemical fuel, since we just override it to chemical
-                    if #dutils.fuel_categories(trav_item) == 0 then
-                        trav_item.localised_description = {"", locale_utils.find_localised_description(trav_item), "\n[color=green](Combustible)[/color]"}
-                    end
-
-                    -- Don't override another fuel category (e.g. fusion power cells), since logic relies on the item keeping it
-                    if #dutils.fuel_categories(trav_item) == 0 then
-                        trav_item.fuel_categories = {"chemical"}
-                        trav_item.fuel_value = "4MJ"
-                    elseif dutils.has_fuel_category(trav_item, "chemical") and util.parse_energy(trav_item.fuel_value) < 2000000 then
-                        trav_item.fuel_value = "2MJ"
+                -- Whatever replaces coal always becomes a fuel of coal's category, so it still fuels what coal did (first pass relies on this, see dutils.replacement_gets_fuel)
+                if dutils.replacement_gets_fuel(slot_item.name) then
+                    local description = locale_utils.find_localised_description(trav_item)
+                    if dutils.give_replacement_fuel(trav_item) then
+                        trav_item.localised_description = {"", description, "\n[color=green](Combustible)[/color]"}
                     end
 
                     -- TODO: Figure out a better way to do this
