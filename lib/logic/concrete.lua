@@ -103,7 +103,8 @@ function concrete.build(lu, extra_params)
         add_edge("asteroid-chunk", chunk.name, {
             abilities = { [2] = true },
         })
-        add_edge("asteroid-collector", "", { amount = 1 })
+        -- Seconds of collector operation per chunk
+        add_edge("asteroid-collector", "", { amount = constants.cost.asteroid_chunk_collection_time })
     end
 
     ----------------------------------------------------------------------
@@ -175,7 +176,8 @@ function concrete.build(lu, extra_params)
         if buildable == nil and lu.unit_spawns_reverse[entity.name] ~= nil then
             buildable = {}
         end
-        add_edge("entity-own", nil)
+        -- One entity we own is one entity (costs follow edge amounts, see lib/cost/graph-cost.lua; without it, mining an owned building back would be free)
+        add_edge("entity-own", nil, { amount = 1 })
         -- Map generation places entities for the force in their autoplace, which is neutral by default (AutoplaceSpecification.force)
         local autoplace_is_ours = entity.autoplace ~= nil and entity.autoplace.force == "player"
         -- Check if the entity is put automatically in a room (planet/space surface)
@@ -295,7 +297,8 @@ function concrete.build(lu, extra_params)
             -- Can we build this entity using an item?
             -- Entities that can be planted are counted as being built, though later during randomization we might have to condition on it being a planted or built entity
 
-            add_edge("entity-build-architecture")
+            -- Building uses up the item
+            add_edge("entity-build-architecture", nil, { amount = 1 })
             -- We could include a cost for special tiles needed here, but we already factor in space costs in the entity-operate
             add_edge("entity-build-tile")
             if entity.surface_conditions ~= nil and #entity.surface_conditions > 0 then
@@ -333,7 +336,7 @@ function concrete.build(lu, extra_params)
             -- Can we get the item that builds this entity, counting one-time building costs as free on space platforms?
 
             add_edge("entity-build-item", nil, { amount = 1 })
-            add_edge("entity-build-architecture-space")
+            add_edge("entity-build-architecture-space", nil, { amount = 1 })
 
             ----------------------------------------
             add_node("entity-build-architecture-space", "AND")
@@ -1880,14 +1883,6 @@ function concrete.build(lu, extra_params)
 
     set_class("tile")
 
-    -- Tiles a space platform starter pack lays down (the platform foundation), which every platform has from the start
-    local is_starter_pack_tile = {}
-    for _, starter_pack in pairs(data.raw["space-platform-starter-pack"] or {}) do
-        for _, tile_entry in pairs(starter_pack.tiles or {}) do
-            is_starter_pack_tile[tile_entry.tile] = true
-        end
-    end
-
     for _, tile in pairs(prots("tile")) do
         set_prot(tile)
 
@@ -1904,16 +1899,23 @@ function concrete.build(lu, extra_params)
                 })
             end
         end
-        -- Platform foundation is there on every space platform from the start, so it doesn't break isolatability there even though more of it is delivered
-        if is_starter_pack_tile[tile.name] then
-            add_edge("space-surface", "", {
-                abilities = { [1] = true },
-            })
-        end
-
         local buildable = lu.buildables[key(tile)]
         if buildable ~= nil then
             add_edge("tile-build")
+            add_edge("tile-build-space")
+
+            ----------------------------------------
+            add_node("tile-build-space", "AND")
+            ----------------------------------------
+            -- Special rule for space surfaces: building a tile there is a one-time cost, so it doesn't break the surface's isolatability even though the item was delivered
+            -- A space surface starts as empty space (see room_tile_maps in lib/lookup/2-simple/tile.lua), so its foundation is built like this
+
+            add_edge("tile-build", nil, {
+                abilities = { [1] = true },
+                amount = 1,
+            })
+            -- Makes this only apply in space surface contexts
+            add_edge("space-surface", "")
 
             ----------------------------------------
             add_node("tile-build", "OR")

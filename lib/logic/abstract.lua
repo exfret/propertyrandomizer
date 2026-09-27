@@ -431,7 +431,8 @@ function abstract.build(lu, extra_params)
     -- Can we use an asteroid collector?
 
     for _, collector in pairs(prots("asteroid-collector")) do
-        add_edge("entity-operate", collector.name)
+        -- A second of a collector's operation (costs follow edge amounts, see lib/cost/graph-cost.lua)
+        add_edge("entity-operate", collector.name, { amount = 1 })
     end
 
     ----------------------------------------

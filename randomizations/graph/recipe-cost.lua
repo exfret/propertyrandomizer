@@ -314,6 +314,21 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
     if extra_params.starting_planet_reachable ~= nil then
         starting_planet_reachable = extra_params.starting_planet_reachable
     end
+    -- Optional material id --> share of its cost from newer raw resources (0 to 1), which earn a bonus, since those tend to get left out
+    local novelty = extra_params.novelty
+    -- Points taken off for the newer resources in the ingredients being chosen (the kept ones come after them)
+    local function novelty_bonus(ings)
+        if novelty == nil then
+            return 0
+        end
+        local bonus = 0
+        for i = 1, num_ings_to_find do
+            if ings[i] ~= nil then
+                bonus = bonus + (novelty[ings[i].type .. "-" .. ings[i].name] or 0)
+            end
+        end
+        return constants.new_resource_bonus * bonus
+    end
 
     local curr_ing_inds = {}
 
@@ -375,7 +390,7 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
     for _, unrandomized_ing in pairs(unrandomized_ings) do
         table.insert(curr_ings, unrandomized_ing)
     end
-    local curr_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, curr_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+    local curr_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, curr_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs}) - novelty_bonus(curr_ings)
 
     for i = 1, #potential_ings do
         -- Check if the material for this ind is unused
@@ -389,7 +404,7 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
                 if (is_fluid_index[ind_to_swap] and potential_ings[new_ind_to_use].type == "fluid") or (not is_fluid_index[ind_to_swap] and potential_ings[new_ind_to_use].type == "item") then
                     local new_ings = table.deepcopy(curr_ings)
                     new_ings[ind_to_swap] = {type = potential_ings[new_ind_to_use].type, name = potential_ings[new_ind_to_use].name}
-                    local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+                    local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs}) - novelty_bonus(new_ings)
 
                     -- Bonus negative points if new ingredient is not from starting planet
                     if starting_planet_reachable ~= nil and not starting_planet_reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then

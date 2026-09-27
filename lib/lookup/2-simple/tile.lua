@@ -146,6 +146,35 @@ stage.room_tile_maps = function()
         tiles_to_rooms[tile.name] = {}
     end
 
+    -- Tiles an item's place_as_tile accepts, by the same rule as tile building in lib/logic/concrete.lua
+    local function tiles_accepting(place_as_tile)
+        local accepted = {}
+        for _, tile in pairs(prots("tile")) do
+            local allowed = true
+            if place_as_tile.tile_condition ~= nil then
+                allowed = false
+                for _, allowed_tile in pairs(place_as_tile.tile_condition) do
+                    if allowed_tile == tile.name then
+                        allowed = true
+                    end
+                end
+            end
+            if allowed and place_as_tile.condition ~= nil and place_as_tile.condition.layers ~= nil then
+                local blocked = false
+                for layer, _ in pairs(place_as_tile.condition.layers) do
+                    if tile.collision_mask.layers[layer] then
+                        blocked = true
+                    end
+                end
+                allowed = blocked == (place_as_tile.invert == true)
+            end
+            if allowed then
+                accepted[tile.name] = true
+            end
+        end
+        return accepted
+    end
+
     local function get_room_tiles(room)
         local results = {}
 
@@ -177,6 +206,21 @@ stage.room_tile_maps = function()
                         if control_map[control] ~= nil then
                             for prot_name, _ in pairs(control_map[control]) do
                                 results[prot_name] = true
+                            end
+                        end
+                    end
+                end
+            end
+        else
+            -- A space surface starts as whatever its starter packs lay their tiles on (empty space, for platforms)
+            -- The packs' own tiles (the platform foundation) count as built there, like any tile (see tile-build-space in lib/logic/concrete.lua)
+            for pack_name, _ in pairs(lu.surface_to_starter_packs[room.name] or {}) do
+                local pack = dutils.get_prot("item", pack_name)
+                for _, tile_entry in pairs(pack.tiles or {}) do
+                    for _, item in pairs(lu.items) do
+                        if item.place_as_tile ~= nil and item.place_as_tile.result == tile_entry.tile then
+                            for tile_name, _ in pairs(tiles_accepting(item.place_as_tile)) do
+                                results[tile_name] = true
                             end
                         end
                     end

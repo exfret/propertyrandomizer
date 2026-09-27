@@ -1,0 +1,398 @@
+-- Recipe costs per context (room), so a route that only exists elsewhere doesn't set a room's costs (like space crushing making Nauvis iron ore cheap)
+-- Each room prices with its own raw sources (the logic graph's prices there, lib/cost/graph-cost.lua) and the recipes available there, as the context sort finds them
+-- Two tiers per room: local (nothing brought in) and full (with imports: what the room has but doesn't make, at their home room's cost)
+-- A material's home is the room the sort first reaches it in. There its cost is the local one when there is one, so imports never undercut it (like scrap shipped to Nauvis cheapening circuits)
+-- Elsewhere it costs the lesser of the local cost and the home's, so an odd local route can't make it dearer than bringing it in (like Aquilo making iron plates the long way)
+-- lib/cost/flow-cost.lua does the pricing: it treats a recipe missing from its ingredient overrides as unavailable, so each room gets a view of the overrides with only its recipes
+
+local gutils = require("lib/graph/graph-utils")
+local constants = require("helper-tables/constants")
+
+local context_costs = {}
+
+-- Rounds of pricing imports from the previous round's costs (the room an import comes from may make it with imports of its own)
+local IMPORT_ROUNDS = 3
+
+local function flow_cost_module()
+    return require("lib/cost/flow-cost")
+end
+
+local function sorted_keys(tbl)
+    local keys = {}
+    for k, _ in pairs(tbl) do
+        table.insert(keys, k)
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- The context a node is first reached in by a sort, or nil
+local function first_context(sort_info, node_key)
+    local best_context
+    local best_ind
+    for context, ind in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+        if best_ind == nil or ind < best_ind or (ind == best_ind and context < best_context) then
+            best_context = context
+            best_ind = ind
+        end
+    end
+    return best_context
+end
+
+-- A view of ing_overrides with only the recipes available in a room (flow_cost treats the rest as unavailable)
+local function overrides_view(available, ing_overrides)
+    return setmetatable({}, {
+        __index = function(_, recipe_name)
+            if available[recipe_name] ~= nil then
+                return ing_overrides[recipe_name]
+            end
+            return nil
+        end,
+    })
+end
+
+-- Every recipe's ingredients as the game has them (with use_data, flow_cost only reads these for availability)
+function context_costs.data_overrides()
+    local overrides = {}
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        overrides[recipe_name] = recipe.ingredients or {}
+    end
+    return overrides
+end
+
+-- A room's raw costs (a fresh table, since flow_cost's updates write raw costs back in)
+local function room_seeds(info, context)
+    local seeds = {}
+    for id, cost in pairs(info.local_raw[context]) do
+        seeds[id] = cost
+    end
+    return seeds
+end
+
+-- What each room has and makes, from the logic graph, its prices (graph_cost.compute_for_sort) and the sort they follow (the game before randomization)
+-- contexts: context key --> true for every room (lib/logic/init.lua's logic.contexts); slot: whether prices charged slot costs (graph_cost.compute)
+-- Returns info with:
+--   contexts: sorted room keys; starting_context: the starting planet's
+--   recipe_available[context][recipe name], material_available[context][material id]: whether the sort reaches them there
+--   local_raw[context][material id]: cost without recipes there (graph_cost.price_without_recipes, scaled)
+--   graph_costs[context][material id]: the graph's full price there, scaled, for what recipe costs can't price
+--   material_home[material id]: the room the sort first reaches it in
+--   import_from[context][material id]: the room an import is priced like (its home, or the cheapest room making it if the home can't)
+--   raw_costs[material id]: cost without recipes in the room the sort first reaches it in, or its cheapest raw cost elsewhere if that room only has recipes for it (for callers pricing the whole game at once)
+-- The game's own costs are priced here too, tracking track_resources (optional, a list of raw resource ids), and kept for context_costs.game_set
+context_costs.build = function(graph, sort_info, prices, starting_context, contexts, slot, track_resources)
+    local graph_cost = require("lib/cost/graph-cost")
+    local info = {
+        contexts = sorted_keys(contexts),
+        starting_context = starting_context,
+        recipe_available = {},
+        material_available = {},
+        local_raw = {},
+        graph_costs = {},
+        import_from = {},
+        raw_costs = {},
+        recipe_first_context = {},
+        material_home = {},
+    }
+    for _, context in pairs(info.contexts) do
+        info.recipe_available[context] = {}
+        info.material_available[context] = {}
+        info.local_raw[context] = {}
+        info.graph_costs[context] = {}
+        info.import_from[context] = {}
+    end
+    for recipe_name, _ in pairs(data.raw.recipe) do
+        local node_key = gutils.key("recipe", recipe_name)
+        for context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+            if info.recipe_available[context] ~= nil then
+                info.recipe_available[context][recipe_name] = true
+            end
+        end
+        info.recipe_first_context[recipe_name] = first_context(sort_info, node_key)
+    end
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "item" or node.type == "fluid" then
+            local id = node.type .. "-" .. node.name
+            for context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+                if info.material_available[context] ~= nil then
+                    info.material_available[context][id] = true
+                    local raw = graph_cost.price_without_recipes(graph, prices, node_key, context, slot)
+                    if raw ~= nil then
+                        info.local_raw[context][id] = raw * graph_cost.RAW_COST_SCALE
+                    end
+                    if prices[node_key][context] ~= nil then
+                        info.graph_costs[context][id] = prices[node_key][context] * graph_cost.RAW_COST_SCALE
+                    end
+                end
+            end
+            -- The whole-game raw cost: at the first room, else the cheapest room with a raw source
+            local first = first_context(sort_info, node_key)
+            info.material_home[id] = first
+            local cost = first ~= nil and info.local_raw[first] ~= nil and info.local_raw[first][id] or nil
+            if cost == nil then
+                for _, context in pairs(info.contexts) do
+                    local other = info.local_raw[context][id]
+                    if other ~= nil and (cost == nil or other < cost) then
+                        cost = other
+                    end
+                end
+            end
+            info.raw_costs[id] = cost
+        end
+    end
+
+    -- Pricing the game's own costs finds where imports come from (info.import_from)
+    context_costs.game_set(info, track_resources or {})
+    return info
+end
+
+-- A view of ing_overrides with only the recipes available in a room
+context_costs.overrides_view = function(info, context, ing_overrides)
+    return overrides_view(info.recipe_available[context], ing_overrides)
+end
+
+-- The room a recipe's ingredients are judged in: the starting planet if the recipe is available there, else the room the sort first reaches it in
+context_costs.judging_context = function(info, recipe_name)
+    if info.recipe_available[info.starting_context] ~= nil and info.recipe_available[info.starting_context][recipe_name] ~= nil then
+        return info.starting_context
+    end
+    return info.recipe_first_context[recipe_name]
+end
+
+-- Costs in every room, kept as recipes change: aggregate costs, and each material's bill of the tracked raw resources along its cheapest recipes
+-- params: ing_overrides (recipe name --> ingredients, or {"blacklisted"} for not yet available; shared, so later edits show), use_data, item_recipe_maps (shared too), track_resources (list of raw resource ids)
+-- params.imports_from (optional): a set to price imports from, which saves pricing rounds (staged sets take them from the game's, see context_costs.game_set)
+-- params.find_sources (optional): whether its rounds also find where each room's imports come from, into info.import_from (the game's set does, in build)
+-- params.updated_contexts (optional): context --> true for the rooms updates keep up to date (the ones costs are read in); the rest stay as first priced, as import sources
+local Set = {}
+Set.__index = Set
+
+-- Where each room's imports come from, from a set's costs so far: each material's home, or if the home can't make it, the room making it for least
+-- A room's cost here is its local one, else last round's full one unless the room brought it in itself; so it takes rounds to find sources that make something with imports of their own (like quantum processors)
+local function find_sources(info, set)
+    local function room_cost(context, id)
+        local tiers = set.tiers[context]
+        local cost = tiers["local"].material_to_cost[id]
+        if cost == nil and tiers.full ~= nil and tiers.imported[id] == nil then
+            cost = tiers.full.material_to_cost[id]
+        end
+        return cost
+    end
+    local sources = {}
+    for _, context in pairs(info.contexts) do
+        sources[context] = {}
+        for _, id in pairs(sorted_keys(info.material_available[context])) do
+            local home = info.material_home[id]
+            if set.tiers[context]["local"].material_to_cost[id] == nil and home ~= context then
+                if home ~= nil and room_cost(home, id) ~= nil then
+                    sources[context][id] = home
+                else
+                    local best
+                    local best_source
+                    for _, other in pairs(info.contexts) do
+                        local other_cost = other ~= context and room_cost(other, id) or nil
+                        if other_cost ~= nil and (best == nil or other_cost < best) then
+                            best = other_cost
+                            best_source = other
+                        end
+                    end
+                    sources[context][id] = best_source
+                end
+            end
+        end
+    end
+    return sources
+end
+
+context_costs.new_set = function(info, params)
+    local flow_cost = flow_cost_module()
+    local set = setmetatable({
+        info = info,
+        params = params,
+        tiers = {},
+        views = {},
+        resource_views = {},
+    }, Set)
+    for _, context in pairs(info.contexts) do
+        set.tiers[context] = {
+            ["local"] = flow_cost.determine_recipe_item_cost(room_seeds(info, context), constants.cost_params.time, constants.cost_params.complexity, set:extra(context)),
+            local_seeds = room_seeds(info, context),
+        }
+    end
+    -- Imports come in at the cost and bill they have in their source room: from params.imports_from (another set, like the game's) if given, else in rounds like in build (a source room may price them with imports of its own)
+    local function source_cost(source, id)
+        if params.imports_from ~= nil then
+            local cost, tier = params.imports_from:cost_and_tier(source, id)
+            return cost, tier and tier.material_to_resources[id]
+        end
+        local tier = set.tiers[source]["local"]
+        if tier.material_to_cost[id] == nil and set.tiers[source].full ~= nil then
+            tier = set.tiers[source].full
+        end
+        return tier.material_to_cost[id], tier.material_to_resources[id]
+    end
+    local rounds = params.imports_from ~= nil and 1 or IMPORT_ROUNDS
+    for round = 1, rounds do
+        local sources = info.import_from
+        if params.find_sources == true then
+            sources = find_sources(info, set)
+        end
+        local next_tiers = {}
+        for _, context in pairs(info.contexts) do
+            local seeds = room_seeds(info, context)
+            local bills = {}
+            local imported = {}
+            for id, source in pairs(sources[context]) do
+                local cost, bill = source_cost(source, id)
+                if seeds[id] == nil and cost ~= nil then
+                    seeds[id] = cost
+                    bills[id] = bill
+                    imported[id] = true
+                end
+            end
+            local extra = set:extra(context)
+            extra.raw_bills = bills
+            next_tiers[context] = {
+                seeds = seeds,
+                bills = bills,
+                imported = imported,
+                full = flow_cost.determine_recipe_item_cost(seeds, constants.cost_params.time, constants.cost_params.complexity, extra),
+            }
+        end
+        for _, context in pairs(info.contexts) do
+            set.tiers[context].full_seeds = next_tiers[context].seeds
+            set.tiers[context].bills = next_tiers[context].bills
+            set.tiers[context].imported = next_tiers[context].imported
+            set.tiers[context].full = next_tiers[context].full
+        end
+        if params.find_sources == true then
+            info.import_from = sources
+        end
+    end
+    return set
+end
+
+-- The game's own costs (every recipe as it is), priced once per load for info and kept, since unified randomization's retries start from the same game
+-- The first one priced (in build) finds where imports come from
+context_costs.game_set = function(info, track_resources)
+    local cache_key = table.concat(track_resources, ",")
+    info.game_sets = info.game_sets or {}
+    if info.game_sets[cache_key] == nil then
+        info.game_sets[cache_key] = context_costs.new_set(info, {
+            ing_overrides = context_costs.data_overrides(),
+            use_data = true,
+            item_recipe_maps = flow_cost_module().construct_item_recipe_maps(),
+            track_resources = track_resources,
+            find_sources = info.sources_found == nil,
+        })
+        info.sources_found = true
+    end
+    return info.game_sets[cache_key]
+end
+
+-- flow_cost's extra params for a room
+function Set:extra(context)
+    return {
+        ing_overrides = overrides_view(self.info.recipe_available[context], self.params.ing_overrides),
+        use_data = self.params.use_data,
+        item_recipe_maps = self.params.item_recipe_maps,
+        track_resources = self.params.track_resources,
+    }
+end
+
+-- A material's cost in a room and the tier it comes from (see the top of this file): at home, local else full; elsewhere, the lesser of local and home, else full
+function Set:cost_and_tier(context, id)
+    local tiers = self.tiers[context]
+    local local_cost = tiers["local"].material_to_cost[id]
+    local home = self.info.material_home[id]
+    if home ~= nil and home ~= context then
+        local home_cost, home_tier = self:cost_and_tier(home, id)
+        if home_cost ~= nil and (local_cost == nil or home_cost < local_cost) then
+            return home_cost, home_tier
+        end
+    end
+    if local_cost ~= nil then
+        return local_cost, tiers["local"]
+    end
+    local full_cost = tiers.full.material_to_cost[id]
+    if full_cost ~= nil then
+        return full_cost, tiers.full
+    end
+    return nil
+end
+
+-- A room's material costs as a flow_cost-style material_to_cost table
+function Set:view(context)
+    if self.views[context] == nil then
+        self.views[context] = {
+            material_to_cost = setmetatable({}, {
+                __index = function(_, id)
+                    return (self:cost_and_tier(context, id))
+                end,
+            }),
+        }
+    end
+    return self.views[context]
+end
+
+-- How much of a tracked raw resource each material takes in a room (from the same tier as its cost), as a material_to_cost-style table
+function Set:resource_view(context, resource_id)
+    self.resource_views[context] = self.resource_views[context] or {}
+    if self.resource_views[context][resource_id] == nil then
+        self.resource_views[context][resource_id] = {
+            material_to_cost = setmetatable({}, {
+                __index = function(_, id)
+                    local _, tier = self:cost_and_tier(context, id)
+                    if tier == nil then
+                        return nil
+                    end
+                    local bill = tier.material_to_resources[id]
+                    if bill == nil then
+                        return nil
+                    end
+                    return bill[resource_id] or 0
+                end,
+            }),
+        }
+    end
+    return self.resource_views[context][resource_id]
+end
+
+-- Adds a recipe whose ingredients (in the shared overrides) are now set: every room it's available in prices it, in each tier where all its ingredients have costs
+-- Where they don't yet, cost updates price it once they do (it's no longer marked unavailable)
+function Set:update(recipe_name)
+    local flow_cost = flow_cost_module()
+    for _, context in pairs(self.info.contexts) do
+        local updated = self.params.updated_contexts == nil or self.params.updated_contexts[context] ~= nil
+        if updated and self.info.recipe_available[context][recipe_name] ~= nil then
+            local ings = self.params.ing_overrides[recipe_name]
+            if self.params.use_data then
+                ings = data.raw.recipe[recipe_name].ingredients or {}
+            end
+            local tiers = self.tiers[context]
+            for _, tier_name in pairs({"local", "full"}) do
+                local tier = tiers[tier_name]
+                local ready = tier.recipe_to_cost[recipe_name] == nil
+                for _, ing in pairs(ings) do
+                    if tier.material_to_cost[flow_cost.get_prot_id(ing)] == nil then
+                        ready = false
+                    end
+                end
+                if ready then
+                    local extra = self:extra(context)
+                    local seeds = tiers.local_seeds
+                    if tier_name == "full" then
+                        extra.raw_bills = tiers.bills
+                        seeds = tiers.full_seeds
+                    end
+                    flow_cost.update_recipe_item_costs(tier, {recipe_name}, 100, seeds, constants.cost_params.time, constants.cost_params.complexity, extra)
+                end
+            end
+        end
+    end
+end
+
+-- The costs derived for this game (set by graph_cost.derive_cost_options), for recipe randomization to price with
+context_costs.current = nil
+
+return context_costs

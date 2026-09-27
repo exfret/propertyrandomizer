@@ -3266,6 +3266,12 @@ local function load()
                 type = "planet",
                 name = planet.name
             })
+            -- Launching needs a cargo landing pad on the planet, as in the logic graph's launch node (lib/logic/abstract.lua), which the end-of-load checks judge by
+            -- Without this, item randomization could move the landing pad's item somewhere only reachable after launching, and nothing in space could be reached
+            table.insert(prereqs, {
+                type = "cargo-landing-pad-planet",
+                name = planet.name
+            })
             -- TODO: Calculate weight if it's nil
             if item.weight ~= nil and item.weight > get_prototypes("utility-constants").default.default_rocket_lift_weight then
                 table.insert(prereqs, {

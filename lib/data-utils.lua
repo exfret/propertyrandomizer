@@ -185,22 +185,37 @@ dutils.lab_inputs = function()
     return lab_inputs
 end
 
+-- What mining a prototype gives, as a list of {type, name} (MinableProperties: result is only read without results)
+dutils.minable_results = function(prot)
+    local results = {}
+    if prot.minable ~= nil then
+        if prot.minable.results ~= nil then
+            for _, result in pairs(prot.minable.results) do
+                if result.type == "item" or result.type == "fluid" then
+                    table.insert(results, {
+                        type = result.type,
+                        name = result.name,
+                    })
+                end
+            end
+        elseif prot.minable.result ~= nil then
+            table.insert(results, {
+                type = "item",
+                name = prot.minable.result,
+            })
+        end
+    end
+    return results
+end
+
 -- Materials straight from the map: mined from a resource entity or an asteroid chunk (ores, crude oil, chunks, ...) or pumped from a tile (water, lava, ...)
 -- As {type, name} keyed by "type-name"
 dutils.resource_materials = function()
     local materials = {}
     for _, class in pairs({"resource", "asteroid-chunk"}) do
         for _, prot in pairs(dutils.prots(class)) do
-            if prot.minable ~= nil then
-                if prot.minable.results ~= nil then
-                    for _, result in pairs(prot.minable.results) do
-                        if result.type == "item" or result.type == "fluid" then
-                            materials[result.type .. "-" .. result.name] = { type = result.type, name = result.name }
-                        end
-                    end
-                elseif prot.minable.result ~= nil then
-                    materials["item-" .. prot.minable.result] = { type = "item", name = prot.minable.result }
-                end
+            for _, result in pairs(dutils.minable_results(prot)) do
+                materials[result.type .. "-" .. result.name] = result
             end
         end
     end

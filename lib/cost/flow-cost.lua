@@ -88,66 +88,13 @@ flow_cost.update_item_recipe_maps = function(old_maps, updated_recipes, ing_over
     end
 end
 
+-- A copy of the raw material costs (randomization_info.options.cost.default_cost_table)
 flow_cost.get_default_raw_resource_table = function()
-    -- TODO: Resource auto-sensing for mods
-    local normal_resources = {
-        ["item-iron-ore"] = 1,
-        ["item-copper-ore"] = 1,
-        ["item-coal"] = 1,
-        -- Higher cost for stone since its patches are smaller/rarer
-        ["item-stone"] = 1.2,
-        ["fluid-crude-oil"] = 0.15,
-        ["item-uranium-ore"] = 1.5,
-        -- Include this so that uranium-235 isn't too expensive
-        -- TODO: Maybe just require kovarex earlier?
-        ["item-uranium-235"] = 100,
-        ["fluid-water"] = 0.001,
-        ["fluid-steam"] = 0.05
-    }
-    local space_age_resources = {
-        -- Adding the asteroid chunks actually tricks the randomizer into thinking iron is cheap and putting it everywhere
-        -- NOTE: Actually the issue seems to be elsewhere... not sure what it is though
-        --["item-metallic-asteroid-chunk"] = 1,
-        --["item-carbonic-asteroid-chunk"] = 1,
-        --["item-oxide-asteroid-chunk"] = 1,
-        ["item-carbon"] = 1, -- Add this instead of the asteroid chunks
-        ["item-ice"] = 1,
-        ["fluid-ammoniacal-solution"] = 0.6,
-        ["fluid-fluorine"] = 0.6,
-        ["item-lithium"] = 2,
-        -- Set scrap cost high to prevent it from interfering with cost assignments of iron and the like
-        -- This makes it unlikely to appear elsewhere besides scrap recycling but whatever
-        ["item-scrap"] = 10,
-        ["item-pentapod-egg"] = 2,
-        ["item-jellynut"] = 1,
-        ["item-yumako"] = 1,
-        ["item-spoilage"] = 0.5,
-        ["fluid-lava"] = 0.05,
-        ["item-tungsten-ore"] = 3,
-        ["item-calcite"] = 1,
-        ["item-iron-bacteria"] = 5,
-        ["item-copper-bacteria"] = 5,
-        ["item-biter-egg"] = 1
-    }
-    --[[local duped_resources = {
-        ["item-iron-ore-exfret-2-copy"] = 1.25,
-        ["item-copper-ore-exfret-2-copy"] = 1,
-        ["item-coal-exfret-2-copy"] = 1,
-        -- Lower cost for stone so that it's more common
-        ["item-stone-exfret-2-copy"] = 0.85,
-        ["item-uranium-ore-exfret-2-copy"] = 1.5,
-    }]]
-    if mods["space-age"] then
-        for material_id, cost in pairs(space_age_resources) do
-            normal_resources[material_id] = cost
-        end
+    local raw_costs = {}
+    for material_id, cost in pairs(randomization_info.options.cost.default_cost_table) do
+        raw_costs[material_id] = cost
     end
-    if config.watch_the_world_burn then
-        for material_id, cost in pairs(duped_resources) do
-            normal_resources[material_id] = cost
-        end
-    end
-    return normal_resources
+    return raw_costs
 end
 
 flow_cost.get_empty_raw_resource_table = function()
@@ -191,8 +138,8 @@ flow_cost.eval_recipe_cost = function(params)
     local reachable = true
 
     local recipe = data.raw.recipe[recipe_name]
-    -- recipe.ingredients must exist since amount < 0
-    local ings_to_use = recipe.ingredients
+    -- A recipe can leave out its ingredients (like the captive spawner's biter eggs)
+    local ings_to_use = recipe.ingredients or {}
     -- If this has an override, use that instead
     if ing_overrides ~= nil then
         if ing_overrides[recipe_name] ~= nil then
@@ -404,7 +351,43 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
         material_to_cost[resource_id] = cost
     end
     if material_to_resources ~= nil then
-        flow_cost.set_raw_resource_vectors(material_to_resources, raw_resource_costs, extra_params.track_resources)
+        flow_cost.set_raw_resource_vectors(material_to_resources, raw_resource_costs, extra_params.track_resources, extra_params.raw_bills)
+    end
+    -- Recipes that take nothing (like the captive spawner's biter eggs) are sources too, since no material would open them
+    local recipe_names = {}
+    for recipe_name, _ in pairs(recipe_to_material) do
+        table.insert(recipe_names, recipe_name)
+    end
+    table.sort(recipe_names)
+    for _, recipe_name in pairs(recipe_names) do
+        local takes_something = false
+        for _, amount in pairs(recipe_to_material[recipe_name]) do
+            if amount < 0 then
+                takes_something = true
+            end
+        end
+        if not takes_something then
+            local cost_info = flow_cost.eval_recipe_cost({
+                recipe_name = recipe_name,
+                material_to_cost = material_to_cost,
+                recipe_time_modifier = recipe_time_modifier,
+                recipe_complexity_modifier = recipe_complexity_modifier,
+                mode = mode,
+                ing_overrides = ing_overrides,
+                use_data = use_data,
+                material_to_resources = material_to_resources,
+            })
+            if cost_info.reachable then
+                recipe_to_cost[recipe_name] = cost_info.cost
+                if recipe_to_resources ~= nil then
+                    recipe_to_resources[recipe_name] = cost_info.resources
+                end
+                table.insert(open_nodes, {
+                    type = "recipe",
+                    name = recipe_name,
+                })
+            end
+        end
     end
 
     local open_index = 1
@@ -462,12 +445,22 @@ flow_cost.resource_cost_view = function(costs, resource_id)
 end
 
 -- Raw resources are their own bill: a tracked resource is one of itself, anything else raw is free
-flow_cost.set_raw_resource_vectors = function(material_to_resources, raw_resource_costs, track_resources)
+-- raw_bills (optional): material id --> bill, for raw materials that carry one from elsewhere (like imports, see lib/cost/context-costs.lua)
+flow_cost.set_raw_resource_vectors = function(material_to_resources, raw_resource_costs, track_resources, raw_bills)
     for resource_id, _ in pairs(raw_resource_costs) do
         material_to_resources[resource_id] = {}
     end
     for _, resource_id in pairs(track_resources) do
         material_to_resources[resource_id] = {[resource_id] = 1}
+    end
+    for material_id, bill in pairs(raw_bills or {}) do
+        if raw_resource_costs[material_id] ~= nil then
+            local copy = {}
+            for resource_id, amount in pairs(bill) do
+                copy[resource_id] = amount
+            end
+            material_to_resources[material_id] = copy
+        end
     end
 end
 
@@ -506,7 +499,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         material_to_cost[resource_id] = cost
     end
     if material_to_resources ~= nil then
-        flow_cost.set_raw_resource_vectors(material_to_resources, raw_resource_costs, curr_costs.track_resources)
+        flow_cost.set_raw_resource_vectors(material_to_resources, raw_resource_costs, curr_costs.track_resources, extra_params.raw_bills)
     end
 
     --log("Finding new open nodes")

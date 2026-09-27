@@ -122,6 +122,8 @@ local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
     complex_contexts = true,
     home_contexts = true,
 })
+-- Raw material costs and the major resources for recipe costs come from the logic graph's cost model, in the world planetary changes made
+require("lib/cost/graph-cost").derive_cost_options(new_logic.graph, init_sort_info, gutils.key("planet", constants.starting_planet), init_complex_sort_info)
 
 ----------------------------------------------------------------------
 -- Setup done!

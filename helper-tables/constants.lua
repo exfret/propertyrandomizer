@@ -81,6 +81,8 @@ local constants = {
     complexity_points_weighting = 2,
     resource_points_weighting = 0.1,
     non_starting_planet_bonus = 3,
+    -- Points off in recipe ingredient searches per ingredient whose cost comes from raw resources outside the starting ones (scaled by that share), so newer resources get used
+    new_resource_bonus = 0.5,
     max_num_failed_attempts_ing_search = 10000,
     -- Item randomization
     item_randomization_cost_factor_threshold = 100,
@@ -132,6 +134,8 @@ local constants = {
         per_fluid_cost = 0.001,
         -- Floor on item cost to represent logistical complexity of many items, even if they're otherwise free
         per_item_cost = 0.1,
+        -- Seconds of an asteroid collector's operation per chunk it collects
+        asteroid_chunk_collection_time = 60,
         -- Complexity cost for dealing with having to burn something
         burnt_result_additional_cost = 1,
         slot_additional_burnt_result_cost = 5,
