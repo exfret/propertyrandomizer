@@ -41,7 +41,15 @@ Not ready for release
 
 # spoiling
 
-Assumes vanilla space age, has manual blacklist for iron bacteria and copper bacteria.
+Not ready for release
+
+Which items spoil into items and what they spoil into, in both directions, like mining-fluid-required: spoofs give items that could start spoiling a base (an edge into a spoof sink), and items that could become spoil results extra result slots. The new slots copy vanilla's result counts (like spoilage's 8 spoilers) onto NEW_RESULT_COPIES sets of random items. Every result slot, vanilla or new, is filled with FILL_CHANCE, and every vanilla spoiler keeps spoiling with it, so there are about twice as many spoilers as in vanilla, and spoilage is one of several common results rather than always the common one. Cycles are fine.
+
+An item's spoil result is an OR prerequisite of the item it makes, so an empty slot is a detached head, not a base fed by true (which would make the item free). So the search is custom (custom_prereq_search): each choice is committed through promotion's try_rewires, and a vanilla slot a promise needs (like bacteria spoiling into Gleba's only ore) keeps its vanilla spoiler, replacing the old name blacklist. The spoofed edges start detached (starts_detached), so the pool graph, first pass and promotion never count on them until the search fills them.
+
+Spoil bases belong to the item's identity (identity_base, so first pass moves them with the item), and result slots are positions. Reflect writes spoil results as position names before item randomization, which renames them to the items first pass put there. Spoil times belong to the item: a vanilla spoiler keeps its own, and a new one takes the spoil time of a vanilla spoiler that lasts a trip to another room (see dutils.survives_trip), so no item stops being deliverable. Spoiling into an entity (like a biter egg hatching) is the entity handler's; an item can have both.
+
+Items that never spoil or become results: hidden ones and ones that only live in the cursor (only-in-cursor or spawnable flags). Armor with an equipment grid never spoils, and results must stack.
 
 # starting-planet
 

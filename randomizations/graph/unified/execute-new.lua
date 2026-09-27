@@ -84,6 +84,7 @@ if config.dev_unified then
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
         ["recipe-ingredients"] = true,
+        ["spoiling"] = true,
     }
 end
 -- Entity randomization (handlers-new/entity.lua) is behind its own startup setting
@@ -681,9 +682,11 @@ unified.execute = function()
 
     changes = {}
     -- Entity randomization reflects before item randomization, which copies item names and icons into recipes (see handlers.md)
+    -- Spoiling does too, since it writes spoil results as positions, which item randomization renames to the items first pass put there
     local reflect_first = {
         "recipe-ingredients-first-pass",
         "entity",
+        "spoiling",
     }
     local reflects_first = {}
     for _, handler_id in pairs(reflect_first) do

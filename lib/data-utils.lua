@@ -1,5 +1,7 @@
 -- Common utilities for handling data.raw
 
+local constants = require("helper-tables/constants")
+
 local dutils = {}
 
 dutils.prots = function(class)
@@ -85,6 +87,15 @@ dutils.boiler_output_amount = function(boiler)
     -- If no filter is set, but input fluid box filter is set, then we're getting the input fluid out anyways
     local output_fluid = data.raw.fluid[boiler.output_fluid_box.filter or boiler.fluid_box.filter]
     return dutils.boiler_input_amount(boiler) * util.parse_energy(input_fluid.heat_capacity or "1kJ") / util.parse_energy(output_fluid.heat_capacity or "1kJ")
+end
+
+-- Whether an item lasts long enough to be sent to another room (constants.spoil_trip_ticks), which logic needs before it lets the item be delivered
+-- Only spoil times above 0 make an item spoil (the game's default is 0)
+-- Randomizations never make an item that lasted a trip stop lasting it (like numerical spoil time randomization), so the delivery edges logic built before them stay true
+-- Making an item last a trip only adds routes, so a randomization can lengthen a spoil time to let something be delivered
+dutils.survives_trip = function(item)
+    local spoil_ticks = item.spoil_ticks or 0
+    return spoil_ticks <= 0 or spoil_ticks >= constants.spoil_trip_ticks
 end
 
 local is_spoil_or_burnt_result = {}

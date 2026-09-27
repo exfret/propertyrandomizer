@@ -649,10 +649,11 @@ matching.run = function(params)
     log("Monotone matching: " .. #mechanics .. " hard mechanic pebbles, " .. #recipes .. " recipes")
 
     -- Launch chains and launchability are properties of the travs themselves, so they're the same in every round
+    -- Launchable means deliverable: an item that spoils before a trip is over can be launched (for launch results) but has no item-deliver node
     local chain_of = launch_chains(graph, travs)
     local is_launchable = {}
     for node_key, trav_key in pairs(chain_of) do
-        if graph.nodes[node_key].type == "item-launch" then
+        if graph.nodes[node_key].type == "item-deliver" then
             is_launchable[trav_key] = true
         end
     end

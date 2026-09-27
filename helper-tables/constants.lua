@@ -99,6 +99,12 @@ local constants = {
     -- See randomizations/graph/unified/skeleton/protection.lua for how this is applied
     keep_isolatability = false,
 
+    -- Spoiling
+    -- How long an item must last to be sent to another room (a rocket launch, then a space platform's trip), see dutils.survives_trip
+    -- Trips are often under 5 minutes, but some mods add connections where 30 minutes is a safe buffer
+    -- In vanilla, bacteria, mash, jelly, nutrients and pentapod eggs (15 minutes) don't last that long; biter eggs, fruit, bioflux, science and fish do
+    spoil_trip_ticks = 30 * 60 * 60,
+
     unified_recipe_ingredients_cost_threshold = 1000,
     unified_recipe_results_dummy_fraction = 1,
 

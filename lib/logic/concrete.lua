@@ -22,6 +22,10 @@ local set_prot = builder.set_prot
 
 local concrete = {}
 
+-- Whether agricultural towers harvesting plants counts as automatic (entity-harvest)
+-- Off for now: the Gleba contexts it makes automatable are hard pebbles that monotone matching's refinement can't turn into needs, so first pass moved nothing (2026-09-27); turn back on once that's fixed
+local AUTOMATABLE_PLANT_HARVESTING = false
+
 function concrete.build(lu, extra_params)
     extra_params = extra_params or {}
     local payback_time = extra_params.payback_time or constants.cost.default_payback_time
@@ -333,22 +337,10 @@ function concrete.build(lu, extra_params)
             ----------------------------------------
             add_node("entity-build-architecture", "OR")
             ----------------------------------------
-            -- Can we get the item that builds this entity, counting one-time building costs as free on space platforms?
+            -- Can we get the item that builds this entity?
+            -- One-time building costs on space surfaces count for operating the entity (entity-own-space), not for having it, so mining a delivered building back doesn't make its item local
 
             add_edge("entity-build-item", nil, { amount = 1 })
-            add_edge("entity-build-architecture-space", nil, { amount = 1 })
-
-            ----------------------------------------
-            add_node("entity-build-architecture-space", "AND")
-            ----------------------------------------
-            -- Special rule for space platforms: building a machine there is a one-time cost, so it doesn't count against the platform's isolatability even though the item was delivered
-
-            add_edge("entity-build-item", nil, {
-                abilities = { [1] = true },
-                amount = 1,
-            })
-            -- Makes this only apply in space surface contexts
-            add_edge("space-surface", "")
 
             ----------------------------------------
             add_node("entity-build-item", "OR")
@@ -438,8 +430,8 @@ function concrete.build(lu, extra_params)
                 is_automatic = false
             end
 
-            -- Only an entity that's ours can be operated (see entity-own)
-            add_edge("entity-own", entity.name, {
+            -- Only an entity that's ours can be operated (see entity-own), and on a space surface a delivered one counts as local (entity-own-operable)
+            add_edge("entity-own-operable", nil, {
                 abilities = { [2] = is_automatic },
                 -- Account for one-time cost of entity
                 amount = 1 / payback_time,
@@ -513,6 +505,31 @@ function concrete.build(lu, extra_params)
             end
             -- Note: Turrets are "operable" without ammo; since the damage is on the ammo, we actually need to check if there is a turret to shoot an ammo rather than check if there is ammo for a turret to shoot
             -- TODO: Module requirements (for mods like PyAL)
+
+            ----------------------------------------
+            add_node("entity-own-operable", "OR")
+            ----------------------------------------
+            -- Is an entity of ours here to operate, counting one-time building costs as free on space surfaces?
+            -- Only operating it gets that, not the entity itself: otherwise mining a delivered building back (and recycling it) would make its item and materials local too
+
+            add_edge("entity-own", entity.name, { amount = 1 })
+            if buildable ~= nil then
+                add_edge("entity-own-space", nil, { amount = 1 })
+
+                ----------------------------------------
+                add_node("entity-own-space", "AND")
+                ----------------------------------------
+                -- Special rule for space surfaces: building a machine there is a one-time cost, so operating it doesn't count against the surface's isolatability even though it was delivered
+                -- Only for building: what a capsule makes uses up a capsule each time
+                -- Planets could get this too for buildings they can then make themselves, but in vanilla that adds nothing, so it's left out to keep loading fast (see notes/bootstrap-infrastructure.txt)
+
+                add_edge("entity-build", entity.name, {
+                    abilities = { [1] = true },
+                    amount = 1,
+                })
+                -- Makes this only apply in space surface contexts
+                add_edge("space-surface", "")
+            end
 
             if operability_modules ~= nil then
                 ----------------------------------------
@@ -629,6 +646,14 @@ function concrete.build(lu, extra_params)
                 end
 
                 add_edge("resource-category", lutils.mcat_name(entity), { amount = entity.minable.mining_time })
+            elseif entity.type == "plant" and AUTOMATABLE_PLANT_HARVESTING then
+                -- Agricultural towers harvest plants, which is automatic like a drill mining a resource, so a plant gains automatability like a resource does
+                -- The harvester decides which contexts come out: a tower's operation is automatic and the character's isn't (see entity-operate)
+                add_edge("entity", entity.name, {
+                    abilities = { [2] = true },
+                    amount = 1,
+                })
+                add_edge("entity-harvest", nil, { amount = 1 })
             else
                 add_edge("entity", entity.name, {
                     abilities = { [2] = false },
@@ -636,6 +661,17 @@ function concrete.build(lu, extra_params)
                 })
                 -- TODO: Don't hardcode characters?
                 add_edge("entity-operate", "character", { amount = entity.minable.mining_time / data.raw.character.character.mining_speed })
+            end
+
+            if entity.type == "plant" and AUTOMATABLE_PLANT_HARVESTING then
+                ----------------------------------------
+                add_node("entity-harvest", "OR")
+                ----------------------------------------
+                -- Can we harvest this plant, by hand or with an agricultural tower (whose energy_usage is spent per planted or harvested plant)?
+
+                add_edge("entity-operate", "character", { amount = entity.minable.mining_time / data.raw.character.character.mining_speed })
+                -- Seconds of a tower's operation per harvest
+                add_edge("agricultural-tower", "", { amount = entity.minable.mining_time })
             end
         end
 
@@ -1240,8 +1276,9 @@ function concrete.build(lu, extra_params)
         end
         -- Edge from item-launch for context cycling
         -- This edge allows items to gain more contexts: an item reachable in one context can be launched to space, then delivered to a space surface, gaining that context
+        -- Only items that last the trip arrive (see item-deliver below)
         local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
-        if lu.weight[item.name] <= rocket_lift_weight then
+        if lu.weight[item.name] <= rocket_lift_weight and dutils.survives_trip(item) then
             add_edge("item-deliver", item.name, {
                 abilities = { [1] = false },
                 amount = 1,
@@ -1255,10 +1292,13 @@ function concrete.build(lu, extra_params)
             })
         end
         -- Edge from items that spoil into this item
+        -- Spoiling is just waiting, which takes no player input, so the result keeps the spoiling item's abilities (automatable if it is): the edge sets none
         if lu.spoil_result_to_items[item.name] ~= nil then
             for spoiling_item, _ in pairs(lu.spoil_result_to_items[item.name]) do
                 local item_prot = dutils.get_prot("item", spoiling_item)
                 add_edge("item", spoiling_item, {
+                    -- Tells spoiling apart from other item --> item edges (like first pass's trav --> slot)
+                    spoils_into = true,
                     spoil_ticks = item_prot.spoil_ticks,
                     amount = 1,
                     -- Note: When doing OR-OR subdivision for cost analysis, make sure this cost goes on that AND node; costs don't technically go on edges
@@ -1352,14 +1392,17 @@ function concrete.build(lu, extra_params)
             add_edge("item", nil, { amount = 1 })
             add_edge("deliver", "", { amount = 1 })
 
-            ----------------------------------------
-            add_node("item-deliver", "AND")
-            ----------------------------------------
-            -- Can we receive this item in a room?
-            -- Filters context to reachable rooms
+            -- An item that spoils before a trip is over arrives as what it spoils into, so it can't be delivered (launch results don't need the trip)
+            if dutils.survives_trip(item) then
+                ----------------------------------------
+                add_node("item-deliver", "AND")
+                ----------------------------------------
+                -- Can we receive this item in a room?
+                -- Filters context to reachable rooms
 
-            add_edge("item-launch", nil, { amount = 1 })
-            add_edge("reachable-room", "")
+                add_edge("item-launch", nil, { amount = 1 })
+                add_edge("reachable-room", "")
+            end
         end
 
         if item.type == "ammo" then

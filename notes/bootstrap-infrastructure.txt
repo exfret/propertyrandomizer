@@ -1,0 +1,36 @@
+Bootstrap infrastructure in complex contexts (2026-09-26)
+
+The rule: a finite amount of bootstrap infrastructure that can then create an infinite amount of real infrastructure is allowed.
+For example, bringing a mining drill to a planet to build more drills there, and eventually the automatable iron loop on Gleba.
+
+What logic does now
+ * Automatability already bootstraps: operating an entity of ours is automatic however it was built (entity-own-operable --> entity-operate, lib/logic/concrete.lua).
+ * Isolatability bootstraps through the character, who is always local and can hand-craft from local materials.
+ * On space surfaces, operating a building counts as local even when it was delivered (entity-own-space).
+   This used to be on the building's presence (entity-build-architecture-space).
+   That leaked: mining a delivered foundry back gave a "local" foundry item, and recycling it gave "local" tungsten carbide.
+   Vanilla had 276 such fake platform contexts: foundries, processing units, superconductors, nutrients-fuelled organic crafting, and more.
+ * Plants harvested by agricultural towers are automatable, like resources mined by drills (entity-harvest). That alone makes Gleba's iron loop isolatable and automatable.
+   Off for now (AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua, 2026-09-27): the new Gleba | 11 hard pebbles are lost in every monotone matching round with "added 0 needs", so first pass moved nothing. Turn it back on once refinement handles it.
+
+The general rule, not implemented
+Let a building's operation in a planet R count as local when R can then make the building itself.
+That's a greatest fixpoint over (building, room) pairs:
+  1. Start with every building allowed in every room.
+  2. Sort with each allowed pair's operation counted as local, like entity-own-space.
+  3. Drop the pairs whose building item isn't isolatable in R in that sort.
+  4. Repeat until nothing drops.
+It has to count the operation, not the presence, or mining back justifies every pair.
+An earlier probe did it on presence, and Aquilo kept 107 buildings it can't make.
+
+Measured on vanilla Space Age (seed 1, scratch probe in data-final-fixes.lua after the vanilla complex sort, plant harvesting on):
+ * The fixpoint converges in 2 iterations, each a full complex sort with home contexts.
+ * It adds 0 contexts on planets. The character can hand-craft its way out of every vanilla cycle, so any building a planet can make is already local there.
+   Aquilo keeps no buildings; Gleba keeps 94, Vulcanus and Fulgora 89, Nauvis 84.
+ * Counting every imported building as local everywhere, with no fixpoint, would add 1249 planet contexts instead.
+   For example, imported foundries would count as local on Nauvis, which the rule above excludes.
+
+So it's left out: it would cost about 3 extra sorts per logic build and change nothing in vanilla.
+It would matter when randomization creates a cycle only machines can break, like a building whose recipe needs something only that building makes, in a category the character can't craft.
+If that shows up, add it in logic.build.
+The set it finds goes stale as randomization changes recipes, but the final check rebuilds logic and recomputes it.

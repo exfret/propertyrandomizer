@@ -128,11 +128,6 @@ for _, recipe in pairs(data.raw.recipe) do
     end
 end
 
-randomization_info.options.unified["spoiling"].blacklisted_pre = {
-    [key("item", "copper-bacteria")] = true,
-    [key("item", "iron-bacteria")] = true,
-}
-
 unified_options("recipe-category").blacklisted_dep = {}
 
 -- I don't know if this actually is needed right now (which is a good thing)

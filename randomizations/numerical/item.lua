@@ -929,6 +929,11 @@ randomizations.spoil_spawn = function (id)
 end
 
 -- New
+-- Logic lets an item be delivered to other rooms only if it lasts the trip (dutils.survives_trip), and unified randomization counted on that, so an item that lasted it still has to
+-- A roll that drops it below is rolled again (the item's rng key moves on), and after this many the item keeps its spoil time
+-- An item that didn't last a trip may start to, which only adds routes
+local MAX_SPOIL_TIME_ROLLS = 20
+
 randomizations.spoil_time = function (id)
 
     local ticks = "ticks"
@@ -940,41 +945,55 @@ randomizations.spoil_time = function (id)
     local seconds_per_minute = 60
     local minutes_per_hour = 60
 
+    local function roll_spoil_ticks(item)
+        local magnitude = ticks
+        if item.spoil_ticks > ticks_per_second then
+            magnitude = seconds
+            item.spoil_ticks = item.spoil_ticks / ticks_per_second
+            if item.spoil_ticks > seconds_per_minute then
+                magnitude = minutes
+                item.spoil_ticks = item.spoil_ticks / seconds_per_minute
+                if item.spoil_ticks > minutes_per_hour then
+                    magnitude = hours
+                    item.spoil_ticks = item.spoil_ticks / minutes_per_hour
+                end
+            end
+        end
+
+        randomize({
+            id = id,
+            prototype = item,
+            property = "spoil_ticks",
+            variance = "medium",
+            rounding = "discrete_float",
+        })
+
+        if magnitude == seconds then
+            item.spoil_ticks = item.spoil_ticks * ticks_per_second
+        elseif magnitude == minutes then
+            item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
+        elseif magnitude == hours then
+            item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+        end
+
+        item.spoil_ticks = math.min(math.max(round(item.spoil_ticks), 1), 4000000000)
+    end
+
     for _, item in pairs(items) do
         if item.spoil_ticks ~= nil and item.spoil_ticks > 0 then
             local old_value = item.spoil_ticks
+            local survives_trip = dutils.survives_trip(item)
 
-            local magnitude = ticks
-            if item.spoil_ticks > ticks_per_second then
-                magnitude = seconds
-                item.spoil_ticks = item.spoil_ticks / ticks_per_second
-                if item.spoil_ticks > seconds_per_minute then
-                    magnitude = minutes
-                    item.spoil_ticks = item.spoil_ticks / seconds_per_minute
-                    if item.spoil_ticks > minutes_per_hour then
-                        magnitude = hours
-                        item.spoil_ticks = item.spoil_ticks / minutes_per_hour
-                    end
+            for _ = 1, MAX_SPOIL_TIME_ROLLS do
+                item.spoil_ticks = old_value
+                roll_spoil_ticks(item)
+                if dutils.survives_trip(item) or not survives_trip then
+                    break
                 end
             end
-
-            randomize({
-                id = id,
-                prototype = item,
-                property = "spoil_ticks",
-                variance = "medium",
-                rounding = "discrete_float",
-            })
-
-            if magnitude == seconds then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second
-            elseif magnitude == minutes then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute
-            elseif magnitude == hours then
-                item.spoil_ticks = item.spoil_ticks * ticks_per_second * seconds_per_minute * minutes_per_hour
+            if survives_trip and not dutils.survives_trip(item) then
+                item.spoil_ticks = old_value
             end
-
-            item.spoil_ticks = math.min(math.max(round(item.spoil_ticks), 1), 4000000000)
 
             local factor = item.spoil_ticks / old_value
 

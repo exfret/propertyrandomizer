@@ -284,6 +284,7 @@ local type_to_localised = {
     ["entity-build-surface-condition"] = "Valid conditions for: ",
     ["entity-build-tile"] = "Tile to place: ",
     ["entity-collision-group"] = "Valid tiles",
+    ["entity-harvest"] = "Harvest: ",
     ["entity-kill"] = "Kill: ",
     ["entity-mine"] = "Mine: ",
     ["entity-operate"] = "Operate: ",

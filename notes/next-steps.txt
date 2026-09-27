@@ -1,5 +1,23 @@
 CURRENTLY ON:
 
+ * WORK IN PROGRESS (paused 2026-09-27, to pick up in a couple days): spoiling handler, trip line, plant harvesting
+    - Nothing is committed yet; it's all in the working copy
+    - Spoiling handler (randomizations/graph/unified/handlers-new/spoiling.lua, see handlers.md): enabled in the dev list in execute-new.lua
+      Tested on seeds 1-6 of the dev set with no unreachable recipes or lost contexts. Seed 3's first attempt fails its check for reasons unrelated to spoiling and passes on retry
+      Still to do:
+        - prefer new spoil results that have a use other than recycling
+        - give a fuel value to any spoil result with no other use (even if it can be recycled)
+        - test more seeds
+    - Trip line (dutils.survives_trip, constants.spoil_trip_ticks = 30 min): items that spoil sooner can't be delivered to other rooms. Done
+    - Platform one-time rule now counts for operating a built entity (entity-own-space), not for having it, which fixes a mine-back leak. Done
+      See notes/bootstrap-infrastructure.txt; the planetary session added the fixpoint for freezing moves (lib/logic/bootstrap.lua)
+    - Plant harvesting by agricultural towers as automatic (entity-harvest) is written but OFF (AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua)
+      With it on, monotone matching lost the same 20 Gleba | 11 hard pebbles every round and added 0 needs, so first pass moved no items
+      Next steps:
+        - turn it on and log each lost pebble with the positions on its old path that changed item
+        - fix refinement (blocked_travs in skeleton/monotone-matching.lua only counts travs on the path)
+        - check that first pass moves items again
+
  * Fix compat nodes with better solution, upload to portal
 
  * Check into item softlock in execute-new
