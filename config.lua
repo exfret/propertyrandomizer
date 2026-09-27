@@ -66,7 +66,8 @@ if settings.startup["propertyrandomizer-locale"].value then
 end
 config.misc.colors = settings.startup["propertyrandomizer-colors"].value
 
-config.numerical_algorithm = settings.startup["propertyrandomizer-numerical-algorithm"].value
+-- The Fleishman algorithm is deprecated (it has no bounds), so the numerical-algorithm setting is hidden and ignored
+config.numerical_algorithm = "exfret-random-walk"
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
 config.tech_tree_rebuild = settings.startup["propertyrandomizer-tech-tree-rebuild"].value
 -- Whether entity randomization is on, which logic needs to know before randomization (for its supply mechanics, see lib/logic/entity-supply.lua)

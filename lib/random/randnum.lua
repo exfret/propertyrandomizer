@@ -349,7 +349,13 @@ randnum.rand = function(params)
     if config.numerical_algorithm == "exfret-random-walk" then
         for i = 1, constants.num_rolls do
             local sign = dir
-            if rng.value(key) >= real_bias then
+            if dir == 0 then
+                -- No better direction, so bias doesn't apply; go either way
+                sign = 1
+                if rng.value(key) >= 0.5 then
+                    sign = -1
+                end
+            elseif rng.value(key) >= real_bias then
                 sign = -1 * sign
             end
 

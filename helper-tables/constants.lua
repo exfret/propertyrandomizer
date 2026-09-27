@@ -1,11 +1,11 @@
 local constants = {
     -- Config stuffs
     bias_string_to_num = {
-        ["worst"] = -0.05,
-        ["worse"] = -0.025,
+        ["worst"] = -0.075,
+        ["worse"] = -0.0375,
         ["default"] = 0,
-        ["better"] = 0.025,
-        ["best"] = 0.05
+        ["better"] = 0.0375,
+        ["best"] = 0.075,
     },
     bias_string_to_idx = {
         ["worst"] = 0,

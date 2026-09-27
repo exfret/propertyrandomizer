@@ -379,6 +379,8 @@ data:extend({
         },
         default_value = "exfret-random-walk",
         order = "h-a[algorithm]",
+        -- Deprecated: Fleishman has no bounds, so values can land far from the original (like spoil times of a second), and config.lua always uses the random walk
+        hidden = true,
     },
     {
         setting_type = "startup",

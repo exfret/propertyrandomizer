@@ -14,7 +14,7 @@ randbool.rand_chaos = function(key, base_probability)
     return randbool.converge(key, p)
 end
 
-local bias_idx_to_factor = { 0.8, 0.9, 1, 1.1, 1.2 }
+local bias_idx_to_factor = { 0.7, 0.85, 1, 1.15, 1.3 }
 
 --- randomly returns true or false, affected by config.bias
 randbool.rand_bias = function (key, base_probability, dir)
