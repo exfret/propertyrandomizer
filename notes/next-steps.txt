@@ -1,7 +1,7 @@
 CURRENTLY ON:
 
  * WORK IN PROGRESS (paused 2026-09-27, to pick up in a couple days): spoiling handler, trip line, plant harvesting
-    - Nothing is committed yet; it's all in the working copy
+    - Committed as 9fd85d6 (2026-09-27), everything below included; the planetary session's lib/logic/bootstrap.lua is its own
     - Spoiling handler (randomizations/graph/unified/handlers-new/spoiling.lua, see handlers.md): enabled in the dev list in execute-new.lua
       Tested on seeds 1-6 of the dev set with no unreachable recipes or lost contexts. Seed 3's first attempt fails its check for reasons unrelated to spoiling and passes on retry
       Still to do:
