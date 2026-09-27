@@ -121,6 +121,10 @@ script.on_init(function(event)
                         local trav = gutils.deconstruct(trav_key)
                         local suffix = "-trav"
                         new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
+                        -- A fluid identity (its slot is a fluid-temperature node, named fluid: temperature) became an item named after the fluid (see lib/item-fluid.lua)
+                        if trav.type == "fluid-temperature" then
+                            new_item_name = gutils.deconstruct(new_item_name).type
+                        end
                     end
                     new_item_list[new_item_name] = amount
                     table.insert(old_item_names, item_name)

@@ -59,10 +59,15 @@ randomization_info.options.first_pass.always_slot_pre = {
     [key("tile-mine", "item")] = true, -- Special handling
     [key("entity-mine", "item")] = true, -- Special handling
     [key("asteroid-chunk-mine", "item")] = true,
+    -- A fluid position (a fluid-temperature node, see lib/item-fluid.lua) keeps how it's made and that it flows in pipes
+    [key("fluid-create-temperature", "fluid-temperature")] = true,
+    [key("fluid-hold", "fluid-temperature")] = true,
 }
 
 randomization_info.options.first_pass.always_slot_dep = {
     [key("item", "recipe")] = true,
+    -- Recipes take a fluid position through its temperature ranges
+    [key("fluid-temperature", "fluid-temperature-range")] = true,
 }
 
 unified_options("entity-autoplace").blacklisted_dep = {

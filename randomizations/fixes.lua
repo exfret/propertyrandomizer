@@ -599,20 +599,13 @@ randomizations.fixes = function()
         end
     end]]
 
-    -- Add fluid connections to assembling machines and remove recipes with fluids from crafting category
-    -- TODO: Add fluid connections!
-    for _, recipe in pairs(data.raw.recipe) do
-        if recipe.ingredients ~= nil then
-            for _, ing in pairs(recipe.ingredients) do
-                if ing.type == "fluid" then
-                    if recipe.categories == nil or (#recipe.categories == 1 and recipe.categories[1] == "crafting") then
-                        -- TODO: Properly fix!
-                        -- This is a hotfix for the categories change
-                        --recipe.categories = {"crafting-with-fluid"}
-                    end
-                    break
-                end
-            end
+    -- Recipes with fluids leave hand crafting's category, and mining drills can put out what their resources give (see lib/fluid-ports.lua), with items and fluids trading positions
+    if config.item_fluids then
+        local fluid_ports = require("lib/fluid-ports")
+        local num_recategorized = fluid_ports.fix_fluid_crafting_categories()
+        local num_drills_fitted = fluid_ports.fit_mining_drills()
+        if num_recategorized > 0 or num_drills_fitted > 0 then
+            log("Fluid fixes: " .. num_recategorized .. " recipes with fluids left hand crafting's category, " .. num_drills_fitted .. " mining drills fitted to what their resources give")
         end
     end
 

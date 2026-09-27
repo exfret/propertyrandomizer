@@ -207,3 +207,8 @@ if assm1 ~= nil and assm2 ~= nil then
         end
     end
 end
+
+-- Extra fluid boxes on every crafting machine, for fluids that randomization moves around (see lib/fluid-ports.lua)
+if config.item_fluids then
+    require("lib/fluid-ports").add_crafting_machine_ports()
+end

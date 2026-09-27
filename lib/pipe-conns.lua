@@ -64,17 +64,29 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
     return connections
 end
 
+-- Returns the possible pipe connections (see get_possible_pipe_connections) that don't clash with the prototype's own connections
+-- A pipe connection takes one side of one tile, so a corner tile keeps its other side free (checked headless on 2.1.20: two fluid boxes connecting on one corner tile, facing north and west, were each fed their own fluid and crafted a two-fluid recipe, although FluidBox::pipe_connections says connections can't share positions)
+-- Heat connections and connections given by positions (which move with the entity's direction) take their whole tile
 pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_source)
     ignore_energy_source = ignore_energy_source or false
 
-    local taken_positions = {}
+    -- {position, direction} of each taken side, and positions of wholly taken tiles
+    local taken_sides = {}
+    local taken_tiles = {}
 
+    -- Sides only count separately with items and fluids trading positions (config.item_fluids, whose extra fluid boxes use them); otherwise a connection takes its whole tile, as before
+    local side_aware = config ~= nil and config.item_fluids
     local function add_to_taken(pipe_conn)
         if pipe_conn.position ~= nil then
-            table.insert(taken_positions, pipe_conn.position)
+            table.insert(taken_sides, {position = pipe_conn.position, direction = side_aware and pipe_conn.direction or nil})
         end
         if pipe_conn.positions ~= nil then
-            table.insert(taken_positions, pipe_conn.positions[1])
+            table.insert(taken_tiles, pipe_conn.positions[1])
+        end
+    end
+    local function add_tile_to_taken(connection)
+        if connection.position ~= nil then
+            table.insert(taken_tiles, connection.position)
         end
     end
 
@@ -94,7 +106,7 @@ pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_so
     end
     if prototype.heat_buffer ~= nil and prototype.heat_buffer.connections ~= nil then
         for _, connection in pairs(prototype.heat_buffer.connections) do
-            add_to_taken(connection)
+            add_tile_to_taken(connection)
         end
     end
     if not ignore_energy_source then
@@ -110,11 +122,16 @@ pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_so
             elseif prototype.energy_source.type == "heat" then
                 if prototype.energy_source.connections ~= nil then
                     for _, connection in pairs(prototype.energy_source.connections) do
-                        add_to_taken(connection)
+                        add_tile_to_taken(connection)
                     end
                 end
             end
         end
+    end
+
+    -- Positions can be {x, y} or {x = x, y = y} (MapPosition)
+    local function same_tile(a, b)
+        return math.abs((a.x or a[1]) - (b.x or b[1])) < 1 and math.abs((a.y or a[2]) - (b.y or b[2])) < 1
     end
 
     local connections = pipe_conns.get_possible_pipe_connections(prototype)
@@ -122,8 +139,14 @@ pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_so
     local available_connections = {}
     for _, connection in pairs(connections) do
         local doesnt_collide = true
-        for _, position in pairs(taken_positions) do
-            if math.abs(position[1] - connection.position[1]) < 1 and math.abs(position[2] - connection.position[2]) < 1 then
+        for _, position in pairs(taken_tiles) do
+            if same_tile(position, connection.position) then
+                doesnt_collide = false
+            end
+        end
+        for _, side in pairs(taken_sides) do
+            -- A connection without a direction is taken to use its whole tile
+            if same_tile(side.position, connection.position) and (side.direction == nil or side.direction == connection.direction) then
                 doesnt_collide = false
             end
         end

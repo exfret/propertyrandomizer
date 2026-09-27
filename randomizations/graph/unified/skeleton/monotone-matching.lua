@@ -428,7 +428,8 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
         for _, slot_key in pairs(slots) do
             if slot_key ~= current_slot[trav_key] then
                 local slot = graph.nodes[slot_key]
-                local is_admissible = slot.type == trav.type and params.pair_ok(slot, trav)
+                -- Slots take travs of their own type, or of another type where params.cross_type_ok allows it (items and fluids trading positions, see lib/item-fluid.lua)
+                local is_admissible = (slot.type == trav.type or (params.cross_type_ok ~= nil and params.cross_type_ok(slot, trav))) and params.pair_ok(slot, trav)
                 if is_admissible and requires_launchable[slot_key] and not params.is_launchable(trav_key) then
                     is_admissible = false
                 end
@@ -629,6 +630,7 @@ matching.random_matching = random_matching
 --   unconnected_graph: first pass's split graph with no slot/trav connections
 --   slot_to_base, trav_to_head: first pass's connector nodes
 --   pair_ok(slot, trav): whether the trav can go in the slot (their costs fit, and item reflection's special rules allow it)
+--   cross_type_ok(slot, trav) (optional): whether a trav can go in a slot of another node type at all (pair_ok still has to allow it too); without it, slots only take travs of their own type
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned

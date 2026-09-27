@@ -336,4 +336,45 @@ test("regenerating twice changes nothing", function()
     end
 end)
 
+-- An item can end up made by nothing while another item's recycling has its recycling's name, like an item whose identity became a fluid (lib/item-fluid.lua): gear's position went to cable, cable's to new-item, new-item's to an item a fluid became, and gear itself left the items
+test("an item whose recycling name another item has gets one numbered recycling recipe, however often regeneration runs", function()
+    local old_raw = game(base_recipes(), item_names)
+    local raw = randomize(old_raw)
+    raw.item["fluidling"] = {
+        type = "item",
+        name = "fluidling",
+    }
+    local rename = {
+        gear = "cable",
+        cable = "new-item",
+        ["new-item"] = "fluidling",
+    }
+    for _, recipe in pairs(raw.recipe) do
+        for _, list in pairs({recipe.ingredients or {}, recipe.results or {}}) do
+            for _, material in pairs(list) do
+                material.name = rename[material.name] or material.name
+            end
+        end
+    end
+    local function gear_recycling()
+        local names = {}
+        for name, recipe in pairs(raw.recipe) do
+            if recycling.looks_generated(recipe) and recipe.ingredients[1].name == "gear" then
+                table.insert(names, name)
+            end
+        end
+        table.sort(names)
+        return names
+    end
+    recycling.regenerate(old_raw)
+    local first = gear_recycling()
+    assert(#first == 1 and first[1] == "gear-recycling-2", table.concat(first, ", "))
+    -- The recipe named gear-recycling recycles what took gear's position
+    assert(raw.recipe["gear-recycling"].ingredients[1].name == "cable")
+    recycling.regenerate(old_raw)
+    recycling.regenerate(old_raw)
+    local again = gear_recycling()
+    assert(#again == 1 and again[1] == "gear-recycling-2", table.concat(again, ", "))
+end)
+
 print(num_passed .. " tests passed")

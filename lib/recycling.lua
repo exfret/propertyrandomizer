@@ -232,6 +232,7 @@ local function self_recycling_recipe(raw, item)
 end
 
 -- Whether recipe has the shape the recycler gives every recipe it generates (named after its one item ingredient, only in the recycling category, hidden, and not unlocking its results), which hand-written ones like scrap recycling don't
+-- Regeneration numbers the name when another item's recycling has it ("<item>-recycling-2"), so a numbered name counts too; otherwise the next call wouldn't see the recipe as its own and would make another one for the same item
 recycling.looks_generated = function(recipe)
     if recipe.hidden ~= true or recipe.unlock_results ~= false then
         return false
@@ -242,7 +243,12 @@ recycling.looks_generated = function(recipe)
     if recipe.ingredients == nil or #recipe.ingredients ~= 1 or recipe.ingredients[1].type ~= "item" then
         return false
     end
-    return recipe.name == recipe.ingredients[1].name .. "-recycling"
+    local default_name = recipe.ingredients[1].name .. "-recycling"
+    if recipe.name == default_name then
+        return true
+    end
+    local number = string.sub(recipe.name, #default_name + 2)
+    return string.sub(recipe.name, 1, #default_name + 1) == default_name .. "-" and string.match(number, "^%d+$") ~= nil
 end
 
 -- Recycling name --> what each recipe the recycler would reverse into it makes, by recipe name

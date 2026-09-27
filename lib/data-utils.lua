@@ -119,9 +119,10 @@ end
 -- identity_at: item position name --> name of the item identity assigned there (a permutation of the same names)
 -- Reflection doesn't swap two useless items (see is_useless_item), since that would only change names
 -- A useless identity instead goes to the first position along its cycle whose assigned identity is useless, so non-useless identities always land where they were assigned
+-- is_useless (optional) says which identities are useless, for keys other than item names (item_fluid.is_useless_material takes item and fluid material keys, see lib/item-fluid.lua)
 -- Returns the position where reflection puts identity (assigned to position), or nil if reflection leaves it alone
-dutils.reflected_item_position = function(identity_at, position, identity)
-    local function is_useless(name)
+dutils.reflected_item_position = function(identity_at, position, identity, is_useless)
+    is_useless = is_useless or function(name)
         return dutils.is_useless_item(dutils.get_prot("item", name))
     end
     if is_useless(identity_at[identity]) and is_useless(identity) then
@@ -137,12 +138,12 @@ dutils.reflected_item_position = function(identity_at, position, identity)
     return curr
 end
 
--- The assignment reflection realizes, as item position name --> identity name
+-- The assignment reflection realizes, as item position name --> identity name (is_useless as for reflected_item_position)
 -- It's a permutation that agrees with identity_at on every non-useless identity, and realizing it again changes nothing, so first pass can gate and model this one instead
-dutils.realized_item_assignment = function(identity_at)
+dutils.realized_item_assignment = function(identity_at, is_useless)
     local realized = {}
     for position, identity in pairs(identity_at) do
-        local reflected = dutils.reflected_item_position(identity_at, position, identity)
+        local reflected = dutils.reflected_item_position(identity_at, position, identity, is_useless)
         if reflected ~= nil then
             realized[reflected] = identity
         end

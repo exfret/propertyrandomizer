@@ -17,6 +17,7 @@ local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
+local item_fluid = require("lib/item-fluid")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -77,10 +78,30 @@ local function is_canonical_result(mat_or_recipe_name)
 end
 first_pass.is_canonical_result = is_canonical_result
 
+-- Material cost key of a slot, or of the slot a trav came from: a fluid slot (a fluid-temperature node) is costed as its fluid
+local function cost_key(node_key)
+    local node_parts = gutils.deconstruct(node_key)
+    if node_parts.type == "fluid-temperature" then
+        return key("fluid", gutils.deconstruct(node_parts.name).type)
+    end
+    return node_key
+end
+
+-- The form a slot, or the slot a trav came from, stands for ("item" or "fluid", see lib/item-fluid.lua), or nil for other slots
+local function form_of(node_key)
+    local node_type = gutils.deconstruct(node_key).type
+    if node_type == "item" then
+        return "item"
+    elseif node_type == "fluid-temperature" then
+        return "fluid"
+    end
+    return nil
+end
+
 -- Whether a slot and trav's material costs are close enough to swap them
 local function cost_ok(slot, trav)
-    local slot_cost = material_costs.costs[key(slot)]
-    local trav_cost = material_costs.costs[trav.old_slot]
+    local slot_cost = material_costs.costs[cost_key(key(slot))]
+    local trav_cost = material_costs.costs[cost_key(trav.old_slot)]
     if type(slot_cost) ~= type(trav_cost) then
         return false
     end
@@ -93,8 +114,12 @@ end
 
 -- Whether a trav can go in a slot: their costs fit, and coal's slot only takes travs that item reflection makes the same kind of fuel as coal (see dutils.replacement_gets_fuel)
 -- Fuels with burnt results are a separate kind (see lib/lookup/2-simple/fuel.lua), and the rule doesn't remove burnt results
+-- An identity changing form (an item at a fluid position or the other way around) takes its new position's amounts as they are, so its costs don't have to fit
 local function pair_ok(slot, trav)
-    if not cost_ok(slot, trav) then
+    local slot_form = form_of(key(slot))
+    local trav_form = form_of(trav.old_slot)
+    local changes_form = slot_form ~= nil and trav_form ~= nil and slot_form ~= trav_form
+    if not changes_form and not cost_ok(slot, trav) then
         return false
     end
     if slot.type == "item" and dutils.replacement_gets_fuel(slot.name) then
@@ -176,6 +201,8 @@ first_pass.execute = function(params)
     end
 
     local lab_inputs = dutils.lab_inputs()
+    -- Materials carried around round trips keep their positions (see item_fluid.fluid_slot_ok)
+    local round_trip_materials = config.item_fluids and dutils.round_trips().materials or {}
     local function valid_node_for_first_pass(node_key)
         local subdiv_node = subdiv_graph.nodes[node_key]
         if subdiv_node.spoof then
@@ -207,6 +234,10 @@ first_pass.execute = function(params)
             end
         end
         if ITEM_ENABLED and subdiv_node.type == "item" then
+            return true
+        end
+        -- Fluid positions too, when items and fluids trade positions (see lib/item-fluid.lua)
+        if ITEM_ENABLED and config.item_fluids and item_fluid.fluid_slot_ok(subdiv_graph, subdiv_node, round_trip_materials) then
             return true
         end
         return false
@@ -307,8 +338,39 @@ first_pass.execute = function(params)
         slot_to_base[node_key] = base_head.base
         trav_to_head[key(trav)] = base_head.head
         gutils.remove_edge(split_graph, gutils.ekey(gutils.unique_pre(split_graph, base_head.head)))
+
+        -- A fluid slot's fluid node goes with the identity, but mining that needs the fluid is part of the position (see lib/item-fluid.lua)
+        if node.type == "fluid-temperature" then
+            item_fluid.move_position_deps(split_graph, node_key)
+        end
     end
     test_graph_invariants.test(split_graph)
+
+    -- Items and fluids trading positions (see lib/item-fluid.lua): which travs may go to a position of the other form, and the slot of each item or fluid
+    local can_change_form = {}
+    local slot_of_material = {}
+    local fluid_slot_names = {}
+    for slot_key, _ in pairs(node_in_sorted) do
+        local material = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+        if material ~= nil then
+            slot_of_material[item_fluid.material_key(material)] = slot_key
+            local trav_key = split_graph.nodes[slot_key].old_trav
+            can_change_form[trav_key] = config.item_fluids and item_fluid.can_change_form(split_graph, split_graph.nodes[trav_key])
+            if material.type == "fluid" then
+                table.insert(fluid_slot_names, material.name)
+            end
+        end
+    end
+    if config.item_fluids then
+        local num_can_change_form = 0
+        for _, can in pairs(can_change_form) do
+            if can then
+                num_can_change_form = num_can_change_form + 1
+            end
+        end
+        table.sort(fluid_slot_names)
+        log("First pass: " .. #fluid_slot_names .. " fluid slots (" .. table.concat(fluid_slot_names, ", ") .. "), " .. num_can_change_form .. " identities that can change form")
+    end
 
     local num_slots = 0
     for _, _ in pairs(node_in_sorted) do
@@ -384,23 +446,41 @@ first_pass.execute = function(params)
     -- So, key to position on new, position to key on old
     local mechanics_sets_to_ordered = {}
     local trav_to_mechanics_key = {}
+    local function order_slot(node)
+        local mechanics_set = trav_to_mechanics[node.old_trav]
+        local mechanics_list = {}
+        for mechanic, _ in pairs(mechanics_set) do
+            table.insert(mechanics_list, mechanic)
+        end
+        table.sort(mechanics_list)
+        local mechanics_list_key = gutils.concat(mechanics_list)
+        trav_to_mechanics_key[key(node.type, make_trav_name(node.name))] = mechanics_list_key
+        mechanics_sets_to_ordered[mechanics_list_key] = mechanics_sets_to_ordered[mechanics_list_key] or {}
+        table.insert(mechanics_sets_to_ordered[mechanics_list_key], key(node))
+    end
     -- A node has a pebble per context, but these lists order nodes, so only count each slot once (at its first pebble)
     local is_slot_ordered = {}
     for _, pebble in pairs(init_sort.sorted) do
         local node = split_graph.nodes[pebble.node_key]
         if node.slot and is_slot_ordered[pebble.node_key] == nil then
             is_slot_ordered[pebble.node_key] = true
-            local mechanics_set = trav_to_mechanics[node.old_trav]
-            local mechanics_list = {}
-            for mechanic, _ in pairs(mechanics_set) do
-                table.insert(mechanics_list, mechanic)
-            end
-            table.sort(mechanics_list)
-            local mechanics_list_key = gutils.concat(mechanics_list)
-            trav_to_mechanics_key[key(node.type, make_trav_name(node.name))] = mechanics_list_key
-            mechanics_sets_to_ordered[mechanics_list_key] = mechanics_sets_to_ordered[mechanics_list_key] or {}
-            table.insert(mechanics_sets_to_ordered[mechanics_list_key], key(node))
+            order_slot(node)
         end
+    end
+    -- Slots the sort never reaches (entity positions ranked after everything, see node_in_sorted) come last, in that rank order
+    -- Every slot is then in these lists once, so a trav's place among the travs of its set (mechanics_sets_to_nodes, which counts every trav the final sort reaches) always has a slot
+    local unordered_slots = {}
+    for slot_key, _ in pairs(node_in_sorted) do
+        if is_slot_ordered[slot_key] == nil then
+            table.insert(unordered_slots, slot_key)
+        end
+    end
+    table.sort(unordered_slots, function(a, b)
+        return node_in_sorted[a] < node_in_sorted[b]
+    end)
+    for _, slot_key in pairs(unordered_slots) do
+        is_slot_ordered[slot_key] = true
+        order_slot(split_graph.nodes[slot_key])
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -436,21 +516,29 @@ first_pass.execute = function(params)
             return slot.type == "item" and is_resource_item[slot.name] == true
         end,
         -- Uses the same notion of useless as item reflection, which skips swaps between two useless items
+        -- A fluid identity is never interesting there: it could only become a plain item (see item_fluid.can_change_form)
         is_interesting = function(trav_key)
-            local item = dutils.get_prot("item", gutils.deconstruct(split_graph.nodes[trav_key].old_slot).name)
+            local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+            if identity == nil or identity.type ~= "item" then
+                return false
+            end
+            local item = dutils.get_prot("item", identity.name)
             return item ~= nil and not dutils.is_useless_item(item)
         end,
         -- Item reflection places useless items differently from the matching (see dutils.reflected_item_position), so each matching is replaced by the one reflection realizes before it's gated
+        -- Items and fluids share the rule by their material keys (see item_fluid.useless_predicate)
         realize = function(assignment)
             local identity_at = {}
             for slot_key, trav_key in pairs(assignment) do
-                if split_graph.nodes[slot_key].type == "item" then
-                    identity_at[split_graph.nodes[slot_key].name] = gutils.deconstruct(split_graph.nodes[trav_key].old_slot).name
+                local position = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+                local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+                if position ~= nil and identity ~= nil then
+                    identity_at[item_fluid.material_key(position)] = item_fluid.material_key(identity)
                 end
             end
             local realized = table.deepcopy(assignment)
-            for position, identity in pairs(dutils.realized_item_assignment(identity_at)) do
-                realized[key("item", position)] = split_graph.nodes[key("item", identity)].old_trav
+            for position_key, identity_key in pairs(dutils.realized_item_assignment(identity_at, item_fluid.useless_predicate(identity_at))) do
+                realized[slot_of_material[position_key]] = split_graph.nodes[slot_of_material[identity_key]].old_trav
             end
             return realized
         end,
@@ -465,6 +553,17 @@ first_pass.execute = function(params)
         slot_to_base = slot_to_base,
         trav_to_head = trav_to_head,
     }, assignment)
+    if config.item_fluids then
+        local num_changed_form = 0
+        for slot_key, trav_key in pairs(assignment) do
+            local position = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+            local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+            if position ~= nil and identity ~= nil and position.type ~= identity.type then
+                num_changed_form = num_changed_form + 1
+            end
+        end
+        log("First pass: " .. num_changed_form .. " identities changed form (items and fluids trading positions)")
+    end
     local ordered_sort = top.sort(split_graph, nil, nil, {
         choose_randomly = true,
         complex_contexts = true,

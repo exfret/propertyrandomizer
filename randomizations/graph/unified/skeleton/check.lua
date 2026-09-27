@@ -6,6 +6,8 @@
 local top = require("lib/graph/context-sort")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local furnace_selection = require("lib/furnace-selection")
+local item_fluid = require("lib/item-fluid")
+local logic = require("lib/logic/init")
 
 local check = {}
 
@@ -36,11 +38,18 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
     local num_checked = 0
     local lost = {}
     local num_hard_lost = 0
+    -- Nodes named after an item or fluid are named after the identity at its position in the final game, since item reflection renames them (see item_fluid.final_node_key)
+    local function final_key(node_key)
+        if not config.item_fluids then
+            return node_key
+        end
+        return item_fluid.final_node_key(node_key, UNIFIED_MATERIAL_RENAMES, logic.type_info)
+    end
     for node_key, init_context_inds in pairs(init_sort_info.node_to_context_inds) do
-        local node = graph.nodes[node_key]
+        local node = graph.nodes[final_key(node_key)]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             local final_kept = {}
-            for context, _ in pairs(final_sort_info.node_to_context_inds[node_key] or {}) do
+            for context, _ in pairs(final_sort_info.node_to_context_inds[final_key(node_key)] or {}) do
                 final_kept[protection.kept_part(node, context)] = true
             end
             local is_checked = {}
@@ -83,13 +92,15 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
 
     -- Promised pebbles missing from the final game show where promotion's model and the reflected game disagree
     -- Item-derived nodes (item, item-craft, item-launch, entity-build-item, ...) are skipped since first pass renames items: the model keys them by position, the final game by the item now at that position
+    -- Nodes named after fluids (fluid, fluid-temperature, fluid-create, ..., and mining-fluid bases) are skipped for the same reason, since first pass renames fluids too (see lib/item-fluid.lua)
     local num_hard_missing = 0
     if UNIFIED_PROMISED_PEBBLES ~= nil then
         local num_compared = 0
         local mismatches = {}
         for _, pebble in pairs(UNIFIED_PROMISED_PEBBLES) do
             local node = graph.nodes[pebble.node_key]
-            if node ~= nil and string.find(node.type, "item", 1, true) == nil then
+            local named_after_fluid = config.item_fluids and (string.sub(node ~= nil and node.type or "", 1, 5) == "fluid" or (node ~= nil and node.type == "mining-fluid"))
+            if node ~= nil and string.find(node.type, "item", 1, true) == nil and not named_after_fluid then
                 num_compared = num_compared + 1
                 local final_contexts = final_sort_info.node_to_context_inds[pebble.node_key] or {}
                 if final_contexts[pebble.context] == nil then
@@ -141,11 +152,11 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
                     earliest = ind
                 end
             end
-            if earliest ~= nil and next(final_sort_info.node_to_context_inds[node_key] or {}) == nil and graph.nodes[node_key] ~= nil then
-                local node_type = graph.nodes[node_key].type
+            if earliest ~= nil and next(final_sort_info.node_to_context_inds[final_key(node_key)] or {}) == nil and graph.nodes[final_key(node_key)] ~= nil then
+                local node_type = graph.nodes[final_key(node_key)].type
                 if node_type == "item" or node_type == "fluid" or node_type == "recipe" or node_type == "entity" or node_type == "technology" then
                     table.insert(newly_unreachable, {
-                        key = node_key,
+                        key = final_key(node_key),
                         ind = earliest,
                     })
                 end

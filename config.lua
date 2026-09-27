@@ -83,6 +83,10 @@ config.item_percent_randomized = settings.startup["propertyrandomizer-item-perce
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 -- Whether the unified randomizations still in development run (see settings.lua)
 config.dev_unified = settings.startup["propertyrandomizer-dev-unified"].value
+-- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity takes its new position's form (see lib/item-fluid.lua)
+-- It also gives crafting machines extra fluid boxes (lib/fluid-ports.lua); in development, so it would be on with the other unified randomizations still in development (config.dev_unified)
+-- Off while the user playtests the rest (2026-09-27): everything it touches behaves as before it while this is false
+config.item_fluids = false
 
 config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value

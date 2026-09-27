@@ -382,7 +382,8 @@ unified.execute = function()
         for dep_ind, dep in pairs(sorted_deps) do
             local trav_key = first_pass_info.slot_to_trav[dep]
             -- Dep might not have been a slot, in which case it stays the same
-            if trav_key ~= nil then
+            -- An identity from a slot that isn't a dep here (an item at a fluid position, see lib/item-fluid.lua) leaves it too
+            if trav_key ~= nil and dep_to_heads[first_pass_info.graph.nodes[trav_key].old_slot] ~= nil then
                 local trav = first_pass_info.graph.nodes[trav_key]
                 sorted_deps[dep_ind] = trav.old_slot
             end
