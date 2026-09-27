@@ -20,6 +20,9 @@ package.loaded["lib/graph/context-sort"] = {
     context_without_home = function(context)
         return string.match(context, "^(.-) @ ") or context
     end,
+    context_key = function(room, ability_str)
+        return room .. " | " .. ability_str
+    end,
 }
 data = {
     raw = {
@@ -242,6 +245,52 @@ test("a recipe locked to one planet by surface conditions keeps every context it
         assert(node_key == "recipe: locked", node_key .. " isn't locked")
     end
     data.raw.recipe = nil
+end)
+
+test("recipe contexts a planetary change carried over are kept too, but only where the sort has them", function()
+    data.raw.recipe = {
+        moved = {
+            name = "moved",
+        },
+    }
+    local graph = {
+        nodes = {
+            ["recipe: moved"] = {
+                type = "recipe",
+                name = "moved",
+            },
+        },
+    }
+    local nci = {
+        ["recipe: moved"] = {
+            ["planet: rock | 01"] = 1,
+            ["planet: sand | 01"] = 2,
+        },
+    }
+    protection.transported_recipe_contexts = {
+        ["recipe: moved"] = {
+            ["planet: sand | 01"] = true,
+            ["planet: ice | 01"] = true,
+        },
+    }
+    local locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    protection.transported_recipe_contexts = {}
+    assert(locked["recipe: moved"]["planet: sand | 01"], "a carried-over context the sort has isn't kept")
+    assert(locked["recipe: moved"]["planet: ice | 01"] == nil, "a carried-over context the sort doesn't have is kept")
+    assert(locked["recipe: moved"]["planet: rock | 01"] == nil, "a recipe on two planets without surface conditions is locked")
+    data.raw.recipe = nil
+end)
+
+test("a context without isolatability keeps its other abilities, in its own room or a new one (goal transport)", function()
+    assert(protection.without_isolatability("planet: rock | 11") == "planet: rock | 01")
+    assert(protection.without_isolatability("planet: rock | 10") == "planet: rock | 00")
+    assert(protection.without_isolatability("planet: rock | 11", "planet: sand") == "planet: sand | 01")
+    assert(protection.without_isolatability("planet: rock") == "planet: rock", "a simple context is just its room")
+    assert(protection.without_isolatability("planet: rock", "planet: sand") == "planet: sand")
+    -- An unprotected mechanic's isolatable context is kept the same way
+    assert(protection.planetary_kept_context({}, "planet: rock | 11", {}) == "planet: rock | 01")
 end)
 
 print(num_passed .. " tests passed")

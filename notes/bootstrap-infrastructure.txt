@@ -34,3 +34,14 @@ So it's left out: it would cost about 3 extra sorts per logic build and change n
 It would matter when randomization creates a cycle only machines can break, like a building whose recipe needs something only that building makes, in a category the character can't craft.
 If that shows up, add it in logic.build.
 The set it finds goes stale as randomization changes recipes, but the final check rebuilds logic and recomputes it.
+
+Added for planetary freezing moves (2026-09-26, session f4, at a8's request)
+ * Case: freezing moved to Vulcanus or Gleba. The heating tower needs concrete (recipe.lua:2369-2378), concrete needs an assembler (fluid ingredient), and assemblers freeze (heating_energy 100kW, space-age/base-data-updates.lua). So only a delivered first tower breaks the cycle.
+ * Implemented: lib/logic/bootstrap.lua, run from logic.build after graph_setup, on candidates built in concrete.lua (entity-own-bootstrap = entity-build with [1]=true AND entity-own-bootstrap-rooms, a third option of entity-own-operable).
+ * Scope: heat producers (categories.heat_producers) in the rooms lutils.bootstrap_heat_rooms names, which randomizations/planetary/freezing.lua sets to the planets a move made freeze. Vanilla Aquilo gets no candidates, so vanilla and every load without a freezing move pay nothing.
+ * Cost: 1 extra sort per logic build while a freezing move is in the game (seeds 1-3: it kept the heating tower and nuclear reactor on Vulcanus and Gleba in 1 iteration; Fulgora keeps none, since it can't make towers).
+ * Also changed: freezing is now heating_energy > 0 (EntityPrototype::heating_energy), no longer "not burner/heat powered". Characters and electric poles no longer freeze.
+ * Warmth bootstraps too (user, 2026-09-26: "a handfed start as long as eventually no handfeeding is necessary is fine"). Drills, belts and inserters freeze, so automated fuel needs heat and automated heat needs automated fuel, which the logic's least fixpoint can't start.
+   - Candidate edges room --> warmth (bootstrap_warmth, lib/logic/abstract.lua) for the same rooms.
+   - A room keeps its edge only if heat is isolatable there in a sort without any warmth grant (a start by hand), and heat is isolatable and automatable there with the remaining grants (it keeps itself going).
+ * Result (seeds 1-3, freezing only): freezing moved to Vulcanus and Gleba passes PLANETCHECK with 0 failures. Fulgora is rejected, since heat can't be started there. Cost: 2-3 sorts per logic build while a freezing move is in the game.

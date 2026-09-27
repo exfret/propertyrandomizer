@@ -742,6 +742,90 @@ top.home_sets = function(graph)
     return home_sets, undiscovered
 end
 
+-- Home sets both given home sets agree on: each room's home set is the rooms in both (a room only one of them has keeps that one's)
+-- A smaller home set grants less (see discover_home_rooms), so after a change to the game (like a planetary one) that may change which rooms discoveries need, this is the careful choice (notes/context-shift-report, the remark on home sets)
+-- Returns home sets like top.home_sets does
+top.intersect_home_sets = function(a, b)
+    local needs_of_room = {}
+    local rooms = {}
+    for room, _ in pairs(a.of) do
+        rooms[room] = true
+    end
+    for room, _ in pairs(b.of) do
+        rooms[room] = true
+    end
+    for room, _ in pairs(rooms) do
+        local a_rooms = a.of[room] ~= nil and a.sets[a.of[room]].rooms or nil
+        local b_rooms = b.of[room] ~= nil and b.sets[b.of[room]].rooms or nil
+        local needs = {}
+        for needed, _ in pairs(a_rooms or b_rooms) do
+            if a_rooms == nil or b_rooms == nil or (a_rooms[needed] ~= nil and b_rooms[needed] ~= nil) then
+                needs[needed] = true
+            end
+        end
+        needs_of_room[room] = needs
+    end
+    -- Group rooms with the same needs, numbered in a fixed order (by their needs, then their rooms)
+    local rooms_with_needs = {}
+    local needs_of_text = {}
+    for room, needs in pairs(needs_of_room) do
+        local text = table.concat(sorted_keys(needs), "\n")
+        if rooms_with_needs[text] == nil then
+            rooms_with_needs[text] = {}
+            needs_of_text[text] = needs
+        end
+        rooms_with_needs[text][room] = true
+    end
+    local texts = sorted_keys(rooms_with_needs)
+    local home_sets = {
+        ids = {},
+        sets = {},
+        of = {},
+    }
+    for i, text in pairs(texts) do
+        local home_id = "home" .. tostring(i)
+        table.insert(home_sets.ids, home_id)
+        home_sets.sets[home_id] = {
+            rooms = needs_of_text[text],
+            discovered = rooms_with_needs[text],
+        }
+        for room, _ in pairs(rooms_with_needs[text]) do
+            home_sets.of[room] = home_id
+        end
+    end
+    return home_sets
+end
+
+-- Whether two home sets give every room the same rooms (ids aside)
+top.same_home_sets = function(a, b)
+    for _, sets in pairs({
+        {
+            a,
+            b,
+        },
+        {
+            b,
+            a,
+        },
+    }) do
+        local x = sets[1]
+        local y = sets[2]
+        for room, home_id in pairs(x.of) do
+            if y.of[room] == nil then
+                return false
+            end
+            local x_rooms = x.sets[home_id].rooms
+            local y_rooms = y.sets[y.of[room]].rooms
+            for needed, _ in pairs(x_rooms) do
+                if y_rooms[needed] == nil then
+                    return false
+                end
+            end
+        end
+    end
+    return true
+end
+
 -- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file
 -- Cached as complex --> home sets (false for none) --> context info
 local context_info_cache = {}

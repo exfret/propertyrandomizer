@@ -492,6 +492,10 @@ function concrete.build(lu, extra_params)
                 -- TODO: Heating energy const
                 add_edge("warmth", "")
             end
+            -- Buildings (placed by items) lightning can damage need to be safe from it (lightning-safe, in lib/logic/abstract.lua)
+            if lu.buildables[key(entity)] ~= nil and lutils.lightning_endangered(entity) then
+                add_edge("lightning-safe", "")
+            end
             local base_name
             if string.len(entity.name) >= 6 then
                 if string.sub(entity.name, -5, -3) == "-mk" then
@@ -529,6 +533,34 @@ function concrete.build(lu, extra_params)
                 })
                 -- Makes this only apply in space surface contexts
                 add_edge("space-surface", "")
+
+                -- Bootstrap infrastructure on planets (see notes/bootstrap-infrastructure.txt): operating a delivered building counts as local in a room that can then make the building itself
+                -- Only for the rooms lutils.bootstrap_rooms names for this entity (heat sources on planets a planetary change made freeze); lib/logic/bootstrap.lua prunes the rooms that can't make it
+                local bootstrap_rooms = lutils.bootstrap_rooms(entity)
+                if next(bootstrap_rooms) ~= nil then
+                    -- A third way to have it operable (entity-own-operable is declared above, so the edge names it)
+                    add_edge("entity-own-bootstrap", nil, { amount = 1 }, "entity-own-operable", entity.name)
+
+                    ----------------------------------------
+                    add_node("entity-own-bootstrap", "AND")
+                    ----------------------------------------
+                    -- Is this a delivered building in a room that can make more of it, so operating it there counts as local?
+
+                    add_edge("entity-build", entity.name, {
+                        abilities = { [1] = true },
+                        amount = 1,
+                    })
+                    add_edge("entity-own-bootstrap-rooms", nil)
+
+                    ----------------------------------------
+                    add_node("entity-own-bootstrap-rooms", "OR")
+                    ----------------------------------------
+                    -- Which rooms can make more of this building once one is delivered? (pruned in lib/logic/bootstrap.lua)
+
+                    for _, room_key in pairs(bootstrap_rooms) do
+                        add_edge("room", room_key)
+                    end
+                end
             end
 
             if operability_modules ~= nil then

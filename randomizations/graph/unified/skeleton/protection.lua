@@ -47,8 +47,14 @@ protection.kept_part = function(node, context)
     return kept
 end
 
+-- Recipe contexts a planetary change carried over to where they must be kept now, as node key --> context --> true
+-- Like a recipe whose planet lock moved staying automatable on its new planet (randomizations/planetary/check.lua's goal transport), when it also still works on its old planet, so it isn't locked to one planet below
+-- The planetary stage sets these once its changes are final; the rest of randomization keeps them like planet-locked recipes' contexts
+protection.transported_recipe_contexts = {}
+
 -- Recipes locked to one planet by their surface conditions keep every context they have there, isolatable and automatable included, through all randomization, planetary changes included
 -- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform)
+-- Contexts in protection.transported_recipe_contexts that the sort has are kept too
 -- The graph and sort_info are a logic graph and a complex sort of it, and prototypes come from data.raw, so call this while data.raw is the game that was sorted
 -- Home contexts aren't kept for their own sake, as for planetary_kept_context below
 -- Returns node key --> context --> true
@@ -78,6 +84,14 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
             end
         end
     end
+    for node_key, contexts in pairs(protection.transported_recipe_contexts) do
+        for context, _ in pairs(contexts) do
+            if (sort_info.node_to_context_inds[node_key] or {})[context] ~= nil then
+                locked[node_key] = locked[node_key] or {}
+                locked[node_key][context] = true
+            end
+        end
+    end
     return locked
 end
 
@@ -98,8 +112,19 @@ protection.planetary_kept_context = function(node, context, moved_features)
     if node.keep_planetary_isolatability == true or not protection.is_isolatable_context(context) then
         return context
     end
+    return protection.without_isolatability(context)
+end
+
+-- The context with the same abilities but isolatability, in room (default: the context's own room), like "room | 11" --> "room | 01"
+-- Anything reachable isolatably is also reachable without isolatability, so this pebble exists whenever the original does (in the same room)
+protection.without_isolatability = function(context, room)
     local abilities = top.context_abilities(context)
-    return top.context_key(top.context_room(context), string.sub(abilities, 1, top.ISOLATABILITY - 1) .. "0" .. string.sub(abilities, top.ISOLATABILITY + 1))
+    room = room or top.context_room(context)
+    -- A simple context is just its room
+    if abilities == nil then
+        return room
+    end
+    return top.context_key(room, string.sub(abilities, 1, top.ISOLATABILITY - 1) .. "0" .. string.sub(abilities, top.ISOLATABILITY + 1))
 end
 
 return protection

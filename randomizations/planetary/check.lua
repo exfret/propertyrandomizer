@@ -15,7 +15,7 @@ local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local check = {}
 
--- Home sets of the game before any planetary change, kept fixed for every later sort, and handed to the rest of randomization as logic.home_sets while the changes are in the game (planetary.home_sets)
+-- Home sets of the game before any planetary change, kept for every later sort (narrowed only by recheck_home_sets in execute.lua), and handed to the rest of randomization as logic.home_sets while the changes are in the game (planetary.home_sets)
 check.home_sets = nil
 
 -- Builds the logic from the current data.raw and sorts it with room/ability contexts and home contexts
@@ -25,17 +25,22 @@ check.num_sorts = 0
 
 check.sort = function(logic)
     check.num_sorts = check.num_sorts + 1
-    logic.build(true)
+    logic.build(true, {
+        home_sets = check.home_sets,
+    })
     if check.home_sets == nil then
         check.home_sets = top.home_sets(logic.graph)
     end
+    local sort_info = top.sort(logic.graph, nil, nil, {
+        complex_contexts = true,
+        home_contexts = true,
+        home_sets = check.home_sets,
+    })
     return {
         graph = logic.graph,
-        sort_info = top.sort(logic.graph, nil, nil, {
-            complex_contexts = true,
-            home_contexts = true,
-            home_sets = check.home_sets,
-        }),
+        sort_info = sort_info,
+        -- Found now, while data.raw is the game that was sorted (planet_locked_recipe_contexts reads recipes' surface conditions)
+        planet_locked = protection.planet_locked_recipe_contexts(logic.graph, sort_info),
     }
 end
 
@@ -145,6 +150,42 @@ end
 -- Each stage adds its own: ocean swaps move offshore fluids ("oceans"), and resource swaps move resource categories ("resources")
 check.moved_features = {}
 
+-- Goal transport, for goals that follow something a planetary change moved to another room (like a recipe whose planet lock moved, see randomizations/planetary/locks.lua)
+-- node key --> { map = old room --> new room, keep_isolatability = whether the goal stays isolatable in the new room }
+-- Without keep_isolatability, a transported goal keeps its automatability but not its isolatability: it may use imports in the new room (right for a lock, whose planet's resources don't move with it)
+-- Every consumer of the goals (check.required_failures, check.transported_goals for superposed mode, and so first pass and promotion) reads them through check.transported_context, so they all agree
+check.transport = {}
+
+-- The context a goal of node_key in context must be kept in after planetary changes (itself, unless check.transport moves its room)
+check.transported_context = function(node_key, context)
+    local entry = check.transport[node_key]
+    local new_room = entry ~= nil and entry.map[top.context_room(context)] or nil
+    if new_room == nil then
+        return context
+    end
+    if entry.keep_isolatability then
+        local abilities = top.context_abilities(context)
+        if abilities == nil then
+            return new_room
+        end
+        return top.context_key(new_room, abilities)
+    end
+    return protection.without_isolatability(context, new_room)
+end
+
+-- Rule 2's goals: planet-locked recipes of the game before planetary changes (before, a sort from check.sort) keep every context they had on their planet, transported where their lock moved
+-- Returns node key --> context --> true
+check.planet_locked_goals = function(before)
+    local goals = {}
+    for node_key, contexts in pairs(before.planet_locked or protection.planet_locked_recipe_contexts(before.graph, before.sort_info)) do
+        goals[node_key] = {}
+        for context, _ in pairs(contexts) do
+            goals[node_key][check.transported_context(node_key, context)] = true
+        end
+    end
+    return goals
+end
+
 -- What check.required finds missing, as data: each failure has text (for the log), keys (node keys, any of which counts) and context (nil for any context)
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
 check.required_failures = function(before, after, variants_of)
@@ -165,9 +206,9 @@ check.required_failures = function(before, after, variants_of)
         end
     end
 
-    -- 2. Planet-locked recipes keep every context they had on their planet (isolatable and automatable included; see protection.planet_locked_recipe_contexts), as themselves or as a variant
+    -- 2. Planet-locked recipes keep every context they had on their planet (isolatable and automatable included; see protection.planet_locked_recipe_contexts), as themselves or as a variant, and follow their lock where it moved (check.planet_locked_goals)
     -- Exact contexts matter: one-off sources like hand-mined rocks or spawner eggs keep a recipe isolatable while losing its automatable, renewable route
-    for node_key, contexts in pairs(protection.planet_locked_recipe_contexts(before.graph, before.sort_info)) do
+    for node_key, contexts in pairs(check.planet_locked_goals(before)) do
         local keys = {
             node_key,
         }
@@ -215,7 +256,7 @@ end
 -- Rule 1 (every recipe stays reachable somewhere) isn't about any one context, so it isn't in it
 check.transported_goals = function(before)
     local goals = check.transported_mechanic_goals(before)
-    for node_key, contexts in pairs(protection.planet_locked_recipe_contexts(before.graph, before.sort_info)) do
+    for node_key, contexts in pairs(check.planet_locked_goals(before)) do
         goals[node_key] = goals[node_key] or {}
         for context, _ in pairs(contexts) do
             goals[node_key][context] = true
@@ -233,9 +274,13 @@ check.transported_mechanic_goals = function(before)
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             for context, _ in pairs(contexts) do
                 local kept = protection.planetary_kept_context(node, context, check.moved_features)
+                -- A node of a moved feature keeps nothing where it was, but if its goals follow the feature (a check.transport entry, like lightning power following lightning), it keeps them where the feature went
+                if kept == nil and check.transport[node_key] ~= nil then
+                    kept = protection.planetary_kept_context(node, context, {})
+                end
                 if kept ~= nil then
                     goals[node_key] = goals[node_key] or {}
-                    goals[node_key][kept] = true
+                    goals[node_key][check.transported_context(node_key, kept)] = true
                 end
             end
         end

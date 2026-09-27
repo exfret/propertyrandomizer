@@ -76,6 +76,11 @@ config.entity_randomization = settings.startup["propertyrandomizer-unified-entit
 config.entity_biters = settings.startup["propertyrandomizer-unified-entity-biters"].value
 config.planetary_oceans = settings.startup["propertyrandomizer-planetary-oceans"].value
 config.planetary_resources = settings.startup["propertyrandomizer-planetary-resources"].value
+config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value
+config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freezing"].value
+config.planetary_locks = settings.startup["propertyrandomizer-planetary-locks"].value
+-- Whether any planetary stage is on (randomizations/planetary/execute.lua)
+config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100

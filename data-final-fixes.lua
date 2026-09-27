@@ -99,7 +99,7 @@ end
 require("randomizations/prefixes")
 
 -- Planetary randomization goes first, so the rest of randomization and its checks treat the changed world as the starting point
-if config.planetary_oceans or config.planetary_resources then
+if config.planetary then
     require("randomizations/planetary/execute").execute(new_logic)
 end
 
@@ -116,7 +116,7 @@ local top = require("lib/graph/context-sort")
 new_logic.build(true)
 -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
 -- With planetary changes in the game, they're the ones planetary's goals were made with
-local planetary_home_sets = (config.planetary_oceans or config.planetary_resources) and require("randomizations/planetary/execute").home_sets()
+local planetary_home_sets = config.planetary and require("randomizations/planetary/execute").home_sets()
 new_logic.home_sets = planetary_home_sets or top.home_sets(new_logic.graph)
 local init_sort_info = top.sort(new_logic.graph)
 -- With room/ability contexts (isolatability, automatability), for the mechanic context check at the end
@@ -167,7 +167,7 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
 end
 
 -- Planetary changes in superposed mode are settled once the rest of randomization is done (see randomizations/planetary/execute.lua)
-if config.planetary_oceans or config.planetary_resources then
+if config.planetary then
     require("randomizations/planetary/execute").settle(new_logic)
 end
 
@@ -370,7 +370,7 @@ local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
 -- A game that lost something a player needs could softlock, so the randomizer panel tells the player (reachability data below); a startup error would make them reset their settings
 local final_check_ok = require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_complex_sort_info, final_complex_sort_info).ok
 -- What planetary changes kept, checked against the game before them (only logged for now, as PLANETCHECK final)
-if config.planetary_oceans or config.planetary_resources then
+if config.planetary then
     require("randomizations/planetary/execute").check_final(new_logic.graph)
 end
 

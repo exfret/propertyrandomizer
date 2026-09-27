@@ -330,6 +330,27 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-planetary-lightning",
+        default_value = false,
+        order = "f-e[planetary-lightning]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-freezing",
+        default_value = false,
+        order = "f-f[planetary-freezing]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-locks",
+        default_value = false,
+        order = "f-g[planetary-locks]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-icon",
         default_value = false,
         order = "g-a[icon]",

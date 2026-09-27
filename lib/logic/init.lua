@@ -99,6 +99,7 @@ local compat_pyfull = require(lib_name .. "/logic/compat/pyfull")
 local compat_spaceage = require(lib_name .. "/logic/compat/spaceage")
 local compat_spaceexploration = require(lib_name .. "/logic/compat/spaceexploration")
 local graph_setup = require(lib_name .. "/logic/graph-setup")
+local bootstrap = require(lib_name .. "/logic/bootstrap")
 
 local key = gutils.key
 
@@ -236,6 +237,15 @@ logic.build = function(ignore_balance_nodes, extra_params)
 ----------------------------------------------------------------------------------------------------
 
     graph_setup.build(logic)
+
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- Bootstrap infrastructure
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+
+    -- Delivered buildings count as local only where the room can then make them (lib/logic/bootstrap.lua); extra_params.home_sets are the home sets to judge that with
+    bootstrap.prune(logic, extra_params.home_sets)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

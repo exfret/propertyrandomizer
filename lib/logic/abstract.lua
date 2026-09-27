@@ -250,6 +250,8 @@ function abstract.build(lu, extra_params)
         canonical = "energy-source-electric-production-lightning",
         mechanic = true,
         keep_planetary_isolatability = true,
+        -- Lightning power follows lightning when a planetary change moves it (randomizations/planetary/lightning.lua)
+        planetary_feature = "lightning",
     })
     ----------------------------------------
     -- Can we produce power from lightning?
@@ -263,6 +265,8 @@ function abstract.build(lu, extra_params)
         canonical = "energy-source-electric-production-lightning",
         mechanic = true,
         keep_planetary_isolatability = true,
+        -- Lightning power follows lightning when a planetary change moves it (randomizations/planetary/lightning.lua)
+        planetary_feature = "lightning",
     })
     ----------------------------------------
     -- Can we see lightning in the air?
@@ -282,6 +286,8 @@ function abstract.build(lu, extra_params)
         canonical = "energy-source-electric-production-lightning",
         mechanic = true,
         keep_planetary_isolatability = true,
+        -- Lightning power follows lightning when a planetary change moves it (randomizations/planetary/lightning.lua)
+        planetary_feature = "lightning",
     })
     ----------------------------------------
     -- Can we capture lightning?
@@ -290,6 +296,34 @@ function abstract.build(lu, extra_params)
     for _, attractor in pairs(prots("lightning-attractor")) do
         if attractor.efficiency > 0 then
             add_edge("entity-operate", attractor.name)
+        end
+    end
+
+    ----------------------------------------
+    add_node("lightning-safe", "OR", nil, "", {
+        canonical = "lightning-safe",
+        mechanic = true,
+    })
+    ----------------------------------------
+    -- Are buildings here safe from lightning? (Buildings lightning can damage need this to operate, see lutils.lightning_endangered)
+    -- A room without lightning is safe as it is; a planet with lightning is safe once a lightning attractor is built there
+    -- Building an attractor is a one-time cost, like building on a space platform, so it doesn't count against the room's isolatability or automatability even when the attractor was delivered
+    -- The hazard is an OR over rooms like warmth, so a planetary change moving lightning only adds and removes edges into OR nodes (see lib/graph/superpose.lua)
+    -- It isn't a planetary feature: every room stays safe through planetary changes, so a planet lightning moves to must be able to build attractors
+
+    for room_key, room in pairs(lu.rooms) do
+        if room.type ~= "control" and data.raw[room.type][room.name].lightning_properties == nil then
+            add_edge("room", room_key)
+        end
+    end
+    for _, attractor in pairs(prots("lightning-attractor")) do
+        if lu.buildables[key(attractor)] ~= nil then
+            add_edge("entity-build", attractor.name, {
+                abilities = {
+                    [1] = true,
+                    [2] = true,
+                },
+            })
         end
     end
 
@@ -498,6 +532,15 @@ function abstract.build(lu, extra_params)
         end
     end
     add_edge("energy-source-heat", "")
+    -- Bootstrap (see notes/bootstrap-infrastructure.txt): a room that freezes counts as warm if heat, once started by hand there, keeps itself going without hand-feeding
+    -- Candidates are the rooms lutils.bootstrap_heat_rooms names (planets a planetary change made freeze); lib/logic/bootstrap.lua prunes the rooms where that doesn't hold
+    for room_key, _ in pairs(lutils.bootstrap_heat_rooms) do
+        if data.raw.planet[gutils.deconstruct(room_key).name] ~= nil and data.raw.planet[gutils.deconstruct(room_key).name].entities_require_heating then
+            add_edge("room", room_key, {
+                bootstrap_warmth = true,
+            })
+        end
+    end
 
     ----------------------------------------
     add_node("thruster", "OR", nil, "", { canonical = "spaceship", mechanic = true })
