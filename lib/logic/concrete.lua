@@ -1257,16 +1257,6 @@ function concrete.build(lu, extra_params)
 
     set_class("item")
 
-    -- Items a space platform starter pack puts in the hub, which every platform has from the start
-    local is_starter_pack_item = {}
-    for _, starter_pack in pairs(data.raw["space-platform-starter-pack"] or {}) do
-        for _, item_entry in pairs(starter_pack.initial_items or {}) do
-            if item_entry.type == nil or item_entry.type == "item" then
-                is_starter_pack_item[item_entry.name] = true
-            end
-        end
-    end
-
     local lab_inputs = dutils.lab_inputs()
     for _, item in pairs(lu.items) do
         set_prot(item)
@@ -1299,10 +1289,6 @@ function concrete.build(lu, extra_params)
                 else
                     minable_amount = minable.count or 1
                 end
-                -- Ignore tiles for now
-                if minable_thing.type == "tile-mine" then
-                    minable_amount = nil
-                end
                 add_edge(minable_thing.type, minable_prot.name, {
                     inds = inds,
                     amount = minable_amount,
@@ -1318,12 +1304,6 @@ function concrete.build(lu, extra_params)
                 abilities = { [1] = false },
                 amount = 1,
                 -- TODO: Deliver cost
-            })
-        end
-        -- Starter pack contents are there on every space platform from the start, so they don't break isolatability there even though more of them is delivered
-        if is_starter_pack_item[item.name] then
-            add_edge("space-surface", "", {
-                abilities = { [1] = true },
             })
         end
         -- Edge from items that spoil into this item
@@ -1962,6 +1942,25 @@ function concrete.build(lu, extra_params)
 
     set_class("tile")
 
+    -- How many of an item placing a tile uses: what mining the tile gives back of it, or one if mining it doesn't give that item
+    local function tile_item_amount(tile, item_name)
+        if tile.minable ~= nil then
+            local amount
+            if tile.minable.results ~= nil then
+                amount = cutils.find_amount_in_ing_or_prod(tile.minable.results, {
+                    type = "item",
+                    name = item_name,
+                })
+            elseif tile.minable.result == item_name then
+                amount = tile.minable.count or 1
+            end
+            if amount ~= nil and amount > 0 then
+                return amount
+            end
+        end
+        return 1
+    end
+
     for _, tile in pairs(prots("tile")) do
         set_prot(tile)
 
@@ -1980,8 +1979,9 @@ function concrete.build(lu, extra_params)
         end
         local buildable = lu.buildables[key(tile)]
         if buildable ~= nil then
-            add_edge("tile-build")
-            add_edge("tile-build-space")
+            -- One build makes one tile (costs follow edge amounts, see lib/cost/graph-cost.lua; without them a built tile would be free, and mining it back a free source of its item)
+            add_edge("tile-build", nil, { amount = 1 })
+            add_edge("tile-build-space", nil, { amount = 1 })
 
             ----------------------------------------
             add_node("tile-build-space", "AND")
@@ -2004,7 +2004,7 @@ function concrete.build(lu, extra_params)
             local tile_items = lu.place_as_tile_items[tile.name]
             if tile_items ~= nil then
                 for item_name, _ in pairs(tile_items) do
-                    add_edge("tile-build-item-place-as-tile", concat({tile.name, item_name}))
+                    add_edge("tile-build-item-place-as-tile", concat({tile.name, item_name}), { amount = 1 })
                 end
             end
 
@@ -2032,7 +2032,8 @@ function concrete.build(lu, extra_params)
                     -- Can we build this tile with this specific item?
                     -- Requires: item + valid placement tiles for this item's condition
 
-                    add_edge("item", item_name)
+                    -- Placing the tile uses up the item: as many as mining the tile gives back (MinableProperties), or one if mining it doesn't give this item
+                    add_edge("item", item_name, { amount = tile_item_amount(tile, item_name) })
                     add_edge("tile-build-item-place-as-tile-condition", compound_key)
 
                     ----------------------------------------
@@ -2113,7 +2114,8 @@ function concrete.build(lu, extra_params)
             -- Can we mine this tile?
 
             -- We could also add the condition of needing either robots or the ability to hold a tile in your hand, but that seems not worth it
-            add_edge("tile")
+            -- Mining takes the tile up
+            add_edge("tile", nil, { amount = 1 })
         end
     end
 
