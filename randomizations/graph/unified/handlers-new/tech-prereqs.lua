@@ -44,7 +44,6 @@ tech_prereqs.reflect = function(graph, head_to_base, head_to_handler)
 
     -- Finally, add prerequisites corresponding to base for each head
     -- already_added just safeguards us against accidentally adding a prereq twice, which isn't checked in validate right now
-    -- CRITICAL TODO: Need to double check head_to_base just does heads with this handler
     local already_added = {}
     for head_key, base_key in pairs(head_to_base) do
         if head_to_handler[head_key].id == "tech_prereqs" then

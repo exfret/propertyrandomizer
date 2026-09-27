@@ -175,7 +175,6 @@ end
 
 -- Add input fluid boxes to all mining drills that don't already have them
 
--- CRITICAL TODO: This is sometimes putting the pipe connection inside the machine?
 for _, drill in pairs(data.raw["mining-drill"]) do
     if drill.input_fluid_box == nil then
         pipe_conns.add_dummy_pipe_conns(drill, {"input_fluid_box", "output_fluid_box"})
