@@ -9,6 +9,8 @@ local top = require("lib/graph/context-sort")
 local dupe = require("lib/dupe")
 local recycling_lib = require("lib/recycling")
 local recycling_sources_lib = require("lib/logic/recycling-sources")
+-- The recipes a rebuilt tech's prerequisites come from
+local witness_recipes = require("lib/logic/witness-recipes")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -301,28 +303,14 @@ randomizations.rebuild_tech_tree = function()
     end
     local num_left_out = 0
 
-    -- The recipes the pebble at ind directly needs: the recipes on its witness, not looking past them
+    -- Whether a recipe gets a rebuilt tech below: it's locked, and a tech unlocking it has a unit or trigger to copy
+    local function gets_tech(recipe_name)
+        return data.raw.recipe[recipe_name].enabled == false and (recipe_to_unit[recipe_name] ~= nil or recipe_to_research_trigger[recipe_name] ~= nil)
+    end
+
+    -- The recipes with techs that the pebble at ind directly needs, going on through recipes without one (see lib/logic/witness-recipes.lua)
     local function prev_recipes_of(ind)
-        local path_info = top.path(graph, {ind}, no_tech_sort_info, {
-            stop_if = function(pebble)
-                local node = graph.nodes[pebble.node_key]
-                if node.type == "recipe" then
-                    return true
-                end
-            end,
-        })
-        local prev_recipes = {}
-        for other_node_ind, _ in pairs(path_info.in_path) do
-            -- Don't count ind itself
-            if other_node_ind < ind then
-                local other_node_key = no_tech_sort_info.sorted[other_node_ind].node_key
-                local other_node = graph.nodes[other_node_key]
-                if other_node.type == "recipe" then
-                    prev_recipes[other_node.name] = true
-                end
-            end
-        end
-        return prev_recipes
+        return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech)
     end
 
     -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
@@ -373,16 +361,13 @@ randomizations.rebuild_tech_tree = function()
 
         if recipe.enabled == false then
             local prereqs = {}
+            -- Each of these gets a tech (see prev_recipes_of)
             for prev_recipe_name, _ in pairs(prev_recipes) do
-                local prev_recipe = data.raw.recipe[prev_recipe_name]
-                -- Check that this will get a tech
-                if prev_recipe.enabled == false and (recipe_to_unit[prev_recipe_name] ~= nil or recipe_to_research_trigger[prev_recipe_name] ~= nil) then
-                    -- Only if it can't take away a context (see covers); leaving one out only lets this tech be researched sooner
-                    if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name]) then
-                        table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
-                    else
-                        num_left_out = num_left_out + 1
-                    end
+                -- Only if it can't take away a context (see covers); leaving one out only lets this tech be researched sooner
+                if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name]) then
+                    table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                else
+                    num_left_out = num_left_out + 1
                 end
             end
 
