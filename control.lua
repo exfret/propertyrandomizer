@@ -99,41 +99,42 @@ script.on_init(function(event)
         break
     end
 
-    if script.active_mods["pyalternativeenergy"] then
-        if remote.interfaces["freeplay"] ~= nil and remote.interfaces["freeplay"]["get_created_items"] ~= nil and remote.interfaces["freeplay"]["set_created_items"] ~= nil then
-            local items = remote.call("freeplay", "get_created_items")
-            local ship_items = remote.call("freeplay", "get_ship_items")
-            local debris_items = remote.call("freeplay", "get_debris_items")
-            local respawn_items = remote.call("freeplay", "get_respawn_items")
+    if remote.interfaces["freeplay"] ~= nil and remote.interfaces["freeplay"]["get_created_items"] ~= nil and remote.interfaces["freeplay"]["set_created_items"] ~= nil then
+        local items = remote.call("freeplay", "get_created_items")
+        local ship_items = remote.call("freeplay", "get_ship_items")
+        local debris_items = remote.call("freeplay", "get_debris_items")
+        local respawn_items = remote.call("freeplay", "get_respawn_items")
 
-            if storage.slot_to_trav ~= nil then
-                for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
-                    local new_item_list = {}
-                    local old_item_names = {}
-                    for item_name, amount in pairs(item_list) do
-                        local new_item_name
-                        local slot_key = gutils.key("item", item_name)
-                        local trav_key = storage.slot_to_trav[slot_key]
-                        -- Excluded from first pass
-                        if trav_key == nil then
-                            new_item_name = item_name
-                        else
-                            local trav = gutils.deconstruct(trav_key)
-                            local suffix = "-trav"
-                            new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
-                        end
-                        new_item_list[new_item_name] = amount
-                        table.insert(old_item_names, item_name)
+        -- Swap each starting item for the item the first pass put in its place
+        if storage.slot_to_trav ~= nil then
+            for _, item_list in pairs({items, ship_items, debris_items, respawn_items}) do
+                local new_item_list = {}
+                local old_item_names = {}
+                for item_name, amount in pairs(item_list) do
+                    local new_item_name
+                    local slot_key = gutils.key("item", item_name)
+                    local trav_key = storage.slot_to_trav[slot_key]
+                    -- Excluded from first pass
+                    if trav_key == nil then
+                        new_item_name = item_name
+                    else
+                        local trav = gutils.deconstruct(trav_key)
+                        local suffix = "-trav"
+                        new_item_name = string.sub(trav.name, 1, -(string.len(suffix) + 1))
                     end
-                    for _, item_name in pairs(old_item_names) do
-                        item_list[item_name] = nil
-                    end
-                    for k, v in pairs(new_item_list) do
-                        item_list[k] = v
-                    end
+                    new_item_list[new_item_name] = amount
+                    table.insert(old_item_names, item_name)
+                end
+                for _, item_name in pairs(old_item_names) do
+                    item_list[item_name] = nil
+                end
+                for k, v in pairs(new_item_list) do
+                    item_list[k] = v
                 end
             end
+        end
 
+        if script.active_mods["pyalternativeenergy"] then
             -- Add extra items
             items["burner-mining-drill"] = 20
             items["stone-furnace"] = 20
@@ -145,12 +146,12 @@ script.on_init(function(event)
             items["small-electric-pole"] = 50
             -- wood processing unit has manual ingredients and so could be painful to get the first few
             items["wpu-mk01"] = 5
-
-            remote.call("freeplay", "set_created_items", items)
-            remote.call("freeplay", "set_ship_items", ship_items)
-            remote.call("freeplay", "set_debris_items", debris_items)
-            remote.call("freeplay", "set_respawn_items", respawn_items)
         end
+
+        remote.call("freeplay", "set_created_items", items)
+        remote.call("freeplay", "set_ship_items", ship_items)
+        remote.call("freeplay", "set_debris_items", debris_items)
+        remote.call("freeplay", "set_respawn_items", respawn_items)
     end
 end)
 
