@@ -1,0 +1,65 @@
+\section{Putting it together}\label{sec:pipeline}
+
+\subsection{A pipeline with shifts inside the relay}
+
+\par\smallskip\noindent\begin{minipage}{\linewidth}
+\begin{Verbatim}[fontsize=\small, frame=single, framesep=3mm]
+ 1  G0   <- logic of vanilla; home sets fixed from G0
+ 2  tau  <- shift assignment (oceans, resources, climate)
+ 3  G1   <- G0 with tau applied raw (no scaffolds, edits or patches)
+ 4  Gam1 <- transported goals: rules 1-3 of planetary/check.lua
+ 5  D    <- Gam1 minus Reach(G1)                          (one sort)
+ 6  if D is not empty:
+ 7     A     <- staged sort over root, unified, other slots;
+                gates on the goals' witness; prune           (Section 6)
+ 8     Delta <- a filler for each slot in A: the planetary
+                substitution first (new fluid, replacement resource),
+                in place unless the slot is in context conflict,
+                else a planned "X (Planet)" duplicate
+ 9     goals still failing -> superpose G0 and G1, carry the debt edges
+10  reference <- (G1 with fallback sigma_ref + Delta, or the superposition)
+11  unified: first pass, generic handlers, promotion against the reference;
+       if superposed: establish_solvent, no-new-insolvency rule,
+       candidates steered by the repair plan
+12  settle what the solvency-first witness still owes:
+       pin / edit -> duplicate -> addition -> retry without the shift
+13  check the final game against Gam1 computed from TRUE vanilla
+       (planetary rules) plus the promised pebbles (MECHCHECK's model check)
+\end{Verbatim}
+\end{minipage}\par\smallskip
+
+Steps 1--8 and 10--11 need no new theory. They are today's planetary stage with a repair search in place of the scaffold selection, followed by today's unified. Step 9 and the debt-aware part of step 11 are the new machinery (Section~\ref{sec:constructions}). Step 12 generalizes what the planetary stages already do on failure (drop edits, add patches, revert a climate, undo a stage). Step 13 changes which goals the last check uses: once unified can change what the planetary stage would have fixed, the post-planetary world can no longer serve as ``the original'', and the check has to compare against true vanilla under the transported goals.
+
+Today a failed check no longer stops the game from loading. A failed UNIFIEDCHECK retries the attempt and keeps the last one. A failed final MECHCHECK sets \code{check_ok = false} in the \code{propertyrandomizer-reachability-data} mod-data, which the randomizer panel shows (\file{data-final-fixes.lua}, \file{scripts/gui.lua}). The ladder is meant to make that path rare. Its last rung, retrying without the shift, falls back to the unshifted pipeline, so turning a shift on never makes a seed worse than it would be without it.
+
+\subsection{Context-shifting first pass}
+
+The same framework covers the other context shift the user has in mind, a first pass that moves travelers to slots whose contexts differ from their own (e.g.\ lava on Gleba, or a Vulcanus-only material in a Nauvis slot). Monotone matching admits a move only if the slot supplies every needed context earlier. That is precisely a \emph{zero-debt} shift. Allowing a non-monotone move means:
+\begin{enumerate}[nosep]
+\item superpose the trav's old and new connections (both are $\OR$ in-edges of the slot's item in first pass's split graph, so Lemma~\ref{lem:superposition} applies);
+\item transport the goals that follow the trav, if any are feature-like;
+\item run the staged sort to get a repair plan for the debt, and accept the move only if the plan exists within the later passes' move spaces (Proposition~\ref{prop:relax} rules out moves that no refilling can fix);
+\item settle at the end as in Section~\ref{sec:constructions}.
+\end{enumerate}
+Random non-monotone moves failed badly in the earlier tempering experiment. In this framework such moves become bounded-debt moves with an explicit repayment plan. The budget, meaning how much debt a first pass may take on, is a new tuning knob.
+
+\subsection{Recommendations, cheapest first}
+
+\begin{enumerate}
+\item \textbf{Repaired reference from the planetary stage (no change to unified).} Replace the scaffold and patch selection with a staged sort over repair classes, pruned with real sorts, and realize repairs in place unless the slot is in context conflict. That keeps today's order (planetary, then unified) and should turn many planned duplicates into fallback edits. The context-conflict test replaces the ``only used on that planet'' rule, which is stricter than necessary.
+\item \textbf{A shared staged-sort helper.} The gate construction (Proposition~\ref{prop:staged}) is small. It belongs in one helper next to \code{top.sort}, used by scaffolds, resource repairs and settlement, with a plain-Lua test on a toy graph for properties (a)--(d). This follows the ``enforce concepts in code'' rule.
+\item \textbf{Repair-only moves in unified.} Let recipe-ingredients accept a candidate for a slot on a repair plan even when the slot is blacklisted (water, lava), but never as a random choice. With (1) in place, that means keeping the repaired filler as a pin, which promotion already supports for recycling.
+\item \textbf{Superposed reference and debt-aware promotion}, behind a flag. Start with resources, whose addition rung (extra patches) already exists, then climate. The additions to promotion are an \code{establish_solvent} mode, the local no-new-insolvency rule, and a settlement pass after unified.
+\item \textbf{A reference object.} Pass one object (graph, fallback assignment, sort, goals) between passes instead of letting each stage rebuild ``vanilla'' from \code{old_data_raw}. The relay of Section~\ref{sec:reference} becomes explicit, and a shift becomes the one kind of pass that is allowed to change the goals.
+\end{enumerate}
+
+\subsection{Decisions that are the user's}
+
+These are design choices about what the game should be, not facts the code or data can settle:
+\begin{enumerate}[label=Q\arabic*.]
+\item \textbf{Which goals the final check uses when a shift is on.} Today MECHCHECK compares against the post-planetary world. In an integrated pipeline it would have to be the transported goals $\Goals_1$ computed from true vanilla (the planetary rules). Is that the intended spec?
+\item \textbf{Blacklisted slots as repairs.} Water and lava are excluded from unified's ingredient randomization (\file{compat/vanilla.lua}). Most ocean root repairs are exactly those slots. May a \emph{repair} (fallback or pin) use them, while random choices still may not?
+\item \textbf{In-place edits of shared recipes.} When a shared recipe has no context conflict, should it be edited in place (every planet sees the new filler) or still get a planet duplicate (today's rule)?
+\item \textbf{The addition rung for oceans.} It is closed by the ``oceans move as tiles, fluid changes with them'' decision. Should it stay closed even as a last resort before reverting?
+\item \textbf{What ``revert'' means.} Retry the whole attempt without the shift (always sound), or revert per feature group (cheaper, but only sound if nothing unified promised uses the new feature edges)?
+\end{enumerate}

@@ -1,0 +1,46 @@
+\section{Experiment details}\label{app:experiment}
+
+\paragraph{Where it ran.} An rsync'd copy of the mod (live working tree of 26 September 2026, including uncommitted changes, without \file{.git} and the 2.4\,GB cost log), with its own Factorio config and write-data directory, the user's current \file{mod-settings.dat} with only \code{propertyrandomizer-seed} changed, the Space Age mod list (\file{tests/mod-configs/sa.json}), and Factorio 2.1.20 headless. \file{data-final-fixes.lua} in the copy calls the measurement module right after \code{randomizations/prefixes} and then stops with an error. Nothing else of the randomizer runs, and the live repository was not modified.
+
+\paragraph{Scenarios.} The ocean assignment is \code{oceans.random_assignment("planetary-oceans")} and the resource assignment \code{resources.random_assignment(resources.slots(), "planetary-resources")}, the same RNG keys the planetary stage uses. They are applied with \code{oceans.apply} and \code{resources.apply} to a fresh copy of \code{data.raw}, with no scaffolds, recipe edits or extra patches. The logic is rebuilt with \code{logic.build(true)}, and all sorts use complex contexts and home contexts, with home sets fixed from the vanilla sort, like PLANETCHECK.
+
+\paragraph{Measures.}
+\begin{itemize}[nosep]
+\item \emph{Contradictions}: \code{planetary_check.required_failures(before, after, {})}, with \code{moved_features} set for the scenario.
+\item \emph{Causes}: for each contradiction, the pebbles of its \code{top.path} witness in the vanilla sort whose node is a feature node (\code{planetary_feature = "oceans"}, or an entity node of a resource prototype) and which the shifted sort lacks.
+\item \emph{Slot classes}: ingredient edges into recipe nodes (from \code{item} or \code{fluid-temperature-range} nodes). \emph{Root}: the material is one the recipe's room lost (ocean fluid or mined product of a lost resource), and the recipe had a vanilla pebble in that room. \emph{Unified}: \code{recipe-ingredients}' claim rules minus its cost check (recipe not hidden, material not \code{blacklisted_pre}, recipe not \code{blacklisted_dep}), which over-approximates its move space slightly.
+\item \emph{Staged sorts}: gates as in Section~\ref{sec:staged}, continued with \code{top.sort}'s cached mode. A slot counts as repaired on the witness when the witness's head pebble is backed by the gate, i.e.\ the gate's pebble in that context ranks before the ingredient's. The first version of the experiment compared against the head's own rank instead, which missed gates that ranked before a later-reached ingredient. Pruning then failed on some seeds, and the fixed version was rerun for all seeds.
+\item \emph{Pruning}: with only the witness's slots opened (one gate, open from the start), drop slots one at a time (the costliest class first), keeping a drop whenever every contradiction is still reached in a full sort. The result is irreducible, not necessarily minimum.
+\item \emph{Superposition}: the shifted graph plus every vanilla-only edge behind a gate (an $\AND$ node with the edge's start and the gate), sorted closed, then continued with the gate open. Debt edges are the gated $\AND$ nodes on the witness of all contradictions.
+\end{itemize}
+
+\paragraph{Caveats.}
+\begin{itemize}[nosep]
+\item Relaxations are optimistic about fillers: they locate repairs without choosing what fills a slot. The planetary substitution (the new fluid or replacement resource) is one concrete filler. Earlier planetary work found it sufficient in practice: across 8 seeds no conversion recipe was ever needed.
+\item Causes come from one witness per contradiction, so a contradiction with two vanilla routes is attributed to the causes on the earliest one only.
+\item Everything is logic-level. In-game effects the logic does not model still apply, for example furnace-type machines choosing their recipe by input (FurnacePrototype, \file{doc-html/prototype-api.json}), which is why resource edits skip furnace categories whose recipes already take the new ingredient.
+\end{itemize}
+
+\paragraph{Files.} Everything is in \file{notes/context-shift-report/experiment/}. The measurement modules are \file{experiment-contradictions.lua.txt} and \file{experiment-uspace.lua.txt}, stored as \file{.lua.txt} so the repository's Lua hooks ignore them. \file{make-copy.sh} builds the scratch mod copies, \file{run.py} runs seeds, and \file{parse.py}, \file{tables.py} and \file{charts.py} produce this report's tables and charts from the per-seed logs in \file{out-v3/} and \file{out-u/}.
+
+\section{New terms}\label{app:terms}
+
+\begin{description}[style=nextline, font=\normalfont\bfseries, nosep, itemsep=3pt]
+\item[Reference] A completable world with a fallback assignment, a sort, and goals it reaches (Definition~\ref{def:reference}). Promotion needs one, and vanilla is only the first.
+\item[Relay] Multipass as a sequence of passes, each receiving a reference and handing one on.
+\item[Feature edge] An edge into a node that says a planetary feature is present or usable (from a room-level node, or from a tile's pump node for oceans). All current ones end in $\OR$ nodes.
+\item[Shift] A pass that replaces feature edges. It is the one kind of pass that changes the goals.
+\item[Transport] How goals follow a shift: feature goals move (or are dropped, as now), identity goals stay (with relaxed isolatability), recipe goals stay.
+\item[Contradiction] A transported goal that the shifted world does not reach.
+\item[Cause] A lost feature pebble on a contradiction's vanilla witness.
+\item[Chunk] The part of a witness that a lost feature pebble dominates, which has no root after the shift.
+\item[Root / leaf repair] A fix at the chunk's lowest consumers, or in the consumers above the chunk.
+\item[Repair] A change of the \emph{fallback} assignment within a later pass's slot space. It is not content.
+\item[Relaxed repair] A set of slots whose removal (filled by anything) reaches the goals. It locates repairs.
+\item[Staged sort] A sort continued as gates open, one repair class at a time, so witnesses use repairs only where needed.
+\item[Superposition] The union of the old and new worlds. It is always a reference when feature edges end in $\OR$ nodes.
+\item[Debt edge] A feature edge of the old world kept in the superposition. It must be paid or settled.
+\item[Solvent] Backed without debt edges.
+\item[Settlement ladder] Paid, repair, duplicate, addition, revert: the order in which leftover debts are settled.
+\item[Context conflict] No single filler works in every context a recipe must keep, so an in-place repair is impossible and a duplicate is needed.
+\end{description}

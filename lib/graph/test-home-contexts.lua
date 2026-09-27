@@ -444,6 +444,21 @@ test("home sets are the rooms each room's discoverers can't be reached without",
     assert(home_sets.of[HOME] == nil)
 end)
 
+test("home sets report the rooms none of whose discoverers is reachable", function()
+    local graph, nodes = toy_graph()
+    local _, undiscovered = top.home_sets(graph)
+    assert(#undiscovered == 0)
+    -- Discovering the far planet now needs something nothing makes, like a world whose rockets need what only a debt would give
+    gutils.add_node(graph, "stuff", "nothing", {
+        op = "OR",
+    })
+    add_edge(graph, key("stuff", "nothing"), nodes["find-frost"])
+    local home_sets
+    home_sets, undiscovered = top.home_sets(graph)
+    assert(#undiscovered == 1 and undiscovered[1] == FROST)
+    assert(home_sets.of[FROST] == nil and home_sets.of[ROCK] ~= nil)
+end)
+
 test("home contexts match removing the other rooms and sorting again, on random graphs", function()
     for seed = 1, 60 do
         local complex = seed % 2 == 0

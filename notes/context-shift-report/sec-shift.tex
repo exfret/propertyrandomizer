@@ -1,0 +1,124 @@
+\section{Context shifts}\label{sec:shift}
+
+\subsection{Feature edges}
+
+A planetary feature enters the logic as an edge into a node that says the feature is present or usable. For resources, lightning and freezing the edge comes from a room-level node. For oceans it comes from the tile's pump node, because the ocean swap keeps the tile and changes its fluid. Table~\ref{tab:features} lists the four features planetary randomization moves today. Every one of these edges ends in an $\OR$ node. That is the property the rest of the report leans on.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l X l@{}}
+\toprule
+Feature & Feature edge in the logic & Target op \\
+\midrule
+oceans & \code{tile-fluid: t} $\to$ \code{fluid-create-offshore-temperature: f}. The ocean swap reskins slot tiles, so the tile keeps its room and the edge's target fluid changes (\file{concrete.lua}, \code{fluid-create-offshore-temperature}; \file{oceans.lua}) & $\OR$ \\
+resources & \code{room-autoplace: P} $\to$ \code{entity: R} for resource placements (\code{add_autoplace_edges} in \file{concrete.lua}; \file{resources.lua} moves the planet's autoplace settings) & $\OR$ \\
+lightning & \code{room: P} $\to$ \code{energy-source-electric-production-lightning-existence}, gaining isolatability, for planets with \code{lightning_properties} (\file{abstract.lua}) & $\OR$ \\
+freezing & \code{room: P} $\to$ \code{warmth} for planets \emph{without} \code{entities_require_heating}; freezing is the absence of this edge (\file{abstract.lua}) & $\OR$ \\
+\bottomrule
+\end{tabularx}
+\caption{Planetary features as feature edges. In vanilla Space Age, Fulgora is the planet with \code{lightning_properties} (\file{data/space-age/prototypes/planet/planet.lua:320}) and Aquilo the one with \code{entities_require_heating = true} (same file, line 680). For oceans and resources the experiment in Section~\ref{sec:repair} also checks this mechanically: every edge that exists only in the unshifted graph ends in an $\OR$ node.}
+\label{tab:features}
+\end{table}
+
+\begin{definition}[Shift]
+Let $\EF\subseteq E$ be the feature edges. A \emph{shift} is a pass that replaces $\EF$ by another set $\EF'$ of feature edges over the same nodes and leaves everything else alone: $G_1=(G_0\setminus \EF)\cup \EF'$. Ocean and resource swaps are permutations of features among rooms. Climate changes add or remove single edges.
+\end{definition}
+
+A shift is a handler whose heads are feature edges. What sets it apart from recipe or item randomization is not the kind of edge. It is that the \emph{goals are defined relative to it}: after the swap nobody wants lava on Vulcanus.
+
+\subsection{Goal transport}
+
+\begin{definition}[Transported goals]\label{def:transport}
+Classify each goal of $\Goals_0$ by what its node declares:
+\begin{itemize}[nosep]
+\item \emph{feature goals}: mechanic nodes built with a moved \code{planetary_feature}. They \emph{follow the feature}. The current rules drop them (\code{planetary_kept_context} returns \code{nil}); full transport would require $\peb{n}{\phi(c)}$ instead, where $\phi$ moves $c$'s room to wherever the feature went;
+\item \emph{identity goals}: every other mechanic pebble. It is kept with its room and automatability, and its isolatability only if the node is built with \code{keep_planetary_isolatability} (rocket building and electricity);
+\item \emph{recipe goals}: every recipe stays reachable somewhere (rule 1), and recipes locked to one planet by surface conditions keep their exact contexts (rule 2).
+\end{itemize}
+Write $\Goals_1=\transport\Goals_0$. These are exactly the three rules of \code{check.required_failures} in \file{randomizations/planetary/check.lua}.
+\end{definition}
+
+The classification is declared on the nodes themselves, through the flags \code{planetary_feature} and \code{keep_planetary_isolatability}, which fits the project's ``declare on nodes, not names'' rule. Transport is a different goal specification, not a weaker one. Identity goals get weaker (less isolatability), while feature goals move.
+
+\begin{remark}[Home sets are part of the goal specification]\label{rem:homesets}
+The discovery rule grants a technology the isolatable contexts of room $r$ when it can be had using only $r$'s \emph{home set}: the rooms that $r$'s discoverers cannot be reached without. Home sets are computed once from vanilla and kept fixed (\code{logic.home_sets}, and \code{check.home_sets} in the planetary check). A shift could in principle change which rooms a discovery needs, for example if a discovery technology's science came to depend on a moved resource. For any fixed set the rule stays a Horn clause, so every lemma here still holds; only its meaning is at stake. A \emph{smaller} set grants less, so the conservative choice after a shift is the intersection of the vanilla home sets and those recomputed on the shifted world. For the current shifts this matters only if a discovery technology's requirements come to depend on a moved feature, and checking that costs one extra \code{top.home_sets} pass on the shifted graph.
+\end{remark}
+
+\begin{definition}[Contradictions]
+The \emph{contradictions} of a shift are $D=\Goals_1\setminus\Reach(G_1[\sref])$: transported goals that the shifted world does not reach with the reference assignment.
+\end{definition}
+
+\subsection{The dilemma}
+
+\begin{proposition}[Neither world is a usable reference]\label{prop:dilemma}
+\leavevmode
+\begin{enumerate}[nosep,label=(\alph*)]
+\item With the vanilla reference $(G_0,\sref,\pi_0,\cdot)$, promotion can only establish pebbles of $\Reach(G_0[\sref])$. Pebbles that exist only through a moved feature edge, such as lava at its new planet, are never available, and a pass that removes an old feature edge is accepted only if every promise still has a backing through vanilla pebbles.
+\item The shifted world $(G_1,\sref,\pi_1,\Goals_1)$ is a reference exactly when $D=\emptyset$.
+\end{enumerate}
+\end{proposition}
+\begin{proof}
+(a) Promotion ranks pebbles by $\pi_0$, a sort of $\Reach(G_0[\sref])$, and \code{establish} only looks at ranked pebbles. (b) is Definition~\ref{def:reference}.
+\end{proof}
+
+Part (a) is what a planetary handler inside today's unified would look like. It could \emph{remove} feature edges through \code{try_rewires} (the check that every promised pebble keeps a backing), but it could never \emph{use} what it adds. Every identity goal that relied on lava would have to be re-routed through vanilla pebbles of Vulcanus, and in practice there are none: that is why lava is on Vulcanus. Part (b) is today's situation, where the planetary stage must bring $D$ to zero before unified starts. Figure~\ref{fig:dilemma} shows both.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[font=\small\bfseries, anchor=west] at (-0.3,1.0) {$\pi_0$ (vanilla)};
+\draw[-{Stealth}, thick, cgrey] (0,0) -- (12.8,0);
+\node[ppeb] (a1) at (1.5,0) {};  \node[lbl, below=1.4mm] at (1.5,0) {\peb{\text{lava}}{V}};
+\node[ppeb] (a2) at (4.2,0) {};  \node[lbl, below=1.4mm] at (4.2,0) {\peb{\text{molten Cu}}{V}};
+\node[ppeb] (a3) at (7.5,0) {};  \node[lbl, below=1.4mm] at (7.5,0) {\peb{\text{met.\ pack}}{V|11}};
+\node[ghost] (a4) at (10.5,0) {};  \node[lbl, below=1.4mm, text=cgrey] at (10.5,0) {\peb{\text{lava}}{G}\ (not in $\pi_0$)};
+\draw[pre] (a2) to[bend right=35] (a1); \draw[pre] (a3) to[bend right=35] (a2);
+\node[font=\small\bfseries, anchor=west] at (-0.3,-1.8) {$\pi_1$ (shifted)};
+\draw[-{Stealth}, thick, cgrey] (0,-2.8) -- (12.8,-2.8);
+\node[ppeb, fill=cshift!80, draw=cshift!80!black] (b1) at (2.2,-2.8) {};  \node[lbl, below=1.4mm] at (2.2,-2.8) {\peb{\text{lava}}{G}};
+\node[ppeb, fill=cshift!80, draw=cshift!80!black] (b2) at (5.2,-2.8) {};  \node[lbl, below=1.4mm] at (5.2,-2.8) {\peb{\text{water}}{V}};
+\node[ghost, draw=cdebt, text=cdebt] (b3) at (9.5,-2.8) {$\times$};  \node[lbl, below=1.4mm, text=cdebt] at (9.5,-2.8) {\peb{\text{met.\ pack}}{V|11}\ (goal, unreachable)};
+\end{tikzpicture}
+\caption{The dilemma of Proposition~\ref{prop:dilemma}, on the Vulcanus science goal. In the vanilla sort, the goal has its backing but the moved lava does not exist. In the shifted sort, the new features exist but the goal does not, so promotion cannot promise it.}
+\label{fig:dilemma}
+\end{figure}
+
+\subsection{Chunks: why shifts are not monotone}
+
+Fix a witness $W$ of an identity goal in $G_0$ that uses a feature pebble $p_f$ which the shift removes. The \emph{chunk} of $W$ at $p_f$ is the set of pebbles of $W$ that $p_f$ dominates, meaning every path in $W$ from them down to the sources passes through $p_f$. After the shift the chunk has no root. There are only two ways to repair $W$ (Figure~\ref{fig:chunk}):
+\begin{itemize}[nosep]
+\item a \textbf{root repair} gives the chunk's lowest consumers something else that is available in the same context (molten copper from the new local fluid instead of lava). This is what planetary scaffolds do;
+\item a \textbf{leaf repair} re-derives the pebbles above the chunk without it (the goal recipe takes an ingredient that does not need molten copper). This is what unrestricted ingredient randomization would do.
+\end{itemize}
+For a feature goal the chunk moves with the feature instead. Its pebbles above $p_f$ that also need other branches (the calcite next to the lava) now need those branches in the new room. These are the chunk's \emph{boundary debts}.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\begin{scope}[on background layer]
+\fill[cshift!10, rounded corners=6pt] (0.35,0.15) rectangle (5.0,3.15);
+\end{scope}
+\node[lbl, text=cshift!80!black, anchor=south west] at (0.35,3.15) {chunk dominated by the lava pebble};
+\node[room] (v) at (1.5,-1.7) {Vulcanus};
+\node[orn] (tile) at (1.5,-0.6) {lava tile};
+\node[orn, feat] (pump) at (1.5,0.65) {pump lava};
+\node[andn] (mcr) at (2.4,1.75) {molten Cu from lava};
+\node[orn] (mc) at (3.9,2.65) {molten Cu};
+\node[orn] (cal) at (5.9,0.65) {calcite};
+\node[andn, goal] (pack) at (7.3,3.75) {metallurgic pack @ V|11};
+\node[orn] (tc) at (9.4,2.65) {tungsten carbide};
+\node[orn, feat] (water) at (-1.9,0.65) {pump water};
+\node[orn, draw=crep, text=crep] (other) at (10.4,4.85) {other local item};
+\draw[pre] (v) -- (tile);
+\draw[pre, cdebt, line width=1.2pt] (tile) -- node[midway, font=\bfseries, text=cdebt, fill=white, inner sep=1pt] {$\times$} (pump);
+\draw[pre, cshift] (tile) to[bend left=12] node[lbl, below left, text=cshift!80!black] {new feature edge} (water);
+\draw[pre] (pump) -- (mcr); \draw[pre] (cal) -- (mcr); \draw[pre] (mcr) -- (mc);
+\draw[pre] (mc) -- (pack); \draw[pre] (tc) -- (pack);
+\draw[rep, dashed] (water) to[bend left=35] node[lbl, above left, text=crep] {root repair} (mcr.west);
+\draw[rep, densely dotted] (other.south west) -- node[lbl, below right, text=crep] {leaf repair} (pack.north east);
+\end{tikzpicture}
+\caption{A chunk. The ocean swap turns the Vulcanus lava tile's pump output into water, so the orange chunk loses its root. A root repair feeds the chunk's first consumer from the new local fluid. A leaf repair routes the goal around the chunk. Seed~1's measured repairs on Vulcanus are root repairs of exactly this kind (Section~\ref{sec:repair}). Recipe facts: \code{molten-copper-from-lava} takes lava and calcite, and \code{metallurgic-science-pack} takes tungsten carbide, tungsten plate and molten copper and needs pressure 4000, which only Vulcanus has (\file{data/space-age/prototypes/recipe.lua:776-797}, \file{:1418-1434}; \file{planet.lua:47}).}
+\label{fig:chunk}
+\end{figure}
+
+This explains two earlier observations. First, ``a chunk move always needs a new witness'': monotone matching only ever keeps witnesses, and a shift destroys them by definition. Second, random non-monotone moves were catastrophic in the tempering experiment. Each such move leaves a chunk without a root, and nothing was keeping track of the debt.

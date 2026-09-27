@@ -1,0 +1,500 @@
+[8.668] vanilla sort done, 103912 pebbles
+[9.285] oceans applied: {aquilo = "vulcanus", fulgora = "nauvis", gleba = "fulgora", nauvis = "gleba", vulcanus = "aquilo"}
+[14.763] oceans failures 151 {mechanic 106, planet-locked 11, unreachable 34}
+[25.175] oceans distinct causes 4, distinct cause sets 4
+[25.176] oceans cause fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo on 117 failure witnesses
+[25.176] oceans cause fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora on 131 failure witnesses
+[25.176] oceans cause fluid-create-offshore-temperature: lava: 1500 @ vulcanus on 9 failure witnesses
+[25.176] oceans cause fluid-create-offshore-temperature: water: 15 @ gleba on 11 failure witnesses
+[25.176] oceans cause set [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora] x117
+[25.176] oceans cause set [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora] x14
+[25.176] oceans cause set [fluid-create-offshore-temperature: lava: 1500 @ vulcanus] x9
+[25.176] oceans cause set [fluid-create-offshore-temperature: water: 15 @ gleba] x11
+[25.188] oceans ingredient slots by class: root 25 (4 of them unified-randomizable), unified 734, all 415
+[37.033] oceans class root: unreachable recipe: cryogenic-science-pack <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: railgun <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: railgun-turret <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: railgun-ammo <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: captive-biter-spawner <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: lithium <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: fluoroketone <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: fluoroketone-cooling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.034] oceans class root: unreachable recipe: quantum-processor <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-reactor-equipment <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-power-cell <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-reactor <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-generator <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: foundation <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: promethium-science-pack <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fluoroketone-cold-barrel <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: empty-fluoroketone-cold-barrel <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fluoroketone-hot-barrel <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: empty-fluoroketone-hot-barrel <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: railgun-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: railgun-turret-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: railgun-ammo-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: quantum-processor-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-reactor-equipment-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-reactor-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-generator-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: foundation-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fluoroketone-cold-barrel-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fluoroketone-hot-barrel-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: cryogenic-science-pack-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: promethium-science-pack-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: promethium-asteroid-chunk-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: captive-biter-spawner-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: unreachable recipe: fusion-power-cell-recycling <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: pentapod-egg @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: planet-locked recipe: cryogenic-plant @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: fusion-reactor @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: planet-locked recipe: fusion-generator @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic entity-rocket-silo: rocket-silo @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic item: promethium-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 11 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: mechanic room-launch: gleba @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: mechanic room-launch: fulgora @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic room-launch: fulgora @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.035] oceans class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.035] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 00 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic create-platform:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic create-platform:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic create-platform:  @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.036] oceans class root: mechanic create-platform:  @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.036] oceans class root: mechanic rocket-silo:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic rocket-silo:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic rocket-silo:  @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.036] oceans class root: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.036] oceans class root: mechanic cargo-landing-pad:  @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.036] oceans class root: mechanic cargo-landing-pad:  @ planet: gleba | 11 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.036] oceans class root: mechanic launch:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic launch:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[37.036] oceans class root: mechanic launch:  @ planet: gleba | 10 <- [fluid-create-offshore-temperature: water: 15 @ gleba]
+[37.037] oceans class root: mechanic launch:  @ planet: vulcanus | 11 <- [fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[37.037] oceans fixed at stage {root 151}
+[37.279] oceans repair witness 7447 pebbles; repairs used {root 10 slots/9 recipes, unified 0 slots/0 recipes, all 0 slots/0 recipes}
+[37.279] oceans repair root local recipe: ammoniacal-solution-separation slot fluid: ammoniacal-solution @ {aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01}
+[37.279] oceans repair root shared recipe: electrolyte slot fluid: heavy-oil @ {fulgora | 10, fulgora | 11}
+[37.279] oceans repair root shared recipe: heavy-oil-cracking slot fluid: heavy-oil @ {fulgora | 10, fulgora | 11}
+[37.280] oceans repair root shared recipe: lubricant slot fluid: heavy-oil @ {fulgora | 10}
+[37.280] oceans repair root local recipe: molten-copper-from-lava slot fluid: lava @ {vulcanus | 11}
+[37.280] oceans repair root local recipe: molten-iron-from-lava slot fluid: lava @ {vulcanus | 11}
+[37.280] oceans repair root shared recipe: concrete slot fluid: water @ {gleba | 10}
+[37.280] oceans repair root shared recipe: heavy-oil-cracking slot fluid: water @ {gleba | 10}
+[37.280] oceans repair root local recipe: pentapod-egg slot fluid: water @ {gleba | 10}
+[37.280] oceans repair root shared recipe: sulfuric-acid slot fluid: water @ {gleba | 10}
+[43.180] oceans prune check: 0 of 151 missing
+[87.494] oceans irreducible repairs 10 slots on 9 recipes {root 10, unified 0, all 0}
+[87.495] oceans kept repair root local recipe: ammoniacal-solution-separation slot fluid: ammoniacal-solution (not unified-randomizable)
+[87.495] oceans kept repair root shared recipe: electrolyte slot fluid: heavy-oil (unified-randomizable)
+[87.495] oceans kept repair root shared recipe: heavy-oil-cracking slot fluid: heavy-oil (unified-randomizable)
+[87.495] oceans kept repair root shared recipe: lubricant slot fluid: heavy-oil (unified-randomizable)
+[87.495] oceans kept repair root local recipe: molten-copper-from-lava slot fluid: lava (not unified-randomizable)
+[87.495] oceans kept repair root local recipe: molten-iron-from-lava slot fluid: lava (not unified-randomizable)
+[87.495] oceans kept repair root shared recipe: concrete slot fluid: water (not unified-randomizable)
+[87.496] oceans kept repair root shared recipe: heavy-oil-cracking slot fluid: water (not unified-randomizable)
+[87.496] oceans kept repair root local recipe: pentapod-egg slot fluid: water (not unified-randomizable)
+[87.496] oceans kept repair root shared recipe: sulfuric-acid slot fluid: water (not unified-randomizable)
+[92.060] oceans union: 19 vanilla-only edges (into OR 19 nodes); failures before gate 151, after 0
+[92.166] oceans union witness uses 4 vanilla-only edges
+[92.166] oceans debt edge tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}
+[92.166] oceans debt edge tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}
+[92.166] oceans debt edge tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}
+[92.166] oceans debt edge tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}
+[92.166] oceans done
+[92.561] resources applied: aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser
+[96.541] resources failures 139 {mechanic 94, planet-locked 12, unreachable 33}
+[104.281] resources distinct causes 2, distinct cause sets 2
+[104.281] resources cause entity: fluorine-vent @ aquilo on 115 failure witnesses
+[104.281] resources cause entity: sulfuric-acid-geyser @ vulcanus on 24 failure witnesses
+[104.281] resources cause set [entity: fluorine-vent @ aquilo] x115
+[104.281] resources cause set [entity: sulfuric-acid-geyser @ vulcanus] x24
+[104.296] resources ingredient slots by class: root 17 (12 of them unified-randomizable), unified 726, all 431
+[113.857] resources class root: unreachable recipe: cryogenic-science-pack <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun-turret <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun-ammo <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: captive-biter-spawner <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone-cooling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: quantum-processor <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-reactor-equipment <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-power-cell <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-reactor <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-generator <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: foundation <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: promethium-science-pack <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone-cold-barrel <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: empty-fluoroketone-cold-barrel <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone-hot-barrel <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: empty-fluoroketone-hot-barrel <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun-turret-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: railgun-ammo-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: quantum-processor-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-reactor-equipment-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-reactor-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-generator-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: foundation-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone-cold-barrel-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fluoroketone-hot-barrel-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: cryogenic-science-pack-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: promethium-science-pack-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: promethium-asteroid-chunk-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: captive-biter-spawner-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: unreachable recipe: fusion-power-cell-recycling <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.858] resources class root: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.858] resources class root: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo]
+[113.858] resources class root: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.858] resources class root: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.858] resources class root: planet-locked recipe: foundry @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.858] resources class root: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: planet-locked recipe: big-mining-drill @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: planet-locked recipe: fusion-reactor @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: planet-locked recipe: fusion-generator @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic item: promethium-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic room-launch: vulcanus @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 00 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo]
+[113.859] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo]
+[113.860] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo]
+[113.860] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo]
+[113.860] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo]
+[113.860] resources class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo]
+[113.860] resources class root: mechanic create-platform:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic create-platform:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic rocket-silo:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic cargo-landing-pad:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic cargo-landing-pad:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic launch:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources class root: mechanic launch:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[113.860] resources fixed at stage {root 139}
+[114.012] resources repair witness 5913 pebbles; repairs used {root 7 slots/7 recipes, unified 0 slots/0 recipes, all 0 slots/0 recipes}
+[114.016] resources repair root local recipe: fluoroketone slot fluid: fluorine @ {aquilo | 00, aquilo | 01}
+[114.016] resources repair root local recipe: acid-neutralisation slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[114.016] resources repair root shared recipe: carbon slot fluid: sulfuric-acid @ {vulcanus | 11}
+[114.016] resources repair root shared recipe: processing-unit slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[114.016] resources repair root shared recipe: simple-coal-liquefaction slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[114.016] resources repair root shared recipe: tungsten-carbide slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[114.016] resources repair root shared recipe: stone-brick slot item: stone @ {vulcanus | 11}
+[119.210] resources prune check: 0 of 139 missing
+[158.562] resources irreducible repairs 3 slots on 3 recipes {root 3, unified 0, all 0}
+[158.563] resources kept repair root local recipe: fluoroketone slot fluid: fluorine (unified-randomizable)
+[158.563] resources kept repair root local recipe: acid-neutralisation slot fluid: sulfuric-acid (unified-randomizable)
+[158.563] resources kept repair root shared recipe: simple-coal-liquefaction slot fluid: sulfuric-acid (unified-randomizable)
+[164.315] resources union: 3 vanilla-only edges (into OR 3 nodes); failures before gate 139, after 0
+[164.479] resources union witness uses 2 vanilla-only edges
+[164.479] resources debt edge room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}
+[164.479] resources debt edge room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}
+[164.479] resources done
+[165.065] both applied: {aquilo = "vulcanus", fulgora = "nauvis", gleba = "fulgora", nauvis = "gleba", vulcanus = "aquilo"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser
+[170.790] both failures 76 {mechanic 62, planet-locked 13, unreachable 1}
+[175.322] both distinct causes 7, distinct cause sets 6
+[175.322] both cause entity: fluorine-vent @ aquilo on 25 failure witnesses
+[175.322] both cause entity: stone @ gleba on 11 failure witnesses
+[175.322] both cause entity: sulfuric-acid-geyser @ vulcanus on 24 failure witnesses
+[175.322] both cause fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo on 27 failure witnesses
+[175.322] both cause fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora on 41 failure witnesses
+[175.322] both cause fluid-create-offshore-temperature: lava: 1500 @ vulcanus on 9 failure witnesses
+[175.322] both cause fluid-create-offshore-temperature: water: 15 @ gleba on 11 failure witnesses
+[175.322] both cause set [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora] x25
+[175.322] both cause set [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba] x11
+[175.322] both cause set [entity: sulfuric-acid-geyser @ vulcanus] x15
+[175.322] both cause set [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus] x9
+[175.322] both cause set [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora] x2
+[175.322] both cause set [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora] x14
+[175.368] both ingredient slots by class: root 42 (16 of them unified-randomizable), unified 722, all 410
+[186.584] both class root: unreachable recipe: lithium <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.586] both class root: planet-locked recipe: pentapod-egg @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.586] both class root: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.586] both class root: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.586] both class root: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.586] both class root: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.586] both class root: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.586] both class root: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.586] both class root: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.586] both class root: planet-locked recipe: foundry @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.586] both class root: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.586] both class root: planet-locked recipe: big-mining-drill @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.586] both class root: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.586] both class root: planet-locked recipe: cryogenic-plant @ planet: aquilo | 01 <- [fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.586] both class root: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic entity-rocket-silo: rocket-silo @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 11 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic room-launch: vulcanus @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.587] both class root: mechanic room-launch: gleba @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic room-launch: fulgora @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic room-launch: fulgora @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [entity: fluorine-vent @ aquilo + fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo + fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic create-platform:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic create-platform:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic create-platform:  @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic create-platform:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.587] both class root: mechanic create-platform:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.587] both class root: mechanic rocket-silo:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic rocket-silo:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.587] both class root: mechanic rocket-silo:  @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.587] both class root: mechanic rocket-silo:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.588] both class root: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.588] both class root: mechanic cargo-landing-pad:  @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.588] both class root: mechanic cargo-landing-pad:  @ planet: gleba | 11 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.588] both class root: mechanic cargo-landing-pad:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.588] both class root: mechanic cargo-landing-pad:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.588] both class root: mechanic launch:  @ planet: fulgora | 10 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.588] both class root: mechanic launch:  @ planet: fulgora | 11 <- [fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora]
+[186.588] both class root: mechanic launch:  @ planet: gleba | 10 <- [entity: stone @ gleba + fluid-create-offshore-temperature: water: 15 @ gleba]
+[186.588] both class root: mechanic launch:  @ planet: vulcanus | 10 <- [entity: sulfuric-acid-geyser @ vulcanus]
+[186.588] both class root: mechanic launch:  @ planet: vulcanus | 11 <- [entity: sulfuric-acid-geyser @ vulcanus + fluid-create-offshore-temperature: lava: 1500 @ vulcanus]
+[186.588] both fixed at stage {root 76}
+[186.802] both repair witness 6476 pebbles; repairs used {root 19 slots/18 recipes, unified 0 slots/0 recipes, all 0 slots/0 recipes}
+[186.802] both repair root local recipe: ammoniacal-solution-separation slot fluid: ammoniacal-solution @ {aquilo | 00, aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01}
+[186.802] both repair root local recipe: fluoroketone slot fluid: fluorine @ {aquilo | 01}
+[186.802] both repair root shared recipe: electrolyte slot fluid: heavy-oil @ {fulgora | 10, fulgora | 11}
+[186.802] both repair root shared recipe: heavy-oil-cracking slot fluid: heavy-oil @ {fulgora | 10, fulgora | 11, vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: lubricant slot fluid: heavy-oil @ {fulgora | 10, vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: solid-fuel-from-heavy-oil slot fluid: heavy-oil @ {vulcanus | 10, vulcanus | 11}
+[186.803] both repair root local recipe: molten-copper-from-lava slot fluid: lava @ {vulcanus | 11}
+[186.803] both repair root local recipe: molten-iron-from-lava slot fluid: lava @ {vulcanus | 11}
+[186.803] both repair root local recipe: acid-neutralisation slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: carbon slot fluid: sulfuric-acid @ {vulcanus | 11}
+[186.803] both repair root shared recipe: processing-unit slot fluid: sulfuric-acid @ {gleba | 10, vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: tungsten-carbide slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: concrete slot fluid: water @ {gleba | 10, vulcanus | 10}
+[186.803] both repair root shared recipe: concrete-from-molten-iron slot fluid: water @ {vulcanus | 11}
+[186.803] both repair root shared recipe: heavy-oil-cracking slot fluid: water @ {gleba | 10, vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: light-oil-cracking slot fluid: water @ {vulcanus | 10, vulcanus | 11}
+[186.803] both repair root local recipe: pentapod-egg slot fluid: water @ {gleba | 10}
+[186.803] both repair root shared recipe: refined-concrete slot fluid: water @ {vulcanus | 10, vulcanus | 11}
+[186.803] both repair root shared recipe: stone-brick slot item: stone @ {vulcanus | 11}
+[192.328] both prune check: 0 of 76 missing
+[257.513] both irreducible repairs 11 slots on 10 recipes {root 11, unified 0, all 0}
+[257.515] both kept repair root local recipe: ammoniacal-solution-separation slot fluid: ammoniacal-solution (not unified-randomizable)
+[257.515] both kept repair root shared recipe: electrolyte slot fluid: heavy-oil (unified-randomizable)
+[257.515] both kept repair root shared recipe: heavy-oil-cracking slot fluid: heavy-oil (unified-randomizable)
+[257.515] both kept repair root shared recipe: lubricant slot fluid: heavy-oil (unified-randomizable)
+[257.515] both kept repair root local recipe: molten-copper-from-lava slot fluid: lava (not unified-randomizable)
+[257.515] both kept repair root local recipe: molten-iron-from-lava slot fluid: lava (not unified-randomizable)
+[257.515] both kept repair root local recipe: acid-neutralisation slot fluid: sulfuric-acid (unified-randomizable)
+[257.515] both kept repair root shared recipe: processing-unit slot fluid: sulfuric-acid (unified-randomizable)
+[257.515] both kept repair root shared recipe: concrete slot fluid: water (not unified-randomizable)
+[257.515] both kept repair root shared recipe: heavy-oil-cracking slot fluid: water (not unified-randomizable)
+[257.515] both kept repair root local recipe: pentapod-egg slot fluid: water (not unified-randomizable)
+[260.101] both union: 22 vanilla-only edges (into OR 22 nodes); failures before gate 76, after 0
+[260.175] both union witness uses 5 vanilla-only edges
+[260.175] both debt edge room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}
+[260.175] both debt edge tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}
+[260.175] both debt edge tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}
+[260.175] both debt edge tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}
+[260.175] both debt edge tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}
+[260.175] both done
+[260.175] done in 49 sorts
+ERRLINE [C]: in function 'error'
+ERRLINE ------------- Error -------------
+ERRLINE [C]: in function 'error'

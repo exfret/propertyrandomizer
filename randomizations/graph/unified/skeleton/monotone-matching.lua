@@ -2,7 +2,7 @@
 -- Based on the other session's report (scratchpad REPORT-multipass-complex-contexts.md) and its exp-iter.lua prototype
 --
 -- A round starts from a valid matching (the identity matching in round 1) and its graph:
---   1. Take a random complex sort of that graph, and prove every hard mechanic pebble in it (backings go to strictly earlier pebbles)
+--   1. Take a random complex sort of that graph, and prove every pebble that must keep its exact context in it (protected mechanics and planet-locked recipes; backings go to strictly earlier pebbles)
 --   2. A trav's needs are the contexts in which those proofs use the identity (see needs_from_proof for which uses count)
 --   3. A slot is admissible for a trav if its type and cost fit and, for each need, the slot has a pebble in that context ranked before the trav's; the trav's current slot is always admissible
 --   4. Take a random perfect matching of the admissibility graph (it exists, since the current matching is one), and replace it by the one reflection realizes (params.realize)
@@ -17,6 +17,7 @@ local top = require("lib/graph/context-sort")
 local rng = require("lib/random/rng")
 local logic = require("lib/logic/init")
 local protection = require("randomizations/graph/unified/skeleton/protection")
+local superpose = require("lib/graph/superpose")
 
 local key = gutils.key
 
@@ -43,16 +44,27 @@ local function connect(graph, params, assignment)
     return graph
 end
 
--- Hard pebbles: protected mechanic pebbles (see protection.lua), plus each reachable recipe's earliest pebble asking for no abilities and not in a home context (which only the gate checks)
+-- Hard pebbles, in two lists:
+--   * exact: protected mechanic pebbles, and every pebble of a recipe locked to one planet (see protection.lua), which must keep their exact contexts
+--   * recipes: each reachable recipe's earliest pebble asking for no abilities and not in a home context, which only has to stay reachable somewhere (and only the gate checks)
 local function hard_pebbles(graph, sort_info)
-    local mechanics = {}
+    local exact = {}
     local recipes = {}
+    local locked = protection.planet_locked_recipe_contexts(graph, sort_info)
+    for node_key, contexts in pairs(locked) do
+        for context, _ in pairs(contexts) do
+            table.insert(exact, {
+                node_key = node_key,
+                context = context,
+            })
+        end
+    end
     for node_key, context_inds in pairs(sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             for context, _ in pairs(context_inds) do
                 if protection.is_hard_mechanic_pebble(node, context) then
-                    table.insert(mechanics, {
+                    table.insert(exact, {
                         node_key = node_key,
                         context = context,
                     })
@@ -75,13 +87,13 @@ local function hard_pebbles(graph, sort_info)
             end
         end
     end
-    return mechanics, recipes
+    return exact, recipes
 end
 
 -- Hard pebbles missing from the sort; a recipe only counts as lost if it has no pebble at all (recipes must stay reachable somewhere)
-local function lost_pebbles(mechanics, recipes, sort_info)
+local function lost_pebbles(exact, recipes, sort_info)
     local lost = {}
-    for _, pebble in pairs(mechanics) do
+    for _, pebble in pairs(exact) do
         if (sort_info.node_to_context_inds[pebble.node_key] or {})[pebble.context] == nil then
             table.insert(lost, pebble)
         end
@@ -407,8 +419,9 @@ end
 
 -- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)
 -- With params.is_resource_slot, resource slots then get travs that make them mine something new (see is_new_resource_trav) wherever the matching allows it
+-- With wants (optional, trav key --> set of contexts), each trav a debt goal uses where the game doesn't have it then takes a slot the game has in all those contexts, wherever the matching allows it, which pays for that part of the debt (see matching.run)
 -- Returns the matching
-local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key)
+local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key, wants)
     local current_slot = {}
     local slots = {}
     local travs = {}
@@ -533,6 +546,52 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
             end
         end
     end
+    -- Each trav a debt goal wants takes a random admissible slot the game has in every wanted context, if a perfect matching still exists with it
+    -- Travs placed that way stay put below
+    local is_paid = {}
+    local want_travs = {}
+    for trav_key, _ in pairs(wants or {}) do
+        if not is_taken[trav_key] then
+            table.insert(want_travs, trav_key)
+        end
+    end
+    table.sort(want_travs)
+    rng.shuffle(rng_key, want_travs)
+    for _, trav_key in pairs(want_travs) do
+        local candidates = {}
+        for _, slot_key in pairs(admissible[trav_key]) do
+            if prefilled[slot_key] == nil then
+                local pays = true
+                for context, _ in pairs(wants[trav_key]) do
+                    if (nci[slot_key] or {})[context] == nil then
+                        pays = false
+                        break
+                    end
+                end
+                if pays then
+                    table.insert(candidates, slot_key)
+                end
+            end
+        end
+        rng.shuffle(rng_key, candidates)
+        for i = 1, math.min(#candidates, 5) do
+            prefilled[candidates[i]] = trav_key
+            if complete(prefilled) ~= nil then
+                is_taken[trav_key] = true
+                is_paid[trav_key] = true
+                break
+            end
+            prefilled[candidates[i]] = nil
+        end
+    end
+    local num_paid = 0
+    for _, _ in pairs(is_paid) do
+        num_paid = num_paid + 1
+    end
+    if #want_travs > 0 then
+        log("Monotone matching: " .. num_paid .. " of " .. #want_travs .. " identities debt goals want now come from the game where they're wanted")
+    end
+
     local slot_match = complete(prefilled)
     if slot_match == nil then
         error("Monotone matching failed although every prefilled pair was checked")
@@ -564,14 +623,17 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
             local i = 1
             while i <= #queue and last == nil do
                 local trav_key = slot_match[queue[i]]
-                local options = table.deepcopy(admissible[trav_key])
-                table.insert(options, current_slot[trav_key])
+                -- A trav that pays for debt doesn't move
+                local options = is_paid[trav_key] and {} or table.deepcopy(admissible[trav_key])
+                if not is_paid[trav_key] then
+                    table.insert(options, current_slot[trav_key])
+                end
                 rng.shuffle(rng_key, options)
                 for _, slot_key in pairs(options) do
                     if prev[slot_key] == nil and keeps_resources_new(trav_key, slot_key) then
                         prev[slot_key] = queue[i]
                         local closing = slot_match[slot_key]
-                        if is_admissible[closing][resource_slot] and is_new_resource_trav(params, resource_slot, closing) then
+                        if is_admissible[closing][resource_slot] and is_new_resource_trav(params, resource_slot, closing) and not is_paid[closing] then
                             last = slot_key
                             break
                         end
@@ -625,6 +687,85 @@ matching.connect = connect
 -- For tests (test-monotone-matching.lua)
 matching.random_matching = random_matching
 
+----------------------------------------------------------------------------------------------------
+-- Debt goals
+----------------------------------------------------------------------------------------------------
+
+-- With planetary changes superposed (debt, like planetary.superposed; see lib/graph/superpose.lua), goals only the older world reaches must stay reachable with its debt, since promotion keeps them owed until something pays for them
+-- Everything the game itself has is kept as before, since the other sorts here leave the debt out
+
+-- A copy of graph with the debt added, and a sort of it
+local function superposed_sort(graph, debt)
+    local sup_graph = table.deepcopy(graph)
+    superpose.add_debt(sup_graph, debt)
+    return sup_graph, complex_sort(sup_graph)
+end
+
+-- Goals only the debt reaches, given the game's graph and a sort of it
+-- Returns { exact = pebbles of hard transported goals (debt.goals, hard as in protection.lua) the superposed graph reaches but the game doesn't, recipes = the recipes it reaches but the game doesn't (each with the earliest context it has, for its witness) }, and the superposed graph and sort
+local function debt_goals_of(graph, sort_info, debt)
+    local sup_graph, sup_sort = superposed_sort(graph, debt)
+    local nci = sort_info.node_to_context_inds
+    local sup_nci = sup_sort.node_to_context_inds
+    local goals = {
+        exact = {},
+        recipes = {},
+    }
+    for node_key, contexts in pairs(debt.goals or {}) do
+        local node = sup_graph.nodes[node_key]
+        for context, _ in pairs(contexts) do
+            local is_hard = node ~= nil and (node.type == "recipe" or (node.mechanic and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, context)))
+            if is_hard and (nci[node_key] or {})[context] == nil and (sup_nci[node_key] or {})[context] ~= nil then
+                table.insert(goals.exact, {
+                    node_key = node_key,
+                    context = context,
+                })
+            end
+        end
+    end
+    for node_key, contexts in pairs(sup_nci) do
+        local node = sup_graph.nodes[node_key]
+        if node.type == "recipe" and node.old_world == nil and next(contexts) ~= nil and next(nci[node_key] or {}) == nil then
+            local earliest_context
+            local earliest
+            for context, ind in pairs(contexts) do
+                if earliest == nil or ind < earliest then
+                    earliest = ind
+                    earliest_context = context
+                end
+            end
+            table.insert(goals.recipes, {
+                node_key = node_key,
+                context = earliest_context,
+            })
+        end
+    end
+    for _, list in pairs(goals) do
+        table.sort(list, function(a, b) return a.node_key .. a.context < b.node_key .. b.context end)
+    end
+    return goals, sup_graph, sup_sort
+end
+
+-- Debt goals (from debt_goals_of) that a sort of a superposed graph misses: exact goals need their context, recipes any context
+matching.lost_debt_goals = function(goals, sup_sort)
+    local sup_nci = sup_sort.node_to_context_inds
+    local lost = {}
+    for _, pebble in pairs(goals.exact) do
+        if (sup_nci[pebble.node_key] or {})[pebble.context] == nil then
+            table.insert(lost, pebble)
+        end
+    end
+    for _, pebble in pairs(goals.recipes) do
+        if next(sup_nci[pebble.node_key] or {}) == nil then
+            table.insert(lost, pebble)
+        end
+    end
+    return lost
+end
+
+-- A copy of graph with the debt added, and a sort of it (for first pass's own gate)
+matching.superposed_sort = superposed_sort
+
 -- params:
 --   slot_keys: every slot
 --   unconnected_graph: first pass's split graph with no slot/trav connections
@@ -634,7 +775,8 @@ matching.random_matching = random_matching
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
--- Returns slot key --> trav key
+--   debt (optional): planetary changes superposed (see the debt goals above), whose goals only the debt reaches must stay reachable with it
+-- Returns slot key --> trav key, and the debt goals it kept (nil without debt), for first pass's own gate
 matching.run = function(params)
     local assignment = {}
     local travs = {}
@@ -645,8 +787,17 @@ matching.run = function(params)
     table.sort(travs)
     local graph = connect(table.deepcopy(params.unconnected_graph), params, assignment)
     local sort_info = complex_sort(graph)
-    local mechanics, recipes = hard_pebbles(graph, sort_info)
-    log("Monotone matching: " .. #mechanics .. " hard mechanic pebbles, " .. #recipes .. " recipes")
+    local exact, recipes = hard_pebbles(graph, sort_info)
+    log("Monotone matching: " .. #exact .. " hard pebbles kept exactly (mechanics and planet-locked recipes), " .. #recipes .. " recipes")
+
+    -- The superposed graph and sort of the current matching, whose witnesses tell which travs a lost debt goal needs
+    local debt_goals
+    local sup_graph
+    local sup_sort
+    if params.debt ~= nil then
+        debt_goals, sup_graph, sup_sort = debt_goals_of(graph, sort_info, params.debt)
+        log("Monotone matching: " .. #debt_goals.exact .. " goals and " .. #debt_goals.recipes .. " recipes only reachable with the debt")
+    end
 
     -- Launch chains and launchability are properties of the travs themselves, so they're the same in every round
     -- Launchable means deliverable: an item that spoils before a trip is over can be launched (for launch results) but has no item-deliver node
@@ -662,28 +813,68 @@ matching.run = function(params)
     end
 
     for round = 1, params.rounds do
-        -- Recipes are left to the gate (needs from recipe anchors are too strict)
-        local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(mechanics, sort_info))
+        -- Recipe anchors are left to the gate (their needs would be too strict), but planet-locked recipes keep exact contexts, so they're proved like mechanics
+        local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(exact, sort_info))
         if #failed > 0 then
             -- Those pebbles get no needs, so the gate is all that protects them this round
             log("Monotone matching: round " .. round .. " couldn't prove " .. #failed .. " hard pebbles in its own sort")
         end
         local needs, requires_launchable = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
+        -- Wants: travs whose identity a debt goal's proof (in the superposed graph) uses in a context the game doesn't have it in
+        -- Putting such a trav in a slot the game has in that context pays for that part of the debt
+        local wants
+        if debt_goals ~= nil then
+            local debt_goal_pebbles = {}
+            for _, list in pairs(debt_goals) do
+                for _, pebble in pairs(list) do
+                    table.insert(debt_goal_pebbles, pebble)
+                end
+            end
+            local sup_closure, sup_support = make_prover(sup_graph, sup_sort).prove(goal_inds_of(debt_goal_pebbles, sup_sort))
+            wants = {}
+            for trav_key, contexts in pairs(needs_from_proof(sup_graph, sup_sort, sup_closure, sup_support, assignment, chain_of)) do
+                for context, _ in pairs(contexts) do
+                    if (sort_info.node_to_context_inds[trav_key] or {})[context] == nil then
+                        wants[trav_key] = wants[trav_key] or {}
+                        wants[trav_key][context] = true
+                    end
+                end
+            end
+        end
         local num_refinements = 0
         local new_assignment
         local new_graph
         local new_sort
+        -- The superposed graph and sort of the matching this round keeps, if it keeps a new one
+        local kept_sup_graph
+        local kept_sup_sort
         while true do
-            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }))
+            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }), wants)
             new_assignment = realize(params, new_assignment)
             new_graph = connect(table.deepcopy(params.unconnected_graph), params, new_assignment)
             new_sort = complex_sort(new_graph)
-            local lost = lost_pebbles(mechanics, recipes, new_sort)
-            if #lost == 0 then
+            local lost = lost_pebbles(exact, recipes, new_sort)
+            -- Debt goals are only checked once the game itself keeps everything, since that's the cheaper sort
+            local lost_debt = {}
+            local new_sup_graph
+            local new_sup_sort
+            if #lost == 0 and debt_goals ~= nil then
+                new_sup_graph, new_sup_sort = superposed_sort(new_graph, params.debt)
+                lost_debt = matching.lost_debt_goals(debt_goals, new_sup_sort)
+            end
+            if #lost == 0 and #lost_debt == 0 then
+                kept_sup_graph = new_sup_graph
+                kept_sup_sort = new_sup_sort
                 break
             end
+            local blocked = blocked_travs(graph, sort_info, lost, new_sort)
+            if #lost_debt > 0 then
+                for id, q in pairs(blocked_travs(sup_graph, sup_sort, lost_debt, new_sup_sort)) do
+                    blocked[id] = q
+                end
+            end
             local num_added = 0
-            for _, q in pairs(blocked_travs(graph, sort_info, lost, new_sort)) do
+            for _, q in pairs(blocked) do
                 needs[q.node_key] = needs[q.node_key] or {}
                 if needs[q.node_key][q.context] == nil then
                     needs[q.node_key][q.context] = true
@@ -691,7 +882,8 @@ matching.run = function(params)
                 end
             end
             num_refinements = num_refinements + 1
-            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles (e.g. " .. lost[1].node_key .. " @ " .. lost[1].context .. "); added " .. num_added .. " needs")
+            local example = lost[1] or lost_debt[1]
+            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles and " .. #lost_debt .. " debt goals (e.g. " .. example.node_key .. " @ " .. example.context .. "); added " .. num_added .. " needs")
             if num_added == 0 or num_refinements >= 10 then
                 -- Nothing left to refine, so keep the previous matching (always valid)
                 new_assignment = assignment
@@ -718,8 +910,12 @@ matching.run = function(params)
         assignment = new_assignment
         graph = new_graph
         sort_info = new_sort
+        if kept_sup_sort ~= nil then
+            sup_graph = kept_sup_graph
+            sup_sort = kept_sup_sort
+        end
     end
-    return assignment
+    return assignment, debt_goals
 end
 
 return matching

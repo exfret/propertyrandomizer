@@ -74,6 +74,8 @@ script.on_init(function(event)
 
     -- Give ability to mine fluid immediately to make things easier
     game.forces.player.mining_with_fluid = true
+    -- Space platforms too, so no technology has to unlock them (creating one still takes a rocket launch with a starter pack)
+    game.forces.player.unlock_space_platforms()
     game.forces.player.cliff_deconstruction_enabled = true
     game.forces.player.unlock_logistic_network = true
     game.forces.player.character_logistic_requests = true

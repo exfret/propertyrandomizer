@@ -478,6 +478,7 @@ end
 
 -- Removes what feeds each head that starts detached (see promotion.new), so no model built from the graph counts on it
 -- Before subdividing, that's the claimed edge itself (it carries starts_detached); after, it's the connection from the head's vanilla base (the head carries it)
+-- An AND node the edge went into (like the orand make_orands puts before an OR node) needs false instead, since an AND node left with nothing to need is a source, reached everywhere
 gutils.detach_starting_heads = function(graph)
     local edge_keys = {}
     for edge_key, edge in pairs(graph.edges) do
@@ -486,8 +487,24 @@ gutils.detach_starting_heads = function(graph)
             table.insert(edge_keys, edge_key)
         end
     end
+    local false_key = gutils.key("false", "")
     for _, edge_key in pairs(edge_keys) do
+        local stop_key = graph.edges[edge_key].stop
         gutils.remove_edge(graph, edge_key)
+        if graph.nodes[stop_key].op == "AND" then
+            -- The logic graph has a false node (an OR node with no prerequisites, see lib/logic/abstract.lua); a graph built by hand might not
+            if graph.nodes[false_key] == nil then
+                gutils.add_node(graph, "false", "", {
+                    op = "OR",
+                })
+            end
+            if graph.edges[gutils.ekey({
+                start = false_key,
+                stop = stop_key,
+            })] == nil then
+                gutils.add_edge(graph, false_key, stop_key)
+            end
+        end
     end
 end
 

@@ -62,10 +62,12 @@ function abstract.build(lu, extra_params)
             add_node("room-launch", "AND", nil, nil, {
                 mechanic = true,
                 keep_planetary_isolatability = true,
+                keep_isolatability = true,
             })
             ----------------------------------------
             -- Can we launch from this specific planet?
             -- Requires: room + launch capability
+            -- Rocket building nodes keep their isolatability through all randomization (keep_isolatability) and planetary changes (keep_planetary_isolatability), so a planet that could build and launch rockets from its own resources still can
 
             add_edge("room", room_key)
             add_edge("launch", "")
@@ -77,19 +79,23 @@ function abstract.build(lu, extra_params)
             add_node("room-create-platform", "AND", nil, room_key, {
                 mechanic = true,
                 keep_planetary_isolatability = true,
+                keep_isolatability = true,
             })
             ----------------------------------------
             -- Can we create an instance of this space surface room via launch?
-            -- Requires: starter pack + launch capability + tech unlock
+            -- Requires: starter pack + launch capability, plus the tech unlock with extra_params.tech_gated_unlocks (otherwise control.lua unlocks space platforms at the start)
 
             add_edge("room-create-platform-starter-pack", room_key)
-            add_edge("space-platform-unlock", "")
+            if extra_params.tech_gated_unlocks then
+                add_edge("space-platform-unlock", "")
+            end
             add_edge("launch", "")
 
             ----------------------------------------
             add_node("room-create-platform-starter-pack", "OR", nil, room_key, {
                 mechanic = true,
                 keep_planetary_isolatability = true,
+                keep_isolatability = true,
             })
             ----------------------------------------
             -- Can we get a starter pack that creates this space surface?
@@ -462,16 +468,20 @@ function abstract.build(lu, extra_params)
     -- No: evolution can be turned off in map settings, and how fast it rises isn't tied to progression, so this has no prereqs and is never satisfied.
     -- Spawns that need higher evolution (like big biters) depend on this, so logic never relies on them.
 
-    ----------------------------------------
-    add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock", mechanic = true })
-    ----------------------------------------
-    -- Have we unlocked the ability to mine resources that require fluid?
+    -- Mining with fluid and space platforms are unlocked at the start of the game (control.lua), so their unlock nodes are only built with extra_params.tech_gated_unlocks
+    -- That's for other randomizers extracting this logic, which don't unlock them at the start
+    if extra_params.tech_gated_unlocks then
+        ----------------------------------------
+        add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock", mechanic = true })
+        ----------------------------------------
+        -- Have we unlocked the ability to mine resources that require fluid?
 
-    for _, tech in pairs(lu.techs) do
-        if tech.effects ~= nil then
-            for _, effect in pairs(tech.effects) do
-                if effect.type == "mining-with-fluid" and effect.modifier then
-                    add_edge("technology", tech.name)
+        for _, tech in pairs(lu.techs) do
+            if tech.effects ~= nil then
+                for _, effect in pairs(tech.effects) do
+                    if effect.type == "mining-with-fluid" and effect.modifier then
+                        add_edge("technology", tech.name)
+                    end
                 end
             end
         end
@@ -541,14 +551,17 @@ function abstract.build(lu, extra_params)
         add_edge("room", room_key)
     end
 
-    ----------------------------------------
-    add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock", mechanic = true })
-    ----------------------------------------
-    -- Have we researched the ability to send starter packs to space?
-    -- OR over technologies with unlock-space-platforms effect
+    -- Only with extra_params.tech_gated_unlocks, as for mining with fluid above
+    if extra_params.tech_gated_unlocks then
+        ----------------------------------------
+        add_node("space-platform-unlock", "OR", nil, "", { canonical = "space-platform-unlock", mechanic = true })
+        ----------------------------------------
+        -- Have we researched the ability to send starter packs to space?
+        -- OR over technologies with unlock-space-platforms effect
 
-    for tech_name, _ in pairs(lu.space_platform_unlock_techs) do
-        add_edge("technology", tech_name)
+        for tech_name, _ in pairs(lu.space_platform_unlock_techs) do
+            add_edge("technology", tech_name)
+        end
     end
 
     ----------------------------------------
@@ -556,6 +569,7 @@ function abstract.build(lu, extra_params)
         canonical = "create-platform",
         mechanic = true,
         keep_planetary_isolatability = true,
+        keep_isolatability = true,
     })
     ----------------------------------------
     -- Can we create any space platform?
@@ -571,6 +585,7 @@ function abstract.build(lu, extra_params)
         canonical = "launch",
         mechanic = true,
         keep_planetary_isolatability = true,
+        keep_isolatability = true,
     })
     ----------------------------------------
     -- Can we use any rocket silo for launching?
@@ -586,6 +601,7 @@ function abstract.build(lu, extra_params)
         canonical = "launch",
         mechanic = true,
         keep_planetary_isolatability = true,
+        keep_isolatability = true,
     })
     ----------------------------------------
     -- Can we operate some cargo landing pad?
@@ -599,6 +615,7 @@ function abstract.build(lu, extra_params)
         canonical = "launch",
         mechanic = true,
         keep_planetary_isolatability = true,
+        keep_isolatability = true,
     })
     ----------------------------------------
     -- Can we launch something into space?

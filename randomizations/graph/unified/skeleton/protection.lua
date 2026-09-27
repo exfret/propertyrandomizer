@@ -1,9 +1,10 @@
--- Which parts of mechanic contexts graph randomization must keep (the one place this rule lives)
+-- Which parts of mechanic contexts graph randomization must keep, and which contexts of planet-locked recipes (the one place these rules live)
 -- Rooms and automatability are always kept; isolatability is kept everywhere with constants.keep_isolatability, or else only for nodes built with keep_isolatability = true (see lib/logic)
 -- Home contexts (see context-sort.lua) aren't mechanic contexts of their own: they only matter as backings of isolatability from the discovery rule, which promotion follows, so a mechanic's home context keeps just what the context it rides on keeps
 -- Used by promotion (what it promises), monotone matching (its hard set), first pass's gate and the mechanic context check, and in its planetary form by the planetary check (randomizations/planetary/check.lua)
 
 local constants = require("helper-tables/constants")
+local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 
 local protection = {}
@@ -44,6 +45,40 @@ protection.kept_part = function(node, context)
         end
     end
     return kept
+end
+
+-- Recipes locked to one planet by their surface conditions keep every context they have there, isolatable and automatable included, through all randomization, planetary changes included
+-- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform)
+-- The graph and sort_info are a logic graph and a complex sort of it, and prototypes come from data.raw, so call this while data.raw is the game that was sorted
+-- Home contexts aren't kept for their own sake, as for planetary_kept_context below
+-- Returns node key --> context --> true
+protection.planet_locked_recipe_contexts = function(graph, sort_info)
+    local locked = {}
+    for node_key, contexts in pairs(sort_info.node_to_context_inds) do
+        local node = graph.nodes[node_key]
+        local recipe = node ~= nil and node.type == "recipe" and data.raw.recipe[node.name] or nil
+        if recipe ~= nil and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
+            local room
+            local is_one_room = true
+            for context, _ in pairs(contexts) do
+                local context_room = top.context_room(context)
+                if room == nil then
+                    room = context_room
+                elseif context_room ~= room then
+                    is_one_room = false
+                end
+            end
+            if room ~= nil and is_one_room and gutils.deconstruct(room).type == "planet" then
+                locked[node_key] = {}
+                for context, _ in pairs(contexts) do
+                    if top.context_home(context) == nil then
+                        locked[node_key][context] = true
+                    end
+                end
+            end
+        end
+    end
+    return locked
 end
 
 -- The context a planetary change (randomizations/planetary) must keep for a mechanic pebble, or nil if it needn't keep any

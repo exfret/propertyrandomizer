@@ -1,0 +1,172 @@
+\section{Three ways to build a reference for shifted goals}\label{sec:constructions}
+
+By Corollary~\ref{cor:reference}, integrating a shift with unified comes down to one question: which completable world, with which fallback assignment, do we hand to unified for the goals $\Goals_1$? There are three answers. They differ in when the contradictions are settled and in what the settlement leaves in the game.
+
+\subsection{Scaffolded reference (today)}
+
+Add prototypes $S$ (variant recipes, conversions, extra patches) and data edits until $\Goals_1\subseteq\Reach(G_1{+}S)$, then hand $(G_1{+}S,\sref,\pi,\Goals_1)$ to unified. This is the current planetary stage, and it is a reference by construction, since PLANETCHECK verifies it. Its costs follow from the theory:
+\begin{itemize}[nosep]
+\item $S$ is chosen before unified has made any choice, so it cannot use anything unified does;
+\item duplicates in $S$ are content. The planned ``X (Planet)'' variants stay in the game whether or not the final backings use them;
+\item removing unneeded scaffolds after unified did not work (the deleted \code{remove_redundant}), and Theorem~\ref{thm:fallback} says why. Once $S$ is in the reference, promotion's backings use scaffold pebbles whenever they are earliest, and nothing prefers backings without them.
+\end{itemize}
+
+\subsection{Repaired reference: edit the fallback, not the world}
+
+\begin{definition}[Repair]
+A \emph{repair} is a change $\Delta$ of the reference assignment inside some later pass's slot space, such as a recipe ingredient slot getting a different base. It is chosen so that $\Goals_1\subseteq\Reach(G_1[\sref\oplus\Delta])$.
+\end{definition}
+
+\begin{theorem}\label{thm:repaired}
+If $\Delta$ is a repair, then $(G_1,\sref\oplus\Delta,\pi_1,\Goals_1)$ is a reference, so promotion is sound and always able to fall back when run against it. For every repaired slot, the fallback is the repaired base.
+\end{theorem}
+\begin{proof}
+Definition~\ref{def:reference} and Corollary~\ref{cor:reference}.
+\end{proof}
+
+The point of repairs is what they leave behind. \textbf{A repair is not content}: if unified randomizes the slot, the repair is gone; it shows only where unified falls back, and a fallen-back recipe looks like any other randomized recipe. A scaffold duplicate stays either way. The two kinds of edit the planetary stage already makes are repairs in this sense: an in-place edit of a recipe that only its planet used (\file{scaffolds.lua}), and a planet-specific recipe following a resource swap (\code{resources.edits}). The theory says to make \emph{every} fix a repair when possible, and to keep duplicates only where a single recipe cannot serve all its contexts (Section~\ref{sec:repair}, context conflicts).
+
+Two practical limits:
+\begin{itemize}[nosep]
+\item a repaired slot that unified cannot randomize (a blacklisted ingredient such as water or lava, or a blacklisted recipe) keeps the repaired base for good, which is how today's scaffold edits behave;
+\item $\Delta$ has to be found. That is the ``fix a small number of contradictions'' problem, treated in Section~\ref{sec:repair}.
+\end{itemize}
+
+\subsection{Superposed reference: carry the debt, settle later}
+
+Both constructions so far settle every contradiction before unified runs. The third one lets unified run first.
+
+\begin{definition}[Superposition]
+$\Gsup=G_0\cup G_1$ has every edge of either world. Its \emph{debt edges} $\Edebt=E(G_0)\setminus E(G_1)$ are the feature edges that the shift removed.
+\end{definition}
+
+\begin{lemma}[The superposition is always a reference]\label{lem:superposition}
+If every debt edge ends in an $\OR$ node, then for every assignment $\sigma$,
+\[\Reach(G_0[\sigma])\cup\Reach(G_1[\sigma])\subseteq\Reach(\Gsup[\sigma]).\]
+In particular $(\Gsup,\sref,\pi_\sqcup,\Goals_0\cup\Goals_1)$ is a reference, and so is $(\Gsup,\sref,\pi_\sqcup,\Goals_1)$ whenever every identity and recipe goal of $\Goals_1$ was reachable in vanilla.
+\end{lemma}
+\begin{proof}
+$\Gsup$ is $G_1$ plus $\OR$ in-edges, and $G_0$ plus $\OR$ in-edges (the new feature edges also end in $\OR$ nodes, Table~\ref{tab:features}). Apply Lemma~\ref{lem:monotone} twice.
+\end{proof}
+
+The superposition is the world where every planet has both its old and its new features. Pebbles in it can be \emph{solvent} or \emph{in debt}:
+
+\begin{definition}[Solvency]
+A pebble is \emph{solvent} under $\sigma$ if it has a backing in $\Gsup[\sigma]$ that uses no debt edge, i.e.\ a backing in $G_1[\sigma]$. Otherwise it is \emph{in debt}, and its backings need the old world.
+\end{definition}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[room] (v) at (0,0) {Vulcanus};
+\node[room] (g) at (0,-2.7) {Gleba};
+\node[orn, feat] (lava) at (3.8,0.9) {lava};
+\node[orn, feat] (water) at (3.8,-0.8) {water};
+\node[orn, feat] (lavag) at (3.8,-2.7) {lava on Gleba};
+\draw[debt] (v) -- node[lbl, above left, text=cdebt, pos=0.45] {debt edge (old world)} (lava);
+\draw[pre, cshift] (v) -- node[lbl, below left, pos=0.45, text=cshift!80!black] {new} (water);
+\draw[pre, cshift] (g) -- node[lbl, below, text=cshift!80!black] {new} (lavag);
+\node[andn] (r1) at (7.2,0.9) {molten Cu recipe};
+\node[andn, goal] (gl) at (10.4,0.9) {V science};
+\draw[pre] (lava) -- (r1); \draw[pre] (r1) -- (gl);
+\draw[rep, dashed] (water) to[bend right=15] node[lbl, below right, text=crep, pos=0.55] {repayment} (r1);
+\node[andn] (r2) at (8.3,-2.7) {recipes using lava on Gleba};
+\draw[pre] (lavag) -- (r2);
+\node[lbl, align=left, anchor=north west, text width=4.4cm] at (8.9,0.2) {The goal is established in $\Gsup$ from the start, but \emph{in debt}. It is solvent once some choice backs it without the dashed red edge, e.g.\ a molten copper recipe that takes the new local fluid.};
+\end{tikzpicture}
+\caption{The superposed reference. Every planet keeps its old feature edges as debt edges (dashed red) next to its new ones. Everything that was reachable in either world is reachable here, so promotion can start. Randomization choices that back the goal through the new features \emph{repay} the debt.}
+\label{fig:superposition}
+\end{figure}
+
+\paragraph{Debt-carrying promotion.} Run promotion on $\Gsup$ and track solvency next to establishment:
+\begin{enumerate}[nosep]
+\item \code{establish} works as today, in $\Gsup[\scur]$, so (W) and Theorems~\ref{thm:sound}--\ref{thm:fallback} hold unchanged;
+\item a second mode, \code{establish_solvent}, skips debt edges. This is one extra flag in \code{compute_support}, plus a separate memo;
+\item the debt $\Phi(\scur)$ is the number of goals without a solvent backing. To keep it from rising, a resolution may not make a solvent promised pebble insolvent: if $\peb{r}{c}$ was solvent, its new bases must be solvent in $c$ as well. That is a local check. It suffices because every solvent backing that went through $\peb{r}{c}$ stays solvent, and it keeps the fallback, because the reference choice leaves the graph as it was;
+\item where it matters, the choice is steered: for slots on a goal's repair plan (Section~\ref{sec:repair}), candidates that are solvent in the goal's contexts come first.
+\end{enumerate}
+In pseudo-code, the changes to \file{promotion.lua} are small:
+\par\smallskip\noindent\begin{minipage}{\linewidth}
+\begin{Verbatim}[fontsize=\small, frame=single, framesep=3mm]
+establish(p, mode)            -- mode: "any" (today) or "solvent"
+    if mode == any and p is promised: return true
+    for each way to back p with earlier pebbles in G_sup[sigma_cur]:
+        if mode == solvent and it uses a debt edge: skip it
+        if every pebble q it uses has establish(q, mode): return true
+    return false
+
+resolve(r, bases, C)          -- as today, plus the no-new-insolvency rule:
+    for each c in C where establish(<r,c>, solvent) held before:
+        require establish(<b,c>, solvent) for every new base b
+
+settle()                      -- after every pass
+    S  <- sort G1[sigma_final], then continue it with the debt gate open
+    E* <- debt edges on S's witness of the goals
+    for each e in E*: take the first rung of the ladder that works
+\end{Verbatim}
+\end{minipage}\par\smallskip
+When all passes are done, the goals may still owe something. Find out what with a \emph{solvency-first witness}: sort $G_1[\sigma_{\mathrm{final}}]$ first, then continue the same sort after opening the debt edges (the staged sort of Section~\ref{sec:repair}). The debt edges on that witness, $\Edebt^{*}$, are all that is still owed.
+
+\begin{theorem}[Settlement]\label{thm:settlement}
+$\Goals_1\subseteq\Reach\bigl(G_1[\sigma_{\mathrm{final}}]\cup\Edebt^{*}\bigr)$. If $\Edebt^{*}=\emptyset$, the final game is the pure shift, with nothing added.
+\end{theorem}
+\begin{proof}
+The solvency-first witness is a derivation in $\Gsup[\sigma_{\mathrm{final}}]$ that uses only edges of $G_1[\sigma_{\mathrm{final}}]$ and $\Edebt^{*}$. Apply Lemma~\ref{lem:justification}.
+\end{proof}
+
+So the question ``can unified fix planetary's contradictions?'' becomes ``how much of the debt does unified pay?''. Whatever it leaves unpaid, $\Edebt^{*}$, is settled explicitly, in the order below.
+
+\subsection{The settlement ladder}
+
+Each debt that is still owed at the end climbs the ladder of Figure~\ref{fig:ladder} until one rung settles it. The rungs are ordered by how much they show in the game:
+\begin{enumerate}[nosep]
+\item \textbf{paid}: a randomization choice already backs the goal without the debt. Nothing to do;
+\item \textbf{repair} (edit the reference): if the debt is settled before unified, a fallback edit (Theorem~\ref{thm:repaired}). During unified, the same thing is a \emph{pin} on the slot, like promotion's recycling pins;
+\item \textbf{planned duplicate}: a planet variant ``X (Planet)'' for a recipe that must work differently in two rooms (a context conflict, Section~\ref{sec:repair});
+\item \textbf{addition}: materialize the debt edge itself (an extra resource patch, a planet keeping its lightning). For oceans this rung is closed by the user's decision that oceans move as tiles and their fluid changes with them;
+\item \textbf{revert}: retry the attempt without the shift, which is the true-vanilla fallback the user asked for. It is always available, and it leaves the seed exactly as it would be without the shift.
+\end{enumerate}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\draw[very thick, cgrey] (0,0) -- (0,6.0); \draw[very thick, cgrey] (2.2,0) -- (2.2,6.0);
+\foreach \y/\t/\d/\c in {
+  5.2/paid/{a choice already backs the goal in $G_1$; invisible}/crep,
+  4.1/repair/{fallback edit or pin in a pass's slot space; seen only where unified falls back or the slot is blacklisted}/crep,
+  3.0/duplicate/{planned ``X (Planet)'' variant for a context conflict; visible content}/cshift,
+  1.9/addition/{materialize the debt edge (extra patch, keep lightning); visible; closed for oceans}/cshift,
+  0.8/revert/{retry without the shift (true vanilla); always available}/cdebt}{
+  \draw[very thick, \c] (0,\y) -- (2.2,\y);
+  \node[font=\small\bfseries, text=\c] at (1.1,\y+0.25) {\t};
+  \node[anchor=west, font=\small, text width=10.5cm] at (2.6,\y) {\d};
+}
+\draw[-{Stealth[length=3mm]}, thick] (-0.6,5.6) -- node[lbl, left, align=right, rotate=90, anchor=south] {more visible} (-0.6,0.4);
+\end{tikzpicture}
+\caption{The settlement ladder. Each debt left after unified is settled by the highest rung that works. Theorem~\ref{thm:settlement} covers the upper rungs. The last rung is always available: it falls back to the unshifted pipeline.}
+\label{fig:ladder}
+\end{figure}
+
+\subsection{Comparison}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l X X X@{}}
+\toprule
+ & scaffolded & repaired & superposed \\
+\midrule
+reference world & $G_1+S$ & $G_1$, fallback $\sref\oplus\Delta$ & $G_0\cup G_1$ \\
+completable by & construction (PLANETCHECK) & the repair search & Lemma~\ref{lem:superposition}, always \\
+contradictions settled & before unified & before unified & after unified (ladder) \\
+can use unified's choices & no & no & yes (repayment) \\
+visible leftovers & all of $S$ & only fallbacks used, blacklisted slots & only unpaid debts \\
+needs new machinery & no & repair search & solvency mode, settlement \\
+\bottomrule
+\end{tabularx}
+\caption{The three references. The superposed reference is the only one where unified can fix contradictions itself. The repaired reference is the cheapest way to get most of the benefit with the current unified code.}
+\label{tab:compare}
+\end{table}
+
+\paragraph{Several shifts at once.} Shifts compose: superpose all of them, take the union of their debt edges, and transport the goals through each shift in turn. Lemma~\ref{lem:superposition} still applies, because every edge involved ends in an $\OR$ node. A new feature edge of one shift is a real edge in the superposition, so one shift can pay another's debts. Section~\ref{sec:repair} measures exactly that happening with oceans and resources together.
+
+The glossary lists \emph{debt} (a pending constraint with no known fallback bundle) as out of scope. Superposition is what brings it into scope. In $\Gsup$ every pending constraint has a fallback bundle again, possibly one that goes through the old world, so a debt becomes something to \emph{settle} rather than a hole in the proof.

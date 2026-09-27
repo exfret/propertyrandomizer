@@ -1,5 +1,5 @@
 -- Correctness check, independent of how randomization works: compares each mechanic's contexts in a sort of the final randomized game against a sort of the original game, and logs any mechanic contexts that were lost
--- It also checks that every originally reachable recipe is still reachable somewhere
+-- It also checks that every originally reachable recipe is still reachable somewhere, and that planet-locked recipes keep every context they had on their planet
 -- Output goes to the log with the prefix MECHCHECK (or the given label)
 -- The verdict says whether the game is safe to hand out: unified randomization retries attempts that fail it, and a game that still fails it loads with a warning in the randomizer panel (a softlock must never be silent, and a startup error would make them reset their settings)
 
@@ -27,9 +27,9 @@ local function only_isolatability_lost(context, final_has)
 end
 
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
--- Only the protected part of each mechanic context counts (see protection.lua)
--- label (optional) replaces MECHCHECK in the log lines
--- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by }
+-- Only the protected part of each mechanic context counts (see protection.lua), and every context of a planet-locked recipe
+-- The optional label replaces MECHCHECK in the log lines
+-- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic and planet-locked recipe contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by }
 check.run = function(graph, init_sort_info, final_sort_info, label)
     label = label or "MECHCHECK"
     local function log_check(message)
@@ -72,6 +72,28 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
             end
         end
     end
+    -- Recipes locked to one planet keep every context they had there (see protection.lua), and losing one counts like a mechanic context
+    -- A recipe keeps its name and surface conditions, so the final graph and data.raw tell which were locked in the original sort
+    local num_locked_checked = 0
+    local num_locked_lost = 0
+    for node_key, contexts in pairs(protection.planet_locked_recipe_contexts(graph, init_sort_info)) do
+        local final_contexts = final_sort_info.node_to_context_inds[node_key] or {}
+        for context, _ in pairs(contexts) do
+            num_locked_checked = num_locked_checked + 1
+            if final_contexts[context] == nil then
+                num_locked_lost = num_locked_lost + 1
+                if only_isolatability_lost(context, function(other)
+                    return final_contexts[other] ~= nil
+                end) then
+                    table.insert(lost, "planet-locked " .. node_key .. " @ " .. context .. " (only isolatability)")
+                else
+                    table.insert(lost, "planet-locked " .. node_key .. " @ " .. context)
+                    num_hard_lost = num_hard_lost + 1
+                end
+            end
+        end
+    end
+    log_check("checked " .. num_locked_checked .. " planet-locked recipe contexts; lost " .. num_locked_lost)
     -- Every recipe reachable originally must still be reachable somewhere
     local num_recipes = 0
     local lost_recipes = {}

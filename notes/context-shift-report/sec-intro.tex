@@ -1,0 +1,60 @@
+\section{Introduction}\label{sec:intro}
+
+\subsection{Two pipelines that disagree about contexts}
+
+Unified randomization keeps a game completable by reasoning relative to a fixed \emph{reference}: a random contextual sort of a world that is already known to be completable. Every choice it makes (a new base for a head, a new ingredient list for a recipe) is accepted only if every promised pebble can still be backed by strictly earlier pebbles of that sort (\file{randomizations/graph/unified/skeleton/promotion.lua}). If nothing better is found, the reference's own choice (the vanilla base, the vanilla ingredients) is always available as a fallback. Mechanic contexts are hard constraints: rooms and automatability are always kept, isolatability where declared (\file{skeleton/protection.lua}).
+
+Planetary randomization moves \emph{features} between planets: ocean tiles and their fluid, resource placements, lightning, freezing (\file{randomizations/planetary/*.lua}). This changes, on purpose, which contexts mechanics have: lava is pumped on another planet, Vulcanus pumps something else. So planetary randomization cannot keep ``every mechanic keeps all its contexts''. It has its own rules instead (\file{randomizations/planetary/check.lua}, \code{protection.planetary_kept_context}): recipes stay reachable somewhere, planet-locked recipes keep their exact contexts, mechanics keep rooms and automatability, isolatability only for rocket building and electricity, and moved features follow their feature.
+
+The two are joined today by running planetary randomization \emph{first}, as a separate stage in \file{data-final-fixes.lua}. It must leave behind a world that satisfies its rules by itself, using scaffold recipes (variants of recipes that used a planet's old fluid), in-place recipe edits, extra resource patches and climate reverts. Unified then takes that world as ``vanilla'': \code{old_data_raw}, the initial sorts and the final MECHCHECK are all taken after the planetary stage (Figure~\ref{fig:pipeline}, top).
+
+\begin{figure}[t]
+\centering
+\resizebox{0.98\linewidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=3pt, align=center, font=\small, minimum height=10mm, inner sep=4pt, fill=white},
+  ar/.style={-{Stealth[length=2.4mm]}, thick}]
+% current
+\node[font=\bfseries\small, anchor=west] at (-0.2,1.3) {Today};
+\node[box, fill=cvan!10] (v0) at (0.8,0) {vanilla\\$G_0$};
+\node[box, fill=cshift!12, text width=31mm] (pl) at (3.9,0) {planetary stage\\shift + scaffolds,\\edits, patches, reverts};
+\node[box, text width=19mm] (w1) at (7.2,0) {$G_1{+}S$\\{\scriptsize (new ``vanilla'')}};
+\node[box, text width=24mm] (un) at (10.2,0) {unified\\{\scriptsize first pass, promotion}};
+\node[box, text width=23mm, font=\footnotesize] (mc) at (13.5,0) {MECHCHECK\\{\scriptsize vs $G_1{+}S$}};
+\draw[ar] (v0) -- (pl); \draw[ar] (pl) -- (w1); \draw[ar] (w1) -- (un); \draw[ar] (un) -- (mc);
+\node[lbl, below=1mm of pl] {PLANETCHECK vs $G_0$};
+% proposed
+\node[font=\bfseries\small, anchor=west] at (-0.2,-2.0) {Proposed};
+\node[box, fill=cvan!10] (p0) at (0.8,-3.3) {vanilla\\$G_0$};
+\node[box, fill=cshift!12, text width=17mm] (ps) at (3.1,-3.3) {shift $\tau$\\{\scriptsize goals $\tau_*$}};
+\node[box, text width=22mm] (pr) at (5.75,-3.3) {reference\\{\scriptsize repaired or}\\{\scriptsize superposed}};
+\node[box, text width=22mm] (pu) at (8.65,-3.3) {unified\\{\scriptsize debt-aware}\\{\scriptsize promotion}};
+\node[box, fill=crep!12, text width=17mm] (pl2) at (11.35,-3.3) {settlement\\ladder};
+\node[box, text width=17mm] (pc) at (13.8,-3.3) {check\\{\scriptsize vs $\tau_*\Gamma_0$}};
+\draw[ar] (p0) -- (ps); \draw[ar] (ps) -- (pr); \draw[ar] (pr) -- (pu); \draw[ar] (pu) -- (pl2); \draw[ar] (pl2) -- (pc);
+\draw[ar, cdebt, dashed] (pr.south) to[bend right=18] node[lbl, below, text=cdebt] {debts (IOUs)} (pl2.south);
+\end{tikzpicture}}
+\caption{Top: the current order. The planetary stage has to produce a world that is completable on its own, and unified treats it as vanilla. Bottom: the pipeline this report argues for. The shift transports the goals; unified runs against a \emph{reference} that is repaired or superposed; whatever the reference owes (its debts) is settled after unified, and the result is checked against the transported vanilla goals.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{The question}
+
+The user asked for a theoretical basis for multipass systems in which a pass may shift contexts the way planetary randomization does, and for a side investigation into letting later passes fix ``a small number of contradictions'' that such a shift creates. The motivation is integration: unified should be able to fix some of planetary's contradictions itself, instead of the planetary stage settling everything up front with scaffolds. Two facts stand in the way:
+\begin{enumerate}[nosep]
+\item planetary randomization changes contexts, while unified's hard constraint is that mechanics keep theirs;
+\item unified relies on a completable version of the game, both to rank pebbles and as the fallback that makes it always able to finish.
+\end{enumerate}
+
+\subsection{What this report does}
+
+\begin{itemize}[nosep]
+\item Section~\ref{sec:model} states the logic as a Horn program over pebbles, so that ``reachable'', ``sort'' and ``backing'' have exact meanings, and shows why the order-independent discovery rule (home contexts) matters for everything that follows.
+\item Section~\ref{sec:reference} isolates what promotion actually needs: a \emph{reference}, meaning a completable world with a proof order. Vanilla is one reference among many. Multipass is a relay of references.
+\item Section~\ref{sec:shift} defines context shifts, goal transport and contradictions. It proves the dilemma behind the user's question: vanilla is a reference but cannot see moved features, and the shifted world sees them but is not a reference.
+\item Section~\ref{sec:constructions} gives three ways out: \emph{scaffolded}, \emph{repaired} and \emph{superposed} references. The last one carries explicit debts that are settled after unified, along a ladder of increasingly visible fixes.
+\item Section~\ref{sec:repair} is the side investigation. It measures contradictions on real Space Age seeds (goals, causes, repairs) and gives a staged sort that finds small repair sets. It also finds where unified's current move space does and does not cover the repairs.
+\item Section~\ref{sec:pipeline} assembles a concrete pipeline and lists the decisions that are the user's to make.
+\end{itemize}
+
+Game facts used here were checked against the installed 2.1 game data and prototype documentation (\file{/Applications/factorio.app/Contents/data}, \file{doc-html/prototype-api.json}, version 2.1.20); where one is stated, its source is given next to it.

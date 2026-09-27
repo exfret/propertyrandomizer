@@ -639,10 +639,12 @@ function concrete.build(lu, extra_params)
                     -- I don't know why the actual amount is divided by 10 (at least in pyanodons) but whatever
                     local fluid_amount = (entity.minable.fluid_amount or 0) / 10
                     add_edge("fluid", entity.minable.required_fluid, { amount = fluid_amount })
-                    -- Mining with fluid unlock triggered automatically at start of game now
-                    --[[add_edge("mining-with-fluid-unlock", "", {
-                        abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
-                    })]]
+                    -- Mining with fluid is unlocked at the start of the game (control.lua), so the unlock is only a prereq with extra_params.tech_gated_unlocks (see abstract.lua)
+                    if extra_params.tech_gated_unlocks then
+                        add_edge("mining-with-fluid-unlock", "", {
+                            abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
+                        })
+                    end
                 end
 
                 add_edge("resource-category", lutils.mcat_name(entity), { amount = entity.minable.mining_time })
@@ -708,6 +710,7 @@ function concrete.build(lu, extra_params)
             add_node("entity-rocket-silo", "AND", nil, nil, {
                 mechanic = true,
                 keep_planetary_isolatability = true,
+                keep_isolatability = true,
             })
             ----------------------------------------
             -- Can we use this rocket silo for launching?
@@ -1630,7 +1633,7 @@ function concrete.build(lu, extra_params)
         local spoofed_cats = lu.vanilla_to_rcats[cat.name]
         if spoofed_cats ~= nil then
             for rcat_name, _ in pairs(spoofed_cats) do
-                -- A category rocket silos craft in (rocket parts) is part of rocket building, which keeps its isolatability through planetary changes (randomizations/planetary)
+                -- A category rocket silos craft in (rocket parts) is part of rocket building, which keeps its isolatability through all randomization, planetary changes included (skeleton/protection.lua)
                 local is_rocket_building = false
                 for crafter_name, _ in pairs(lu.rcat_to_crafters[rcat_name] or {}) do
                     if dutils.get_prot("entity", crafter_name).type == "rocket-silo" then
@@ -1641,6 +1644,7 @@ function concrete.build(lu, extra_params)
                 add_node("recipe-category", "OR", nil, rcat_name, {
                     mechanic = true,
                     keep_planetary_isolatability = is_rocket_building or nil,
+                    keep_isolatability = is_rocket_building or nil,
                 })
                 ----------------------------------------
                 -- Can we craft recipes in this spoofed category?

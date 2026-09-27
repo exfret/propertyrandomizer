@@ -130,6 +130,7 @@ local function pair_ok(slot, trav)
 end
 
 -- Returns false if first pass failed (so the attempt is retried)
+-- params: spoofed_graph and subdiv_graph (unified's graphs of the game), and debt (optional: planetary changes superposed, see planetary.superposed)
 first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
     -- CHOOSE SLOTS
@@ -199,6 +200,9 @@ first_pass.execute = function(params)
             end
         end
     end
+
+    -- Recipes locked to one planet keep every context they have there, like mechanics (see protection.lua)
+    local planet_locked = protection.planet_locked_recipe_contexts(spoofed_graph, init_sort)
 
     local lab_inputs = dutils.lab_inputs()
     -- Materials carried around round trips keep their positions (see item_fluid.fluid_slot_ok)
@@ -504,7 +508,8 @@ first_pass.execute = function(params)
         end
     end
     dutils.recalculate_spoil_burnt_results()
-    local assignment = monotone_matching.run({
+    -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)
+    local assignment, debt_goals = monotone_matching.run({
         slot_keys = slot_keys,
         unconnected_graph = split_graph,
         slot_to_base = slot_to_base,
@@ -542,6 +547,7 @@ first_pass.execute = function(params)
             end
             return realized
         end,
+        debt = params.debt,
     })
     local slot_to_trav = {}
     local trav_to_slot = {}
@@ -587,8 +593,23 @@ first_pass.execute = function(params)
             table.insert(lost, pebble.node_key .. " @ " .. kept)
         end
     end
+    -- Planet-locked recipes keep their exact contexts
+    for node_key, contexts in pairs(planet_locked) do
+        for context, _ in pairs(contexts) do
+            if (ordered_sort.node_to_context_inds[node_key] or {})[context] == nil then
+                table.insert(lost, node_key .. " @ " .. context)
+            end
+        end
+    end
+    -- Goals only the debt reaches stay reachable with it
+    if debt_goals ~= nil then
+        local _, sup_sort = monotone_matching.superposed_sort(split_graph, params.debt)
+        for _, pebble in pairs(monotone_matching.lost_debt_goals(debt_goals, sup_sort)) do
+            table.insert(lost, pebble.node_key .. " @ " .. pebble.context .. " (with the debt)")
+        end
+    end
     if #lost > 0 then
-        log("First pass lost " .. #lost .. " mechanic contexts, e.g. " .. table.concat(lost, ", ", 1, math.min(5, #lost)))
+        log("First pass lost " .. #lost .. " protected contexts, e.g. " .. table.concat(lost, ", ", 1, math.min(5, #lost)))
         return false
     end
 
@@ -619,6 +640,7 @@ first_pass.execute = function(params)
         trav_to_slot = trav_to_slot,
         sort = ordered_sort,
         graph = split_graph,
+        planet_locked = planet_locked,
         mechanics_sets_to_ordered = mechanics_sets_to_ordered,
         mechanics_sets_to_nodes = mechanics_sets_to_nodes,
         trav_to_mechanics_key = trav_to_mechanics_key,

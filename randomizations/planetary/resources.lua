@@ -2,11 +2,13 @@
 -- Each resource placement on a planet (where and how much of a resource that planet's map generates) is a slot, and resources are travelers.
 -- Resources trade slots between the planets other than the starting planet, ores (mined as items) with ores and wells (mined as fluids) with wells, so each planet gets other resources exactly where its old ones were.
 -- Recipes belonging to that planet follow the swap, taking what replaced a lost resource instead of it (an edit; like calcite --> the new resource's item in Vulcanus's lava recipes).
+-- So do technologies belonging to that planet that are researched by mining a lost resource: they're researched by mining its replacement instead.
 -- A planet that still can't make what it must (see check.required) gets a few extra patches of a lost resource back (a repair); only the repairs the logic needs are kept.
 -- Everything is read from the planets' map gen settings, so planets and resources from other mods take part too.
 
 local resource_autoplace = require("__core__/lualib/resource-autoplace")
 local constants = require("helper-tables/constants")
+local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
 local planetary_check = require("randomizations/planetary/check")
 
@@ -312,26 +314,38 @@ local function replacement(assignment, planet_slot, lost_slot_index)
     return nil
 end
 
--- Planet --> (product key --> substitution), one substitution for each resource the planet lost: from what that resource was mined into, to what its replacement is mined into
-resources.substitutions = function(slots, assignment, lost)
+-- Planet --> (lost resource --> the resource that replaced it), for each resource a planet lost that something replaced
+resources.replacements = function(slots, assignment, lost)
     -- Planet --> resource --> index of that resource's slot on the planet
     local slot_of = {}
     for i, slot in pairs(slots) do
         slot_of[slot.planet_name] = slot_of[slot.planet_name] or {}
         slot_of[slot.planet_name][slot.resource_name] = i
     end
-    local substitutions = {}
+    local replacements = {}
     for i, slot in pairs(slots) do
-        local replacement_name = nil
         if (lost[slot.planet_name] or {})[slot.resource_name] ~= nil then
-            replacement_name = replacement(assignment, slot_of[slot.planet_name], i)
+            local replacement_name = replacement(assignment, slot_of[slot.planet_name], i)
+            if replacement_name ~= nil then
+                replacements[slot.planet_name] = replacements[slot.planet_name] or {}
+                replacements[slot.planet_name][slot.resource_name] = replacement_name
+            end
         end
-        if replacement_name ~= nil then
-            local from = mined_product(data.raw.resource[slot.resource_name])
-            local to = mined_product(data.raw.resource[replacement_name])
+    end
+    return replacements
+end
+
+-- Planet --> (product key --> substitution), one substitution for each resource the planet lost: from what that resource was mined into, to what its replacement is mined into
+resources.substitutions = function(slots, assignment, lost)
+    local substitutions = {}
+    local replacements = resources.replacements(slots, assignment, lost)
+    for _, planet_name in pairs(sorted_keys(replacements)) do
+        for _, resource_name in pairs(sorted_keys(replacements[planet_name])) do
+            local from = mined_product(data.raw.resource[resource_name])
+            local to = mined_product(data.raw.resource[replacements[planet_name][resource_name]])
             if from ~= nil and to ~= nil and from.name ~= to.name then
-                substitutions[slot.planet_name] = substitutions[slot.planet_name] or {}
-                substitutions[slot.planet_name][product_key(from)] = {
+                substitutions[planet_name] = substitutions[planet_name] or {}
+                substitutions[planet_name][product_key(from)] = {
                     from = from,
                     to = to,
                 }
@@ -459,6 +473,58 @@ resources.describe_edit = function(edit)
         table.insert(new_names, ingredient.name)
     end
     return edit.recipe_name .. " on " .. edit.planet_name .. " (" .. table.concat(old_names, " + ") .. " --> " .. table.concat(new_names, " + ") .. ")"
+end
+
+-- Technology edits: a technology researched by mining a resource that only one planet had (check.node_specific_to of the resource's entity in the sort before) is researched by mining what replaced that resource there once the planet loses it, like recipe edits (like calcite processing when calcite's slot on Vulcanus now holds coal)
+-- It goes by the resource rather than the technology, since the discovery rule makes a technology isolatable on later planets too (like calcite processing on Aquilo, whose home set includes Vulcanus)
+-- A mining trigger lists entities, any one of which counts, so only those lost resources in it are replaced
+-- Swaps keep resources within their kind (ores with ores, wells with wells), so the new resource is mined the same way as the old one
+-- The replacements come from resources.replacements
+resources.trigger_edits = function(replacements, before)
+    local edits = {}
+    for _, technology_name in pairs(sorted_keys(data.raw.technology)) do
+        local trigger = data.raw.technology[technology_name].research_trigger
+        if trigger ~= nil and trigger.type == "mine-entity" then
+            local entities = {}
+            local is_listed = {}
+            local planet_names = {}
+            for _, entity_name in pairs(trigger.entities or {}) do
+                local new_name = entity_name
+                for _, planet_name in pairs(sorted_keys(replacements)) do
+                    if new_name == entity_name and replacements[planet_name][entity_name] ~= nil and planetary_check.node_specific_to(before, gutils.key("entity", entity_name), planet_name) then
+                        new_name = replacements[planet_name][entity_name]
+                        table.insert(planet_names, planet_name)
+                    end
+                end
+                if is_listed[new_name] == nil then
+                    is_listed[new_name] = true
+                    table.insert(entities, new_name)
+                end
+            end
+            if #planet_names > 0 then
+                table.insert(edits, {
+                    planet_name = table.concat(planet_names, ", "),
+                    technology_name = technology_name,
+                    old_entities = trigger.entities,
+                    new_entities = entities,
+                })
+            end
+        end
+    end
+    return edits
+end
+
+resources.add_trigger_edit = function(edit)
+    data.raw.technology[edit.technology_name].research_trigger.entities = table.deepcopy(edit.new_entities)
+end
+
+resources.remove_trigger_edit = function(edit)
+    data.raw.technology[edit.technology_name].research_trigger.entities = table.deepcopy(edit.old_entities)
+end
+
+-- What a technology edit changed, for the log
+resources.describe_trigger_edit = function(edit)
+    return edit.technology_name .. " on " .. edit.planet_name .. " (mine " .. table.concat(edit.old_entities, " or ") .. " --> mine " .. table.concat(edit.new_entities, " or ") .. ")"
 end
 
 -- Returns the slots, assignment and planet --> set of lost resources

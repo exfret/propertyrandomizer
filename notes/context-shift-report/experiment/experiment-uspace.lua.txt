@@ -1,0 +1,589 @@
+-- SCRATCH ONLY: measurements for the context-shift report (log prefix CONTRA)
+-- For each scenario (raw ocean swap, raw resource swap, both), with no scaffolds, edits or extra patches:
+--   1. contradictions: planetary check failures of the swapped game against vanilla, by kind
+--   2. cause attribution: lost feature pebbles on each failure's vanilla witness
+--   3. staged repair sort: the swapped graph where some ingredient slots can be opened (filled by anything) behind gates, opened one class at a time
+--      by continuing the same sort, so pebbles needing a repair class rank after everything reachable without it, and earliest-provider witnesses
+--      only use repairs where needed, cheaper classes first:
+--        root: slots of materials a planet lost, in recipes that planet made in vanilla (what scaffold variants edit)
+--        unified: slots unified's recipe-ingredients handler could randomize (its claim rules, minus the cost check)
+--        all: every other ingredient slot
+--      A failure's class is the first stage its goal comes back at; "none" means no ingredient-level repair can bring it back
+--   4. repairs on the final witness of all the failures, by class, with local (one room in vanilla) vs shared recipes, then pruned to an irreducible set with real sorts
+--   5. superposition: the swapped graph plus the vanilla-only edges behind a gate; stage 1 is the swapped game, stage 2 opens the gate
+--      It should lose nothing (monotone), and its witness counts the vanilla-only edges (debts) the failures need
+
+local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
+local planetary_check = require("randomizations/planetary/check")
+local oceans = require("randomizations/planetary/oceans")
+local resources = require("randomizations/planetary/resources")
+
+local key = gutils.key
+
+local exp = {}
+
+local function say(msg)
+    log("CONTRA " .. msg)
+end
+
+local function sorted_keys(tbl)
+    local keys = {}
+    for k, _ in pairs(tbl) do
+        table.insert(keys, k)
+    end
+    table.sort(keys)
+    return keys
+end
+
+local function count(tbl)
+    local n = 0
+    for _, _ in pairs(tbl) do
+        n = n + 1
+    end
+    return n
+end
+
+local function sort_extra()
+    return {
+        complex_contexts = true,
+        home_contexts = true,
+        home_sets = planetary_check.home_sets,
+    }
+end
+
+local function sort_graph(graph)
+    planetary_check.num_sorts = planetary_check.num_sorts + 1
+    return {
+        graph = graph,
+        sort_info = top.sort(graph, nil, nil, sort_extra()),
+    }
+end
+
+-- Continues a sort after connecting source ALWAYS to the gate (a cached sort with one new edge)
+local function open_gate(graph, sort, gate_key)
+    local always = graph.nodes["base: CONTRA-ALWAYS"]
+    gutils.add_edge(graph, key(always), gate_key)
+    sort.sort_info = top.sort(graph, sort.sort_info, { always, graph.nodes[gate_key] }, {})
+    return sort
+end
+
+local function material_key(node)
+    if node.type == "fluid-temperature-range" then
+        return key("fluid", gutils.deconstruct(node.name).type)
+    end
+    return key(node)
+end
+
+local function ingredient_edges(graph)
+    local options = randomization_info.options.unified["recipe-ingredients"] or {}
+    local blacklisted_pre = options.blacklisted_pre or {}
+    local blacklisted_dep = options.blacklisted_dep or {}
+    local list = {}
+    for edge_key, edge in pairs(graph.edges) do
+        local start = graph.nodes[edge.start]
+        local stop = graph.nodes[edge.stop]
+        if start ~= nil and stop ~= nil and stop.type == "recipe" and (start.type == "item" or start.type == "fluid-temperature-range") then
+            local recipe = data.raw.recipe[stop.name]
+            local mat = material_key(start)
+            local unified = recipe ~= nil and not recipe.hidden and not blacklisted_pre[mat] and not blacklisted_dep[edge.stop]
+            table.insert(list, {
+                edge_key = edge_key,
+                recipe_key = edge.stop,
+                mat_node_key = edge.start,
+                material = mat,
+                unified = unified,
+                has_abilities = edge.abilities ~= nil,
+            })
+        end
+    end
+    table.sort(list, function(a, b) return a.edge_key < b.edge_key end)
+    return list
+end
+
+local function add_plain_node(graph, node_type, name, op)
+    local node = gutils.add_node(graph, node_type, name)
+    node.op = op
+    return node
+end
+
+-- Puts the given ingredient edges behind their class's gate: m --> r becomes m --> head --> r plus gate --> head, so the slot is open once the gate is
+-- class_of(e) gives the class name or nil to leave the edge alone; returns head key --> { edge, class }
+local function gate_ingredients(graph, edges, class_of, classes)
+    add_plain_node(graph, "base", "CONTRA-ALWAYS", "AND")
+    for _, class in pairs(classes) do
+        add_plain_node(graph, "head", "CONTRA-GATE-" .. class, "OR")
+    end
+    local heads = {}
+    for _, e in pairs(edges) do
+        local class = class_of(e)
+        if class ~= nil then
+            local edge = graph.edges[e.edge_key]
+            local extra = {}
+            for k, v in pairs(edge) do
+                if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+                    extra[k] = v
+                end
+            end
+            gutils.remove_edge(graph, e.edge_key)
+            local head = add_plain_node(graph, "head", "CONTRA-SLOT " .. e.edge_key, "OR")
+            gutils.add_edge(graph, e.mat_node_key, key(head), extra)
+            gutils.add_edge(graph, key(head), e.recipe_key)
+            gutils.add_edge(graph, "head: CONTRA-GATE-" .. class, key(head))
+            heads[key(head)] = {
+                edge = e,
+                class = class,
+            }
+        end
+    end
+    return heads
+end
+
+local function has_pebble(sort_info, keys, context)
+    for _, k in pairs(keys) do
+        local contexts = sort_info.node_to_context_inds[k] or {}
+        if context == nil then
+            if next(contexts) ~= nil then
+                return true
+            end
+        elseif contexts[context] ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+local function is_feature_node(node)
+    if node.planetary_feature == "oceans" then
+        return true
+    end
+    if node.type == "entity" and data.raw.resource[node.name] ~= nil then
+        return true
+    end
+    return false
+end
+
+local function short(context)
+    return (string.gsub(string.gsub(context, "planet: ", ""), "surface: ", ""))
+end
+
+local function safe_path(graph, goal, sort_info, what)
+    local ok, info = pcall(top.path, graph, goal, sort_info)
+    if not ok then
+        say("path failed (" .. what .. "): " .. tostring(info))
+        return {}
+    end
+    return info.in_path
+end
+
+-- apply_fn returns a description and lost: planet --> material key --> true (materials each planet lost)
+local function run_scenario(logic, name, apply_fn, moved, vanilla_raw, g0, before)
+    data.raw = table.deepcopy(vanilla_raw)
+    planetary_check.moved_features = moved
+    local info, lost = apply_fn()
+    say(name .. " applied: " .. (info or ""))
+    logic.build(true)
+    local g1 = logic.graph
+    local after = sort_graph(g1)
+    local failures = planetary_check.required_failures(before, after, {})
+    local by_kind = {}
+    for _, f in pairs(failures) do
+        local kind = string.match(f.text, "^(%S+)")
+        by_kind[kind] = (by_kind[kind] or 0) + 1
+    end
+    local kind_strs = {}
+    for _, k in pairs(sorted_keys(by_kind)) do
+        table.insert(kind_strs, k .. " " .. by_kind[k])
+    end
+    say(name .. " failures " .. #failures .. " {" .. table.concat(kind_strs, ", ") .. "}")
+    if #failures == 0 then
+        say(name .. " done")
+        return
+    end
+
+    -- Cause attribution on vanilla witnesses (skipped in this variant)
+    local SKIP_CAUSES = true
+    local causes_of = {}
+    local cause_sets = {}
+    local all_causes = {}
+    local after_nci = after.sort_info.node_to_context_inds
+    local before_nci = before.sort_info.node_to_context_inds
+    for _, f in pairs(failures) do
+        local goal = SKIP_CAUSES and {} or planetary_check.goal_inds({ f }, before)
+        local causes = {}
+        if #goal > 0 then
+            for ind, _ in pairs(safe_path(before.graph, goal, before.sort_info, "cause")) do
+                local pebble = before.sort_info.sorted[ind]
+                local node = before.graph.nodes[pebble.node_key]
+                if node ~= nil and is_feature_node(node) and top.context_home(pebble.context) == nil and ((after_nci[pebble.node_key] or {})[pebble.context] == nil) then
+                    causes[pebble.node_key .. " @ " .. short(top.context_room(pebble.context))] = true
+                end
+            end
+        end
+        local set_key = table.concat(sorted_keys(causes), " + ")
+        if set_key == "" then
+            set_key = "(none on witness)"
+        end
+        cause_sets[set_key] = (cause_sets[set_key] or 0) + 1
+        for c, _ in pairs(causes) do
+            all_causes[c] = (all_causes[c] or 0) + 1
+        end
+        causes_of[f.text] = set_key
+    end
+    say(name .. " distinct causes " .. count(all_causes) .. ", distinct cause sets " .. count(cause_sets))
+    for _, c in pairs(sorted_keys(all_causes)) do
+        say(name .. " cause " .. c .. " on " .. all_causes[c] .. " failure witnesses")
+    end
+    for _, s in pairs(sorted_keys(cause_sets)) do
+        say(name .. " cause set [" .. s .. "] x" .. cause_sets[s])
+    end
+
+    -- Staged repair sort
+    local edges = ingredient_edges(g1)
+    local function is_root(e)
+        for planet_name, mats in pairs(lost) do
+            if mats[e.material] ~= nil then
+                local room = gutils.key("planet", planet_name)
+                for context, _ in pairs(before_nci[e.recipe_key] or {}) do
+                    if top.context_room(context) == room then
+                        return true
+                    end
+                end
+            end
+        end
+        return false
+    end
+    local function class_of(e)
+        if e.unified then
+            return "uspace"
+        end
+        return "rest"
+    end
+    local class_counts = {}
+    local num_root_unified = 0
+    for _, e in pairs(edges) do
+        local c = class_of(e)
+        class_counts[c] = (class_counts[c] or 0) + 1
+        if c == "root" and e.unified then
+            num_root_unified = num_root_unified + 1
+        end
+    end
+    say(name .. " ingredient slots by class: uspace " .. (class_counts.uspace or 0) .. ", rest " .. (class_counts.rest or 0))
+    local stages = { "uspace", "rest" }
+    local gR = table.deepcopy(g1)
+    local heads = gate_ingredients(gR, edges, class_of, stages)
+    local sR = sort_graph(gR)
+    local fixed_at = {}
+    local remaining = {}
+    for _, f in pairs(failures) do
+        if has_pebble(sR.sort_info, f.keys, f.context) then
+            fixed_at[f.text] = "unrelaxed?!"
+        else
+            table.insert(remaining, f)
+        end
+    end
+    for _, stage in pairs(stages) do
+        sR = open_gate(gR, sR, "head: CONTRA-GATE-" .. stage)
+        local still = {}
+        for _, f in pairs(remaining) do
+            if has_pebble(sR.sort_info, f.keys, f.context) then
+                fixed_at[f.text] = stage
+            else
+                table.insert(still, f)
+            end
+        end
+        remaining = still
+    end
+    for _, f in pairs(remaining) do
+        fixed_at[f.text] = "none"
+    end
+    local stage_counts = {}
+    for _, f in pairs(failures) do
+        local s = fixed_at[f.text]
+        stage_counts[s] = (stage_counts[s] or 0) + 1
+        say(name .. " class " .. s .. ": " .. f.text .. " <- [" .. causes_of[f.text] .. "]")
+    end
+    local stage_strs = {}
+    for _, s in pairs(sorted_keys(stage_counts)) do
+        table.insert(stage_strs, s .. " " .. stage_counts[s])
+    end
+    say(name .. " fixed at stage {" .. table.concat(stage_strs, ", ") .. "}")
+
+    -- Repairs on the final witness of every fixable failure
+    local fixable = {}
+    for _, f in pairs(failures) do
+        if fixed_at[f.text] ~= "none" then
+            table.insert(fixable, f)
+        end
+    end
+    local goal = planetary_check.goal_inds(fixable, sR)
+    local path = safe_path(gR, goal, sR.sort_info, "repair")
+    -- A slot is a repair on the witness when the witness gets through its head by the gate
+    -- top.path takes a head's earliest provider, so that's the gate whenever the gate's pebble in that context comes before the ingredient's (or the ingredient has none)
+    local used = {}
+    local num_path = 0
+    local nciR = sR.sort_info.node_to_context_inds
+    for ind, _ in pairs(path) do
+        num_path = num_path + 1
+        local pebble = sR.sort_info.sorted[ind]
+        local h = heads[pebble.node_key]
+        if h ~= nil then
+            local mat_ind = (nciR[h.edge.mat_node_key] or {})[pebble.context]
+            local gate_ind = (nciR["head: CONTRA-GATE-" .. h.class] or {})[pebble.context]
+            if gate_ind ~= nil and gate_ind < ind and (mat_ind == nil or mat_ind >= ind or gate_ind < mat_ind) then
+                local k = h.edge.edge_key
+                used[k] = used[k] or {
+                    edge = h.edge,
+                    class = h.class,
+                    contexts = {},
+                }
+                used[k].contexts[short(pebble.context)] = true
+            end
+        end
+    end
+    local used_by_class = {}
+    local recipes_by_class = {}
+    for _, u in pairs(used) do
+        used_by_class[u.class] = (used_by_class[u.class] or 0) + 1
+        recipes_by_class[u.class] = recipes_by_class[u.class] or {}
+        recipes_by_class[u.class][u.edge.recipe_key] = true
+    end
+    local strs = {}
+    for _, c in pairs(stages) do
+        table.insert(strs, c .. " " .. (used_by_class[c] or 0) .. " slots/" .. count(recipes_by_class[c] or {}) .. " recipes")
+    end
+    say(name .. " repair witness " .. num_path .. " pebbles; repairs used {" .. table.concat(strs, ", ") .. "}")
+    local function locality(recipe_key)
+        local rooms = {}
+        for context, _ in pairs(before_nci[recipe_key] or {}) do
+            rooms[top.context_room(context)] = true
+        end
+        return count(rooms) <= 1 and "local" or "shared"
+    end
+    for _, k in pairs(sorted_keys(used)) do
+        local u = used[k]
+        say(name .. " repair " .. u.class .. " " .. locality(u.edge.recipe_key) .. " " .. u.edge.recipe_key .. " slot " .. u.edge.material .. " @ {" .. table.concat(sorted_keys(u.contexts), ", ") .. "}")
+    end
+
+    -- Prune the witness's repairs to an irreducible set with real sorts: only the chosen slots open, dropping one at a time (costliest class first)
+    local chosen = {}
+    for _, k in pairs(sorted_keys(used)) do
+        table.insert(chosen, used[k])
+    end
+    local class_rank = { uspace = 1, rest = 2 }
+    table.sort(chosen, function(a, b)
+        if class_rank[a.class] ~= class_rank[b.class] then
+            return class_rank[a.class] > class_rank[b.class]
+        end
+        return a.edge.edge_key < b.edge.edge_key
+    end)
+    local function passes(open_set, report)
+        local g = table.deepcopy(g1)
+        local open_edges = {}
+        for _, u in pairs(open_set) do
+            open_edges[u.edge.edge_key] = true
+        end
+        gate_ingredients(g, edges, function(e)
+            if open_edges[e.edge_key] then
+                return "open"
+            end
+            return nil
+        end, { "open" })
+        gutils.add_edge(g, "base: CONTRA-ALWAYS", "head: CONTRA-GATE-open")
+        local s = sort_graph(g)
+        local ok = true
+        local num_missing = 0
+        for _, f in pairs(fixable) do
+            if not has_pebble(s.sort_info, f.keys, f.context) then
+                ok = false
+                num_missing = num_missing + 1
+                if report and num_missing <= 8 then
+                    say(name .. " prune check missing: " .. f.text)
+                end
+                if not report then
+                    return false
+                end
+            end
+        end
+        if report then
+            say(name .. " prune check: " .. num_missing .. " of " .. #fixable .. " missing")
+        end
+        return ok
+    end
+    if #chosen > 0 and #chosen <= 80 then
+        if not passes(chosen, true) then
+            say(name .. " prune: the witness's repairs alone don't fix everything (" .. #chosen .. " slots)")
+        else
+            local current = chosen
+            local i = 1
+            while i <= #current do
+                local trial = {}
+                for j, u in pairs(current) do
+                    if j ~= i then
+                        table.insert(trial, u)
+                    end
+                end
+                if passes(trial) then
+                    current = trial
+                else
+                    i = i + 1
+                end
+            end
+            local kept_by_class = {}
+            local kept_recipes = {}
+            for _, u in pairs(current) do
+                kept_by_class[u.class] = (kept_by_class[u.class] or 0) + 1
+                kept_recipes[u.edge.recipe_key] = true
+            end
+            local kstrs = {}
+            for _, c in pairs(stages) do
+                table.insert(kstrs, c .. " " .. (kept_by_class[c] or 0))
+            end
+            say(name .. " irreducible repairs " .. #current .. " slots on " .. count(kept_recipes) .. " recipes {" .. table.concat(kstrs, ", ") .. "}")
+            for _, u in pairs(current) do
+                say(name .. " kept repair " .. u.class .. " " .. locality(u.edge.recipe_key) .. " " .. u.edge.recipe_key .. " slot " .. u.edge.material .. (u.edge.unified and " (unified-randomizable)" or " (not unified-randomizable)"))
+            end
+        end
+    elseif #chosen > 80 then
+        say(name .. " prune skipped (" .. #chosen .. " slots)")
+    end
+
+    if true then
+        say(name .. " done")
+        return
+    end
+    -- Superposition: swapped graph plus vanilla-only edges behind a gate
+    local gS = table.deepcopy(g1)
+    add_plain_node(gS, "base", "CONTRA-ALWAYS", "AND")
+    add_plain_node(gS, "head", "CONTRA-GATE-debt", "OR")
+    local num_old = 0
+    local stop_ops = {}
+    local gated = {}
+    for node_key, node in pairs(g0.nodes) do
+        if gS.nodes[node_key] == nil then
+            local copy = add_plain_node(gS, node.type, node.name, node.op)
+            for k, v in pairs(node) do
+                if copy[k] == nil and k ~= "pre" and k ~= "dep" then
+                    copy[k] = v
+                end
+            end
+        end
+    end
+    for edge_key, edge in pairs(g0.edges) do
+        if g1.edges[edge_key] == nil then
+            num_old = num_old + 1
+            local stop_op = g0.nodes[edge.stop].op
+            stop_ops[stop_op] = (stop_ops[stop_op] or 0) + 1
+            local extra = {}
+            for k, v in pairs(edge) do
+                if k ~= "object_type" and k ~= "start" and k ~= "stop" then
+                    extra[k] = v
+                end
+            end
+            -- u --> v becomes u --> (AND of u and the gate) --> v
+            local mid = add_plain_node(gS, "base", "CONTRA-DEBT " .. edge_key, "AND")
+            gutils.add_edge(gS, edge.start, key(mid), extra)
+            gutils.add_edge(gS, "head: CONTRA-GATE-debt", key(mid))
+            gutils.add_edge(gS, key(mid), edge.stop)
+            gated[key(mid)] = edge_key
+        end
+    end
+    local op_strs = {}
+    for _, op in pairs(sorted_keys(stop_ops)) do
+        table.insert(op_strs, op .. " " .. stop_ops[op])
+    end
+    local sS = sort_graph(gS)
+    local stage1_failures = planetary_check.required_failures(before, sS, {})
+    sS = open_gate(gS, sS, "head: CONTRA-GATE-debt")
+    local union_failures = planetary_check.required_failures(before, sS, {})
+    say(name .. " union: " .. num_old .. " vanilla-only edges (into " .. table.concat(op_strs, ", ") .. " nodes); failures before gate " .. #stage1_failures .. ", after " .. #union_failures)
+    for i = 1, math.min(5, #union_failures) do
+        say(name .. " union failure: " .. union_failures[i].text)
+    end
+    local ugoal = planetary_check.goal_inds(failures, sS)
+    local debts = {}
+    for ind, _ in pairs(safe_path(gS, ugoal, sS.sort_info, "union")) do
+        local pebble = sS.sort_info.sorted[ind]
+        if gated[pebble.node_key] ~= nil then
+            debts[gated[pebble.node_key]] = debts[gated[pebble.node_key]] or {}
+            debts[gated[pebble.node_key]][short(pebble.context)] = true
+        end
+    end
+    say(name .. " union witness uses " .. count(debts) .. " vanilla-only edges")
+    for _, k in pairs(sorted_keys(debts)) do
+        say(name .. " debt edge " .. k .. " @ {" .. table.concat(sorted_keys(debts[k]), ", ") .. "}")
+    end
+    say(name .. " done")
+end
+
+exp.run = function(logic)
+    planetary_check.home_sets = nil
+    planetary_check.num_sorts = 0
+    local vanilla_raw = table.deepcopy(data.raw)
+    local before = planetary_check.sort(logic)
+    local g0 = before.graph
+    say("vanilla sort done, " .. #before.sort_info.sorted .. " pebbles")
+
+    local ocean_assignment = oceans.random_assignment("planetary-oceans")
+    local function apply_oceans(lost)
+        oceans.apply(ocean_assignment)
+        for planet, family in pairs(ocean_assignment) do
+            local old_fluid = oceans.families[planet].fluid
+            local new_fluid = oceans.families[family].fluid
+            if old_fluid ~= new_fluid then
+                lost[planet] = lost[planet] or {}
+                lost[planet][key("fluid", old_fluid)] = true
+            end
+        end
+        return serpent.line(ocean_assignment)
+    end
+    local res_slots, res_assignment
+    local function mined_key(resource)
+        local minable = resource.minable or {}
+        local results = minable.results
+        if results == nil and minable.result ~= nil then
+            results = { { type = "item", name = minable.result } }
+        end
+        for _, r in pairs(results or {}) do
+            return key(r.type or "item", r.name)
+        end
+        return nil
+    end
+    local function apply_resources(lost)
+        if res_slots == nil then
+            res_slots = resources.slots()
+            res_assignment = resources.random_assignment(res_slots, "planetary-resources")
+        end
+        local lost_res = resources.apply(res_slots, res_assignment)
+        local strs = {}
+        for _, planet in pairs(sorted_keys(lost_res)) do
+            table.insert(strs, planet .. " loses " .. table.concat(sorted_keys(lost_res[planet]), "/"))
+            for resource_name, _ in pairs(lost_res[planet]) do
+                local mk = mined_key(vanilla_raw.resource[resource_name])
+                if mk ~= nil then
+                    lost[planet] = lost[planet] or {}
+                    lost[planet][mk] = true
+                end
+            end
+        end
+        return table.concat(strs, "; ")
+    end
+
+    run_scenario(logic, "oceans", function()
+        local lost = {}
+        return apply_oceans(lost), lost
+    end, { oceans = true }, vanilla_raw, g0, before)
+    run_scenario(logic, "resources", function()
+        local lost = {}
+        return apply_resources(lost), lost
+    end, { resources = true }, vanilla_raw, g0, before)
+    run_scenario(logic, "both", function()
+        local lost = {}
+        local a = apply_oceans(lost)
+        return a .. " | " .. apply_resources(lost), lost
+    end, { oceans = true, resources = true }, vanilla_raw, g0, before)
+    data.raw = vanilla_raw
+    say("done in " .. planetary_check.num_sorts .. " sorts")
+end
+
+return exp

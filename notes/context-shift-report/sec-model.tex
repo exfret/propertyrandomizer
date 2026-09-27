@@ -1,0 +1,95 @@
+\section{The logic as a Horn program over pebbles}\label{sec:model}
+
+This section fixes notation. Nothing in it is new to the code; it states exactly what \file{lib/graph/context-sort.lua} computes, so the later arguments can be precise.
+
+\subsection{Graph, contexts, pebbles}
+
+The logic graph $G=(N,E)$ has, for every node $n$, an operator $\mathrm{op}(n)\in\{\AND,\OR\}$ and a context type $\kappa(n)$: a \emph{transmitter} (\code{type_info[..].context = nil}), a \emph{forgetter} (\code{true}, e.g.\ technologies) or an \emph{emitter} of one room (a string, the room nodes) (\file{lib/logic/builder.lua}, comment above \code{add_node}). An edge $e$ may carry abilities $\alpha(e)$, which gain or lose isolatability ($\iso$) or automatability ($\aut$) for whatever passes through it.
+
+With complex contexts, a context is a room together with an ability string, $\Ctx=\Rooms\times\{0,1\}^{\{\iso,\aut\}}$, written like \code{planet: vulcanus | 10}. Home contexts add one context per room and home set, riding on the room's weakest context (\code{... | 00 @ home1}). Contexts of one room are ordered by their abilities: $c\preceq c'$ when $c$ asks for a subset of what $c'$ asks for. Anything reachable in $c'$ is reachable in every $c\preceq c'$; this is why promises are downward closed (\code{weaker_contexts} in \file{promotion.lua}).
+
+A \emph{pebble} is a pair $\peb{n}{c}\in N\times\Ctx$.
+
+\subsection{Rules}
+
+The sort's transmission rules are all of one shape: a pebble follows from finitely many other pebbles. Writing $e=(m,n)$ \emph{delivers} $c$ when some reached $\peb{m}{c'}$ has $c\in\alpha_e(c')$ (\code{edge_transmit}):
+\begin{itemize}[nosep]
+\item an $\AND$ node \emph{fires} in $c$ when every in-edge delivers $c$; an $\OR$ node when some in-edge does; an $\AND$ node without in-edges (a source) fires in every context;
+\item a node that fires in $c$ sends out $\mathrm{out}_n(c)$: $\{c\}$ for a transmitter; the same abilities in every room for a forgetter, except that isolatable contexts stay in their room; every ability string of its room for an emitter (\code{node_transmit});
+\item home contexts go through transmitters unchanged, are emitted by a room only for home sets containing it, and are spread by forgetters to every room (\code{home_transmit});
+\item the discovery rule: once a discoverer of room $r$ is reached, a technology with a home context of $r$'s home set gets $r$'s isolatable contexts (\code{discover_home_rooms}, \code{add_home_tech}).
+\end{itemize}
+Each rule has the form ``$p$ holds if $q_1,\dots,q_k$ hold'', a definite Horn clause over pebbles. Let $\Prog(G)$ be the resulting finite propositional program.
+
+\begin{definition}[Reach, sort, witness]
+$\Reach(G)$ is the least model of $\Prog(G)$: the pebbles derivable from the sources. A \emph{sort} (proof order) is an enumeration $\pi=(p_1,p_2,\dots)$ of $\Reach(G)$ in which every $p_i$ has a rule instance whose body lies in $\{p_1,\dots,p_{i-1}\}$. We write $\rk_\pi(p)$ for $p$'s index. A \emph{witness} of $p$ is the backward closure of $p$ under chosen rule instances; \code{top.path} builds one with the earliest-provider rule.
+\end{definition}
+
+\code{top.sort} computes $\Reach(G)$ together with one sort, breaking ties at random, so every call returns a different sort of the same least model.
+
+\begin{lemma}[Justification]\label{lem:justification}
+For a set $S$ of pebbles, $S\subseteq\Reach(G)$ if and only if there is a rank function $\rho:S\to\mathbb N$ such that every $p\in S$ has a rule instance of $\Prog(G)$ whose body $B$ satisfies $B\subseteq S$ and $\rho(q)<\rho(p)$ for all $q\in B$.
+\end{lemma}
+\begin{proof}
+If $\rho$ exists, induction on $\rho$ shows each $p\in S$ is derivable. Conversely, the ranks of any sort work.
+\end{proof}
+
+Lemma~\ref{lem:justification} is the glossary's \emph{well-founded} condition, and it is the whole correctness argument of promotion (Section~\ref{sec:reference}).
+
+\subsection{Monotonicity, and why home contexts matter}
+
+\begin{lemma}[Monotonicity]\label{lem:monotone}
+If $G'$ comes from $G$ by adding in-edges to $\OR$ nodes, or by removing in-edges of $\AND$ nodes, then $\Reach(G)\subseteq\Reach(G')$.
+\end{lemma}
+\begin{proof}
+Adding an $\OR$ in-edge adds rules to $\Prog$; removing an $\AND$ in-edge shrinks rule bodies (removing the last one makes the node a source, which fires everywhere). Least models of definite programs only grow under both.
+\end{proof}
+
+\begin{remark}[The old discovery rule is not a rule]\label{rem:discovery}
+Without home contexts, \code{discover_space_locations} gives isolatable contexts of a room to the technologies reached \emph{before} its discoverer \emph{in this sort}. That is not a Horn clause: which pebbles exist depends on $\pi$, so $\Reach$ is not a function of $G$. Neither lemma holds. Adding an edge that lets a discoverer come earlier can \emph{remove} isolatable contexts, because fewer technologies come before it. Home contexts turn the rule into a clause (technology home pebble $+$ discoverer pebble $\Rightarrow$ isolatable pebble), which is why they fixed the order-dependence failures in promotion and monotone matching. Everything from Section~\ref{sec:shift} on uses Lemma~\ref{lem:monotone}, so it assumes home contexts are on, as they are in unified, the planetary check and MECHCHECK today.
+\end{remark}
+
+\subsection{Randomization as an assignment}
+
+A randomized edge $m\to n$ is subdivided into $m\to b\to h\to n$ with a base $b$ ($\AND$) and a head $h$ ($\OR$), and the $b\to h$ connection is cut (\code{gutils.subdivide_base_head}; ``Cut base-head connections'' in \file{execute-new.lua}). An \emph{assignment} $\sigma$ maps heads to bases; $G[\sigma]$ is the cut graph with every $\sigma(h)\to h$ connected. Handlers constrain $\sigma$ differently: first pass wants a perfect matching of item identities to slots, recipe ingredients may reuse bases. The reference assignment $\sref$ connects every head to its old base.
+
+The goals $\Goals$ are the pebbles a result must reach:
+\begin{itemize}[nosep]
+\item $\Goals^{\mathrm{mech}}$: mechanic pebbles, reduced to the part \code{protection.kept_part} says must be kept;
+\item $\Goals^{\mathrm{rec}}$: for every recipe $r$ reachable in the reference, \emph{some} pebble of $r$.
+\end{itemize}
+The second kind is disjunctive, which is why promotion picks an anchor context late (\code{required_contexts}).
+
+\begin{proposition}[Randomizing with guarantees is NP-complete]\label{prop:np}
+Deciding whether a matching $\sigma$ exists with $\Goals\subseteq\Reach(G[\sigma])$ is NP-complete, even with a single context and no abilities.
+\end{proposition}
+\begin{proof}
+Membership: guess $\sigma$, compute $\Reach$. Hardness from 3-SAT (Figure~\ref{fig:np}): for each variable $x$ make two heads $h_x^{+},h_x^{-}$ and two bases, $b_x^{\mathrm{on}}$ (fed by a source) and $b_x^{\mathrm{off}}$ (fed by an $\OR$ node with no inputs, so never reached), matched within their class. The literal node for $x$ is $h_x^{+}$, for $\neg x$ it is $h_x^{-}$. Each clause is an $\OR$ of its literal nodes, and the goal is an $\AND$ of the clauses. A perfect matching puts $b^{\mathrm{on}}_x$ on exactly one of $h^{\pm}_x$, which is a truth assignment, and the goal is reached exactly when it satisfies every clause.
+\end{proof}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[andn, fill=cvan!10] (s) at (0,2.2) {source};
+\node[orn, fill=black!5] (z) at (0,0.4) {$\OR()$};
+\node[andn] (bon) at (2,2.2) {$b_x^{\mathrm{on}}$};
+\node[andn] (boff) at (2,0.4) {$b_x^{\mathrm{off}}$};
+\node[orn] (hp) at (5,2.2) {$h_x^{+}$};
+\node[orn] (hm) at (5,0.4) {$h_x^{-}$};
+\draw[pre] (s) -- (bon); \draw[pre] (z) -- (boff);
+\draw[pre, cgate] (bon) -- node[lbl, above, sloped, pos=0.35] {$\sigma$} (hp);
+\draw[pre, cgate] (boff) -- (hm);
+\draw[pre, cgate, densely dashed] (bon) -- (hm);
+\draw[pre, cgate, densely dashed] (boff) -- (hp);
+\node[orn] (c1) at (8,2.2) {$C_1=x\vee\neg y\vee z$};
+\node[orn] (c2) at (8,0.4) {$C_2=\neg x\vee y\vee\dots$};
+\node[andn, goal] (g) at (11,1.3) {goal};
+\draw[pre] (hp) -- (c1); \draw[pre] (hm) -- (c2);
+\draw[pre] (c1) -- (g); \draw[pre] (c2) -- (g);
+\node[lbl, align=center] at (3.5,-0.5) {one class per variable: the matching\\chooses which head gets the live base};
+\end{tikzpicture}
+\caption{The gadget behind Proposition~\ref{prop:np}. Solid purple: one of the two perfect matchings of a variable's class; dashed purple: the other.}
+\label{fig:np}
+\end{figure}
+
+So an unrestricted ``choose everything, then check'' randomizer is solving an NP-complete problem each time. Monotone matching and promotion avoid this by fixing a sort first, which turns each choice into a local test against ranks. Section~\ref{sec:reference} makes that trade explicit, because it is also exactly what a context shift breaks.

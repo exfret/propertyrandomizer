@@ -1,0 +1,21 @@
+\begin{table}[t]
+\centering\small
+\begin{tabular}{@{}l ccc@{}}
+\toprule
+ & ocean swap & resource swap & both \\
+\midrule
+goals fixable by root repairs & 151 & 83 (1--139) & 152 (76--164) \\
+\quad needing other unified slots too & 0 & 0 (0--16) & 0 (0--6) \\
+\quad needing any other slot & 0 & 0 & 0 \\
+\quad not fixable by any ingredient repair & 0 & 0 (0--8) & 0 (0--8) \\
+irreducible repairs, root first & 10 & 6.5 (3--12) & 13 (11--15) \\
+\quad of which unified may randomize & 3 & 5 (3--12) & 6.5 (4--9) \\
+goals fixable within unified's move space & 150 & 91 (16--139) & 157 (75--163) \\
+irreducible repairs, unified's space first & 26 & 12 (11--17) & 30 (17--30) \\
+\quad of which outside unified's space & 1 & 0 & 1 (0--1) \\
+debt edges (superposition witness) & 4 & 3 (2--4) & 6.5 (5--8) \\
+\bottomrule
+\end{tabular}
+\caption{Where the repairs are: medians over seeds 1--8 with ranges in parentheses. Root repairs change a lost material's slot in a recipe the losing planet made. ``Unified's move space'' is every slot the recipe-ingredients handler may randomize.}
+\label{tab:where}
+\end{table}

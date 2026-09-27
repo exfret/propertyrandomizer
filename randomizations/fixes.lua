@@ -79,6 +79,8 @@ randomizations.rebuild_tech_tree = function()
     -- Also determines recipes for science packs (i.e.- what recipe techs will be marked essential)
     local recipe_to_unit = {}
     local recipe_to_research_trigger = {}
+    -- The tech each recipe's unit or trigger comes from, whose contexts its rebuilt tech keeps (see covers below)
+    local recipe_to_source_tech = {}
     local with_tech_sort_info = top.sort(graph)
     if mods["pyalternativeenergy"] then
         with_tech_sort_info = nil
@@ -149,6 +151,7 @@ randomizations.rebuild_tech_tree = function()
                         if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
                             recipe_to_unit[effect.recipe] = table.deepcopy(tech.unit)
                             recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * recipe_to_unit[effect.recipe].count)
+                            recipe_to_source_tech[effect.recipe] = tech.name
                         end
                     end
                 end
@@ -157,6 +160,7 @@ randomizations.rebuild_tech_tree = function()
                     if effect.type == "unlock-recipe" then
                         if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
                             recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
+                            recipe_to_source_tech[effect.recipe] = tech.name
                         end
                     end
                 end
@@ -194,8 +198,10 @@ randomizations.rebuild_tech_tree = function()
                     if tech.unit.count ~= nil then
                         recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * tech.unit.count)
                     end
+                    recipe_to_source_tech[effect.recipe] = tech.name
                 elseif tech.research_trigger ~= nil then
                     recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
+                    recipe_to_source_tech[effect.recipe] = tech.name
                 end
             end
         end
@@ -268,6 +274,33 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
+    -- A tech needs all its prerequisites, so a prerequisite without some context the tech has takes that context away
+    -- Like a Fulgora-only tech under one every planet's discovery makes isolatable: the lightning rod's tech lost isolatability on Fulgora that way
+    -- So a prerequisite is only kept if its tech has every context the tech has in the sort without tech prerequisites, and then each rebuilt tech keeps the contexts its unit or trigger gives it
+    -- Witnesses still come from the earliest pebbles above, so prerequisites never wait on anything the recipe isn't already reached without; a witness of a later pebble (like an isolatable one) can need a tech whose own science packs need the recipe
+    -- Py's sorts have no room/ability contexts, so there every prerequisite is kept
+    local context_sort_info
+    if not mods["pyalternativeenergy"] then
+        context_sort_info = top.sort(graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+        })
+    end
+    local function covers(prereq_tech_name, tech_name)
+        if context_sort_info == nil then
+            return true
+        end
+        local nci = context_sort_info.node_to_context_inds
+        local prereq_contexts = nci[gutils.key("technology", prereq_tech_name)] or {}
+        for context, _ in pairs(nci[gutils.key("technology", tech_name)] or {}) do
+            if prereq_contexts[context] == nil then
+                return false
+            end
+        end
+        return true
+    end
+    local num_left_out = 0
+
     -- The recipes the pebble at ind directly needs: the recipes on its witness, not looking past them
     local function prev_recipes_of(ind)
         local path_info = top.path(graph, {ind}, no_tech_sort_info, {
@@ -292,10 +325,12 @@ randomizations.rebuild_tech_tree = function()
         return prev_recipes
     end
 
-    -- Techs that unlock a space location (planet discovery), which keep their place in progression instead of getting a random prereq below
-    local function unlocks_space_location(tech)
-        for _, effect in pairs(tech.effects or {}) do
-            if effect.type == "unlock-space-location" then
+    -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
+    -- A random prereq could need what the tech itself gives (like one of the discovered planet's science packs), which would make it unresearchable, and shifted worlds (randomizations/planetary) move which techs those are
+    local function logic_needs(tech_node)
+        for dep, _ in pairs(tech_node.dep) do
+            local dep_type = graph.nodes[graph.edges[dep].stop].type
+            if dep_type ~= "recipe-tech-unlock" and dep_type ~= "technology" then
                 return true
             end
         end
@@ -303,13 +338,13 @@ randomizations.rebuild_tech_tree = function()
     end
 
     local recipe_to_prev = {}
-    local space_location_tech_to_prev = {}
+    local needed_tech_to_prev = {}
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
             recipe_to_prev[node.name] = prev_recipes_of(ind)
-        elseif node.type == "technology" and space_location_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and unlocks_space_location(data.raw.technology[node.name]) then
-            space_location_tech_to_prev[node.name] = prev_recipes_of(ind)
+        elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
+            needed_tech_to_prev[node.name] = prev_recipes_of(ind)
         end
     end
 
@@ -342,7 +377,12 @@ randomizations.rebuild_tech_tree = function()
                 local prev_recipe = data.raw.recipe[prev_recipe_name]
                 -- Check that this will get a tech
                 if prev_recipe.enabled == false and (recipe_to_unit[prev_recipe_name] ~= nil or recipe_to_research_trigger[prev_recipe_name] ~= nil) then
-                    table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                    -- Only if it can't take away a context (see covers); leaving one out only lets this tech be researched sooner
+                    if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name]) then
+                        table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                    else
+                        num_left_out = num_left_out + 1
+                    end
                 end
             end
 
@@ -381,13 +421,17 @@ randomizations.rebuild_tech_tree = function()
     -- Add prereqs back to non-unlock recipes
     for _, tech in pairs(data.raw.technology) do
         if not is_new_tech[tech.name] and tech.name ~= "pyrrhic" then
-            if space_location_tech_to_prev[tech.name] ~= nil then
-                -- A planet unlock comes as early as it can be researched: right after the rebuilt techs of the recipes it needs (its science packs), keeping its own science packs
-                -- A random prereq could need the planet itself (like one of its science packs), which would make the planet undiscoverable
+            if needed_tech_to_prev[tech.name] ~= nil then
+                -- A tech the logic needs comes as early as it can be researched: right after the rebuilt techs of the recipes it needs (its science packs), keeping its own science packs
                 local prereqs = {}
-                for prev_recipe_name, _ in pairs(space_location_tech_to_prev[tech.name]) do
+                for prev_recipe_name, _ in pairs(needed_tech_to_prev[tech.name]) do
                     if data.raw.technology["exfret-rebuilt-" .. prev_recipe_name .. "-suffix"] ~= nil then
-                        table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                        -- Like the rebuilt techs, only if it can't take away a context (see covers)
+                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name) then
+                            table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                        else
+                            num_left_out = num_left_out + 1
+                        end
                     end
                 end
                 table.sort(prereqs)
@@ -401,6 +445,7 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
+    log("Tech tree rebuild: " .. num_left_out .. " prerequisites were left out because they would take away a context")
 
     if mods["pyalternativeenergy"] then
         -- Make pyrrhic come after each later thing with some probability

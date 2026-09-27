@@ -128,6 +128,14 @@ end
 -- Whether any handler is on, so there's anything for unified randomization to do
 unified.has_handlers = #handler_ids > 0
 
+-- Planetary changes in superposed mode hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
+local function planetary_debt()
+    if config.planetary_oceans or config.planetary_resources then
+        return require("randomizations/planetary/execute").superposed
+    end
+    return nil
+end
+
 unified.execute = function()
     for _, handler in pairs(handlers) do
         handler.initialize()
@@ -372,6 +380,7 @@ unified.execute = function()
         first_pass_info = first_pass.execute({
             spoofed_graph = spoofed_graph_to_pass,
             subdiv_graph = subdiv_graph_to_pass,
+            debt = planetary_debt(),
         })
         if first_pass_info == false then
             return false
@@ -508,6 +517,9 @@ unified.execute = function()
             graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
             pool_sort_info = sort_for_pool,
             complex = PROMOTION_COMPLEX_CONTEXTS,
+            debt = planetary_debt(),
+            -- Contexts recipes locked to one planet keep, from first pass's sort of the game before randomization
+            planet_locked = (first_pass_info or {}).planet_locked,
             -- A head's handler says what connecting a base to it gains or loses (e.g. entity randomization's pairing table)
             connection_abilities = function(base, head)
                 local handler = head_to_handler[key(head)]
@@ -521,6 +533,7 @@ unified.execute = function()
         local num_single_context_recipes = prom.promise_single_context_recipes()
         log("Promotion: promised " .. num_single_context_recipes .. " recipes that are reachable in only one context")
         log("Promotion: promised " .. prom.num_promised .. " pebbles for mechanics; " .. #failed .. " mechanic pebbles could not be established; " .. tostring(prom.num_lost_before) .. " mechanic contexts and " .. tostring(prom.num_recipes_lost_before) .. " recipes already lost before randomization")
+        prom.log_debt("start")
     end
 
     -- TODO: Tech delinearization (pull out to a helper)
@@ -552,6 +565,8 @@ unified.execute = function()
 
     local head_to_base = {}
     local handler_to_used_prereq_inds = {}
+    -- Heads at chunk boundaries (debt mode) whose new base pays for their dependent
+    local num_paying_heads = 0
     for _, handler in pairs(handlers) do
         handler_to_used_prereq_inds[handler.id] = {}
     end
@@ -592,7 +607,21 @@ unified.execute = function()
                 handler_to_heads[handler_id] = handler_to_heads[handler_id] or {}
                 table.insert(handler_to_heads[handler_id], head_key)
             else
+                -- At a chunk boundary (debt mode: the head's dependent owes something only through this head, see skeleton/promotion.lua), bases that pay for it go first
+                local order = {}
+                local later = {}
+                local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.head_boundary_contexts(head_key, required_contexts) or {}
                 for ind = 1, #shuffled_prereqs do
+                    if #paying_contexts > 0 and prom.head_pays(head_key, shuffled_prereqs[ind], paying_contexts) then
+                        table.insert(order, ind)
+                    else
+                        table.insert(later, ind)
+                    end
+                end
+                for _, ind in pairs(later) do
+                    table.insert(order, ind)
+                end
+                for _, ind in pairs(order) do
                     local base_key = shuffled_prereqs[ind]
                     local base = random_graph.nodes[base_key]
 
@@ -622,6 +651,9 @@ unified.execute = function()
                             handler_to_used_prereq_inds[handler_id][ind] = true
                             head_to_base[head_key] = base_key
                             if prom ~= nil then
+                                if #paying_contexts > 0 and prom.head_pays(head_key, base_key, paying_contexts) then
+                                    num_paying_heads = num_paying_heads + 1
+                                end
                                 prom.resolve_head(head_key, base_key, required_contexts)
                             end
 
@@ -651,6 +683,9 @@ unified.execute = function()
             end
         end
     end
+    if prom ~= nil then
+        log("Promotion: " .. num_paying_heads .. " heads at chunk boundaries took bases that pay for them")
+    end
     for _, handler in pairs(handlers) do
         if handler.custom_prereq_search ~= false then
             local search_result = handler.custom_prereq_search({
@@ -674,6 +709,9 @@ unified.execute = function()
                 return false
             end
         end
+    end
+    if prom ~= nil then
+        prom.log_debt("end")
     end
 
     ----------------------------------------------------------------------------------------------------

@@ -1,0 +1,5486 @@
+{
+ "1": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"fulgora\", fulgora = \"aquilo\", gleba = \"vulcanus\", nauvis = \"nauvis\", vulcanus = \"gleba\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7474,
+   "witness_repairs": {
+    "root": 11,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ]
+   ],
+   "classes": {
+    "root": 24
+   },
+   "failure_kinds": {
+    "mechanic": 16,
+    "planet-locked": 8
+   },
+   "applied": "aquilo loses crude-oil; fulgora loses scrap; gleba loses stone; vulcanus loses coal/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 24,
+   "causes": 3,
+   "cause_sets": 2,
+   "root_slots": 33,
+   "root_slots_unified": 22,
+   "unified_slots": 716,
+   "other_slots": 425,
+   "witness_pebbles": 2457,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 24 missing"
+   ],
+   "irreducible": 5,
+   "irreducible_recipes": 5,
+   "union_edges": 5,
+   "union_ops": "OR 5",
+   "union_before": 24,
+   "union_after": 0,
+   "debt_edges": 3
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: crude-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: crude-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "basic-oil-processing",
+     "material": "fluid: crude-oil",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: coal @ vulcanus",
+     22
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     22
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 164
+   },
+   "failure_kinds": {
+    "mechanic": 116,
+    "planet-locked": 14,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"fulgora\", fulgora = \"aquilo\", gleba = \"vulcanus\", nauvis = \"nauvis\", vulcanus = \"gleba\"} | aquilo loses crude-oil; fulgora loses scrap; gleba loses stone; vulcanus loses coal/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 164,
+   "causes": 8,
+   "cause_sets": 6,
+   "root_slots": 58,
+   "root_slots_unified": 26,
+   "unified_slots": 712,
+   "other_slots": 404,
+   "witness_pebbles": 7568,
+   "witness_repairs": {
+    "root": 18,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 164 missing"
+   ],
+   "irreducible": 12,
+   "irreducible_recipes": 11,
+   "union_edges": 24,
+   "union_ops": "OR 24",
+   "union_before": 164,
+   "union_after": 0,
+   "debt_edges": 6
+  }
+ },
+ "2": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7447,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: fluorine-vent @ aquilo",
+     115
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ]
+   ],
+   "classes": {
+    "root": 139
+   },
+   "failure_kinds": {
+    "mechanic": 94,
+    "planet-locked": 12,
+    "unreachable": 33
+   },
+   "applied": "aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore",
+   "failures": 139,
+   "causes": 3,
+   "cause_sets": 3,
+   "root_slots": 20,
+   "root_slots_unified": 13,
+   "unified_slots": 725,
+   "other_slots": 429,
+   "witness_pebbles": 5906,
+   "witness_repairs": {
+    "root": 8,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 139 missing"
+   ],
+   "irreducible": 5,
+   "irreducible_recipes": 5,
+   "union_edges": 4,
+   "union_ops": "OR 4",
+   "union_before": 139,
+   "union_after": 0,
+   "debt_edges": 3
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete-from-molten-iron",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "refined-concrete",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: fluorine-vent @ aquilo",
+     25
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     27
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     41
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 76
+   },
+   "failure_kinds": {
+    "mechanic": 62,
+    "planet-locked": 13,
+    "unreachable": 1
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore",
+   "failures": 76,
+   "causes": 8,
+   "cause_sets": 7,
+   "root_slots": 45,
+   "root_slots_unified": 17,
+   "unified_slots": 721,
+   "other_slots": 408,
+   "witness_pebbles": 6468,
+   "witness_repairs": {
+    "root": 20,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 76 missing"
+   ],
+   "irreducible": 13,
+   "irreducible_recipes": 12,
+   "union_edges": 23,
+   "union_ops": "OR 23",
+   "union_before": 76,
+   "union_after": 0,
+   "debt_edges": 6
+  }
+ },
+ "3": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7447,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     24
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 1,
+    "unified": 15
+   },
+   "failure_kinds": {
+    "mechanic": 16,
+    "planet-locked": 8
+   },
+   "applied": "aquilo loses crude-oil; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 24,
+   "causes": 3,
+   "cause_sets": 2,
+   "root_slots": 33,
+   "root_slots_unified": 23,
+   "unified_slots": 715,
+   "other_slots": 426,
+   "witness_pebbles": 1578,
+   "witness_repairs": {
+    "root": 1,
+    "unified": 9,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 16 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 5,
+   "union_edges": 5,
+   "union_ops": "OR 5",
+   "union_before": 24,
+   "union_after": 0,
+   "debt_edges": 3
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: crude-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: crude-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "advanced-oil-processing",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     141
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 152,
+    "unified": 6
+   },
+   "failure_kinds": {
+    "mechanic": 116,
+    "planet-locked": 16,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"} | aquilo loses crude-oil; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 166,
+   "causes": 8,
+   "cause_sets": 6,
+   "root_slots": 58,
+   "root_slots_unified": 27,
+   "unified_slots": 711,
+   "other_slots": 405,
+   "witness_pebbles": 7072,
+   "witness_repairs": {
+    "root": 8,
+    "unified": 5,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 158 missing"
+   ],
+   "irreducible": 11,
+   "irreducible_recipes": 7,
+   "union_edges": 24,
+   "union_ops": "OR 24",
+   "union_before": 166,
+   "union_after": 0,
+   "debt_edges": 7
+  }
+ },
+ "4": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"gleba\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"nauvis\", vulcanus = \"aquilo\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7445,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "lithium",
+     "material": "fluid: lithium-brine",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "lithium",
+     "material": "fluid: lithium-brine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: lithium-brine @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: lithium-brine @ aquilo",
+     27
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ]
+   ],
+   "classes": {
+    "root": 51
+   },
+   "failure_kinds": {
+    "mechanic": 40,
+    "planet-locked": 10,
+    "unreachable": 1
+   },
+   "applied": "aquilo loses lithium-brine; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore",
+   "failures": 51,
+   "causes": 3,
+   "cause_sets": 3,
+   "root_slots": 20,
+   "root_slots_unified": 13,
+   "unified_slots": 725,
+   "other_slots": 429,
+   "witness_pebbles": 5075,
+   "witness_repairs": {
+    "root": 8,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 51 missing"
+   ],
+   "irreducible": 5,
+   "irreducible_recipes": 5,
+   "union_edges": 4,
+   "union_ops": "OR 4",
+   "union_before": 51,
+   "union_after": 0,
+   "debt_edges": 3
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete-from-molten-iron",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "refined-concrete",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: lithium-brine @ aquilo",
+     25
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     115
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     129
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 164
+   },
+   "failure_kinds": {
+    "mechanic": 116,
+    "planet-locked": 15,
+    "unreachable": 33
+   },
+   "applied": "{aquilo = \"gleba\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"nauvis\", vulcanus = \"aquilo\"} | aquilo loses lithium-brine; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore",
+   "failures": 164,
+   "causes": 8,
+   "cause_sets": 7,
+   "root_slots": 45,
+   "root_slots_unified": 17,
+   "unified_slots": 721,
+   "other_slots": 408,
+   "witness_pebbles": 7382,
+   "witness_repairs": {
+    "root": 19,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 164 missing"
+   ],
+   "irreducible": 13,
+   "irreducible_recipes": 12,
+   "union_edges": 23,
+   "union_ops": "OR 23",
+   "union_before": 164,
+   "union_after": 0,
+   "debt_edges": 6
+  }
+ },
+ "5": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"aquilo\", nauvis = \"gleba\", vulcanus = \"fulgora\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7392,
+   "witness_repairs": {
+    "root": 11,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "lithium",
+     "material": "fluid: lithium-brine",
+     "unified": true
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "lithium",
+     "material": "fluid: lithium-brine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: lithium-brine @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     51
+    ],
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: lithium-brine @ aquilo",
+     27
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 27,
+    "unified": 16
+   },
+   "failure_kinds": {
+    "mechanic": 40,
+    "planet-locked": 10,
+    "unreachable": 1
+   },
+   "applied": "aquilo loses lithium-brine; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/coal/sulfuric-acid-geyser",
+   "failures": 51,
+   "causes": 4,
+   "cause_sets": 2,
+   "root_slots": 35,
+   "root_slots_unified": 27,
+   "unified_slots": 711,
+   "other_slots": 428,
+   "witness_pebbles": 4101,
+   "witness_repairs": {
+    "root": 1,
+    "unified": 11,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 43 missing"
+   ],
+   "irreducible": 12,
+   "irreducible_recipes": 5,
+   "union_edges": 5,
+   "union_ops": "OR 5",
+   "union_before": 51,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "lithium",
+     "material": "fluid: lithium-brine",
+     "contexts": "aquilo | 01, fulgora | 01, gleba | 00, gleba | 01, nauvis | 01, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: lithium-brine @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     141
+    ],
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: lithium-brine @ aquilo",
+     27
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 152,
+    "unified": 6
+   },
+   "failure_kinds": {
+    "mechanic": 116,
+    "planet-locked": 16,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"nauvis\", fulgora = \"vulcanus\", gleba = \"aquilo\", nauvis = \"gleba\", vulcanus = \"fulgora\"} | aquilo loses lithium-brine; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/coal/sulfuric-acid-geyser",
+   "failures": 166,
+   "causes": 9,
+   "cause_sets": 6,
+   "root_slots": 60,
+   "root_slots_unified": 31,
+   "unified_slots": 707,
+   "other_slots": 407,
+   "witness_pebbles": 7091,
+   "witness_repairs": {
+    "root": 12,
+    "unified": 5,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 158 missing"
+   ],
+   "irreducible": 15,
+   "irreducible_recipes": 11,
+   "union_edges": 24,
+   "union_ops": "OR 24",
+   "union_before": 166,
+   "union_after": 0,
+   "debt_edges": 8
+  }
+ },
+ "6": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"vulcanus\", fulgora = \"nauvis\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7447,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "stone-brick",
+     "material": "item: stone",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: fluorine-vent @ aquilo",
+     115
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ]
+   ],
+   "classes": {
+    "root": 139
+   },
+   "failure_kinds": {
+    "mechanic": 94,
+    "planet-locked": 12,
+    "unreachable": 33
+   },
+   "applied": "aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser",
+   "failures": 139,
+   "causes": 2,
+   "cause_sets": 2,
+   "root_slots": 17,
+   "root_slots_unified": 12,
+   "unified_slots": 726,
+   "other_slots": 431,
+   "witness_pebbles": 5913,
+   "witness_repairs": {
+    "root": 7,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 139 missing"
+   ],
+   "irreducible": 3,
+   "irreducible_recipes": 3,
+   "union_edges": 3,
+   "union_ops": "OR 3",
+   "union_before": 139,
+   "union_after": 0,
+   "debt_edges": 2
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete-from-molten-iron",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "refined-concrete",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "stone-brick",
+     "material": "item: stone",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: fluorine-vent @ aquilo",
+     25
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     27
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     41
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 76
+   },
+   "failure_kinds": {
+    "mechanic": 62,
+    "planet-locked": 13,
+    "unreachable": 1
+   },
+   "applied": "{aquilo = \"vulcanus\", fulgora = \"nauvis\", gleba = \"fulgora\", nauvis = \"gleba\", vulcanus = \"aquilo\"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser",
+   "failures": 76,
+   "causes": 7,
+   "cause_sets": 6,
+   "root_slots": 42,
+   "root_slots_unified": 16,
+   "unified_slots": 722,
+   "other_slots": 410,
+   "witness_pebbles": 6476,
+   "witness_repairs": {
+    "root": 19,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 76 missing"
+   ],
+   "irreducible": 11,
+   "irreducible_recipes": 10,
+   "union_edges": 22,
+   "union_ops": "OR 22",
+   "union_before": 76,
+   "union_after": 0,
+   "debt_edges": 5
+  }
+ },
+ "7": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"fulgora\", fulgora = \"aquilo\", gleba = \"vulcanus\", nauvis = \"nauvis\", vulcanus = \"gleba\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7474,
+   "witness_repairs": {
+    "root": 11,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "unified": true
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: concrete",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: electric-engine-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "cargo-landing-pad",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-silo",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: rocket-fuel",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     139
+    ],
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: fluorine-vent @ aquilo",
+     115
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 115,
+    "unified": 16
+   },
+   "failure_kinds": {
+    "mechanic": 94,
+    "planet-locked": 12,
+    "unreachable": 33
+   },
+   "applied": "aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/coal/sulfuric-acid-geyser",
+   "failures": 139,
+   "causes": 4,
+   "cause_sets": 2,
+   "root_slots": 35,
+   "root_slots_unified": 27,
+   "unified_slots": 711,
+   "other_slots": 428,
+   "witness_pebbles": 4932,
+   "witness_repairs": {
+    "root": 1,
+    "unified": 11,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 131 missing"
+   ],
+   "irreducible": 12,
+   "irreducible_recipes": 5,
+   "union_edges": 5,
+   "union_ops": "OR 5",
+   "union_before": 139,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "unified": true
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, nauvis | 00, space-platform | 00"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: low-density-structure",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "rocket-part",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: processing-unit",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: space-platform-foundation",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "unified",
+     "locality": "shared",
+     "recipe": "space-platform-starter-pack",
+     "material": "item: steel-plate",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: calcite @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: calcite @ vulcanus",
+     141
+    ],
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: fluorine-vent @ aquilo",
+     115
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "none": 8,
+    "root": 152,
+    "unified": 6
+   },
+   "failure_kinds": {
+    "mechanic": 116,
+    "planet-locked": 16,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"fulgora\", fulgora = \"aquilo\", gleba = \"vulcanus\", nauvis = \"nauvis\", vulcanus = \"gleba\"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses calcite/coal/sulfuric-acid-geyser",
+   "failures": 166,
+   "causes": 9,
+   "cause_sets": 6,
+   "root_slots": 60,
+   "root_slots_unified": 31,
+   "unified_slots": 707,
+   "other_slots": 407,
+   "witness_pebbles": 7134,
+   "witness_repairs": {
+    "root": 11,
+    "unified": 5,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 158 missing"
+   ],
+   "irreducible": 14,
+   "irreducible_recipes": 10,
+   "union_edges": 24,
+   "union_ops": "OR 24",
+   "union_before": 166,
+   "union_after": 0,
+   "debt_edges": 8
+  }
+ },
+ "8": {
+  "oceans": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "sulfuric-acid",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    }
+   ],
+   "debts": [
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     117
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     131
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 151
+   },
+   "failure_kinds": {
+    "mechanic": 106,
+    "planet-locked": 11,
+    "unreachable": 34
+   },
+   "applied": "{aquilo = \"gleba\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"nauvis\", vulcanus = \"aquilo\"}",
+   "failures": 151,
+   "causes": 4,
+   "cause_sets": 4,
+   "root_slots": 25,
+   "root_slots_unified": 4,
+   "unified_slots": 734,
+   "other_slots": 415,
+   "witness_pebbles": 7445,
+   "witness_repairs": {
+    "root": 10,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 151 missing"
+   ],
+   "irreducible": 10,
+   "irreducible_recipes": 9,
+   "union_edges": 19,
+   "union_ops": "OR 19",
+   "union_before": 151,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "resources": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "item: coal",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 00, aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "simple-coal-liquefaction",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: aquilo --> entity: fluorine-vent @ {aquilo | 00}",
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}"
+   ],
+   "cause_list": [
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: fluorine-vent @ aquilo",
+     115
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ]
+   ],
+   "classes": {
+    "root": 139
+   },
+   "failure_kinds": {
+    "mechanic": 94,
+    "planet-locked": 12,
+    "unreachable": 33
+   },
+   "applied": "aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses coal/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 139,
+   "causes": 4,
+   "cause_sets": 3,
+   "root_slots": 29,
+   "root_slots_unified": 20,
+   "unified_slots": 718,
+   "other_slots": 427,
+   "witness_pebbles": 5901,
+   "witness_repairs": {
+    "root": 11,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 139 missing"
+   ],
+   "irreducible": 8,
+   "irreducible_recipes": 7,
+   "union_edges": 5,
+   "union_ops": "OR 5",
+   "union_before": 139,
+   "union_after": 0,
+   "debt_edges": 4
+  },
+  "both": {
+   "repairs_kept": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "unified": false
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "unified": true
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "unified": false
+    }
+   ],
+   "repairs_witness": [
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "ammoniacal-solution-separation",
+     "material": "fluid: ammoniacal-solution",
+     "contexts": "aquilo | 00, aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "fluoroketone",
+     "material": "fluid: fluorine",
+     "contexts": "aquilo | 01"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "electrolyte",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, fulgora | 11, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "lubricant",
+     "material": "fluid: heavy-oil",
+     "contexts": "fulgora | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "solid-fuel-from-heavy-oil",
+     "material": "fluid: heavy-oil",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-copper-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "molten-iron-from-lava",
+     "material": "fluid: lava",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "acid-neutralisation",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "processing-unit",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "fluid: sulfuric-acid",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "concrete-from-molten-iron",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "heavy-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "gleba | 10, vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "light-oil-cracking",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "local",
+     "recipe": "pentapod-egg",
+     "material": "fluid: water",
+     "contexts": "gleba | 10"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "refined-concrete",
+     "material": "fluid: water",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "carbon",
+     "material": "item: coal",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "plastic-bar",
+     "material": "item: coal",
+     "contexts": "vulcanus | 10, vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-carbide",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    },
+    {
+     "class": "root",
+     "locality": "shared",
+     "recipe": "tungsten-plate",
+     "material": "item: tungsten-ore",
+     "contexts": "vulcanus | 11"
+    }
+   ],
+   "debts": [
+    "room-autoplace: planet: vulcanus --> entity: coal @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: sulfuric-acid-geyser @ {vulcanus | 10}",
+    "room-autoplace: planet: vulcanus --> entity: tungsten-ore @ {vulcanus | 10}",
+    "tile-fluid: brash-ice --> fluid-create-offshore-temperature: ammoniacal-solution: -50 @ {aquilo | 00, aquilo | 01}",
+    "tile-fluid: gleba-deep-lake --> fluid-create-offshore-temperature: water: 15 @ {gleba | 10}",
+    "tile-fluid: lava-hot --> fluid-create-offshore-temperature: lava: 1500 @ {vulcanus | 11}",
+    "tile-fluid: oil-ocean-deep-2 --> fluid-create-offshore-temperature: heavy-oil: 25 @ {fulgora | 10, fulgora | 11}"
+   ],
+   "cause_list": [
+    [
+     "entity: coal @ vulcanus",
+     24
+    ],
+    [
+     "entity: fluorine-vent @ aquilo",
+     25
+    ],
+    [
+     "entity: stone @ gleba",
+     11
+    ],
+    [
+     "entity: sulfuric-acid-geyser @ vulcanus",
+     24
+    ],
+    [
+     "entity: tungsten-ore @ vulcanus",
+     3
+    ],
+    [
+     "fluid-create-offshore-temperature: ammoniacal-solution: -50 @ aquilo",
+     27
+    ],
+    [
+     "fluid-create-offshore-temperature: heavy-oil: 25 @ fulgora",
+     41
+    ],
+    [
+     "fluid-create-offshore-temperature: lava: 1500 @ vulcanus",
+     9
+    ],
+    [
+     "fluid-create-offshore-temperature: water: 15 @ gleba",
+     11
+    ]
+   ],
+   "classes": {
+    "root": 76
+   },
+   "failure_kinds": {
+    "mechanic": 62,
+    "planet-locked": 13,
+    "unreachable": 1
+   },
+   "applied": "{aquilo = \"gleba\", fulgora = \"vulcanus\", gleba = \"fulgora\", nauvis = \"nauvis\", vulcanus = \"aquilo\"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses coal/sulfuric-acid-geyser/tungsten-ore",
+   "failures": 76,
+   "causes": 9,
+   "cause_sets": 7,
+   "root_slots": 54,
+   "root_slots_unified": 24,
+   "unified_slots": 714,
+   "other_slots": 406,
+   "witness_pebbles": 6465,
+   "witness_repairs": {
+    "root": 22,
+    "unified": 0,
+    "all": 0
+   },
+   "prune_notes": [
+    "prune check: 0 of 76 missing"
+   ],
+   "irreducible": 15,
+   "irreducible_recipes": 14,
+   "union_edges": 24,
+   "union_ops": "OR 24",
+   "union_before": 76,
+   "union_after": 0,
+   "debt_edges": 7
+  }
+ }
+}

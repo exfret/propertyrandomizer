@@ -1,0 +1,49 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage{enumitem}
+\usepackage{framed}
+\usepackage{fancyvrb}
+\usepackage{float}
+\usepackage[dvipsnames,svgnames]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.misc,fit,backgrounds,calc,decorations.pathreplacing,patterns}
+\usepackage[colorlinks=true,linkcolor=NavyBlue,citecolor=NavyBlue,urlcolor=NavyBlue]{hyperref}
+
+\input{macros}
+\input{results-macros}
+\input{results-text}
+\emergencystretch=2.5em
+\urlstyle{tt}
+\def\UrlBreaks{\do\/\do\_\do\-\do\.\do\,\do\(\do\)\do\:}
+\Urlmuskip=0mu plus 1mu
+\mathchardef\UrlBreakPenalty=100
+
+\title{Contexts that move\\[4pt]
+\large A theory of references, debts and repairs for multipass randomization\\ with planetary context shifts}
+\author{Investigation for exfret's property randomizer (\texttt{propertyrandomizer})}
+\date{26 September 2026}
+
+\begin{document}
+\maketitle
+
+\input{sec-summary}
+\clearpage
+{\setcounter{tocdepth}{2}\tableofcontents}
+\clearpage
+\input{sec-intro}
+\input{sec-model}
+\input{sec-reference}
+\input{sec-shift}
+\input{sec-constructions}
+\input{sec-repair}
+\input{sec-pipeline}
+\appendix
+\input{sec-appendix}
+
+\end{document}

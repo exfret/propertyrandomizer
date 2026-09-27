@@ -1,0 +1,12 @@
+\begin{keybox}{Summary}
+\small
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt]
+\item \textbf{Unified never needed vanilla.} It needs a \emph{reference}: any world plus a fallback assignment that reaches the goals, with a sort of it. Promotion's two guarantees hold for every reference: soundness, and a fallback that is always available (Theorems~\ref{thm:sound}--\ref{thm:fallback}, Corollary~\ref{cor:reference}). Multipass is a \emph{relay of references}: each pass receives one and must hand one on.
+\item \textbf{A context shift is the one pass that changes the goals.} Feature goals follow the feature, identity goals stay (with relaxed isolatability), recipe goals stay. The planetary check's three rules are exactly this transport. The dilemma (Proposition~\ref{prop:dilemma}): vanilla is a reference but cannot see moved features, and the shifted world sees them but is not a reference for the transported goals.
+\item \textbf{Three ways to restore a reference.} \emph{Scaffolded} (today: fix the world before unified), \emph{repaired} (change the fallback, which is visible only where unified falls back to it), and \emph{superposed} (old and new features at once, carrying debts that are settled after unified along a ladder: paid, repair, duplicate, addition, revert). Every planetary feature enters the logic through edges into $\OR$ nodes, so the superposition is \emph{always} a reference (Lemma~\ref{lem:superposition}). In the measurements it lost nothing in all \NumRuns\ raw-shift runs.
+\item \textbf{Contradictions are few when counted by cause.} \ResultSummaryCounts
+\item \textbf{Most ocean repairs lie outside unified's current move space.} \ResultSummaryWhere
+\item \textbf{Some contradictions are structural.} \ResultSummaryStructural
+\item \textbf{Recommendation.} First, have the planetary stage produce a \emph{repaired reference}: staged-sort repair selection, in-place edits unless a context conflict forces a duplicate. That needs no change to unified. Then add repair-only moves (pins) for blacklisted slots. Finally, put a superposed reference with debt-aware promotion behind a flag, starting with resources, whose addition rung already exists. Five decisions are the user's to make (Section~\ref{sec:pipeline}).
+\end{enumerate}
+\end{keybox}

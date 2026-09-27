@@ -1,0 +1,587 @@
+[5.525] vanilla sort done, 103912 pebbles
+[5.850] oceans applied: {aquilo = "nauvis", fulgora = "vulcanus", gleba = "fulgora", nauvis = "gleba", vulcanus = "aquilo"}
+[9.515] oceans failures 151 {mechanic 106, planet-locked 11, unreachable 34}
+[9.515] oceans distinct causes 0, distinct cause sets 1
+[9.515] oceans cause set [(none on witness)] x151
+[9.531] oceans ingredient slots by class: uspace 738, rest 436
+[18.911] oceans class uspace: unreachable recipe: cryogenic-science-pack <- [(none on witness)]
+[18.911] oceans class uspace: unreachable recipe: railgun <- [(none on witness)]
+[18.911] oceans class uspace: unreachable recipe: railgun-turret <- [(none on witness)]
+[18.911] oceans class uspace: unreachable recipe: railgun-ammo <- [(none on witness)]
+[18.911] oceans class uspace: unreachable recipe: captive-biter-spawner <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: lithium <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone-cooling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: quantum-processor <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-reactor-equipment <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-power-cell <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-reactor <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-generator <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: foundation <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: promethium-science-pack <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone-cold-barrel <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: empty-fluoroketone-cold-barrel <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone-hot-barrel <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: empty-fluoroketone-hot-barrel <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: railgun-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: railgun-turret-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: railgun-ammo-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: quantum-processor-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-reactor-equipment-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-reactor-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-generator-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: foundation-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone-cold-barrel-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fluoroketone-hot-barrel-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: cryogenic-science-pack-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: promethium-science-pack-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: promethium-asteroid-chunk-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: captive-biter-spawner-recycling <- [(none on witness)]
+[18.912] oceans class uspace: unreachable recipe: fusion-power-cell-recycling <- [(none on witness)]
+[18.912] oceans class rest: planet-locked recipe: pentapod-egg @ planet: gleba | 10 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 10 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 11 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: cryogenic-plant @ planet: aquilo | 01 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: fusion-reactor @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: planet-locked recipe: fusion-generator @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: gleba | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic item: promethium-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-launch: gleba @ planet: gleba | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-launch: fulgora @ planet: fulgora | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-launch: fulgora @ planet: fulgora | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: gleba | 10 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.912] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic create-platform:  @ planet: fulgora | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic create-platform:  @ planet: fulgora | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic create-platform:  @ planet: gleba | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic create-platform:  @ planet: vulcanus | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic rocket-silo:  @ planet: fulgora | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic rocket-silo:  @ planet: fulgora | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic rocket-silo:  @ planet: gleba | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic cargo-landing-pad:  @ planet: gleba | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic cargo-landing-pad:  @ planet: gleba | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic launch:  @ planet: fulgora | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic launch:  @ planet: fulgora | 11 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic launch:  @ planet: gleba | 10 <- [(none on witness)]
+[18.913] oceans class uspace: mechanic launch:  @ planet: vulcanus | 11 <- [(none on witness)]
+[18.913] oceans fixed at stage {rest 1, uspace 150}
+[19.035] oceans repair witness 6813 pebbles; repairs used {uspace 40 slots/20 recipes, rest 1 slots/1 recipes}
+[19.035] oceans repair uspace local recipe: fluoroketone slot fluid: ammonia @ {aquilo | 00, aquilo | 01, nauvis | 00}
+[19.035] oceans repair uspace local recipe: fusion-power-cell slot fluid: ammonia @ {aquilo | 00, aquilo | 01, fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01}
+[19.035] oceans repair uspace local recipe: electromagnetic-science-pack slot fluid: electrolyte @ {fulgora | 10, fulgora | 11}
+[19.036] oceans repair uspace shared recipe: supercapacitor slot fluid: electrolyte @ {fulgora | 10}
+[19.036] oceans repair uspace local recipe: fluoroketone slot fluid: fluorine @ {nauvis | 00, vulcanus | 00}
+[19.036] oceans repair uspace local recipe: lithium slot fluid: lithium-brine @ {vulcanus | 00}
+[19.036] oceans repair uspace local recipe: metallurgic-science-pack slot fluid: molten-copper @ {vulcanus | 11}
+[19.036] oceans repair uspace local recipe: big-mining-drill slot fluid: molten-iron @ {vulcanus | 11}
+[19.036] oceans repair rest local recipe: pentapod-egg slot fluid: water @ {gleba | 10}
+[19.036] oceans repair uspace local recipe: big-mining-drill slot item: advanced-circuit @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: cargo-landing-pad slot item: concrete @ {gleba | 10}
+[19.036] oceans repair uspace shared recipe: rocket-silo slot item: concrete @ {gleba | 10}
+[19.036] oceans repair uspace local recipe: big-mining-drill slot item: electric-engine-unit @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: rocket-silo slot item: electric-engine-unit @ {fulgora | 10}
+[19.036] oceans repair uspace local recipe: big-mining-drill slot item: electric-mining-drill @ {vulcanus | 11}
+[19.036] oceans repair uspace local recipe: foundry slot item: electronic-circuit @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: fusion-reactor-equipment slot item: fusion-power-cell @ {nauvis | 00}
+[19.036] oceans repair uspace local recipe: fluoroketone slot item: lithium @ {aquilo | 01}
+[19.036] oceans repair uspace local recipe: cryogenic-plant slot item: lithium-plate @ {aquilo | 01}
+[19.036] oceans repair uspace local recipe: cryogenic-science-pack slot item: lithium-plate @ {aquilo | 01}
+[19.036] oceans repair uspace local recipe: fusion-power-cell slot item: lithium-plate @ {aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01, vulcanus | 01}
+[19.036] oceans repair uspace shared recipe: rocket-part slot item: low-density-structure @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: cargo-landing-pad slot item: processing-unit @ {gleba | 10}
+[19.036] oceans repair uspace shared recipe: rocket-part slot item: processing-unit @ {gleba | 10, vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: rocket-silo slot item: processing-unit @ {gleba | 10}
+[19.036] oceans repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit @ {gleba | 10, vulcanus | 11}
+[19.036] oceans repair uspace local recipe: promethium-science-pack slot item: promethium-asteroid-chunk @ {space-platform | 00}
+[19.036] oceans repair uspace local recipe: fusion-generator slot item: quantum-processor @ {aquilo | 00}
+[19.036] oceans repair uspace local recipe: fusion-reactor slot item: quantum-processor @ {aquilo | 00}
+[19.036] oceans repair uspace shared recipe: fusion-reactor-equipment slot item: quantum-processor @ {nauvis | 00}
+[19.036] oceans repair uspace local recipe: promethium-science-pack slot item: quantum-processor @ {space-platform | 00}
+[19.036] oceans repair uspace shared recipe: railgun slot item: quantum-processor @ {nauvis | 00}
+[19.036] oceans repair uspace shared recipe: railgun-turret slot item: quantum-processor @ {nauvis | 00}
+[19.036] oceans repair uspace local recipe: foundry slot item: refined-concrete @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: rocket-part slot item: rocket-fuel @ {fulgora | 10, fulgora | 11, gleba | 10}
+[19.036] oceans repair uspace shared recipe: space-platform-starter-pack slot item: space-platform-foundation @ {vulcanus | 11}
+[19.036] oceans repair uspace local recipe: foundry slot item: steel-plate @ {vulcanus | 11}
+[19.036] oceans repair uspace shared recipe: space-platform-starter-pack slot item: steel-plate @ {vulcanus | 11}
+[19.036] oceans repair uspace local recipe: electromagnetic-science-pack slot item: supercapacitor @ {fulgora | 10, fulgora | 11}
+[19.036] oceans repair uspace shared recipe: supercapacitor slot item: superconductor @ {fulgora | 10}
+[19.036] oceans repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate @ {vulcanus | 11}
+[23.331] oceans prune check: 0 of 151 missing
+[192.827] oceans irreducible repairs 26 slots on 12 recipes {uspace 25, rest 1}
+[192.828] oceans kept repair rest local recipe: pentapod-egg slot fluid: water (not unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: electromagnetic-science-pack slot fluid: electrolyte (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: supercapacitor slot fluid: electrolyte (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: fluoroketone slot fluid: fluorine (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: lithium slot fluid: lithium-brine (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: metallurgic-science-pack slot fluid: molten-copper (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: big-mining-drill slot fluid: molten-iron (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: big-mining-drill slot item: advanced-circuit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: cargo-landing-pad slot item: concrete (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-silo slot item: concrete (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: big-mining-drill slot item: electric-engine-unit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-silo slot item: electric-engine-unit (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: big-mining-drill slot item: electric-mining-drill (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: foundry slot item: electronic-circuit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-part slot item: low-density-structure (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: cargo-landing-pad slot item: processing-unit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-part slot item: processing-unit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-silo slot item: processing-unit (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: foundry slot item: refined-concrete (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: rocket-part slot item: rocket-fuel (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: space-platform-starter-pack slot item: space-platform-foundation (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: foundry slot item: steel-plate (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: space-platform-starter-pack slot item: steel-plate (unified-randomizable)
+[192.828] oceans kept repair uspace shared recipe: supercapacitor slot item: superconductor (unified-randomizable)
+[192.828] oceans kept repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate (unified-randomizable)
+[192.828] oceans done
+[193.480] resources applied: aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore
+[197.807] resources failures 139 {mechanic 94, planet-locked 12, unreachable 33}
+[197.807] resources distinct causes 0, distinct cause sets 1
+[197.807] resources cause set [(none on witness)] x139
+[197.817] resources ingredient slots by class: uspace 738, rest 436
+[203.264] resources class uspace: unreachable recipe: cryogenic-science-pack <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun-turret <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun-ammo <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: captive-biter-spawner <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone-cooling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: quantum-processor <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-reactor-equipment <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-power-cell <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-reactor <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-generator <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: foundation <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: promethium-science-pack <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone-cold-barrel <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: empty-fluoroketone-cold-barrel <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone-hot-barrel <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: empty-fluoroketone-hot-barrel <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun-turret-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: railgun-ammo-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: quantum-processor-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-reactor-equipment-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-reactor-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-generator-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: foundation-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone-cold-barrel-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fluoroketone-hot-barrel-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: cryogenic-science-pack-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: promethium-science-pack-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: promethium-asteroid-chunk-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: captive-biter-spawner-recycling <- [(none on witness)]
+[203.264] resources class uspace: unreachable recipe: fusion-power-cell-recycling <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 10 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 10 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 11 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: foundry @ planet: vulcanus | 10 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: big-mining-drill @ planet: vulcanus | 10 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: fusion-reactor @ planet: aquilo | 00 <- [(none on witness)]
+[203.264] resources class uspace: planet-locked recipe: fusion-generator @ planet: aquilo | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 10 <- [(none on witness)]
+[203.264] resources class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[203.264] resources class uspace: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic item: promethium-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic room-launch: vulcanus @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: agricultural-science-pack__automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__metallurgic-science-pack__military-science-pack__production-science-pack__promethium-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 00 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[203.265] resources class uspace: mechanic create-platform:  @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic create-platform:  @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic rocket-silo:  @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic cargo-landing-pad:  @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic cargo-landing-pad:  @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources class uspace: mechanic launch:  @ planet: vulcanus | 10 <- [(none on witness)]
+[203.265] resources class uspace: mechanic launch:  @ planet: vulcanus | 11 <- [(none on witness)]
+[203.265] resources fixed at stage {uspace 139}
+[203.324] resources repair witness 5603 pebbles; repairs used {uspace 37 slots/17 recipes, rest 0 slots/0 recipes}
+[203.324] resources repair uspace local recipe: fluoroketone slot fluid: ammonia @ {nauvis | 00}
+[203.324] resources repair uspace local recipe: fusion-power-cell slot fluid: ammonia @ {fulgora | 00, fulgora | 01, gleba | 00, gleba | 01, nauvis | 00, nauvis | 01, space-platform | 00, space-platform | 01, vulcanus | 00, vulcanus | 01}
+[203.324] resources repair uspace local recipe: fluoroketone slot fluid: fluorine @ {aquilo | 00, aquilo | 01, nauvis | 00}
+[203.324] resources repair uspace local recipe: foundry slot fluid: lubricant @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace local recipe: metallurgic-science-pack slot fluid: molten-copper @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace local recipe: big-mining-drill slot fluid: molten-iron @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace local recipe: acid-neutralisation slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace shared recipe: tungsten-carbide slot fluid: sulfuric-acid @ {vulcanus | 10}
+[203.324] resources repair uspace local recipe: big-mining-drill slot item: advanced-circuit @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace shared recipe: cargo-landing-pad slot item: concrete @ {vulcanus | 10}
+[203.324] resources repair uspace shared recipe: rocket-silo slot item: concrete @ {vulcanus | 10}
+[203.324] resources repair uspace local recipe: big-mining-drill slot item: electric-engine-unit @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace shared recipe: rocket-silo slot item: electric-engine-unit @ {vulcanus | 10}
+[203.324] resources repair uspace local recipe: big-mining-drill slot item: electric-mining-drill @ {vulcanus | 11}
+[203.324] resources repair uspace local recipe: foundry slot item: electronic-circuit @ {vulcanus | 11}
+[203.324] resources repair uspace shared recipe: fusion-reactor-equipment slot item: fusion-power-cell @ {nauvis | 00}
+[203.324] resources repair uspace shared recipe: rocket-part slot item: low-density-structure @ {vulcanus | 10, vulcanus | 11}
+[203.324] resources repair uspace shared recipe: cargo-landing-pad slot item: processing-unit @ {vulcanus | 10}
+[203.324] resources repair uspace shared recipe: rocket-part slot item: processing-unit @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace shared recipe: rocket-silo slot item: processing-unit @ {vulcanus | 10}
+[203.325] resources repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace local recipe: promethium-science-pack slot item: promethium-asteroid-chunk @ {space-platform | 00}
+[203.325] resources repair uspace local recipe: fusion-generator slot item: quantum-processor @ {aquilo | 00}
+[203.325] resources repair uspace local recipe: fusion-reactor slot item: quantum-processor @ {aquilo | 00}
+[203.325] resources repair uspace shared recipe: fusion-reactor-equipment slot item: quantum-processor @ {nauvis | 00}
+[203.325] resources repair uspace local recipe: promethium-science-pack slot item: quantum-processor @ {space-platform | 00}
+[203.325] resources repair uspace shared recipe: railgun slot item: quantum-processor @ {nauvis | 00}
+[203.325] resources repair uspace shared recipe: railgun-turret slot item: quantum-processor @ {nauvis | 00}
+[203.325] resources repair uspace local recipe: foundry slot item: refined-concrete @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace shared recipe: rocket-part slot item: rocket-fuel @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace shared recipe: space-platform-starter-pack slot item: space-platform-foundation @ {vulcanus | 11}
+[203.325] resources repair uspace local recipe: foundry slot item: steel-plate @ {vulcanus | 11}
+[203.325] resources repair uspace shared recipe: space-platform-starter-pack slot item: steel-plate @ {vulcanus | 11}
+[203.325] resources repair uspace local recipe: big-mining-drill slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace local recipe: foundry slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace local recipe: metallurgic-science-pack slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[203.325] resources repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate @ {vulcanus | 10, vulcanus | 11}
+[205.720] resources prune check: 0 of 139 missing
+[374.567] resources irreducible repairs 13 slots on 7 recipes {uspace 13, rest 0}
+[374.568] resources kept repair uspace local recipe: fluoroketone slot fluid: fluorine (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: foundry slot fluid: lubricant (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: acid-neutralisation slot fluid: sulfuric-acid (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: big-mining-drill slot item: advanced-circuit (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: big-mining-drill slot item: electric-engine-unit (unified-randomizable)
+[374.569] resources kept repair uspace shared recipe: rocket-part slot item: low-density-structure (unified-randomizable)
+[374.569] resources kept repair uspace shared recipe: rocket-part slot item: processing-unit (unified-randomizable)
+[374.569] resources kept repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit (unified-randomizable)
+[374.569] resources kept repair uspace shared recipe: rocket-part slot item: rocket-fuel (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: big-mining-drill slot item: tungsten-carbide (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: foundry slot item: tungsten-carbide (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: metallurgic-science-pack slot item: tungsten-carbide (unified-randomizable)
+[374.569] resources kept repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate (unified-randomizable)
+[374.569] resources done
+[375.446] both applied: {aquilo = "nauvis", fulgora = "vulcanus", gleba = "fulgora", nauvis = "gleba", vulcanus = "aquilo"} | aquilo loses fluorine-vent; fulgora loses scrap; gleba loses stone; vulcanus loses sulfuric-acid-geyser/tungsten-ore
+[380.901] both failures 76 {mechanic 62, planet-locked 13, unreachable 1}
+[380.901] both distinct causes 0, distinct cause sets 1
+[380.901] both cause set [(none on witness)] x76
+[380.910] both ingredient slots by class: uspace 738, rest 436
+[389.881] both class uspace: unreachable recipe: lithium <- [(none on witness)]
+[389.881] both class rest: planet-locked recipe: pentapod-egg @ planet: gleba | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: metallurgic-science-pack @ planet: vulcanus | 11 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: electromagnetic-science-pack @ planet: fulgora | 11 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: acid-neutralisation @ planet: vulcanus | 11 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: foundry @ planet: vulcanus | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: foundry @ planet: vulcanus | 11 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: big-mining-drill @ planet: vulcanus | 10 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: big-mining-drill @ planet: vulcanus | 11 <- [(none on witness)]
+[389.881] both class uspace: planet-locked recipe: cryogenic-plant @ planet: aquilo | 01 <- [(none on witness)]
+[389.881] both class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: fulgora | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: gleba | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic entity-rocket-silo: rocket-silo @ planet: vulcanus | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic item: cryogenic-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: fulgora | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: gleba | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic recipe-category: rocket-building__0__0 @ planet: vulcanus | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-launch: vulcanus @ planet: vulcanus | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-launch: vulcanus @ planet: vulcanus | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-launch: gleba @ planet: gleba | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-launch: fulgora @ planet: fulgora | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-launch: fulgora @ planet: fulgora | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: gleba | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 10 <- [(none on witness)]
+[389.882] both class uspace: mechanic room-create-platform-starter-pack: surface: space-platform @ planet: vulcanus | 11 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: aquilo | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: nauvis | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: vulcanus | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: gleba | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ planet: fulgora | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic energy-source-burner: fusion_2_0 @ surface: space-platform | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__electromagnetic-science-pack__logistic-science-pack__military-science-pack__space-science-pack__utility-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: aquilo | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: nauvis | 01 <- [(none on witness)]
+[389.882] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: vulcanus | 01 <- [(none on witness)]
+[389.883] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: gleba | 01 <- [(none on witness)]
+[389.883] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ planet: fulgora | 01 <- [(none on witness)]
+[389.883] both class uspace: mechanic science-pack-set-science: automation-science-pack__chemical-science-pack__cryogenic-science-pack__logistic-science-pack__production-science-pack @ surface: space-platform | 01 <- [(none on witness)]
+[389.883] both class uspace: mechanic create-platform:  @ planet: fulgora | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic create-platform:  @ planet: fulgora | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic create-platform:  @ planet: gleba | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic create-platform:  @ planet: vulcanus | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic create-platform:  @ planet: vulcanus | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic rocket-silo:  @ planet: fulgora | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic rocket-silo:  @ planet: fulgora | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic rocket-silo:  @ planet: gleba | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic rocket-silo:  @ planet: vulcanus | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic rocket-silo:  @ planet: vulcanus | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic cargo-landing-pad:  @ planet: gleba | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic cargo-landing-pad:  @ planet: gleba | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic cargo-landing-pad:  @ planet: vulcanus | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic cargo-landing-pad:  @ planet: vulcanus | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic launch:  @ planet: fulgora | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic launch:  @ planet: fulgora | 11 <- [(none on witness)]
+[389.883] both class uspace: mechanic launch:  @ planet: gleba | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic launch:  @ planet: vulcanus | 10 <- [(none on witness)]
+[389.883] both class uspace: mechanic launch:  @ planet: vulcanus | 11 <- [(none on witness)]
+[389.883] both fixed at stage {rest 1, uspace 75}
+[390.019] both repair witness 5730 pebbles; repairs used {uspace 38 slots/16 recipes, rest 1 slots/1 recipes}
+[390.019] both repair uspace local recipe: fluoroketone slot fluid: ammonia @ {aquilo | 01}
+[390.020] both repair uspace local recipe: fusion-power-cell slot fluid: ammonia @ {aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01}
+[390.020] both repair uspace local recipe: electromagnetic-science-pack slot fluid: electrolyte @ {fulgora | 10, fulgora | 11}
+[390.020] both repair uspace shared recipe: supercapacitor slot fluid: electrolyte @ {fulgora | 10}
+[390.020] both repair uspace local recipe: fluoroketone slot fluid: fluorine @ {aquilo | 01}
+[390.020] both repair uspace local recipe: lithium slot fluid: lithium-brine @ {vulcanus | 00}
+[390.020] both repair uspace local recipe: foundry slot fluid: lubricant @ {vulcanus | 10, vulcanus | 11}
+[390.020] both repair uspace local recipe: metallurgic-science-pack slot fluid: molten-copper @ {vulcanus | 10, vulcanus | 11}
+[390.020] both repair uspace local recipe: big-mining-drill slot fluid: molten-iron @ {vulcanus | 10, vulcanus | 11}
+[390.020] both repair uspace local recipe: acid-neutralisation slot fluid: sulfuric-acid @ {vulcanus | 10, vulcanus | 11}
+[390.020] both repair uspace shared recipe: tungsten-carbide slot fluid: sulfuric-acid @ {vulcanus | 10}
+[390.020] both repair rest local recipe: pentapod-egg slot fluid: water @ {gleba | 10}
+[390.021] both repair uspace local recipe: big-mining-drill slot item: advanced-circuit @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: cargo-landing-pad slot item: concrete @ {gleba | 10, vulcanus | 10}
+[390.021] both repair uspace shared recipe: rocket-silo slot item: concrete @ {gleba | 10, vulcanus | 10}
+[390.021] both repair uspace local recipe: big-mining-drill slot item: electric-engine-unit @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: rocket-silo slot item: electric-engine-unit @ {fulgora | 10, vulcanus | 10}
+[390.021] both repair uspace local recipe: big-mining-drill slot item: electric-mining-drill @ {vulcanus | 11}
+[390.021] both repair uspace local recipe: foundry slot item: electronic-circuit @ {vulcanus | 11}
+[390.021] both repair uspace local recipe: fluoroketone slot item: lithium @ {aquilo | 01}
+[390.021] both repair uspace local recipe: cryogenic-plant slot item: lithium-plate @ {aquilo | 01}
+[390.021] both repair uspace local recipe: cryogenic-science-pack slot item: lithium-plate @ {aquilo | 01}
+[390.021] both repair uspace local recipe: fusion-power-cell slot item: lithium-plate @ {aquilo | 01, fulgora | 01, gleba | 01, nauvis | 01, space-platform | 01, vulcanus | 01}
+[390.021] both repair uspace shared recipe: rocket-part slot item: low-density-structure @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: cargo-landing-pad slot item: processing-unit @ {gleba | 10, vulcanus | 10}
+[390.021] both repair uspace shared recipe: rocket-part slot item: processing-unit @ {gleba | 10, vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: rocket-silo slot item: processing-unit @ {gleba | 10, vulcanus | 10}
+[390.021] both repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit @ {gleba | 10, vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace local recipe: foundry slot item: refined-concrete @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: rocket-part slot item: rocket-fuel @ {fulgora | 10, fulgora | 11, gleba | 10, vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace shared recipe: space-platform-starter-pack slot item: space-platform-foundation @ {vulcanus | 11}
+[390.021] both repair uspace local recipe: foundry slot item: steel-plate @ {vulcanus | 11}
+[390.021] both repair uspace shared recipe: space-platform-starter-pack slot item: steel-plate @ {vulcanus | 11}
+[390.021] both repair uspace local recipe: electromagnetic-science-pack slot item: supercapacitor @ {fulgora | 10, fulgora | 11}
+[390.021] both repair uspace shared recipe: supercapacitor slot item: superconductor @ {fulgora | 10}
+[390.021] both repair uspace local recipe: big-mining-drill slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace local recipe: foundry slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace local recipe: metallurgic-science-pack slot item: tungsten-carbide @ {vulcanus | 10, vulcanus | 11}
+[390.021] both repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate @ {vulcanus | 10, vulcanus | 11}
+[393.958] both prune check: 0 of 76 missing
+[597.069] both irreducible repairs 30 slots on 12 recipes {uspace 29, rest 1}
+[597.070] both kept repair rest local recipe: pentapod-egg slot fluid: water (not unified-randomizable)
+[597.070] both kept repair uspace local recipe: electromagnetic-science-pack slot fluid: electrolyte (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: supercapacitor slot fluid: electrolyte (unified-randomizable)
+[597.070] both kept repair uspace local recipe: lithium slot fluid: lithium-brine (unified-randomizable)
+[597.070] both kept repair uspace local recipe: foundry slot fluid: lubricant (unified-randomizable)
+[597.070] both kept repair uspace local recipe: metallurgic-science-pack slot fluid: molten-copper (unified-randomizable)
+[597.070] both kept repair uspace local recipe: big-mining-drill slot fluid: molten-iron (unified-randomizable)
+[597.070] both kept repair uspace local recipe: acid-neutralisation slot fluid: sulfuric-acid (unified-randomizable)
+[597.070] both kept repair uspace local recipe: big-mining-drill slot item: advanced-circuit (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: cargo-landing-pad slot item: concrete (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: rocket-silo slot item: concrete (unified-randomizable)
+[597.070] both kept repair uspace local recipe: big-mining-drill slot item: electric-engine-unit (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: rocket-silo slot item: electric-engine-unit (unified-randomizable)
+[597.070] both kept repair uspace local recipe: big-mining-drill slot item: electric-mining-drill (unified-randomizable)
+[597.070] both kept repair uspace local recipe: foundry slot item: electronic-circuit (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: rocket-part slot item: low-density-structure (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: cargo-landing-pad slot item: processing-unit (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: rocket-part slot item: processing-unit (unified-randomizable)
+[597.070] both kept repair uspace shared recipe: rocket-silo slot item: processing-unit (unified-randomizable)
+[597.071] both kept repair uspace shared recipe: space-platform-starter-pack slot item: processing-unit (unified-randomizable)
+[597.071] both kept repair uspace local recipe: foundry slot item: refined-concrete (unified-randomizable)
+[597.071] both kept repair uspace shared recipe: rocket-part slot item: rocket-fuel (unified-randomizable)
+[597.071] both kept repair uspace shared recipe: space-platform-starter-pack slot item: space-platform-foundation (unified-randomizable)
+[597.071] both kept repair uspace local recipe: foundry slot item: steel-plate (unified-randomizable)
+[597.071] both kept repair uspace shared recipe: space-platform-starter-pack slot item: steel-plate (unified-randomizable)
+[597.071] both kept repair uspace shared recipe: supercapacitor slot item: superconductor (unified-randomizable)
+[597.071] both kept repair uspace local recipe: big-mining-drill slot item: tungsten-carbide (unified-randomizable)
+[597.071] both kept repair uspace local recipe: foundry slot item: tungsten-carbide (unified-randomizable)
+[597.071] both kept repair uspace local recipe: metallurgic-science-pack slot item: tungsten-carbide (unified-randomizable)
+[597.071] both kept repair uspace local recipe: metallurgic-science-pack slot item: tungsten-plate (unified-randomizable)
+[597.071] both done
+[597.071] done in 127 sorts
+ERRLINE [C]: in function 'error'
+ERRLINE ------------- Error -------------
+ERRLINE [C]: in function 'error'

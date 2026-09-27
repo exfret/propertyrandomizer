@@ -1,0 +1,74 @@
+% ---------------------------------------------------------------- theorems
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ---------------------------------------------------------------- notation
+\newcommand{\peb}[2]{\ensuremath{\langle #1,\,#2\rangle}}          % pebble
+\newcommand{\Reach}{\mathcal{R}}                        % least model
+\newcommand{\Prog}{\Pi}                                 % Horn program
+\newcommand{\rk}{\operatorname{rk}}                     % rank in a sort
+\newcommand{\Goals}{\Gamma}
+\newcommand{\Ctx}{\mathcal{C}}
+\newcommand{\Rooms}{\mathsf{Rooms}}
+\newcommand{\Ab}{\mathsf{A}}
+\newcommand{\iso}{\mathsf{i}}
+\newcommand{\aut}{\mathsf{a}}
+\newcommand{\EF}{E_{\mathrm{F}}}
+\newcommand{\Edebt}{E_{\mathrm{debt}}}
+\newcommand{\Gsup}{G_{\sqcup}}
+\newcommand{\sref}{\sigma_{\mathrm{ref}}}
+\newcommand{\scur}{\sigma_{\mathrm{cur}}}
+\newcommand{\transport}{\tau_{*}}
+\newcommand{\code}[1]{\nolinkurl{#1}}
+\newcommand{\file}[1]{{\small\nolinkurl{#1}}}
+\newcommand{\AND}{\wedge}
+\newcommand{\OR}{\vee}
+
+% ---------------------------------------------------------------- colours
+\definecolor{cvan}{HTML}{2F6DB5}     % vanilla / reference
+\definecolor{cshift}{HTML}{D9822B}   % shifted
+\definecolor{cdebt}{HTML}{C0392B}    % debt
+\definecolor{crep}{HTML}{2E8B57}     % repair
+\definecolor{cgate}{HTML}{7D3C98}    % gates
+\definecolor{cgrey}{HTML}{8A8F98}
+\definecolor{clight}{HTML}{EEF2F7}
+\definecolor{cbox}{HTML}{F6F8FB}
+
+% ---------------------------------------------------------------- boxes
+\newenvironment{keybox}[1]{%
+  \def\FrameCommand{\fboxsep=8pt\fcolorbox{cvan!60}{cbox}}%
+  \MakeFramed{\advance\hsize-\width \FrameRestore}%
+  \noindent\textbf{\color{cvan}#1}\par\smallskip}%
+  {\endMakeFramed}
+
+\newenvironment{factbox}{%
+  \def\FrameCommand{\fboxsep=6pt\fcolorbox{cgrey!50}{white}}%
+  \MakeFramed{\advance\hsize-\width \FrameRestore}\small}%
+  {\endMakeFramed}
+
+% ---------------------------------------------------------------- tikz styles
+\tikzset{
+  node/.style={draw, rounded corners=2pt, minimum height=6mm, inner sep=3pt, font=\small, fill=white},
+  andn/.style={node, rectangle},
+  orn/.style={node, ellipse, inner sep=2pt},
+  room/.style={node, fill=cvan!12, draw=cvan},
+  feat/.style={node, fill=cshift!15, draw=cshift},
+  goal/.style={node, very thick, draw=black},
+  pre/.style={-{Stealth[length=2.2mm]}, thick},
+  debt/.style={pre, draw=cdebt, dashed},
+  rep/.style={pre, draw=crep},
+  gate/.style={pre, draw=cgate, densely dotted},
+  pebble/.style={circle, draw, fill=white, inner sep=0pt, minimum size=4.2mm, font=\scriptsize},
+  ppeb/.style={pebble, fill=cvan!70, draw=cvan!90!black, text=white},
+  ghost/.style={pebble, dashed, draw=cgrey, text=cgrey},
+  stage/.style={draw=none, fill=cgate!8},
+  lbl/.style={font=\scriptsize, text=black!70},
+}

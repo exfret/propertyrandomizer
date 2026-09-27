@@ -11,12 +11,18 @@
 -- So an edge "X-recycling --> item-craft Y" only exists while Y is still an ingredient of that recipe
 -- Promising something that uses such an edge before that recipe is resolved pins Y to it, and recipe randomization keeps pinned ingredients (vanilla ingredients contain every pin, so the fallback still works)
 -- Mechanics that don't need derived recycling are promised first, so pins only come from ones that really do
+--
+-- Debt mode (params.debt, see notes/context-shift-report): the graph is superposed with an older world's (lib/graph/superpose.lua), like the game before a planetary change
+-- The older world's own edges are debt edges: they keep its goals reachable, so promotion can start before anything pays for them, but the game doesn't have them
+-- A pebble is *solvent* if it has a backing without debt edges, and solvent promises are a second tier (is_solvent_promised) kept the same way: each has a solvent backing of solvent promises with strictly lower rank
+-- No choice may make a solvent pebble in a required context insolvent (the no-new-insolvency rule), so the goals promised without a solvent backing (owed) never grow, and whatever the choices pay for stays paid
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local recycling_sources = require("lib/logic/recycling-sources")
+local superpose = require("lib/graph/superpose")
 
 local key = gutils.key
 
@@ -29,7 +35,9 @@ end
 -- params: graph (the random graph, or first pass's split graph when first pass ran), head_to_base (generic handlers' choices), pool_sort_info (optional, for reporting), complex (use complex room/ability contexts, with home contexts for the discovery rule)
 -- params.connection_abilities (optional) is function(base, head) giving the abilities of the edge that connects a base to a head (see gutils.connect_base_head); by default a base keeps its original edge's abilities
 -- Which mechanic contexts are promised follows protection.lua
+-- params.planet_locked (optional) gives the contexts recipes locked to one planet keep, as node key --> context --> true (protection.planet_locked_recipe_contexts of the game before randomization, since promotion's own sort comes after first pass), and they're promised like mechanics
 -- With first pass, the split graph must be used: it's the model reflection builds (e.g. item identities swapped), so reasoning over the unsplit graph would be about a different game
+-- params.debt (optional) turns on debt mode: { graph = a superposition of logic graphs, debt_edges and old_nodes (both from superpose.union), is_goal = function(node_key, context) saying whether a mechanic pebble only the older world has must still be kept, goals = those goals as node key --> context --> true (optional, only for reporting) }
 promotion.new = function(params)
     local head_to_base = params.head_to_base or {}
 
@@ -79,6 +87,30 @@ promotion.new = function(params)
         complex_contexts = complex,
         home_contexts = complex,
     })
+
+    -- Debt mode: add the older world's own nodes and edges (see the top of this file), then continue the same sort through them
+    -- So ranks are solvency-first: everything the game has ranks before anything that needs a debt edge, and what's solvent now has a solvent backing of earlier pebbles
+    local debt = params.debt
+    -- Edge key --> true for the debt edges in this graph
+    local is_debt_edge = {}
+    if debt ~= nil then
+        local added, skipped = superpose.add_debt(graph, debt)
+        for _, edge in pairs(added) do
+            is_debt_edge[gutils.ekey(edge)] = true
+        end
+        sort_info = superpose.continue_through_debt(graph, sort_info, added)
+        -- An old node without prerequisites isn't reached by continuing from edges
+        local num_unreached_sources = 0
+        for node_key, _ in pairs(debt.old_nodes) do
+            if next(graph.nodes[node_key].pre) == nil then
+                num_unreached_sources = num_unreached_sources + 1
+            end
+        end
+        log("Promotion: debt mode, " .. #added .. " debt edges added, " .. #skipped .. " skipped, " .. num_unreached_sources .. " old nodes without prerequisites left unreached")
+        for _, text in pairs(skipped) do
+            log("Promotion: debt edge skipped: " .. text)
+        end
+    end
     local sorted = sort_info.sorted
     local nci = sort_info.node_to_context_inds
 
@@ -86,9 +118,16 @@ promotion.new = function(params)
         -- ind --> true
         is_promised = {},
         num_promised = 0,
+        -- Debt mode: the solvent tier of promises, ind --> true (a subset of is_promised)
+        is_solvent_promised = {},
+        num_solvent_promised = 0,
+        -- Debt mode: how many owed goals the choices have paid for
+        num_paid = 0,
         -- recipe node key --> list of ingredient owner node keys
         resolved = {},
     }
+    -- Debt mode: goals (mechanic pebbles, recipes and other dependents kept in a context) promised without a solvent backing, ind --> true
+    local owed = {}
 
     -- recipe node key --> { fixed = list of non-ingredient prereqs ({ key, edge }), vanilla_owners = list of ingredient owner keys }
     -- Ingredient heads are the subdivided item/fluid --> recipe edges; they are cut in the random graph
@@ -226,9 +265,14 @@ promotion.new = function(params)
     -- Establishability cache; only valid until the next resolve/commit
     local memo = {}
     local support = {}
+    -- The same for solvency (debt mode)
+    local memo_solvent = {}
+    local support_solvent = {}
     local function clear_cache()
         memo = {}
         support = {}
+        memo_solvent = {}
+        support_solvent = {}
     end
 
     -- Ranks of the pebbles of prereq pre that get context to its dependent, earliest first
@@ -309,16 +353,17 @@ promotion.new = function(params)
     local room_discoverers
 
     local establish
+    local establish_solvent
 
-    -- Tries to find a backing for pebble ind among the given prereq keys in the given context
+    -- Tries to find a backing for pebble ind among the given prereq keys in the given context, with est (establish or establish_solvent) for the pebbles it uses
     -- Returns the list of support inds, or nil if there's none (op is "AND" or "OR")
-    local function back_with(ind, pres, op, context)
+    local function back_with(ind, pres, op, context, est)
         if op == "AND" then
             local inds = {}
             for _, pre in pairs(pres) do
                 local found
                 for _, i in pairs(pre_inds(pre, context)) do
-                    if i < ind and establish(i) then
+                    if i < ind and est(i) then
                         found = i
                         break
                     end
@@ -341,7 +386,7 @@ promotion.new = function(params)
             end
             table.sort(candidates)
             for _, i in pairs(candidates) do
-                if establish(i) then
+                if est(i) then
                     return { i }
                 end
             end
@@ -349,14 +394,30 @@ promotion.new = function(params)
         end
     end
 
-    local function compute_support(ind)
+    -- A backing for pebble ind in the current graph, or nil; with solvent (debt mode), one without debt edges
+    local function compute_support(ind, solvent)
         local pebble = sorted[ind]
         local node = graph.nodes[pebble.node_key]
         if not derived_valid(pebble.node_key) then
             return nil
         end
-
+        local est = establish
         local pres = get_pres(node)
+        if solvent then
+            -- Only the older world has its own nodes, so they're never solvent
+            if debt.old_nodes[pebble.node_key] ~= nil then
+                return nil
+            end
+            est = establish_solvent
+            -- Debt edges only go into OR nodes the game has, so leaving them out is what the game has
+            local kept = {}
+            for _, pre in pairs(pres) do
+                if pre.edge_key == nil or is_debt_edge[pre.edge_key] == nil then
+                    table.insert(kept, pre)
+                end
+            end
+            pres = kept
+        end
 
         if #pres == 0 then
             -- Sources: AND with no prereqs is vacuously satisfied, OR with none never is
@@ -367,7 +428,7 @@ promotion.new = function(params)
         end
 
         if logic.type_info[node.type].context == nil then
-            return back_with(ind, pres, node.op, pebble.context)
+            return back_with(ind, pres, node.op, pebble.context, est)
         end
 
         -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
@@ -406,7 +467,7 @@ promotion.new = function(params)
         end
         table.sort(contexts, function(a, b) return a.score < b.score end)
         for _, entry in pairs(contexts) do
-            local inds = back_with(ind, pres, node.op, entry.context)
+            local inds = back_with(ind, pres, node.op, entry.context, est)
             if inds ~= nil then
                 return inds
             end
@@ -418,14 +479,14 @@ promotion.new = function(params)
         if candidates ~= nil then
             local own_ind
             for _, i in pairs(candidates.own) do
-                if i < ind and establish(i) then
+                if i < ind and est(i) then
                     own_ind = i
                     break
                 end
             end
             if own_ind ~= nil then
                 for _, i in pairs(candidates.discoverers) do
-                    if i < ind and establish(i) then
+                    if i < ind and est(i) then
                         return { own_ind, i }
                     end
                 end
@@ -449,6 +510,27 @@ promotion.new = function(params)
             support[ind] = inds
         end
         return memo[ind]
+    end
+
+    -- Whether pebble ind has a solvent backing (debt mode), stopping at solvent promises the way establish stops at promises
+    -- Without debt, every backing is solvent
+    establish_solvent = function(ind)
+        if debt == nil then
+            return establish(ind)
+        end
+        if state.is_solvent_promised[ind] then
+            return true
+        end
+        if memo_solvent[ind] ~= nil then
+            return memo_solvent[ind]
+        end
+        memo_solvent[ind] = false
+        local inds = compute_support(ind, true)
+        if inds ~= nil then
+            memo_solvent[ind] = true
+            support_solvent[ind] = inds
+        end
+        return memo_solvent[ind]
     end
 
     -- Contexts in the same room asking for strictly fewer abilities (e.g. "room | 00" and "room | 01" for "room | 11")
@@ -518,6 +600,83 @@ promotion.new = function(params)
         end
     end
 
+    -- Promise ind and its whole (cached) solvent backing in the solvent tier (debt mode), downward closed like commit
+    -- A solvent backing is also a backing, so whatever this promises solvently is promised too
+    local function commit_solvent(ind)
+        local stack = { ind }
+        local newly = {}
+        while #stack > 0 do
+            local curr = table.remove(stack)
+            if not state.is_solvent_promised[curr] then
+                if support_solvent[curr] == nil then
+                    error("Committing pebble without a solvent backing")
+                end
+                state.is_solvent_promised[curr] = true
+                state.num_solvent_promised = state.num_solvent_promised + 1
+                table.insert(newly, curr)
+                for _, i in pairs(support_solvent[curr]) do
+                    table.insert(stack, i)
+                end
+                local pebble = sorted[curr]
+                for _, context in pairs(weaker_contexts(pebble.context)) do
+                    local i = nci[pebble.node_key][context]
+                    if i ~= nil and not state.is_solvent_promised[i] then
+                        if establish_solvent(i) then
+                            table.insert(stack, i)
+                        else
+                            log("Promotion: " .. pebble.node_key .. " @ " .. pebble.context .. " is solvent but can't be established solvently @ " .. context)
+                        end
+                    end
+                end
+            end
+        end
+        -- Every pebble of a new solvent backing is solvently promised now, so promised already or about to be with its own solvent backing
+        for _, curr in pairs(newly) do
+            if not state.is_promised[curr] then
+                support[curr] = support_solvent[curr]
+            end
+        end
+        for _, curr in pairs(newly) do
+            commit(curr)
+        end
+    end
+
+    -- Promise a pebble that can be established: in debt mode solvently if it can be, and otherwise it's owed if it's a goal
+    -- It's a goal unless is_goal is false, like a recipe pebble promised before only as part of an owed mechanic's backing, which isn't owed on its own
+    local function promise_goal(ind, is_goal)
+        if debt ~= nil and establish_solvent(ind) then
+            commit_solvent(ind)
+            if owed[ind] ~= nil then
+                owed[ind] = nil
+                state.num_paid = state.num_paid + 1
+            end
+            return
+        end
+        commit(ind)
+        if debt ~= nil and is_goal ~= false and not state.is_solvent_promised[ind] then
+            owed[ind] = true
+        end
+    end
+
+    -- Owed goals that the choices so far pay for become solvent promises, so later choices keep them paid (debt mode)
+    local function collect_payments()
+        if debt == nil then
+            return
+        end
+        local inds = {}
+        for ind, _ in pairs(owed) do
+            table.insert(inds, ind)
+        end
+        table.sort(inds)
+        for _, ind in pairs(inds) do
+            if establish_solvent(ind) then
+                commit_solvent(ind)
+                owed[ind] = nil
+                state.num_paid = state.num_paid + 1
+            end
+        end
+    end
+
     ----------------------------------------------------------------------------------------------------
     -- Public interface
     ----------------------------------------------------------------------------------------------------
@@ -561,33 +720,72 @@ promotion.new = function(params)
             end
             state.num_recipes_lost_before = num_recipes_lost
         end
+        -- Protected mechanic pebbles, and every pebble of a recipe locked to one planet (params.planet_locked, see protection.lua)
+        -- In debt mode, also recipe pebbles that are goals (like a recipe the older world had locked to a planet), since the planet-locked ones only come from the game itself
+        local planet_locked = params.planet_locked or {}
         local function is_promised_mechanic(pebble)
+            if (planet_locked[pebble.node_key] or {})[pebble.context] ~= nil then
+                return true
+            end
             local node = graph.nodes[pebble.node_key]
+            if node ~= nil and node.type == "recipe" and debt ~= nil and debt.is_goal(pebble.node_key, pebble.context) then
+                return true
+            end
             return node ~= nil and node.mechanic and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble.context)
+        end
+        -- Promises the mechanic pebble if it can, returning whether it's kept
+        -- In debt mode, a pebble without a solvent backing is only kept if it's a goal: others only the older world has (like a moved feature where it used to be) are left to it
+        local num_left = 0
+        local function try_promise(ind, pebble)
+            if debt ~= nil and not establish_solvent(ind) and not debt.is_goal(pebble.node_key, pebble.context) then
+                num_left = num_left + 1
+                return true
+            end
+            if not establish(ind) then
+                return false
+            end
+            promise_goal(ind)
+            return true
         end
         -- First promise everything that doesn't need derived recycling, so pins only come from pebbles that do
         allow_derived = false
         clear_cache()
         for ind, pebble in pairs(sorted) do
-            if is_promised_mechanic(pebble) and establish(ind) then
-                commit(ind)
+            if is_promised_mechanic(pebble) then
+                try_promise(ind, pebble)
             end
         end
         allow_derived = true
         clear_cache()
         log("Promotion: " .. num_pins .. " pins after promising mechanics without derived recycling")
         local failed = {}
+        num_left = 0
         for ind, pebble in pairs(sorted) do
-            if is_promised_mechanic(pebble) then
-                if establish(ind) then
-                    commit(ind)
-                else
-                    table.insert(failed, ind)
-                end
+            if is_promised_mechanic(pebble) and not try_promise(ind, pebble) then
+                table.insert(failed, ind)
             end
         end
         if #failed > 0 then
             state.explain(failed[1])
+        end
+        if debt ~= nil then
+            log("Promotion: debt mode, " .. num_left .. " mechanic pebbles only the older world has aren't goals, so they're left to it")
+            -- Goals this graph doesn't reach even with the debt were lost before promotion (like by first pass), so nothing here can keep or owe them
+            local unreached = {}
+            for node_key, contexts in pairs(debt.goals or {}) do
+                if graph.nodes[node_key] ~= nil then
+                    for context, _ in pairs(contexts) do
+                        if (nci[node_key] or {})[context] == nil then
+                            table.insert(unreached, node_key .. " @ " .. context)
+                        end
+                    end
+                end
+            end
+            table.sort(unreached)
+            log("Promotion: debt mode, " .. #unreached .. " goals aren't reached even with the debt")
+            for _, text in pairs(unreached) do
+                log("Promotion: debt mode, goal not reached even with the debt: " .. text)
+            end
         end
         clear_cache()
         return failed
@@ -663,7 +861,8 @@ promotion.new = function(params)
 
     -- Earliest context in which the recipe can currently be established with its current ingredients, or nil
     -- Contexts that ask for no abilities come first, so anchoring a recipe keeps it (and its products) usable by as much as possible
-    local function earliest_establishable_context(recipe_key)
+    -- In debt mode, contexts the recipe is solvent in come before all others, so anchoring it doesn't add to the debt; with solvent_only, they're the only ones
+    local function earliest_establishable_context(recipe_key, solvent_only)
         local entries = {}
         for context, ind in pairs(nci[recipe_key] or {}) do
             table.insert(entries, {
@@ -678,6 +877,16 @@ promotion.new = function(params)
             end
             return a.ind < b.ind
         end)
+        if debt ~= nil or solvent_only then
+            for _, entry in pairs(entries) do
+                if establish_solvent(entry.ind) then
+                    return entry.context
+                end
+            end
+            if solvent_only then
+                return nil
+            end
+        end
         for _, entry in pairs(entries) do
             if establish(entry.ind) then
                 return entry.context
@@ -712,7 +921,7 @@ promotion.new = function(params)
                     end
                 end
                 if num_rooms == 1 and only_ind ~= nil and not state.is_promised[only_ind] and establish(only_ind) then
-                    commit(only_ind)
+                    promise_goal(only_ind)
                     num_promised_recipes = num_promised_recipes + 1
                 end
             end
@@ -737,11 +946,16 @@ promotion.new = function(params)
         return contexts
     end
 
+    -- In debt mode, a recipe whose promises are all owed also keeps a context it's solvent in, if it has one, so the game itself keeps it reachable
     state.required_contexts = function(recipe_key)
         local contexts = {}
+        local is_solvent = false
         for context, ind in pairs(nci[recipe_key] or {}) do
             if state.is_promised[ind] then
                 table.insert(contexts, context)
+                if state.is_solvent_promised[ind] then
+                    is_solvent = true
+                end
             end
         end
         if #contexts == 0 then
@@ -751,16 +965,73 @@ promotion.new = function(params)
             else
                 log_recipe_prereqs(recipe_key)
             end
+        elseif debt ~= nil and not is_solvent then
+            local anchor = earliest_establishable_context(recipe_key, true)
+            if anchor ~= nil and not state.is_promised[nci[recipe_key][anchor]] then
+                table.insert(contexts, anchor)
+            end
         end
         return contexts
     end
 
     -- Whether ingredient owner could be promoted in each required context before the recipe
+    -- In debt mode, where the recipe is solvent now, the owner must be too (the no-new-insolvency rule)
     state.candidate_ok = function(recipe_key, owner_key, required_contexts)
         assert(#required_contexts > 0, "candidate_ok needs required contexts (from required_contexts) for " .. recipe_key)
         for _, context in pairs(required_contexts) do
+            local recipe_ind = nci[recipe_key][context]
             local i = node_ind(owner_key, context)
-            if i == nil or i >= nci[recipe_key][context] or not establish(i) then
+            if i == nil or i >= recipe_ind or not establish(i) then
+                return false
+            end
+            if debt ~= nil and establish_solvent(recipe_ind) and not establish_solvent(i) then
+                return false
+            end
+        end
+        return true
+    end
+
+    -- Whether prereq pre has a solvent pebble before rank ind that gets context to its dependent (debt mode)
+    local function has_solvent_pre(pre, context, ind)
+        for _, i in pairs(pre_inds(pre, context)) do
+            if i < ind and establish_solvent(i) then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- Chunk boundaries (debt mode): the contexts among required_contexts where the recipe owes something (it has no solvent backing) only through its ingredients, since its other prereqs are solvent there
+    -- A contradiction's chunk (what only the debt reaches, downstream of it) stops at randomized edges like these, so ingredients that are all solvent there pay for the recipe
+    -- Without debt there are none
+    state.recipe_boundary_contexts = function(recipe_key, required_contexts)
+        local boundary = {}
+        if debt == nil then
+            return boundary
+        end
+        for _, context in pairs(required_contexts) do
+            local ind = nci[recipe_key][context]
+            if not establish_solvent(ind) then
+                local is_boundary = true
+                for _, pre in pairs(get_recipe_info(recipe_key).fixed) do
+                    if not has_solvent_pre(pre, context, ind) then
+                        is_boundary = false
+                        break
+                    end
+                end
+                if is_boundary then
+                    table.insert(boundary, context)
+                end
+            end
+        end
+        return boundary
+    end
+
+    -- Whether an ingredient owner is solvent before the recipe in each of the contexts (like those from recipe_boundary_contexts)
+    state.pays = function(recipe_key, owner_key, contexts)
+        for _, context in pairs(contexts) do
+            local i = node_ind(owner_key, context)
+            if i == nil or i >= nci[recipe_key][context] or not establish_solvent(i) then
                 return false
             end
         end
@@ -776,11 +1047,28 @@ promotion.new = function(params)
         return get_recipe_info(recipe_key).vanilla_owner_by_material[key(material.type, material.name)]
     end
 
+    -- Promises ind after a choice, in debt mode solvently if it can be (which it must be if it was solvent before the choice)
+    -- Only a pebble the choice promises for the first time (an anchor) is a new goal, owed if it isn't solvent
+    -- The error names the choice by what
+    local function promise_after_choice(ind, was_solvent, was_promised, what)
+        if debt ~= nil and was_solvent and not establish_solvent(ind) then
+            error(sorted[ind].node_key .. " @ " .. sorted[ind].context .. " isn't solvent after " .. what .. ", but was before")
+        end
+        promise_goal(ind, not was_promised)
+    end
+
     -- Record the recipe's new ingredient owners, then promise them and the recipe itself in each required context
     -- Candidates must have passed candidate_ok (or be the vanilla fallback) since the last resolve
     state.resolve = function(recipe_key, owner_keys, required_contexts)
         assert(#required_contexts > 0, "resolve needs required contexts (from required_contexts) for " .. recipe_key)
         log("Promotion: resolving " .. recipe_key .. " in " .. table.concat(required_contexts, ", "))
+        -- Contexts the recipe is solvent in now, which it must stay solvent in (debt mode), and contexts it was promised in before (the others are anchors)
+        local was_solvent = {}
+        local was_promised = {}
+        for _, context in pairs(required_contexts) do
+            was_solvent[context] = debt ~= nil and establish_solvent(nci[recipe_key][context])
+            was_promised[context] = state.is_promised[nci[recipe_key][context]] ~= nil
+        end
         for _, context in pairs(required_contexts) do
             for _, owner_key in pairs(owner_keys) do
                 local i = node_ind(owner_key, context)
@@ -788,6 +1076,12 @@ promotion.new = function(params)
                     error("Resolving recipe " .. recipe_key .. " with unestablished ingredient " .. owner_key .. " in " .. context)
                 end
                 commit(i)
+                if was_solvent[context] then
+                    if not establish_solvent(i) then
+                        error("Resolving recipe " .. recipe_key .. " with ingredient " .. owner_key .. ", which isn't solvent in " .. context .. " where the recipe is")
+                    end
+                    commit_solvent(i)
+                end
             end
         end
         state.resolved[recipe_key] = owner_keys
@@ -801,9 +1095,10 @@ promotion.new = function(params)
                 log_recipe_prereqs(recipe_key)
                 error("Recipe " .. recipe_key .. " can't be established in required context " .. context .. " after resolving")
             end
-            commit(ind)
+            promise_after_choice(ind, was_solvent[context], was_promised[context], "resolving it")
         end
         clear_cache()
+        collect_payments()
     end
 
     -- Ingredients the recipe must keep because promised recycling relies on them, as material key --> true
@@ -841,25 +1136,79 @@ promotion.new = function(params)
     end
 
     -- Earliest established pebble of base_key before the head's pebble in context that gets context to the head through their connection (so its abilities count), or nil
-    local function base_backing(base_key, head_key, context)
+    -- With solvent (debt mode), the earliest solvent one
+    local function base_backing(base_key, head_key, context, solvent)
         local head_ind = node_ind(head_key, context)
         if head_ind == nil then
             return nil
         end
+        local est = solvent and establish_solvent or establish
         for _, i in pairs(pre_inds(base_pre(base_key, head_key), context)) do
-            if i < head_ind and establish(i) then
+            if i < head_ind and est(i) then
                 return i
             end
         end
         return nil
     end
 
+    -- Whether the head is solvent in context now (debt mode), so its new base must be too
+    local function head_is_solvent(head_key, context)
+        local head_ind = node_ind(head_key, context)
+        return debt ~= nil and head_ind ~= nil and establish_solvent(head_ind)
+    end
+
+    -- Chunk boundaries for a generic handler head (debt mode): the contexts among required_contexts where the head's dependent owes something only through this head, since its other prereqs are solvent there (or it's an OR node)
+    -- A base that's solvent there pays for the dependent
+    -- Dependents that forget or emit contexts aren't handled, and without debt there are none
+    state.head_boundary_contexts = function(head_key, required_contexts)
+        local boundary = {}
+        if debt == nil then
+            return boundary
+        end
+        local dep = gutils.unique_depnode(graph, graph.nodes[head_key])
+        if logic.type_info[dep.type].context ~= nil then
+            return boundary
+        end
+        local dep_key = key(dep)
+        for _, context in pairs(required_contexts) do
+            local ind = (nci[dep_key] or {})[context]
+            if ind ~= nil and not establish_solvent(ind) then
+                local is_boundary = true
+                if dep.op == "AND" then
+                    for _, pre in pairs(get_pres(dep)) do
+                        if pre.key ~= head_key and not has_solvent_pre(pre, context, ind) then
+                            is_boundary = false
+                            break
+                        end
+                    end
+                end
+                if is_boundary then
+                    table.insert(boundary, context)
+                end
+            end
+        end
+        return boundary
+    end
+
+    -- Whether a base is solvent before the head in each of the contexts (like those from head_boundary_contexts)
+    state.head_pays = function(head_key, base_key, contexts)
+        for _, context in pairs(contexts) do
+            if base_backing(base_key, head_key, context, true) == nil then
+                return false
+            end
+        end
+        return true
+    end
+
     -- Checks a candidate base for a generic handler head (e.g. energy source --> entity-operate)
-    -- The base must be establishable before the head in each required context of the head's dependent (from required_contexts(dep))
+    -- The base must be establishable before the head in each required context of the head's dependent (from required_contexts(dep)), and in debt mode solvent where the head is (the no-new-insolvency rule)
     state.head_candidate_ok = function(head_key, base_key, required_contexts)
         assert(#required_contexts > 0, "head_candidate_ok needs required contexts (from required_contexts) for " .. head_key)
         for _, context in pairs(required_contexts) do
             if base_backing(base_key, head_key, context) == nil then
+                return false
+            end
+            if head_is_solvent(head_key, context) and base_backing(base_key, head_key, context, true) == nil then
                 return false
             end
         end
@@ -870,14 +1219,29 @@ promotion.new = function(params)
     -- The base must have passed head_candidate_ok (or be the head's vanilla base) since the last resolve
     -- With no required contexts (dependent not reachable anyway), this only repoints the head
     state.resolve_head = function(head_key, base_key, required_contexts)
+        local head = graph.nodes[head_key]
+        local dep_key = key(gutils.unique_depnode(graph, head))
+        -- Contexts the head is solvent in now, which it must stay solvent in (debt mode), and contexts the dependent was promised in before (the others are anchors)
+        local was_solvent = {}
+        local was_promised = {}
+        for _, context in pairs(required_contexts) do
+            was_solvent[context] = head_is_solvent(head_key, context)
+            was_promised[context] = state.is_promised[nci[dep_key][context]] ~= nil
+        end
         for _, context in pairs(required_contexts) do
             local i = base_backing(base_key, head_key, context)
             if i == nil then
                 error("Resolving head " .. head_key .. " with unestablished base " .. base_key .. " in " .. context)
             end
             commit(i)
+            if was_solvent[context] then
+                local solvent_i = base_backing(base_key, head_key, context, true)
+                if solvent_i == nil then
+                    error("Resolving head " .. head_key .. " with base " .. base_key .. ", which isn't solvent in " .. context .. " where the head is")
+                end
+                commit_solvent(solvent_i)
+            end
         end
-        local head = graph.nodes[head_key]
         for pre, _ in pairs(table.deepcopy(head.pre)) do
             gutils.remove_edge(graph, pre)
         end
@@ -885,17 +1249,22 @@ promotion.new = function(params)
         detached[head_key] = nil
         clear_cache()
 
-        local dep_key = key(gutils.unique_depnode(graph, head))
         for _, context in pairs(required_contexts) do
             for _, node_key in pairs({ head_key, dep_key }) do
                 local ind = nci[node_key][context]
                 if not establish(ind) then
                     error("Can't establish " .. node_key .. " in " .. context .. " after resolving head " .. head_key)
                 end
-                commit(ind)
+                -- The head is only ever part of its dependent's backing
+                if node_key == head_key then
+                    promise_after_choice(ind, was_solvent[context], true, "resolving head " .. head_key)
+                else
+                    promise_after_choice(ind, false, was_promised[context], "resolving head " .. head_key)
+                end
             end
         end
         clear_cache()
+        collect_payments()
     end
 
     -- Keys of the nodes currently feeding node_key in promotion's graph
@@ -945,13 +1314,20 @@ promotion.new = function(params)
             end
         end
         -- Only pebbles of rewired nodes can have lost their backing (removed edges end at them), so they must find new backings: un-promise them while checking
+        -- In debt mode, the same for solvent promises, which must stay solvent (the no-new-insolvency rule)
         local unpromised = {}
+        local unsolvent = {}
         for _, change in pairs(changes) do
             for _, ind in pairs(nci[change.node_key] or {}) do
                 if state.is_promised[ind] then
                     state.is_promised[ind] = nil
                     state.num_promised = state.num_promised - 1
                     table.insert(unpromised, ind)
+                end
+                if state.is_solvent_promised[ind] then
+                    state.is_solvent_promised[ind] = nil
+                    state.num_solvent_promised = state.num_solvent_promised - 1
+                    table.insert(unsolvent, ind)
                 end
             end
         end
@@ -964,16 +1340,31 @@ promotion.new = function(params)
                 break
             end
         end
+        for _, ind in pairs(ok and unsolvent or {}) do
+            if not establish_solvent(ind) then
+                ok = false
+                break
+            end
+        end
 
         if ok and should_commit then
             for _, ind in pairs(unpromised) do
                 commit(ind)
+            end
+            for _, ind in pairs(unsolvent) do
+                commit_solvent(ind)
             end
         else
             for _, ind in pairs(unpromised) do
                 if not state.is_promised[ind] then
                     state.is_promised[ind] = true
                     state.num_promised = state.num_promised + 1
+                end
+            end
+            for _, ind in pairs(unsolvent) do
+                if not state.is_solvent_promised[ind] then
+                    state.is_solvent_promised[ind] = true
+                    state.num_solvent_promised = state.num_solvent_promised + 1
                 end
             end
         end
@@ -993,13 +1384,17 @@ promotion.new = function(params)
             end
         end
         clear_cache()
+        if ok and should_commit then
+            collect_payments()
+        end
         return ok
     end
 
     -- Every promised pebble with its rank, in rank order (for checking the model against the final game)
+    -- In debt mode, only the solvent ones, since the game doesn't have debt edges (see state.log_debt for the rest)
     state.promised_pebbles = function()
         local pebbles = {}
-        for ind, _ in pairs(state.is_promised) do
+        for ind, _ in pairs(debt ~= nil and state.is_solvent_promised or state.is_promised) do
             table.insert(pebbles, {
                 node_key = sorted[ind].node_key,
                 context = sorted[ind].context,
@@ -1010,24 +1405,98 @@ promotion.new = function(params)
         return pebbles
     end
 
+    -- Rank of a node's pebble in context, or nil if it has none
+    state.rank = function(node_key, context)
+        return (nci[node_key] or {})[context]
+    end
+
+    -- Whether a node's pebble in context has a solvent backing now (always, without debt mode, if it can be established), or nil if there's no such pebble
+    state.is_solvent = function(node_key, context)
+        local ind = state.rank(node_key, context)
+        if ind == nil then
+            return nil
+        end
+        return establish_solvent(ind)
+    end
+
+    -- Goals owed so far (debt mode), as { node_key, context, rank } in rank order
+    state.owed_pebbles = function()
+        local pebbles = {}
+        for ind, _ in pairs(owed) do
+            table.insert(pebbles, {
+                node_key = sorted[ind].node_key,
+                context = sorted[ind].context,
+                rank = ind,
+            })
+        end
+        table.sort(pebbles, function(a, b) return a.rank < b.rank end)
+        return pebbles
+    end
+
+    -- Logs what's still owed (debt mode): goals promised without a solvent backing, which the game won't have unless something settles them
+    -- The log lines name the moment by when, like "start" or "end"
+    state.log_debt = function(when)
+        if debt == nil then
+            return
+        end
+        local lines = {}
+        local num_by_kind = {}
+        for _, pebble in pairs(state.owed_pebbles()) do
+            local node = graph.nodes[pebble.node_key]
+            local kind = node.mechanic and "mechanic" or node.type
+            num_by_kind[kind] = (num_by_kind[kind] or 0) + 1
+            table.insert(lines, pebble.node_key .. " @ " .. pebble.context)
+        end
+        table.sort(lines)
+        local kinds = {}
+        for kind, num in pairs(num_by_kind) do
+            table.insert(kinds, kind .. " " .. num)
+        end
+        table.sort(kinds)
+        -- Recipes are anchored lazily, so count every recipe only the debt reaches, owed yet or not
+        local num_debt_only_recipes = 0
+        for node_key, node in pairs(graph.nodes) do
+            if node.type == "recipe" and state.initially_reachable(node_key) then
+                local is_solvent = false
+                for _, ind in pairs(nci[node_key]) do
+                    if establish_solvent(ind) then
+                        is_solvent = true
+                        break
+                    end
+                end
+                if not is_solvent then
+                    num_debt_only_recipes = num_debt_only_recipes + 1
+                end
+            end
+        end
+        log("Promotion debt (" .. when .. "): " .. #lines .. " goals owed {" .. table.concat(kinds, ", ") .. "}, " .. state.num_paid .. " paid so far; " .. num_debt_only_recipes .. " recipes only the debt reaches; " .. state.num_solvent_promised .. " of " .. state.num_promised .. " promised pebbles solvent")
+        for _, line in pairs(lines) do
+            log("Promotion debt (" .. when .. ") owed: " .. line)
+        end
+    end
+
     -- Anchor every initially reachable recipe that has no promised pebble yet (e.g. recipes the handler never randomizes)
+    -- In debt mode, a recipe whose promises are all owed is anchored again where it's solvent, if it's solvent anywhere, and otherwise it's owed
     -- Returns keys of recipes that can't be reached anywhere anymore
     state.anchor_remaining_recipes = function()
         local unreachable = {}
         for node_key, node in pairs(graph.nodes) do
             if node.type == "recipe" and state.initially_reachable(node_key) then
                 local has_promise = false
+                local has_solvent_promise = false
                 for _, ind in pairs(nci[node_key]) do
                     if state.is_promised[ind] then
                         has_promise = true
-                        break
+                    end
+                    if state.is_solvent_promised[ind] then
+                        has_solvent_promise = true
                     end
                 end
-                if not has_promise then
+                if not has_promise or (debt ~= nil and not has_solvent_promise) then
                     local context = earliest_establishable_context(node_key)
                     if context ~= nil then
-                        commit(nci[node_key][context])
-                    else
+                        promise_goal(nci[node_key][context])
+                    elseif not has_promise then
                         log_recipe_prereqs(node_key)
                         table.insert(unreachable, node_key)
                     end
@@ -1035,6 +1504,7 @@ promotion.new = function(params)
             end
         end
         clear_cache()
+        collect_payments()
         table.sort(unreachable)
         return unreachable
     end

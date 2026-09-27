@@ -117,11 +117,22 @@ test("lib/logic declares protection on exactly the intended node types", functio
     assert(declared["science-pack-set-lab"] == "true")
     -- Items are protected exactly when they're lab inputs
     assert(declared["item"] == "is_science_pack or nil")
+    -- Rocket building (logic node types from lib/logic/abstract.lua and concrete.lua): a planet that could build and launch rockets from its own resources still can
+    assert(declared["room-launch"] == "true")
+    assert(declared["room-create-platform"] == "true")
+    assert(declared["room-create-platform-starter-pack"] == "true")
+    assert(declared["create-platform"] == "true")
+    assert(declared["rocket-silo"] == "true")
+    assert(declared["cargo-landing-pad"] == "true")
+    assert(declared["launch"] == "true")
+    assert(declared["entity-rocket-silo"] == "true")
+    -- Crafting categories are protected exactly when a rocket silo crafts in them
+    assert(declared["recipe-category"] == "is_rocket_building or nil")
     local num_declared = 0
     for _, _ in pairs(declared) do
         num_declared = num_declared + 1
     end
-    assert(num_declared == 5, "unexpected keep_isolatability declarations")
+    assert(num_declared == 14, "unexpected keep_isolatability declarations")
 end)
 
 test("balance starter ammo isn't protected (the unified pipeline doesn't build balance.lua; group-starter-ammo is the starter ammo mechanic)", function()
@@ -161,6 +172,76 @@ test("home contexts aren't mechanic contexts of their own, even on protected nod
         assert(not protection.is_hard_mechanic_pebble(node, "nauvis | 00 @ home1"))
         assert(protection.kept_part(node, "nauvis | 00 @ home1") == protection.kept_part(node, "nauvis | 00"))
     end
+end)
+
+test("a recipe locked to one planet by surface conditions keeps every context it has there, and no other recipe is locked", function()
+    local condition = {
+        {
+            property = "toy-property",
+            min = 1,
+        },
+    }
+    data.raw.recipe = {
+        ["locked"] = {
+            surface_conditions = condition,
+        },
+        ["unconditioned"] = {},
+        ["empty-conditions"] = {
+            surface_conditions = {},
+        },
+        ["two-planets"] = {
+            surface_conditions = condition,
+        },
+        ["platform-only"] = {
+            surface_conditions = condition,
+        },
+    }
+    local graph = {
+        nodes = {},
+    }
+    local nci = {}
+    local function add_node(node_type, name, contexts)
+        local node_key = node_type .. ": " .. name
+        graph.nodes[node_key] = {
+            type = node_type,
+            name = name,
+        }
+        nci[node_key] = {}
+        for i, context in pairs(contexts) do
+            nci[node_key][context] = i
+        end
+    end
+    add_node("recipe", "locked", {
+        "planet: rock | 00",
+        "planet: rock | 11",
+        "planet: rock | 00 @ home1",
+    })
+    add_node("recipe", "unconditioned", {
+        "planet: rock | 00",
+    })
+    add_node("recipe", "empty-conditions", {
+        "planet: rock | 00",
+    })
+    add_node("recipe", "two-planets", {
+        "planet: rock | 00",
+        "planet: home | 00",
+    })
+    add_node("recipe", "platform-only", {
+        "surface: platform | 00",
+    })
+    -- Only recipes are locked, whatever other nodes' contexts
+    add_node("item", "locked", {
+        "planet: rock | 00",
+    })
+    local locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    assert(locked["recipe: locked"]["planet: rock | 00"] and locked["recipe: locked"]["planet: rock | 11"])
+    assert(locked["recipe: locked"]["planet: rock | 00 @ home1"] == nil, "home contexts aren't kept for their own sake")
+    for node_key, _ in pairs(locked) do
+        assert(node_key == "recipe: locked", node_key .. " isn't locked")
+    end
+    data.raw.recipe = nil
 end)
 
 print(num_passed .. " tests passed")

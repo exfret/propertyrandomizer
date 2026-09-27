@@ -1,0 +1,34 @@
+\begin{table}[t]
+\centering\footnotesize
+\begin{tabular}{@{}l l r l l l@{}}
+\toprule
+recipe & slot & seeds & kind & vanilla rooms & unified \\
+\midrule
+\code{ammoniacal-solution-separation} & \code{ammoniacal-solution} & 8 & root & one & no \\
+\code{concrete} & \code{water} & 8 & root & several & no \\
+\code{pentapod-egg} & \code{water} & 8 & root & one & no \\
+\code{processing-unit} & \code{sulfuric-acid} & 8 & root & several & yes \\
+\code{electrolyte} & \code{heavy-oil} & 6 & root & several & yes \\
+\code{heavy-oil-cracking} & \code{heavy-oil} & 6 & root & several & yes \\
+\code{heavy-oil-cracking} & \code{water} & 6 & root & several & no \\
+\code{lubricant} & \code{heavy-oil} & 6 & root & several & yes \\
+\code{molten-copper-from-lava} & \code{lava} & 5 & root & one & no \\
+\code{molten-iron-from-lava} & \code{lava} & 5 & root & one & no \\
+\code{acid-neutralisation} & \code{sulfuric-acid} & 4 & root & one & yes \\
+\code{plastic-bar} & \code{coal} & 4 & root & several & no \\
+\code{tungsten-carbide} & \code{tungsten-ore} & 4 & root & several & yes \\
+\code{tungsten-plate} & \code{tungsten-ore} & 4 & root & several & no \\
+\code{rocket-part} & \code{low-density-structure} & 3 & leaf & several & yes \\
+\code{rocket-part} & \code{processing-unit} & 3 & leaf & several & yes \\
+\code{space-platform-starter-pack} & \code{processing-unit} & 3 & leaf & several & yes \\
+\code{space-platform-starter-pack} & \code{space-platform-foundation} & 3 & leaf & several & yes \\
+\code{space-platform-starter-pack} & \code{steel-plate} & 3 & leaf & several & yes \\
+\code{advanced-oil-processing} & \code{crude-oil} & 2 & root & several & yes \\
+\code{advanced-oil-processing} & \code{water} & 2 & root & several & no \\
+\code{carbon} & \code{coal} & 2 & root & several & yes \\
+\code{light-oil-cracking} & \code{water} & 1 & root & several & no \\
+\bottomrule
+\end{tabular}
+\caption{Irreducible repairs for the combined shift (oceans and resources, root slots ordered first), with the number of seeds (of 8) each appears in. \emph{kind}: a root slot, or a leaf slot that the calcite seeds need on top. \emph{vanilla rooms}: ``one'' marks recipes that today's planetary rule edits in place. \emph{unified}: whether unified's recipe-ingredients handler may randomize the slot.}
+\label{tab:recurring}
+\end{table}

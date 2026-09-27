@@ -419,6 +419,8 @@ recipe_ingredients.custom_prereq_search = function(params)
     -- Shared promotion state from execute-new.lua (nil means use the old every-context ordering check)
     local prom = params.promotion
     local num_fallbacks = 0
+    -- Recipes at chunk boundaries (debt mode) whose new ingredients pay for them
+    local num_paying = 0
 
     local num_processed = 0
     local total_valid_prereqs = 0
@@ -689,11 +691,39 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- I decided to leave that part out here
 
                 -- Finally, search for the best ingredients
+                local function search(ings)
+                    return cost_lib.search_for_ings(table.deepcopy(ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable, novelty = novelty_in(context)})
+                end
+                -- At a chunk boundary (debt mode: the recipe owes something only through its ingredients, see skeleton/promotion.lua), first search among ingredients that pay for it
                 local best_search_info
-                if slot_cost_known then
-                    best_search_info = cost_lib.search_for_ings(table.deepcopy(potential_ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable, novelty = novelty_in(context)})
-                else
+                if not slot_cost_known then
                     best_search_info = "No vanilla cost to compare ingredients against."
+                end
+                local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.recipe_boundary_contexts(dep, required_contexts) or {}
+                if #paying_contexts > 0 then
+                    local paying_info = {
+                        prereq_list = {},
+                        prereq_inds = {},
+                    }
+                    local paying_ings = {}
+                    for i, prereq in pairs(valid_prereq_list_info.prereq_list) do
+                        if prom.pays(dep, key(gutils.get_owner(random_graph, random_graph.nodes[prereq])), paying_contexts) then
+                            table.insert(paying_info.prereq_list, prereq)
+                            table.insert(paying_info.prereq_inds, valid_prereq_list_info.prereq_inds[i])
+                            table.insert(paying_ings, potential_ings[i])
+                        end
+                    end
+                    if #paying_ings > 0 then
+                        local paying_search_info = search(paying_ings)
+                        if type(paying_search_info) ~= "string" then
+                            best_search_info = paying_search_info
+                            valid_prereq_list_info = paying_info
+                            num_paying = num_paying + 1
+                        end
+                    end
+                end
+                if best_search_info == nil then
+                    best_search_info = search(potential_ings)
                 end
                 -- Test for failure
                 local is_fallback = false
@@ -813,7 +843,7 @@ recipe_ingredients.custom_prereq_search = function(params)
         local unreachable = prom.anchor_remaining_recipes()
         -- For skeleton/check.lua: what promotion claims will be reachable
         UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
-        log("Promotion: done; promised " .. prom.num_promised .. " pebbles total; " .. num_fallbacks .. " recipes fell back to vanilla ingredients; " .. #unreachable .. " other recipes can no longer be reached")
+        log("Promotion: done; promised " .. prom.num_promised .. " pebbles total; " .. num_fallbacks .. " recipes fell back to vanilla ingredients; " .. #unreachable .. " other recipes can no longer be reached; " .. num_paying .. " recipes at chunk boundaries took ingredients that pay for them")
         for _, recipe_key in pairs(unreachable) do
             log("Promotion: unreachable recipe " .. recipe_key)
         end

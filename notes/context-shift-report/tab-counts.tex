@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}r rrrrr rrrrr rrrrr@{}}
+\toprule
+ & \multicolumn{5}{c}{ocean swap} & \multicolumn{5}{c}{resource swap} & \multicolumn{5}{c}{both} \\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}\cmidrule(l){12-16}
+seed & goals & causes & rep. & in & debt & goals & causes & rep. & in & debt & goals & causes & rep. & in & debt \\
+\midrule
+1 & 151 & 4 & 10 & 3 & 4 & 24 & 3 & 5 & 3 & 3 & 164 & 8 & 12 & 4 & 6 \\
+2 & 151 & 4 & 10 & 3 & 4 & 139 & 3 & 5 & 4 & 3 & 76 & 8 & 13 & 6 & 6 \\
+3 & 151 & 4 & 10 & 3 & 4 & 24 & 3 & 10$^{\dagger}$ & 10 & 3 & 166 & 8 & 11$^{\dagger}$ & 7 & 7 \\
+4 & 151 & 4 & 10 & 3 & 4 & 51 & 3 & 5 & 4 & 3 & 164 & 8 & 13 & 6 & 6 \\
+5 & 151 & 4 & 10 & 3 & 4 & 51 & 4 & 12$^{\dagger}$ & 12 & 4 & 166 & 9 & 15$^{\dagger}$ & 9 & 8 \\
+6 & 151 & 4 & 10 & 3 & 4 & 139 & 2 & 3 & 3 & 2 & 76 & 7 & 11 & 5 & 5 \\
+7 & 151 & 4 & 10 & 3 & 4 & 139 & 4 & 12$^{\dagger}$ & 12 & 4 & 166 & 9 & 14$^{\dagger}$ & 9 & 8 \\
+8 & 151 & 4 & 10 & 3 & 4 & 139 & 4 & 8 & 6 & 4 & 76 & 9 & 15 & 7 & 7 \\
+\bottomrule
+\end{tabular}
+\caption{Contradictions of raw shifts, seeds 1--8. \emph{goals}: failing goal pebbles (PLANETCHECK's rules). \emph{causes}: distinct lost feature pebbles on their vanilla witnesses. \emph{rep.}: irreducible root-first repair set (ingredient slots). \emph{in}: how many of those unified's recipe-ingredients handler may randomize. \emph{debt}: debt edges on the superposition's solvency-first witness, i.e.\ what settling by addition would take. $\dagger$: some goals are not reachable with \emph{any} ingredient repair (Section~\ref{sec:where}); the repair set covers the others.}
+\label{tab:counts}
+\end{table}

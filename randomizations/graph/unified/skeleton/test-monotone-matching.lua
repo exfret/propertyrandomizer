@@ -204,4 +204,45 @@ test("a resource slot keeps its identity when every perfect matching needs that"
     assert(count_matches(graph, params, needs, sort_info, assignment_of(names, {}), "plain-ore", "plain-ore") == NUM_KEYS)
 end)
 
+test("a trav a debt goal wants somewhere the game doesn't have it moves to a slot the game has there", function()
+    -- Only the local ore's slot is reachable in context C, where a debt goal uses the lost ore's identity
+    local names = { "lost-ore", "local-ore", "filler" }
+    local graph, params = toy(names, {}, {})
+    local sort_info = {
+        node_to_context_inds = {
+            [key("item", "local-ore")] = { C = 1 },
+        },
+    }
+    local wants = {
+        [key("item", "lost-ore-trav")] = { C = true },
+    }
+    for i = 1, NUM_KEYS do
+        local slot_match = matching.random_matching(params, graph, sort_info, {}, {}, assignment_of(names, {}), "test-monotone-matching-" .. i, wants)
+        assert(slot_match[key("item", "local-ore")] == key("item", "lost-ore-trav"))
+    end
+end)
+
+test("a wanted trav whose needs pin it stays where it is", function()
+    -- The lost ore's identity is also needed in context D, where only its own slot comes before it
+    local names = { "lost-ore", "local-ore", "filler" }
+    local graph, params = toy(names, {}, {})
+    local sort_info = {
+        node_to_context_inds = {
+            [key("item", "local-ore")] = { C = 1 },
+            [key("item", "lost-ore")] = { D = 2 },
+            [key("item", "lost-ore-trav")] = { D = 3 },
+        },
+    }
+    local needs = {
+        [key("item", "lost-ore-trav")] = { D = true },
+    }
+    local wants = {
+        [key("item", "lost-ore-trav")] = { C = true },
+    }
+    for i = 1, NUM_KEYS do
+        local slot_match = matching.random_matching(params, graph, sort_info, needs, {}, assignment_of(names, {}), "test-monotone-matching-" .. i, wants)
+        assert(slot_match[key("item", "lost-ore")] == key("item", "lost-ore-trav"))
+    end
+end)
+
 print(num_passed .. " tests passed")

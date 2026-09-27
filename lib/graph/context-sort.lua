@@ -677,6 +677,7 @@ end
 -- Returns { ids = list of home set ids, sets = id --> { rooms = room --> true, discovered = room --> true for the rooms it's the home set of }, of = room --> home set id }
 -- Rooms with the same home set share it, and rooms with no reachable discoverer have none
 -- Home sets are meant to come from the vanilla graph, so a sort of a randomized graph should pass the vanilla ones as extra.home_sets
+-- Also returns the rooms the graph has discoverers of but reaches none of (sorted, and logged): nothing is isolatable in them by discovery, so they mean the graph isn't one to take home sets from (like a planetary change's world before unified pays its debt)
 top.home_sets = function(graph)
     local info = compute_rooms_needed(graph)
 
@@ -727,7 +728,18 @@ top.home_sets = function(graph)
         end
         log("Home set " .. home_id .. " of " .. table.concat(sorted_keys(rooms_with_needs[needs]), ", ") .. ": " .. table.concat(sorted_keys(home_sets.sets[home_id].rooms), ", "))
     end
-    return home_sets
+
+    local undiscovered = {}
+    for room, _ in pairs(top.room_discoverers(graph)) do
+        if logic.contexts[room] ~= nil and needs_of_room[room] == nil then
+            table.insert(undiscovered, room)
+        end
+    end
+    table.sort(undiscovered)
+    if #undiscovered > 0 then
+        log("Home sets: no discoverer of " .. table.concat(undiscovered, ", ") .. " is reachable, so nothing is isolatable there by discovery; home sets should come from a game that can discover every room")
+    end
+    return home_sets, undiscovered
 end
 
 -- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file

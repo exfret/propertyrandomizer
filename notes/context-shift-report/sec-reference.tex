@@ -1,0 +1,95 @@
+\section{What promotion needs: a reference, not vanilla}\label{sec:reference}
+
+\subsection{Promotion as an invariant}
+
+Promotion (\file{skeleton/promotion.lua}) works on a graph whose unresolved heads are connected to their reference bases (the ``hybrid graph'' built and sorted at lines 54--81) and takes one random sort $\pi$ of it. It keeps a set $Q$ of \emph{promised} pebbles and an assignment $\scur$: resolved heads have their chosen base, unresolved heads their reference base. Its operations are:
+\begin{description}[nosep, font=\normalfont\itshape]
+\item[establish$(p)$] search for a backing of $p$ in $G[\scur]$ from pebbles of strictly lower $\pi$-rank that are themselves established (promised pebbles count as established);
+\item[commit$(p)$] add $p$, its whole backing and every weaker context of each (downward closure) to $Q$;
+\item[resolve$(h,b,C)$] accept base $b$ for head $h$ if, in each required context $c\in C$, $b$ has an established pebble ranked before the head's (with edge abilities: a pebble whose context the connecting edge turns into $c$, as \code{base_backing} checks); then set $\scur(h)=b$ and re-commit the dependent.
+\end{description}
+The invariant is:
+\begin{equation}\tag{W}
+\text{every } q\in Q \text{ has a backing in } G[\scur] \text{ made of pebbles of } Q \text{ with lower } \pi\text{-rank.}
+\end{equation}
+
+\begin{theorem}[Soundness]\label{thm:sound}
+If (W) holds when randomization ends, then $Q\subseteq\Reach(G[\scur])$. In particular every promised mechanic pebble is reachable in the final game, provided reflection builds the game the model describes.
+\end{theorem}
+\begin{proof}
+Lemma~\ref{lem:justification} with $\rho=\rk_\pi$.
+\end{proof}
+
+The proviso is not idle: when reflection and the model disagree (the item reflection mismatch found earlier), the theorem is about a different game. That is why UNIFIEDCHECK and MECHCHECK rebuild logic from the final \code{data.raw} (\file{skeleton/check.lua}).
+
+\begin{theorem}[The fallback is always available]\label{thm:fallback}
+Let $h$ be an unresolved head whose dependent $d$ is promised in every required context $c\in C$. Then $b=\sref(h)$ passes the test of \emph{resolve}$(h,b,C)$.
+\end{theorem}
+\begin{proof}
+Heads only ever feed $\AND$ nodes: claiming subdivides in-edges of $\AND$ nodes only, and \code{gutils.make_orands} first turns every $\OR$ in-edge into an $\AND$ ``orand'' node (\file{execute-new.lua}, CLAIMING). So every backing of $\peb{d}{c}$ uses $\peb{h}{c}$. While $h$ is unresolved, its only in-edge in $G[\scur]$ comes from $\sref(h)$, so that backing goes through a pebble of $\sref(h)$ ranked before $\peb{h}{c}$. Committing $\peb{d}{c}$ committed the backing, so the pebble is in $Q$ and is established. Commits never remove promises (only \code{try_rewires} un-promises, and it restores them on failure), so this still holds when $h$ is resolved.
+\end{proof}
+
+This is the glossary's \emph{fallback bundle}: ``when the sort is a random sort of the vanilla graph, the recipe's vanilla ingredients are always a fallback bundle''. Recipes that are not yet promised anywhere get an anchor context only when they are resolved, which keeps the choice of context flexible. It also means earlier choices can cut such a recipe off first; promotion then fails the attempt instead of losing the recipe silently. \code{promise_single_context_recipes} closes the gap for recipes with only one room.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=1.05cm,y=1cm]
+\draw[-{Stealth}, thick, cgrey] (0,0) -- (13.2,0) node[right, lbl] {$\rk_\pi$};
+\foreach \x/\l/\s in {1/{i_1}/ppeb, 2.2/{i_2}/ppeb, 3.4/{m}/pebble, 5/{j}/ppeb, 6.3/{k}/pebble, 8/{r}/ppeb, 9.6/{x}/pebble, 11.4/{g}/ppeb}{
+  \node[\s] (p\l) at (\x,0) {};
+  \node[lbl, below=1.5mm] at (\x,0) {$\peb{\l}{c}$};
+}
+\draw[pre, cvan] (pr) to[bend right=42] (pi_1);
+\draw[pre, cvan] (pr) to[bend right=34] (pi_2);
+\draw[pre, crep, dashed] (pr) to[bend right=26] (pj);
+\draw[pre] (pg) to[bend right=35] (pr);
+% key
+\begin{scope}[shift={(0.2,-1.25)}]
+\draw[pre, cvan] (0,0) -- (0.7,0); \node[lbl, anchor=west] at (0.8,0) {reference (vanilla) ingredients of $\peb{r}{c}$};
+\draw[pre, crep, dashed] (6.6,0) -- (7.3,0); \node[lbl, anchor=west] at (7.4,0) {a new ingredient chosen by a resolution};
+\draw[pre] (0,-0.45) -- (0.7,-0.45); \node[lbl, anchor=west] at (0.8,-0.45) {$\peb{r}{c}$ in the backing of goal $g$};
+\node[ppeb, minimum size=3mm] at (6.95,-0.45) {}; \node[lbl, anchor=west] at (7.4,-0.45) {promised (filled): backed strictly to the left};
+\end{scope}
+\end{tikzpicture}
+\caption{Promotion's invariant on one sort. The recipe pebble $\peb{r}{c}$ was promised as part of goal $g$'s backing, so its reference (vanilla) ingredient pebbles $\peb{i_1}{c},\peb{i_2}{c}$ are promised too, which is why they stay available as a fallback (Theorem~\ref{thm:fallback}). A resolution may replace them by any established pebble to the left, such as $\peb{j}{c}$.}
+\label{fig:rankline}
+\end{figure}
+
+\subsection{References and the relay between passes}
+
+Nothing in either theorem mentions vanilla. They use two facts: $\pi$ is a sort of $G[\sref]$, and the goals are reachable there.
+
+\begin{definition}[Reference]\label{def:reference}
+A \emph{reference} is a tuple $\mathcal{R}=(G,\sref,\pi,\Goals)$ where $\Goals\subseteq\Reach(G[\sref])$ and $\pi$ is a sort of $G[\sref]$.
+\end{definition}
+
+\begin{corollary}[Promotion only needs a reference]\label{cor:reference}
+Theorems~\ref{thm:sound} and~\ref{thm:fallback} hold for any reference. The world may be the vanilla game, a game changed by earlier stages, or a model graph such as first pass's split graph, and the fallback assignment may be any assignment whose graph reaches the goals.
+\end{corollary}
+
+This is already how the pipeline works. After planetary randomization, \code{old_data_raw} and the initial sorts are taken from the changed world, so unified's reference is not vanilla. With first pass on, promotion ``must reason over first pass's split graph'' (\file{execute-new.lua}), whose reference assignment is the matching monotone matching chose. Monotone matching itself runs in rounds, and each round's matching is the reference of the next (``needs only grow and the current matching always passes'', \file{monotone-matching.lua}).
+
+\begin{definition}[Monotone pass]
+A pass given a reference $(G,\sref,\pi,\Goals)$ is \emph{monotone} if its output assignment $\sigma'$ gives every goal a $\pi$-monotone backing in $G[\sigma']$.
+\end{definition}
+
+A monotone pass hands on a new reference $(G,\sigma',\pi',\Goals)$, where $\pi'$ is any sort of $G[\sigma']$. So \textbf{multipass is a relay of references}: each pass needs a completable world with a sort from the pass before it, and must hand one on (Figure~\ref{fig:relay}). Vanilla is only where the relay starts. The item first pass's admissibility rule (a trav moves only to a slot that supplies its needed contexts earlier in the current sort) is exactly the condition that makes it monotone. Its gate checks the handover.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  pass/.style={draw, rounded corners=3pt, align=center, font=\small, minimum height=9mm, text width=23mm, fill=white},
+  refn/.style={draw=cvan, fill=cvan!10, rounded corners=8pt, align=center, font=\scriptsize, inner sep=3pt},
+  ar/.style={-{Stealth[length=2.2mm]}, thick}]
+\node[refn] (r0) at (0,0) {$\mathcal R_0$\\vanilla};
+\node[pass] (p1) at (2.6,0) {monotone\\matching};
+\node[refn] (r1) at (5.1,0) {$\mathcal R_1$\\matching $M$};
+\node[pass] (p2) at (7.6,0) {generic\\handlers};
+\node[refn] (r2) at (10.1,0) {$\mathcal R_2$};
+\node[pass] (p3) at (12.6,0) {recipe\\ingredients};
+\draw[ar] (r0) -- (p1); \draw[ar] (p1) -- (r1); \draw[ar] (r1) -- (p2); \draw[ar] (p2) -- (r2); \draw[ar] (r2) -- (p3);
+\node[lbl, align=center] at (6.35,-1.05) {each arrow into a reference: ``the goals are reachable here'' (a gate or promotion's invariant)};
+\end{tikzpicture}
+\caption{Multipass as a relay of references. A pass may use any sort of the reference it receives, and it must hand on a world in which the goals are still reachable. A context shift is a pass that cannot do this (Section~\ref{sec:shift}).}
+\label{fig:relay}
+\end{figure}
