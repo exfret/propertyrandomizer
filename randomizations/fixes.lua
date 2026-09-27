@@ -421,7 +421,8 @@ randomizations.rebuild_tech_tree = function()
                 end
                 table.sort(prereqs)
                 tech.prerequisites = prereqs
-            else
+            elseif #new_techs_with_unit > 0 then
+                -- A world whose sort reaches no locked recipe with a unit (like the start swap, SWAP_START_WITH in randomizations/planetary/execute.lua) leaves nothing to pick, and math.random(1, 0) would stop the game from loading
                 local prereq = data.raw.technology[new_techs_with_unit[math.random(1, #new_techs_with_unit)]]
                 tech.prerequisites = { prereq.name }
                 if tech.unit ~= nil then

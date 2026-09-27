@@ -10,8 +10,12 @@
 -- Superposed mode (see notes/context-shift-report): the swaps come with their root repairs (scaffolds.lua's fluid replacements, and the recipe and trigger edits that follow resource swaps) but no extra patches, and the game before them goes to the rest of randomization as debt (planetary.superposed)
 -- Root repairs are fine as fixes though not as random choices (like water or lava taking a lost fluid's place), and they change what unified never changes, what processes a pumped fluid or mined resource
 -- Promotion then keeps the goals the swaps still break while unified's choices pay for what they can (see skeleton/promotion.lua), and what's still owed after that is settled (planetary.settle)
--- Entity randomization reshapes promotion's graph too much for the debt edges to fit, so with it on, the usual stages run instead
+-- Works with entity randomization too: its subdivided acquisition edges leave the debt edges as they are (on seeds 1-2, promotion added and skipped the same debt edges with it on as with it off)
 local SUPERPOSED = false
+
+-- Experimental start swap (the Gleba start experiment, like the old SWITCH_PLANETS): the starting planet swaps prototypes with the planet named here, so the game starts on that planet's content; nil for off
+-- It runs in superposed mode (turned on with it), before the planetary changes that are on, and only if some planetary setting is on at all; only tried with "gleba", where first pass and promotion are left with a whole-game debt (seed 0: about 2700 owed goals, 21 still owed after settlement)
+local SWAP_START_WITH = nil
 
 -- Whether the rest of randomization keeps the recipe goals that moved with planetary changes (protection.transported_recipe_contexts), like a moved lock's recipe staying automatable on its new planet
 -- Off: on seeds 1-2 (all planetary stages on) every unified attempt then failed, each time on a recycling recipe of a moved lock's item becoming unreachable (like electromagnetic-plant-recycling), while without it all three seeds passed; not yet root-caused
@@ -467,8 +471,62 @@ end
 -- It's promotion's params.debt: { graph, debt_edges and old_nodes (from superpose.union), is_goal = whether a pebble is one of the goals the swaps carry over in an exact context (check.transported_goals), goals = those goals }
 planetary.superposed = nil
 
+-- The start swap (SWAP_START_WITH): the starting planet and the other swap their prototypes, so everything local to each goes to the other and the game starts on the other's content
+-- The planetary changes that are on then run on the swapped planets, and their own goal transports replace this one for their nodes
+-- Goals follow their planet's content (keeping their abilities), except the starting planet's science packs (lab inputs isolatable on the start in the game before) and nodes whose names mention either planet, which stay (experimental: a name match, not a declared property)
+local function swap_start(state)
+    local start_name = lutils.starting_planet_name
+    local other_name = SWAP_START_WITH
+    local start = data.raw.planet[start_name]
+    local other = data.raw.planet[other_name]
+    if start == nil or other == nil or start_name == other_name then
+        warn("start swap", "was skipped, since there's no other planet " .. other_name .. " to swap the start with.")
+        return
+    end
+    data.raw.planet[start_name] = table.deepcopy(other)
+    data.raw.planet[start_name].name = start_name
+    data.raw.planet[other_name] = table.deepcopy(start)
+    data.raw.planet[other_name].name = other_name
+    log("Planetary superposed: " .. start_name .. " and " .. other_name .. " swapped their prototypes (SWAP_START_WITH)")
+    local dutils = require("lib/data-utils")
+    local start_room = gutils.key("planet", start_name)
+    local other_room = gutils.key("planet", other_name)
+    local before_nci = state.before.sort_info.node_to_context_inds
+    local stays = {}
+    local starting_packs = {}
+    for pack_name, _ in pairs(dutils.lab_inputs()) do
+        local node_key = gutils.key("item", pack_name)
+        for context, _ in pairs(before_nci[node_key] or {}) do
+            if top.context_room(context) == start_room and top.context_home(context) == nil and protection.is_isolatable_context(context) and stays[node_key] == nil then
+                stays[node_key] = true
+                table.insert(starting_packs, pack_name)
+            end
+        end
+    end
+    table.sort(starting_packs)
+    log("Planetary superposed: starting science packs that stay: " .. table.concat(starting_packs, ", "))
+    local num_transported = 0
+    for node_key, node in pairs(state.before.graph.nodes) do
+        local room_bound = string.find(node.name or "", start_name, 1, true) ~= nil or string.find(node.name or "", other_name, 1, true) ~= nil
+        if not stays[node_key] and not room_bound then
+            planetary_check.transport[node_key] = {
+                map = {
+                    [start_room] = other_room,
+                    [other_room] = start_room,
+                },
+                keep_isolatability = true,
+            }
+            num_transported = num_transported + 1
+        end
+    end
+    log("Planetary superposed: " .. num_transported .. " nodes' goals follow their planet")
+end
+
 -- Superposed mode: runs every swap that's on raw, then superposes the game before them on the game after
 local function run_superposed(logic, state)
+    if SWAP_START_WITH ~= nil then
+        swap_start(state)
+    end
     if config.planetary_oceans then
         local problem = oceans.problem()
         if problem ~= nil then
@@ -631,7 +689,7 @@ planetary.execute = function(logic)
         return
     end
 
-    if SUPERPOSED and not config.entity_randomization then
+    if SUPERPOSED or SWAP_START_WITH ~= nil then
         run_superposed(logic, state)
         planetary.before = {
             sort = state.before,
