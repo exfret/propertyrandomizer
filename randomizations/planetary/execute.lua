@@ -1,11 +1,12 @@
 -- Planetary randomization stages (settings propertyrandomizer-planetary-oceans, -resources, -lightning, -freezing and -locks)
 -- They run before the rest of randomization, so everything after them, including the mechanic context check, treats the changed world as the starting point.
--- Ocean swaps (oceans.lua) come with the scaffolding recipes each planet needs (scaffolds.lua); resource swaps (resources.lua) come with edits to the recipes belonging to that planet, then the extra resource patches each planet still needs.
+-- Ocean swaps (oceans.lua) come with the scaffolding recipes each planet needs (scaffolds.lua); resource swaps (resources.lua) come with edits to the recipes and mining-triggered technologies belonging to that planet, then the extra resource patches each planet still needs.
 -- Lightning (lightning.lua) moves to another planet with what builds lightning attractors; a planet that needed its lightning keeps it as well.
 -- Freezing (freezing.lua) moves to another planet with the technologies for heating; a planet that needed to stay frozen does.
 -- Planet locks (locks.lua) move which planets accept recipes and entities with surface conditions; a lock breaking something its old planet must keep accepts that planet again too.
 -- All are checked against the game before them with the logic graph (check.lua).
 -- None ever stops the game from loading: anything that goes wrong (including errors, for mod compatibility) undoes that stage instead.
+-- Ocean swaps that fail their check are first rolled again with a new assignment a few times (OCEAN_TRIES).
 
 -- Superposed mode (see notes/context-shift-report): the swaps come with their root repairs (scaffolds.lua's fluid replacements, and the recipe and trigger edits that follow resource swaps) but no extra patches, and the game before them goes to the rest of randomization as debt (planetary.superposed)
 -- Root repairs are fine as fixes though not as random choices (like water or lava taking a lost fluid's place), and they change what unified never changes, what processes a pumped fluid or mined resource
@@ -399,8 +400,14 @@ local function run_freezing(logic, state)
     return nil
 end
 
+-- How many different assignments a careful run tries for ocean swaps before undoing them: a failed ocean swap is rare, so rolling again usually works
+-- Each try costs a few sorts, so this stays small to keep startup time down
+local OCEAN_TRIES = 3
+
 -- Runs a stage, undoing it (data.raw and the shared state back to how they were) if it fails or errors
-local function run_stage(what, stage, logic, state)
+-- With can_retry, a failed check (but not an error, which would likely repeat) is only logged, and the caller runs the stage again
+-- Returns whether the stage worked, and whether it's worth running again
+local function run_stage(what, stage, logic, state, can_retry)
     local old_raw = table.deepcopy(data.raw)
     local old_state = {
         after = state.after,
@@ -422,10 +429,14 @@ local function run_stage(what, stage, logic, state)
         planetary_check.transport = old_transport
         locks.moved = old_locks
         lutils.bootstrap_heat_rooms = old_bootstrap_heat_rooms
+        if can_retry and is_ok then
+            log("Planetary " .. what .. ": rolling again, since " .. reason)
+            return false, true
+        end
         warn(what, "were undone, since " .. reason .. ".")
-        return false
+        return false, false
     end
-    return true
+    return true, false
 end
 
 -- Runs every stage that's on; with careful, each stage checks its own result (see state above)
@@ -435,8 +446,19 @@ local function run_stages(logic, state, careful)
         local problem = oceans.problem()
         if problem ~= nil then
             warn("ocean swaps", "were skipped, since " .. problem .. ".")
-        elseif not run_stage("ocean swaps", run_oceans, logic, state) then
-            scaffolds.kept = {}
+        else
+            -- Only a careful run checks the swap itself, so only it can tell that an assignment failed and roll a new one
+            local num_tries = careful and OCEAN_TRIES or 1
+            for try = 1, num_tries do
+                local is_done, should_retry = run_stage("ocean swaps", run_oceans, logic, state, try < num_tries)
+                if is_done then
+                    break
+                end
+                scaffolds.kept = {}
+                if not should_retry then
+                    break
+                end
+            end
         end
     end
     if config.planetary_resources then
@@ -759,7 +781,6 @@ planetary.execute = function(logic)
         end
     end
 end
-
 
 -- The game before planetary changes (its sort, and the scaffold variants that count as its recipes), kept for check_final while any stage's changes are in the game
 planetary.before = nil
