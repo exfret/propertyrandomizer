@@ -36,7 +36,8 @@ end
 
 -- Two rooms: A (the start) mines ore; B mines debris and gems, which can be shipped to A.
 -- Ore smelts into plates (only in A), and debris recycles into many plates (anywhere with debris).
-local function world()
+-- automatable (optional): room --> material id --> true, as graph_cost.automatable_by_room gives
+local function world(automatable)
     data = {
         raw = {
             item = {},
@@ -134,7 +135,7 @@ local function world()
             [gutils.key("recipe", "cut-gem")] = at({ B = 4 }),
         },
     }
-    local info = context_costs.build(graph, sort_info, prices, "A", { A = true, B = true })
+    local info = context_costs.build(graph, sort_info, prices, "A", { A = true, B = true }, nil, nil, automatable)
     return info
 end
 
@@ -226,6 +227,50 @@ test("a recipe that takes nothing (like the captive spawner's biter eggs) is pri
     local flow_cost = require("lib/cost/flow-cost")
     local costs = flow_cost.determine_recipe_item_cost({}, 0.07, 0.01)
     assert(near(costs.material_to_cost["item-egg"], (0.07 * 10 + 0.01) / 5))
+end)
+
+test("an automatable-only set prices only from what each room has automatably, so a cost still means automatable there", function()
+    -- Gems are mined by hand in B, so they aren't automatable anywhere; ore and debris are
+    local info = world({
+        A = { ["item-ore"] = true, ["item-debris"] = true, ["item-plate"] = true },
+        B = { ["item-debris"] = true, ["item-plate"] = true },
+    })
+    local set = context_costs.new_set(info, {
+        ing_overrides = context_costs.data_overrides(),
+        use_data = true,
+        item_recipe_maps = require("lib/cost/flow-cost").construct_item_recipe_maps(),
+        track_resources = {},
+        automatable_only = true,
+    })
+    assert(set:view("A").material_to_cost["item-plate"] ~= nil)
+    assert(set:view("A").material_to_cost["item-gem"] == nil)
+    assert(set:view("B").material_to_cost["item-jewel"] == nil)
+    -- Without it, gems and jewels are priced
+    local all = game_set(info)
+    assert(all:view("B").material_to_cost["item-jewel"] ~= nil)
+end)
+
+test("newer resources' share of a cost counts newer raw resources and imports", function()
+    local info = world()
+    local set = game_set(info)
+    local maps = require("lib/cost/flow-cost").construct_item_recipe_maps()
+    -- Debris is a newer resource; B makes plates from it, so they're mostly newer there
+    local novelty_b = context_costs.novelty(info, "B", set, { ["item-debris"] = true }, maps)
+    assert(near(novelty_b["item-debris"], 1))
+    assert(novelty_b["item-plate"] > 0.5 and novelty_b["item-plate"] <= 1)
+    -- A imports gems, so they're all newer there, while its ore isn't
+    local novelty_a = context_costs.novelty(info, "A", set, { ["item-debris"] = true }, maps)
+    assert(near(novelty_a["item-gem"], 1))
+    assert(novelty_a["item-ore"] == nil)
+end)
+
+test("a fallback view reads the first table, then the second, then the default", function()
+    local view = context_costs.fallback_view({ a = 1 }, { a = 2, b = 3 }, function(id)
+        if id == "c" then
+            return 4
+        end
+    end)
+    assert(view.a == 1 and view.b == 3 and view.c == 4 and view.d == nil)
 end)
 
 print(num_passed .. " tests passed")

@@ -48,6 +48,37 @@ furnace_selection.pools_for = function(pools, categories)
     return inds
 end
 
+-- Ingredients used per furnace pool, for recipe randomization: recipes one furnace crafts mustn't share an ingredient
+-- Any shared ingredient counts, which is stricter than the selection rules but never lets a collision through
+-- categories_of (optional): a recipe's categories where they'll end up (like after recipe-category randomization), else its own; raw (optional): as in pools
+-- Returns a tracker with pools_of(recipe) (the pool indices whose furnaces craft it), take(recipe, material) (the recipe uses the material) and is_taken(pool_inds, material)
+furnace_selection.tracker = function(categories_of, raw)
+    local pools = furnace_selection.pools(raw)
+    local taken = {}
+    for pool_ind, _ in pairs(pools) do
+        taken[pool_ind] = {}
+    end
+    local tracker = {}
+    tracker.pools_of = function(recipe)
+        local categories = categories_of ~= nil and categories_of(recipe) or nil
+        return furnace_selection.pools_for(pools, categories or furnace_selection.recipe_categories(recipe))
+    end
+    tracker.take = function(recipe, material)
+        for _, pool_ind in pairs(tracker.pools_of(recipe)) do
+            taken[pool_ind][material.type .. "-" .. material.name] = true
+        end
+    end
+    tracker.is_taken = function(pool_inds, material)
+        for _, pool_ind in pairs(pool_inds) do
+            if taken[pool_ind][material.type .. "-" .. material.name] ~= nil then
+                return true
+            end
+        end
+        return false
+    end
+    return tracker
+end
+
 -- The ingredients a furnace selects a recipe by: its item, or its fluid when it has no item, as "type-name" keys
 -- Recipes of other shapes can't run in a furnace at all, so they select nothing
 furnace_selection.selecting_ingredients = function(ingredients)

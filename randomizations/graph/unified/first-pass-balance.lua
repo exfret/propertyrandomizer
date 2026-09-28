@@ -14,7 +14,7 @@ balance.find_balance_blacklist = function(graph, init_sort)
             local sorted_prenodes = table.deepcopy(gutils.prenodes(graph, node))
 
             table.sort(sorted_prenodes, function(a, b)
-                -- Copied code from execute-new.lua's context reachable function
+                -- Copied code from execute.lua's context reachable function
                 local key1 = gutils.key(a)
                 local key2 = gutils.key(b)
 

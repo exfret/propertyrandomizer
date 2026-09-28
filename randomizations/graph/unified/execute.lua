@@ -1,34 +1,109 @@
--- CRITICAL TODO: Turn back on when things are working with this off (one step at a time)
-local PRESERVE_ISOLATABILITY = false
--- First pass is broken now; I need to figure out what's wrong and fix it later
-local CONDUCT_FIRST_PASS = false
--- Ad hoc attempt for grouping; put tech unlock with recipe
-local COMBINE_TECH_UNLOCK_RECIPE = false
--- Second perhaps better try at tech unlock coupling; modify graph so that recipe --> unlock-recipe-technology (AND over recipe and a single tech) --> recipe-fina
--- This also doesn't work actually, but not for awful reasons; I'll just need to be more careful about how I do this
-local COMBINE_TECH_UNLOCK_RECIPE_TWO = false
-local SWITCH_TO_PLANET = false
+-- Fundamental differences:
+--  * USE KEYS INTO THE GRAPH (no passing graph nodes, since we have so many different graphs by copy, not reference)
+--  * Use the new graph library functions
+--  * Use correct terminology
 
+-- TODO: Some tests targeting areas where I might have forgotten about orands
+-- TODO: Do a more thorough look through handlers for terminology changes etc.
+
+local DO_FIRST_PASS = true
+-- Whether to only test relative ordering of first context, and just whether it can be gotten on each planet
+-- Maybe could cause softlocks?
+-- CRITICAL TODO: Think about this more!
+-- TODO: Speed up tests! Currently they take a long time
+local DO_TESTS = false
+local ONLY_TEST_FIRST_CONTEXT_ORDER = true
+local SWITCH_PLANETS = false
+local REMOVE_TECH_PREREQS = true
+-- Keep mechanic contexts and recipe reachability with promotion (randomizations/graph/unified/skeleton/promotion.lua) for both generic handlers and recipe ingredients, instead of comparing orders in a sort
+local USE_PROMOTION = true
+-- Have promotion keep room/ability contexts (isolatability, automatability), not just rooms
+local PROMOTION_COMPLEX_CONTEXTS = true
+-- Log witness skeleton stats (randomizations/graph/unified/skeleton/stats.lua); measurement only
+local SKELETON_STATS = false
+
+-- 0 means nothing except on errors (in case I decide to stop polluting log in the future), 1 means default/important things, 2 means lots
+local LOGGING_LEVEL = 2
+local function log_info(level, info)
+    if LOGGING_LEVEL >= level then
+        log(info)
+    end
+end
+
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
+local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
-local top = require("lib/graph/top-sort")
-local top2 = require("lib/graph/extended-sort")
+local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
+local promotion = require("randomizations/graph/unified/skeleton/promotion")
+local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
+local test_sort = require("tests/consistent-sort")
+
+local key = gutils.key
 
 local unified = {}
 
 local all_handler_ids = require("helper-tables/handler-ids")
 local handler_ids = {}
 
-for _, id in pairs(all_handler_ids) do
-    if config.unified[id] then
+-- Handlers still in development, forced on in every game while the hidden setting propertyrandomizer-dev-unified is (config.dev_unified; off in releases)
+RECIPE_INGS_DIR = "FORWARD"
+local enabled = {}
+if config.dev_unified then
+    -- CRITICAL TODO: REMOVE!
+    config.unified = {
+        ["recipe-ingredients"] = true,
+        ["recipe-tech-unlocks"] = true,
+        ["spoiling"] = true,
+        ["tech-prereqs"] = true,
+        ["tech-science-packs"] = true,
+        ["item-ingredients"] = true,
+        ["recipe-ingredients-first-pass"] = true,
+        ["entity-autoplace"] = true,
+
+        ["recipe-category"] = true,
+        ["item"] = true,
+        ["entity-energy-source"] = true,
+        ["mining-fluid-required"] = true,
+    }
+
+    ITEM_ENABLED = true
+    enabled = {
+        --["recipe-ingredients"] = true,
+        --["tech-science-packs"] = true,
+        --["tech-prereqs"] = true,
+        --["recipe-tech-unlocks"] = true,
+        --["recipe-ingredients-first-pass"] = true,
+        --["entity-autoplace"] = true,
+
+        ["recipe-category"] = true,
+        ["item"] = ITEM_ENABLED,
+        ["entity-energy-source"] = true,
+        ["mining-fluid-required"] = true,
+        ["recipe-ingredients"] = true,
+        ["spoiling"] = true,
+    }
+end
+-- Entity randomization (handlers/entity.lua) is behind its own startup setting
+if config.entity_randomization then
+    config.unified["entity"] = true
+    enabled["entity"] = true
+end
+
+-- for _, id in pairs(all_handler_ids) do
+for id, _ in pairs(config.unified) do
+    if enabled[id] then--config.unified[id] then
         table.insert(handler_ids, id)
     end
-    randomization_info.options.unified[id] = {
-        blacklisted_pre = {},
-    }
+    if randomization_info.options.unified[id] == nil then
+        randomization_info.options.unified[id] = {
+            blacklisted_pre = {},
+            blacklisted_dep = {},
+        }
+    end
 end
 
 -- Load handlers
@@ -50,384 +125,344 @@ for _, handler_id in pairs(handler_ids) do
     handlers[handler_id] = handler
 end
 
+-- Whether any handler is on, so there's anything for unified randomization to do
+unified.has_handlers = #handler_ids > 0
+
+-- Planetary changes in superposed mode hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
+local function planetary_debt()
+    if config.planetary_oceans or config.planetary_resources then
+        return require("randomizations/planetary/execute").superposed
+    end
+    return nil
+end
+
 unified.execute = function()
-    logic.build()
-    test_graph_invariants.test(logic.graph)
+    for _, handler in pairs(handlers) do
+        handler.initialize()
+    end
 
     ----------------------------------------------------------------------------------------------------
-    -- GRAPH PREP
+    log_info(2, "GRAPH PREP")
     ----------------------------------------------------------------------------------------------------
+
+    -- First, save old data
+    -- We can't call this old_data_raw because that's for the *very* initial data
+    -- Make it a global so we don't have to pass it everywhere
+    unified_starting_data_raw = table.deepcopy(data.raw)
 
     -- data.raw preprocessing if necessary
     for _, handler in pairs(handlers) do
         handler.preprocess()
     end
 
-    -- Lookup loading is done by logic building, so not necessary here
+    if REMOVE_TECH_PREREQS then
+        for _, tech in pairs(data.raw.technology) do
+            tech.prerequisites = {}
+        end
+    end
 
     -- Logic building
-    logic.build()
-    local old_graph = table.deepcopy(logic.graph)
-    local graph = logic.graph
+    logic.build(true)
+    test_graph_invariants.test(logic.graph)
+    local init_graph = logic.graph
+    test_graph_invariants.test(init_graph)
 
-    -- Change structure to couple tech unlocks with recipes
-    if COMBINE_TECH_UNLOCK_RECIPE_TWO then
-        local old_tech_unlock = {}
-        logic.type_info["recipe-tech-unlock"].op = "AND"
-        for _, node in pairs(graph.nodes) do
-            if node.type == "recipe" and data.raw.recipe[node.name].enabled == false then
-                local edges_to_remove = {}
-                local recipe_final_node = gutils.add_node(graph, "logic-or", "recipe-final-" .. node.name)
-                recipe_final_node.op = "OR"
-                for pre, _ in pairs(node.pre) do
-                    local prenode = graph.nodes[graph.edges[pre].start]
-                    if prenode.type == "recipe-tech-unlock" then
-                        old_tech_unlock[gutils.key(prenode)] = true
-                        -- TODO: Some more basic graph navigation would be great
-                        local prenode_tech = graph.nodes[graph.edges[next(prenode.pre)].start]
-                        table.insert(edges_to_remove, pre)
-                        -- TODO: I should probably use a compound key rather than normal key here
-                        local unlock_recipe_tech_node = gutils.add_node(graph, "recipe-tech-unlock", gutils.key(node.name, prenode_tech.name))
-                        unlock_recipe_tech_node.op = "AND"
-                        gutils.add_edge(graph, gutils.key(node), gutils.key(unlock_recipe_tech_node))
-                        gutils.add_edge(graph, gutils.key(prenode_tech), gutils.key(unlock_recipe_tech_node))
-                        gutils.add_edge(graph, gutils.key(unlock_recipe_tech_node), gutils.key(recipe_final_node))
-                    end
-                end
-                for dep, _ in pairs(node.dep) do
-                    -- Filter out the node we just added to recipe-tech-unlock
-                    local stop_node_key = graph.edges[dep].stop
-                    if graph.nodes[stop_node_key].type ~= "recipe-tech-unlock" then
-                        -- deps transferred to recipe-final
-                        gutils.add_edge(graph, gutils.key(recipe_final_node), stop_node_key)
-                        table.insert(edges_to_remove, dep)
-                    end
-                end
-                for _, edge_key in pairs(edges_to_remove) do
-                    gutils.remove_edge(graph, edge_key)
-                end
-            end
-        end
-    end
-
+    local spoofed_graph = table.deepcopy(init_graph)
     -- Spoofing
     for _, handler in pairs(handlers) do
-        handler.spoof(graph)
+        handler.spoof(spoofed_graph)
     end
-
-    test_graph_invariants.test(graph)
-
-    ----------------------------------------------------------------------------------------------------
-    -- Subdivision and Path finding
-    ----------------------------------------------------------------------------------------------------
-
-    -- Subdivide edges into slots and travelers (but don't disrupt connections yet)
-    local subdiv_graph = graph
-    -- Deepcopy the old version so that references don't become dead
-    graph = table.deepcopy(graph)
-    local trav_to_old_slot = {}
-    local pre_to_subdivide = {}
-    for _, node in pairs(subdiv_graph.nodes) do
-        for pre,  _ in pairs(node.pre) do
-            table.insert(pre_to_subdivide, pre)
-        end
-    end
-    for _, pre in pairs(pre_to_subdivide) do
-        local conn = gutils.subdivide_old(subdiv_graph, pre)
-        trav_to_old_slot[gutils.key(conn.traveler)] = conn.slot
-    end
-
-    --[[local path_graph = table.deepcopy(old_graph)
-    local pre_to_subdivide_2 = {}
-    for _, node in pairs(path_graph.nodes) do
-        for pre,  _ in pairs(node.pre) do
-            table.insert(pre_to_subdivide_2, pre)
-        end
-    end
-    for _, pre in pairs(pre_to_subdivide_2) do
-        gutils.subdivide_old(path_graph, pre)
-    end
-
-    local subdiv_sort = top.sort(path_graph)
-    -- Path to promethium science item
-    local prom_science = path_graph.nodes[gutils.key("item", "promethium-science-pack")]
-    local path_goal
-    for open_ind, open_info in pairs(subdiv_sort.open) do
-        if open_info.node == gutils.key(prom_science) then
-            path_goal = {
-                ind = open_ind,
-                context = gutils.key("surface", "space-platform"),
-            }
-            break
-        end
-    end
-    local short_path_info = top.path(path_graph, path_goal, subdiv_sort)
-    -- Get nodes that appear at all (with any context)
-    local short_path = {}
-    for _, open_info in pairs(short_path_info) do
-        short_path[subdiv_sort.open[open_info.ind].node] = true
-    end]]
-
-    test_graph_invariants.test(subdiv_graph)
+    test_graph_invariants.test(spoofed_graph)
+    gutils.make_orands(spoofed_graph)
+    test_graph_invariants.test(spoofed_graph)
 
     ----------------------------------------------------------------------------------------------------
-    -- Claiming
+    log_info(2, "CLAIMING")
     ----------------------------------------------------------------------------------------------------
 
-    -- We'll also be cutting the slot-traveler connections later
-    local cut_graph = subdiv_graph
-    subdiv_graph = table.deepcopy(subdiv_graph)
-    -- Don't ever update this one for new planet
-    old_subdiv_graph = table.deepcopy(subdiv_graph)
+    local sort_for_claiming = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
+    log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.sorted))
+    local subdiv_graph = table.deepcopy(spoofed_graph)
 
-    -- Initial top sort
-    local init_sort = top.sort(cut_graph)
-
-    -- Find critical nodes; put those first
-    -- Let promethium science be hardcoded as the win condition for the vanilla sort
-    --[[local promethium_inds = init_sort.node_to_open_inds[gutils.key({type = "item", name = "promethium-science-pack"})]
-    local earliest_ind
-    for ind, _ in pairs(promethium_inds) do
-        if earliest_ind == nil or ind < earliest_ind then
-            earliest_ind = ind
-        end
-    end
-    local path = top.path(cut_graph, { ind = earliest_ind, context = gutils.key({type = "surface", name = "space-platform"}) }, init_sort)
-    local in_path = {}
-    for _, path_info in pairs(path) do
-        in_path[path_info.ind] = true
-    end
-    local priority_open = {}
-    local unimportant_open = {}
-    for open_ind, open_info in pairs(init_sort.open) do
-        if in_path[open_ind] then
-            table.insert(priority_open, open_info)
-        else
-            table.insert(unimportant_open, open_info)
-        end
-    end
-    local open_sorted = {}
-    for _, open_info in pairs(priority_open) do
-        table.insert(open_sorted, open_info)
-    end
-    for _, open_info in pairs(unimportant_open) do
-        table.insert(open_sorted, open_info)
-    end]]
-    -- CRITICAL TODO: Decide whether I actually want to keep the critical path stuff; the following line actually undoes it
-    -- Note: This is different from the critical path stuff used for the first pass sort
-    open_sorted = init_sort.open
-
-    -- TODO: Dunno if I actually will use this I thought of another idea halfway through
-    local graph_with_cuts = table.deepcopy(cut_graph)
-    -- Initially empty
-    local graph_with_cuts_edges_to_remove = {}
-    for edge_key, _ in pairs(graph_with_cuts.edges) do
-        table.insert(graph_with_cuts_edges_to_remove, edge_key)
-    end
-    for _, edge_key in pairs(graph_with_cuts_edges_to_remove) do
-        gutils.remove_edge(graph_with_cuts, edge_key)
-    end
-
-    -- Now for the actual gathering
     local added_to_deps = {}
     local sorted_deps = {}
-    local shuffled_prereqs = {}
-    local post_shuffled_prereqs = {}
-    -- For AND's, gather all their travelers and do in order
-    -- This will need to be more simultaneous for recipe rando, but helps skirt issues with multi-type AND prereqs for now
-    local trav_to_handler = {}
-    local node_to_random_travs = {}
-    for open_ind, open_info in pairs(open_sorted) do
-        local node_key = open_info.node
-        local node = cut_graph.nodes[node_key]
+    local handler_to_shuffled_prereqs = {}
+    local handler_to_post_shuffled_prereqs = {}
+    for _, handler in pairs(handlers) do
+        -- Be careful that handler.id is different from handler's key in handlers (one uses underscores the other dashes)
+        -- handler.id can actually be gotten from the handler alone though, which is why we use it
+        handler_to_shuffled_prereqs[handler.id] = {}
+        handler_to_post_shuffled_prereqs[handler.id] = {}
+    end
+    -- To help the aforementioned discrepancy, create a way to get the handler from handler.id
+    local handler_id_to_handler = {}
+    for _, handler in pairs(handlers) do
+        handler_id_to_handler[handler.id] = handler
+    end
+    local dep_to_heads = {}
+    local head_to_handler = {}
+    for ind, pebble in pairs(sort_for_claiming.sorted) do
+        -- Get node from subdiv_graph
+        local node_key = pebble.node_key
+        local node = subdiv_graph.nodes[node_key]
 
-        -- Do OR node's corresponding travelers, and the AND nodes themselves
-        -- Tack on a condition that it's not an old tech unlock
-        if node.type ~= "slot" and ((node.type ~= "traveler" and node.op == "AND") or (node.type == "traveler" and gutils.get_conn_owner(cut_graph, node).op == "OR" and not (COMBINE_TECH_UNLOCK_RECIPE_TWO and old_tech_unlock[gutils.key(gutils.get_conn_owner(cut_graph, node))]))) then
-            if not added_to_deps[gutils.key(node)] then
-                node_to_random_travs[gutils.key(node)] = {}
+        if node.op == "AND" and node.type ~= "base" then
+            if not added_to_deps[node_key] then
+                added_to_deps[node_key] = true
+                -- Just make sure this isn't spoofed
+                if not node.spoof then
+                    table.insert(sorted_deps, node_key)
+                end
 
-                local edges_to_remove = {}
+                dep_to_heads[node_key] = {}
+
+                local subdivide_info = {}
                 for pre, _ in pairs(node.pre) do
-                    local corresponding_trav
-                    if node.type == "traveler" then
-                        corresponding_trav = node
-                    else
-                        corresponding_trav = cut_graph.nodes[cut_graph.edges[pre].start]
-                    end
-                    -- Go traveler --> slot, then slot --> prereq node
-                    local start_node = gutils.get_conn_owner(cut_graph, gutils.get_conn_buddy(cut_graph, corresponding_trav))
-                    -- If this is a traveler, need to get ending node to judge connection
-                    local end_node = node
-                    if node.type == "traveler" then
-                        end_node = gutils.get_conn_owner(cut_graph, node)
-                    end
+                    local prereq_node = gutils.prenode(subdiv_graph, pre)
+                    -- Get the "true" node in case node is an orand
+                    local orand_parent = subdiv_graph.nodes[subdiv_graph.orand_to_parent[node_key]]
+                    local claimed_by
 
-                    local claimed = false
                     for handler_id, handler in pairs(handlers) do
-                        -- Pass corresponding_trav in since it holds the edge's extra_info
-                        -- num_copies says how many extra times the prereq should be added to the pool for flexibility
-                        local num_copies = handler.claim(cut_graph, start_node, end_node, corresponding_trav) or 0
+                        local num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
                         -- Make sure this connection isn't blacklisted for this handler
-                        if randomization_info.options.unified[handler_id].blacklisted_pre[gutils.key(start_node)] then
-                            num_copies = 0
+                        if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
+                            num_copies = false
                         end
-                        if num_copies > 0 then
-                            if claimed then
-                                error("Multiple handlers claiming the same edge")
-                            end
-                            claimed = true
-                            table.insert(node_to_random_travs[gutils.key(node)], corresponding_trav)
-                            trav_to_handler[gutils.key(corresponding_trav)] = handler
-                            -- Add the slot to prereqs
-                            table.insert(shuffled_prereqs, gutils.get_conn_buddy(cut_graph, corresponding_trav))
-                            for i = 2, num_copies do
-                                table.insert(post_shuffled_prereqs, gutils.get_conn_buddy(cut_graph, corresponding_trav))
-                            end
+                        if randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] then
+                            num_copies = false
                         end
-                    end
 
-                    if claimed then
-                        -- Mark the slot-traveler edges for deletion
-                        local slot_traveler_edge
-                        for pre, _ in pairs(corresponding_trav.pre) do
-                            slot_traveler_edge = pre
-                            break
+                        if num_copies then
+                            if claimed_by ~= nil then
+                                error("Multiple handlers claiming the same edge: " .. claimed_by .. " AND " .. handler_id)
+                            end
+                            claimed_by = handler_id
+                            table.insert(subdivide_info, {
+                                edge_key = pre,
+                                handler = handler,
+                                num_copies = num_copies,
+                            })
                         end
-                        table.insert(edges_to_remove, slot_traveler_edge)
                     end
                 end
 
-                for _, edge_key in pairs(edges_to_remove) do
-                    local edge = cut_graph.edges[edge_key]
-                    gutils.add_edge(graph_with_cuts, edge.start, edge.stop)
-                    gutils.remove_edge(cut_graph, edge_key)
-                end
-                -- Add everything to dependents (most of them just won't do anything but it's fine)
-                added_to_deps[gutils.key(node)] = true
-                -- node.name will contain spoof if node is just a corresponding traveler as well
-                -- We don't want spoof deps claiming things; they're just shortcuts to adding prereqs
-                if not string.find(node.name, "spoof") then
-                    table.insert(sorted_deps, node)
+                for _, info in pairs(subdivide_info) do
+                    local conns = gutils.subdivide_base_head(subdiv_graph, info.edge_key)
+                    table.insert(dep_to_heads[node_key], key(conns.head))
+                    head_to_handler[key(conns.head)] = info.handler
+                    -- Add the base as the "prereqs"
+                    if info.num_copies > 0 then
+                        table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
+                        for i = 2, info.num_copies do
+                            if info.handler.uniform_copies then
+                                table.insert(handler_to_shuffled_prereqs[info.handler.id], key(conns.base))
+                            else
+                                table.insert(handler_to_post_shuffled_prereqs[info.handler.id], key(conns.base))
+                            end
+                        end
+                    end
                 end
             end
         end
     end
+    test_graph_invariants.test(subdiv_graph)
 
+    -- TEST: Do consistent_sort tests on subdiv_graph
+    if DO_TESTS then
+        test_sort.init(subdiv_graph)
+        for test_name, test in pairs(test_sort) do
+            if type(test) == "function" and not test_sort.non_test_names[test_name] then
+                test()
+            end
+        end
+    end
+
+    -- Cut base-head connections
+    local cut_graph = table.deepcopy(subdiv_graph)
+    for _, node in pairs(cut_graph.nodes) do
+        -- Make sure to ignore the canonical head node created to instantiate the type during graph building
+        if node.type == "head" and node.name ~= "" then
+            gutils.remove_edge(cut_graph, gutils.ekey(gutils.unique_pre(cut_graph, node)))
+        end
+    end
     test_graph_invariants.test(cut_graph)
 
     ----------------------------------------------------------------------------------------------------
-    -- Filling Pools
+    log_info(2, "CALCULATE POOLS")
     ----------------------------------------------------------------------------------------------------
 
-    log("Filling pools")
-
-    -- Since we use cut_graph later, we can't do the usual deepcopy
-    -- So note: Our references from sorted_deps and such at this point are DEAD, they point to cut_graph
-    -- This shouldn't cause issues here hopefully
     local pool_graph = table.deepcopy(cut_graph)
-
-    local sort_to_use = top.sort
-    if PRESERVE_ISOLATABILITY then
-        sort_to_use = top2.sort
-    end
-    local pool_info = sort_to_use(pool_graph)
+    local sort_for_pool = top.sort(pool_graph, nil, nil, { choose_randomly = true })
 
     for _, dep in pairs(sorted_deps) do
-        local function reconnect(traveler)
-            local edge_start = trav_to_old_slot[gutils.key(traveler)]
-            -- CRITICAL TODO: Need to figure out new abilities context for edge (might not be given by slot or traveler)
-            local edge = gutils.add_edge(pool_graph, gutils.key(edge_start), gutils.key(traveler))
-            if not PRESERVE_ISOLATABILITY then
-                pool_info = sort_to_use(pool_graph, pool_info, {
-                    edge = gutils.ekey(edge),
-                    contexts = pool_info.node_to_contexts[edge.start],
-                })
-            else
-                pool_info = sort_to_use(pool_graph, pool_info, gutils.ekey(edge))
-            end
-        end
-
-        for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
-            reconnect(trav)
-        end
-    end
-    -- Let's still test pools via index in each context list
-    -- Later, we could try with context pools
-
-    log("Calculating pools")
-
-    -- Takes context and node to when the node first gets that context in open
-    -- Might be able to add this to sort info
-    -- This could still not catch things that only add an item to a surface where it's not needed but checking more rigorously could be a future task
-    local context_node_to_ind = {}
-    if not PRESERVE_ISOLATABILITY then
-        local all_contexts = {}
-        for context, _ in pairs(logic.contexts) do
-            all_contexts[context] = true
-            context_node_to_ind[context] = {}
-        end
-        for open_ind, node_info in pairs(pool_info.open) do
-            local contexts_to_use = node_info.contexts
-            if contexts_to_use == true then
-                contexts_to_use = table.deepcopy(all_contexts)
-            end
-            for context, _ in pairs(contexts_to_use) do
-                context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-            end
-        end
-    else
-        for context, _ in pairs(logic.contexts) do
-            for _, str_val in pairs({"0", "1"}) do
-                context_node_to_ind[context .. str_val] = {}
-            end
-        end
-        for open_ind, node_info in pairs(pool_info.open) do
-            if node_info.contexts == true then
-                for context, _ in pairs(logic.contexts) do
-                    for _, str_val in pairs({"0", "1"}) do
-                        context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                    end
-                end
-            else
-                for context, context_vals in pairs(node_info.contexts) do
-                    if context_vals == true then
-                        for _, str_val in pairs({"0", "1"}) do
-                            context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                        end
-                    else
-                        for bin_str, val in pairs(context_vals) do
-                            context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] = context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] or open_ind
-                        end
-                    end
-                end
+        for _, head_key in pairs(dep_to_heads[dep]) do
+            local head = pool_graph.nodes[head_key]
+            local old_base = pool_graph.nodes[head.old_base]
+            -- Heads that start detached have a vanilla base only so their edge could be claimed (see promotion.new)
+            if head.starts_detached == nil then
+                gutils.connect_base_head(pool_graph, head.old_base, head_key, old_base.abilities)
+                sort_for_pool = top.sort(pool_graph, sort_for_pool, {old_base, head}, { choose_randomly = true })
             end
         end
     end
 
-    local random_graph = cut_graph
-    cut_graph = table.deepcopy(cut_graph)
+    -- SKELETON EXPERIMENT (measurement only; see randomizations/graph/unified/skeleton/)
+    if SKELETON_STATS then
+        require("randomizations/graph/unified/skeleton/stats").run({
+            graph = pool_graph,
+            sort_info = sort_for_pool,
+            sorted_deps = sorted_deps,
+            dep_to_heads = dep_to_heads,
+            head_to_handler = head_to_handler,
+        })
+    end
 
-    log("Calculating context reachability")
+    ----------------------------------------------------------------------------------------------------
+    log_info(2, "FIRST PASS")
+    ----------------------------------------------------------------------------------------------------
 
-    -- Context reachability
-    local function all_contexts_reachable(slot, trav)
-        if not PRESERVE_ISOLATABILITY then
+    local first_pass_info
+    local old_sorted_deps
+    if DO_FIRST_PASS then
+        -- NOTE: This switch code is out of date
+        local function switch_vulcanus_nauvis(graph)
+            local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
+            local vulcanus_node = graph.nodes[key("room", key("planet", "vulcanus"))]
+
+            -- room-launch's are intrinsic to the room
+            local function leads_to_room_launch(node)
+                if node.type == "room-launch" then
+                    return true
+                elseif node.type ~= "base" and node.type ~= "head" then
+                    return false
+                else
+                    return leads_to_room_launch(gutils.unique_depnode(graph, node))
+                end
+            end
+
+            local function gather_deps(node)
+                local deps_tbl = {}
+                for dep, _ in pairs(node.dep) do
+                    local depnode = graph.nodes[graph.edges[dep].stop]
+                    if not leads_to_room_launch(depnode) then
+                        if depnode.type == "base" then
+                            table.insert(deps_tbl, gutils.unique_dep(graph, depnode))
+                        else
+                            table.insert(deps_tbl, graph.edges[dep])
+                        end
+                    end
+                end
+                return deps_tbl
+            end
+
+            local nauvis_deps = gather_deps(nauvis_node)
+            local vulcanus_deps = gather_deps(vulcanus_node)
+            for _, edge in pairs(nauvis_deps) do
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(vulcanus_node))
+            end
+            for _, edge in pairs(vulcanus_deps) do
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
+            end
+        end
+
+        local spoofed_graph_to_pass = table.deepcopy(spoofed_graph)
+        local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
+        -- Heads that start detached (like friendly biters') are only there to be claimed, so first pass can't count on them, as the pool graph and promotion don't
+        gutils.detach_starting_heads(spoofed_graph_to_pass)
+        gutils.detach_starting_heads(subdiv_graph_to_pass)
+        if SWITCH_PLANETS then
+            -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
+            --switch_vulcanus_nauvis(spoofed_graph_to_pass)
+            switch_vulcanus_nauvis(subdiv_graph_to_pass)
+        end
+
+        first_pass_info = first_pass.execute({
+            spoofed_graph = spoofed_graph_to_pass,
+            subdiv_graph = subdiv_graph_to_pass,
+            debt = planetary_debt(),
+            -- With constants.entity_first_pass, entity randomization's slots are first pass positions (see first_pass_rules in handlers/entity.lua)
+            entity_rules = constants.entity_first_pass and handlers["entity"] ~= nil and handlers["entity"].first_pass_rules or nil,
+        })
+        if first_pass_info == false then
+            return false
+        end
+        sort_for_pool = first_pass_info.sort
+
+        -- Replace deps in sorted_deps by travs
+        old_sorted_deps = table.deepcopy(sorted_deps)
+        for dep_ind, dep in pairs(sorted_deps) do
+            local trav_key = first_pass_info.slot_to_trav[dep]
+            -- Dep might not have been a slot, in which case it stays the same
+            -- An identity from a slot that isn't a dep here (an item at a fluid position, see lib/item-fluid.lua) leaves it too
+            if trav_key ~= nil and dep_to_heads[first_pass_info.graph.nodes[trav_key].old_slot] ~= nil then
+                local trav = first_pass_info.graph.nodes[trav_key]
+                sorted_deps[dep_ind] = trav.old_slot
+            end
+        end
+    end
+
+    ----------------------------------------------------------------------------------------------------
+    log_info(2, "CONTEXT REACHABILITY")
+    ----------------------------------------------------------------------------------------------------
+
+    -- Check if all of key1 node's context inds are before all of key2 node's
+    local function all_contexts_reachable(key1, key2, ignore_nil_contexts)
+        if sort_for_pool.node_to_context_inds[key1] == nil then
+            log(key1)
+            error("Key invalid")
+        elseif sort_for_pool.node_to_context_inds[key2] == nil then
+            log(key2)
+            error("Key invalid")
+        end
+
+        if ONLY_TEST_FIRST_CONTEXT_ORDER then
+            local smallest_ind1
+            local smallest_ind2
+
             for context, _ in pairs(logic.contexts) do
-                -- Let's try with "last prereq comes after"
-                -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
-                -- This actually didn't have an effect because of the way pool sort works
-                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
+                local index1 = sort_for_pool.node_to_context_inds[key1][context]
+                local index2 = sort_for_pool.node_to_context_inds[key2][context]
+                if ignore_nil_contexts and (index1 == nil or index2 == nil) then
+                    return true
+                end
+                if index1 == nil and index2 ~= nil then
                     return false
                 end
-            end
-        else
-            for context, _ in pairs(logic.contexts) do
-                for _, str_val in pairs({"0", "1"}) do
-                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
-                        return false
-                    end
+                if smallest_ind1 == nil or (index1 ~= nil and index1 < smallest_ind1) then
+                    smallest_ind1 = index1
                 end
+                if smallest_ind2 == nil or (index2 ~= nil and index2 < smallest_ind2) then
+                    smallest_ind2 = index2
+                end
+            end
+
+            if smallest_ind1 == nil or smallest_ind2 == nil then
+                log(key1)
+                log(smallest_ind1)
+                log(key2)
+                log(smallest_ind2)
+
+                error("Node that should be reachable is not reachable!")
+            end
+
+            if smallest_ind1 < smallest_ind2 then
+                return true
+            else
+                return false
+            end
+        end
+
+        for context, _ in pairs(logic.contexts) do
+            local index1 = sort_for_pool.node_to_context_inds[key1][context]
+            local index2 = sort_for_pool.node_to_context_inds[key2][context]
+            if ignore_nil_contexts and (index1 == nil or index2 == nil) then
+                return true
+            end
+            index1 = index1 or (#sort_for_pool.sorted + 1)
+            index2 = index2 or (#sort_for_pool.sorted + 2)
+            if not (index1 < index2) then
+                return false
             end
         end
 
@@ -435,607 +470,342 @@ unified.execute = function()
     end
 
     test_graph_invariants.test(pool_graph)
-    test_graph_invariants.test(random_graph)
 
-    ----------------------------------------------------------------------------------------------------
-    -- First Pass (if applicable)
-    ----------------------------------------------------------------------------------------------------
-
-    if SWITCH_TO_PLANET then
-        -- Gleba here we come
-        -- Since we're adding this as fixed and we have no randomized room connections yet, we don't need to worry about graph_with_cuts
-        for _, graph_var in pairs({graph, pool_graph, pass_graph, cut_graph, random_graph, subdiv_graph}) do
-            if graph_var ~= nil then
-                -- It's much better algorithmically (and closer to reflection reality) to just switch dependents of gleba and nauvis
-                local nauvis_node = graph_var.nodes[gutils.key("room", gutils.key("planet", "nauvis"))]
-                local gleba_node = graph_var.nodes[gutils.key("room", gutils.key("planet", "gleba"))]
-                local function leads_to_room_launch(node)
-                    if node.type == "room-launch" then
-                        return true
-                    elseif node.type ~= "slot" and node.type ~= "traveler" then
-                        return false
-                    else
-                        local next_edge
-                        for dep, _ in pairs(node.dep) do
-                            next_edge = graph.edges[dep]
-                            break
-                        end
-                        if next_edge == nil then
-                            return false
-                        else
-                            return leads_to_room_launch(graph.nodes[next_edge.stop])
-                        end
-                    end
-                end
-                local nauvis_deps = {}
-                for dep, _ in pairs(nauvis_node.dep) do
-                    local dep_node = graph_var.nodes[graph_var.edges[dep].stop]
-                    -- room-launch's are intrinsic to the room
-                    if not leads_to_room_launch(dep_node) then
-                        if dep_node.type == "slot" then
-                            local dep_node_dep
-                            for dep2, _ in pairs(dep_node.dep) do
-                                dep_node_dep = dep2
-                                break
-                            end
-                            if dep_node_dep ~= nil then
-                                table.insert(nauvis_deps, dep_node_dep)
-                            end
-                        else
-                            table.insert(nauvis_deps, dep)
-                        end
-                    end
-                end
-                local gleba_deps = {}
-                for dep, _ in pairs(gleba_node.dep) do
-                    local dep_node = graph_var.nodes[graph_var.edges[dep].stop]
-                    if not leads_to_room_launch(dep_node) then
-                        if dep_node.type == "slot" then
-                            local dep_node_dep
-                            for dep2, _ in pairs(dep_node.dep) do
-                                dep_node_dep = dep2
-                                break
-                            end
-                            if dep_node_dep ~= nil then
-                                table.insert(gleba_deps, dep_node_dep)
-                            end
-                        else
-                            table.insert(gleba_deps, dep)
-                        end
-                    end
-                end
-                -- We add edges directly to the nodes, but skipping slots is fine; skipping travelers is what you have to watch out for
-                for _, dep in pairs(nauvis_deps) do
-                    local edge = graph_var.edges[dep]
-                    gutils.add_edge(graph_var, gutils.key(gleba_node), edge.stop)
-                    gutils.remove_edge(graph_var, dep)
-                end
-                for _, dep in pairs(gleba_deps) do
-                    local edge = graph_var.edges[dep]
-                    gutils.add_edge(graph_var, gutils.key(nauvis_node), edge.stop)
-                    gutils.remove_edge(graph_var, dep)
-                end
-            end
-        end
-        log("Done injecting gleba")
-    end
-
-    if CONDUCT_FIRST_PASS then
-        local pass_graph = table.deepcopy(subdiv_graph)
-
-        if COMBINE_TECH_UNLOCK_RECIPE then
-            -- Put recipe-tech-unlocks with their recipes if we're doing our experiment
-            -- This technically incorrectly makes recipes depend on ALL techs that unlock them but is fine for now as a hotfix to test this approach
-            for _, node in pairs(pass_graph.nodes) do
-                -- TODO: Maybe some helper functions for dealing with subdivided edges
-                -- TODO: Filter out annoying canonical slot
-                if node.type == "slot" and node.name ~= "" then
-                    local upstream_node = gutils.get_conn_owner(pass_graph, gutils.get_conn_buddy(pass_graph, node))
-                    if upstream_node ~= nil and upstream_node.type == "recipe-tech-unlock" then
-                        local corresponding_recipe_node = pass_graph.nodes[gutils.key("recipe", upstream_node.name)]
-                        local edges_to_remove = {}
-
-                        -- TODO: Do this better; the traveler will still have metadata about the old tech unlock node
-                        local corresponding_trav = gutils.get_conn_buddy(pass_graph, node)
-                        gutils.add_edge(pass_graph, gutils.key(corresponding_trav), gutils.key(corresponding_recipe_node))
-                        local edges_to_remove = {}
-                        for pre, _ in pairs(upstream_node.pre) do
-                            table.insert(edges_to_remove, pre)
-                        end
-                        local function is_tech_unlock_pre(pre)
-                            -- TODO: WHY IS THIS HAPPENEINGSING:?!?!
-                            if pass_graph.edges[pre] == nil then
-                                return false
-                            end
-                            local pre_node = pass_graph.nodes[pass_graph.edges[pre].start]
-                            while true do
-                                if pre_node.type ~= "slot" and pre_node.type ~= "traveler" then
-                                    return pre_node.type == "recipe-tech-unlock"
-                                else
-                                    local return_val = false
-                                    for further_pre, _ in pairs(pre_node.pre) do
-                                        if is_tech_unlock_pre(further_pre) then
-                                            return_val = true
-                                        end
-                                    end
-                                    return return_val
-                                end
-                            end
-                        end
-                        for pre, _ in pairs(corresponding_recipe_node.pre) do
-                            if is_tech_unlock_pre(pre) then
-                                table.insert(edges_to_remove, pre)
-                            end
-                        end
-                        --[[for dep, _ in pairs(upstream_node.dep) do
-                            log(dep)
-                            log(serpent.block(pass_graph.edges[dep]))
-                            -- Idk why this wasn't added to graph.edges or whatever, hopefully that doesn't need a fix now
-                            -- TODO: Fix
-                            local i_hope_this_works = pass_graph.edges[dep]
-                            if i_hope_this_works ~= nil then
-                                local node_corresponding_trav = pass_graph.nodes[i_hope_this_works.stop]
-                                for dep2, _ in pairs(node_corresponding_trav.dep) do
-                                    log(dep2)
-                                    if graph.edges[dep2] ~= nil then
-                                        for dep3, _ in pairs(graph.nodes[graph.edges[dep2].stop].dep) do
-                                            log(dep3)
-                                            table.insert(edges_to_remove, dep2)
-                                        end
-                                    end
-                                end
-                            end
-                        end]]
-                        for _, edge_key in pairs(edges_to_remove) do
-                            -- TODO: How are the edges not in the graph!?
-                            if pass_graph.edges[edge_key] ~= nil then
-                                gutils.remove_edge(pass_graph, edge_key)
-                            end
-                        end
-
-                        --[[
-                        for pre, _ in pairs(node.pre) do
-                            local start = pass_graph.edges[pre].start
-                            local rerouted_edge = gutils.add_edge(pass_graph, start, gutils.key(corresponding_recipe_node))
-                            gutils.subdivide_old(pass_graph, gutils.ekey(rerouted_edge))
-                            table.insert(edges_to_remove, pre)
-                        end
-                        for dep, _ in pairs(upstream_node.dep) do
-                            table.insert(edges_to_remove, dep)
-                        end
-                        for _, pre in pairs(edges_to_remove) do
-                            gutils.remove_edge(pass_graph, pre)
-                        end]]
-                    end
-                end
-            end
-        end
-
-        if SWITCH_TO_PLANET then
-            -- TODO: Should I keep this?
-            -- Extended sort to prioritize things reachable in isolations from larger VANILLA sort, then put other things after
-            local planet_specific_sort = top2.sort(old_subdiv_graph)
-            local reachable_isolation_deps = {}
-            local not_reachable_isolation_deps = {}
-            for _, dep in pairs(sorted_deps) do
-                local gleba_context = gutils.key("planet", "gleba")
-                -- 1 is isolatability
-                if planet_specific_sort.node_to_contexts[gutils.key(dep)] == true or planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context] == true then
-                    table.insert(reachable_isolation_deps, dep)
-                else
-                    local has_isolatability_context = false
-                    for bin_str, _ in pairs(planet_specific_sort.node_to_contexts[gutils.key(dep)][gleba_context]) do
-                        if string.sub(bin_str, 1, 1) == "1" then
-                            has_isolatability_context = true
-                        end
-                    end
-                    if has_isolatability_context then
-                        table.insert(reachable_isolation_deps, dep)
-                    else
-                        table.insert(not_reachable_isolation_deps, dep)
-                    end
-                end
-            end
-            sorted_deps = {}
-            for _, dep in pairs(reachable_isolation_deps) do
-                table.insert(sorted_deps, dep)
-            end
-            for _, dep in pairs(not_reachable_isolation_deps) do
-                table.insert(sorted_deps, dep)
-            end
-        end
-        -- CRITICAL TODO: Next level of desperation would be to start ignoring some of those blacklisted edges that we add
-
-        local base_deps = {}
-        local head_deps = {}
-        local head_to_trav = {}
-        local base_to_slot = {}
-        local base_to_vanilla_slots = {}
-        for _, dep_in_sorted in pairs(sorted_deps) do
-            local dep = pass_graph.nodes[gutils.key(dep_in_sorted)]
-            -- Only add deps if they had some travelers/were going to have something randomized
-            -- A long stream of checks with COMBINE_TECH_UNLOCK_RECIPE, probably some are only needed because of bugs
-            -- TODO: Fix!
-            --if next(node_to_random_travs[gutils.key(dep)]) ~= nil and not (COMBINE_TECH_UNLOCK_RECIPE and dep.type == "traveler" and next(dep.dep) ~= nil and graph.edges[next(dep.dep)] ~= nil and gutils.get_conn_owner(pass_graph, dep) ~= nil and gutils.get_conn_owner(pass_graph, dep).type == "recipe-tech-unlock") then
-                
-            -- Only add deps if they had some travelers/were going to have something randomized
-            -- Check if this is a tech_unlock traveler that should be excluded when COMBINE is enabled
-            local is_tech_unlock_trav = false
-            if COMBINE_TECH_UNLOCK_RECIPE and dep.type == "traveler" then
-                local dep_in_subdiv = subdiv_graph.nodes[gutils.key(dep)]
-                if dep_in_subdiv then
-                    local owner = gutils.get_conn_owner(subdiv_graph, dep_in_subdiv)
-                    is_tech_unlock_trav = (owner ~= nil) and (owner.type == "recipe-tech-unlock")
-                end
-            end
-            if next(node_to_random_travs[gutils.key(dep)]) ~= nil and not is_tech_unlock_trav then
-                table.insert(base_deps, dep)
-                local head_node = gutils.add_node(pass_graph, dep.type, dep.name .. "-head")
-                head_node.op = "AND"
-                table.insert(head_deps, head_node)
-                -- If dep was in short path, make sure this new head_node is too
-                if short_path[gutils.key(dep)] then
-                    short_path[gutils.key(head_node)] = true
-                end
-                local base_head_edge = gutils.add_edge(pass_graph, gutils.key(dep), gutils.key(head_node))
-                -- All deps move to head
-                local deps_to_remove = {}
-                for base_dep, _ in pairs(dep.dep) do
-                    -- TODO: Another nil edges?
-                    if pass_graph.edges[base_dep] ~= nil and base_dep ~= gutils.ekey(base_head_edge) then
-                        gutils.add_edge(pass_graph, gutils.key(head_node), pass_graph.edges[base_dep].stop)
-                        table.insert(deps_to_remove, base_dep)
-                    end
-                end
-                for _, base_dep in pairs(deps_to_remove) do
-                    gutils.remove_edge(pass_graph, base_dep)
-                end
-                base_to_vanilla_slots[gutils.key(dep)] = {}
-                -- Randomized pres stay with base
-                -- For OR nodes/traveler deps everything (the only thing) is randomized
-                if dep.type == "traveler" then
-                    -- Base pre still needs to be broken
-                    local slot_trav_edge
-                    for pre, _ in pairs(dep.pre) do
-                        slot_trav_edge = pre
-                        break
-                    end
-                    table.insert(base_to_vanilla_slots[gutils.key(dep)], pass_graph.nodes[pass_graph.edges[slot_trav_edge].start])
-                    gutils.remove_edge(pass_graph, slot_trav_edge)
-                else
-                    local stays_with_base = {}
-                    for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
-                        stays_with_base[gutils.key(trav)] = true
-                    end
-                    local pres_to_remove = {}
-                    for base_pre, _ in pairs(dep.pre) do
-                        -- TODO: Another buggy nil edges check
-                        if pass_graph.edges[base_pre] ~= nil then
-                            if not stays_with_base[pass_graph.edges[base_pre].start] then
-                                gutils.add_edge(pass_graph, pass_graph.edges[base_pre].start, gutils.key(head_node))
-                                table.insert(pres_to_remove, base_pre)
-                            else
-                                -- Base pres must be broken so that they can be reassembled to the new head
-                                local prenode = pass_graph.nodes[pass_graph.edges[base_pre].start]
-                                -- Get unique edge from slot
-                                local prenode_pre
-                                for pre, _ in pairs(prenode.pre) do
-                                    prenode_pre = pre
-                                    break
-                                end
-                                table.insert(base_to_vanilla_slots[gutils.key(dep)], pass_graph.nodes[pass_graph.edges[prenode_pre].start])
-                                table.insert(pres_to_remove, prenode_pre)
-                            end
-                        end
-                    end
-                    for _, base_pre in pairs(pres_to_remove) do
-                        gutils.remove_edge(pass_graph, base_pre)
-                    end
-                end
-                local subdivide_info = gutils.subdivide_old(pass_graph, gutils.ekey(base_head_edge))
-                local sub_trav = subdivide_info.traveler
-                head_to_trav[gutils.key(head_node)] = sub_trav
-                base_to_slot[gutils.key(dep)] = subdivide_info.slot
-                local edge_to_remove
-                for pre, _ in pairs(sub_trav.pre) do
-                    gutils.remove_edge(pass_graph, pre)
-                    break
-                end
-            end
-        end
-
-        log("Calling first-pass")
-        local first_pass_info = first_pass.shuffle(pass_graph, short_path, shuffled_prereqs, init_sort, base_deps, head_deps, node_to_random_travs, head_to_trav, base_to_slot, base_to_vanilla_slots, trav_to_handler)
-        log("Call successful")
-
-        if COMBINE_TECH_UNLOCK_RECIPE then
-            -- Uncombine recipe and recipe-tech-unlock
-            local pass_sort = first_pass_info.pass_sort
-
-            local new_open = {}
-            local old_ind_to_new_ind = {}
-            local new_ind_to_ind = {}
-            for open_ind, open_info in pairs(pass_sort.open) do
-                local node = pass_graph.nodes[open_info.node]
-                if node.type == "recipe" and string.sub(node.name, -5, -1) ~= "-head" then
-                    table.insert(new_open, {
-                        node = gutils.key("recipe-tech-unlock", node.name),
-                        contexts = true--open_info.contexts,
-                    })
-                    old_ind_to_new_ind[open_ind] = #new_open
-                    new_ind_to_ind[#new_open] = old_ind_to_new_ind[pass_sort.ind_to_ind[open_ind]]
-                end
-                table.insert(new_open, open_info)
-                old_ind_to_new_ind[open_ind] = #new_open
-                new_ind_to_ind[#new_open] = old_ind_to_new_ind[pass_sort.ind_to_ind[open_ind]]
-            end
-            pass_sort.open = new_open
-            pass_sort.ind_to_ind = new_ind_to_ind
-        end
-
-        for _, dep in pairs(first_pass_info.new_dep_order) do
-            log(gutils.key(dep))
-        end
-
-        pool_info = first_pass_info.pass_sort
-        first_pass_sorted_deps = first_pass_info.new_dep_order
-        -- first_pass_info gives back the dependents in its graph, to change sorted_deps let's get the dependents with matching keys
-        sorted_deps = {}
-        for _, dep in pairs(first_pass_sorted_deps) do
-            if COMBINE_TECH_UNLOCK_RECIPE then
-                if dep.type == "recipe" then
-                    local recipe_prot = data.raw.recipe[string.sub(dep.name, 1, -6)]
-                    if recipe_prot.enabled == false then
-                        local tech_unlock_node = subdiv_graph.nodes[gutils.key("recipe-tech-unlock", string.sub(dep.name, 1, -6))]
-                        table.insert(sorted_deps, tech_unlock_node)
-                        -- TODO: So much hackiness...
-                        node_to_random_travs[gutils.key(tech_unlock_node)] = {tech_unlock_node}
-                        trav_to_handler[gutils.key(tech_unlock_node)] = handlers["tech-unlocks"]
-                    end
-                end
-            end
-            -- We do string.sub to remove the -head suffix, since the deps returned are the heads
-            local dep_in_old_graph = subdiv_graph.nodes[gutils.key(dep.type, string.sub(dep.name, 1, -6))]
-            table.insert(sorted_deps, dep_in_old_graph)
-        end
-
-        -- TODO: This is copy-pasted code; refactor into a function in the future
-        context_node_to_ind = {}
-        if not PRESERVE_ISOLATABILITY then
-            local all_contexts = {}
-            for context, _ in pairs(logic.contexts) do
-                all_contexts[context] = true
-                context_node_to_ind[context] = {}
-            end
-            for open_ind, node_info in pairs(pool_info.open) do
-                local contexts_to_use = node_info.contexts
-                if contexts_to_use == true then
-                    contexts_to_use = table.deepcopy(all_contexts)
-                end
-                for context, _ in pairs(contexts_to_use) do
-                    context_node_to_ind[context][node_info.node] = context_node_to_ind[context][node_info.node] or open_ind
-                end
-            end
-        else
-            for context, _ in pairs(logic.contexts) do
-                for _, str_val in pairs({"0", "1"}) do
-                    context_node_to_ind[context .. str_val] = {}
-                end
-            end
-            for open_ind, node_info in pairs(pool_info.open) do
-                if node_info.contexts == true then
-                    for context, _ in pairs(logic.contexts) do
-                        for _, str_val in pairs({"0", "1"}) do
-                            context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                        end
-                    end
-                else
-                    for context, context_vals in pairs(node_info.contexts) do
-                        if context_vals == true then
-                            for _, str_val in pairs({"0", "1"}) do
-                                context_node_to_ind[context .. str_val][node_info.node] = context_node_to_ind[context .. str_val][node_info.node] or open_ind
-                            end
-                        else
-                            for bin_str, val in pairs(context_vals) do
-                                context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] = context_node_to_ind[context .. string.sub(bin_str, 1, 1)][node_info.node] or open_ind
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        -- Give bases head contexts
-        for context, _ in pairs(logic.contexts) do
-            for _, dep in pairs(sorted_deps) do
-                local corresponding_head = pass_graph.nodes[gutils.key(dep.type, dep.name .. "-head")]
-                if corresponding_head ~= nil then
-                    context_node_to_ind[context][gutils.key(dep)] = context_node_to_ind[context][gutils.key(corresponding_head)]
-                end
-            end
-        end
-    end
-
-    -- Context reachability
-    -- Testing if putting another here fixes a bug
-    -- CRITICAL TODO: Remove when resolved
-    local function all_contexts_reachable_new(slot, trav)
-        -- Actually, this breaks things to do the direct connection way (which is kinda obvious in hindsight)
-        -- CRITICAL TODO: Don't do that stupid direct connection thing (I think this was in "first pass" where I was doing this thing)
-        -- I did some direct connections, which I probably shouldn't have, so we'll need to check the actual owners
-        local slot_owner = gutils.get_conn_owner(random_graph, slot)
-        local trav_owner = gutils.get_conn_owner(random_graph, trav)
-
-        if not PRESERVE_ISOLATABILITY then
-            for context, _ in pairs(logic.contexts) do
-                -- Let's try with "last prereq comes after"
-                -- Trying out a new idea where we ignore things after the last prereq that satisfied something (ind_to_ind)
-                -- This actually didn't have an effect because of the way pool sort works
-                if (pool_info.ind_to_ind[context_node_to_ind[context][gutils.key(trav)]] or (#pool_info.open + 2)) < (context_node_to_ind[context][gutils.key(slot)] or (#pool_info.open + 1)) then
-                    return false
-                end
-            end
-        else
-            for context, _ in pairs(logic.contexts) do
-                for _, str_val in pairs({"0", "1"}) do
-                    if (context_node_to_ind[context .. str_val][gutils.key(trav)] or (#pool_info.open + 2)) < (context_node_to_ind[context .. str_val][gutils.key(slot)] or (#pool_info.open + 1)) then
-                        return false
-                    end
-                end
-            end
-        end
-
-        return true
-    end
-
-    -- TEST: Make sure each trav is after its corresponding slot
-    for _, dep in pairs(sorted_deps) do
-        for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
-            local subdiv_trav = subdiv_graph.nodes[gutils.key(trav)]
-            local subdiv_slot = gutils.get_conn_buddy(subdiv_graph, subdiv_trav)
-            local slot = random_graph.nodes[gutils.key(subdiv_slot)]
-            if slot.name ~= trav.name then
-                log(serpent.block(slot.name))
-                log(serpent.block(trav.name))
-                error("Randomization assertion failed! Tell exfret he's a dumbo.")
-            end
-            if not all_contexts_reachable(slot, trav) then
-                log(serpent.block(slot.name))
-                log(serpent.block(trav.name))
-                error("Randomization assertion failed! Tell exfret he's a dumbo.")
-            end
-        end
-    end
-
-    test_graph_invariants.test(random_graph)
-
-    ----------------------------------------------------------------------------------------------------
-    -- Do The Shuffle
-    ----------------------------------------------------------------------------------------------------
-
-    log("Shuffle started")
-
-    rng.shuffle(rng.key({id = "unified"}), shuffled_prereqs)
-    rng.shuffle(rng.key({id = "unified"}), post_shuffled_prereqs)
-    for _, prereq in pairs(post_shuffled_prereqs) do
-        table.insert(shuffled_prereqs, prereq)
-    end
-
-    -- Take out techs and put them back in order to encourage recipe unlocks to be in order
-    -- Order techs according to new sort
-    -- This still seems not to be working
-    --[[if COMBINE_TECH_UNLOCK_RECIPE_TWO then
-        local techs_in_order = {}
-        local tech_to_pos = {}
+    -- TEST: Make sure each head is after its corresponding base
+    -- TODO: Make this check compatible with first pass
+    if not DO_FIRST_PASS then
         for _, dep in pairs(sorted_deps) do
-            if dep.type == "technology" then
-                table.insert(techs_in_order, {})
-                tech_to_pos[string.sub(dep.name, 1, -6)] = #techs_in_order
-            end
-        end
-        for _, prereq in pairs(shuffled_prereqs) do
-            local prereq_owner = gutils.get_conn_owner(pool_graph, prereq)
-            if prereq_owner.type == "technology" and tech_to_pos[prereq_owner.name] ~= nil then
-                table.insert(techs_in_order[tech_to_pos[prereq_owner.name] ], prereq)
-            end
-        end
-        local outer_ind = 1
-        local inner_ind = 1
-        for ind, prereq in pairs(shuffled_prereqs) do
-            local prereq_owner = gutils.get_conn_owner(pool_graph, prereq)
-            if prereq_owner.type == "technology" and outer_ind <= #techs_in_order then
-                if inner_ind > #techs_in_order[outer_ind] then
-                    outer_ind = outer_ind + 1
-                    inner_ind = 1
-                end
-                if outer_ind <= #techs_in_order then
-                    local replacement_prereq = techs_in_order[outer_ind][inner_ind]
-                    shuffled_prereqs[ind] = replacement_prereq
-                    inner_ind = inner_ind + 1
-                end
-            end
-        end
-    end]]
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                local head = subdiv_graph.nodes[head_key]
+                local base_key = head.old_base
+                local base = pool_graph.nodes[base_key]
 
-    -- Switch order of techs in sorted_deps so that the tree is less linear
-    if config.technology_delinearization ~= "none" then
-        local curr_tech_order = {}
-        for _, dep in pairs(sorted_deps) do
-            if dep.type == "technology" then
-                table.insert(curr_tech_order, dep)
-            end
-        end
-        -- Random shuffle in the case of "some"
-        if config.technology_delinearization == "some" then
-            rng.shuffle(rng.key({id = "unified"}), curr_tech_order)
-        end
-        local curr_tech_order_ind = #curr_tech_order
-        for dep_ind, dep in pairs(sorted_deps) do
-            if dep.type == "technology" then
-                sorted_deps[dep_ind] = curr_tech_order[curr_tech_order_ind]
-                curr_tech_order_ind = curr_tech_order_ind - 1
-            end
-        end
-    end
-
-    -- Note that we don't technically need to go in dependent order anymore
-    local used_prereq_indices = {}
-    -- We actually should keep dep-prereq map since some prereqs are there multiple times
-    -- Thus, the graph alone would look weird as a way of representing things
-    local trav_to_new_slot = {}
-    for dep_ind, dep in pairs(sorted_deps) do
-        if #node_to_random_travs[gutils.key(dep)] > 0 then
-            log("Randomizing " .. gutils.key(dep))
-            for _, trav in pairs(node_to_random_travs[gutils.key(dep)]) do
-                local found_prereq = false
-                for ind, slot in pairs(shuffled_prereqs) do
-                    if not used_prereq_indices[ind] and all_contexts_reachable_new(slot, trav) then
-                        -- Have traveler's handler validate this ind
-                        if trav_to_handler[gutils.key(trav)].validate(random_graph, slot, trav, {
-                            init_sort = init_sort, -- Needed for tech rando
-                        }) then
-                            log("Accepted prereq " .. gutils.key(gutils.get_conn_owner(cut_graph, slot)))
-                            trav_to_handler[gutils.key(trav)].process(random_graph, slot, trav)
-                            found_prereq = true
-                            used_prereq_indices[ind] = true
-                            trav_to_new_slot[gutils.key(trav)] = slot
-
-                            -- No need to update graph since we already know prereq pools
-                            break
-                        end
-                    end
+                if base.name ~= head.name then
+                    log(serpent.block(base))
+                    log(serpent.block(head))
+                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
                 end
-                if not found_prereq then
-                    -- Future idea: try going through a second time with another shuffled list
-                    local percentage = math.floor(100 * dep_ind / #sorted_deps)
-                    -- Prereq shuffle can "keep failing", making its failures only an isolated subset (that's cool!)
-                    log("Prereq shuffle failed at " .. percentage .. "%")
-                    -- Report failure
-                    return false
+                if not all_contexts_reachable(base_key, head_key) then
+                    log(serpent.block(base))
+                    log(serpent.block(head))
+                    error("Randomization assertion failed! Tell exfret he's a dumbo.")
                 end
             end
         end
     end
 
-    test_graph_invariants.test(random_graph)
+    ----------------------------------------------------------------------------------------------------
+    log_info(2, "SHUFFLE")
+    ----------------------------------------------------------------------------------------------------
 
-    ----------------------------------------------------------------------------------------------------
-    -- Reflection
-    ----------------------------------------------------------------------------------------------------
+    local random_graph = table.deepcopy(cut_graph)
 
     for _, handler in pairs(handlers) do
-        handler.reflect(random_graph, trav_to_new_slot, trav_to_handler)
+        rng.shuffle(rng.key({id = "unified"}), handler_to_shuffled_prereqs[handler.id])
+        rng.shuffle(rng.key({id = "unified"}), handler_to_post_shuffled_prereqs[handler.id])
+        for _, prereq in pairs(handler_to_post_shuffled_prereqs[handler.id]) do
+            -- TODO: Might need to add back; currently disables adding a prereq multiple times
+            if handler.with_replacement == false then
+                table.insert(handler_to_shuffled_prereqs[handler.id], prereq)
+            end
+        end
     end
 
-    if SWITCH_TO_PLANET then
+    -- One promotion state shared by the generic handlers below and custom searches (like recipe ingredients) after
+    -- With first pass, it must reason over first pass's split graph, which is the model reflection builds
+    local prom
+    if USE_PROMOTION then
+        prom = promotion.new({
+            graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
+            pool_sort_info = sort_for_pool,
+            complex = PROMOTION_COMPLEX_CONTEXTS,
+            debt = planetary_debt(),
+            -- Contexts recipes locked to one planet keep, from first pass's sort of the game before randomization
+            planet_locked = (first_pass_info or {}).planet_locked,
+            -- A head's handler says what connecting a base to it gains or loses (e.g. entity randomization's pairing table)
+            connection_abilities = function(base, head)
+                local handler = head_to_handler[key(head)]
+                if handler == nil then
+                    return base.abilities
+                end
+                return handler.connection_abilities(base, head)
+            end,
+        })
+        local failed = prom.promise_mechanics()
+        local num_single_context_recipes = prom.promise_single_context_recipes()
+        log("Promotion: promised " .. num_single_context_recipes .. " recipes that are reachable in only one context")
+        log("Promotion: promised " .. prom.num_promised .. " pebbles for mechanics; " .. #failed .. " mechanic pebbles could not be established; " .. tostring(prom.num_lost_before) .. " mechanic contexts and " .. tostring(prom.num_recipes_lost_before) .. " recipes already lost before randomization")
+        prom.log_debt("start")
+    end
+
+    -- TODO: Tech delinearization (pull out to a helper)
+    -- Might be defunct now that I'm doing tech tree reconstruction
+
+    -- In first pass, return to owner nodes and ask if one's slot is context reachable before the other's slot in the pass sort
+    local function node_to_first_pass_slot(node)
+        -- Trav should get the right context from its slot
+        local trav_node_key = key(node.type, first_pass.make_trav_name(node.name))
+
+        if first_pass_info.graph.nodes[trav_node_key] ~= nil then
+            return trav_node_key
+        else
+            return key(node)
+        end
+    end
+
+    local function get_context_reachable(base, head)
+        local ignore_nil_contexts = head_to_handler[key(head)].ignore_nil_contexts
+
+        if not DO_FIRST_PASS then
+            return all_contexts_reachable(key(base), key(head), ignore_nil_contexts)
+        else
+            local base_owner = gutils.get_owner(random_graph, base)
+            local head_owner = gutils.get_owner(random_graph, head)
+            return all_contexts_reachable(node_to_first_pass_slot(base_owner), node_to_first_pass_slot(head_owner), ignore_nil_contexts)
+        end
+    end
+
+    local head_to_base = {}
+    local handler_to_used_prereq_inds = {}
+    -- Heads at chunk boundaries (debt mode) whose new base pays for their dependent
+    local num_paying_heads = 0
+    for _, handler in pairs(handlers) do
+        handler_to_used_prereq_inds[handler.id] = {}
+    end
+    for dep_ind, dep in pairs(sorted_deps) do
+        if #dep_to_heads[dep] > 0 then
+            local context_str = ""
+            if DO_FIRST_PASS then
+                context_str = old_sorted_deps[dep_ind]
+            end
+            log("\nRandomizing " .. dep .. " (" .. context_str .. ")")
+        end
+
+        local handler_to_heads = {}
+
+        -- Contexts this dep must keep; computed only if a generic handler randomizes one of its heads
+        local required_contexts
+        if prom ~= nil then
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                if head_to_handler[head_key].custom_prereq_search == false and required_contexts == nil then
+                    required_contexts = prom.required_contexts(dep)
+                    if #required_contexts == 0 and random_graph.nodes[dep].type == "recipe" and prom.initially_reachable(dep) then
+                        -- Every recipe must stay reachable
+                        log("Promotion: " .. dep .. " can no longer be reached in any context")
+                        return false
+                    end
+                end
+            end
+        end
+
+        for _, head_key in pairs(dep_to_heads[dep]) do
+            local head = random_graph.nodes[head_key]
+            local found_prereq = false
+            local handler_id = head_to_handler[head_key].id
+            local shuffled_prereqs = handler_to_shuffled_prereqs[handler_id]
+
+            -- Check for custom handling, which will be done later
+            if head_to_handler[head_key].custom_prereq_search ~= false then
+                handler_to_heads[handler_id] = handler_to_heads[handler_id] or {}
+                table.insert(handler_to_heads[handler_id], head_key)
+            else
+                -- At a chunk boundary (debt mode: the head's dependent owes something only through this head, see skeleton/promotion.lua), bases that pay for it go first
+                local order = {}
+                local later = {}
+                local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.head_boundary_contexts(head_key, required_contexts) or {}
+                for ind = 1, #shuffled_prereqs do
+                    if #paying_contexts > 0 and prom.head_pays(head_key, shuffled_prereqs[ind], paying_contexts) then
+                        table.insert(order, ind)
+                    else
+                        table.insert(later, ind)
+                    end
+                end
+                for _, ind in pairs(later) do
+                    table.insert(order, ind)
+                end
+                for _, ind in pairs(order) do
+                    local base_key = shuffled_prereqs[ind]
+                    local base = random_graph.nodes[base_key]
+
+                    -- TEST: Check for nil base or head
+                    if base == nil or head == nil then
+                        log(base_key)
+                        log(head_key)
+                        error("Randomization assertion failed! Tell exfret he's a dumbo.")
+                    end
+
+                    local is_context_reachable
+                    if prom ~= nil then
+                        is_context_reachable = #required_contexts == 0 or prom.head_candidate_ok(head_key, base_key, required_contexts)
+                    else
+                        is_context_reachable = get_context_reachable(base, head)
+                    end
+
+                    if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
+                        -- Have head's handler validate this base
+
+                        if head_to_handler[head_key].validate(random_graph, base, head, {
+                            init_sort = sort_for_claiming, -- Needed for tech rando
+                        }) then
+                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
+                            head_to_handler[head_key].process(random_graph, base, head)
+                            found_prereq = true
+                            handler_to_used_prereq_inds[handler_id][ind] = true
+                            head_to_base[head_key] = base_key
+                            if prom ~= nil then
+                                if #paying_contexts > 0 and prom.head_pays(head_key, base_key, paying_contexts) then
+                                    num_paying_heads = num_paying_heads + 1
+                                end
+                                prom.resolve_head(head_key, base_key, required_contexts)
+                            end
+
+                            if head_to_handler[head_key].with_replacement then
+                                table.insert(shuffled_prereqs, base_key)
+                            end
+
+                            break
+                        end
+                    end
+                end
+                if not found_prereq and prom ~= nil then
+                    -- Fall back to the vanilla base, which promotion guarantees is valid in the required contexts
+                    local base_key = head.old_base
+                    log("Prereq shuffle found nothing for " .. head_key .. "; falling back to vanilla base")
+                    head_to_handler[head_key].process(random_graph, random_graph.nodes[base_key], head)
+                    head_to_base[head_key] = base_key
+                    prom.resolve_head(head_key, base_key, required_contexts)
+                    found_prereq = true
+                end
+                if not found_prereq then
+                    --log_info(2, serpent.block(shuffled_prereqs))
+                    log(head_key)
+                    local percentage = math.floor(100 * dep_ind / #sorted_deps)
+                    log("Prereq shuffle failed at " .. tostring(percentage) .. "%")
+                end
+            end
+        end
+    end
+    if prom ~= nil then
+        log("Promotion: " .. num_paying_heads .. " heads at chunk boundaries took bases that pay for them")
+    end
+    for _, handler in pairs(handlers) do
+        if handler.custom_prereq_search ~= false then
+            local search_result = handler.custom_prereq_search({
+                random_graph = random_graph,
+                -- Generic handlers' choices, which aren't added as edges to random_graph
+                head_to_base = head_to_base,
+                promotion = prom,
+                split_graph = (first_pass_info or {}).graph,
+                sorted_deps = sorted_deps,
+                shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],
+                sort_for_pool = sort_for_pool,
+                trav_to_slot = (first_pass_info or {}).trav_to_slot,
+                slot_to_trav = (first_pass_info or {}).slot_to_trav,
+                do_first_pass = DO_FIRST_PASS,
+                mechanics_sets_to_ordered = (first_pass_info or {}).mechanics_sets_to_ordered,
+                mechanics_sets_to_nodes = (first_pass_info or {}).mechanics_sets_to_nodes,
+                trav_to_mechanics_key = (first_pass_info or {}).trav_to_mechanics_key,
+            })
+            if search_result == false then
+                log("Failure at ?%")
+                return false
+            end
+        end
+    end
+    if prom ~= nil then
+        prom.log_debt("end")
+    end
+
+    ----------------------------------------------------------------------------------------------------
+    log_info(2, "REFLECT")
+    ----------------------------------------------------------------------------------------------------
+
+    changes = {}
+    -- Entity randomization reflects before item randomization, which copies item names and icons into recipes (see handlers.md)
+    -- Spoiling does too, since it writes spoil results as positions, which item randomization renames to the items first pass put there
+    local reflect_first = {
+        "recipe-ingredients-first-pass",
+        "entity",
+        "spoiling",
+    }
+    local reflects_first = {}
+    for _, handler_id in pairs(reflect_first) do
+        reflects_first[handler_id] = true
+        if handlers[handler_id] ~= nil then
+            handlers[handler_id].reflect(random_graph, head_to_base, head_to_handler)
+        end
+    end
+    for handler_id, handler in pairs(handlers) do
+        if reflects_first[handler_id] == nil then
+            handler.reflect(random_graph, head_to_base, head_to_handler)
+        end
+    end
+    for _, change in pairs(changes) do
+        if change.multiplier then
+            if change.tbl[change.prop] ~= nil then
+                change.tbl[change.prop] = change.multiplier * change.tbl[change.prop]
+            end
+        else
+            change.tbl[change.prop] = change.new_val
+        end
+    end
+    for _, change in pairs(changes) do
+        if change.is_ing_or_result and change.tbl[change.prop] ~= nil then
+            if change.tbl.type == "item" then
+                local item
+                for item_class, _ in pairs(defines.prototypes.item) do
+                    if (data.raw[item_class] or {})[change.tbl.name] ~= nil then
+                        item = data.raw[item_class][change.tbl.name]
+                        break
+                    end
+                end
+                -- If we have to raise it from 2/3 or below and this is in the ingredients, this is an expensive ingredient, so give some of it back
+                if change.ingredients and change.prop == "amount" and change.tbl[change.prop] <= 2 / 3 then
+                    -- Note: This case doesn't appear to ever happen since we only ever use multipliers larger than 1
+                    local recipe_name_to_use = change.recipe.name
+                    if handlers["recipe-ingredients-first-pass"] ~= nil then
+                        recipe_name_to_use = random_graph.nodes[handlers["recipe-ingredients-first-pass"].trav_to_slot[gutils.key("recipe", make_trav_name(change.recipe.name))]].name
+                    end
+                    local recipe_to_use = data.raw.recipe[recipe_name_to_use]
+
+                    local cost_over_reasonable = (3 / 2) / change.tbl[change.prop]
+                    -- You "should" only pay up to the cost_reasonable, which would correspond to 1 / cost_over_reasonable amount of the 1 thing, so you get 1 minus this amount back
+                    local amount_back = 1 - 1 / cost_over_reasonable
+                    -- Make sure this isn't a weird recipe
+                    if recipe_to_use.results ~= nil and #recipe_to_use.results > 0 then
+                        -- Make sure main product is kept
+                        if #recipe_to_use.results == 1 then
+                            recipe_to_use.main_product = recipe_to_use.results[1].name
+                        end
+                        table.insert(recipe_to_use.results, {type = "item", name = change.tbl.name, amount = 1, independent_probability = amount_back})
+                    end
+                end
+                change.tbl[change.prop] = math.max(1, math.floor(0.5 + change.tbl[change.prop]))
+                if not dutils.is_stackable(item) then
+                    change.tbl[change.prop] = 1
+                else
+                    change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
+                end
+            else
+                change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
+            end
+        end
+    end
+    for _, handler in pairs(handlers) do
+        handler.after_changes()
+    end
+
+    if SWITCH_PLANETS then
         local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.gleba)
+        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.vulcanus)
         data.raw.planet.nauvis.name = "nauvis"
-        data.raw.planet.gleba = old_nauvis
-        data.raw.planet.gleba.name = "gleba"
+        data.raw.planet.vulcanus = old_nauvis
+        data.raw.planet.vulcanus.name = "vulcanus"
     end
 
-    -- Report success
-    return true
+    return {
+        first_pass_info = first_pass_info,
+    }
 end
 
 return unified

@@ -140,7 +140,7 @@ item.spoof = function(graph)
             end
         end
     end]]
-    
+
     --[[local item_nodes = {}
     for _, node in pairs(graph.nodes) do
         if node.type == "item" then
@@ -248,7 +248,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         --[[if head_to_handler[head_key] == "item" then
             local slot = gutils.get_owner(graph, base)
             local trav = gutils.get_owner(graph, head)]]
-        
+
         local slot = split_graph.nodes[slot_key]
         local trav = split_graph.nodes[trav_key]
         -- Item and fluid positions, as {type, name}; others (entity positions) are the entity handler's
@@ -365,7 +365,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                             table.insert(changes, {
                                                 tbl = ing_or_prod,
                                                 prop = "name",
-                                                new_val = trav_item.name
+                                                new_val = trav_item.name,
                                             })
                                             -- Temperatures were the position's fluid's; another fluid there has its own
                                             if position.type == "fluid" and trav_item.name ~= position.name then
@@ -406,7 +406,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             table.insert(changes, {
                                 tbl = recipe,
                                 prop = "main_product",
-                                new_val = trav_item.name
+                                new_val = trav_item.name,
                             })
                         end
                         -- If this is a weird recipe, like it has dont_randomize, then I think that's a good signal not to change the name and icons
@@ -459,7 +459,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                 table.insert(changes, {
                                                     tbl = result,
                                                     prop = "name",
-                                                    new_val = trav_item.name
+                                                    new_val = trav_item.name,
                                                 })
                                                 -- As for recipes, another fluid there comes out at its own temperature
                                                 if position.type == "fluid" and trav_item.name ~= position.name and result.temperature ~= nil then
@@ -479,7 +479,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                         table.insert(changes, {
                                                             tbl = result,
                                                             prop = amount_key,
-                                                            new_val = new_amount
+                                                            new_val = new_amount,
                                                         })
                                                     end
                                                 end
@@ -491,7 +491,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                         table.insert(changes, {
                                             tbl = entity.minable,
                                             prop = "result",
-                                            new_val = trav_item.name
+                                            new_val = trav_item.name,
                                         })
                                         local new_count = multiplier * (entity.minable.count or 1)
                                         if not dutils.is_stackable(trav_item) then
@@ -500,7 +500,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                         table.insert(changes, {
                                             tbl = entity.minable,
                                             prop = "count",
-                                            new_val = new_count
+                                            new_val = new_count,
                                         })
 
                                         has_result = true
@@ -519,30 +519,30 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                     filename = icon_filename,
                                                     size = icon_size,
                                                     scale = 0.35,
-                                                    shift = {0.2, 0.6}
+                                                    shift = {0.2, 0.6},
                                                 },
                                                 {
                                                     variation_count = 1,
                                                     filename = icon_filename,
                                                     size = icon_size,
                                                     scale = 0.25,
-                                                    shift = {-0.5, 0.2}
+                                                    shift = {-0.5, 0.2},
                                                 },
                                                 {
                                                     variation_count = 1,
                                                     filename = icon_filename,
                                                     size = icon_size,
                                                     scale = 0.45,
-                                                    shift = {0, 0}
+                                                    shift = {0, 0},
                                                 },
                                                 {
                                                     variation_count = 1,
                                                     filename = icon_filename,
                                                     size = icon_size,
                                                     scale = 0.4,
-                                                    shift = {-0.2, -0.6}
-                                                }
-                                            }
+                                                    shift = {-0.2, -0.6},
+                                                },
+                                            },
                                         }
                                         entity.stage_counts = {entity.stage_counts[1]}
                                         entity.stages_effect = nil
@@ -579,7 +579,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                 {0.3, 0.6},
                                                 {0.5, 0.55},
                                                 {0.7, 0.65},
-                                                {0.6, 0.3}
+                                                {0.6, 0.3},
                                             }
                                             -- Add random variations to the shifts
                                             for i = 1, #shifts do
@@ -595,7 +595,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                     size = icon_size,
                                                     scale = 0.25,
                                                     tint = {236, 152, 130},
-                                                    shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]}
+                                                    shift = {entity.selection_box[1][1] + selection_box_x_size * shifts[i][1], entity.selection_box[1][2] - (entity.drawing_box_vertical_extension or 0) + selection_box_y_size * shifts[i][2]},
                                                 })
                                             end
                                         end
@@ -621,14 +621,14 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                 table.insert(changes, {
                                     tbl = technology.research_trigger,
                                     prop = "item",
-                                    new_val = trav_item.name
+                                    new_val = trav_item.name,
                                 })
                             end
                             if type(technology.research_trigger.item) == "table" and technology.research_trigger.item.name == slot_item.name then
                                 table.insert(changes, {
                                     tbl = technology.research_trigger.item,
                                     prop = "name",
-                                    new_val = trav_item.name
+                                    new_val = trav_item.name,
                                 })
                             end
                         end
@@ -664,7 +664,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         table.insert(changes, {
                             tbl = item,
                             prop = "spoil_result",
-                            new_val = trav_item.name
+                            new_val = trav_item.name,
                         })
                     end
 
@@ -673,7 +673,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         table.insert(changes, {
                             tbl = item,
                             prop = "burnt_result",
-                            new_val = trav_item.name
+                            new_val = trav_item.name,
                         })
                     end
                 end
@@ -694,7 +694,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         if trav_item.burnt_result ~= nil and trav_item.burnt_result ~= "ash" then
                             error("Burnt result collision for raw coal replacement!")
                         end
-                        
+
                         trav_item.burnt_result = "ash"
                     end
                 end

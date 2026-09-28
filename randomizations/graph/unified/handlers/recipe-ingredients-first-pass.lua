@@ -2,7 +2,7 @@
 
 local gutils = require("lib/graph/graph-utils")
 local cutils = require("lib/cost/cost-utils")
-local first_pass = require("randomizations/graph/unified/first-pass-new")
+local first_pass = require("randomizations/graph/unified/first-pass")
 local sa_costs = require("lib/cost/material-costs/sa")
 
 local recipe_ingredients_first_pass = {}
@@ -99,7 +99,7 @@ recipe_ingredients_first_pass.reflect = function(graph, head_to_base, head_to_ha
                     -- In this case, the ingredients are cheaper than normal; multiply then by some amount to preserve order
                     local multiplier = recipe_to_cost[slot_recipe.name] / recipe_to_cost[trav_recipe.name]
                     for _, ing in pairs(new_ingredients or {}) do
-                        for amount_key in pairs({"amount", "amount_min", "amount_max"}) do
+                        for amount_key, _ in pairs({"amount", "amount_min", "amount_max"}) do
                             table.insert(changes, {
                                 tbl = ing,
                                 prop = amount_key,

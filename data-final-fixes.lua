@@ -107,7 +107,7 @@ old_data_raw = table.deepcopy(data.raw)
 
 log("Loading in new dependency graph file")
 
-local unified = require("randomizations/graph/unified/execute-new")
+local unified = require("randomizations/graph/unified/execute")
 
 log("Initial reachability check")
 

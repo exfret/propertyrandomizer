@@ -134,4 +134,27 @@ test("only collisions the original game didn't have count as new", function()
     assert(#new == 1 and #new[1].recipes == 4)
 end)
 
+test("the tracker only blocks ingredients used by recipes a common furnace crafts", function()
+    add_furnace("oven", { "baking", "roasting" })
+    add_furnace("kiln", { "firing" })
+    add_recipe("bread", { "baking" }, { item("dough") })
+    add_recipe("crust", { "roasting" }, { item("flour") })
+    add_recipe("pot", { "firing" }, { item("clay") })
+    add_recipe("dumpling", { "cooking" }, { item("dough") })
+    local tracker = furnace_selection.tracker()
+    tracker.take(data.raw.recipe.bread, item("dough"))
+    -- The oven crafts crust too, so dough is taken there, but not in the kiln or for assemblers
+    assert(tracker.is_taken(tracker.pools_of(data.raw.recipe.crust), item("dough")))
+    assert(not tracker.is_taken(tracker.pools_of(data.raw.recipe.pot), item("dough")))
+    assert(not tracker.is_taken(tracker.pools_of(data.raw.recipe.dumpling), item("dough")))
+    -- A recipe moved into the kiln's category shares its pool
+    local moved = furnace_selection.tracker(function(recipe)
+        if recipe.name == "dumpling" then
+            return { "firing" }
+        end
+    end)
+    moved.take(data.raw.recipe.pot, item("clay"))
+    assert(moved.is_taken(moved.pools_of(data.raw.recipe.dumpling), item("clay")))
+end)
+
 print(num_passed .. " tests passed")

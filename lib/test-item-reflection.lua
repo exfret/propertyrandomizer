@@ -146,8 +146,8 @@ test("item reflection and first pass both use the shared rules", function()
         handle:close()
         return text
     end
-    local item_reflection = source("randomizations/graph/unified/handlers-new/item.lua")
-    local first_pass = source("randomizations/graph/unified/first-pass-new.lua")
+    local item_reflection = source("randomizations/graph/unified/handlers/item.lua")
+    local first_pass = source("randomizations/graph/unified/first-pass.lua")
     assert(string.find(item_reflection, "dutils.reflected_item_position(", 1, true) ~= nil)
     assert(string.find(item_reflection, "dutils.mining_keeps_item_names(", 1, true) ~= nil)
     assert(string.find(first_pass, "dutils.realized_item_assignment(", 1, true) ~= nil)
@@ -252,7 +252,7 @@ test("both item randomizations rename recipes by the shared main product rule", 
         handle:close()
         return text
     end
-    for _, path in pairs({"randomizations/graph/unified/handlers-new/item.lua", "randomizations/graph/item.lua"}) do
+    for _, path in pairs({"randomizations/graph/unified/handlers/item.lua", "randomizations/graph/item.lua"}) do
         local text = source(path)
         assert(string.find(text, "dutils.recipe_main_product(", 1, true) ~= nil, path)
         assert(string.find(text, "results[1].name ==", 1, true) == nil, path .. " matches recipes by their first result")
@@ -262,7 +262,7 @@ test("both item randomizations rename recipes by the shared main product rule", 
     end
     assert(string.find(source("data-final-fixes.lua"), "randomizations.fix_recycling_names()", 1, true) ~= nil)
     -- The unified item handler names recipes once it can count how many are named after each item
-    assert(string.find(source("randomizations/graph/unified/execute-new.lua"), "handler.after_changes()", 1, true) ~= nil)
+    assert(string.find(source("randomizations/graph/unified/execute.lua"), "handler.after_changes()", 1, true) ~= nil)
 end)
 
 test("a renamed recipe takes its new item's name, icon and place in the menus, and renamed ones sharing an item are numbered", function()

@@ -8,7 +8,7 @@
 -- Each item places only one entity (planting counts, see common.set_placed_entity), so bases are matched to heads one to one, with promotion keeping mechanic contexts and recipe reachability
 -- With constants.entity_first_pass on, first pass does the matching instead: every claimed acquisition edge is a first pass position like an item's (see first_pass_rules), and this handler only reflects the result
 -- With first pass (and item randomization), a build base belongs to the item's identity, so an item keeps placing its (new) entity wherever item randomization moves it
--- Reflects before item randomization (see execute-new.lua), which copies items' names and icons into recipes
+-- Reflects before item randomization (see execute.lua), which copies items' names and icons into recipes
 -- Spoofs let items that place nothing in vanilla (like modules) also place an entity, on top of everything they already do; that entity's own item then places nothing (a Vestige)
 
 local categories = require("helper-tables/categories")
@@ -292,7 +292,7 @@ entity.spoof = function(graph)
                 mine_edge.mine_back_entity = placed_name
                 -- Mining gives an item by its name, so with first pass this head moves with the item's identity (trav), like the build base
                 mine_edge.identity_head = true
-                -- With first pass entity positions, mining whatever first pass puts in this item's build position gives this item, so first pass connects this head to that identity's mine base (coupled_slot, see first-pass-new.lua)
+                -- With first pass entity positions, mining whatever first pass puts in this item's build position gives this item, so first pass connects this head to that identity's mine base (coupled_slot, see first-pass.lua)
                 if constants.entity_first_pass then
                     mine_edge.coupled_slot = key("orand", build_edge_key)
                 end
@@ -747,11 +747,11 @@ local function matched_search(params)
     local graph = params.random_graph
     local prom = params.promotion
     if prom == nil then
-        error("Entity randomization needs promotion (USE_PROMOTION in randomizations/graph/unified/execute-new.lua)")
+        error("Entity randomization needs promotion (USE_PROMOTION in randomizations/graph/unified/execute.lua)")
     end
     -- With first pass, promotion reasons over its split graph; this handler's slots aren't split (see spoof), and their heads and bases keep the same keys there
 
-    -- First pass matches entity identities to build positions (see spoof and first-pass-new.lua), so a build slot's head is a position whose built entity is the identity first pass put there
+    -- First pass matches entity identities to build positions (see spoof and first-pass.lua), so a build slot's head is a position whose built entity is the identity first pass put there
     -- Everything about what's built (its cost, demand tier, look, mining) is then the identity's, and build slots don't trade items among each other here, since first pass did that
     identity_of_position = {}
     local first_pass_entities = false
@@ -1290,7 +1290,7 @@ local function matched_search(params)
     return true
 end
 
--- Entity positions: first pass matches entity identities to them like it matches item identities to item positions (see first-pass-new.lua), and this handler reflects the result
+-- Entity positions: first pass matches entity identities to them like it matches item identities to item positions (see first-pass.lua), and this handler reflects the result
 -- A position is an orand fed by one of this handler's heads (except mine-back and carrier edges): a way an entity is acquired (an item placing it, a spot in the wild, a spawner's slot, a trigger, an egg, a death), an item or capsule that makes nothing in vanilla (see spoof), or a nowhere position
 -- Its vanilla identity is the entity acquired that way (the head's), or nothing
 -- graph is one of unified's graphs from before first pass's split, where heads still feed their orands and bases come from their sources
@@ -1339,7 +1339,7 @@ local function connected_base_key(position, identity, carrier_base_of)
     return key(position.base)
 end
 
--- First pass's rules for entity positions (see first-pass-new.lua), from unified's subdivided graph (before first pass's split)
+-- First pass's rules for entity positions (see first-pass.lua), from unified's subdivided graph (before first pass's split)
 -- Returns { positions = orand key --> position (see entity_positions), pair_ok(slot, trav) (nil when neither is an entity position), connection(slot_key, trav_key) (see monotone matching's connection_of) }
 -- A position takes an identity only if logic can model the pairing (acquisition.pairing, and validate on the base it connects to) and it passes the same balance checks entity randomization always made, from each identity's vanilla item and entity
 -- Each identity draws once whether it may make each kind of change (the *_CHANCE constants), so only some entities change how they're acquired
@@ -1549,7 +1549,7 @@ end
 local function first_pass_search(params)
     local graph = params.random_graph
     if params.slot_to_trav == nil or params.split_graph == nil then
-        error("Entity randomization needs first pass (DO_FIRST_PASS in randomizations/graph/unified/execute-new.lua)")
+        error("Entity randomization needs first pass (DO_FIRST_PASS in randomizations/graph/unified/execute.lua)")
     end
     local positions = entity_positions(graph)
     local carrier_base_of = carrier_bases(graph)

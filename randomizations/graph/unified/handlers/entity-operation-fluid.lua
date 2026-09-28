@@ -2,22 +2,30 @@
 
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
-local top = require("lib/graph/top-sort")
+local top = require("lib/graph/context-sort")
 
 local entity_operation_fluid = {}
 
 entity_operation_fluid.id = "entity_operation_fluid"
 
+entity_operation_fluid.with_replacement = true
+
+local already_added_extra
+entity_operation_fluid.initialize = function()
+    already_added_extra = {}
+end
+
 entity_operation_fluid.spoof = function(graph)
     local spoof_node = gutils.add_node(graph, "entity-operate-fluid", "any-fluids-spoof")
     spoof_node.op = "OR"
+    spoof_node.spoof = true
 
     -- Do a sort so we only consider reachable nodes
     local sort_info = top.sort(graph)
 
     local already_checked = {}
-    for _, node_info in pairs(sort_info.open) do
-        local node = graph.nodes[node_info.node]
+    for _, pebble in pairs(sort_info.sorted) do
+        local node = graph.nodes[pebble.node_key]
         if node.type == "fluid" and not already_checked[node.name] then
             already_checked[node.name] = true
             local node_prot = gutils.deconstruct(node.prot)
@@ -28,12 +36,10 @@ entity_operation_fluid.spoof = function(graph)
     end
 end
 
-local already_added_extra = {}
-
-entity_operation_fluid.claim = function(graph, prereq, dep, trav)
+entity_operation_fluid.claim = function(graph, prereq, dep, edge)
     if prereq.type == "fluid" and dep.type == "entity-operate-fluid" then
         -- Check for being a spoof
-        if string.find(dep.name, "spoof") ~= nil then
+        if dep.spoof then
             return 1
         end
 
@@ -62,14 +68,14 @@ entity_operation_fluid.claim = function(graph, prereq, dep, trav)
     end
 end
 
-entity_operation_fluid.validate = function(graph, slot, trav, extra)
-    local slot_owner = gutils.get_conn_owner(graph, slot)
+entity_operation_fluid.validate = function(graph, base, head, extra)
+    local base_owner = gutils.get_owner(graph, base)
 
-    if slot_owner.type ~= "fluid" then
+    if base_owner.type ~= "fluid" then
         return false
     end
 
-    local fluid = data.raw.fluid[slot_owner.name]
+    local fluid = data.raw.fluid[base_owner.name]
 
     -- Don't accept spoofed fluids
     if fluid == nil then
@@ -79,28 +85,33 @@ entity_operation_fluid.validate = function(graph, slot, trav, extra)
     return true
 end
 
-entity_operation_fluid.reflect = function(graph, trav_to_new_slot, trav_to_handler)
-    for trav_key, slot in pairs(trav_to_new_slot) do
-        if trav_to_handler[trav_key].id == "entity_operation_fluid" then
-            local fluid_node = gutils.get_conn_owner(graph, slot)
-            local fluid = dutils.get_prot("fluid", fluid_node.name)
-            local trav = graph.nodes[trav_key]
-            local fluid_op_node = gutils.get_conn_owner(graph, trav)
+entity_operation_fluid.reflect = function(graph, head_to_base, head_to_handler)
+    for head_key, base_key in pairs(head_to_base) do
+        if head_to_handler[head_key].id == "entity_operation_fluid" then
+            local base = graph.nodes[base_key]
+            local head = graph.nodes[head_key]
+            local fluid_op_node = gutils.get_owner(graph, head)
             local entity_op_node = gutils.unique_depconn(graph, fluid_op_node)
-            local entity = dutils.get_prot("entity", entity_op_node.name)
+            if not entity_op_node.spoof then
+                local fluid_node = gutils.get_owner(graph, base)
+                local fluid = dutils.get_prot("fluid", fluid_node.name)
+                local entity = dutils.get_prot("entity", entity_op_node.name)
 
-            -- Now, based on entity type, change fluids
-            if entity.type == "boiler" then
-                -- TODO: Support boilers without filters (those would be weird though)
-                entity.fluid_box.filter = fluid.name
-            elseif entity.type == "fusion-generator" then
-                entity.input_fluid_box.filter = fluid.name
-            elseif entity.type == "fusion-reactor" then
-                entity.input_fluid_box.filter = fluid.name
-            elseif entity.type == "generator" then
-                entity.fluid_box.filter = fluid.name
-            elseif entity.type == "fluid-turret" then
-                entity.attack_parameters.fluids[trav.ind].type = fluid.name
+                -- Now, based on entity type, change fluids
+                if entity.type == "boiler" then
+                    -- TODO: Support boilers without filters (those would be weird though)
+                    entity.fluid_box.filter = fluid.name
+                elseif entity.type == "fusion-generator" then
+                    -- Note: not currently supported
+                    entity.input_fluid_box.filter = fluid.name
+                elseif entity.type == "fusion-reactor" then
+                    entity.input_fluid_box.filter = fluid.name
+                elseif entity.type == "generator" then
+                    -- Note: not currently supported
+                    entity.fluid_box.filter = fluid.name
+                elseif entity.type == "fluid-turret" then
+                    entity.attack_parameters.fluids[head.ind].type = fluid.name
+                end
             end
         end
     end

@@ -14,6 +14,9 @@ local build_graph = require("lib/old-logic/build-graph")
 local flow_cost = require("lib/cost/flow-cost")
 local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
+local context_costs = require("lib/cost/context-costs")
+local dutils = require("lib/data-utils")
+local furnace_selection = require("lib/furnace-selection")
 
 local DO_SURFACE_PRESERVATION = true
 local gutils = require("lib/graph/graph-utils")
@@ -22,26 +25,14 @@ local context_sort = require("lib/graph/context-sort")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
 
--- NOTE: These tables are also set in compat/vanilla.lua
+-- Which ingredients stay and which recipes are left alone come from compat/vanilla.lua's recipe-ingredients blacklists, shared with unified randomization's handler
+-- blacklisted_pre holds materials (whatever mining a resource gives, spoilage, round-trip materials, ...); blacklisted_dep holds recipes (recycling, barrels, round trips, ...)
+local function recipe_blacklists()
+    return randomization_info.options.unified["recipe-ingredients"]
+end
 
--- Don't randomize water
-local dont_randomize_ings = {
-    ["fluid-water"] = true
-}
--- Also put jellynut and yumako here so that their processing recipes don't get randomized
--- Also make lava still useful by preserving it in spots
-local dont_randomize_ings_space_age = {
-    ["item-spoilage"] = true,
-    ["item-yumako"] = true,
-    ["item-jellynut"] = true,
-    ["fluid-fluoroketone-cold"] = true,
-    ["fluid-lava"] = true,
-    ["item-metallic-asteroid-chunk"] = true,
-    ["item-carbonic-asteroid-chunk"] = true,
-    ["item-oxide-asteroid-chunk"] = true,
-}
-for ing, bool in pairs(dont_randomize_ings_space_age) do
-    dont_randomize_ings[ing] = bool
+local function is_blacklisted_ing(material)
+    return recipe_blacklists().blacklisted_pre[gutils.key(material.type, material.name)] ~= nil
 end
 
 local function is_unrandomized_ing(ing, is_result_of_this_recipe)
@@ -49,85 +40,13 @@ local function is_unrandomized_ing(ing, is_result_of_this_recipe)
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
     end
-    if dont_randomize_ings[ing.type .. "-" .. ing.name] then
+    if is_blacklisted_ing(ing) then
         return true
     end
 
     return false
 end
 
--- Don't randomize these sensitive recipes
--- It was just too hard when they weren't enforced...
-local sensitive_recipes = {
-    ["iron-plate"] = true,
-    ["copper-plate"] = true,
-    ["stone-brick"] = true,
-    ["basic-oil-processing"] = true,
-    -- Preserve fuel sinks for fluids
-    ["solid-fuel-from-heavy-oil"] = true,
-    ["solid-fuel-from-light-oil"] = true,
-    ["solid-fuel-from-petroleum-gas"] = true,
-    ["plastic-bar"] = true,
-    ["uranium-processing"] = true,
-    -- Technically redundant due to other checks
-    ["kovarex-enrichment-process"] = true
-}
--- Also add recycling recipes
-for _, recipe in pairs(data.raw.recipe) do
-    local has_recycling = false
-    for _, category in pairs(recipe.categories or {"crafting"}) do
-        if category == "recycling" then
-            has_recycling = true
-        end
-    end
-    if has_recycling then
-        sensitive_recipes[recipe.name] = true
-    end
-end
--- Add barreling recipes
-for _, recipe in pairs(data.raw.recipe) do
-    if string.sub(recipe.name, -6, -1) == "barrel" then
-        sensitive_recipes[recipe.name] = true
-    end
-end
--- Add crushing recipes (space stuff is too sensitive I think?)
-for _, recipe in pairs(data.raw.recipe) do
-    local has_crushing = false
-    for _, category in pairs(recipe.categories or {"crafting"}) do
-        if category == "crushing" then
-            has_crushing = true
-        end
-    end
-    if has_crushing then
-        sensitive_recipes[recipe.name] = true
-    end
-end
-local space_age_sensitive_recipes = {
-    -- Scrap recycling is captured by recycling recipe checks
-    -- I would do jellynut/yumako, but it was throwing weird errors, so I just made them unrandomized as ingredients instead
-    --["jellynut-processing"] = true,
-    --["yumako-processing"] = true,
-    ["tungsten-plate"] = true,
-    ["iron-bacteria-cultivation"] = true,
-    ["copper-bacteria-cultivation"] = true,
-    ["fluoroketone-cooling"] = true,
-    ["ammoniacal-solution-separation"] = true,
-    ["thruster-fuel"] = true,
-    ["thruster-oxidizer"] = true,
-    ["ice-melting"] = true,
-    ["holmium-solution"] = true,
-    ["holmium-plate"] = true,
-    ["lithium-plate"] = true,
-    -- For asteroids
-    ["firearm-magazine"] = true,
-}
-if mods["space-age"] then
-    for recipe_name, bool in pairs(space_age_sensitive_recipes) do
-        sensitive_recipes[recipe_name] = bool
-    end
-end
-local flow_cost_updates = 100
--- Check if we should only randomize science pack recipes (recipes with one result that is a science pack)
 -- Find science packs
 local is_science_pack = {}
 for _, lab in pairs(data.raw.lab) do
@@ -135,30 +54,32 @@ for _, lab in pairs(data.raw.lab) do
         is_science_pack[input] = true
     end
 end
-if config.only_randomize_science_recipes then
-    flow_cost_updates = 10000
-    for _, recipe in pairs(data.raw.recipe) do
-        local is_science_recipe = false
-        if recipe.results ~= nil then
-            if #recipe.results == 1 then
-                if recipe.results[1].type == "item" and is_science_pack[recipe.results[1].name] ~= nil then
-                    is_science_recipe = true
+
+-- Recipes left as they are: the blacklisted ones, and when only science pack recipes are randomized (recipes with one result that is a science pack), every other one
+local function find_sensitive_recipes()
+    local sensitive_recipes = {}
+    for recipe_name, _ in pairs(data.raw.recipe) do
+        if recipe_blacklists().blacklisted_dep[gutils.key("recipe", recipe_name)] ~= nil then
+            sensitive_recipes[recipe_name] = true
+        end
+    end
+    if config.only_randomize_science_recipes then
+        for _, recipe in pairs(data.raw.recipe) do
+            local is_science_recipe = false
+            if recipe.results ~= nil then
+                if #recipe.results == 1 then
+                    if recipe.results[1].type == "item" and is_science_pack[recipe.results[1].name] ~= nil then
+                        is_science_recipe = true
+                    end
                 end
             end
-        end
-        if not is_science_recipe then
-            -- Jellynut and yumako processing are cursed like Gleba, don't touch them, even with a 20.01m stick
-            if recipe.name ~= "jellynut-processing" and recipe.name ~= "yumako-processing" then
+            if not is_science_recipe then
                 sensitive_recipes[recipe.name] = true
             end
         end
     end
+    return sensitive_recipes
 end
-
--- Manually assign some materials to only be for some surfaces
-local manually_assigned_material_surfaces = {
-    ["item-spoilage"] = build_graph.compound_key({"planet", "gleba"})
-}
 
 local used_mats = {}
 for _, recipe in pairs(data.raw.recipe) do
@@ -184,25 +105,23 @@ local function produces_final_products(recipe)
 end
 
 local cost_lib = require("randomizations/graph/recipe-cost")
-local calculate_points = cost_lib.calculate_points
 local get_costs_from_ings = cost_lib.get_costs_from_ings
-local optimize_single_ing = cost_lib.optimize_single_ing
-local calculate_optimal_amounts = cost_lib.calculate_optimal_amounts
 local search_for_ings = cost_lib.search_for_ings
 
 -- TODO:
 --   * Handle resource generation loops like coal liquefaction by studying resource costs with respect to "optimal" recipe choices
 --   * Investigate certain loops like kovarex with regards to flow cost (I don't think it would handle them well)
 -- FEATURES:
---   * Balanced cost randomization
+--   * Balanced cost randomization, with costs per room (lib/cost/context-costs.lua) like unified randomization's recipe-ingredients handler
 --   * Keeps barreling recipes the same
---   * Makes sure furnace recipe ingredients don't overlap
+--   * Makes sure recipes one furnace crafts don't share ingredients (lib/furnace-selection.lua)
 --   * Furnace recipes don't involve fuels
 --   * Doesn't include the results as ingredients (preventing length one loops)
 --   * When there is a length one loop, preserves them (like in kovarex)
 --   * Uses each thng a similar number of times
 --   * Keeps the same number of fluids in the recipe
 --   * Accounts for spoilage/other things that should restrict a recipe to a specific surface
+--   * Encourages newer resources (constants.new_resource_bonus)
 randomizations.recipe_ingredients = function(id)
     ----------------------------------------------------------------------
     -- Setup
@@ -210,25 +129,11 @@ randomizations.recipe_ingredients = function(id)
 
     log("Recipe randomization setup")
 
-    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
-    local old_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max"})
+    local sensitive_recipes = find_sensitive_recipes()
 
-    -- Used for making sure there aren't repeat ingredients for furnaces
-    local smelting_ingredients = {}
-    for recipe_name, _ in pairs(sensitive_recipes) do
-        local recipe = data.raw.recipe[recipe_name]
-        local has_smelting = false
-        for _, category in pairs(recipe.categories or {"crafting"}) do
-            if category == "smelting" then
-                has_smelting = true
-            end
-        end
-        if has_smelting then
-            for _, ing in pairs(recipe.ingredients) do
-                smelting_ingredients[ing.type .. "-" .. ing.name] = true
-            end
-        end
-    end
+    -- The whole game's costs, from the raw costs of what it gives automatably (lib/cost/graph-cost.lua), for which recipes and materials take part at all
+    -- Having a cost is how this randomization tells what's automatable, since it has no automatability check of its own
+    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
 
     log("Finding starting planet reachable")
 
@@ -257,23 +162,6 @@ randomizations.recipe_ingredients = function(id)
     local sort_info = top_sort.sort(dep_graph)
     local graph_sort = sort_info.sorted
 
-    log("Finding item/fluid indices")
-
-    -- Find index for items/fluids in topological sort, so that we can prioritize later items/fluids in recipes
-    local node_to_index_in_sort = {}
-    for ind, node in pairs(graph_sort) do
-        node_to_index_in_sort[build_graph.key(node.type, node.name)] = ind
-    end
-    local function compare_index_in_sort_reverse(node1, node2)
-        if node_to_index_in_sort[build_graph.key(node1.type, node1.name)] == nil or node_to_index_in_sort[build_graph.key(node2.type, node2.name)] == nil then
-            log(serpent.block(node1))
-            log(serpent.block(node2))
-            error()
-        end
-
-        return node_to_index_in_sort[build_graph.key(node2.type, node2.name)] < node_to_index_in_sort[build_graph.key(node1.type, node1.name)]
-    end
-
     -- Find previously reachable
     -- Ignore balance nodes here
     logic.build(true)
@@ -289,8 +177,6 @@ randomizations.recipe_ingredients = function(id)
     local shuffled_prereqs = {}
     local blacklist = {}
     -- Assign a recipe to the first surface it appears on
-    -- I think this is redundant now?
-    -- TODO: Possibly remove
     local recipe_to_surface = {}
     local material_added = {}
     for _, dependent_node in pairs(graph_sort) do
@@ -304,20 +190,24 @@ randomizations.recipe_ingredients = function(id)
             end
 
             -- Check that we didn't already (attempt to) add this
-            local prot_id = flow_cost.get_prot_id({type = material_type, name = dependent_node.item or dependent_node.fluid})
+            local material = {
+                type = material_type,
+                name = dependent_node.item or dependent_node.fluid,
+            }
+            local prot_id = flow_cost.get_prot_id(material)
             if not material_added[prot_id] then
                 material_added[prot_id] = true
                 -- Check that this material has a cost
                 if old_aggregate_cost.material_to_cost[prot_id] ~= nil then
                     -- Check that not blacklisted in randomizing as an ingredient
-                    if not dont_randomize_ings[prot_id] then
+                    if not is_blacklisted_ing(material) then
                         -- Insert a manually constructed prereq so things go smoothly
                         table.insert(shuffled_prereqs, {
                             type = material_type,
-                            name = dependent_node.item or dependent_node.fluid,
+                            name = material.name,
                             ing = {
                                 type = material_type,
-                                name = dependent_node.item or dependent_node.fluid,
+                                name = material.name,
                             }
                         })
                     end
@@ -347,7 +237,7 @@ randomizations.recipe_ingredients = function(id)
 
                     for _, prereq in pairs(dependent_node.prereqs) do
                         if prereq.is_ingredient then
-                            if not dont_randomize_ings[flow_cost.get_prot_id(prereq.ing)] then
+                            if not is_blacklisted_ing(prereq.ing) then
                                 table.insert(shuffled_prereqs, prereq)
                                 -- Add in twice for flexibility in the algorithm
                                 -- There's a 50% chance for this to happen, so that there's not too much clutter
@@ -382,121 +272,6 @@ randomizations.recipe_ingredients = function(id)
         end
     end
 
-    -- Copied and pasted from technology.lua
-    -- A reachability graph for each of the three starter planets
-    -- If something is in the reachability graph for one planet, it can't rely on things outside it
-    -- CRITICAL TODO: Test for base game/don't hardcode planets here
-    local planet_names = {}
-    if mods["space-age"] then
-        default_planet_names = {"nauvis", "fulgora", "gleba", "vulcanus"}
-        for _, planet_name in pairs(default_planet_names) do
-            if planet_name ~= constants.starting_planet then
-                table.insert(planet_names, planet_name)
-            end
-        end
-    end
-    local planet_sort_info = {}
-    for _, planet_name in pairs(planet_names) do
-        local planet_specific_blacklist = {}
-        for _, other_planet_name in pairs(planet_names) do
-            if other_planet_name ~= planet_name then
-                local other_planet_node = dep_graph[build_graph.key("space-location-discovery", other_planet_name)]
-                for _, prereq in pairs(other_planet_node.prereqs) do
-                    planet_specific_blacklist[build_graph.conn_key({prereq, other_planet_node})] = true
-                end
-            end
-        end
-        -- Also blacklist planet science packs so that things after them can require other planets
-        for _, science_pack_name in pairs({"electromagnetic-science-pack", "agricultural-science-pack", "metallurgic-science-pack"}) do
-            local science_pack_node = dep_graph[build_graph.key("item", science_pack_name)]
-            for _, prereq in pairs(science_pack_node.prereqs) do
-                planet_specific_blacklist[build_graph.conn_key({prereq, science_pack_node})] = true
-            end
-        end
-        planet_sort_info[planet_name] = top_sort.sort(dep_graph, planet_specific_blacklist)
-    end
-
-    -- What can be reached from a planet alone with all techs but no access to other surfaces
-    --[[local planet_isolation_sort_info = {}
-    for _, planet_name in pairs(planet_names) do
-        local planet_isolation_graph = table.deepcopy(dep_graph)
-
-        -- Remove surfaces other than space platform
-        -- Also remove prereqs for all technologies to make them forced "reachable"
-        for _, node in pairs(planet_isolation_graph) do
-            if (node.type == "surface" and node.surface ~= build_graph.compound_key({"planet", planet_name})) or node.type == "technology" then
-                for _, prereq in pairs(node.prereqs) do
-                    local prereq_node = planet_isolation_graph[build_graph.key(prereq.type, prereq.name)]
-                    for prereq_dependent_ind, prereq_dependent in pairs(prereq_node.dependents) do
-                        if prereq_dependent.type == node.type and prereq_dependent.name == node.name then
-                            table.remove(prereq_node.dependents, prereq_dependent_ind)
-                            break
-                        end
-                    end
-                end
-                node.prereqs = {}
-            end
-        end
-        -- Make this surface reachable
-        table.insert(planet_isolation_graph[build_graph.key("surface", build_graph.compound_key({"planet", planet_name}))].prereqs, {
-            type = "entity-buildability-surface-true",
-            name = "canonical"
-        })
-        table.insert(planet_isolation_graph[build_graph.key("entity-buildability-surface-true", "canonical")].dependents, {
-            type = "surface",
-            name = build_graph.compound_key({"planet", planet_name})
-        })
-        -- Hotfix: Allow power to planet
-        table.insert(planet_isolation_graph[build_graph.key("electricity-production-surface", build_graph.compound_key({"planet", planet_name}))].prereqs, {
-            type = "entity-buildability-surface-true",
-            name = "canonical"
-        })
-        table.insert(planet_isolation_graph[build_graph.key("entity-buildability-surface-true", "canonical")].dependents, {
-            type = "electricity-production-surface",
-            name = build_graph.compound_key({"planet", planet_name})
-        })
-        -- If it's fulgora, add recycling recipes back
-        if planet_name == "fulgora" then
-            for material_name, material in pairs(build_graph.materials) do
-                for _, recipe in pairs(data.raw.recipe) do
-                    local in_results = false
-
-                    if recipe.results ~= nil then
-                        for _, result in pairs(recipe.results) do
-                            if result.type .. "-" .. result.name == material_name then
-                                in_results = true
-                            end
-                        end
-                    end
-
-                    if in_results and (recipe.category == "recycling" and (recipe.subgroup == nil or recipe.subgroup == "other")) then
-                        table.insert(planet_isolation_graph[build_graph.key("craft-material-surface", build_graph.compound_key({material_name, build_graph.compound_key({"planet", planet_name})}))].prereqs, {
-                            type = "recipe-surface",
-                            name = build_graph.compound_key({recipe.name, build_graph.compound_key({"planet", planet_name})})
-                        })
-                        table.insert(planet_isolation_graph[build_graph.key("recipe-surface", build_graph.compound_key({recipe.name, build_graph.compound_key({"planet", planet_name})}))].dependents, {
-                            type = "craft-material-surface",
-                            name = build_graph.compound_key({material_name, build_graph.compound_key({"planet", planet_name})})
-                        })
-                    end
-                end
-            end
-        end
-
-        planet_isolation_sort_info[planet_name] = top_sort.sort(planet_isolation_graph)
-        planet_isolation_sort_info[planet_name].before_rocket_silo = {}
-        local found = {}
-        for _, node in pairs(planet_isolation_sort_info[planet_name].sorted) do
-            planet_isolation_sort_info[planet_name].before_rocket_silo[build_graph.key(node.type, node.name)] = true
-            if node.type == "recipe" then
-                found[node.name] = true
-            end
-            if found["rocket-silo"] and found["rocket-part"] then
-                break
-            end
-        end
-    end]]
-
     log("Shuffling")
 
     rng.shuffle(rng.key({id = id}), shuffled_prereqs)
@@ -512,13 +287,17 @@ randomizations.recipe_ingredients = function(id)
         dependent_to_new_ings[dependent.recipe] = {"blacklisted"}
         dependent_to_old_ings[dependent.recipe] = {"blacklisted"}
     end
-    -- Add sensitive recipes back to dependent_to_new_ings
-    for recipe_name, _ in pairs(sensitive_recipes) do
-        dependent_to_new_ings[recipe_name] = {}
-        dependent_to_old_ings[recipe_name] = {}
-
-        if data.raw.recipe[recipe_name].ingredients ~= nil then
-            for _, ing in pairs(data.raw.recipe[recipe_name].ingredients) do
+    -- Recipes this leaves alone keep their ingredients: the sensitive ones, and the rest that aren't randomized (without a cost or ingredients)
+    -- Recipes missing from ing_overrides are treated as nonexistent by flow_cost, which would leave their products without costs
+    local is_randomized = {}
+    for _, dependent in pairs(sorted_dependents) do
+        is_randomized[dependent.recipe] = true
+    end
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        if dependent_to_new_ings[recipe_name] == nil then
+            dependent_to_new_ings[recipe_name] = {}
+            dependent_to_old_ings[recipe_name] = {}
+            for _, ing in pairs(recipe.ingredients or {}) do
                 table.insert(dependent_to_new_ings[recipe_name], ing)
                 table.insert(dependent_to_old_ings[recipe_name], ing)
             end
@@ -527,35 +306,72 @@ randomizations.recipe_ingredients = function(id)
 
     log("Initial cost calculations")
 
-    -- Updated to reflect costs at each stage
-    -- Resource costs are the bills of major raw resources along the aggregate-cheapest recipes (tracked by the aggregate costs)
-    local curr_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, track_resources = major_raw_resources})
-    local curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings})
-    local curr_resource_costs = {}
-    for _, resource_id in pairs(major_raw_resources) do
-        curr_resource_costs[resource_id] = flow_cost.resource_cost_view(curr_aggregate_cost, resource_id)
+    -- Aggregate costs and bills of the major resources are per room (lib/cost/context-costs.lua), judged in the same room as unified randomization's handler judges them
+    -- Each is kept three ways: the game's, staged in processing order (vanilla_sets); the randomized recipes' so far (randomized_sets); and the game's in full (full_sets)
+    -- Prices come only from what each room has automatably, so having a cost there still means being automatable there
+    local rooms = context_costs.current
+    local judged_contexts = {}
+    for _, dependent in pairs(sorted_dependents) do
+        judged_contexts[context_costs.judging_context(rooms, dependent.recipe) or rooms.starting_context] = true
+    end
+    local vanilla_item_recipe_maps = flow_cost.construct_item_recipe_maps()
+    local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps()
+    local full_sets = context_costs.set_views(context_costs.game_set(rooms, major_raw_resources, true), major_raw_resources)
+    local function staged_sets(set_params)
+        set_params.track_resources = major_raw_resources
+        set_params.updated_contexts = judged_contexts
+        set_params.imports_from = full_sets.set
+        set_params.automatable_only = true
+        return context_costs.set_views(context_costs.new_set(rooms, set_params), major_raw_resources)
+    end
+    local vanilla_sets = staged_sets({
+        ing_overrides = dependent_to_old_ings,
+        use_data = true,
+        item_recipe_maps = vanilla_item_recipe_maps,
+    })
+    local randomized_sets = staged_sets({
+        ing_overrides = dependent_to_new_ings,
+        use_data = false,
+        item_recipe_maps = randomized_item_recipe_maps,
+    })
+
+    -- How much of each material's cost in a room comes from newer resources, for the search's bonus that gets them used (context_costs.novelty)
+    local newer_resources = context_costs.newer_resources(major_raw_resources)
+    local function novelty_in(context)
+        return context_costs.novelty(rooms, context, full_sets.set, newer_resources, vanilla_item_recipe_maps)
     end
 
-    -- Also updated to reflect costs at each stage, but with respect to old recipes
-    local old_aggregate_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, track_resources = major_raw_resources})
-    local old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings})
-    local old_resource_costs_staged = {}
-    for _, resource_id in pairs(major_raw_resources) do
-        old_resource_costs_staged[resource_id] = flow_cost.resource_cost_view(old_aggregate_cost_staged, resource_id)
+    -- Furnaces (the recycler too) pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (lib/furnace-selection.lua's tracker)
+    -- Ingredients that won't change are taken first: all of those in recipes this leaves alone, and those kept in recipes it randomizes
+    local furnaces = furnace_selection.tracker()
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        for _, ing in pairs(recipe.ingredients or {}) do
+            if is_randomized[recipe_name] == nil or is_blacklisted_ing(ing) then
+                furnaces.take(recipe, ing)
+            else
+                for _, result in pairs(recipe.results or {}) do
+                    if result.type == ing.type and result.name == ing.name then
+                        furnaces.take(recipe, ing)
+                    end
+                end
+            end
+        end
     end
-
-    log("Initial item recipe maps construction")
-
-    -- Keep track of item recipe maps ourselves for optimization purposes
-    local item_recipe_maps = flow_cost.construct_item_recipe_maps()
 
     log("Starting recipe randomization main loop")
 
     -- Table of indices to prereqs that have been used in a recipe
     local ind_to_used = {}
+    -- Newer resources in the ingredients chosen (see novelty_in), before and after, summed over ingredients; and how far chosen ingredients' aggregate cost is from the recipe's (mean absolute log ratio)
+    local num_processed = 0
+    local num_changed_ings = 0
+    local num_ings = 0
+    local old_newer_share = 0
+    local new_newer_share = 0
+    local cost_drift = 0
+    local num_drift = 0
     -- Initial reachability
     local sort_state = top_sort.sort(dep_graph, blacklist)
-    local dependent_reached_silo_part = {}
     for _, dependent in pairs(sorted_dependents) do
         local dependent_recipe = data.raw.recipe[dependent.recipe]
         log("Starting on dependent: " .. dependent_recipe.name)
@@ -608,237 +424,39 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
-        -- Refine reachable to exclude items not reachable from a single planet if applicable
-        local to_remove_from_reachable = {}
-        --[=[local is_nauvis_tech = true
-        for _, planet_name in pairs(planet_names) do
-            if planet_sort_info[planet_name].reachable[build_graph.key(dependent.type, dependent.name)] then
-                for reachable_node_name, _ in pairs(reachable) do
-                    if not planet_sort_info[planet_name].reachable[reachable_node_name] then
-                        to_remove_from_reachable[reachable_node_name] = true
-                    end
-                end
-            else
-                -- This is done in tech randomization but not as necessary here since we have the extra item pool
-                -- Also it leads to randomization failure here sometimes anyways
-                -- Don't allow science packs to take the spot of earlier packs, which leads to too few spots at that level
-                --[[for reachable_node_name, _ in pairs(reachable) do
-                    if planet_sort_info[planet_name].reachable[reachable_node_name] then
-                        to_remove_from_reachable[reachable_node_name] = true
-                    end
-                end]]
-
-                is_nauvis_tech = false
-            end
-        end]=]
-        --[[for _, planet_name in pairs(planet_names) do
-            if planet_isolation_sort_info[planet_name].before_rocket_silo[build_graph.key(dependent.type, dependent.name)] then
-                if planet_isolation_sort_info[planet_name].reachable[build_graph.key(dependent.type, dependent.name)] then
-                    for reachable_node_name, _ in pairs(reachable) do
-                        if not planet_isolation_sort_info[planet_name].reachable[reachable_node_name] then
-                            to_remove_from_reachable[reachable_node_name] = true
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Now refine so that if it's before rocket silo or parts, it must be reachable from every planet
-        local reachable_on_all_planets = true
-        for _, planet_name in pairs(planet_names) do
-            if not ((not dependent_reached_silo_part["rocket-silo"] or not dependent_reached_silo_part["rocket-part"]) and not ((dependent.type == "recipe" and not planet_isolation_sort_info[planet_name].reachable[build_graph.key(dependent.type, dependent.name)]) or (dependent.type == "recipe-surface" and not planet_isolation_sort_info[planet_name].reachable[build_graph.key("recipe", dependent_recipe.name)]))) then
-                reachable_on_all_planets = false
-            end
-        end
-        if reachable_on_all_planets then --dependent_recipe.name == "rocket-silo" or dependent_recipe.name == "rocket-part" then --not dependent_reached_silo_part["rocket-part"] or not dependent_reached_silo_part["rocket-silo"] then
-            for _, planet_name in pairs(planet_names) do
-                --if planet_isolation_sort_info[planet_name].reachable[build_graph.key("recipe", dependent_recipe.name)] then
-                    for reachable_node_name, _ in pairs(reachable) do
-                        local reachable_node = dep_graph[reachable_node_name]
-
-                        if (reachable_node.type == "item" and not planet_isolation_sort_info[planet_name].reachable[reachable_node_name]) or (reachable_node.type == "item-surface" and not planet_isolation_sort_info[planet_name].reachable[build_graph.key("item", reachable_node.item)]) then
-                            to_remove_from_reachable[reachable_node_name] = true
-                        end
-                    end
-                --end
-            end
-        end
-        if dependent_recipe.name == "rocket-silo" then
-            dependent_reached_silo_part["rocket-silo"] = true
-        end
-        if dependent_recipe.name == "rocket-part" then
-            dependent_reached_silo_part["rocket-part"] = true
-        end
-
-        -- Don't worry about doing this for dupes or on watch-the-world-burn
-        if string.find(dependent.name, "exfret") == nil and not config.watch_the_world_burn then
-            for reachable_node_name, _ in pairs(to_remove_from_reachable) do
-                --log(reachable_node_name)
-                reachable[reachable_node_name] = nil
-            end
-        end]]
-
-        --log(serpent.block(reachable))
-
-        -- TODO:
-        --  * Assume we only have things reachable that are reachable when we get to space/whatever surface
-        --     * Or maybe assume everything as long as it's not like a recipe/surface-specific (manually mark other things as reachable)
-        -- (Vanilla Space Age only) Refine reachable to only include space materials if this is a firearm magazine, rocket, or railgun ammo
-        -- TODO: What does it mean to be automatable in space anyways??
-        -- Wait idea: Cross product nodes
-        --[=[if mods["space-age"] then
-            if dependent_recipe.name == "firearm-magazine" or dependent_recipe.name == "rocket" or dependent_recipe.name == "railgun-ammo" then
-                -- Just do another topological sort, but restrict to this space surface
-                --[[local new_blacklist = table.deepcopy(blacklist)
-                for surface_name, surface in pairs(build_graph.surfaces) do
-                    if not (surface.type == "space-surface" and surface.name == "space-platform") then
-                        local surface_node = build_graph[build_graph.key("surface", surface_name)]
-                        for _, surface_node_dependent in pairs(surface_node.dependents) do
-                            new_blacklist[build_graph.conn_key({surface_node, surface_node_dependent})] = true
-                        end
-                    end
-                end
-                ammo_sort_info = top_sort.sort(dep_graph, new_blacklist)]]
-
-                -- Find automatable things in space - remove non-reachable things and transport connections and blacklist only isolatable nodes
-                -- Actually, don't remove non-reachable things, assume here that everything is reachable, so just that it's eventually automatable
-                local dep_graph_ammo_reachability = table.deepcopy(dep_graph)
-                -- Remove surfaces other than space platform
-                for _, node in pairs(dep_graph_ammo_reachability) do
-                    if node.type == "surface" and node.surface ~= build_graph.compound_key({"space-surface", "space-platform"}) then
-                        for _, prereq in pairs(node.prereqs) do
-                            local prereq_node = dep_graph_ammo_reachability[build_graph.key(prereq.type, prereq.name)]
-                            for prereq_dependent_ind, prereq_dependent in pairs(prereq_node.dependents) do
-                                if prereq_dependent.type == node.type and prereq_dependent.name == node.name then
-                                    table.remove(prereq_node.dependents, prereq_dependent_ind)
-                                    break
-                                end
-                            end
-                        end
-                        node.prereqs = {}
-                    end
-                end
-                -- Make space platform reachable
-                table.insert(dep_graph_ammo_reachability[build_graph.key("surface", build_graph.compound_key({"space-surface", "space-platform"}))].prereqs, {
-                    type = "entity-buildability-surface-true",
-                    name = "canonical"
-                })
-                table.insert(dep_graph_ammo_reachability[build_graph.key("entity-buildability-surface-true", "canonical")].dependents, {
-                    type = "surface",
-                    name = build_graph.compound_key({"space-surface", "space-platform"})
-                })
-
-                local ammo_reachable = {}
-                local ammo_open = {}
-                for _, node in pairs(dep_graph_ammo_reachability) do
-                    -- Don't include surface-based nodes or nodes with surface equivalents
-                    if node.surface == nil and build_graph.ops[node.type .. "-surface"] == nil and node.type ~= "surface" then
-                        ammo_reachable[build_graph.key(node.type, node.name)] = true
-                        table.insert(ammo_open, node)
-                    end
-                end
-                local ammo_reachability_sort_info = top_sort.sort(dep_graph_ammo_reachability, nil, {reachable = ammo_reachable, open = ammo_open}, nil)
-                
-                local to_remove_from_reachable = {}
-                for reachable_node_name, _ in pairs(reachable) do
-                    local node = dep_graph_ammo_reachability[reachable_node_name]
-                    if node ~= nil and (node.type == "item" or node.type == "fluid") then
-                        if not ammo_reachability_sort_info.reachable[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, build_graph.compound_key({"space-surface", "space-platform"})}))] then
-                            table.insert(to_remove_from_reachable, reachable_node_name)
-                        end
-                    end
-                end
-                for _, reachable_node_name in pairs(to_remove_from_reachable) do
-                    reachable[reachable_node_name] = false
-                    local node = dep_graph_ammo_reachability[reachable_node_name]
-                    for surface_name, surface in pairs(build_graph.surfaces) do
-                        reachable[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, surface_name}))] = false
-                    end
-                end
-                
-                --[[for _, node in pairs(dep_graph_ammo_reachability) do
-                    local new_prereqs = {}
-                    for _, prereq in pairs(node.prereqs) do
-                        if not prereq.involves_transport then
-                            table.insert(new_prereqs, prereq)
-                        end
-                    end
-                    node.prereqs = new_prereqs
-                end]]
-                --[[for reachable_node_name, _ in pairs(reachable) do
-                    dep_graph_ammo_reachability[reachable_node_name] = table.deepcopy(dep_graph[reachable_node_name])
-                    local prereqs_with_transport_removed = {}
-                    for _, prereq in pairs(dep_graph_ammo_reachability[reachable_node_name].prereqs) do
-                        if not prereq.involves_transport then
-                            table.insert(prereqs_with_transport_removed, prereq)
-                        end
-                    end
-                    local dependents_with_transport_removed = {}
-                    for _, dependent in pairs(dep_graph_ammo_reachability[reachable_node_name].dependents) do
-                        if reachable[build_graph.key(dependent.type, dependent.name)] then
-                            table.insert(dependents_with_transport_removed, dependent)
-                        end
-                    end
-                    dep_graph_ammo_reachability[reachable_node_name].prereqs = prereqs_with_transport_removed
-                    dep_graph_ammo_reachability[reachable_node_name].dependents = dependents_with_transport_removed
-                end]]
-
-                --[[local blacklist_ammo_reachability = {}
-                for _, node in pairs(dep_graph_ammo_reachability) do
-                    if build_graph.isolatable_nodes[node.type] then
-                        for _, prereq in pairs(node.prereqs) do
-                            blacklist_ammo_reachability[build_graph.conn_key({prereq, node})] = true
-                        end
-                    end
-                end]]
-
-                --local state_info_ammo_reachability = top_sort.sort(dep_graph_ammo_reachability, nil, nil, nil, "transported")
-                --log(serpent.block(state_info_ammo_reachability.has_caveat))
-                
-                --[[for node_name, _ in pairs(reachable) do
-                    local node = dep_graph_ammo_reachability[node_name]
-                    -- I don't know why I need this non-nil check but it's needed for some reason
-                    if node ~= nil and (node.type == "item" or node.type == "fluid") then
-                        -- Check reachability from space platform in isolation
-                        if state_info_ammo_reachability.has_caveat[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, build_graph.compound_key({"space-surface", "space-platform"})}))] then
-                            log("FILTERED " .. node_name)
-                            
-                            reachable[node_name] = false
-                            for surface_name, surface in pairs(build_graph.surfaces) do
-                                reachable[build_graph.key(node.type .. "-surface", build_graph.compound_key({node.name, surface_name}))] = false
-                            end
-                        end
-                    end
-                end]]
-            end
-        end]=]
+        -- Ingredients are judged in one room: the starting planet if the recipe is available there, else the room the sort first reaches it in
+        local context = context_costs.judging_context(rooms, dependent_recipe.name) or rooms.starting_context
 
         log("Old cost update")
 
-        -- Update costs for old recipe
+        -- The staged vanilla world only has costs for what the recipes processed so far make
+        -- Processing follows the sort, not the order recipes' ingredients get made in, so a recipe can come before the recipes making its ingredients
+        local is_staged = true
+        for _, ing in pairs(dependent_recipe.ingredients or {}) do
+            if not vanilla_sets.is_costed(context, ing) then
+                is_staged = false
+            end
+        end
+        -- Either way, the recipe now counts in the staged vanilla world; if it's not reachable yet, cost updates pick it up once its ingredients are
         dependent_to_old_ings[dependent_recipe.name] = {}
-        for _, ing in pairs(dependent_recipe.ingredients) do
+        for _, ing in pairs(dependent_recipe.ingredients or {}) do
             table.insert(dependent_to_old_ings[dependent_recipe.name], ing)
         end
-
-        log("Flow cost update")
-
-        flow_cost.update_recipe_item_costs(old_aggregate_cost_staged, {dependent_recipe.name}, flow_cost_updates, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-        old_complexity_cost_staged = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_old_ings, use_data = true, item_recipe_maps = item_recipe_maps})
+        vanilla_sets.update(dependent_recipe.name)
+        local old_costs
+        if is_staged then
+            old_costs = vanilla_sets.in_room(context)
+        else
+            log("Staged vanilla costs don't reach " .. dependent_recipe.name .. " yet; comparing against full vanilla costs")
+            old_costs = full_sets.in_room(context)
+        end
+        local recipe_cost = context_costs.recipe_cost_in(old_costs.aggregate, dependent_recipe)
 
         log("Gathering recipe info")
 
         -- Gather information about this dependent/recipe
-        local dependent_is_smelting_recipe = false
-        for _, category in pairs(dependent_recipe.categories or {"crafting"}) do
-            if category == "smelting" then
-                dependent_is_smelting_recipe = true
-            end
-        end
-        local is_smelting_recipe
-        if dependent_is_smelting_recipe then
-            is_smelting_recipe = true
-        end
+        local dependent_pools = furnaces.pools_of(dependent_recipe)
+        local is_smelting_recipe = #dependent_pools > 0
 
         local is_result_of_this_recipe = {}
         if dependent_recipe.results ~= nil then
@@ -847,40 +465,23 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
+        -- Candidates must have costs from the randomized recipes so far in this room (the game's recipes that aren't randomized count from the start)
+        local curr_costs = randomized_sets.in_room(context)
+        local full_costs = full_sets.in_room(context)
+
         local function find_valid_prereq_list(shuffled_prereqs)
-            local shuffled_indices_of_prereqs = {}
-            for prereq_index, _ in pairs(shuffled_prereqs) do
-                table.insert(shuffled_indices_of_prereqs, prereq_index)
-            end
-
-            --rng.shuffle(rng.key({id = id}), shuffled_indices_of_prereqs)
-            -- Actually prioritize later on items/fluids
-            local function sort_comparator(ind1, ind2)
-                return compare_index_in_sort_reverse(shuffled_prereqs[ind1], shuffled_prereqs[ind2])
-            end
-            -- TODO: Later look into other methods, right now just preserve order
-            --table.sort(shuffled_indices_of_prereqs, sort_comparator)
-
-            -- List of the actual prereqs, rather than just the indices
-            local shuffled_prereqs_to_use = {}
-            for _, prereq_index in pairs(shuffled_indices_of_prereqs) do
-                table.insert(shuffled_prereqs_to_use, shuffled_prereqs[prereq_index])
-            end
-
             -- Only include each prereq once
             local already_included = {}
 
             local valid_prereq_list = {}
             local valid_prereq_inds = {}
-            for prereq_index_in_shuffled_prereqs_to_use, prereq in pairs(shuffled_prereqs_to_use) do
+            for prereq_index, prereq in pairs(shuffled_prereqs) do
                 -- Make sure this prereq has currently calculable costs
                 local prereq_prot_id = flow_cost.get_prot_id(prereq.ing)
-                local has_costs = true
-                if curr_aggregate_cost.material_to_cost[prereq_prot_id] == nil then
-                    has_costs = false
-                end
+                local prereq_cost = curr_costs.aggregate.material_to_cost[prereq_prot_id]
+                local has_costs = prereq_cost ~= nil
                 for _, resource_id in pairs(major_raw_resources) do
-                    if curr_resource_costs[resource_id][prereq_prot_id] == nil then
+                    if curr_costs.resources[resource_id].material_to_cost[prereq_prot_id] == nil then
                         has_costs = false
                     end
                 end
@@ -906,7 +507,7 @@ randomizations.recipe_ingredients = function(id)
                     end
 
                     -- Test for prereqs already used for other dependents
-                    if ind_to_used[shuffled_indices_of_prereqs[prereq_index_in_shuffled_prereqs_to_use]] then
+                    if ind_to_used[prereq_index] ~= nil then
                         return false
                     end
 
@@ -920,8 +521,8 @@ randomizations.recipe_ingredients = function(id)
                         return false
                     end
 
-                    -- Don't repeat ingredients in smelting recipes
-                    if is_smelting_recipe and smelting_ingredients[prereq.ing.type .. "-" .. prereq.ing.name] then
+                    -- Don't share an ingredient with another recipe the same furnace crafts
+                    if furnaces.is_taken(dependent_pools, prereq.ing) then
                         return false
                     end
 
@@ -931,7 +532,7 @@ randomizations.recipe_ingredients = function(id)
                     end
 
                     -- If the cost is too high, return false
-                    if curr_aggregate_cost.material_to_cost[prereq_prot_id] > old_aggregate_cost_staged.recipe_to_cost[dependent_recipe.name] then
+                    if prereq_cost > recipe_cost then
                         return false
                     end
 
@@ -952,11 +553,6 @@ randomizations.recipe_ingredients = function(id)
                         if prereq.ing.type == "item" and not reachable[build_graph.key("item-surface", build_graph.compound_key({prereq.ing.name, build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name})}))] then
                             return false
                         end
-
-                        -- If this material has a manually assigned surface, make sure this is that surface
-                        if manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= nil and manually_assigned_material_surfaces[flow_cost.get_prot_id(prereq.ing)] ~= build_graph.compound_key({build_graph.surfaces[dependent.surface].type, build_graph.surfaces[dependent.surface].name}) then
-                            return false
-                        end
                     end
 
                     -- Make sure the ingredient isn't too cheap
@@ -964,7 +560,7 @@ randomizations.recipe_ingredients = function(id)
                     if prereq.ing.type == "fluid" then
                         largeness_okay_multiplier = 0.1
                     end
-                    if old_aggregate_cost_staged.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] < largeness_okay_multiplier * 0.001 * old_aggregate_cost_staged.recipe_to_cost[dependent_recipe.name] then
+                    if prereq_cost < largeness_okay_multiplier * 0.001 * recipe_cost then
                         return false
                     end
 
@@ -973,8 +569,7 @@ randomizations.recipe_ingredients = function(id)
 
                 if do_recipe_checks() then
                     table.insert(valid_prereq_list, prereq)
-                    -- Convert from shuffled_prereqs_to_use index to shuffled_prereqs index
-                    table.insert(valid_prereq_inds, shuffled_indices_of_prereqs[prereq_index_in_shuffled_prereqs_to_use])
+                    table.insert(valid_prereq_inds, prereq_index)
                     already_included[build_graph.key(prereq.type, prereq.name)] = true
                 end
             end
@@ -985,25 +580,36 @@ randomizations.recipe_ingredients = function(id)
         log("Getting recipe costs")
 
         local old_material_to_costs = {}
-        old_material_to_costs.aggregate_cost = old_aggregate_cost_staged.material_to_cost
-        old_material_to_costs.complexity_cost = old_complexity_cost_staged.material_to_cost
+        old_material_to_costs.aggregate_cost = old_costs.aggregate.material_to_cost
+        old_material_to_costs.complexity_cost = old_costs.complexity.material_to_cost
         old_material_to_costs.resource_costs = {}
         for _, resource_id in pairs(major_raw_resources) do
-            old_material_to_costs.resource_costs[resource_id] = old_resource_costs_staged[resource_id]
+            old_material_to_costs.resource_costs[resource_id] = old_costs.resources[resource_id].material_to_cost
         end
-        local old_recipe_costs = get_costs_from_ings(old_material_to_costs, dependent_recipe.ingredients)
+        -- Ingredients a recipe keeps can be made only by recipes processed later, which have no randomized cost yet, so the search prices them like the game makes them, else at the logic graph's price
         local curr_material_costs = {}
-        curr_material_costs.aggregate_cost = curr_aggregate_cost.material_to_cost
-        curr_material_costs.complexity_cost = curr_complexity_cost.material_to_cost
+        curr_material_costs.aggregate_cost = context_costs.fallback_view(curr_costs.aggregate.material_to_cost, full_costs.aggregate.material_to_cost, function(material_id)
+            return rooms.graph_costs[context][material_id] or 0
+        end)
+        curr_material_costs.complexity_cost = curr_costs.complexity.material_to_cost
         curr_material_costs.resource_costs = {}
         for _, resource_id in pairs(major_raw_resources) do
-            curr_material_costs.resource_costs[resource_id] = curr_resource_costs[resource_id]
+            curr_material_costs.resource_costs[resource_id] = context_costs.fallback_view(curr_costs.resources[resource_id].material_to_cost, full_costs.resources[resource_id].material_to_cost, function()
+                return 0
+            end)
         end
 
         log("Finding valid prereqs")
 
         local my_potential_ings = {}
-        local valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
+        local valid_prereq_list_info = {
+            prereq_list = {},
+            prereq_inds = {},
+        }
+        -- Without a cost for the recipe here there's nothing to compare ingredients against, so it keeps its ingredients
+        if recipe_cost ~= nil then
+            valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
+        end
 
         for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
             table.insert(my_potential_ings, prereq.ing)
@@ -1015,7 +621,6 @@ randomizations.recipe_ingredients = function(id)
         local unrandomized_ings = {}
         local reordered_ings_randomized = {}
         local reordered_ings_unrandomized = {}
-        local num_ings_to_find = 0
         for _, prereq in pairs(dependent.prereqs) do
             if prereq.is_ingredient then
                 if is_unrandomized_ing(prereq.ing, is_result_of_this_recipe) then
@@ -1042,7 +647,7 @@ randomizations.recipe_ingredients = function(id)
 
         -- Don't care about preserving resource costs if this is a final product to speed things up
         -- Also don't care if it's post-starting-planet
-        dont_preserve_resource_costs = produces_final_products(dependent_recipe)
+        local dont_preserve_resource_costs = produces_final_products(dependent_recipe)
         if dont_preserve_resource_costs or not starting_planet_reachable[build_graph.key(dependent.type, dependent.name)] then
             log("Will not preserve resource costs")
         else
@@ -1052,47 +657,64 @@ randomizations.recipe_ingredients = function(id)
         log("Performing ings search")
 
         -- Finally, search for the best ingredients
-        -- Do a while loop so we can restart if there are recipe loops
-        -- TODO: I don't see a while loop here, maybe the last comment is outdated? Consider whether while loop is needed!
-        local best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable})
-        -- Test for error
-        if type(best_search_info) == "string" then
-            error(best_search_info)
-        end
+        local best_search_info
+        if recipe_cost == nil then
+            log("No vanilla cost for " .. dependent_recipe.name .. " in " .. context .. "; keeping its ingredients")
+            best_search_info = {
+                ings = table.deepcopy(dependent_recipe.ingredients or {}),
+                inds = {},
+                points = 0,
+            }
+        else
+            local old_recipe_costs = get_costs_from_ings(old_material_to_costs, dependent_recipe.ingredients)
+            best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable, novelty = novelty_in(context)})
+            -- Test for error
+            if type(best_search_info) == "string" then
+                error(best_search_info)
+            end
 
-        log("Found ings with total points " .. best_search_info.points)
-        -- Local resource bills of the old and new ingredients, for dev/check-resources.py
-        if not config.only_randomize_science_recipes then
+            log("Found ings with total points " .. best_search_info.points)
             local new_recipe_costs = get_costs_from_ings(curr_material_costs, best_search_info.ings)
-            local bill_parts = {}
-            for _, resource_id in pairs(major_raw_resources) do
-                table.insert(bill_parts, resource_id .. "=" .. old_recipe_costs.resource_costs[resource_id] .. "/" .. new_recipe_costs.resource_costs[resource_id])
+            -- Local resource bills of the old and new ingredients, for dev/check-resources.py
+            if not config.only_randomize_science_recipes then
+                local bill_parts = {}
+                for _, resource_id in pairs(major_raw_resources) do
+                    table.insert(bill_parts, resource_id .. "=" .. old_recipe_costs.resource_costs[resource_id] .. "/" .. new_recipe_costs.resource_costs[resource_id])
+                end
+                local preserved = "preserved"
+                if dont_preserve_resource_costs then
+                    preserved = "unpreserved"
+                end
+                log("RECIPEBILL " .. dependent_recipe.name .. " " .. preserved .. " " .. table.concat(bill_parts, " "))
             end
-            local preserved = "preserved"
-            if dont_preserve_resource_costs then
-                preserved = "unpreserved"
+            if new_recipe_costs.aggregate_cost > 0 and old_recipe_costs.aggregate_cost > 0 then
+                cost_drift = cost_drift + math.abs(math.log(new_recipe_costs.aggregate_cost / old_recipe_costs.aggregate_cost))
+                num_drift = num_drift + 1
             end
-            log("RECIPEBILL " .. dependent_recipe.name .. " " .. preserved .. " " .. table.concat(bill_parts, " "))
         end
 
         log("Updating dependencies")
 
         -- Update dependencies
-        for index_in_best_search_info, ing in pairs(best_search_info.ings) do
-            -- In this case, this is an unrandomized ing
-            if index_in_best_search_info > #reordered_ings_randomized then
-                table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
-            else
-                local prereq_ind_of_ing = valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]
-                local prereq_of_ing = shuffled_prereqs[prereq_ind_of_ing]
-
-                table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
-                ind_to_used[prereq_ind_of_ing] = true
-                if is_smelting_recipe then
-                    smelting_ingredients[prereq_of_ing.ing.type .. "-" .. prereq_of_ing.ing.name] = true
-                end
-            end
+        local is_old_ing = {}
+        for _, ing in pairs(dependent_recipe.ingredients or {}) do
+            is_old_ing[flow_cost.get_prot_id(ing)] = true
+            old_newer_share = old_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
         end
+        for index_in_best_search_info, ing in pairs(best_search_info.ings) do
+            table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
+            furnaces.take(dependent_recipe, ing)
+            -- Randomized ingredients use up their spot in the pool; kept ones (after the randomized ones, or all of them when it kept its ingredients) have none
+            if recipe_cost ~= nil and index_in_best_search_info <= #reordered_ings_randomized then
+                ind_to_used[valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]] = true
+            end
+            num_ings = num_ings + 1
+            if is_old_ing[flow_cost.get_prot_id(ing)] == nil then
+                num_changed_ings = num_changed_ings + 1
+            end
+            new_newer_share = new_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
+        end
+        num_processed = num_processed + 1
 
         log("Updating reachability")
 
@@ -1119,30 +741,30 @@ randomizations.recipe_ingredients = function(id)
 
         log("Updating item recipe maps")
 
-        -- Update item recipe maps
-        flow_cost.update_item_recipe_maps(item_recipe_maps, {dependent_recipe}, dependent_to_new_ings, true)
+        -- Update the randomized item recipe maps with the recipe's new ingredients (data.raw still has its old ones)
+        local recipe_with_new_ings = table.deepcopy(dependent_recipe)
+        recipe_with_new_ings.ingredients = dependent_to_new_ings[dependent_recipe.name]
+        flow_cost.update_item_recipe_maps(randomized_item_recipe_maps, {recipe_with_new_ings}, dependent_to_new_ings, true)
 
         log("Updating new costs")
 
-        -- Update costs
-        flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent_recipe.name}, flow_cost_updates, flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity, {ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-        -- Just re-determine the complexity costs, this isn't the slowest part anymore anyways
-        -- I was having bugs with update_recipe_item_costs which is why I do it this way
-        log("Updating complexity cost")
-        curr_complexity_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_empty_raw_resource_table(), 0, 1, {mode = "max", ing_overrides = dependent_to_new_ings, use_data = true, item_recipe_maps = item_recipe_maps})
-        log("Finished updating complexity cost")
+        -- Update costs, in every room the recipe is available in
+        randomized_sets.update(dependent_recipe.name)
 
         log("Next loop")
     end
+
+    log(string.format("RECIPESTATS recipes=%d changed_ings=%d/%d", num_processed, num_changed_ings, num_ings))
+    log(string.format("RECIPESTATS newer resources in ingredients: %.1f before, %.1f after (summed shares); ingredient cost drift %.3f (mean abs log ratio over %d recipes)", old_newer_share, new_newer_share, cost_drift / math.max(num_drift, 1), num_drift))
 
     ----------------------------------------------------------------------
     -- END prereq_shuffle code
     ----------------------------------------------------------------------
 
-    -- Fix data.raw
-    for recipe_name, new_ings in pairs(dependent_to_new_ings) do
+    -- Fix data.raw for the randomized recipes
+    for recipe_name, _ in pairs(is_randomized) do
         local ings = {}
-        for _, ing in pairs(new_ings) do
+        for _, ing in pairs(dependent_to_new_ings[recipe_name]) do
             -- Check if this is a duped ingredient
             local already_present = false
             -- Note: This process destroys other keys, but let's hope that's fine
@@ -1157,6 +779,12 @@ randomizations.recipe_ingredients = function(id)
             end
             if not already_present then
                 table.insert(ings, ing)
+            end
+        end
+        -- An item that doesn't stack is used one at a time, as in unified randomization's handler (recycling a recipe would otherwise give some back in a stack, which the game rejects)
+        for _, ing in pairs(ings) do
+            if ing.type == "item" and not dutils.is_stackable(dutils.get_prot("item", ing.name)) then
+                ing.amount = 1
             end
         end
 

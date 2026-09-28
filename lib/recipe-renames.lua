@@ -1,4 +1,4 @@
--- Names and icons for the recipes item randomization renames after their new product, in both the unified item handler (randomizations/graph/unified/handlers-new/item.lua) and the old item randomization (randomizations/graph/item.lua)
+-- Names and icons for the recipes item randomization renames after their new product, in both the unified item handler (randomizations/graph/unified/handlers/item.lua) and the old item randomization (randomizations/graph/item.lua)
 -- A renamed recipe takes its new product's name and icon, since it may have had its own, and is listed with its new product (its subgroup defaults to the main product's, see RecipePrototype::main_product)
 -- When several recipes are named after the same product, the renamed ones also get a prefix and a number badge to tell them apart
 

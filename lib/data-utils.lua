@@ -424,7 +424,7 @@ dutils.has_fuel_category = function(item, fcat)
     return false
 end
 
--- Item reflection makes whatever replaces coal (raw coal with py) a fuel of this category (see handlers-new/item.lua), so first pass treats that fuel as part of coal's position
+-- Item reflection makes whatever replaces coal (raw coal with py) a fuel of this category (see handlers/item.lua), so first pass treats that fuel as part of coal's position
 -- TODO: Do this for fuel ores in general, not by name
 dutils.REPLACEMENT_FUEL_CATEGORY = "chemical"
 dutils.replacement_gets_fuel = function(item_name)

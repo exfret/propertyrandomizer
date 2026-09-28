@@ -32,7 +32,7 @@ local function complex_sort(graph)
 end
 
 -- How a slot connects to a trav: params.connection(slot_key, trav_key) (optional) gives { base = the node the connection starts at (the slot's base if nil), abilities = what getting through it gains or loses (see lib/graph/context-sort.lua) }, or nil for the plain connection
--- Entity positions use it: a built entity found in the wild or looted can't be automated, and one carried by a unit also takes killing the carrier (see handlers-new/entity.lua)
+-- Entity positions use it: a built entity found in the wild or looted can't be automated, and one carried by a unit also takes killing the carrier (see handlers/entity.lua)
 local function connection_of(params, slot_key, trav_key)
     local connection
     if params.connection ~= nil then

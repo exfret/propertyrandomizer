@@ -4,38 +4,52 @@ local tech_science_packs = {}
 
 tech_science_packs.id = "tech_science_packs"
 
-tech_science_packs.claim = function(graph, prereq, dep, trav)
+tech_science_packs.with_replacement = true
+
+tech_science_packs.initialize = function()
+    is_added_tech = {}
+    bonus_times = 1
+end
+
+tech_science_packs.claim = function(graph, prereq, dep, edge)
     if prereq.type == "science-pack-set-science" and dep.type == "technology" then
         local tech = data.raw.technology[dep.name]
         if tech.unit ~= nil then
+            -- TODO: Better logic!
+            if math.random(1, 4) == 1 then
+                return 1
+            end
             return 2
         end
     end
 end
 
-tech_science_packs.validate = function(graph, slot, trav, extra)
-    if gutils.get_conn_owner(graph, slot).type ~= "science-pack-set-science" then
+tech_science_packs.validate = function(graph, base, head, extra)
+    if gutils.get_owner(graph, base).type ~= "science-pack-set-science" then
         return false
     end
 
     return true
 end
 
-tech_science_packs.reflect = function(graph, trav_to_new_slot, trav_to_handler)
+tech_science_packs.reflect = function(graph, head_to_base, head_to_handler)
     -- We could clear, but that would just make the points of failure more obvious
 
-    for trav_key, slot in pairs(trav_to_new_slot) do
-        if trav_to_handler[trav_key].id == "tech_science_packs" then
-            local tech_name = gutils.get_conn_owner(graph, graph.nodes[trav_key]).name
+    for head_key, base_key in pairs(head_to_base) do
+        if head_to_handler[head_key].id == "tech_science_packs" then
+            -- TODO: Could this use more of the new gutils functions?
+            local tech_name = gutils.get_owner(graph, graph.nodes[head_key]).name
             local packs = {}
-            for pack_prereq_key, _ in pairs(gutils.get_conn_owner(graph, slot).pre) do
+            local base = graph.nodes[base_key]
+            for pack_prereq_key, _ in pairs(gutils.get_owner(graph, base).pre) do
                 local pack_prereq = graph.nodes[graph.edges[pack_prereq_key].start]
-                -- Need to cross all across the edge from this (should-be) trav
-                table.insert(packs, gutils.get_conn_owner(graph, gutils.get_conn_buddy(graph, pack_prereq)))
+                -- Need to traverse all across the edge from this (should-be) head
+                -- Let's assume we haven't subdivided the pack prereq edges too...
+                table.insert(packs, pack_prereq)
             end
             local new_ings = {}
             for _, pack in pairs(packs) do
-                table.insert(new_ings, {pack.name, 1})
+                table.insert(new_ings, {pack.item, 1})
             end
             data.raw.technology[tech_name].unit.ingredients = new_ings
         end

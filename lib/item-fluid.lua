@@ -10,7 +10,7 @@ local locale_utils = require("lib/locale")
 
 local item_fluid = {}
 
--- Node types a fluid's own node leads to that are part of its position: mining that needs the fluid (a resource's required fluid, and its spoofed mining-fluid bases, see handlers-new/mining-fluid-required.lua)
+-- Node types a fluid's own node leads to that are part of its position: mining that needs the fluid (a resource's required fluid, and its spoofed mining-fluid bases, see handlers/mining-fluid-required.lua)
 -- Item reflection renames required fluids by position, so whatever fluid is made at the position is what the resource needs
 item_fluid.POSITION_DEPS_OF_FLUID = {
     ["entity-mine"] = true,

@@ -1,102 +1,130 @@
--- No overlapping ingredients for smelting categories
+-- No overlapping ingredients for furnace categories
 -- Account for limited fluidboxes
 -- CRITICAL TODO: Later, also account for costs maybe
--- This is currently very sensitive for some reason
+-- CRITICAL TODO: Figure out things that should stick to crafting category, if any (ask discord maybe)
+-- Recipes a machine has as its fixed recipe (like rocket parts) are never claimed, so they keep their category
 
 -- Furnaces don't get many recipes; I tried fixing but was unsuccessful
+-- NOTE: Furnaces fixed! I did it! I'm so great!
 -- TODO: Maybe weird context things are happening based on when something is available on another planet...
 
 local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local lu = require("lib/lookup/init")
+local furnace_selection = require("lib/furnace-selection")
 
 local recipe_category = {}
 
--- TODO: In the future, maybe consider machines with multiple categories
--- For now, let's just check each vanilla category doesn't get multiple of the same single ingredient
-local smelting_cat_to_ings = {}
-
 recipe_category.id = "recipe_category"
 
--- This strategy didn't work
--- This is maybe not the best way to do this, but let's flood the graph with fake furnace recipes so that furnaces get more recipes
--- Due to their tight restrictions, they were previously underfavored
---[[local num_spoofs = 1000
-recipe_category.spoof = function(graph)
-    for _, node in pairs(graph.nodes) do
-        -- TODO: Do a better way to check against recycling recipes here
-        if node.type == "recipe-category" and lu.smelting_rcats[node.name] and string.find(node.name, "recycling") == nil then
-            for i = 1, num_spoofs do
-                local spoof_node = gutils.add_node(graph, "recipe", node.name .. "-spoof-" .. tostring(i))
-                spoof_node.op = "AND"
-                gutils.add_edge(graph, gutils.key(node), gutils.key(spoof_node))
-                -- Also attach to the end of the graph so the spoofs don't just reclaim the smelting cates
-                -- TODO: Stop hardcoding promethium science
-                gutils.add_edge(graph, gutils.key("item", "promethium-science-pack"), gutils.key(spoof_node))
+recipe_category.with_replacement = true
+
+-- Furnaces pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (see lib/furnace-selection.lua)
+-- taken[pool index][ingredient key] marks ingredients of recipes that pool's furnaces craft; recipe-ingredients then checks again with the final ingredients
+local pools
+local taken
+-- Recipes whose category this handler randomizes; the rest stay where they are
+local claimed_recipes
+-- Keep track of whether we've claimed a category so we only give it a bonus the first time
+local claimed_category
+recipe_category.initialize = function()
+    pools = furnace_selection.pools()
+    taken = nil
+    claimed_recipes = {}
+    claimed_category = {}
+end
+
+-- Recipes that keep their category keep their ingredients in its furnaces; only known once claiming is done, so this runs on first use
+local function get_taken()
+    if taken == nil then
+        taken = {}
+        for pool_ind, _ in pairs(pools) do
+            taken[pool_ind] = {}
+        end
+        for recipe_name, recipe in pairs(lu.recipes) do
+            if claimed_recipes[recipe_name] == nil then
+                for _, pool_ind in pairs(furnace_selection.pools_for(pools, furnace_selection.recipe_categories(recipe))) do
+                    for _, ing in pairs(recipe.ingredients or {}) do
+                        taken[pool_ind][gutils.key(ing)] = true
+                    end
+                end
             end
         end
     end
-end]]
+    return taken
+end
 
--- Keep track of whether we've claimed a category so we only give it a bonus the first time
-local claimed_category = {}
-local normal_claims = 3
-local bonus_claims_first_time = 20
-recipe_category.claim = function(graph, prereq, dep, trav)
+-- Recycling is a distinguished category: recycling recipes keep it, and no other recipe gets it
+-- Its machine (the recycler) picks recipes by ingredient, so a recipe moved there would collide with the recycling recipe for that ingredient
+local function has_recycling(rcat_name)
+    for _, cat in pairs(lu.rcats[rcat_name].cats) do
+        if cat == "recycling" then
+            return true
+        end
+    end
+    return false
+end
+
+recipe_category.claim = function(graph, prereq, dep, edge)
     -- Just don't claim fixed recipes, or hidden recipes
 
     if prereq.type == "recipe-category" and dep.type == "recipe" then
-        -- If this is a spoof, add it always
-        if string.find(dep.name, "spoof") ~= nil then
-            return normal_claims
-        elseif not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
+        -- A recycling recipe's only category edge is from a recycling category, so this keeps both directions out
+        if has_recycling(prereq.name) then
+            return false
+        end
+        if not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
             local recipe_prot = lu.recipes[dep.name]
             if not recipe_prot.hidden then
+                claimed_recipes[dep.name] = true
                 if claimed_category[prereq.name] then
-                    -- I didn't like 3 claims each time, but it was failing a lot before then for some reason
-                    return normal_claims
+                    return 0
                 else
                     claimed_category[prereq.name] = true
-                    return normal_claims + bonus_claims_first_time
+                    return 1
                 end
             end
         end
     end
 end
 
-recipe_category.validate = function(graph, slot, trav, extra)
-    local slot_owner = gutils.get_conn_owner(graph, slot)
+recipe_category.validate = function(graph, base, head, extra)
+    local base_owner = gutils.get_owner(graph, base)
 
-    -- We already know via virtue of being in this handler that trav is a recipe node
-    if slot_owner.type == "recipe-category" then
-        local trav_owner = gutils.get_conn_owner(graph, trav)
+    -- We already know via virtue of being in this handler that head is a recipe node
+    if base_owner.type == "recipe-category" then
+        local head_owner = gutils.get_owner(graph, head)
         -- If this is a spoof, always accept
-        if string.find(trav_owner.name, "spoof") then
+        if head_owner.spoof then
             return true
         end
 
-        local slot_rcat = lu.rcats[slot_owner.name]
-        local vanilla_rcat = slot_rcat.cat
-        local recipe_prot = lu.recipes[trav_owner.name]
+        local base_rcat = lu.rcats[base_owner.name]
+        local vanilla_rcats = base_rcat.cats
+        local recipe_prot = lu.recipes[head_owner.name]
 
-        -- First, if it's a smelting rcat, make sure the recipe has exactly one ingredient and output
-        -- This is technically incorrect, but I don't keep track of input/output slots of furnaces in logic now, so I'll leave that as a later problem
+        -- First, if a furnace crafts this rcat, make sure the recipe has exactly one ingredient and output
+        -- This is technically incorrect, but I don't keep track of input/output bases of furnaces in logic now, so I'll leave that as a later problem
         -- TODO: Fix this problem later
-        if lu.smelting_rcats[slot_owner.name] then
+        local base_pools = furnace_selection.pools_for(pools, vanilla_rcats)
+        if #base_pools > 0 then
             if recipe_prot.ingredients == nil or #recipe_prot.ingredients ~= 1 or recipe_prot.results == nil or #recipe_prot.results ~= 1 then
                 return false
             end
 
-            -- Also check that this one ingredient isn't used in another recipe for this category
+            -- Also check that this one ingredient isn't used by another recipe these furnaces craft
             local unique_ing = recipe_prot.ingredients[1]
-            if smelting_cat_to_ings[vanilla_rcat] ~= nil and smelting_cat_to_ings[vanilla_rcat][gutils.key(unique_ing)] then
-                return false
+            for _, pool_ind in pairs(base_pools) do
+                if get_taken()[pool_ind][gutils.key(unique_ing)] then
+                    return false
+                end
             end
         end
 
         -- Check if there are the appropriate fluid connections
+        -- We don't need to check equality exactly because we have a lot of duplicates
         local recipe_fluids = lutils.find_recipe_fluids(recipe_prot)
-        if recipe_fluids.input > slot_rcat.input or recipe_fluids.output > slot_rcat.output then
+        if recipe_fluids.input > base_rcat.input or recipe_fluids.output > base_rcat.output then
             return false
         end
 
@@ -107,32 +135,35 @@ recipe_category.validate = function(graph, slot, trav, extra)
     end
 end
 
-recipe_category.process = function(graph, slot, trav)
-    local trav_owner = gutils.get_conn_owner(graph, trav)
+recipe_category.process = function(graph, base, head)
+    local head_owner = gutils.get_owner(graph, head)
     -- If this is a spoof, do nothing
-    if string.find(trav_owner.name, "spoof") ~= nil then
+    if head_owner.spoof then
         return
     end
 
-    local slot_owner = gutils.get_conn_owner(graph, slot)
+    local base_owner = gutils.get_owner(graph, base)
 
-    if lu.smelting_rcats[slot_owner.name] then
-        local vanilla_rcat = lu.rcats[slot_owner.name].cat
-        local recipe_prot = lu.recipes[trav_owner.name]
+    local base_pools = furnace_selection.pools_for(pools, lu.rcats[base_owner.name].cats)
+    if #base_pools > 0 then
+        local recipe_prot = lu.recipes[head_owner.name]
         local unique_ing = recipe_prot.ingredients[1]
-        smelting_cat_to_ings[slot_owner.name] = smelting_cat_to_ings[slot_owner.name] or {}
-        smelting_cat_to_ings[slot_owner.name][gutils.key(unique_ing)] = true
+
+        for _, pool_ind in pairs(base_pools) do
+            get_taken()[pool_ind][gutils.key(unique_ing)] = true
+        end
     end
 end
 
-recipe_category.reflect = function(graph, trav_to_new_slot, trav_to_handler)
-    for trav_key, slot in pairs(trav_to_new_slot) do
-        if trav_to_handler[trav_key].id == "recipe_category" then
-            local trav = graph.nodes[trav_key]
-            local recipe_node = gutils.get_conn_owner(graph, trav)
+recipe_category.reflect = function(graph, head_to_base, head_to_handler)
+    for head_key, base_key in pairs(head_to_base) do
+        if head_to_handler[head_key].id == "recipe_category" then
+            local head = graph.nodes[head_key]
+            local recipe_node = gutils.get_owner(graph, head)
             -- Check for spoof nodes
-            if string.find(recipe_node.name, "spoof") == nil then
-                local cat_node = gutils.get_conn_owner(graph, slot)
+            if not recipe_node.spoof then
+                local base = graph.nodes[base_key]
+                local cat_node = gutils.get_owner(graph, base)
                 local rcat = lu.rcats[cat_node.name]
                 local recipe_prot = lu.recipes[recipe_node.name]
                 recipe_prot.categories = rcat.cats

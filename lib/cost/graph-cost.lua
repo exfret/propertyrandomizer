@@ -532,17 +532,41 @@ end
 graph_cost.RAW_COST_SCALE = 1
 
 -- Whether a node can be had automatably somewhere, by a sort with complex contexts (top.sort with complex_contexts), as a function of the node key
-graph_cost.automatable_in_sort = function(complex_sort_info)
+-- Whether a complex context (a room with ability string, see lib/graph/context-sort.lua) has automatability
+local function context_automatable(context)
     local top = require("lib/graph/context-sort")
+    local abilities = top.context_abilities(context)
+    return abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1"
+end
+
+graph_cost.automatable_in_sort = function(complex_sort_info)
     return function(node_key)
         for context, _ in pairs(complex_sort_info.node_to_context_inds[node_key] or {}) do
-            local abilities = top.context_abilities(context)
-            if abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+            if context_automatable(context) then
                 return true
             end
         end
         return false
     end
+end
+
+-- What a sort with complex contexts reaches automatably in each room: room --> material id ("type-name") --> true, for the item and fluid nodes of graph
+graph_cost.automatable_by_room = function(graph, complex_sort_info)
+    local top = require("lib/graph/context-sort")
+    local automatable = {}
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "item" or node.type == "fluid" then
+            local id = node.type .. "-" .. node.name
+            for context, _ in pairs(complex_sort_info.node_to_context_inds[node_key] or {}) do
+                if context_automatable(context) then
+                    local room = top.context_room(context)
+                    automatable[room] = automatable[room] or {}
+                    automatable[room][id] = true
+                end
+            end
+        end
+    end
+    return automatable
 end
 
 -- The whole-game raw costs (lib/cost/context-costs.lua's raw_costs, by material id) of just the materials the game gives automatably (is_automatable: node key --> whether)
@@ -582,7 +606,7 @@ graph_cost.derive_cost_options = function(graph, sort_info, starting_context, co
     local prices = graph_cost.compute_for_sort(graph, sort_info, nil, true)
     -- What each room has and makes, which recipe randomization prices with (lib/cost/context-costs.lua), with the game's costs tracking the major resources
     local context_costs = require("lib/cost/context-costs")
-    context_costs.current = context_costs.build(graph, sort_info, prices, starting_context, require("lib/logic/init").contexts, true, major)
+    context_costs.current = context_costs.build(graph, sort_info, prices, starting_context, require("lib/logic/init").contexts, true, major, graph_cost.automatable_by_room(graph, complex_sort_info))
     for id, cost in pairs(graph_cost.automatable_raw_costs(graph, context_costs.current.raw_costs, graph_cost.automatable_in_sort(complex_sort_info))) do
         if cost_options.default_cost_table[id] == nil then
             cost_options.default_cost_table[id] = cost
