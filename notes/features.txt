@@ -3,28 +3,27 @@ A plan of when to complete new features I think of, along with the stages of the
 I. Unified rando
     A. DONE
     B. In progress
-        * Entity randomization (in master branch first)
-        * Prereq shuffle versions of item/entity rando to fit into prereq rando
+        * (DONE) Prereq shuffle versions of item/entity rando to fit into prereq rando
         * Unified randomizations:
             1. (DONE) Tech prereqs
             2. (DONE) Recipe tech unlocks
-            3. (In Progress) Recipe categories
+            3. (DONE) Recipe categories
             4. (DONE) Spoiling (what spoils and into what)
             5. (In progress) Fuel categories
-            6. Entity rando
+            6. (In progress) Entity rando
             7. Tile fluids, machine input/output fluids, mining fluids
             8. (DONE) Technology science pack sets
         * (DONE) Basic spoofing, plan in when/what other spoofing to do later
-        * Flow cost checks
-        * Build graph compat nodes added to new logic
+        * (DONE) Flow cost checks
+        * (DONE) Build graph compat nodes added to new logic
         (No working surface rando yet, to be done in IV)
         (No ingredient/result rando, was just for testing with surfaces, no official/balanced item rando since already done)
         (No burnt result rando yet due to payoff/reward)
         (No surface randomizations, do those when finishing isolatability)
 II. Dupes/group unlocks
     A.
-        * Dupes with better graphics (might need to ping Osmo)
-        * Reorganize logic and lookup
+        * (DEFERRED) Dupes with better graphics (might need to ping Osmo)
+        * (DEFERRED) Reorganize logic and lookup
         * (DONE) Testing script for releases and seed testing
     B.
         * Bundled randomizations (brainstorm and prototype), maybe do with numerical too?
@@ -61,7 +60,7 @@ V. Limited configuration
         * Better/configurable logging, profiling
     B.
         * "Balance level" setting
-        * Retries setting
+        * (DONE) Retries setting
         * Way to save settings (not full data.raw, just mod settings)
 VI. Limited compatibility
     A.

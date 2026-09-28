@@ -1993,6 +1993,7 @@ function concrete.build(lu, extra_params)
         if buildable ~= nil then
             -- One build makes one tile (costs follow edge amounts, see lib/cost/graph-cost.lua; without them a built tile would be free, and mining it back a free source of its item)
             add_edge("tile-build", nil, { amount = 1 })
+            -- On a space surface, building a tile (like more platform foundation) is a one-time cost, like building a machine there (entity-own-space)
             add_edge("tile-build-space", nil, { amount = 1 })
 
             ----------------------------------------
