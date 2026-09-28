@@ -8,6 +8,7 @@
 #   dev/style-check.py                 check uncommitted changes (vs HEAD)
 #   dev/style-check.py --staged        check staged changes (pre-commit)
 #   dev/style-check.py --all FILE...   check every line of the given files
+#   dev/style-check.py --requires-only --all   audit require placement in all Lua files
 #   dev/style-check.py --hook post-edit|stop    Claude Code hook mode (reads hook JSON on stdin)
 
 import importlib.metadata
@@ -17,8 +18,16 @@ import re
 import subprocess
 import sys
 
-import tree_sitter_lua
-from tree_sitter import Language, Parser
+try:
+    import tree_sitter_lua
+    from tree_sitter import Language, Parser
+except ImportError:
+    # The existing hooks call python3, which may differ from the release tools' Python.
+    # Reuse their environment when available so those hooks can actually run the check.
+    parser_python = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".venv", "release", "bin", "python")
+    if __name__ == "__main__" and os.path.isfile(parser_python) and os.path.abspath(sys.executable) != parser_python:
+        os.execv(parser_python, [parser_python, os.path.abspath(__file__), *sys.argv[1:]])
+    raise
 
 # 0.26.0 segfaults when walking trees (seen on control.lua); 0.25.2 is known good
 if importlib.metadata.version("tree-sitter").startswith("0.26."):
@@ -51,12 +60,13 @@ class Finding:
         self.rule = rule
         # 0-indexed
         self.row = row
+        self.first_row = row
         self.message = message
         # Findings spanning several lines count as touched if any of their lines are
         self.last_row = last_row if last_row is not None else row
 
     def touches(self, rows):
-        return any(row in rows for row in range(self.row, self.last_row + 1))
+        return any(row in rows for row in range(self.first_row, self.last_row + 1))
 
 
 def walk(node):
@@ -136,6 +146,88 @@ def truthiness_operands(node):
             yield from truthiness_operands(node.child_by_field_name("right"))
 
 
+def unparenthesized(node):
+    while node.type == "parenthesized_expression":
+        node = node.named_children[0]
+    return node
+
+
+def is_mod_lookup(node):
+    node = unparenthesized(node)
+    if node.type not in ("dot_index_expression", "bracket_index_expression"):
+        return False
+    table = unparenthesized(node.child_by_field_name("table"))
+    field = node.child_by_field_name("field")
+    # Only literal mod names: computed keys could execute arbitrary code.
+    literal = field.type == ("identifier" if node.type == "dot_index_expression" else "string")
+    registry = table.type == "identifier" and node_text(table) == b"mods"
+    if table.type == "dot_index_expression":
+        owner = unparenthesized(table.child_by_field_name("table"))
+        registry = owner.type == "identifier" and node_text(owner) == b"script" and node_text(table.child_by_field_name("field")) == b"active_mods"
+    return literal and registry
+
+
+def is_mod_condition(node):
+    node = unparenthesized(node)
+    if is_mod_lookup(node):
+        return True
+    if node.type == "unary_expression":
+        return node.child_by_field_name("operator").type == "not" and is_mod_condition(node.child_by_field_name("operand"))
+    if node.type == "binary_expression":
+        op = node.child_by_field_name("operator").type
+        left = unparenthesized(node.child_by_field_name("left"))
+        right = unparenthesized(node.child_by_field_name("right"))
+        if op in ("and", "or"):
+            return is_mod_condition(left) and is_mod_condition(right)
+        if op in ("==", "~="):
+            return (is_mod_lookup(left) and right.type == "nil") or (left.type == "nil" and is_mod_lookup(right))
+    return False
+
+
+def check_require_context(node):
+    reasons = set()
+    first_row, last_row = node.start_point.row, node.end_point.row
+
+    def reject(context, reason):
+        nonlocal first_row, last_row
+        reasons.add(reason)
+        first_row = min(first_row, context.start_point.row)
+        last_row = max(last_row, context.end_point.row)
+
+    child = node
+    parent = node.parent
+    while parent is not None:
+        if parent.type in ("function_declaration", "function_definition"):
+            reject(parent, "inside a function")
+        elif parent.type == "function_call":
+            reject(parent, "inside another function call")
+        elif parent.type in ("for_statement", "while_statement", "repeat_statement"):
+            reject(parent, "inside a loop")
+        elif parent.type == "if_statement":
+            # An elseif/else also depends on every preceding branch being false.
+            for branch in [parent] + [c for c in parent.named_children if c.type in ("elseif_statement", "else_statement")]:
+                condition = branch.child_by_field_name("condition")
+                if condition is not None and not is_mod_condition(condition):
+                    reject(condition, "under a condition other than mod existence")
+                if branch == child or (branch == parent and child.type not in ("elseif_statement", "else_statement")):
+                    break
+        elif parent.type == "binary_expression":
+            op = parent.child_by_field_name("operator").type
+            if op in ("and", "or") and child == parent.child_by_field_name("right"):
+                condition = parent.child_by_field_name("left")
+                if not is_mod_condition(condition):
+                    reject(condition, "under a condition other than mod existence")
+        child, parent = parent, parent.parent
+
+    if reasons:
+        finding = Finding("error", "require-context", node.start_point.row,
+                          "Require at module scope, outside other calls and loops; only pure mod-existence guards are allowed (" + "; ".join(sorted(reasons)) + ")", last_row)
+        # Report the require's line, but also catch edits to its surrounding guard or scope.
+        finding.first_row = first_row
+        return [finding]
+    return []
+
+
 SEPARATOR_COMMENT = re.compile(r"^-+$")
 CODE_IN_COMMENT = re.compile(r"^(local\s|[{}])|\s=\s")
 # Words that leave a sentence unfinished when they end a line
@@ -198,12 +290,30 @@ def check_comment_runs(root, lines):
     return findings
 
 
-def check_source(source):
+def check_source(source, requires_only=False):
     global current_source
     current_source = source
     findings = []
     tree = PARSER.parse(source)
     root = tree.root_node
+    for node in walk(root):
+        if requires_only and (node.type == "ERROR" or node.is_missing):
+            findings.append(Finding("error", "syntax", node.start_point.row, "Syntax error"))
+        if node.type != "identifier" or node_text(node) != b"require":
+            continue
+        parent = node.parent
+        if parent.type == "function_call" and parent.child_by_field_name("name") == node:
+            findings.extend(check_require_context(parent))
+        elif ((parent.type == "dot_index_expression" and parent.child_by_field_name("field") == node)
+              or (parent.type == "method_index_expression" and parent.child_by_field_name("method") == node)
+              or (parent.type == "field" and parent.child_by_field_name("name") == node and parent.children[0].type != "[")):
+            # A property named require is not a reference to the loader.
+            continue
+        else:
+            findings.append(Finding("error", "require-context", node.start_point.row,
+                                    "Call require directly at module scope; do not alias it or pass it to another function (including pcall)"))
+    if requires_only:
+        return findings
     lines = source.decode(errors="replace").split("\n")
     boolean_names = collect_boolean_names(root)
 
@@ -335,7 +445,9 @@ def changed_files(staged):
 
 
 def is_checked(path):
-    return path.endswith(".lua") and not path.startswith(EXCLUDE_PREFIXES)
+    # Old logic is still used by the mod: enforce require placement there too,
+    # without imposing all the newer formatting rules on it.
+    return path.endswith(".lua") and (path.startswith("lib/old-logic/") or not path.startswith(EXCLUDE_PREFIXES))
 
 
 def read_source(path, staged):
@@ -345,9 +457,9 @@ def read_source(path, staged):
         return f.read()
 
 
-def check_file(path, staged=False, all_rows=False):
+def check_file(path, staged=False, all_rows=False, requires_only=False):
     source = read_source(path, staged)
-    findings = check_source(source)
+    findings = check_source(source, requires_only or path.startswith("lib/old-logic/"))
     if all_rows:
         return findings
     rows = changed_rows(path, staged)
@@ -384,7 +496,7 @@ def hook_post_edit(payload):
         return 0
 
     source = read_source(path, False)
-    findings = check_source(source)
+    findings = check_source(source, path.startswith("lib/old-logic/"))
     rows = changed_rows(path, False)
     errors = [f for f in findings if f.severity == "error" and (rows is None or f.touches(rows) or f.rule == "syntax")]
     # Warnings only for what this edit touched, so they aren't repeated on every later edit to the file
@@ -436,15 +548,20 @@ def main(argv):
 
     staged = "--staged" in argv
     all_rows = "--all" in argv
+    requires_only = "--requires-only" in argv
     paths = [arg for arg in argv if not arg.startswith("--")]
     if len(paths) == 0:
-        paths = changed_files(staged)
+        if all_rows and requires_only:
+            paths = sorted(set(git("ls-files", "--cached").splitlines() + ([] if staged else git("ls-files", "--others", "--exclude-standard").splitlines())))
+            paths = [path for path in paths if path.endswith(".lua") and (staged or os.path.isfile(os.path.join(REPO, path)))]
+        else:
+            paths = changed_files(staged)
 
     error_count = 0
     warning_count = 0
     for path in paths:
         path = os.path.relpath(os.path.abspath(path), REPO)
-        findings = check_file(path, staged, all_rows)
+        findings = check_file(path, staged, all_rows, requires_only)
         if len(findings) > 0:
             print(format_findings(path, findings))
         error_count += sum(1 for f in findings if f.severity == "error")

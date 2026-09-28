@@ -10,6 +10,7 @@
 --   * and if heat then keeps itself going: heat has a context there that's both isolatable and automatable in the sort with the remaining grants (fuel mined and fed by the now warm machines, no hand-feeding)
 
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
 
 local bootstrap = {}
 
@@ -51,8 +52,6 @@ bootstrap.prune = function(logic, home_sets)
         return a.edge_key < b.edge_key
     end)
 
-    -- Required here rather than at the top, since the context sort requires the logic module that requires this file
-    local top = require("lib/graph/context-sort")
     home_sets = home_sets or logic.home_sets or top.home_sets(graph)
     local function sort()
         return top.sort(graph, nil, nil, {

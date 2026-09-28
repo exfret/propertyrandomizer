@@ -28,6 +28,7 @@ package.loaded["lib/logic/init"] = {
     contexts = {},
     type_info = {},
 }
+package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 data = {
     raw = {},
 }

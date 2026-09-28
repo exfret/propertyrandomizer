@@ -35,6 +35,25 @@ data = {
 }
 
 local dutils = require("lib/data-utils")
+local recycling_sources = require("lib/logic/recycling-sources")
+
+-- Stand-ins for the badge icons and the prefix roll, so the test needs no graphics or seed
+package.loaded["lib/dupe"] = {
+    max_icon_number = 9,
+    recipe_number_icon = function(number)
+        return {
+            icon = "badge-" .. number,
+        }
+    end,
+}
+package.loaded["lib/random/rng"] = {
+    int = function(_, max)
+        return 1
+    end,
+}
+local constants = require("helper-tables/constants")
+local locale_utils = require("lib/locale")
+local recipe_renames = require("lib/recipe-renames")
 
 local num_passed = 0
 local function test(name, fn)
@@ -225,7 +244,6 @@ test("a recipe's main product is the one main_product names, or its only product
 end)
 
 test("a recycling recipe is named after its single ingredient, not a product", function()
-    local recycling_sources = require("lib/logic/recycling-sources")
     local function entry(name)
         return {
             type = "item",
@@ -266,24 +284,6 @@ test("both item randomizations rename recipes by the shared main product rule", 
 end)
 
 test("a renamed recipe takes its new item's name, icon and place in the menus, and renamed ones sharing an item are numbered", function()
-    -- Stand-ins for the badge icons and the prefix roll, so the test needs no graphics or seed
-    package.loaded["lib/dupe"] = {
-        max_icon_number = 9,
-        recipe_number_icon = function(number)
-            return {
-                icon = "badge-" .. number,
-            }
-        end,
-    }
-    package.loaded["lib/random/rng"] = {
-        int = function(_, max)
-            return 1
-        end,
-    }
-    local constants = require("helper-tables/constants")
-    local locale_utils = require("lib/locale")
-    local recipe_renames = require("lib/recipe-renames")
-
     local function entry(name)
         return {
             type = "item",

@@ -24,6 +24,10 @@ import sys
 import tempfile
 import time
 
+# Also when another script loads this file by path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import factorio_launch
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACTORIO = "/Applications/factorio.app/Contents/MacOS/factorio"
 BASE_SETTINGS = os.path.join(os.path.dirname(REPO), "mod-settings.dat")
@@ -76,7 +80,7 @@ def run_seed(seed, root, mod_copy):
     log_path = os.path.join(run_dir, "factorio.log")
     with open(log_path, "w") as log_file:
         try:
-            exit_code = subprocess.run([FACTORIO, "-c", config_path, "--mod-directory", mods_dir, "--create", os.path.join(run_dir, "save.zip")], stdout=log_file, stderr=subprocess.STDOUT, timeout=TIMEOUT_SECONDS).returncode
+            exit_code = factorio_launch.run([FACTORIO, "-c", config_path, "--mod-directory", mods_dir, "--create", os.path.join(run_dir, "save.zip")], stdout=log_file, stderr=subprocess.STDOUT, timeout=TIMEOUT_SECONDS).returncode
         except subprocess.TimeoutExpired:
             exit_code = "timeout"
     # {stage -> {pack or "total" -> {resource -> amount}}}

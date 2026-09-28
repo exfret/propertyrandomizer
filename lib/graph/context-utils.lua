@@ -1,5 +1,5 @@
--- Required for type info (this should probably be reorganized at some point)
-local logic = require("lib/logic/init")
+-- Share context metadata with the logic builder without loading the builder.
+local logic = require("lib/logic/state")
 
 local contutils = {}
 

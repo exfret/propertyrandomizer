@@ -8,37 +8,24 @@
 --   
 -- TODO: Some lookups done check that everything they put into the lookup table is from the raw prototypes in stage 1, so maybe add those checks
 
--- Load stage modules
-local stage_names = {}
--- Insert stage 1
-table.insert(stage_names, "1-raw")
--- Insert stage 2
-local second_stage_names = {
-    "combat",
-    "entity-create",
-    "entity-property",
-    "equipment",
-    "fluid",
-    "fuel",
-    "item",
-    "mining",
-    "recipe",
-    "room",
-    "science",
-    "tile",
+-- Load stages in dependency order.
+local stages = {
+    require("lib/lookup/1-raw"),
+    require("lib/lookup/2-simple/combat"),
+    require("lib/lookup/2-simple/entity-create"),
+    require("lib/lookup/2-simple/entity-property"),
+    require("lib/lookup/2-simple/equipment"),
+    require("lib/lookup/2-simple/fluid"),
+    require("lib/lookup/2-simple/fuel"),
+    require("lib/lookup/2-simple/item"),
+    require("lib/lookup/2-simple/mining"),
+    require("lib/lookup/2-simple/recipe"),
+    require("lib/lookup/2-simple/room"),
+    require("lib/lookup/2-simple/science"),
+    require("lib/lookup/2-simple/tile"),
+    require("lib/lookup/3-compound"),
+    require("lib/lookup/4-weight"),
 }
-for _, name in pairs(second_stage_names) do
-    table.insert(stage_names, "2-simple/" .. name)
-end
--- Insert stage 3
-table.insert(stage_names, "3-compound")
--- Insert stage 4
-table.insert(stage_names, "4-weight")
--- Get stages from stage names
-local stages = {}
-for _, name in pairs(stage_names) do
-    table.insert(stages, require("lib/lookup/" .. name))
-end
 
 local lu = {}
 

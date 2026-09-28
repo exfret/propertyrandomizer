@@ -1,4 +1,4 @@
-# Settings configs for dev/run-tests.py; every config runs on every mod set in tests/mod-configs
+# Settings configs for dev/run-tests.py; every config runs on every mod set in tests/mod-configs, unless a limit line below narrows a mod set
 # Setting names leave out the "propertyrandomizer-" prefix
 #
 # Most configs are generated from settings.lua, so new settings are covered without touching this file
@@ -14,7 +14,16 @@ wip unified
 
 # tier NAME PATTERN...: a small named set of runs for dev/run-tests.py --tier NAME; a run is in it if its name contains any pattern
 # precommit runs from dev/git-hooks/pre-commit, and should take about 10 minutes
-tier precommit /defaults /max /unit-tests base/single-technology= base/single-recipe= base/single-recipe-tech-unlock= base/single-item=
+tier precommit base/defaults sa/defaults base/max sa/max base/unit-tests sa/unit-tests base/single-technology= base/single-recipe= base/single-recipe-tech-unlock= base/single-item=
+
+# limit MODSET CONFIG...: mod sets matching MODSET only run the configs named (both can use *, like unified-all@*); naming a mod set with --modset runs every config on it
+# Any Planet Start (the aps-* mod sets, each starting on another planet through its aps-planet setting) is checked on the default randomizations, everything players can turn on, and the graph randomizations
+# Run just these with: dev/run-tests.py --only aps-
+limit aps-* defaults max graph-standard
+
+# oldlogic SETTING=VALUE: configs with this setting are judged by the old logic's check of the built game (OLDLOGICCHECK in data-final-fixes.lua) instead of the reachability and MECHCHECK checks
+# TEMPORARY (user, 2026-09-28): old item randomization only has to pass against the old logic for now, so it doesn't block the next release
+oldlogic item=true
 
 # skip SETTING: leave a setting out of generated configs
 skip seed                   # each run picks its own seed
@@ -35,10 +44,14 @@ requires unified-entity-biters unified-entity=true
 pin dev-unified=false smoke settings
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
-# nocheck turns off the reachability, mechcheck or control check (see dev/run-tests.py)
+# nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)
 # In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data or MECHCHECK verdict
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
+# Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
+# Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost
+# Missing baseline or final prices fail: every science pack must be covered.
+config science-cost settings seeds=749,750,751 recipe=true
 # Override syntax is documented in OVERRIDES.md; the first two are its own examples
 config overrides-toggles settings overrides=belt_speed;!crafting_machine_speed
 config overrides-set settings overrides=RESET:[entity=inserter].NUMERICAL;SET:[entity=inserter].rotation_speed=(X+Y)/2

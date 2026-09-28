@@ -10,12 +10,10 @@ local function log_reachability()
     log("PRTEST reachability " .. tostring(reachability.data["reachable"]) .. " of " .. tostring(reachability.data["total"]))
 end
 
--- The settings the game actually used, so the runner can check they match what the test asked for
+-- The startup settings the game actually used (other mods' too, for mod sets that set them), so the runner can check they match what the test asked for
 local function log_settings()
     for name, setting in pairs(settings.startup) do
-        if string.find(name, "propertyrandomizer-", 1, true) == 1 then
-            log("PRTEST setting " .. name .. " = " .. tostring(setting.value))
-        end
+        log("PRTEST setting " .. name .. " = " .. tostring(setting.value))
     end
 end
 

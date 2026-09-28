@@ -98,9 +98,11 @@ end
 -- Special prototype fixes
 require("randomizations/prefixes")
 
+local planetary = require("randomizations/planetary/execute")
+
 -- Planetary randomization goes first, so the rest of randomization and its checks treat the changed world as the starting point
 if config.planetary then
-    require("randomizations/planetary/execute").execute(new_logic)
+    planetary.execute(new_logic)
 end
 
 old_data_raw = table.deepcopy(data.raw)
@@ -116,7 +118,7 @@ local top = require("lib/graph/context-sort")
 new_logic.build(true)
 -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
 -- With planetary changes in the game, they're the ones planetary's goals were made with
-local planetary_home_sets = config.planetary and require("randomizations/planetary/execute").home_sets()
+local planetary_home_sets = config.planetary and planetary.home_sets()
 new_logic.home_sets = planetary_home_sets or top.home_sets(new_logic.graph)
 local init_sort_info = top.sort(new_logic.graph)
 -- With room/ability contexts (isolatability, automatability), for the mechanic context check at the end
@@ -125,7 +127,8 @@ local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
     home_contexts = true,
 })
 -- Raw material costs and the major resources for recipe costs come from the logic graph's cost model, in the world planetary changes made
-require("lib/cost/graph-cost").derive_cost_options(new_logic.graph, init_sort_info, gutils.key("planet", constants.starting_planet), init_complex_sort_info)
+local graph_cost = require("lib/cost/graph-cost")
+graph_cost.derive_cost_options(new_logic.graph, init_sort_info, gutils.key("planet", constants.starting_planet), init_complex_sort_info, new_logic.contexts)
 
 ----------------------------------------------------------------------
 -- Setup done!
@@ -168,7 +171,7 @@ end
 
 -- Planetary changes in superposed mode are settled once the rest of randomization is done (see randomizations/planetary/execute.lua)
 if config.planetary then
-    require("randomizations/planetary/execute").settle(new_logic)
+    planetary.settle(new_logic)
 end
 
 -- Do old data raw for derandomization here so that necessary graph randomization tweaks stay
@@ -193,12 +196,6 @@ build_graph_compat = require("lib/old-logic/build-graph-compat")
 log("Adding dependents")
 build_graph.add_dependents(dep_graph)
 
-log("Finding initially reachable nodes")
-local top_sort = require("lib/old-logic/top-sort")
--- A deepcopy is necessary because otherwise modifications to the nodes by randomizations mess up the sort's "sorted" list
--- TODO: This slows down startup, though, so I want to find a way around it
-local initial_sort_info = top_sort.sort(table.deepcopy(dep_graph))
-
 log("Gathering randomizations")
 
 -- Load in randomizations
@@ -212,6 +209,28 @@ log("Applying graph-based randomizations")
 -- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild)
 if config.tech_tree_rebuild then
     randomizations.rebuild_tech_tree()
+end
+
+-- Old item randomization is only held to the old logic for now (the oldlogic line in tests/configs.txt), so with it on, the old logic checks the built game too (OLDLOGICCHECK below)
+-- Its science packs before graph randomization are the baseline; balance rules (build-graph-compat.lua) are soft, so they're left out of both sorts
+local top_sort = require("lib/old-logic/top-sort")
+local function old_logic_science_packs()
+    build_graph.load()
+    build_graph.add_dependents(build_graph.graph)
+    local reachable = top_sort.sort(build_graph.graph).reachable
+    local packs = {}
+    for _, lab in pairs(data.raw.lab) do
+        for _, input in pairs(lab.inputs) do
+            if reachable[build_graph.key("item", input)] ~= nil then
+                packs[input] = true
+            end
+        end
+    end
+    return packs
+end
+local old_logic_packs_before
+if config.graph.item then
+    old_logic_packs_before = old_logic_science_packs()
 end
 
 build_graph.load()
@@ -265,15 +284,27 @@ if config.graph.technology then
     build_graph.add_dependents(dep_graph)
 end
 
+local resource_report = require("lib/cost/resource-report")
+local flow_cost = require("lib/cost/flow-cost")
+local science_costs
+if mods["propertyrandomizer-test-helper"] then
+    science_costs = require("__propertyrandomizer-test-helper__/science-costs")
+end
+
 if config.graph.recipe then
     log("Applying recipe ingredients randomization")
 
-    local resource_report = require("lib/cost/resource-report")
     resource_report.run("before")
+    if science_costs ~= nil then
+        science_costs.capture("before", flow_cost, constants.cost_params)
+    end
     randomizations.recipe_ingredients("recipe_ingredients")
     -- Fix recycling recipes first so that dependency graph is an accurate reflection of reality
     randomizations.fix_recycling_recipes()
     resource_report.run("after")
+    if science_costs ~= nil then
+        science_costs.capture("after", flow_cost, constants.cost_params)
+    end
     -- Rebuild graph
     build_graph.load()
     dep_graph = build_graph.graph
@@ -368,10 +399,27 @@ local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
     home_contexts = true,
 })
 -- A game that lost something a player needs could softlock, so the randomizer panel tells the player (reachability data below); a startup error would make them reset their settings
-local final_check_ok = require("randomizations/graph/unified/skeleton/check").run(new_logic.graph, init_complex_sort_info, final_complex_sort_info).ok
+local final_check_ok = unified_check.run(new_logic.graph, init_complex_sort_info, final_complex_sort_info).ok
+-- The old logic's check of the built game, with old item randomization on (see old_logic_packs_before)
+if old_logic_packs_before ~= nil then
+    local packs_after = old_logic_science_packs()
+    local num_kept = 0
+    local num_total = 0
+    local lost_packs = {}
+    for pack, _ in pairs(old_logic_packs_before) do
+        num_total = num_total + 1
+        if packs_after[pack] ~= nil then
+            num_kept = num_kept + 1
+        else
+            table.insert(lost_packs, pack)
+        end
+    end
+    table.sort(lost_packs)
+    log("OLDLOGICCHECK science packs reachable " .. num_kept .. " of " .. num_total .. (#lost_packs > 0 and ("; lost " .. table.concat(lost_packs, ", ")) or ""))
+end
 -- What planetary changes kept, checked against the game before them (only logged for now, as PLANETCHECK final)
 if config.planetary then
-    require("randomizations/planetary/execute").check_final(new_logic.graph)
+    planetary.check_final(new_logic.graph)
 end
 
 local reachable = 0

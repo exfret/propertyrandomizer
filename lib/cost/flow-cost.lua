@@ -55,20 +55,21 @@ flow_cost.calculate_individual_recipe_map = function(recipe, maps, ing_overrides
     end
 end
 
-flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data)
+flow_cost.construct_item_recipe_maps = function(ing_overrides, use_data, recipe_prototypes)
     --log("Considering material list")
     flow_cost.update_material_list()
+    recipe_prototypes = recipe_prototypes or data.raw.recipe
 
     local recipe_to_material = {}
     local material_to_recipe = {}
-    for _, recipe in pairs(data.raw.recipe) do
+    for _, recipe in pairs(recipe_prototypes) do
         recipe_to_material[recipe.name] = {}
     end
     for _, material in pairs(flow_cost.material_list) do
         material_to_recipe[flow_cost.get_prot_id(material)] = {}
     end
 
-    for _, recipe in pairs(data.raw.recipe) do
+    for _, recipe in pairs(recipe_prototypes) do
         flow_cost.calculate_individual_recipe_map(recipe, {recipe_to_material = recipe_to_material, material_to_recipe = material_to_recipe}, ing_overrides, use_data)
     end
     
@@ -137,7 +138,7 @@ flow_cost.eval_recipe_cost = function(params)
     end
     local reachable = true
 
-    local recipe = data.raw.recipe[recipe_name]
+    local recipe = (params.recipe_prototypes or data.raw.recipe)[recipe_name]
     -- A recipe can leave out its ingredients (like the captive spawner's biter eggs)
     local ings_to_use = recipe.ingredients or {}
     -- If this has an override, use that instead
@@ -229,7 +230,7 @@ flow_cost.local_cost_update = function(params)
             if ing_overrides == nil or (ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted") then
                 -- Only check recipes for which this is an ingredient
                 -- We can't use amount here because it takes results into account, which we don't want
-                local recipe_ingredients = data.raw.recipe[recipe_name].ingredients
+                local recipe_ingredients = (params.recipe_prototypes or data.raw.recipe)[recipe_name].ingredients
                 if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted" then
                     -- Make sure we aren't forced to use data.raw
                     if not use_data then
@@ -244,6 +245,7 @@ flow_cost.local_cost_update = function(params)
                     -- Evaluate if the recipe is cheaper now
                     local cost_info = flow_cost.eval_recipe_cost({
                         recipe_name = recipe_name,
+                        recipe_prototypes = params.recipe_prototypes,
                         material_to_cost = material_to_cost,
                         recipe_time_modifier = recipe_time_modifier,
                         recipe_complexity_modifier = recipe_complexity_modifier,
@@ -326,7 +328,7 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
         recipe_to_material = extra_params.item_recipe_maps.recipe_to_material
         material_to_recipe = extra_params.item_recipe_maps.material_to_recipe
     else
-        item_recipe_maps = flow_cost.construct_item_recipe_maps(ing_overrides, use_data)
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(ing_overrides, use_data, extra_params.recipe_prototypes)
         recipe_to_material = item_recipe_maps.recipe_to_material
         material_to_recipe = item_recipe_maps.material_to_recipe
     end
@@ -369,6 +371,7 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
         if not takes_something then
             local cost_info = flow_cost.eval_recipe_cost({
                 recipe_name = recipe_name,
+                recipe_prototypes = extra_params.recipe_prototypes,
                 material_to_cost = material_to_cost,
                 recipe_time_modifier = recipe_time_modifier,
                 recipe_complexity_modifier = recipe_complexity_modifier,
@@ -402,6 +405,7 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
         flow_cost.local_cost_update({
             open_nodes = open_nodes,
             curr_node = curr_node,
+            recipe_prototypes = extra_params.recipe_prototypes,
             material_to_recipe = material_to_recipe,
             recipe_to_material = recipe_to_material,
             material_to_cost = material_to_cost,
@@ -483,7 +487,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         recipe_to_material = extra_params.item_recipe_maps.recipe_to_material
         material_to_recipe = extra_params.item_recipe_maps.material_to_recipe
     else
-        item_recipe_maps = flow_cost.construct_item_recipe_maps(ing_overrides, use_data)
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(ing_overrides, use_data, extra_params.recipe_prototypes)
         recipe_to_material = item_recipe_maps.recipe_to_material
         material_to_recipe = item_recipe_maps.material_to_recipe
     end
@@ -514,6 +518,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         -- Add the costs of the recipes to recipe_to_cost
         local cost_info = flow_cost.eval_recipe_cost({
             recipe_name = recipe_name,
+            recipe_prototypes = extra_params.recipe_prototypes,
             material_to_cost = material_to_cost,
             recipe_time_modifier = recipe_time_modifier,
             recipe_complexity_modifier = recipe_complexity_modifier,
@@ -552,6 +557,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         flow_cost.local_cost_update({
             open_nodes = open_nodes,
             curr_node = curr_node,
+            recipe_prototypes = extra_params.recipe_prototypes,
             material_to_recipe = material_to_recipe,
             recipe_to_material = recipe_to_material,
             material_to_cost = material_to_cost,

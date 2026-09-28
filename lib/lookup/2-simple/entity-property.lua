@@ -8,6 +8,7 @@ local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local dutils = require("lib/data-utils")
 local tutils = require("lib/trigger")
+local cutils = require("lib/cost/cost-utils")
 
 local prots = dutils.prots
 
@@ -85,7 +86,7 @@ stage.entity_collision_groups = function()
     lu.entity_to_collision_group = entity_to_collision_group
 end
 
--- Maps items to entities that drop them as loot
+-- Maps items to entities that drop them as loot, with expected units per kill.
 stage.loot_to_entities = function()
     local loot_to_entities = {}
 
@@ -93,11 +94,12 @@ stage.loot_to_entities = function()
         if entity.loot ~= nil then
             for _, loot_entry in pairs(entity.loot) do
                 local item_name = loot_entry.name
-                if item_name ~= nil then
+                local amount = cutils.find_amount_in_entry(loot_entry)
+                if item_name ~= nil and amount > 0 then
                     if loot_to_entities[item_name] == nil then
                         loot_to_entities[item_name] = {}
                     end
-                    loot_to_entities[item_name][entity.name] = true
+                    loot_to_entities[item_name][entity.name] = (loot_to_entities[item_name][entity.name] or 0) + amount
                 end
             end
         end

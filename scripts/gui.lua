@@ -171,10 +171,10 @@ local function toggle_randomizer_panel(event)
     local reachable = prototypes.mod_data["propertyrandomizer-reachability-data"].data["reachable"]
     local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
     if reachable < total then
-        reachability_text = "[color=red]Potential critical softlock found: Only " .. tostring(reachable) .. "/" .. tostring(total) .. " science packs seem reachable.[/color]"
+        reachability_text = "[color=red]Potential softlock found: Only " .. tostring(reachable) .. "/" .. tostring(total) .. " science packs seem reachable. Differences between the old and new logic can cause false alarms, so this may not be a real softlock.[/color]"
     elseif prototypes.mod_data["propertyrandomizer-reachability-data"].data["check_ok"] == false then
         -- The mechanic context check (skeleton/check.lua) found something a player needs lost, like a recipe no longer reachable
-        reachability_text = "[color=red]Potential softlock found: randomization lost something the original game had, so you could get stuck. Consider starting over with another seed (MECHCHECK lines in the log have details).[/color]"
+        reachability_text = "[color=red]Potential softlock found: the checker reports that randomization lost something the original game had. Differences between the old and new logic can cause false alarms, so this may not be a real softlock (MECHCHECK lines in the log have details).[/color]"
     else
         reachability_text = "[color=green]No critical softlocks discovered. All " .. tostring(total) .. " science packs seem reachable.[/color]"
     end

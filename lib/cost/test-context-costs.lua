@@ -12,8 +12,9 @@ defines = {
 }
 
 local gutils = require("lib/graph/graph-utils")
-local graph_cost = require("lib/cost/graph-cost")
+local graph_cost = require("lib/cost/graph-cost-core")
 local context_costs = require("lib/cost/context-costs")
+local flow_cost = require("lib/cost/flow-cost")
 
 local num_passed = 0
 local function test(name, fn)
@@ -143,7 +144,7 @@ local function game_set(info, track_resources)
     return context_costs.new_set(info, {
         ing_overrides = context_costs.data_overrides(),
         use_data = true,
-        item_recipe_maps = require("lib/cost/flow-cost").construct_item_recipe_maps(),
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(),
         track_resources = track_resources or {},
     })
 end
@@ -203,7 +204,7 @@ test("a staged set prices a recipe once its ingredients are set and it's updated
     local set = context_costs.new_set(info, {
         ing_overrides = overrides,
         use_data = true,
-        item_recipe_maps = require("lib/cost/flow-cost").construct_item_recipe_maps(),
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(),
         track_resources = {},
     })
     -- Until smelting counts, A only has plates from recycled imported debris
@@ -211,6 +212,32 @@ test("a staged set prices a recipe once its ingredients are set and it's updated
     overrides.smelt = data.raw.recipe.smelt.ingredients
     set:update("smelt")
     assert(near(set:view("A").material_to_cost["item-plate"], 1 + 0.07 * 0.5 + 0.01))
+end)
+
+test("a staged reference keeps the earlier cost until a cheaper route is admitted", function()
+    local info = world()
+    data.raw.recipe.efficient = {
+        name = "efficient",
+        ingredients = {entry("ore", 0.1)},
+        results = {entry("plate", 1)},
+    }
+    info.recipe_available.A.efficient = true
+    local complete = game_set(info)
+    local overrides = context_costs.data_overrides()
+    overrides.efficient = {"blacklisted"}
+    local staged = context_costs.new_set(info, {
+        ing_overrides = overrides,
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(),
+        track_resources = {},
+        imports_from = complete,
+        dynamic_imports = true,
+    })
+    local local_costs = staged:view("A", "local")
+    assert(near(local_costs.material_to_cost["item-plate"], 1.045))
+    assert(near(complete:view("A", "local").material_to_cost["item-plate"], 0.145))
+    overrides.efficient = data.raw.recipe.efficient.ingredients
+    staged:update("efficient")
+    assert(near(local_costs.material_to_cost["item-plate"], 0.145))
 end)
 
 test("a recipe that takes nothing (like the captive spawner's biter eggs) is priced at its time and complexity", function()
@@ -224,36 +251,44 @@ test("a recipe that takes nothing (like the captive spawner's biter eggs) is pri
         energy_required = 10,
         results = { entry("egg", 5) },
     }
-    local flow_cost = require("lib/cost/flow-cost")
     local costs = flow_cost.determine_recipe_item_cost({}, 0.07, 0.01)
     assert(near(costs.material_to_cost["item-egg"], (0.07 * 10 + 0.01) / 5))
 end)
 
-test("an automatable-only set prices only from what each room has automatably, so a cost still means automatable there", function()
-    -- Gems are mined by hand in B, so they aren't automatable anywhere; ore and debris are
-    local info = world({
-        A = { ["item-ore"] = true, ["item-debris"] = true, ["item-plate"] = true },
-        B = { ["item-debris"] = true, ["item-plate"] = true },
-    })
-    local set = context_costs.new_set(info, {
-        ing_overrides = context_costs.data_overrides(),
-        use_data = true,
-        item_recipe_maps = require("lib/cost/flow-cost").construct_item_recipe_maps(),
-        track_resources = {},
-        automatable_only = true,
-    })
-    assert(set:view("A").material_to_cost["item-plate"] ~= nil)
-    assert(set:view("A").material_to_cost["item-gem"] == nil)
-    assert(set:view("B").material_to_cost["item-jewel"] == nil)
-    -- Without it, gems and jewels are priced
-    local all = game_set(info)
-    assert(all:view("B").material_to_cost["item-jewel"] ~= nil)
+test("manual raw sources, their products, and imports keep prices without automation", function()
+    local info = world({ A = {}, B = {} })
+    local set = game_set(info)
+    assert(near(set:view("B").material_to_cost["item-gem"], 2))
+    assert(near(set:view("A").material_to_cost["item-gem"], 2))
+    local jewel = set:view("B").material_to_cost["item-jewel"]
+    assert(jewel ~= nil)
+    assert(near(set:view("A").material_to_cost["item-jewel"], jewel))
+    -- Pricing neither requires nor grants automation eligibility.
+    assert(info.automatable.B["item-gem"] == nil)
+    assert(info.automatable.B["item-jewel"] == nil)
+    assert(info.automatable.A["item-gem"] == nil)
+end)
+
+test("a manually seeded production loop and its downstream products get prices", function()
+    local info = world({ A = {}, B = {} })
+    data.raw.recipe.grow = {
+        name = "grow",
+        ingredients = { entry("gem", 1), entry("debris", 1) },
+        results = { entry("gem", 2) },
+    }
+    info.recipe_available.B.grow = true
+    local set = game_set(info)
+    local gem = set:view("B").material_to_cost["item-gem"]
+    assert(gem ~= nil)
+    assert(set.tiers.B.full.recipe_to_cost.grow ~= nil)
+    assert(set:view("B").material_to_cost["item-jewel"] ~= nil)
+    assert(info.automatable.B["item-gem"] == nil)
 end)
 
 test("newer resources' share of a cost counts newer raw resources and imports", function()
     local info = world()
     local set = game_set(info)
-    local maps = require("lib/cost/flow-cost").construct_item_recipe_maps()
+    local maps = flow_cost.construct_item_recipe_maps()
     -- Debris is a newer resource; B makes plates from it, so they're mostly newer there
     local novelty_b = context_costs.novelty(info, "B", set, { ["item-debris"] = true }, maps)
     assert(near(novelty_b["item-debris"], 1))
@@ -271,6 +306,60 @@ test("a fallback view reads the first table, then the second, then the default",
         end
     end)
     assert(view.a == 1 and view.b == 3 and view.c == 4 and view.d == nil)
+end)
+
+test("explicit local tiers cannot borrow a cheaper home price, and bills use the same tier", function()
+    local info = world()
+    data.raw.recipe.grind = {
+        name = "grind",
+        ingredients = {entry("ore", 100)},
+        results = {entry("gem", 1)},
+    }
+    info.recipe_available.A.grind = true
+    local set = game_set(info, {"item-ore", "item-gem"})
+    assert(near(set:view("A").material_to_cost["item-gem"], 2))
+    assert(set:view("A", "local").material_to_cost["item-gem"] > 100)
+    assert(near(set:view("A", "full").material_to_cost["item-gem"], 2))
+    assert(near(set:resource_view("A", "item-ore", "local").material_to_cost["item-gem"], 100))
+    assert(near(set:resource_view("A", "item-gem", "full").material_to_cost["item-gem"], 1))
+    local views = context_costs.set_views(set, {"item-ore"})
+    assert(near(views.in_room("A", "local").resources["item-ore"].material_to_cost["item-gem"], 100))
+end)
+
+test("dynamic imports replace fallback prices and bills when a source becomes more expensive", function()
+    local info = world()
+    local original = game_set(info, {"item-gem"})
+    local overrides = context_costs.data_overrides()
+    overrides["cut-gem"] = {"blacklisted"}
+    local set = context_costs.new_set(info, {
+        ing_overrides = overrides,
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(),
+        track_resources = {"item-gem"},
+        imports_from = original,
+        dynamic_imports = true,
+        updated_contexts = {A = true},
+    })
+    local view = set:view("A", "full")
+    local bill = set:resource_view("A", "item-gem", "full")
+    assert(near(view.material_to_cost["item-jewel"], 2.045))
+    overrides["cut-gem"] = {entry("gem", 20)}
+    set:update("cut-gem")
+    assert(near(view.material_to_cost["item-jewel"], 40.045))
+    assert(near(bill.material_to_cost["item-jewel"], 20))
+    assert(near(original:view("A", "full").material_to_cost["item-jewel"], 2.045))
+end)
+
+test("local novelty uses local production rather than imported resource shares", function()
+    local info = world()
+    local set = game_set(info)
+    local maps = flow_cost.construct_item_recipe_maps()
+    local newer = { ["item-debris"] = true }
+    local full = context_costs.novelty(info, "A", set, newer, maps, "full")
+    local local_only = context_costs.novelty(info, "A", set, newer, maps, "local")
+    assert(full["item-plate"] > 0.5)
+    assert(local_only["item-plate"] == nil)
+    assert(full["item-gem"] == 1)
+    assert(local_only["item-gem"] == nil)
 end)
 
 print(num_passed .. " tests passed")

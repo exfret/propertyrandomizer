@@ -56,11 +56,11 @@
 --   * prod: Short for "product"; any ingredient/result
 --   * rcat/mcat: Short for recipe/mining category respectively, usually denotes a "spoofed" category which takes fluids into account as well
 
+local gutils = require("lib/graph/graph-utils")
+local logic = require("lib/logic/state")
+
 -- If this is control stage, just get the contexts and type info
 if data == nil then
-    local gutils = require("lib/graph/graph-utils")
-
-    local logic = {}
     logic.contexts = {}
 
     -- Add contexts
@@ -83,7 +83,6 @@ if data == nil then
 end
 
 local lib_name = "lib"
-local gutils = require(lib_name .. "/graph/graph-utils")
 local lu = require(lib_name .. "/lookup/init")
 local logic_group = require(lib_name .. "/logic/logic-group")
 local group = require(lib_name .. "/logic/groups")
@@ -102,8 +101,6 @@ local graph_setup = require(lib_name .. "/logic/graph-setup")
 local bootstrap = require(lib_name .. "/logic/bootstrap")
 
 local key = gutils.key
-
-local logic = {}
 
 ----------------------------------------------------------------------
 -- Setup

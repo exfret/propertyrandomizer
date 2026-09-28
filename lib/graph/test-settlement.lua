@@ -40,6 +40,7 @@ local logic = {
     },
 }
 package.loaded["lib/logic/init"] = logic
+package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 
 data = {
     raw = {

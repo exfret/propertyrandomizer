@@ -1,4 +1,5 @@
 local categories = require("helper-tables/categories")
+local fluid_ports = require("lib/fluid-ports")
 local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
 
@@ -214,5 +215,5 @@ end
 
 -- Extra fluid boxes on every crafting machine, for fluids that randomization moves around (see lib/fluid-ports.lua)
 if config.item_fluids then
-    require("lib/fluid-ports").add_crafting_machine_ports()
+    fluid_ports.add_crafting_machine_ports()
 end

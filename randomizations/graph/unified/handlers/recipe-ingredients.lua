@@ -1,4 +1,4 @@
--- No cost preservation for now, just enough to get it loading
+-- Preserve costs in the original recipe's local production tier, or its import-enabled tier when imports are needed.
 
 local constants = require("helper-tables/constants")
 local logic = require("lib/logic/init")
@@ -13,6 +13,7 @@ local flow_cost = require("lib/cost/flow-cost")
 local cost_lib = require("randomizations/graph/recipe-cost")
 local furnace_selection = require("lib/furnace-selection")
 local context_costs = require("lib/cost/context-costs")
+local staged_recipes = require("lib/cost/staged-recipes")
 
 
 local key = gutils.key
@@ -138,24 +139,16 @@ recipe_ingredients.custom_prereq_search = function(params)
         end
     end
 
-    -- COPY-PASTED from randomizations/graph/recipe.lua
-    -- Table sending recipe to its new ingredients
-    -- This needs to be populated with empty arrays first so that costs can be constructed accurately
-    -- dependent_to_new_ings now is declared at module level
+    -- Ingredient overrides make unprocessed recipes unavailable to staged pricing.
     dependent_to_new_ings = {}
-    -- This is needed for the staged old cost calculations
-    local dependent_to_old_ings = {}
+    local dependent_to_old_ings = context_costs.data_overrides()
     for _, dep in pairs(sorted_deps) do
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
-            -- For old ings, we are considering the slot recipes
-            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
-            local slot_recipe = data.raw.recipe[slot_node.name]
-            assert(slot_recipe ~= nil)
-
             local recipe_name = node.name
             dependent_to_new_ings[recipe_name] = {"blacklisted"}
-            dependent_to_old_ings[slot_recipe.name] = {"blacklisted"}
+            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
+            dependent_to_old_ings[slot_node.name] = {"blacklisted"}
         end
     end
     -- Add sensitive recipes back to dependent_to_new_ings
@@ -165,40 +158,36 @@ recipe_ingredients.custom_prereq_search = function(params)
             assert(recipe_name ~= "")
             local recipe = data.raw.recipe[recipe_name]
             dependent_to_new_ings[recipe_name] = {}
-
-            -- For old ings, we are considering the slot recipes
             local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key("recipe", first_pass.make_trav_name(recipe_name))] or node_key]) or random_graph.nodes[node_key]
-            local slot_recipe = data.raw.recipe[slot_node.name]
-            assert(slot_recipe ~= nil)
-            dependent_to_old_ings[slot_recipe.name] = {}
+            dependent_to_old_ings[slot_node.name] = data.raw.recipe[slot_node.name].ingredients or {}
 
             if recipe.ingredients ~= nil then
                 for _, ing in pairs(recipe.ingredients) do
                     table.insert(dependent_to_new_ings[recipe_name], ing)
-                    table.insert(dependent_to_old_ings[slot_recipe.name], ing)
                 end
             end
         end
     end
-    -- Also add back recipes that went unclaimed (e.g. all their ingredients are blacklisted_pre, like yumako-processing)
-    -- Recipes missing from ing_overrides are treated as nonexistent by flow_cost, which would leave their products without costs
+    -- Keep unchanged recipes, including hidden routes. The staged world below blocks generated recycling
+    -- while its source is pending; each room's availability still filters which recipes it can use.
     for recipe_name, recipe in pairs(data.raw.recipe) do
-        if dependent_to_new_ings[recipe_name] == nil and not recipe.hidden then
+        if dependent_to_new_ings[recipe_name] == nil then
             dependent_to_new_ings[recipe_name] = {}
-            dependent_to_old_ings[recipe_name] = {}
             for _, ing in pairs(recipe.ingredients or {}) do
                 table.insert(dependent_to_new_ings[recipe_name], ing)
-                table.insert(dependent_to_old_ings[recipe_name], ing)
             end
         end
     end
     local major_raw_resources = randomization_info.options.cost.major_raw_resources
     local vanilla_item_recipe_maps = flow_cost.construct_item_recipe_maps()
-    local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps()
-    -- Aggregate costs and bills of the major resources are per room (lib/cost/context-costs.lua), each kept three ways:
-    -- the game's, staged in this run's processing order (vanilla_sets); the randomized recipes' so far (randomized_sets); and the game's in full (full_sets)
+    local original_world = staged_recipes.new(data.raw, dependent_to_old_ings)
+    local original_item_recipe_maps = flow_cost.construct_item_recipe_maps(dependent_to_old_ings, false, original_world.recipes)
+    local staged_world = staged_recipes.new(data.raw, dependent_to_new_ings)
+    local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps(dependent_to_new_ings, false, staged_world.recipes)
+    -- Both sides admit recipes in processing order, so later cheap routes cannot lower an earlier target.
+    -- Each recipe keeps one pricing tier in its room, so its ingredients and outputs use the same production network.
     local rooms = context_costs.current
-    -- The rooms recipes are judged in (context_costs.judging_context of each slot's recipe), the only ones the staged worlds need to keep up to date
+    -- Record the rooms recipes are judged in. Dynamic imports also keep their supplying rooms up to date.
     local judged_contexts = {}
     for _, dep in pairs(sorted_deps) do
         local node = random_graph.nodes[dep]
@@ -207,7 +196,7 @@ recipe_ingredients.custom_prereq_search = function(params)
             judged_contexts[context_costs.judging_context(rooms, slot_node.name) or rooms.starting_context] = true
         end
     end
-    -- The game's costs are priced once per load (unified randomization's retries start from the same game); the staged worlds take their imports from them
+    -- Original prices stay fixed across retries and supply initial quotes for imports whose source recipes have not been processed.
     local full_sets = context_costs.set_views(context_costs.game_set(rooms, major_raw_resources), major_raw_resources)
     local function staged_sets(set_params)
         set_params.track_resources = major_raw_resources
@@ -217,31 +206,37 @@ recipe_ingredients.custom_prereq_search = function(params)
     end
     local vanilla_sets = staged_sets({
         ing_overrides = dependent_to_old_ings,
-        use_data = true,
-        item_recipe_maps = vanilla_item_recipe_maps,
+        use_data = false,
+        item_recipe_maps = original_item_recipe_maps,
+        recipe_prototypes = original_world.recipes,
+        dynamic_imports = true,
     })
     local randomized_sets = staged_sets({
         ing_overrides = dependent_to_new_ings,
         use_data = false,
         item_recipe_maps = randomized_item_recipe_maps,
+        recipe_prototypes = staged_world.recipes,
+        dynamic_imports = true,
     })
-    -- A material's cost for choosing ingredients: what the randomized recipes so far make it for, else what the game made it for, else the logic graph's price (context_costs.fallback_view)
-    -- What can be an ingredient is decided by automatability through promotion's contexts, not by having a cost in the randomized world yet, so every material there needs some cost
-    local fallback_view = context_costs.fallback_view
-    local recipe_cost_in = context_costs.recipe_cost_in
-    local function graph_cost_in(context)
-        return function(id)
-            return rooms.graph_costs[context][id]
+    local function update_staged(world, maps, sets, overrides, recipe_name)
+        local updated_recipes = world.update(recipe_name)
+        flow_cost.update_item_recipe_maps(maps, updated_recipes, overrides, true)
+        for _, updated_recipe in pairs(updated_recipes) do
+            sets.update(updated_recipe.name)
         end
     end
+    -- Unprocessed ingredients use their original quote in the same tier.
+    -- Promotion determines availability independently; an ingredient without a quote in that tier cannot be selected.
+    local fallback_view = context_costs.fallback_view
+    local recipe_cost_in = context_costs.recipe_cost_in
     local function no_cost()
         return 0
     end
 
     -- How much of each material's cost in a room comes from newer resources, for the search's bonus that gets them used (context_costs.novelty)
     local newer_resources = context_costs.newer_resources(major_raw_resources)
-    local function novelty_in(context)
-        return context_costs.novelty(rooms, context, full_sets.set, newer_resources, vanilla_item_recipe_maps)
+    local function novelty_in(context, tier_name)
+        return context_costs.novelty(rooms, context, full_sets.set, newer_resources, vanilla_item_recipe_maps, tier_name)
     end
 
     -- Furnaces (the recycler too) pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (lib/furnace-selection.lua's tracker)
@@ -320,41 +315,34 @@ recipe_ingredients.custom_prereq_search = function(params)
             assert(dependent_recipe ~= nil)
             -- Ignore the heads etc., just find good ings via search
 
-            -- Old cost update
-            -- Update costs for old recipe (transitioning to slot from trav)
+            -- The original slot recipe sets the budget even when first pass changes which recipe fills it.
             local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
             local slot_recipe = data.raw.recipe[slot_node.name]
             assert(slot_recipe ~= nil)
             log("Old context: " .. slot_node.name)
 
-            -- Ingredients are judged in one room: the starting planet if the slot's recipe is available there, else the room the sort first reaches it in
+            -- Use one production tier for both sides of the comparison in the slot recipe's room.
             local context = context_costs.judging_context(rooms, slot_recipe.name) or rooms.starting_context
             -- Without a vanilla cost for the slot's recipe there's nothing to compare ingredients against, so it keeps the slot's ingredients like after a failed search
-            local slot_cost_known = recipe_cost_in(full_sets.aggregate(context), slot_recipe) ~= nil
+            local tier_name = "local"
+            if recipe_cost_in(full_sets.aggregate(context, tier_name), slot_recipe) == nil then
+                tier_name = "full"
+            end
+            -- Preserve the staged reference. The full game's quote is only the existing fallback
+            -- when this processing order reaches a slot before the recipes making its ingredients.
+            local slot_is_staged = recipe_cost_in(vanilla_sets.aggregate(context, tier_name), slot_recipe) ~= nil
+            dependent_to_old_ings[slot_recipe.name] = slot_recipe.ingredients or {}
+            update_staged(original_world, original_item_recipe_maps, vanilla_sets, dependent_to_old_ings, slot_recipe.name)
+            local slot_vanilla
+            if slot_is_staged then
+                slot_vanilla = vanilla_sets.in_room(context, tier_name)
+            else
+                log("Staged vanilla costs don't reach " .. slot_recipe.name .. " yet; comparing against full vanilla costs")
+                slot_vanilla = full_sets.in_room(context, tier_name)
+            end
+            local slot_cost = recipe_cost_in(slot_vanilla.aggregate, slot_recipe)
+            local slot_cost_known = slot_cost ~= nil
             do
-                -- The staged vanilla world only has costs for what the slot recipes processed so far make
-                -- Processing follows this run's sort, not vanilla's, so a slot recipe can come before the recipes making its ingredients (e.g. on other planet starts)
-                local slot_is_staged = true
-                for _, ing in pairs(slot_recipe.ingredients or {}) do
-                    if not vanilla_sets.is_costed(context, ing) then
-                        slot_is_staged = false
-                    end
-                end
-                -- Either way, the slot recipe now counts in the staged vanilla world; if it's not reachable yet, cost updates pick it up once its ingredients are
-                dependent_to_old_ings[slot_recipe.name] = {}
-                for _, ing in pairs(slot_recipe.ingredients or {}) do
-                    table.insert(dependent_to_old_ings[slot_recipe.name], ing)
-                end
-                vanilla_sets.update(slot_recipe.name)
-                local slot_vanilla
-                if slot_is_staged then
-                    slot_vanilla = vanilla_sets.in_room(context)
-                else
-                    log("Staged vanilla costs don't reach " .. slot_recipe.name .. " yet; comparing against full vanilla costs")
-                    slot_vanilla = full_sets.in_room(context)
-                end
-                local slot_cost = recipe_cost_in(slot_vanilla.aggregate, slot_recipe)
-
                 -- Gather information about this recipe
                 local dependent_pools = furnace_pools_of(dependent_recipe)
                 local is_smelting_recipe = #dependent_pools > 0
@@ -378,7 +366,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                     end
                 end
 
-                local candidate_costs = fallback_view(randomized_sets.aggregate(context).material_to_cost, full_sets.aggregate(context).material_to_cost, graph_cost_in(context))
+                local candidate_costs = fallback_view(randomized_sets.aggregate(context, tier_name).material_to_cost, full_sets.aggregate(context, tier_name).material_to_cost)
 
                 local function find_valid_prereq_list(shuffled_prereqs)
                     -- Only include each prereq once
@@ -496,7 +484,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                 randomized_material_costs.complexity_cost = context_costs.NO_COMPLEXITY.material_to_cost
                 randomized_material_costs.resource_costs = {}
                 for _, resource_id in pairs(major_raw_resources) do
-                    randomized_material_costs.resource_costs[resource_id] = fallback_view(randomized_sets.resource(context, resource_id).material_to_cost, full_sets.resource(context, resource_id).material_to_cost, no_cost)
+                    randomized_material_costs.resource_costs[resource_id] = fallback_view(randomized_sets.resource(context, resource_id, tier_name).material_to_cost, full_sets.resource(context, resource_id, tier_name).material_to_cost, no_cost)
                 end
 
                 local potential_ings = {}
@@ -558,7 +546,13 @@ recipe_ingredients.custom_prereq_search = function(params)
 
                 -- Finally, search for the best ingredients
                 local function search(ings)
-                    return cost_lib.search_for_ings(table.deepcopy(ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable, novelty = novelty_in(context)})
+                    return cost_lib.search_for_ings(table.deepcopy(ings), #reordered_ings_randomized, vanilla_recipe_costs, randomized_material_costs, {
+                        unrandomized_ings = table.deepcopy(unrandomized_ings),
+                        is_fluid_index = is_fluid_index,
+                        dont_preserve_resource_costs = dont_preserve_resource_costs,
+                        starting_planet_reachable = starting_planet_reachable,
+                        novelty = novelty_in(context, tier_name),
+                    })
                 end
                 -- At a chunk boundary (debt mode: the recipe owes something only through its ingredients, see skeleton/promotion.lua), first search among ingredients that pay for it
                 local best_search_info
@@ -665,10 +659,10 @@ recipe_ingredients.custom_prereq_search = function(params)
                         if is_old_ing[key(ing)] == nil then
                             num_changed_ings = num_changed_ings + 1
                         end
-                        new_newer_share = new_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
+                        new_newer_share = new_newer_share + (novelty_in(context, tier_name)[flow_cost.get_prot_id(ing)] or 0)
                     end
                     for _, ing in pairs(slot_recipe.ingredients or {}) do
-                        old_newer_share = old_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
+                        old_newer_share = old_newer_share + (novelty_in(context, tier_name)[flow_cost.get_prot_id(ing)] or 0)
                     end
                     if not is_fallback and vanilla_recipe_costs ~= nil then
                         local new_costs = cost_lib.get_costs_from_ings(randomized_material_costs, best_search_info.ings)
@@ -682,14 +676,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- No need to update reachability
                 -- Get rid of blacklisted property
                 table.remove(dependent_to_new_ings[dependent_recipe.name], 1)
-                -- TODO: Do better than this hotfix once I get a better cost library!
-                local deepcopied_recipe = table.deepcopy(dependent_recipe)
-                deepcopied_recipe.ingredients = dependent_to_new_ings[deepcopied_recipe.name]
-                -- Update item recipe maps
-                flow_cost.update_item_recipe_maps(randomized_item_recipe_maps, {deepcopied_recipe}, dependent_to_new_ings, true)
-
-                -- Update costs, in every room the recipe is available in (lib/cost/context-costs.lua)
-                randomized_sets.update(dependent_recipe.name)
+                -- Generated recycling becomes available with the current ingredients of its source recipe.
+                update_staged(staged_world, randomized_item_recipe_maps, randomized_sets, dependent_to_new_ings, dependent_recipe.name)
             end
         end
     end

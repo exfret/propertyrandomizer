@@ -2,7 +2,7 @@
 -- Run from the mod root: lua lib/cost/test-graph-cost.lua
 -- Prices follow the logic graph's cost model: AND nodes are actions, OR nodes are materials, and edges carry how much is made or used
 
-local graph_cost = require("lib/cost/graph-cost")
+local graph_cost = require("lib/cost/graph-cost-core")
 
 local num_passed = 0
 local function test(name, fn)
@@ -205,27 +205,41 @@ test("a material's price without recipes skips its craft nodes, and only counts 
     assert(graph_cost.price_without_recipes(g, prices, "item: brick", "here") == nil)
 end)
 
-test("whole-game raw costs are only for what the game gives automatably, since callers take a cost as usable in automated recipes", function()
-    local g = new_graph()
-    for _, name in pairs({ "ore", "timber", "plate" }) do
-        local node = add_node(g, "item: " .. name, "OR", { type = "item" })
-        node.name = name
+test("a fluid's price without recipes is what creating it costs, since holding it in pipes is required but not used up", function()
+    local function crude_price(with_hold)
+        local g = new_graph()
+        -- Crude: mined from a well the world places, ten per mining
+        add_node(g, "autoplace", "AND")
+        add_node(g, "entity: well", "OR", { type = "entity", prot = "well" })
+        add_edge(g, "autoplace", "entity: well", 0)
+        add_node(g, "entity-mine: well", "AND", { type = "entity-mine", prot = "well", cost = 1 })
+        add_edge(g, "entity: well", "entity-mine: well", 1)
+        add_node(g, "fluid-create: crude", "OR", { type = "fluid-create", prot = "material: crude" })
+        add_edge(g, "entity-mine: well", "fluid-create: crude", 10)
+        add_node(g, "fluid-temperature: crude", "AND", { type = "fluid-temperature", prot = "material: crude" })
+        add_edge(g, "fluid-create: crude", "fluid-temperature: crude", 1)
+        add_node(g, "material: crude", "OR", { type = "material", prot = "material: crude" })
+        add_edge(g, "fluid-temperature: crude", "material: crude", 1)
+        if with_hold then
+            -- Conduits hold it, and they're only ever ours (built from plates), never given by the world
+            add_node(g, "item: plate", "OR", { type = "material", prot = "item: plate" })
+            add_node(g, "plate source", "AND", { cost = 1 })
+            add_edge(g, "plate source", "item: plate", 1)
+            add_node(g, "entity-own: conduit", "OR", { type = "entity-own", prot = "conduit" })
+            add_edge(g, "item: plate", "entity-own: conduit", 1)
+            add_node(g, "entity-own-operable: conduit", "OR", { type = "entity-own-operable", prot = "conduit" })
+            add_edge(g, "entity-own: conduit", "entity-own-operable: conduit", 1)
+            add_node(g, "entity-operate: conduit", "AND", { type = "entity-operate", prot = "conduit" })
+            add_edge(g, "entity-own-operable: conduit", "entity-operate: conduit", 1)
+            add_node(g, "fluid-hold: crude", "OR", { type = "fluid-hold", prot = "material: crude" })
+            add_edge(g, "entity-operate: conduit", "fluid-hold: crude", nil)
+            add_edge(g, "fluid-hold: crude", "fluid-temperature: crude", nil)
+        end
+        local prices = graph_cost.compute(g, { "here" }, keep_context)
+        return graph_cost.price_without_recipes(g, prices, "material: crude", "here")
     end
-    local raw_costs = {
-        ["item-ore"] = 1,
-        ["item-timber"] = 8,
-    }
-    local automatable_names = {
-        ore = true,
-        plate = true,
-    }
-    local costs = graph_cost.automatable_raw_costs(g, raw_costs, function(node_key)
-        return automatable_names[g.nodes[node_key].name] == true
-    end)
-    assert(costs["item-ore"] == 1)
-    -- Timber only comes from trees by hand, so it stays unpriced, and a material without a raw cost doesn't get one
-    assert(costs["item-timber"] == nil)
-    assert(costs["item-plate"] == nil)
+    assert(crude_price(false) ~= nil)
+    assert(near(crude_price(true), crude_price(false)))
 end)
 
 test("with slot costs, the player's time is charged dearly: hand mining costs more than a drill", function()

@@ -1,44 +1,23 @@
+#!/usr/bin/env bash
 # Full disclosure: The following is the work of ChatGPT 5.2 Thinking, not my own
 # I don't like writing bash scripts and this seems to be one of the few things it was able to do without excessive babysitting
 # Trust the below code at your own risk
 
-#!/usr/bin/env bash
+# Builds propertyrandomizer_VERSION (a folder and a zip) next to this folder, with VERSION from the first changelog entry
+# The release ships only what dev/release-files.py lists (files the game reads, the docs players are pointed to, and the Lua the mod can require), so dev tools, notes and cost research data stay out
+# The release is built in a temporary folder and tested there first (the smoke and settings suites of dev/run-tests.py); nothing is written next to this folder unless the tests pass
+#
+# Usage: ./prepare-release.sh [dev/run-tests.py options], e.g. ./prepare-release.sh --jobs 4, or --tier precommit for a quick check
+# Parser dependencies are installed in .venv/release on first use. Set PYTHON to choose the Python used to create it.
 set -euo pipefail
 
-# Run this script from inside the propertyrandomizer folder.
-
-IGNORE_ITEMS=(
-    ".git"
-    ".gitignore"
-    ".DS_Store"
-    ".vscode"
-    ".claude"
-    "dev"
-    "notes"
-    "run-tests.sh"
-    "prepare-release.sh"
-    "*.log"
-)
-
-PROJECT_DIR="$(pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$PROJECT_DIR"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 CHANGELOG_FILE="$PROJECT_DIR/changelog.txt"
-INFO_JSON="$PROJECT_DIR/info.json"
 
 # -------------------------------------------------------------------
-# 1. Run tests first
-# -------------------------------------------------------------------
-echo "Running test suite..."
-if ./run-tests.sh; then
-    echo "Tests passed."
-else
-    EXIT_CODE=$?
-    echo "Error: tests failed with exit code $EXIT_CODE"
-    exit "$EXIT_CODE"
-fi
-
-# -------------------------------------------------------------------
-# 2. Extract version from the most recent changelog entry
+# 1. Extract version from the most recent changelog entry
 #    Requires a line like: Version: 0.5.0
 # -------------------------------------------------------------------
 if [[ ! -f "$CHANGELOG_FILE" ]]; then
@@ -46,21 +25,12 @@ if [[ ! -f "$CHANGELOG_FILE" ]]; then
     exit 1
 fi
 
-VERSION="$(
-    sed -nE 's/^[[:space:]]*Version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)[[:space:]]*$/\1/p' "$CHANGELOG_FILE" \
-    | tr -d '\r' \
-    | head -n1
-)"
-
-if [[ -z "${VERSION:-}" ]]; then
-    echo "Error: could not extract a valid version from the first changelog entry."
-    echo "Expected a line like:"
-    echo "  Version: 0.5.0"
-    exit 1
-fi
+VERSION="$(awk '/^[[:space:]]*Version:/ { print $2; exit }' "$CHANGELOG_FILE" | tr -d '\r')"
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "Error: extracted version is invalid: '$VERSION'"
+    echo "Error: could not extract a valid version from the first changelog entry (got '$VERSION')."
+    echo "Expected a line like:"
+    echo "  Version: 0.5.0"
     exit 1
 fi
 
@@ -70,40 +40,54 @@ RELEASE_BASENAME="${PROJECT_NAME}_${VERSION}"
 RELEASE_PATH="$PARENT_DIR/$RELEASE_BASENAME"
 ZIP_FILE="$PARENT_DIR/${RELEASE_BASENAME}.zip"
 
-echo "Preparing release for version $VERSION"
-echo "Release folder: $RELEASE_PATH"
+# Keep release dependencies separate from global Python and other development tools.
+RELEASE_PYTHON="$PROJECT_DIR/.venv/release/bin/python"
+if [[ ! -x "$RELEASE_PYTHON" ]]; then
+    echo "Creating release Python environment..."
+    "${PYTHON:-python3}" -m venv "$PROJECT_DIR/.venv/release"
+fi
+if ! "$RELEASE_PYTHON" - "$PROJECT_DIR/dev/release-requirements.txt" <<'PY'
+import importlib.metadata
+import sys
 
-# -------------------------------------------------------------------
-# 3. Remove any pre-existing release artifacts
-# -------------------------------------------------------------------
-rm -rf "$RELEASE_PATH"
-rm -f "$ZIP_FILE"
-
-# -------------------------------------------------------------------
-# 4. Copy project to release folder, recursively excluding ignored items
-#    rsync excludes matching names anywhere in the tree
-# -------------------------------------------------------------------
-RSYNC_EXCLUDES=()
-for item in "${IGNORE_ITEMS[@]}"; do
-    RSYNC_EXCLUDES+=(--exclude="$item")
-done
-
-mkdir -p "$RELEASE_PATH"
-
-echo "Copying release files..."
-rsync -a "${RSYNC_EXCLUDES[@]}" "$PROJECT_DIR/" "$RELEASE_PATH/"
-
-# Safety check
-if [[ ! -d "$RELEASE_PATH" ]]; then
-    echo "Error: failed to create release directory"
-    exit 1
+with open(sys.argv[1], encoding="utf-8") as requirements:
+    for line in requirements:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, version = line.split("==")
+        try:
+            installed = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            sys.exit(1)
+        if installed != version:
+            sys.exit(1)
+PY
+then
+    echo "Installing release parser dependencies..."
+    "$RELEASE_PYTHON" -m pip install --disable-pip-version-check --no-cache-dir -r "$PROJECT_DIR/dev/release-requirements.txt"
 fi
 
+# Built here, and moved next to this folder once it passes the tests
+STAGE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/propertyrandomizer-release.XXXXXX")"
+trap 'rm -rf "$STAGE_ROOT"' EXIT
+STAGE_PATH="$STAGE_ROOT/$RELEASE_BASENAME"
+
+echo "Preparing release for version $VERSION"
+
 # -------------------------------------------------------------------
-# 4.4. Turn off the unified randomizations still in development
-#      (the hidden setting propertyrandomizer-dev-unified, in the copied settings.lua)
+# 2. Copy the release's files (dev/release-files.py prints what's left out)
 # -------------------------------------------------------------------
-python3 - "$RELEASE_PATH/settings.lua" <<'PY'
+echo "Listing release files..."
+"$RELEASE_PYTHON" dev/release-files.py --report > "$STAGE_ROOT/files.txt"
+mkdir -p "$STAGE_PATH"
+rsync -a --files-from="$STAGE_ROOT/files.txt" "$PROJECT_DIR/" "$STAGE_PATH/"
+
+# -------------------------------------------------------------------
+# 3. Turn off the unified randomizations still in development
+#    (the hidden setting propertyrandomizer-dev-unified, in the copied settings.lua)
+# -------------------------------------------------------------------
+"$RELEASE_PYTHON" - "$STAGE_PATH/settings.lua" <<'PY'
 import re
 import sys
 
@@ -124,12 +108,83 @@ PY
 echo "Turned off development unified randomizations in the release"
 
 # -------------------------------------------------------------------
-# 4.5. Show Lua line counts by file/folder in tree form
-#      Counts all lines in .lua files in the copied release folder
+# 4. Update info.json version in the release
+# -------------------------------------------------------------------
+"$RELEASE_PYTHON" - "$STAGE_PATH/info.json" "$VERSION" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+version = sys.argv[2]
+
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+data["version"] = version
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=4, ensure_ascii=False)
+    f.write("\n")
+PY
+echo "Updated info.json version to $VERSION"
+
+# -------------------------------------------------------------------
+# 5. Add date to most recent changelog entry in the release
+#    Replaces the Date line in the first entry only
+# -------------------------------------------------------------------
+RELEASE_CHANGELOG="$STAGE_PATH/changelog.txt"
+"$RELEASE_PYTHON" - "$RELEASE_CHANGELOG" "$VERSION" "$DATE_STR" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+version = sys.argv[2]
+date_str = sys.argv[3]
+
+with open(path, "r", encoding="utf-8") as f:
+    text = f.read()
+
+pattern = rf"(Version:[ \t]*{re.escape(version)}[ \t]*\r?\nDate:[ \t]*)(.*)"
+new_text, count = re.subn(pattern, rf"\g<1>{date_str}", text, count=1)
+
+if count == 0:
+    print(f"Error: could not find the Date line of the changelog entry for version {version}", file=sys.stderr)
+    sys.exit(1)
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write(new_text)
+PY
+echo "Updated changelog date to $DATE_STR"
+
+# -------------------------------------------------------------------
+# 6. Test the release itself, so a file it needs but doesn't ship shows up here
+#    The unified suite is left out: it tests the randomizations still in development, which the release turns off
+# -------------------------------------------------------------------
+echo ""
+echo "Testing the release..."
+if "$RELEASE_PYTHON" dev/run-tests.py smoke settings --dir "$STAGE_PATH" "$@"; then
+    echo "Tests passed."
+else
+    EXIT_CODE=$?
+    echo "Error: tests failed with exit code $EXIT_CODE; nothing was written next to $PROJECT_DIR"
+    exit "$EXIT_CODE"
+fi
+
+# -------------------------------------------------------------------
+# 7. Replace any earlier build of this version with the tested one
+# -------------------------------------------------------------------
+rm -rf "$RELEASE_PATH"
+rm -f "$ZIP_FILE"
+mv "$STAGE_PATH" "$RELEASE_PATH"
+echo "Release folder: $RELEASE_PATH"
+
+# -------------------------------------------------------------------
+# 8. Show Lua line counts by file/folder in tree form
+#    Counts all lines in .lua files in the release folder
 # -------------------------------------------------------------------
 echo ""
 echo "Lua lines by file/folder:"
-python3 - "$RELEASE_PATH" <<'PY'
+"$RELEASE_PYTHON" - "$RELEASE_PATH" <<'PY'
 import os
 import sys
 
@@ -193,7 +248,8 @@ def sorted_children(node):
     )
 
 def print_tree(node, prefix=""):
-    children = sorted_children(node)
+    # Folders without Lua files (locale, graphics) are left out
+    children = [child for child in sorted_children(node) if child.lines > 0]
     for i, child in enumerate(children):
         is_last = (i == len(children) - 1)
         branch = "└─ " if is_last else "├─ "
@@ -208,66 +264,8 @@ PY
 echo ""
 
 # -------------------------------------------------------------------
-# 5. Update info.json version in the copied release folder
+# 9. Show final changelog entry for this version
 # -------------------------------------------------------------------
-RELEASE_INFO_JSON="$RELEASE_PATH/info.json"
-if [[ ! -f "$RELEASE_INFO_JSON" ]]; then
-    echo "Error: info.json not found in release folder"
-    exit 1
-fi
-
-python3 - "$RELEASE_INFO_JSON" "$VERSION" <<'PY'
-import json
-import sys
-
-path = sys.argv[1]
-version = sys.argv[2]
-
-with open(path, "r", encoding="utf-8") as f:
-    data = json.load(f)
-
-data["version"] = version
-
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=4, ensure_ascii=False)
-    f.write("\n")
-PY
-
-echo "Updated info.json version to $VERSION"
-
-# -------------------------------------------------------------------
-# 6. Add date to most recent changelog entry in copied release folder
-#    Replaces the Date line in the first entry only
-# -------------------------------------------------------------------
-RELEASE_CHANGELOG="$RELEASE_PATH/changelog.txt"
-python3 - "$RELEASE_CHANGELOG" "$VERSION" "$DATE_STR" <<'PY'
-import re
-import sys
-
-path = sys.argv[1]
-version = sys.argv[2]
-date_str = sys.argv[3]
-
-with open(path, "r", encoding="utf-8") as f:
-    text = f.read()
-
-pattern = rf"(Version:\s*{re.escape(version)}\s*\nDate:\s*)(.*)"
-new_text, count = re.subn(pattern, rf"\g<1>{date_str}", text, count=1)
-
-if count == 0:
-    print(f"Error: could not find changelog entry for version {version}", file=sys.stderr)
-    sys.exit(1)
-
-with open(path, "w", encoding="utf-8") as f:
-    f.write(new_text)
-PY
-
-echo "Updated changelog date to $DATE_STR"
-
-# -------------------------------------------------------------------
-# 7. Show final changelog entry for this version
-# -------------------------------------------------------------------
-echo ""
 echo "Changelog entry for this version:"
 echo "---"
 awk -v version="$VERSION" '
@@ -281,11 +279,11 @@ awk -v version="$VERSION" '
         }
         print
     }
-' "$RELEASE_CHANGELOG"
+' "$RELEASE_PATH/changelog.txt"
 echo "---"
 
 # -------------------------------------------------------------------
-# 8. Zip the release folder
+# 10. Zip the release folder
 # -------------------------------------------------------------------
 echo "Creating zip archive..."
 (
@@ -294,7 +292,7 @@ echo "Creating zip archive..."
 )
 
 # -------------------------------------------------------------------
-# 9. Show size comparison
+# 11. Show size comparison
 # -------------------------------------------------------------------
 ORIG_SIZE=$(du -sh "$PROJECT_DIR" | cut -f1)
 RELEASE_SIZE=$(du -sh "$RELEASE_PATH" | cut -f1)

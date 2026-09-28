@@ -136,6 +136,8 @@ local constants = {
         -- One-time cost per entity
         -- In particular, this is what gives ores their value of about 1
         per_entity_cost = 1,
+        -- Fixed growing/waiting charge per harvested plant, shared across its yield.
+        plant_harvest_cost = 5,
         -- Covers the space cost of the building (per second)
         per_tile_operation_cost = 0.001,
         -- To cover fixed costs of logistics to a building, like belts/inserters (per second)

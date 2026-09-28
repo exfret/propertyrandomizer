@@ -50,19 +50,19 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-extra-starting-items",
+        default_value = true,
+        order = "b-y[extra-starting-items]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-dupes",
         default_value = false,
         order = "b-z[dupes]",
         -- Hidden while broken
         hidden = true,
         forced_value = false,
-    },
-    {
-        setting_type = "startup",
-        type = "bool-setting",
-        name = "propertyrandomizer-extra-starting-items",
-        default_value = true,
-        order = "b-y[extra-starting-items]",
     },
     {
         setting_type = "startup",

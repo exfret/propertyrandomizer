@@ -23,8 +23,8 @@ local set_prot = builder.set_prot
 local concrete = {}
 
 -- Whether agricultural towers harvesting plants counts as automatic (entity-harvest)
--- Off for now: the Gleba contexts it makes automatable are hard pebbles that monotone matching's refinement can't turn into needs, so first pass moved nothing (2026-09-27); turn back on once that's fixed
-local AUTOMATABLE_PLANT_HARVESTING = false
+-- Automation reachability is separate from whether materials have prices.
+local AUTOMATABLE_PLANT_HARVESTING = true
 
 function concrete.build(lu, extra_params)
     extra_params = extra_params or {}
@@ -666,7 +666,11 @@ function concrete.build(lu, extra_params)
 
         if entity.minable ~= nil then
             ----------------------------------------
-            add_node("entity-mine", "AND", nil, nil, { coproduct = true })
+            add_node("entity-mine", "AND", nil, nil, {
+                coproduct = true,
+                -- Charge once per plant, for either hand or tower harvesting.
+                cost = entity.type == "plant" and constants.cost.plant_harvest_cost or nil,
+            })
             ----------------------------------------
             -- Can we mine this entity?
 
@@ -1343,9 +1347,9 @@ function concrete.build(lu, extra_params)
         end
         -- Edge from entity kills that drop this as loot
         if lu.loot_to_entities[item.name] ~= nil then
-            for entity_name, _ in pairs(lu.loot_to_entities[item.name]) do
-                -- TODO: cost amounts
+            for entity_name, amount in pairs(lu.loot_to_entities[item.name]) do
                 add_edge("entity-kill", entity_name, {
+                    amount = amount,
                     abilities = { [2] = false }, -- Even if we can automatically kill something, we can't automatically pick up its loot (at least in vanilla)
                 })
             end

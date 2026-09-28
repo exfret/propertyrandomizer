@@ -23,6 +23,7 @@ local SWAP_START_WITH = nil
 local PROTECT_TRANSPORTED = false
 
 local gutils = require("lib/graph/graph-utils")
+local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
@@ -510,7 +511,6 @@ local function swap_start(state)
     data.raw.planet[other_name] = table.deepcopy(start)
     data.raw.planet[other_name].name = other_name
     log("Planetary superposed: " .. start_name .. " and " .. other_name .. " swapped their prototypes (SWAP_START_WITH)")
-    local dutils = require("lib/data-utils")
     local start_room = gutils.key("planet", start_name)
     local other_room = gutils.key("planet", other_name)
     local before_nci = state.before.sort_info.node_to_context_inds

@@ -199,6 +199,9 @@ local function reverse_recipe(raw, recipe)
     return result, recipe_to_reverse.name
 end
 
+-- Build the reverse of one source recipe for staged costing, using the same rules as final regeneration.
+recycling.recipe_from_source = reverse_recipe
+
 -- The recycler's generate_self_recycling_recipe, with the checks data-updates.lua makes before calling it (except the one for an existing recipe of the same name)
 local function self_recycling_recipe(raw, item)
     if item.auto_recycle == false or item.parameter == true then

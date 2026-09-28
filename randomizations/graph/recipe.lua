@@ -112,7 +112,7 @@ local search_for_ings = cost_lib.search_for_ings
 --   * Handle resource generation loops like coal liquefaction by studying resource costs with respect to "optimal" recipe choices
 --   * Investigate certain loops like kovarex with regards to flow cost (I don't think it would handle them well)
 -- FEATURES:
---   * Balanced cost randomization, with costs per room (lib/cost/context-costs.lua) like unified randomization's recipe-ingredients handler
+--   * Balanced cost randomization using one global production-cost table
 --   * Keeps barreling recipes the same
 --   * Makes sure recipes one furnace crafts don't share ingredients (lib/furnace-selection.lua)
 --   * Furnace recipes don't involve fuels
@@ -131,9 +131,27 @@ randomizations.recipe_ingredients = function(id)
 
     local sensitive_recipes = find_sensitive_recipes()
 
-    -- The whole game's costs, from the raw costs of what it gives automatably (lib/cost/graph-cost.lua), for which recipes and materials take part at all
-    -- Having a cost is how this randomization tells what's automatable, since it has no automatability check of its own
-    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(flow_cost.get_default_raw_resource_table(), constants.cost_params.time, constants.cost_params.complexity)
+    -- The whole game's costs, including manual raw sources (lib/cost/graph-cost.lua).
+    -- Prices are global; surface eligibility is checked separately when choosing ingredients.
+    local raw_costs = flow_cost.get_default_raw_resource_table()
+    local newer_resources = context_costs.newer_resources(major_raw_resources)
+    local raw_bills = {}
+    for material_id, cost in pairs(raw_costs) do
+        if newer_resources[material_id] ~= nil then
+            raw_bills[material_id] = {newer = cost}
+        end
+    end
+    local old_aggregate_cost = flow_cost.determine_recipe_item_cost(raw_costs, constants.cost_params.time, constants.cost_params.complexity, {
+        track_resources = major_raw_resources,
+        raw_bills = raw_bills,
+    })
+    local novelty = {}
+    for material_id, cost in pairs(old_aggregate_cost.material_to_cost) do
+        local bill = old_aggregate_cost.material_to_resources[material_id]
+        if cost > 0 and bill.newer ~= nil then
+            novelty[material_id] = math.min(1, bill.newer / cost)
+        end
+    end
 
     log("Finding starting planet reachable")
 
@@ -276,16 +294,13 @@ randomizations.recipe_ingredients = function(id)
 
     rng.shuffle(rng.key({id = id}), shuffled_prereqs)
 
-    log("Constructing dependent_to_new_ings and dependent_to_old_ings")
+    log("Constructing dependent_to_new_ings")
 
     -- Table sending recipe to its new ingredients
     -- This needs to be populated with empty arrays first so that costs can be constructed accurately
     local dependent_to_new_ings = {}
-    -- This is needed for the staged old cost calculations
-    local dependent_to_old_ings = {}
     for _, dependent in pairs(sorted_dependents) do
         dependent_to_new_ings[dependent.recipe] = {"blacklisted"}
-        dependent_to_old_ings[dependent.recipe] = {"blacklisted"}
     end
     -- Recipes this leaves alone keep their ingredients: the sensitive ones, and the rest that aren't randomized (without a cost or ingredients)
     -- Recipes missing from ing_overrides are treated as nonexistent by flow_cost, which would leave their products without costs
@@ -296,49 +311,41 @@ randomizations.recipe_ingredients = function(id)
     for recipe_name, recipe in pairs(data.raw.recipe) do
         if dependent_to_new_ings[recipe_name] == nil then
             dependent_to_new_ings[recipe_name] = {}
-            dependent_to_old_ings[recipe_name] = {}
             for _, ing in pairs(recipe.ingredients or {}) do
                 table.insert(dependent_to_new_ings[recipe_name], ing)
-                table.insert(dependent_to_old_ings[recipe_name], ing)
             end
         end
     end
 
     log("Initial cost calculations")
 
-    -- Aggregate costs and bills of the major resources are per room (lib/cost/context-costs.lua), judged in the same room as unified randomization's handler judges them
-    -- Each is kept three ways: the game's, staged in processing order (vanilla_sets); the randomized recipes' so far (randomized_sets); and the game's in full (full_sets)
-    -- Prices come only from what each room has automatably, so having a cost there still means being automatable there
+    -- Preserve the complete original game's global prices.
+    -- Only the randomized side is staged: ingredients must have a price from recipes already processed.
     local rooms = context_costs.current
-    local judged_contexts = {}
-    for _, dependent in pairs(sorted_dependents) do
-        judged_contexts[context_costs.judging_context(rooms, dependent.recipe) or rooms.starting_context] = true
-    end
-    local vanilla_item_recipe_maps = flow_cost.construct_item_recipe_maps()
     local randomized_item_recipe_maps = flow_cost.construct_item_recipe_maps()
-    local full_sets = context_costs.set_views(context_costs.game_set(rooms, major_raw_resources, true), major_raw_resources)
-    local function staged_sets(set_params)
-        set_params.track_resources = major_raw_resources
-        set_params.updated_contexts = judged_contexts
-        set_params.imports_from = full_sets.set
-        set_params.automatable_only = true
-        return context_costs.set_views(context_costs.new_set(rooms, set_params), major_raw_resources)
-    end
-    local vanilla_sets = staged_sets({
-        ing_overrides = dependent_to_old_ings,
-        use_data = true,
-        item_recipe_maps = vanilla_item_recipe_maps,
-    })
-    local randomized_sets = staged_sets({
+    local cost_params = {
         ing_overrides = dependent_to_new_ings,
-        use_data = false,
         item_recipe_maps = randomized_item_recipe_maps,
-    })
-
-    -- How much of each material's cost in a room comes from newer resources, for the search's bonus that gets them used (context_costs.novelty)
-    local newer_resources = context_costs.newer_resources(major_raw_resources)
-    local function novelty_in(context)
-        return context_costs.novelty(rooms, context, full_sets.set, newer_resources, vanilla_item_recipe_maps)
+        track_resources = major_raw_resources,
+    }
+    local curr_aggregate_cost = flow_cost.determine_recipe_item_cost(raw_costs, constants.cost_params.time, constants.cost_params.complexity, cost_params)
+    local old_material_to_costs = {
+        aggregate_cost = old_aggregate_cost.material_to_cost,
+        complexity_cost = context_costs.NO_COMPLEXITY.material_to_cost,
+        resource_costs = {},
+    }
+    local curr_material_costs = {
+        -- Kept ingredients may be made by recipes processed later; use their original global price until they have a randomized price.
+        -- Candidates cannot use this fallback.
+        aggregate_cost = context_costs.fallback_view(curr_aggregate_cost.material_to_cost, old_aggregate_cost.material_to_cost),
+        complexity_cost = context_costs.NO_COMPLEXITY.material_to_cost,
+        resource_costs = {},
+    }
+    for _, resource_id in pairs(major_raw_resources) do
+        old_material_to_costs.resource_costs[resource_id] = flow_cost.resource_cost_view(old_aggregate_cost, resource_id)
+        curr_material_costs.resource_costs[resource_id] = context_costs.fallback_view(
+            flow_cost.resource_cost_view(curr_aggregate_cost, resource_id),
+            old_material_to_costs.resource_costs[resource_id])
     end
 
     -- Furnaces (the recycler too) pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (lib/furnace-selection.lua's tracker)
@@ -362,8 +369,10 @@ randomizations.recipe_ingredients = function(id)
 
     -- Table of indices to prereqs that have been used in a recipe
     local ind_to_used = {}
-    -- Newer resources in the ingredients chosen (see novelty_in), before and after, summed over ingredients; and how far chosen ingredients' aggregate cost is from the recipe's (mean absolute log ratio)
+    -- Newer resources in the ingredients chosen (see novelty), before and after, summed over ingredients; and how far chosen ingredients' aggregate cost is from the recipe's (mean absolute log ratio)
     local num_processed = 0
+    -- Recipes whose search found no valid ingredients, which keep theirs
+    local num_kept_unsearchable = 0
     local num_changed_ings = 0
     local num_ings = 0
     local old_newer_share = 0
@@ -424,33 +433,10 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
-        -- Ingredients are judged in one room: the starting planet if the recipe is available there, else the room the sort first reaches it in
+        -- The room only restricts ingredient availability; it does not set prices.
         local context = context_costs.judging_context(rooms, dependent_recipe.name) or rooms.starting_context
-
-        log("Old cost update")
-
-        -- The staged vanilla world only has costs for what the recipes processed so far make
-        -- Processing follows the sort, not the order recipes' ingredients get made in, so a recipe can come before the recipes making its ingredients
-        local is_staged = true
-        for _, ing in pairs(dependent_recipe.ingredients or {}) do
-            if not vanilla_sets.is_costed(context, ing) then
-                is_staged = false
-            end
-        end
-        -- Either way, the recipe now counts in the staged vanilla world; if it's not reachable yet, cost updates pick it up once its ingredients are
-        dependent_to_old_ings[dependent_recipe.name] = {}
-        for _, ing in pairs(dependent_recipe.ingredients or {}) do
-            table.insert(dependent_to_old_ings[dependent_recipe.name], ing)
-        end
-        vanilla_sets.update(dependent_recipe.name)
-        local old_costs
-        if is_staged then
-            old_costs = vanilla_sets.in_room(context)
-        else
-            log("Staged vanilla costs don't reach " .. dependent_recipe.name .. " yet; comparing against full vanilla costs")
-            old_costs = full_sets.in_room(context)
-        end
-        local recipe_cost = context_costs.recipe_cost_in(old_costs.aggregate, dependent_recipe)
+        local automatable = rooms.automatable[context] or {}
+        local recipe_cost = context_costs.recipe_cost_in(old_aggregate_cost, dependent_recipe)
 
         log("Gathering recipe info")
 
@@ -465,10 +451,6 @@ randomizations.recipe_ingredients = function(id)
             end
         end
 
-        -- Candidates must have costs from the randomized recipes so far in this room (the game's recipes that aren't randomized count from the start)
-        local curr_costs = randomized_sets.in_room(context)
-        local full_costs = full_sets.in_room(context)
-
         local function find_valid_prereq_list(shuffled_prereqs)
             -- Only include each prereq once
             local already_included = {}
@@ -478,13 +460,8 @@ randomizations.recipe_ingredients = function(id)
             for prereq_index, prereq in pairs(shuffled_prereqs) do
                 -- Make sure this prereq has currently calculable costs
                 local prereq_prot_id = flow_cost.get_prot_id(prereq.ing)
-                local prereq_cost = curr_costs.aggregate.material_to_cost[prereq_prot_id]
+                local prereq_cost = curr_aggregate_cost.material_to_cost[prereq_prot_id]
                 local has_costs = prereq_cost ~= nil
-                for _, resource_id in pairs(major_raw_resources) do
-                    if curr_costs.resources[resource_id].material_to_cost[prereq_prot_id] == nil then
-                        has_costs = false
-                    end
-                end
 
                 -- Find the fluid/item prototype that this prereq corresponds to
                 local prereq_prot
@@ -523,6 +500,11 @@ randomizations.recipe_ingredients = function(id)
 
                     -- Don't share an ingredient with another recipe the same furnace crafts
                     if furnaces.is_taken(dependent_pools, prereq.ing) then
+                        return false
+                    end
+
+                    -- Automation eligibility is independent of whether the ingredient has a price.
+                    if automatable[prereq_prot_id] == nil then
                         return false
                     end
 
@@ -577,28 +559,6 @@ randomizations.recipe_ingredients = function(id)
             return {prereq_list = valid_prereq_list, prereq_inds = valid_prereq_inds}
         end
 
-        log("Getting recipe costs")
-
-        local old_material_to_costs = {}
-        old_material_to_costs.aggregate_cost = old_costs.aggregate.material_to_cost
-        old_material_to_costs.complexity_cost = old_costs.complexity.material_to_cost
-        old_material_to_costs.resource_costs = {}
-        for _, resource_id in pairs(major_raw_resources) do
-            old_material_to_costs.resource_costs[resource_id] = old_costs.resources[resource_id].material_to_cost
-        end
-        -- Ingredients a recipe keeps can be made only by recipes processed later, which have no randomized cost yet, so the search prices them like the game makes them, else at the logic graph's price
-        local curr_material_costs = {}
-        curr_material_costs.aggregate_cost = context_costs.fallback_view(curr_costs.aggregate.material_to_cost, full_costs.aggregate.material_to_cost, function(material_id)
-            return rooms.graph_costs[context][material_id] or 0
-        end)
-        curr_material_costs.complexity_cost = curr_costs.complexity.material_to_cost
-        curr_material_costs.resource_costs = {}
-        for _, resource_id in pairs(major_raw_resources) do
-            curr_material_costs.resource_costs[resource_id] = context_costs.fallback_view(curr_costs.resources[resource_id].material_to_cost, full_costs.resources[resource_id].material_to_cost, function()
-                return 0
-            end)
-        end
-
         log("Finding valid prereqs")
 
         local my_potential_ings = {}
@@ -606,7 +566,7 @@ randomizations.recipe_ingredients = function(id)
             prereq_list = {},
             prereq_inds = {},
         }
-        -- Without a cost for the recipe here there's nothing to compare ingredients against, so it keeps its ingredients
+        -- Without a global cost for the recipe there's nothing to compare ingredients against, so it keeps its ingredients
         if recipe_cost ~= nil then
             valid_prereq_list_info = find_valid_prereq_list(shuffled_prereqs)
         end
@@ -658,8 +618,10 @@ randomizations.recipe_ingredients = function(id)
 
         -- Finally, search for the best ingredients
         local best_search_info
+        -- Whether the recipe keeps its ingredients, so none of them take a spot in the pool
+        local keeps_ingredients = recipe_cost == nil
         if recipe_cost == nil then
-            log("No vanilla cost for " .. dependent_recipe.name .. " in " .. context .. "; keeping its ingredients")
+            log("No global vanilla cost for " .. dependent_recipe.name .. "; keeping its ingredients")
             best_search_info = {
                 ings = table.deepcopy(dependent_recipe.ingredients or {}),
                 inds = {},
@@ -667,15 +629,29 @@ randomizations.recipe_ingredients = function(id)
             }
         else
             local old_recipe_costs = get_costs_from_ings(old_material_to_costs, dependent_recipe.ingredients)
-            best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {unrandomized_ings = table.deepcopy(unrandomized_ings), is_fluid_index = is_fluid_index, dont_preserve_resource_costs = dont_preserve_resource_costs, starting_planet_reachable = starting_planet_reachable, novelty = novelty_in(context)})
-            -- Test for error
+            best_search_info = search_for_ings(table.deepcopy(my_potential_ings), #reordered_ings_randomized, old_recipe_costs, curr_material_costs, {
+                unrandomized_ings = table.deepcopy(unrandomized_ings),
+                is_fluid_index = is_fluid_index,
+                dont_preserve_resource_costs = dont_preserve_resource_costs,
+                starting_planet_reachable = starting_planet_reachable,
+                novelty = novelty,
+            })
+            -- The search fails when no valid ingredient is left for a slot, like a fluid slot late in the game once the fluids that fit are used up
+            -- The recipe then keeps its ingredients, like one without a cost: reachability here follows its old ingredients anyway, and a startup error would make the player reset their settings
             if type(best_search_info) == "string" then
-                error(best_search_info)
+                log("No valid ingredients for " .. dependent_recipe.name .. " in " .. context .. " (" .. best_search_info .. "); keeping its ingredients")
+                num_kept_unsearchable = num_kept_unsearchable + 1
+                keeps_ingredients = true
+                best_search_info = {
+                    ings = table.deepcopy(dependent_recipe.ingredients or {}),
+                    inds = {},
+                    points = 0,
+                }
             end
 
             log("Found ings with total points " .. best_search_info.points)
             local new_recipe_costs = get_costs_from_ings(curr_material_costs, best_search_info.ings)
-            -- Local resource bills of the old and new ingredients, for dev/check-resources.py
+            -- Global resource bills of the old and new ingredients, for dev/check-resources.py
             if not config.only_randomize_science_recipes then
                 local bill_parts = {}
                 for _, resource_id in pairs(major_raw_resources) do
@@ -699,20 +675,20 @@ randomizations.recipe_ingredients = function(id)
         local is_old_ing = {}
         for _, ing in pairs(dependent_recipe.ingredients or {}) do
             is_old_ing[flow_cost.get_prot_id(ing)] = true
-            old_newer_share = old_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
+            old_newer_share = old_newer_share + (novelty[flow_cost.get_prot_id(ing)] or 0)
         end
         for index_in_best_search_info, ing in pairs(best_search_info.ings) do
             table.insert(dependent_to_new_ings[dependent_recipe.name], ing)
             furnaces.take(dependent_recipe, ing)
             -- Randomized ingredients use up their spot in the pool; kept ones (after the randomized ones, or all of them when it kept its ingredients) have none
-            if recipe_cost ~= nil and index_in_best_search_info <= #reordered_ings_randomized then
+            if not keeps_ingredients and index_in_best_search_info <= #reordered_ings_randomized then
                 ind_to_used[valid_prereq_list_info.prereq_inds[best_search_info.inds[index_in_best_search_info]]] = true
             end
             num_ings = num_ings + 1
             if is_old_ing[flow_cost.get_prot_id(ing)] == nil then
                 num_changed_ings = num_changed_ings + 1
             end
-            new_newer_share = new_newer_share + (novelty_in(context)[flow_cost.get_prot_id(ing)] or 0)
+            new_newer_share = new_newer_share + (novelty[flow_cost.get_prot_id(ing)] or 0)
         end
         num_processed = num_processed + 1
 
@@ -748,13 +724,23 @@ randomizations.recipe_ingredients = function(id)
 
         log("Updating new costs")
 
-        -- Update costs, in every room the recipe is available in
-        randomized_sets.update(dependent_recipe.name)
+        -- Recipes retaining an ingredient made later become priceable when that ingredient is reached.
+        -- Otherwise propagate this recipe through the global table.
+        local ready = curr_aggregate_cost.recipe_to_cost[dependent_recipe.name] == nil
+        for _, ing in pairs(dependent_to_new_ings[dependent_recipe.name]) do
+            if curr_aggregate_cost.material_to_cost[flow_cost.get_prot_id(ing)] == nil then
+                ready = false
+            end
+        end
+        if ready then
+            flow_cost.update_recipe_item_costs(curr_aggregate_cost, {dependent_recipe.name}, constants.max_flow_iterations,
+                raw_costs, constants.cost_params.time, constants.cost_params.complexity, cost_params)
+        end
 
         log("Next loop")
     end
 
-    log(string.format("RECIPESTATS recipes=%d changed_ings=%d/%d", num_processed, num_changed_ings, num_ings))
+    log(string.format("RECIPESTATS recipes=%d changed_ings=%d/%d kept_for_no_valid_ingredients=%d", num_processed, num_changed_ings, num_ings, num_kept_unsearchable))
     log(string.format("RECIPESTATS newer resources in ingredients: %.1f before, %.1f after (summed shares); ingredient cost drift %.3f (mean abs log ratio over %d recipes)", old_newer_share, new_newer_share, cost_drift / math.max(num_drift, 1), num_drift))
 
     ----------------------------------------------------------------------

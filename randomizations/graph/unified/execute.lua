@@ -41,6 +41,8 @@ local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local balance = require("randomizations/graph/unified/first-pass-balance")
 local test_graph_invariants = require("tests/graph-invariants")
 local test_sort = require("tests/consistent-sort")
+local planetary = require("randomizations/planetary/execute")
+local skeleton_stats = require("randomizations/graph/unified/skeleton/stats")
 
 local key = gutils.key
 
@@ -108,9 +110,25 @@ end
 
 -- Load handlers
 local default_handler = require("randomizations/graph/unified/handlers/default")
+local available_handlers = {
+    ["entity"] = require("randomizations/graph/unified/handlers/entity"),
+    ["entity-autoplace"] = require("randomizations/graph/unified/handlers/entity-autoplace"),
+    ["entity-energy-source"] = require("randomizations/graph/unified/handlers/entity-energy-source"),
+    ["entity-operation-fluid"] = require("randomizations/graph/unified/handlers/entity-operation-fluid"),
+    ["item"] = require("randomizations/graph/unified/handlers/item"),
+    ["item-ingredients"] = require("randomizations/graph/unified/handlers/item-ingredients"),
+    ["mining-fluid-required"] = require("randomizations/graph/unified/handlers/mining-fluid-required"),
+    ["recipe-category"] = require("randomizations/graph/unified/handlers/recipe-category"),
+    ["recipe-ingredients"] = require("randomizations/graph/unified/handlers/recipe-ingredients"),
+    ["recipe-ingredients-first-pass"] = require("randomizations/graph/unified/handlers/recipe-ingredients-first-pass"),
+    ["recipe-tech-unlocks"] = require("randomizations/graph/unified/handlers/recipe-tech-unlocks"),
+    ["spoiling"] = require("randomizations/graph/unified/handlers/spoiling"),
+    ["tech-prereqs"] = require("randomizations/graph/unified/handlers/tech-prereqs"),
+    ["tech-science-packs"] = require("randomizations/graph/unified/handlers/tech-science-packs"),
+}
 local handlers = {}
 for _, handler_id in pairs(handler_ids) do
-    local handler = require("randomizations/graph/unified/handlers/" .. handler_id)
+    local handler = available_handlers[handler_id]
 
     for prop, val in pairs(default_handler) do
         if handler[prop] == nil then
@@ -131,7 +149,7 @@ unified.has_handlers = #handler_ids > 0
 -- Planetary changes in superposed mode hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
 local function planetary_debt()
     if config.planetary_oceans or config.planetary_resources then
-        return require("randomizations/planetary/execute").superposed
+        return planetary.superposed
     end
     return nil
 end
@@ -309,7 +327,7 @@ unified.execute = function()
 
     -- SKELETON EXPERIMENT (measurement only; see randomizations/graph/unified/skeleton/)
     if SKELETON_STATS then
-        require("randomizations/graph/unified/skeleton/stats").run({
+        skeleton_stats.run({
             graph = pool_graph,
             sort_info = sort_for_pool,
             sorted_deps = sorted_deps,

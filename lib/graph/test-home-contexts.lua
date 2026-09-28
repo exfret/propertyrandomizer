@@ -47,6 +47,7 @@ local logic = {
     },
 }
 package.loaded["lib/logic/init"] = logic
+package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 
 -- Space locations the toy techs discover (read by top.discovered_rooms)
 data = {

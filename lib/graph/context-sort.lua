@@ -15,7 +15,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
 -- Used for contexts and such; actual logic dependency graph is passed in
-local logic = require("lib/logic/init")
+local logic = require("lib/logic/state")
 
 -- Shortcuts
 local key = gutils.key

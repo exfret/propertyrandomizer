@@ -1,5 +1,6 @@
 local collision_mask_util = require("__core__/lualib/collision-mask-util")
 local constants = require("helper-tables/constants")
+local dying_spawns = require("lib/old-logic/dying-spawns")
 
 local build_graph = {}
 
@@ -862,6 +863,70 @@ local function load()
 
             add_to_graph("ammo-category-surface", compound_key({ammo_category_name, surface_key}), prereqs)
         end
+    end
+
+    -- gun-category-surface
+    --log("Adding: gun-category-surface")
+    -- Do we have a gun that fires ammo of this category on this surface?
+
+    for ammo_category_name, _ in pairs(ammo_category_to_ammos) do
+        for surface_key, surface in pairs(surfaces) do
+            prereqs = {}
+
+            for _, gun in pairs(get_prototypes("gun")) do
+                for _, gun_ammo_category in pairs(get_ammo_categories(gun.attack_parameters)) do
+                    if gun_ammo_category == ammo_category_name then
+                        table.insert(prereqs, {
+                            type = "item-surface",
+                            name = compound_key({gun.name, surface_key})
+                        })
+                    end
+                end
+            end
+
+            add_to_graph("gun-category-surface", compound_key({ammo_category_name, surface_key}), prereqs)
+        end
+    end
+
+    -- damage-category-surface
+    --log("Adding: damage-category-surface")
+    -- Do we have a gun and ammo of this category to fire from it on this surface?
+
+    for ammo_category_name, _ in pairs(ammo_category_to_ammos) do
+        for surface_key, surface in pairs(surfaces) do
+            prereqs = {}
+
+            table.insert(prereqs, {
+                type = "gun-category-surface",
+                name = compound_key({ammo_category_name, surface_key})
+            })
+            table.insert(prereqs, {
+                type = "ammo-category-surface",
+                name = compound_key({ammo_category_name, surface_key})
+            })
+
+            add_to_graph("damage-category-surface", compound_key({ammo_category_name, surface_key}), prereqs)
+        end
+    end
+
+    -- deal-damage-surface
+    --log("Adding: deal-damage-surface")
+    -- Can we damage things on this surface, with some gun and its ammo?
+    -- Turrets can too, but they're left out for now, so this only ever says damage comes later than it can
+
+    for surface_key, surface in pairs(surfaces) do
+        prereqs = {}
+
+        for ammo_category_name, _ in pairs(ammo_category_to_ammos) do
+            table.insert(prereqs, {
+                type = "damage-category-surface",
+                name = compound_key({ammo_category_name, surface_key})
+            })
+        end
+
+        add_to_graph("deal-damage-surface", surface_key, prereqs, {
+            surface = surface_key
+        })
     end
 
     -- asteroid-collection-surface
@@ -2247,8 +2312,13 @@ local function load()
                     type = "spawn-entity-surface",
                     name = compound_key({entity.name, surface_key})
                 })
-                -- TODO: damage-type-amount-surface
-                -- Assuming you can damage things for now
+                -- Getting loot means killing it, which needs something that deals damage
+                -- Without this, a Gleba start looted Gleba spawners before any weapon, so item randomization put a stone furnace in their loot
+                -- TODO: damage-type-amount-surface, for resistances
+                table.insert(prereqs, {
+                    type = "deal-damage-surface",
+                    name = surface_key
+                })
 
                 add_to_graph("loot-entity-surface", compound_key({entity.name, surface_key}), prereqs, {
                     surface = surface_key
@@ -2287,8 +2357,8 @@ local function load()
             prereqs = {}
 
             table.insert(prereqs, {
-                type = "spawn-asteroid-chunk",
-                name = asteroid_chunk.name
+                type = "spawn-asteroid-chunk-surface",
+                name = compound_key({asteroid_chunk.name, compound_key({"space-surface", surface_prot.name})})
             })
             table.insert(prereqs, {
                 type = "asteroid-collection-surface",
@@ -3361,6 +3431,30 @@ local function load()
         add_to_graph("space-connection", space_connection.name, prereqs)
     end
 
+    -- space-connection-reverse
+    --log("Adding: space-connection-reverse")
+    -- Do we have all we need to traverse this space connection backwards, from its to end to its from end?
+    -- Platforms travel connections both ways: Space Age has no connection to nauvis, but platforms fly back there
+
+    for _, space_connection in pairs(get_prototypes("space-connection")) do
+        prereqs = {}
+
+        table.insert(prereqs, {
+            type = "space-location-discovery",
+            name = space_connection.from
+        })
+        table.insert(prereqs, {
+            type = "space-location",
+            name = space_connection.to
+        })
+        table.insert(prereqs, {
+            type = "spaceship",
+            name = "canonical"
+        })
+
+        add_to_graph("space-connection-reverse", space_connection.name, prereqs)
+    end
+
     -- space-location
     --log("Adding: space-location")
     -- Do we have all we need to access this space location?
@@ -3373,6 +3467,12 @@ local function load()
                 if space_connection.to == space_location.name then
                     table.insert(prereqs, {
                         type = "space-connection",
+                        name = space_connection.name
+                    })
+                end
+                if space_connection.from == space_location.name then
+                    table.insert(prereqs, {
+                        type = "space-connection-reverse",
                         name = space_connection.name
                     })
                 end
@@ -3526,32 +3626,6 @@ local function load()
         })
     end
 
-    -- spawn-asteroid-chunk
-    --log("Adding: spawn-asteroid-chunk")
-    -- Only implemented for space locations, for whether they have asteroids
-    -- Do we have all we need to get to some place where this asteroid chunk spawns?
-
-    for _, asteroid_chunk in pairs(get_prototypes("asteroid-chunk")) do
-        prereqs = {}
-
-        for space_location_class, _ in pairs(defines.prototypes["space-location"]) do
-            for _, space_location in pairs(get_prototypes(space_location_class)) do
-                if space_location.asteroid_spawn_definitions ~= nil then
-                    for _, spawn_defn in pairs(space_location.asteroid_spawn_definitions) do
-                        if spawn_defn.type == "asteroid-chunk" and spawn_defn.asteroid == asteroid_chunk.name and spawn_defn.probability > 0 then
-                            table.insert(prereqs, {
-                                type = "space-location",
-                                name = space_location.name
-                            })
-                        end
-                    end
-                end
-            end
-        end
-
-        add_to_graph("spawn-asteroid-chunk", asteroid_chunk.name, prereqs)
-    end
-
     -- spawn-entity
     --log("Adding: spawn-entity")
     -- Do we have all we need to spawn this entity somewhere?
@@ -3631,6 +3705,15 @@ local function load()
             })
         end
     end
+
+    -- Direct space spawns and dying effects, including chains of smaller asteroids.
+    local space_locations = {}
+    for location_class, _ in pairs(defines.prototypes["space-location"]) do
+        for _, location in pairs(get_prototypes(location_class)) do
+            table.insert(space_locations, location)
+        end
+    end
+    dying_spawns.add(graph, build_graph, build_graph.prototypes.entities, get_prototypes("asteroid-chunk"), surfaces, space_locations, get_prototypes("space-connection"))
 
     -- spawn-rail-surface
     --log("Adding: spawn-rail-surface")
@@ -4030,7 +4113,9 @@ build_graph.ops = {
     ["create-fluid-surface"] = "OR",
     ["create-space-platform"] = "OR",
     ["create-space-platform-tech-unlock"] = "OR",
+    ["damage-category-surface"] = "AND",
     ["damage-type-amount-surface"] = "OR",
+    ["deal-damage-surface"] = "OR",
     ["electricity-distribution-space-platform"] = "AND",
     ["electricity-distribution-surface"] = "OR",
     ["electricity-production-surface"] = "OR",
@@ -4047,6 +4132,7 @@ build_graph.ops = {
     ["fuel-category-burner-surface"] = "OR",
     ["fuel-category-surface"] = "OR",
     ["gun-ammo-surface"] = "AND",
+    ["gun-category-surface"] = "OR",
     ["gun-surface"] = "OR",
     ["heat-distribution-surface"] = "OR",
     ["heat-production-surface"] = "OR",
@@ -4057,6 +4143,7 @@ build_graph.ops = {
     ["item-space-platform"] = "OR",
     ["item-surface"] = "OR",
     ["item-insertion"] = "OR",
+    ["kill-entity-surface"] = "AND",
     ["logic_and"] = "AND", -- Nodes needed for any randomizer's special logic purposes later
     ["logic_or"] = "OR",
     ["loot-entity"] = "OR",
@@ -4102,6 +4189,7 @@ build_graph.ops = {
     ["slot"] = "OR", -- Used and constructed during simultaneous randomization
     ["slot-surface"] = "OR",
     ["space-connection"] = "AND",
+    ["space-connection-reverse"] = "AND",
     ["space-location"] = "OR",
     ["space-location-discovery"] = "OR",
     ["space-platform"] = "AND",
@@ -4110,6 +4198,7 @@ build_graph.ops = {
     ["spaceship-military-surface"] = "OR",
     ["spaceship-surface"] = "AND",
     ["spawn-asteroid-chunk"] = "OR",
+    ["spawn-asteroid-chunk-surface"] = "OR",
     ["spawn-entity"] = "OR",
     ["spawn-entity-surface"] = "OR",
     ["spawn-rail-surface"] = "OR",

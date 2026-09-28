@@ -173,6 +173,9 @@ randomizations.item_new = function(id)
             ["burn-item-surface"] = true,
             -- For space platform starter pack
             ["send-item-to-orbit-planet"] = true,
+            -- Shooting with it (see deal-damage-surface)
+            ["gun-category-surface"] = true,
+            ["ammo-category-surface"] = true,
             -- Special compat nodes
             ["starter-gun"] = true,
             ["starter-gun-ammo"] = true,

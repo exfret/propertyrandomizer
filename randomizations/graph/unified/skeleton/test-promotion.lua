@@ -41,6 +41,7 @@ package.loaded["lib/logic/init"] = {
         ["false"] = {},
     },
 }
+package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 
 local gutils = require("lib/graph/graph-utils")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")

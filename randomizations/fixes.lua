@@ -1,6 +1,7 @@
 -- File for any last-minute fixes in the randomization process that may be needed
 
 local locale_utils = require("lib/locale")
+local fluid_ports = require("lib/fluid-ports")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/init")
@@ -632,7 +633,6 @@ randomizations.fixes = function()
 
     -- Recipes with fluids leave hand crafting's category, and mining drills can put out what their resources give (see lib/fluid-ports.lua), with items and fluids trading positions
     if config.item_fluids then
-        local fluid_ports = require("lib/fluid-ports")
         local num_recategorized = fluid_ports.fix_fluid_crafting_categories()
         local num_drills_fitted = fluid_ports.fit_mining_drills()
         if num_recategorized > 0 or num_drills_fitted > 0 then

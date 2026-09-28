@@ -31,8 +31,19 @@ import subprocess
 import sys
 import tempfile
 
-import tree_sitter_lua
-from tree_sitter import Language, Parser
+try:
+    import tree_sitter_lua
+    from tree_sitter import Language, Parser
+except ImportError:
+    # As in dev/style-check.py: python3 may be a Python without the parser (the hooks' PATH has one that has it, other shells may not), so reuse the release tools' environment when it's there
+    parser_python = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".venv", "release", "bin", "python")
+    if __name__ == "__main__" and os.path.isfile(parser_python) and os.path.abspath(sys.executable) != parser_python:
+        os.execv(parser_python, [parser_python, os.path.abspath(__file__), *sys.argv[1:]])
+    raise
+
+# Also when another script loads this file by path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import factorio_launch
 
 # Same known-bad version as dev/style-check.py
 if importlib.metadata.version("tree-sitter").startswith("0.26."):
@@ -44,13 +55,13 @@ GAME = "/Applications/factorio.app/Contents"
 FACTORIO = os.path.join(GAME, "MacOS", "factorio")
 CACHE_DIR = os.path.join(tempfile.gettempdir(), "propertyrandomizer-hardcoded-names")
 
-# Same as dev/style-check.py: generated data and dead code
+# As in dev/style-check.py: generated data and dead code
+# Old logic is checked, since the mod still uses it while it's phased out
 EXCLUDE_PREFIXES = (
     "lib/cost/recipe-randomizations/",
     "lib/cost/material-costs",
     "lib/cost/science-flows/",
     "lib/unused/",
-    "lib/old-logic/",
 )
 
 # Prototype classes (with their subclasses) that are presentation or engine config rather than game content
@@ -119,7 +130,7 @@ def dump_data_raw(work_dir):
     config_path = os.path.join(work_dir, "config.ini")
     with open(config_path, "w") as f:
         f.write("[path]\nread-data=__PATH__executable__/../data\nwrite-data=" + data_dir + "\n")
-    subprocess.run([FACTORIO, "-c", config_path, "--mod-directory", mods_dir, "--dump-data"], capture_output=True, check=True, timeout=300)
+    factorio_launch.run([FACTORIO, "-c", config_path, "--mod-directory", mods_dir, "--dump-data"], capture_output=True, check=True, timeout=300)
     with open(os.path.join(data_dir, "script-output", "data-raw-dump.json")) as f:
         return json.load(f)
 

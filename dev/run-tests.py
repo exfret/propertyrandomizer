@@ -7,22 +7,30 @@
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
 #   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
 #   - the new map runs some ticks without errors (the control stage)
+# Configs matching an oldlogic line in tests/configs.txt (for now, old item randomization) are judged by the old logic's check of the built game (OLDLOGICCHECK) instead of the two reachability checks
 # Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (randomizations/planetary/check.lua)
 #
-# Configs and suites are described in tests/configs.txt, and mod sets are the mod lists in tests/mod-configs; every config runs on every mod set
+# Configs and suites are described in tests/configs.txt, and mod sets are the mod lists in tests/mod-configs; every config runs on every mod set, unless a limit line in tests/configs.txt narrows a mod set
+# A mod set's file can also give other mods' startup settings, as "settings": {"aps-planet": "gleba"} next to "mods" (a double setting's value needs a decimal point, like 1.0); the runner checks the game used them
+# Other mods a mod set enables are the newest copies in the user's mods directory made for this game version
 # The mod is snapshotted when the run starts, so edits made during a long run don't mix in
 # Each Factorio process gets its own mod and write-data directories, so this works while the game or other runs are open
 # The test helper mod (dev/test-helper-mod) unhides hidden settings and logs what the checks read
+# With recipe randomization on, science costs are checked immediately before/after
+# recipes and recycling, before item/numerical changes: each pack <=4x, mean ratio <2x.
+# Both measurements use the old randomizer's global production-cost model.
+# Every science pack needs a baseline price; missing prices fail coverage.
 #
 # Usage:
 #   dev/run-tests.py [SUITE...]      run these suites (smoke, settings, unified); all of them by default
 #     --list                         print the planned runs without running anything
 #     --only TEXT                    only runs whose name (mod set/config) contains TEXT (can repeat; any match)
-#     --modset NAME                  only this mod set, e.g. base or sa (can repeat)
-#     --jobs N                       parallel Factorio processes (default 3; a Space Age run takes a couple GB of memory)
+#     --modset NAME                  only this mod set, e.g. base or sa (can repeat); a mod set named here runs every config, even with a limit line
+#     --jobs N                       parallel Factorio processes (default 3; a Space Age run takes a couple GB of memory; an agent session runs at most 2 at once, see dev/factorio_launch.py)
 #     --tier NAME                    only the runs in this tier from tests/configs.txt (e.g. precommit)
 #     --ref GIT_REF                  test a committed version (e.g. v0.5.5) instead of the working tree
 #     --staged                       test the staged files, which is what a commit would contain (for dev/git-hooks/pre-commit)
+#     --dir PATH                     test a mod folder outside git, like the release prepare-release.sh builds
 #     --seed-offset N                shift every seed, to try the same configs on other seeds
 
 import argparse
@@ -30,9 +38,11 @@ import concurrent.futures
 import ctypes
 import ctypes.util
 import fcntl
+import fnmatch
 import importlib.util
 import itertools
 import json
+import math
 import os
 import random
 import re
@@ -42,9 +52,14 @@ import sys
 import tempfile
 import threading
 import time
+import zipfile
 import zlib
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Also when another script loads this file by path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import factorio_launch
+
+REPO =os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACTORIO = "/Applications/factorio.app/Contents/MacOS/factorio"
 GAME_DATA = "/Applications/factorio.app/Contents/data"
 # Other mods a mod set enables are linked from the user's mods directory
@@ -62,7 +77,7 @@ ROOT_LOCK = None
 
 SUITES = ["smoke", "settings", "unified"]
 # Checks a hand-picked config can turn off with nocheck=
-OPTIONAL_CHECKS = ["reachability", "mechcheck", "control"]
+OPTIONAL_CHECKS = ["reachability", "mechcheck", "control", "science-cost"]
 UNIFIED_SEEDS = [1, 2, 3, 4]
 CONTROL_TICKS = 600
 # A run with every setting on takes about 5 minutes on an unloaded machine
@@ -80,8 +95,10 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
-SETTING_LINE = re.compile(r"PRTEST setting " + re.escape(PREFIX) + r"(\S+) = (.*)$", re.MULTILINE)
+SETTING_LINE = re.compile(r"PRTEST setting (\S+) = (.*)$", re.MULTILINE)
 REACHABILITY = re.compile(r"PRTEST reachability (\d+) of (\d+)")
+OLD_LOGIC_CHECK = re.compile(r"OLDLOGICCHECK science packs reachable (\d+) of (\d+)(?:; lost (.*))?")
+SCIENCE_COST = re.compile(r"SCIENCECOST\t(before|after)\t([^\t\r\n]+)\t([^\r\n]+)")
 GAME_VERSION = re.compile(r"Factorio (\d+)\.(\d+)\.(\d+) \(build")
 
 spec = importlib.util.spec_from_file_location("mod_settings", os.path.join(REPO, "dev", "mod-settings.py"))
@@ -94,6 +111,8 @@ DAT_TYPES = {
     "double-setting": mod_settings.NUMBER,
     "string-setting": mod_settings.STRING,
 }
+# For other mods' settings in a mod set file, from the JSON value's type (bool before int, since a bool is an int in Python)
+JSON_DAT_TYPES = [(bool, mod_settings.BOOL), (int, mod_settings.SIGNED), (float, mod_settings.NUMBER), (str, mod_settings.STRING)]
 
 
 def fmt(value):
@@ -154,6 +173,10 @@ class TestFile:
         self.configs = []
         # Tier name -> run name patterns
         self.tiers = {}
+        # (mod set pattern, config name patterns): mod sets matching the first only run configs matching one of the others
+        self.limits = []
+        # (setting, value text): configs with one of these are judged by the old logic's check instead of the reachability checks
+        self.old_logic = []
         with open(CONFIGS) as f:
             for number, raw in enumerate(f, 1):
                 line = re.sub(r"(^|\s)#.*$", "", raw).strip()
@@ -166,6 +189,10 @@ class TestFile:
                     self.skip.add(words[1])
                 elif words[0] == "tier" and len(words) >= 3:
                     self.tiers[words[1]] = words[2:]
+                elif words[0] == "limit" and len(words) >= 3:
+                    self.limits.append((words[1], words[2:]))
+                elif words[0] == "oldlogic" and len(words) == 2 and "=" in words[1]:
+                    self.old_logic.append(tuple(words[1].split("=", 1)))
                 elif words[0] == "requires" and len(words) == 3 and "=" in words[2]:
                     self.requires[words[1]] = tuple(words[2].split("=", 1))
                 elif words[0] == "pin" and len(words) >= 3 and "=" in words[1]:
@@ -191,9 +218,14 @@ class TestFile:
                 else:
                     raise SystemExit(CONFIGS + ":" + str(number) + ": can't read this line: " + line)
 
+    def runs_config(self, modset, config_name):
+        # Whether a limit line keeps this mod set from running this config
+        limits = [patterns for pattern, patterns in self.limits if fnmatch.fnmatchcase(modset, pattern)]
+        return len(limits) == 0 or any(fnmatch.fnmatchcase(config_name, pattern) for patterns in limits for pattern in patterns)
+
 
 class Config:
-    def __init__(self, suite, name, settings, seed, nocheck):
+    def __init__(self, suite, name, settings, seed, nocheck, old_logic):
         self.suite = suite
         self.name = name
         # Setting name -> value, only for settings that aren't at their default
@@ -201,11 +233,15 @@ class Config:
         self.seed = seed
         # Checks from OPTIONAL_CHECKS this config skips
         self.nocheck = nocheck
+        # Whether it's judged by the old logic's check instead of the reachability checks (an oldlogic line in tests/configs.txt)
+        self.old_logic = old_logic
 
     def describe(self):
         parts = ["seed=" + str(self.seed)] + [name + "=" + fmt(value) for name, value in self.settings.items()]
         if len(self.nocheck) > 0:
             parts.append("nocheck=" + ",".join(sorted(self.nocheck)))
+        if self.old_logic:
+            parts.append("check=old-logic")
         return " ".join(parts)
 
 
@@ -240,11 +276,12 @@ class Plan:
                     continue
                 values[pinned] = self.settings[pinned].parse(text)
         values = {key: value for key, value in values.items() if value != self.settings[key].default}
+        old_logic = any(setting in values and values[setting] == self.settings[setting].parse(text) for setting, text in self.test_file.old_logic if setting in self.settings)
         for seed in seeds if seeds is not None else [None]:
             if seed is None:
-                self.configs.append(Config(suite, name, values, self.seed(name), nocheck))
+                self.configs.append(Config(suite, name, values, self.seed(name), nocheck, old_logic))
             else:
-                self.configs.append(Config(suite, name + "@" + str(seed), values, seed + self.seed_offset, nocheck))
+                self.configs.append(Config(suite, name + "@" + str(seed), values, seed + self.seed_offset, nocheck, old_logic))
 
     def forced(self, name, value):
         # The (setting, value) that choosing this value forces through a requires line, or None
@@ -366,6 +403,7 @@ class Run:
 
 class Processes:
     # Running Factorio processes, so Ctrl-C can stop all of them
+    # (factorio_launch kills them if this script is killed some other way, and limits how many an agent session runs)
     def __init__(self):
         self.lock = threading.Lock()
         self.running = set()
@@ -373,20 +411,20 @@ class Processes:
 
     def run(self, args, log_path):
         with open(log_path, "w") as log_file:
-            with self.lock:
-                if self.stopping:
-                    return "stopped"
-                proc = subprocess.Popen(args, stdout=log_file, stderr=subprocess.STDOUT)
-                self.running.add(proc)
-            try:
-                return proc.wait(timeout=TIMEOUT_SECONDS)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
-                return "timeout after " + str(TIMEOUT_SECONDS // 60) + " minutes"
-            finally:
+            with factorio_launch.started(args, cancelled=lambda: self.stopping, stdout=log_file, stderr=subprocess.STDOUT) as proc:
                 with self.lock:
-                    self.running.discard(proc)
+                    if proc is None or self.stopping:
+                        return "stopped"
+                    self.running.add(proc)
+                try:
+                    return proc.wait(timeout=TIMEOUT_SECONDS)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                    return "timeout after " + str(TIMEOUT_SECONDS // 60) + " minutes"
+                finally:
+                    with self.lock:
+                        self.running.discard(proc)
 
     def stop(self):
         with self.lock:
@@ -412,7 +450,10 @@ def copy_file(src, dst):
     shutil.copy2(src, dst)
 
 
-def snapshot(dest, ref, staged):
+def snapshot(dest, ref, staged, source_dir):
+    if source_dir is not None:
+        shutil.copytree(source_dir, dest, copy_function=copy_file)
+        return
     os.makedirs(dest)
     if staged:
         # Uses GIT_INDEX_FILE when git sets it, as it does for hooks during git commit -a or git commit PATHS
@@ -456,30 +497,58 @@ def mod_version(file_name, name):
     return tuple(int(part) for part in match.groups()) if match.group(1) is not None else (0, 0, 0)
 
 
-def find_user_mod(name):
-    # The newest copy of a mod in the user's mods directory
+def mod_factorio_version(path):
+    # The factorio_version in a mod folder's or zip's info.json (the zip's is one folder down), or None if it can't be read
+    try:
+        if os.path.isdir(path):
+            with open(os.path.join(path, "info.json")) as f:
+                return json.load(f).get("factorio_version")
+        with zipfile.ZipFile(path) as archive:
+            for member in archive.namelist():
+                if member.count("/") == 1 and member.endswith("/info.json"):
+                    return json.loads(archive.read(member)).get("factorio_version")
+    except (OSError, ValueError, zipfile.BadZipFile):
+        return None
+    return None
+
+
+def find_user_mod(name, game):
+    # The newest copy of a mod in the user's mods directory made for this game version (the mods directory keeps old copies too)
+    wanted = str(game[0]) + "." + str(game[1])
     best = None
     for file_name in os.listdir(USER_MODS):
         version = mod_version(file_name, name)
-        if version is not None and (best is None or version > best[0]):
-            best = (version, os.path.join(USER_MODS, file_name))
+        path = os.path.join(USER_MODS, file_name)
+        if version is not None and (best is None or version > best[0]) and mod_factorio_version(path) == wanted:
+            best = (version, path)
     if best is None:
-        raise SystemExit("mod set needs mod " + name + ", which isn't in " + USER_MODS)
+        raise SystemExit("mod set needs mod " + name + " for Factorio " + wanted + ", which isn't in " + USER_MODS)
     return best[1]
 
 
 def load_modsets():
+    # Each mod set's other mods are found later by find_links, only for mod sets with runs, so a missing mod only stops runs that need it
     modsets = {}
     for file_name in sorted(os.listdir(MOD_CONFIGS)):
         if not file_name.endswith(".json"):
             continue
         with open(os.path.join(MOD_CONFIGS, file_name)) as f:
             mod_list = json.load(f)
+        # Not part of Factorio's mod-list.json format, so it's taken out before the list is written for a run
+        settings = mod_list.pop("settings", {})
+        for setting_name, value in settings.items():
+            if setting_name.startswith(PREFIX) or not any(isinstance(value, kind) for kind, _ in JSON_DAT_TYPES):
+                raise SystemExit(os.path.join(MOD_CONFIGS, file_name) + ": settings are other mods' startup settings, each a bool, number or string; " + setting_name + " isn't")
         enabled = [mod["name"] for mod in mod_list["mods"] if mod["enabled"]]
         builtin = [name for name in enabled if os.path.isfile(os.path.join(GAME_DATA, name, "info.json"))]
         others = [name for name in enabled if name != MOD_NAME and name not in builtin]
-        modsets[file_name[:-len(".json")]] = {"list": mod_list, "links": [find_user_mod(name) for name in others], "weight": len(enabled)}
+        modsets[file_name[:-len(".json")]] = {"list": mod_list, "settings": settings, "others": others, "links": None, "weight": len(enabled)}
     return modsets
+
+
+def find_links(modsets, runs, game):
+    for name in set(run.modset for run in runs):
+        modsets[name]["links"] = [find_user_mod(other, game) for other in modsets[name]["others"]]
 
 
 def game_version():
@@ -514,20 +583,35 @@ class Context:
         self.processes = Processes()
 
 
+def same_value(text, value):
+    # Whether the test helper's text for a setting (Lua's tostring) is this value from a mod set file
+    if isinstance(value, bool) or isinstance(value, str):
+        return text == fmt(value)
+    try:
+        return float(text) == value
+    except ValueError:
+        return False
+
+
 def check_settings(text, run, ctx):
     problems = []
     reported = {match.group(1): match.group(2).strip() for match in SETTING_LINE.finditer(text)}
     expected = dict(run.config.settings, seed=run.config.seed)
     for name, value in expected.items():
-        if name not in reported:
+        if PREFIX + name not in reported:
             problems.append("setting " + name + " wasn't reported by the test helper")
             continue
         try:
-            actual = ctx.settings[name].parse(reported[name])
+            actual = ctx.settings[name].parse(reported[PREFIX + name])
         except ValueError:
-            actual = reported[name]
+            actual = reported[PREFIX + name]
         if actual != value:
-            problems.append("setting " + name + " was " + reported[name] + " in game, but the config set " + fmt(value))
+            problems.append("setting " + name + " was " + reported[PREFIX + name] + " in game, but the config set " + fmt(value))
+    for name, value in ctx.modsets[run.modset]["settings"].items():
+        if name not in reported:
+            problems.append("setting " + name + " (from mod set " + run.modset + ") wasn't reported by the test helper; is its mod enabled?")
+        elif not same_value(reported[name], value):
+            problems.append("setting " + name + " was " + reported[name] + " in game, but mod set " + run.modset + " set " + fmt(value))
     return problems
 
 
@@ -554,6 +638,17 @@ def check_reachability(text):
     return []
 
 
+def check_old_logic(text):
+    # The old logic's check of the built game (data-final-fixes.lua logs it with old item randomization on)
+    match = OLD_LOGIC_CHECK.search(text)
+    if match is None:
+        return ["the old logic's check (OLDLOGICCHECK) is missing from the log"]
+    reachable, total = int(match.group(1)), int(match.group(2))
+    if reachable < total:
+        return ["old logic: only " + str(reachable) + " of " + str(total) + " science packs are reachable (lost " + (match.group(3) or "?") + ")"]
+    return []
+
+
 def check_verdict(text):
     # The last verdict is the end-of-load one; unified randomization also logs one per attempt, under another label
     verdicts = VERDICT.findall(text)
@@ -562,6 +657,55 @@ def check_verdict(text):
     if verdicts[-1][0] != "ok":
         return ["MECHCHECK verdict " + verdicts[-1][0] + " " + verdicts[-1][1]]
     return []
+
+
+def check_science_costs(text):
+    # Every pack has equal weight: arithmetic mean of after/before ratios.
+    # At most 4x per pack; the mean must stay below 2x.
+    prices = {"before": {}, "after": {}}
+    problems = []
+    for stage, pack, raw in SCIENCE_COST.findall(text):
+        if pack in prices[stage]:
+            problems.append("science cost: duplicate " + stage + " price for " + pack)
+        try:
+            value = None if raw == "unpriced" else float(raw)
+            if value is not None and (not math.isfinite(value) or value < 0):
+                raise ValueError()
+        except ValueError:
+            problems.append("science cost: invalid " + stage + " price for " + pack + ": " + raw)
+            value = None
+        prices[stage][pack] = value
+    if not prices["before"] or not prices["after"]:
+        return problems + ["science cost: missing before/after SCIENCECOST measurements"], ""
+    ratios = {}
+    skipped = []
+    for pack in sorted(prices["before"].keys() | prices["after"].keys()):
+        if pack not in prices["before"] or pack not in prices["after"]:
+            problems.append("science cost: missing before/after measurement for " + pack)
+            continue
+        before, after = prices["before"][pack], prices["after"][pack]
+        if before is None:
+            problems.append("science cost: " + pack + " has no baseline price; cannot verify its cost limits")
+            skipped.append(pack)
+            continue
+        if after is None:
+            problems.append("science cost: " + pack + " lost its price after randomization")
+            continue
+        ratio = after / before if before > 0 else (1.0 if after == 0 else math.inf)
+        ratios[pack] = ratio
+        if ratio > 4:
+            problems.append("science cost: " + pack + " increased to " + format(ratio, ".3f") + "x (maximum 4x)")
+    if not ratios:
+        problems.append("science cost: no science packs have comparable prices")
+        summary = "no comparable packs"
+    else:
+        mean = sum(ratios.values()) / len(ratios)
+        if mean >= 2:
+            problems.append("science cost: mean pack ratio " + format(mean, ".3f") + "x (must be below 2x)")
+        summary = str(len(ratios)) + " packs, max " + format(max(ratios.values()), ".3f") + "x, mean " + format(mean, ".3f") + "x"
+    if skipped:
+        summary += "; INCOMPLETE, no baseline price: " + ", ".join(skipped)
+    return problems, summary
 
 
 def run_one(run, ctx):
@@ -583,6 +727,8 @@ def run_one(run, ctx):
     values = [(PREFIX + "seed", mod_settings.SIGNED, run.config.seed)]
     for name, value in run.config.settings.items():
         values.append((PREFIX + name, DAT_TYPES[ctx.settings[name].type], value))
+    for name, value in modset["settings"].items():
+        values.append((name, next(dat_type for kind, dat_type in JSON_DAT_TYPES if isinstance(value, kind)), value))
     mod_settings.build(os.path.join(mods_dir, "mod-settings.dat"), ctx.version, values)
     config_path = os.path.join(run_dir, "config.ini")
     with open(config_path, "w") as f:
@@ -592,6 +738,7 @@ def run_one(run, ctx):
     base_args = [FACTORIO, "-c", config_path, "--mod-directory", mods_dir]
     save = os.path.join(run_dir, "save.zip")
     problems = []
+    science_cost_summary = ""
     create_log = os.path.join(run_dir, "create.log")
     code = ctx.processes.run(base_args + ["--create", save], create_log)
     text = read(create_log)
@@ -601,10 +748,17 @@ def run_one(run, ctx):
         problems.extend(error_lines(text))
     else:
         problems.extend(check_settings(text, run, ctx))
-        if "reachability" not in run.config.nocheck:
-            problems.extend(check_reachability(text))
-        if "mechcheck" not in run.config.nocheck:
-            problems.extend(check_verdict(text))
+        reported = dict(SETTING_LINE.findall(text))
+        if reported.get(PREFIX + "recipe") == "true" and reported.get(PREFIX + "test-unit") != "true" and "science-cost" not in run.config.nocheck:
+            cost_problems, science_cost_summary = check_science_costs(text)
+            problems.extend(cost_problems)
+        if run.config.old_logic:
+            problems.extend(check_old_logic(text))
+        else:
+            if "reachability" not in run.config.nocheck:
+                problems.extend(check_reachability(text))
+            if "mechcheck" not in run.config.nocheck:
+                problems.extend(check_verdict(text))
         if "control" not in run.config.nocheck:
             control_log = os.path.join(run_dir, "control.log")
             code = ctx.processes.run(base_args + ["--benchmark", save, "--benchmark-ticks", str(CONTROL_TICKS)], control_log)
@@ -619,7 +773,16 @@ def run_one(run, ctx):
     shutil.rmtree(data_dir, ignore_errors=True)
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start}
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary}
+
+
+def run_one_safely(run, ctx):
+    # A bug in the runner itself fails this run instead of stopping the whole suite
+    start = time.time()
+    try:
+        return run_one(run, ctx)
+    except Exception as error:
+        return {"run": run, "ok": False, "problems": ["the test runner failed: " + repr(error)], "dir": os.path.join(ctx.root, "runs", run.slug), "seconds": time.time() - start}
 
 
 def duration(seconds):
@@ -660,6 +823,11 @@ def summarize(results, test_file, elapsed):
         passed = sum(1 for result in in_suite if result["ok"])
         label = suite + (" (work in progress, not counted)" if suite in test_file.wip else "")
         lines.append(label + ": " + str(passed) + " of " + str(len(in_suite)) + " passed")
+    cost_results = [result for result in results if result.get("science_costs")]
+    if cost_results:
+        lines.extend(["", "Science costs (after/before recipe randomization, global prices):"])
+        for result in cost_results:
+            lines.append("  " + result["run"].name + ": " + result["science_costs"])
     failures = [result for result in results if not result["ok"]]
     if len(failures) > 0:
         lines.append("")
@@ -720,45 +888,60 @@ def main(argv):
     parser.add_argument("suites", nargs="*", help="suites to run: " + ", ".join(SUITES) + " (default: all)")
     parser.add_argument("--list", action="store_true", help="print the planned runs without running anything")
     parser.add_argument("--only", action="append", help="only runs whose name contains this text (can repeat)")
-    parser.add_argument("--modset", action="append", help="only this mod set (can repeat)")
+    parser.add_argument("--modset", action="append", help="only this mod set (can repeat); it runs every config, even with a limit line")
     parser.add_argument("--jobs", type=int, default=3, help="parallel Factorio processes")
     parser.add_argument("--tier", help="only the runs in this tier from tests/configs.txt")
     parser.add_argument("--ref", help="test this git ref instead of the working tree")
     parser.add_argument("--staged", action="store_true", help="test the staged files instead of the working tree")
+    parser.add_argument("--dir", help="test this mod folder instead of the working tree")
     parser.add_argument("--seed-offset", type=int, default=0, help="shift every seed")
     args = parser.parse_args(argv)
     suites = args.suites if len(args.suites) > 0 else SUITES
+    if sum(1 for picked in (args.ref is not None, args.staged, args.dir is not None) if picked) > 1:
+        raise SystemExit("--ref, --staged and --dir each pick what to test; use one")
+    if args.dir is not None and not os.path.isfile(os.path.join(args.dir, "info.json")):
+        raise SystemExit("--dir " + args.dir + " isn't a mod folder (no info.json)")
 
     start = time.time()
-    root = new_root()
-    snapshot_dir = os.path.join(root, MOD_NAME)
-    if args.ref is not None and args.staged:
-        raise SystemExit("--ref and --staged each pick what to test; use one")
-    snapshot(snapshot_dir, args.ref, args.staged)
-    shutil.copytree(HELPER_MOD, os.path.join(root, HELPER_NAME))
-    settings = load_settings(snapshot_dir)
+    version = game_version()
     test_file = TestFile()
     if args.tier is not None and args.tier not in test_file.tiers:
         raise SystemExit("no tier " + args.tier + " in tests/configs.txt (have " + ", ".join(test_file.tiers) + ")")
-    plan = Plan(settings, test_file, args.seed_offset)
     modsets = load_modsets()
-    unknown = [suite for suite in suites if suite not in set(config.suite for config in plan.configs)]
-    if len(unknown) > 0:
-        raise SystemExit("no configs in suite " + ", ".join(unknown))
     unknown = [name for name in args.modset or [] if name not in modsets]
     if len(unknown) > 0:
         raise SystemExit("no mod set " + ", ".join(unknown) + " in tests/mod-configs (have " + ", ".join(modsets) + ")")
+    unknown = [pattern for pattern, _ in test_file.limits if not any(fnmatch.fnmatchcase(modset, pattern) for modset in modsets)]
+    if len(unknown) > 0:
+        raise SystemExit("limit lines in tests/configs.txt match no mod set: " + ", ".join(unknown))
+    root = new_root()
+    snapshot_dir = os.path.join(root, MOD_NAME)
+    snapshot(snapshot_dir, args.ref, args.staged, args.dir)
+    shutil.copytree(HELPER_MOD, os.path.join(root, HELPER_NAME))
+    settings = load_settings(snapshot_dir)
+    plan = Plan(settings, test_file, args.seed_offset)
+    unknown = [suite for suite in suites if suite not in set(config.suite for config in plan.configs)]
+    if len(unknown) > 0:
+        shutil.rmtree(root, ignore_errors=True)
+        raise SystemExit("no configs in suite " + ", ".join(unknown))
     runs = []
     for config in plan.configs:
         for modset in modsets:
             run = Run(config, modset)
             if config.suite not in suites or (args.modset is not None and modset not in args.modset):
                 continue
+            if args.modset is None and not test_file.runs_config(modset, config.name):
+                continue
             if args.only is not None and not any(text in run.name for text in args.only):
                 continue
             if args.tier is not None and not any(text in run.name for text in test_file.tiers[args.tier]):
                 continue
             runs.append(run)
+    slugs = [run.slug for run in runs]
+    shared = sorted(set(run.name for run in runs if slugs.count(run.slug) > 1))
+    if len(shared) > 0:
+        shutil.rmtree(root, ignore_errors=True)
+        raise SystemExit("these runs would share a log folder (two configs with the same name?): " + ", ".join(shared))
     # Longest first, so a slow run doesn't start last and leave the other jobs idle
     runs.sort(key=lambda run: -modsets[run.modset]["weight"] * (1 + len(run.config.settings)))
     if args.list:
@@ -766,17 +949,28 @@ def main(argv):
         shutil.rmtree(root, ignore_errors=True)
         return 0
     if len(runs) == 0:
+        shutil.rmtree(root, ignore_errors=True)
         raise SystemExit("no runs match")
+    try:
+        find_links(modsets, runs, version)
+    except SystemExit:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
 
     point_latest(root)
-    version = game_version()
     ctx = Context(root, snapshot_dir, settings, modsets, version)
     source = "the working tree"
     if args.ref is not None:
         source = "git ref " + args.ref
     elif args.staged:
         source = "the staged files"
-    print("Testing " + source + " (snapshot in " + root + "): " + str(len(runs)) + " runs, " + str(args.jobs) + " at a time")
+    elif args.dir is not None:
+        source = "the folder " + args.dir
+    jobs_note = str(args.jobs) + " at a time"
+    session, kind, limit = factorio_launch.session_limit()
+    if session is not None and limit < args.jobs:
+        jobs_note = str(limit) + " at a time (this " + kind + "'s limit, see dev/factorio_launch.py)"
+    print("Testing " + source + " (snapshot in " + root + "): " + str(len(runs)) + " runs, " + jobs_note)
     for note in plan.notes:
         print(note)
     print_lock = threading.Lock()
@@ -799,7 +993,7 @@ def main(argv):
 
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs)
     try:
-        futures = [pool.submit(run_one, run, ctx) for run in runs]
+        futures = [pool.submit(run_one_safely, run, ctx) for run in runs]
         for future in concurrent.futures.as_completed(futures):
             report(future.result())
     except KeyboardInterrupt:

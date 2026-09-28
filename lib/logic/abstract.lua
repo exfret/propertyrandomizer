@@ -462,7 +462,8 @@ function abstract.build(lu, extra_params)
     -- Can we use an agricultural tower?
 
     for _, ag_tower in pairs(prots("agricultural-tower")) do
-        add_edge("entity-operate", ag_tower.name)
+        -- Forward the operating cost; entity-harvest supplies the duration per harvest.
+        add_edge("entity-operate", ag_tower.name, { amount = 1 })
     end
 
     ----------------------------------------

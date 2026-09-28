@@ -4,13 +4,76 @@
 
 -- build_graph is just used for its util functions, it should already be loaded in by now
 local build_graph = require("lib/old-logic/build-graph")
+local top_sort = require("lib/old-logic/top-sort")
 
 local build_graph_compat = {}
+
+-- The rules added here are for balance, like a mining drill before any technology, and balance is soft
+-- A game can break a rule before randomization: Any Planet Start's Fulgora researches recycling before any mining drill can run, since drill fuel comes from scrap
+-- Keeping such a rule would leave almost nothing reachable, so the first load (the game before graph randomization) finds the rules that game breaks, and no load adds them
+
+-- Rules added in this load, as target node key --> required node key --> true
+local rules
+-- Rules the game before randomization breaks, in the same form; nil until the first load finds them
+local broken_rules
+
+-- Makes an AND node require prereq first, unless the game before randomization breaks that rule
+local function require_first(target_node, prereq)
+    local target_key = build_graph.key(target_node.type, target_node.name)
+    local prereq_key = build_graph.key(prereq.type, prereq.name)
+    if broken_rules ~= nil and broken_rules[target_key] ~= nil and broken_rules[target_key][prereq_key] then
+        return
+    end
+    table.insert(target_node.prereqs, prereq)
+    rules[target_key] = rules[target_key] or {}
+    rules[target_key][prereq_key] = true
+end
+
+-- Sorts with every rule; while targets are left blocked only by rules that aren't met, drops those rules and sorts again
+-- So a rule is only dropped when the game can't keep it, and a game that keeps them all (like vanilla) keeps them all
+local function find_broken_rules(graph)
+    local broken = {}
+    while true do
+        build_graph.add_dependents(graph)
+        local reachable = top_sort.sort(graph).reachable
+        local dropped = false
+        for target_key, prereq_keys in pairs(rules) do
+            local target_node = graph[target_key]
+            if not reachable[target_key] then
+                local blocked_by_rules_only = true
+                for _, prereq in pairs(target_node.prereqs) do
+                    local prereq_key = build_graph.key(prereq.type, prereq.name)
+                    if not reachable[prereq_key] and not prereq_keys[prereq_key] then
+                        blocked_by_rules_only = false
+                    end
+                end
+                if blocked_by_rules_only then
+                    local kept = {}
+                    for _, prereq in pairs(target_node.prereqs) do
+                        local prereq_key = build_graph.key(prereq.type, prereq.name)
+                        if prereq_keys[prereq_key] and not reachable[prereq_key] then
+                            broken[target_key] = broken[target_key] or {}
+                            broken[target_key][prereq_key] = true
+                            dropped = true
+                        else
+                            table.insert(kept, prereq)
+                        end
+                    end
+                    target_node.prereqs = kept
+                end
+            end
+        end
+        if not dropped then
+            return broken
+        end
+    end
+end
 
 -- TODO: Think about how to add these to notes?
 -- TODO: Make these operate-entity-surface for nauvis?
 local function load(graph)
     local prereqs
+    rules = {}
 
     -- Require a mining drill before tech can be done
 
@@ -35,7 +98,7 @@ local function load(graph)
     for _, technology in pairs(data.raw.technology) do
         local tech_node = graph[build_graph.key("technology", technology.name)]
 
-        table.insert(tech_node.prereqs, {
+        require_first(tech_node, {
             type = "mining-drill",
             name = "canonical"
         })
@@ -74,7 +137,7 @@ local function load(graph)
         if technology.name ~= "automation" and technology.unit ~= nil  then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "assembling-machine",
                 name = "canonical"
             })
@@ -131,17 +194,17 @@ local function load(graph)
         if technology.name ~= "gun-turret" and technology.name ~= "military" and technology.unit ~= nil and (#technology.unit.ingredients > 1 or technology.unit.count_formula ~= nil or technology.unit.count > 15) then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "operate-entity",
                 name = "gun-turret"
             })
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "starter-gun",
                 name = "canonical"
             })
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "starter-gun-ammo",
                 name = "canonical"
             })
@@ -171,7 +234,7 @@ local function load(graph)
         if technology.name ~= "automation" and technology.unit ~= nil then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "inserter",
                 name = "canonical"
             })
@@ -203,7 +266,7 @@ local function load(graph)
         if technology.unit ~= nil then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "transport-belt",
                 name = "canonical"
             })
@@ -233,7 +296,7 @@ local function load(graph)
         if technology.unit ~= nil and (technology.unit.count_formula ~= nil or technology.unit.count >= 50) then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "underground-belt",
                 name = "canonical"
             })
@@ -261,7 +324,7 @@ local function load(graph)
         if technology.unit ~= nil and (technology.unit.count_formula ~= nil or technology.unit.count >= 50) then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "splitter",
                 name = "canonical"
             })
@@ -291,7 +354,7 @@ local function load(graph)
         if technology.unit ~= nil and #technology.unit.ingredients > 1 then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "repair-pack",
                 name = "canonical"
             })
@@ -322,7 +385,7 @@ local function load(graph)
         if technology.unit ~= nil and #technology.unit.ingredients > 1 then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "storage",
                 name = "canonical"
             })
@@ -385,17 +448,25 @@ local function load(graph)
         build_graph.ops["rocket-ammo"] = "OR"
 
         -- Use space connection because that's an AND node and surface is not
+        -- Either way along it that arrives at aquilo
 
         for _, connection in pairs(data.raw["space-connection"]) do
+            local arrivals = {}
             if connection.to == "aquilo" then
-                local conn_node = graph[build_graph.key("space-connection", connection.name)]
+                table.insert(arrivals, "space-connection")
+            end
+            if connection.from == "aquilo" then
+                table.insert(arrivals, "space-connection-reverse")
+            end
+            for _, node_type in pairs(arrivals) do
+                local conn_node = graph[build_graph.key(node_type, connection.name)]
 
-                table.insert(conn_node.prereqs, {
+                require_first(conn_node, {
                     type = "rocket-turret",
                     name = "canonical"
                 })
 
-                table.insert(conn_node.prereqs, {
+                require_first(conn_node, {
                     type = "rocket-ammo",
                     name = "canonical"
                 })
@@ -448,7 +519,7 @@ local function load(graph)
         if past_chemical_science then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "construction-robot",
                 name = "canonical"
             })
@@ -495,7 +566,7 @@ local function load(graph)
         if past_chemical_science then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "roboport",
                 name = "canonical"
             })
@@ -539,11 +610,23 @@ local function load(graph)
         if past_logistic_science then
             local tech_node = graph[build_graph.key("technology", technology.name)]
 
-            table.insert(tech_node.prereqs, {
+            require_first(tech_node, {
                 type = "pump",
                 name = "canonical"
             })
         end
+    end
+
+    if broken_rules == nil then
+        broken_rules = find_broken_rules(graph)
+        local dropped = {}
+        for target_key, prereq_keys in pairs(broken_rules) do
+            for prereq_key, _ in pairs(prereq_keys) do
+                table.insert(dropped, prereq_key .. " before " .. target_key)
+            end
+        end
+        table.sort(dropped)
+        log("Old logic balance rules the game before randomization breaks, so they're left out: " .. #dropped .. (#dropped > 0 and (" (" .. table.concat(dropped, ", ") .. ")") or ""))
     end
 end
 -- export

@@ -4,6 +4,8 @@
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local acquisition = require("lib/logic/acquisition")
+local cutils = require("lib/cost/cost-utils")
+local dutils = require("lib/data-utils")
 
 local key = gutils.key
 local concat = gutils.concat
@@ -48,6 +50,40 @@ local function is_reachable(sort_info, node_key)
 end
 
 test.run = function(graph)
+    -- Material-producing loot edges must carry yield, or pricing treats them as free capabilities.
+    for item_name, sources in pairs(lookups.loot_to_entities) do
+        local item = graph.nodes[key("item", item_name)]
+        if item ~= nil then
+            for entity_name, _ in pairs(sources) do
+                local entity = dutils.get_prot("entity", entity_name)
+                local expected = cutils.find_amount_in_ing_or_prod(entity.loot, { type = "item", name = item_name })
+                local found = false
+                for edge_key, _ in pairs(item.pre) do
+                    local edge = graph.edges[edge_key]
+                    if edge.start == key("entity-kill", entity_name) then
+                        if edge.amount == nil or expected <= 0 or math.abs(edge.amount - expected) > 1e-9 then
+                            fail("loot edge missing its expected output quantity", edge)
+                        end
+                        found = true
+                    end
+                end
+                if not found then
+                    fail("missing loot edge from " .. entity_name .. " to " .. item_name)
+                end
+            end
+        end
+    end
+    -- Harvesting must retain the operating cost through the generic tower capability.
+    local tower = graph.nodes[key("agricultural-tower", "")]
+    if tower ~= nil then
+        for edge_key, _ in pairs(tower.pre) do
+            local edge = graph.edges[edge_key]
+            if graph.nodes[edge.start].type == "entity-operate" and edge.amount ~= 1 then
+                fail("agricultural tower operation is not included in harvest costs", edge)
+            end
+        end
+    end
+
     -- Operating an entity needs it to be ours, not just present, since a machine found in the wild (neutral force) has to be mined and placed again
     for _, edge in pairs(graph.edges) do
         if graph.nodes[edge.stop].type == "entity-operate" and graph.nodes[edge.start].type == "entity" then

@@ -44,6 +44,7 @@ rng.shuffle = function(rng_key, tbl)
 end
 package.loaded["lib/random/rng"] = rng
 package.loaded["lib/logic/init"] = { type_info = {} }
+package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {}
 
 local gutils = require("lib/graph/graph-utils")
