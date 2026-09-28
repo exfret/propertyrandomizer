@@ -258,51 +258,6 @@ script_trigger_effect_handlers["teleport-player"] = function(event)
     end
 end
 
--- From entity randomization (randomizations/graph/entity/placeable.lua), for combat robots created without a capsule and so without an owner
--- The owner is assigned on the next tick in on_nth_tick(1) below
-script_trigger_effect_handlers["randomizer-follower-robot-created"] = function(event)
-    -- The docs don't say whether a created_effect reports the new entity as source or target, so accept either
-    local candidates = {
-        event.source_entity,
-        event.target_entity,
-    }
-    local robot
-    for _, entity in pairs(candidates) do
-        if entity.valid and entity.type == "combat-robot" then
-            robot = entity
-            break
-        end
-    end
-    if robot == nil then
-        return
-    end
-
-    local nearest_character
-    local nearest_dist
-    for _, player in pairs(game.players) do
-        local character = player.character
-        if character ~= nil and character.valid and character.surface.index == robot.surface.index then
-            local offset_x = character.position.x - robot.position.x
-            local offset_y = character.position.y - robot.position.y
-            local dist = offset_x * offset_x + offset_y * offset_y
-            if nearest_dist == nil or dist < nearest_dist then
-                nearest_character = character
-                nearest_dist = dist
-            end
-        end
-    end
-    -- With no character on this surface, the robot just stays ownerless
-    if nearest_character == nil then
-        return
-    end
-
-    storage.combat_robot_entity_to_assign = storage.combat_robot_entity_to_assign or {}
-    table.insert(storage.combat_robot_entity_to_assign, {
-        robot = robot,
-        owner = nearest_character,
-    })
-end
-
 events.on_event(defines.events.on_script_trigger_effect, function(event)
     local handler = script_trigger_effect_handlers[event.effect_id]
     if handler ~= nil then
@@ -312,14 +267,6 @@ end)
 
 events.on_event(defines.events.on_built_entity, function(event)
     -- I used to make built biters etc. into enemies but actually I think I prefer them as on the player force
-end)
-
-events.on_event(defines.events.on_post_entity_died, function(event)
-    if string.find(event.prototype.name, "exfret%-unit") ~= nil then
-        for _, corpse in pairs(event.corpses) do
-            corpse.force = "player"
-        end
-    end
 end)
 
 script.on_nth_tick(10, function(event)
@@ -343,16 +290,6 @@ script.on_nth_tick(10, function(event)
 end)
 
 script.on_nth_tick(1, function(event)
-    if storage.combat_robot_entity_to_assign ~= nil then
-        for _, assignment in pairs(storage.combat_robot_entity_to_assign) do
-            -- Either could have died or been removed since last tick
-            if assignment.robot.valid and assignment.owner.valid then
-                assignment.robot.combat_robot_owner = assignment.owner
-            end
-        end
-        storage.combat_robot_entity_to_assign = nil
-    end
-
     if event.tick == 10 then
         -- Tell them about the randomizer panel
         game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")

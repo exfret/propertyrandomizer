@@ -245,4 +245,83 @@ test("a wanted trav whose needs pin it stays where it is", function()
     end
 end)
 
+test("a trav's needs are checked where its connection starts, like a carried entity's kill", function()
+    -- The early slot comes before the carried identity in context C, but connecting them starts at a gate that only comes after it
+    local names = { "early", "carried", "filler" }
+    local graph, params = toy(names, {}, {})
+    local sort_info = {
+        node_to_context_inds = {
+            [key("item", "early")] = { C = 1 },
+            [key("item", "carried")] = { C = 2 },
+            [key("item", "carried-trav")] = { C = 3 },
+            [key("item", "filler")] = { C = 4 },
+            [key("item", "gate")] = { C = 5 },
+        },
+    }
+    local needs = {
+        [key("item", "carried-trav")] = { C = true },
+    }
+    local assignment = assignment_of(names, {})
+    assert(count_matches(graph, params, needs, sort_info, assignment, "early", "carried") > 0)
+    params.connection = function(slot_key, trav_key)
+        if slot_key == key("item", "early") and trav_key == key("item", "carried-trav") then
+            return {
+                base = key("item", "gate"),
+            }
+        end
+        return nil
+    end
+    assert(count_matches(graph, params, needs, sort_info, assignment, "early", "carried") == 0)
+end)
+
+test("a slot connects to its trav where the connection starts, with the connection's abilities", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local node_keys = {
+        key("base", "slot-base"),
+        key("head", "trav-head"),
+        key("base", "gate"),
+        key("orand", "slot"),
+        key("orand", "slot-trav"),
+    }
+    for _, node_key in pairs(node_keys) do
+        local parts = gutils.deconstruct(node_key)
+        local node = gutils.add_node(graph, parts.type, parts.name)
+        node.op = "AND"
+    end
+    local params = {
+        slot_to_base = {
+            [key("orand", "slot")] = graph.nodes[key("base", "slot-base")],
+        },
+        trav_to_head = {
+            [key("orand", "slot-trav")] = graph.nodes[key("head", "trav-head")],
+        },
+    }
+    local assignment = {
+        [key("orand", "slot")] = key("orand", "slot-trav"),
+    }
+    matching.connect(graph, params, assignment)
+    assert(graph.edges[gutils.ekey({
+        start = key("base", "slot-base"),
+        stop = key("head", "trav-head"),
+    })] ~= nil)
+    params.connection = function(slot_key, trav_key)
+        return {
+            base = key("base", "gate"),
+            abilities = {
+                [2] = false,
+            },
+        }
+    end
+    matching.connect(graph, params, assignment)
+    local edge = graph.edges[gutils.ekey({
+        start = key("base", "gate"),
+        stop = key("head", "trav-head"),
+    })]
+    assert(edge ~= nil and edge.abilities[2] == false)
+end)
+
 print(num_passed .. " tests passed")

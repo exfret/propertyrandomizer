@@ -31,14 +31,34 @@ local function complex_sort(graph)
     })
 end
 
+-- How a slot connects to a trav: params.connection(slot_key, trav_key) (optional) gives { base = the node the connection starts at (the slot's base if nil), abilities = what getting through it gains or loses (see lib/graph/context-sort.lua) }, or nil for the plain connection
+-- Entity positions use it: a built entity found in the wild or looted can't be automated, and one carried by a unit also takes killing the carrier (see handlers-new/entity.lua)
+local function connection_of(params, slot_key, trav_key)
+    local connection
+    if params.connection ~= nil then
+        connection = params.connection(slot_key, trav_key)
+    end
+    return connection or {}
+end
+
 -- Connect each slot to its assigned trav: slot base --> trav head, plus trav --> slot for items, since reflection makes them the same physical item (so the slot's consumers also get the trav's identity-based sources, like delivery and spoilage)
--- The slot_to_base and trav_to_head connectors come from params
+-- The slot_to_base and trav_to_head connectors come from params, and params.connect_extra(graph, slot_key, trav_key) (optional) connects anything else that follows the pair
 local function connect(graph, params, assignment)
     for slot_key, trav_key in pairs(assignment) do
         local slot = graph.nodes[slot_key]
-        gutils.add_edge(graph, key(params.slot_to_base[slot_key]), key(params.trav_to_head[trav_key]))
+        local connection = connection_of(params, slot_key, trav_key)
+        local extra
+        if connection.abilities ~= nil then
+            extra = {
+                abilities = table.deepcopy(connection.abilities),
+            }
+        end
+        gutils.add_edge(graph, connection.base or key(params.slot_to_base[slot_key]), key(params.trav_to_head[trav_key]), extra)
         if slot.type == "item" and slot.op == "OR" then
             gutils.add_edge(graph, trav_key, slot_key)
+        end
+        if params.connect_extra ~= nil then
+            params.connect_extra(graph, slot_key, trav_key)
         end
     end
     return graph
@@ -447,8 +467,20 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
                     is_admissible = false
                 end
                 if is_admissible then
+                    -- Ranks are the connection's: its start (the slot unless the connection says otherwise) in any context that arrives in the need's through it
+                    local connection = connection_of(params, slot_key, trav_key)
+                    local start_inds = nci[connection.base or slot_key] or {}
                     for context, _ in pairs(needs[trav_key] or {}) do
-                        local slot_ind = (nci[slot_key] or {})[context]
+                        local slot_ind
+                        local sources = { context }
+                        if connection.abilities ~= nil then
+                            sources = top.edge_source_contexts(sort_info, connection, context)
+                        end
+                        for _, source in pairs(sources) do
+                            if start_inds[source] ~= nil and (slot_ind == nil or start_inds[source] < slot_ind) then
+                                slot_ind = start_inds[source]
+                            end
+                        end
                         local trav_ind = (nci[trav_key] or {})[context]
                         if slot_ind == nil or trav_ind == nil or slot_ind >= trav_ind then
                             is_admissible = false
@@ -775,6 +807,8 @@ matching.superposed_sort = superposed_sort
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
+--   connection(slot_key, trav_key) (optional): where the connection of a slot/trav pair starts and what abilities it gains or loses (see connection_of)
+--   connect_extra(graph, slot_key, trav_key) (optional): connects anything else that follows a slot/trav pair (see connect)
 --   debt (optional): planetary changes superposed (see the debt goals above), whose goals only the debt reaches must stay reachable with it
 -- Returns slot key --> trav key, and the debt goals it kept (nil without debt), for first pass's own gate
 matching.run = function(params)

@@ -66,6 +66,10 @@ test.run = function(graph)
                 fail("acquisition edge without a known acq_kind", edge)
             end
             table.insert(edges_by_kind[edge.acq_kind], edge)
+            -- Exactly the ways that make the entity ours are tagged ours, since entity randomization only gives an entity that has to be ours a slot that makes it ours (acquisition.pairing)
+            if (graph.nodes[edge.stop].type == "entity-own") ~= (edge.ours ~= nil) then
+                fail("acquisition edge whose ours tag doesn't match whether it goes into entity-own", edge)
+            end
         elseif edge.acq_kind ~= nil then
             fail("acq_kind on an edge that isn't an acquisition edge", edge)
         end

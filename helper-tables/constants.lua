@@ -94,6 +94,13 @@ local constants = {
     -- These are base e, so something 150x more expensive is rejected, and something 3000x cheaper is rejected
     first_pass_max_cost_log_difference_expensive = 5,
     first_pass_max_cost_log_difference_cheap = 8,
+    -- An item only places another entity if the entity's own item costs within this factor of it, either way (first pass's entity slots and entity randomization's build slots)
+    -- Stricter than for items, since nothing rescales what an item costs when it places something else
+    entity_cost_tolerance = 4,
+    -- Whether entity randomization's slots are first pass positions (every claimed acquisition edge, matched with item identities; see first_pass_rules in randomizations/graph/unified/handlers-new/entity.lua) instead of being matched by the handler itself after first pass
+    -- Off because matching both at once crowds out item randomization: an entity's build position hangs off its item's identity, which moves in the same proposal, so proposals keep breaking (like the agricultural tower on Gleba), and the needs that fixes add pin item identities (3 of 8 resource slots got a new identity instead of 8 of 8)
+    -- A fix to try: match items first, then entities with the item assignment fixed
+    entity_first_pass = false,
     -- Whether graph randomization must keep every mechanic isolatable wherever it was (rooms and automatability are always kept)
     -- When off, only nodes built with keep_isolatability = true (like science packs) keep it
     -- See randomizations/graph/unified/skeleton/protection.lua for how this is applied

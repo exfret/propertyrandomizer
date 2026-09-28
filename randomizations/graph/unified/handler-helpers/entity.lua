@@ -4,102 +4,6 @@ local dutils = require("lib/data-utils")
 
 local common = {}
 
--- Entities that really need to be on a grid or else they, like, freeze the game and stuff
-common.grid_like_entity_classes = {
-    ["curved-rail-a"] = true,
-    ["elevated-curved-rail-a"] = true,
-    ["curved-rail-b"] = true,
-    ["elevated-curved-rail-b"] = true,
-    ["half-diagonal-rail"] = true,
-    ["elevated-half-diagonal-rail"] = true,
-    ["legacy-curved-rail"] = true,
-    ["legacy-straight-rail"] = true,
-    ["rail-ramp"] = true,
-    ["straight-rail"] = true,
-    ["elevated-straight-rail"] = true,
-    ["transport-belt"] = true,
-    ["underground-belt"] = true,
-    ["splitter"] = true,
-    ["lane-splitter"] = true,
-    ["linked-belt"] = true,
-    ["loader-1x1"] = true,
-    ["loader"] = true,
-}
-
--- TODO: Work in vehicles (item-with-entity-data)
-common.valid_item_placeable_types = {
-    ["item"] = true,
-    ["ammo"] = true,
-    ["gun"] = true,
-    ["module"] = true,
-    ["space-platform-starter-pack"] = true,
-    ["armor"] = true,
-    ["repair-tool"] = true,
-}
-
-common.is_valid_placeable = function(item)
-    if item.hidden then
-        return false
-    end
-
-    if not common.valid_item_placeable_types[item.type] then
-        return false
-    end
-
-    if item.plant_result ~= nil then
-        return false
-    end
-
-    if item.place_as_tile ~= nil then
-        return false
-    end
-
-    if item.flags ~= nil then
-        for _, flag in pairs(item.flags) do
-            if flag == "not-stackable" or flag == "spawnable" then
-                return false
-            end
-        end
-    end
-    
-    if item.equipment_grid ~= nil then
-        return false
-    end
-
-    if item.parameter then
-        return false
-    end
-
-    return true
-end
-
--- Just find the first item that places an entity
-common.entity_to_place_item = {}
-common.populate_entity_to_place_item = function()
-    for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil then
-            for _, item in pairs(data.raw[item_class]) do
-                if item.place_result ~= nil then
-                    common.entity_to_place_item[item.place_result] = item
-                end
-            end
-        end
-    end
-end
-
--- Makes mining the entity give exactly one of item_name; returns false (changing nothing) if the entity isn't minable
--- MinableProperties only reads result/count when results is absent, so results has to be cleared too
-common.set_mining_result = function(entity, item_name)
-    if entity.minable == nil then
-        return false
-    end
-
-    entity.minable.results = nil
-    entity.minable.result = item_name
-    entity.minable.count = 1
-    return true
-end
-
 -- Makes mining the entity give new_item_name wherever it gave old_item_name, leaving any other results alone; returns whether anything changed
 common.replace_mining_item = function(entity, old_item_name, new_item_name)
     if entity.minable == nil then
@@ -183,31 +87,88 @@ common.replace_placeable_by_item = function(entity, old_item_name, new_item_name
     end
 end
 
--- Adds item_name to the entity's placeable_by, keeping any entries already there
--- placeable_by can be a single ItemToPlace or an array of them
-common.add_placeable_by = function(entity, item_name)
-    local placeable_by = entity.placeable_by
-    if placeable_by == nil then
-        placeable_by = {}
-    elseif placeable_by.item ~= nil then
-        placeable_by = {
-            placeable_by,
-        }
-    end
+-- Trigger delivery fields naming the entity a delivery sends (ProjectileTriggerDelivery and ArtilleryTriggerDelivery's projectile, BeamTriggerDelivery's beam, StreamTriggerDelivery's stream), whose own triggers carry on where it lands
+local sent_entity_fields = {
+    ["projectile"] = true,
+    ["beam"] = true,
+    ["stream"] = true,
+}
 
-    local already_placeable = false
-    for _, item_to_place in pairs(placeable_by) do
-        if item_to_place.item == item_name then
-            already_placeable = true
+-- Makes a trigger create other entities: rewrites, in place, each create-entity effect whose entity_name is a key of retargets (entity name --> function(effect) that rewrites the effect)
+-- Pass a copy of the trigger (like a copy of a capsule's capsule_action), since it's changed in place
+-- Entities it sends by name (like a capsule's projectile) are followed; each one with an effect to rewrite is replaced by a copy named copy_name(its name), so nothing else sending it changes
+-- Returns how many effects were rewritten, and the copies, which the caller adds to data
+common.retarget_created_entities = function(trigger, retargets, copy_name)
+    local num_rewritten = 0
+    local copies = {}
+    -- Each table is rewritten at most once, even if the trigger holds it twice, so an effect retargeted to an entity that's also retargeted isn't rewritten again
+    local seen = {}
+    -- Sent entity name --> name of its rewritten copy, or false if it has nothing to rewrite
+    local copy_names = {}
+    local walk
+    local function follow(sent_name)
+        if copy_names[sent_name] == nil then
+            -- Marked before walking, so an entity that sends itself isn't followed forever
+            copy_names[sent_name] = false
+            local prototype = dutils.get_prot("entity", sent_name)
+            if prototype ~= nil then
+                local copy = table.deepcopy(prototype)
+                if walk(copy) then
+                    copy.name = copy_name(sent_name)
+                    copy_names[sent_name] = copy.name
+                    table.insert(copies, copy)
+                end
+            end
         end
+        return copy_names[sent_name]
     end
-    if not already_placeable then
-        table.insert(placeable_by, {
-            item = item_name,
-            count = 1,
-        })
+    walk = function(object)
+        if seen[object] ~= nil then
+            return false
+        end
+        seen[object] = true
+        local rewrote = false
+        for field, value in pairs(object) do
+            if type(value) == "table" then
+                if walk(value) then
+                    rewrote = true
+                end
+            elseif type(value) == "string" and sent_entity_fields[field] ~= nil then
+                local sent_copy_name = follow(value)
+                if sent_copy_name ~= false then
+                    object[field] = sent_copy_name
+                    rewrote = true
+                end
+            end
+        end
+        if object.type == "create-entity" and retargets[object.entity_name] ~= nil then
+            retargets[object.entity_name](object)
+            num_rewritten = num_rewritten + 1
+            rewrote = true
+        end
+        return rewrote
     end
-    entity.placeable_by = placeable_by
+    walk(trigger)
+    return num_rewritten, copies
+end
+
+-- Rewrites a create-entity effect to create entity_name instead, at a free spot near where it lands and never over space, since what it made before might have fit anywhere (like a flying robot)
+common.create_at_free_spot = function(effect, entity_name)
+    effect.entity_name = entity_name
+    effect.find_non_colliding_position = true
+    effect.abort_if_over_space = true
+end
+
+-- Rewrites a create-entity effect to create one entity_name that's placed like a building: at a free spot (create_at_free_spot), for the force that set it off (never as an enemy), and nothing if there's no room
+-- For triggers that made something else, like a combat robot, now making a building that's mined for an item placing it
+common.create_as_building = function(effect, entity_name)
+    common.create_at_free_spot(effect, entity_name)
+    effect.offsets = nil
+    effect.repeat_count = nil
+    effect.repeat_count_deviation = nil
+    effect.as_enemy = nil
+    effect.ignore_no_enemies_mode = nil
+    effect.non_colliding_fail_result = nil
 end
 
 -- Whether an item already places something when used on the world (an entity, a plant or a tile), which is a left click
@@ -407,6 +368,49 @@ common.entity_sprite = function(entity, tiles)
         }
     end
     return layer
+end
+
+-- A wreck of an entity: a rock-like simple entity with the entity's size and a darkened copy of its look, mined for one item_name
+-- Its icon is a darkened copy of the icon of look (like the entity's own item)
+-- A simple entity is neutral even when an enemy's dying trigger makes it, so anyone can mine it, unlike the entity itself, which would be the enemy's
+common.wreck_of = function(entity, name, item_name, look)
+    local sprite = common.entity_sprite(entity, box_size(entity))
+    if sprite == nil then
+        error("Randomization assertion failed! " .. entity.name .. " has no look for a wreck")
+    end
+    -- A simple entity's picture is a still sprite, not an animation
+    sprite.frame_count = nil
+    sprite.direction_count = nil
+    sprite.tint = {
+        r = 0.45,
+        g = 0.45,
+        b = 0.45,
+        a = 1,
+    }
+    local wreck = {
+        type = "simple-entity",
+        name = name,
+        flags = {
+            "placeable-neutral",
+            "placeable-off-grid",
+        },
+        collision_box = table.deepcopy(entity.collision_box),
+        selection_box = table.deepcopy(entity.selection_box or entity.collision_box),
+        max_health = entity.max_health or 100,
+        picture = sprite,
+        minable = {
+            mining_time = 1,
+            results = {
+                {
+                    type = "item",
+                    name = item_name,
+                    amount = 1,
+                },
+            },
+        },
+    }
+    common.set_icon_layers(wreck, "", common.darken_icon_layers(common.icon_layers(look, "")))
+    return wreck
 end
 
 -- Area of an entity's collision box in tiles, counting one smaller than a tile (or none) as a tile

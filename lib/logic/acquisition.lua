@@ -1,6 +1,7 @@
 -- Entity acquisition: the ways an entity can come to exist in the world
 -- Each way corresponds to logic edges tagged with its kind as acq_kind; these are the slots entity randomization moves entities between
 -- The edges go into entity nodes, except for build, which is the edge from each item that places the entity into its entity-build-item node
+-- Ways that make the entity ours (like a thrown capsule, or a captured spawner) go into its entity-own node instead, and their edges are tagged ours
 
 local acquisition = {}
 
@@ -150,22 +151,33 @@ acquisition.demand_tier = function(entity_type, stack_size)
 end
 
 -- Which kinds of slots can supply an entity of each demand tier
--- Items and biters (renewable) can supply anything, since the balance layer keeps some member of every bulk class suppliable automatically (group-supply)
--- What's found in the wild is finite, so it's only for entities needed in tens or fewer
+-- Items and biters, spawned or hatched from eggs (renewable), can supply anything, since the balance layer keeps some member of every bulk class suppliable automatically (group-supply)
+-- What's found in the wild is finite, and capsules, ammo and dying enemies make one entity each, so they're only for entities needed in tens or fewer
+-- Each capture uses up a spawner, so capturing is only for entities needed a few at a time
 local supplies = {
     bulk = {
         build = true,
         spawn = true,
+        spoil = true,
     },
     some = {
         build = true,
         spawn = true,
+        spoil = true,
         autoplace = true,
+        capsule = true,
+        ammo = true,
+        dying = true,
     },
     few = {
         build = true,
         spawn = true,
+        spoil = true,
         autoplace = true,
+        capsule = true,
+        ammo = true,
+        dying = true,
+        capture = true,
     },
 }
 acquisition.can_supply = function(tier, slot_kind)
@@ -212,17 +224,28 @@ acquisition.gives_item = function(kind)
     return kind == "build"
 end
 
+-- Slot kinds that give a unit (spawned, or hatched from an egg), so a built entity there is carried by one: its item is loot, which takes killing the carrier
+acquisition.carrier_kinds = {
+    spawn = true,
+    spoil = true,
+}
+
 -- What connecting a base (a slot's side of an acquisition edge) to a head (an entity's side of one) means, when entity randomization moves an entity to another slot
--- The base and head are nodes from gutils.subdivide_base_head, which carry their edge's acq_kind and abilities
--- Returns nil if the pairing isn't supported, and otherwise { abilities = ... } for the edge connecting them (nil abilities when there are none)
+-- The base and head are nodes from gutils.subdivide_base_head, which carry their edge's acq_kind, abilities and ours tag
+-- Returns nil if the pairing isn't supported, and otherwise { abilities = ..., needs_kill = ... } for the edge connecting them (nil abilities when there are none)
 -- A slot giving an item connects to an entity that's built with the slot's own abilities
 -- A slot giving the entity connects to an entity that shows up some other way with the slot's own abilities, like autoplace's isolatability
 -- A slot giving the entity connects to an entity that's built by salvaging or looting what the slot gives, which can't be automated
+-- Looting a unit's slot (carrier_kinds) also takes killing the carrier, which the slot alone doesn't give, so needs_kill says the connection has to come from a base that includes the kill
 -- A slot giving an item can't connect to an entity that isn't built yet, since placing an entity that isn't built in vanilla has placement prereqs logic doesn't have
+-- An entity that has to be ours (its head is tagged ours) only connects to a slot that makes it ours, since what's found in the wild or spawned by enemies can't be operated
 acquisition.pairing = function(base, head)
     local base_gives_item = acquisition.gives_item(base.acq_kind)
     local head_is_built = acquisition.gives_item(head.acq_kind)
     if base_gives_item and not head_is_built then
+        return nil
+    end
+    if not head_is_built and head.ours ~= nil and base.ours == nil then
         return nil
     end
     local abilities = table.deepcopy(base.abilities)
@@ -230,8 +253,13 @@ acquisition.pairing = function(base, head)
         abilities = abilities or {}
         abilities[AUTOMATABILITY] = false
     end
+    local needs_kill
+    if head_is_built and acquisition.carrier_kinds[base.acq_kind] ~= nil then
+        needs_kill = true
+    end
     return {
         abilities = abilities,
+        needs_kill = needs_kill,
     }
 end
 

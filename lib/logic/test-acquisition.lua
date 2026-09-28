@@ -205,4 +205,53 @@ test("an item slot for an entity that isn't built isn't supported yet", function
     assert(acquisition.pairing(slot_node("build"), slot_node("autoplace")) == nil)
 end)
 
+-- A base or head of an edge into entity-own, like a thrown capsule's or a captured spawner's
+local function ours_node(kind, abilities)
+    local node = slot_node(kind, abilities)
+    node.ours = true
+    return node
+end
+
+test("an entity that has to be ours only comes from a slot that makes it ours", function()
+    assert(acquisition.pairing(ours_node("capsule"), ours_node("capture")) ~= nil)
+    assert(acquisition.pairing(ours_node("capture"), ours_node("ammo")) ~= nil)
+    -- Found in the wild or spawned by enemies isn't ours
+    assert(acquisition.pairing(slot_node("autoplace", {
+        [1] = true,
+    }), ours_node("capsule")) == nil)
+    assert(acquisition.pairing(slot_node("spawn"), ours_node("capture")) == nil)
+    assert(acquisition.pairing(slot_node("build"), ours_node("capsule")) == nil)
+end)
+
+test("a slot making an entity ours also makes it show up, and a built entity from it is mined for its item", function()
+    assert(acquisition.pairing(ours_node("capsule"), slot_node("autoplace")).abilities == nil)
+    assert(acquisition.pairing(ours_node("capture"), slot_node("build")).abilities[2] == false)
+end)
+
+test("a built entity in a spawn or spoil slot is carried by the unit, so getting its item takes killing it", function()
+    assert(acquisition.pairing(slot_node("spawn"), slot_node("build")).needs_kill == true)
+    assert(acquisition.pairing(slot_node("spoil"), slot_node("build")).needs_kill == true)
+    -- Units trading those slots aren't carried
+    assert(acquisition.pairing(slot_node("spawn"), slot_node("spawn")).needs_kill == nil)
+    assert(acquisition.pairing(slot_node("spoil"), slot_node("spoil")).needs_kill == nil)
+    -- A dying slot is already a kill, and salvage, wrecks and what a trigger makes are mined
+    assert(acquisition.pairing(slot_node("dying"), slot_node("build")).needs_kill == nil)
+    assert(acquisition.pairing(slot_node("autoplace", {
+        [1] = true,
+    }), slot_node("build")).needs_kill == nil)
+    assert(acquisition.pairing(ours_node("capsule"), slot_node("build")).needs_kill == nil)
+    assert(acquisition.pairing(slot_node("build"), slot_node("build")).needs_kill == nil)
+end)
+
+test("eggs hatch carriers of anything like spawners do, and dying enemies leave entities needed in tens or fewer", function()
+    assert(acquisition.can_supply("bulk", "spoil") and acquisition.can_supply("few", "spoil"))
+    assert(acquisition.can_supply("some", "dying") and not acquisition.can_supply("bulk", "dying"))
+end)
+
+test("capsules and ammo supply entities needed in tens or fewer, and capturing only a few", function()
+    assert(acquisition.can_supply("some", "capsule") and acquisition.can_supply("few", "ammo"))
+    assert(not acquisition.can_supply("bulk", "capsule") and not acquisition.can_supply("bulk", "ammo"))
+    assert(acquisition.can_supply("few", "capture") and not acquisition.can_supply("some", "capture"))
+end)
+
 print(num_passed .. " tests passed")

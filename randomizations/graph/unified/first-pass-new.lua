@@ -1,4 +1,6 @@
 -- First pass: randomizes which item identity (trav) goes in which item position (slot), before the other handlers run
+-- With constants.entity_first_pass, entity randomization adds entity positions too (params.entity_rules, see first_pass_rules in handlers-new/entity.lua): every way an entity is acquired (an item placing it, a spot in the wild, a spawner's slot, a trigger, an egg, a death) is a position, and the entity acquired there its identity
+-- Entity positions are orands, so any identity can go to any position its rules allow, like a building found in the wild (salvage) or carried by biters, and connecting them gains or loses what the pairing does (params.connection in monotone matching)
 -- Nodes aren't split into base/head pairs, but get a .slot = true or .trav = true key property instead; slots keep the node's name and travs get a "-trav" suffix
 -- Monotone matching (skeleton/monotone-matching.lua) chooses the whole matching at once, and the result is gated on keeping every protected mechanic context (skeleton/protection.lua)
 
@@ -130,7 +132,7 @@ local function pair_ok(slot, trav)
 end
 
 -- Returns false if first pass failed (so the attempt is retried)
--- params: spoofed_graph and subdiv_graph (unified's graphs of the game), and debt (optional: planetary changes superposed, see planetary.superposed)
+-- params: spoofed_graph and subdiv_graph (unified's graphs of the game), debt (optional: planetary changes superposed, see planetary.superposed), and entity_rules (optional: entity randomization's first_pass_rules, given the subdivided graph)
 first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
     -- CHOOSE SLOTS
@@ -204,11 +206,21 @@ first_pass.execute = function(params)
     -- Recipes locked to one planet keep every context they have there, like mechanics (see protection.lua)
     local planet_locked = protection.planet_locked_recipe_contexts(spoofed_graph, init_sort)
 
+    -- Entity positions and the rules for pairing them (see the top of this file)
+    local entity_rules
+    if params.entity_rules ~= nil then
+        entity_rules = params.entity_rules(subdiv_graph)
+    end
+
     local lab_inputs = dutils.lab_inputs()
     -- Materials carried around round trips keep their positions (see item_fluid.fluid_slot_ok)
     local round_trip_materials = config.item_fluids and dutils.round_trips().materials or {}
     local function valid_node_for_first_pass(node_key)
         local subdiv_node = subdiv_graph.nodes[node_key]
+        -- Entity positions are slots, including items and capsules that make nothing in vanilla, whose sinks are spoofs
+        if entity_rules ~= nil and entity_rules.positions[node_key] ~= nil then
+            return true
+        end
         if subdiv_node.spoof then
             return false
         end
@@ -252,6 +264,19 @@ first_pass.execute = function(params)
     for ind, pebble in pairs(init_sort.sorted) do
         if node_in_sorted[pebble.node_key] == nil and valid_node_for_first_pass(pebble.node_key) then
             node_in_sorted[pebble.node_key] = ind
+        end
+    end
+    -- Entity positions nothing reaches in vanilla (like units' placing positions and nowhere positions) are slots too, ranked after everything
+    if entity_rules ~= nil then
+        local unreached = {}
+        for position_key, _ in pairs(entity_rules.positions) do
+            if node_in_sorted[position_key] == nil then
+                table.insert(unreached, position_key)
+            end
+        end
+        table.sort(unreached)
+        for i, position_key in pairs(unreached) do
+            node_in_sorted[position_key] = #init_sort.sorted + i
         end
     end
 
@@ -299,7 +324,8 @@ first_pass.execute = function(params)
                     end
                 end
             end
-            if prenode.type ~= "head" and not always_on_slot then
+            -- Identity heads (entity randomization's mine-back edges, see handlers-new/entity.lua) belong to the item itself, since mining gives items by name, so they move with the trav
+            if (prenode.type ~= "head" or prenode.identity_head ~= nil) and not always_on_slot then
                 fixed_pre[pre] = true
             end
         end
@@ -508,13 +534,79 @@ first_pass.execute = function(params)
         end
     end
     dutils.recalculate_spoil_burnt_results()
+
+    -- Heads coupled to a slot follow its trav: a head with coupled_slot = the slot takes the base whose coupled_slot is the trav's own slot (the identity's)
+    -- With first pass entity positions, entity randomization's mine-back edges are coupled this way: the item placing an entity position is mined back from whatever identity is built there (see handlers-new/entity.lua)
+    -- Otherwise nothing is coupled (its mine-back edges follow its own matching), but a pair's other connections call this (connect_pair_extra)
+    -- slot key --> heads coupled to it, and identity slot key --> its coupled base
+    local coupled_heads = {}
+    local coupled_base = {}
+    for node_key, node in pairs(split_graph.nodes) do
+        if node.coupled_slot ~= nil and node.type == "head" then
+            coupled_heads[node.coupled_slot] = coupled_heads[node.coupled_slot] or {}
+            table.insert(coupled_heads[node.coupled_slot], node_key)
+        elseif node.coupled_slot ~= nil and node.type == "base" then
+            coupled_base[node.coupled_slot] = node_key
+        end
+    end
+    -- An identity with no coupled base (like an entity that isn't mined back into its item) leaves the head detached
+    -- Promotion reconnects a cut head without a base to its vanilla base unless it starts detached (see promotion.new), which here would be wrong, so a detached head is marked starts_detached
+    local function connect_coupled(graph, slot_key, trav_key)
+        local base_key = coupled_base[graph.nodes[trav_key].old_slot]
+        for _, head_key in pairs(coupled_heads[slot_key] or {}) do
+            for pre, _ in pairs(table.deepcopy(graph.nodes[head_key].pre)) do
+                gutils.remove_edge(graph, pre)
+            end
+            if base_key ~= nil then
+                gutils.connect_base_head(graph, base_key, head_key, graph.nodes[base_key].abilities)
+                graph.nodes[head_key].starts_detached = nil
+            else
+                graph.nodes[head_key].starts_detached = true
+            end
+        end
+    end
+
+    -- Entity positions pair by entity randomization's rules, and their connections gain or lose what the pairing does (a carried entity's starts at the position's carrier base)
+    -- Travs have the positions' keys in the rules, as each trav is its own slot's vanilla identity
+    local function pair_ok_with_entities(slot, trav)
+        if entity_rules ~= nil then
+            local entity_verdict = entity_rules.pair_ok(slot, trav)
+            if entity_verdict ~= nil then
+                return entity_verdict
+            end
+        end
+        return pair_ok(slot, trav)
+    end
+    local function connection(slot_key, trav_key)
+        if entity_rules == nil then
+            return nil
+        end
+        return entity_rules.connection(slot_key, split_graph.nodes[trav_key].old_slot)
+    end
+
+    -- An identity can go to a position of the other form if nothing about it needs its old form (see item_fluid.can_change_form)
+    local function cross_type_ok(slot, trav)
+        return can_change_form[key(trav)] == true and item_fluid.material_of_node(split_graph, slot) ~= nil
+    end
+    -- Besides coupled heads, an item identity at a fluid position is a fluid, which can't be launched (see item_fluid.cut_delivery)
+    local function connect_pair_extra(graph, slot_key, trav_key)
+        connect_coupled(graph, slot_key, trav_key)
+        local position = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+        local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+        if position ~= nil and identity ~= nil and position.type == "fluid" and identity.type == "item" then
+            item_fluid.cut_delivery(graph, trav_key)
+        end
+    end
+
     -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)
     local assignment, debt_goals = monotone_matching.run({
         slot_keys = slot_keys,
         unconnected_graph = split_graph,
         slot_to_base = slot_to_base,
         trav_to_head = trav_to_head,
-        pair_ok = pair_ok,
+        pair_ok = pair_ok_with_entities,
+        cross_type_ok = cross_type_ok,
+        connection = connection,
         rounds = MONOTONE_MATCHING_ROUNDS,
         is_resource_slot = function(slot_key)
             local slot = split_graph.nodes[slot_key]
@@ -548,6 +640,7 @@ first_pass.execute = function(params)
             return realized
         end,
         debt = params.debt,
+        connect_extra = connect_pair_extra,
     })
     local slot_to_trav = {}
     local trav_to_slot = {}
@@ -558,6 +651,8 @@ first_pass.execute = function(params)
     monotone_matching.connect(split_graph, {
         slot_to_base = slot_to_base,
         trav_to_head = trav_to_head,
+        connection = connection,
+        connect_extra = connect_pair_extra,
     }, assignment)
     if config.item_fluids then
         local num_changed_form = 0

@@ -173,7 +173,7 @@ function concrete.build(lu, extra_params)
         -- Can we encounter this entity in the wild?
 
         -- Each way of encountering the entity is tagged with its acquisition kind (see lib/logic/acquisition.lua), except building, whose tag is on the item edges into entity-build-item
-        -- Ways that make the entity ours go through entity-own instead, since only those let us operate it
+        -- Ways that make the entity ours go through entity-own instead, since only those let us operate it, and are tagged ours
         -- TODO: Should any of these turn off automatability?
         local buildable = lu.buildables[key(entity)]
         -- Units a spawner spawns get a build chain even though no item places them, so entity randomization can give them one (friendly biters); with no items in it, it's unreachable
@@ -194,6 +194,7 @@ function concrete.build(lu, extra_params)
                             entity = entity.name,
                             abilities = { [1] = true },
                             amount = 0, -- Zero amount to trigger the creation of this entity as an OR node
+                            ours = autoplace_is_ours or nil,
                         })) -- Being from a room leads to isolatability
                     end
                 end
@@ -233,13 +234,19 @@ function concrete.build(lu, extra_params)
             for item_name, spawn in pairs(lu.capsule_spawns_reverse[entity.name] or {}) do
                 if spawn.ours == ours then
                     -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
-                    add_edge("item-capsule", item_name, acquisition.tag("capsule", { amount = 1 }))
+                    add_edge("item-capsule", item_name, acquisition.tag("capsule", {
+                        amount = 1,
+                        ours = ours or nil,
+                    }))
                 end
             end
             for item_name, spawn in pairs(lu.ammo_spawns_reverse[entity.name] or {}) do
                 if spawn.ours == ours then
                     -- Note: The amount of spawns might not be 1, but I'm not going to go into depth with that now
-                    add_edge("item-ammo", item_name, acquisition.tag("ammo", { amount = 1 }))
+                    add_edge("item-ammo", item_name, acquisition.tag("ammo", {
+                        amount = 1,
+                        ours = ours or nil,
+                    }))
                 end
             end
         end
@@ -283,7 +290,10 @@ function concrete.build(lu, extra_params)
         -- Check if for spawners that capture into this entity
         if lu.unit_spawner_captures[entity.name] ~= nil then
             for _, spawner in pairs(lu.unit_spawner_captures[entity.name]) do
-                add_edge("entity-capture-spawner", spawner.name, acquisition.tag("capture", { amount = 1 }))
+                add_edge("entity-capture-spawner", spawner.name, acquisition.tag("capture", {
+                    amount = 1,
+                    ours = true,
+                }))
             end
         end
         -- Check if we can get access this through it being our character
@@ -291,6 +301,7 @@ function concrete.build(lu, extra_params)
             add_edge("entity-character", entity.name, acquisition.tag("character", {
                 abilities = { [1] = true }, -- Characters are always "local"
                 amount = 0,
+                ours = true,
             }))
         end
 
@@ -1430,12 +1441,13 @@ function concrete.build(lu, extra_params)
             add_edge("ammo-category", item.ammo_category)
         end
 
-        if item.type == "capsule" and lu.capsule_spawns[item.name] ~= nil then
+        if item.type == "capsule" then
             ----------------------------------------
             add_node("item-capsule", "AND")
             ----------------------------------------
-            -- Can we use this capsule item to spawn entities?
+            -- Can we use this capsule item (to spawn entities, or for whatever else it does)?
             -- Capsules only work where there's a character (on planets, not in space).
+            -- Ones that spawn nothing still get this node, since entity randomization can make them spawn something
 
             add_edge("item", nil, { amount = 1 })
             add_edge("planet", "")  -- Capsules require a planet (character can only be on planets)

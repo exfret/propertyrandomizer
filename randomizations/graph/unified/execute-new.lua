@@ -381,6 +381,8 @@ unified.execute = function()
             spoofed_graph = spoofed_graph_to_pass,
             subdiv_graph = subdiv_graph_to_pass,
             debt = planetary_debt(),
+            -- With constants.entity_first_pass, entity randomization's slots are first pass positions (see first_pass_rules in handlers-new/entity.lua)
+            entity_rules = constants.entity_first_pass and handlers["entity"] ~= nil and handlers["entity"].first_pass_rules or nil,
         })
         if first_pass_info == false then
             return false
