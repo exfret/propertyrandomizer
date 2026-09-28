@@ -1,0 +1,43 @@
+\section*{Summary}
+\addcontentsline{toc}{section}{Summary}
+
+\begin{keybox}{Short answer: a new algorithm for the same problem}
+The \emph{problem} first pass solves hasn't changed. It still splits each item into a \emph{position} (slot) and an \emph{identity} (trav) and picks a one-to-one assignment of identities to positions of the same type, within a cost window. Item reflection then turns that assignment into the game, and promotion reasons over the same split graph.
+
+The \emph{search} that picks the assignment is new. None of the greedy fill's machinery survived: its reachability tests, reservations, target mechanic, swap chains and ``desperation'' mode are all gone.
+\begin{itemize}
+  \item \textbf{Old (greedy forward fill):} built the assignment one pair at a time, in the order of an imagined playthrough, starting from nothing. When it got stuck, the attempt failed.
+  \item \textbf{New (monotone matching):} starts from the vanilla assignment, which is valid by definition. It then replaces the \emph{whole} assignment three times, each time with a random one that keeps every protected context. When a proposal fails the check and can't be repaired, it keeps the assignment it already had.
+\end{itemize}
+It's new in a second sense too. First pass now reasons the way promotion does, with pebbles, ranks, backings that go strictly earlier, and a fallback that's always available. So unified randomization rests on one theory instead of two.
+\end{keybox}
+
+\medskip
+\noindent The four changes that matter:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{From building to moving.} The greedy fill grew a partial assignment and could reach a dead end. Monotone matching always holds a complete, valid assignment and moves from one valid assignment to another (Proposition~\ref{prop:invariant}).
+  \item \textbf{From ``reachable'' to ``reachable in the right contexts''.} The greedy asked whether a slot or identity had \emph{some} context. The new first pass asks, for each protected pebble (node, room, abilities), whether it's still there, and checks that exactly with a fresh sort (the \emph{gate}).
+  \item \textbf{From reservations to proofs.} The greedy steered by holding back identities that didn't help the next mechanic on the science-pack path. The new first pass proves every protected pebble in a random sort and pins an identity only in the contexts where the proof uses it. Every other identity may go anywhere its type and cost allow.
+  \item \textbf{The rank rule.} A needed identity may only move to a position that, in each context it's needed in, is reached \emph{before} the identity was reached in the current sort. Needed identities therefore only move earlier, which is where the name \emph{monotone} comes from.
+\end{enumerate}
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}p{3.2cm}LL@{}}
+\toprule
+& \textbf{Greedy forward fill (until 26 Sep)} & \textbf{Monotone matching (now)}\\
+\midrule
+Starts from & the empty assignment & the vanilla assignment\\
+Unit of choice & one slot/identity pair at a time & the whole matching, per round\\
+Validity test & slot or identity has \emph{some} context & every hard pebble kept, checked by a fresh sort\\
+Steering & reservations toward the next targeted mechanic & needs from proofs, plus the rank rule\\
+What's protected & targeted mechanics, by node, once reached anywhere & all protected mechanic pebbles, planet-locked recipes, and every recipe reachable\\
+When stuck & retry below 50\%, else turn off the checks & keep the previous matching (always valid)\\
+Measured losses & lost isolatable contexts on every measured seed & 0 protected contexts lost by first pass\\
+Identities moved & not measured & 237--247 of 255 per round\\
+\bottomrule
+\end{tabularx}
+\caption{At a glance. The greedy's measurements are from the 25 September investigation (Section~\ref{sec:greedy-losses}); the new ones are from 26 September runs (Section~\ref{sec:measure}).}
+\label{tab:glance}
+\end{table}

@@ -1,0 +1,66 @@
+% ---------------------------------------------------------------- theorems
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}[proposition]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[proposition]{Definition}
+\newtheorem{example}[proposition]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[proposition]{Remark}
+
+% ---------------------------------------------------------------- notation
+\newcommand{\peb}[2]{\ensuremath{\langle #1,\,#2\rangle}}   % pebble
+\newcommand{\rk}{\operatorname{rk}}                          % rank in a sort
+\newcommand{\Hard}{\mathcal{H}}                              % hard pebbles
+\newcommand{\Need}{N}                                        % needs
+\newcommand{\Adm}{\mathrm{Adm}}                              % admissible slots
+\newcommand{\Slots}{\mathcal{S}}
+\newcommand{\Travs}{\mathcal{T}}
+\newcommand{\code}[1]{\nolinkurl{#1}}
+\newcommand{\file}[1]{{\small\nolinkurl{#1}}}
+
+% ---------------------------------------------------------------- colours
+\definecolor{cslot}{HTML}{2F6DB5}    % slots / positions
+\definecolor{ctrav}{HTML}{D9822B}    % travs / identities
+\definecolor{cold}{HTML}{8E44AD}     % old greedy fill
+\definecolor{cnew}{HTML}{2E8B57}     % new monotone matching
+\definecolor{cbad}{HTML}{C0392B}     % losses, failures
+\definecolor{cgrey}{HTML}{8A8F98}
+\definecolor{clight}{HTML}{EEF2F7}
+\definecolor{cbox}{HTML}{F6F8FB}
+
+% ---------------------------------------------------------------- boxes
+\newenvironment{keybox}[1]{%
+  \def\FrameCommand{\fboxsep=8pt\fcolorbox{cslot!60}{cbox}}%
+  \MakeFramed{\advance\hsize-\width \FrameRestore}%
+  \noindent\textbf{\color{cslot}#1}\par\smallskip}%
+  {\endMakeFramed}
+
+\newenvironment{factbox}{%
+  \def\FrameCommand{\fboxsep=6pt\fcolorbox{cgrey!50}{white}}%
+  \MakeFramed{\advance\hsize-\width \FrameRestore}\small}%
+  {\endMakeFramed}
+
+% ---------------------------------------------------------------- tikz styles
+\tikzset{
+  box/.style={draw, rounded corners=2pt, minimum height=6mm, inner sep=3pt, font=\small, fill=white, align=center},
+  slotn/.style={box, fill=cslot!12, draw=cslot},
+  travn/.style={box, fill=ctrav!15, draw=ctrav},
+  plain/.style={box, draw=cgrey, text=black!80},
+  oldn/.style={box, fill=cold!10, draw=cold},
+  newn/.style={box, fill=cnew!10, draw=cnew},
+  badn/.style={box, fill=cbad!10, draw=cbad},
+  dec/.style={box, diamond, aspect=2.4, inner sep=1pt, fill=white},
+  conn/.style={circle, draw, fill=white, inner sep=0pt, minimum size=3.2mm},
+  pre/.style={-{Stealth[length=2.2mm]}, thick},
+  thinpre/.style={-{Stealth[length=1.8mm]}},
+  cut/.style={pre, draw=cnew, densely dashed},
+  back/.style={pre, draw=ctrav, dashed},
+  bad/.style={pre, draw=cbad},
+  pebble/.style={circle, draw, fill=white, inner sep=0pt, minimum size=4.4mm, font=\scriptsize},
+  spebble/.style={pebble, fill=cslot!70, draw=cslot!90!black, text=white},
+  tpebble/.style={pebble, fill=ctrav!80, draw=ctrav!90!black, text=white},
+  ghost/.style={pebble, dashed, draw=cgrey, text=cgrey},
+  lbl/.style={font=\scriptsize, text=black!70},
+  note/.style={font=\scriptsize\itshape, text=black!65, align=left},
+}

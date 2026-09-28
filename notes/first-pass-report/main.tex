@@ -1,0 +1,47 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage{enumitem}
+\usepackage{framed}
+\usepackage{float}
+\usepackage[dvipsnames,svgnames]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shapes.misc,fit,backgrounds,calc,decorations.pathreplacing}
+\usepackage[colorlinks=true,linkcolor=NavyBlue,citecolor=NavyBlue,urlcolor=NavyBlue]{hyperref}
+
+\input{macros}
+\emergencystretch=2.5em
+\urlstyle{tt}
+\def\UrlBreaks{\do\/\do\_\do\-\do\.\do\,\do\(\do\)\do\:}
+\Urlmuskip=0mu plus 1mu
+\mathchardef\UrlBreakPenalty=100
+\setlist{itemsep=2pt, topsep=4pt}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\title{From greedy fill to monotone matching\\[4pt]
+\large How first pass chooses item identities, then and now}
+\author{Explainer for exfret's property randomizer (\texttt{propertyrandomizer})}
+\date{26 September 2026}
+
+\begin{document}
+\maketitle
+
+\input{sec-summary}
+\bigskip
+{\setcounter{tocdepth}{2}\tableofcontents}
+\clearpage
+\input{sec-problem}
+\input{sec-greedy}
+\input{sec-matching}
+\input{sec-compare}
+\input{sec-measure}
+\input{sec-limits}
+\appendix
+\input{sec-appendix}
+
+\end{document}

@@ -1,0 +1,42 @@
+\section{Measurements}
+\label{sec:measure}
+
+\paragraph{Setup.} These runs used the working tree of 26 September 2026 (HEAD \texttt{fe064cb} plus uncommitted work), Space Age, and the user's startup settings, on seeds 1--3. Measurement log lines were added to a \emph{copy} of \file{monotone-matching.lua}. It ran in an overlay mod directory that symlinks every other file to the repo, so the live repo was never modified. The scripts and the extracted log lines are in \file{notes/first-pass-report/measure/}.
+
+\paragraph{End to end.} All three seeds passed both UNIFIEDCHECK and MECHCHECK. Seed 3 needed a second attempt. First pass passed its gate in both of seed 3's attempts; the retry came from promotion, which couldn't keep a promise for one recipe (fusion reactor equipment). Every one of the four first-pass runs had 255 slots, all items. There were 3{,}527--3{,}548 exact hard pebbles and 619--621 recipes, out of about 275{,}000 pebbles in the sort. The logs of the three multi-seed checks run earlier that day (\file{dev/check-seeds.py}, the same seeds, with 62 more rounds) agree. First pass's own final gate never failed there either. The attempts that were retried failed later, on furnace recipe collisions caught by UNIFIEDCHECK or on a handler that couldn't place something. In the latest of those runs, rounds took 2.6--11.4\,s, with a median of 5.0\,s, running three seeds in parallel.
+
+\begin{table}[H]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\input{tab-rounds}
+\caption{Every measured round. \emph{travs}/\emph{needs}: identities with needs, and how many needs they have. \emph{launch}: slots that require a launchable identity. \emph{pinned}: identities with no admissible slot but their own. \emph{adm.\ slots}: the mean number of other admissible slots, for identities with needs and for free ones. \emph{moved}: identities not at their vanilla position, and identities that changed slot this round. \emph{moved earlier}: of the identities that changed slot, how many got an earlier first pebble. The shift is the mean change in first-pebble rank as a fraction of the sort's length (negative is earlier). \emph{ores}: resource slots that mine something new. \emph{ref.}: refinements. Every exact hard pebble was proven in every round.}
+\label{tab:rounds}
+\end{table}
+
+\paragraph{What the numbers say.}
+\begin{itemize}
+  \item \textbf{Freedom.} About 94\% of identities (237--247 of 255) end a round away from their vanilla position, and 220--241 change slot in each round. The proofs pin 90--100 identities with 215--228 needs. Even those have 38--69 admissible slots on average; free identities have about 217. Only 2--9 per round had nowhere else to go.
+  \item \textbf{Monotone in practice.} In round 1, 80\% of the needed identities that moved got an earlier first pebble, with a mean shift of about $-11\%$ of the sort. Only 40\% of the free ones did, with a mean shift of about $+6\%$. By round 3 both shifts are close to zero: the matching has settled, and later rounds reshuffle it rather than drift further.
+  \item \textbf{The gate rarely has to act, and refinement never helped.} In all 12 measured rounds, the first proposal passed. In the multi-seed logs, 4 of 62 rounds had a proposal that lost hard pebbles (Table~\ref{tab:failed}). All the lost pebbles were isolatable contexts of protected nodes. Each time, refinement found no identity pebble to add, and the round kept its matching. So the proofs and the rank rule are enough about 95\% of the time, the gate catches the rest, and refinement as written hasn't recovered a single round.
+  \item \textbf{Ores.} All 8 resource slots mine something new by the end of round 2 in every run. Round 1 left one out once, and a later round's cycle repair fixed it.
+  \item \textbf{Launch rule.} 38--45 slots per round require a launchable identity instead of pinning theirs.
+\end{itemize}
+
+\begin{table}[H]
+\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llcr>{\scriptsize\ttfamily}l@{}}
+\toprule
+multi-seed run (26 Sep) & seed & round & lost & example lost pebble\\
+\midrule
+19:01 & 3 & 3 & 127 & create-platform @ planet: fulgora | 10\\
+19:11 & 2 & 2 & 48 & create-platform @ planet: fulgora | 10\\
+19:19 & 2 & 2 & 1 & item: utility-science-pack @ surface: space-platform | 10\\
+19:19 & 3 & 3 & 102 & item: automation-science-pack @ planet: fulgora | 10\\
+\bottomrule
+\end{tabular}
+\caption{The four proposals that failed the gate in the day's multi-seed logs. In every case refinement added 0 needs, and the round kept its matching. The 19:01 and 19:19 runs used slightly earlier versions of the working tree.}
+\label{tab:failed}
+\end{table}
+
+\paragraph{The greedy fill, for comparison.} The only measurements of the greedy fill are from the 25 September investigation (Section~\ref{sec:greedy-losses}). With complex contexts and a gate, it lost isolatable contexts on every measured seed: about 466 lost mechanic pebbles, explained by 7--12 misplaced identities per seed. With a filter to avoid those losses, it stalled at 77--81\% on all 10 retries. At the time, monotone matching's first version moved 176--224 of 255 identities, with no losses in its model. The current version moves more (237--247), because of the proof-based needs in \texttt{85efe29} and the ore rules in \texttt{86362b2}. The greedy fill wasn't re-run for this report. Its code no longer fits the current pipeline (home contexts, protection rules, entity randomization), so a fair re-measurement would need that version of the whole mod.

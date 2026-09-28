@@ -1,0 +1,124 @@
+\section{The old approach: a greedy forward fill}
+\label{sec:greedy}
+
+This was first pass from August (\texttt{bd888e5}, ``Work on mechanics-aware reservation system'', 7 August) until 26 September. That day \texttt{014b8be} put monotone matching into the experimental copy, and \texttt{b717eda} deleted the greedy paths 17 minutes later. Its last version is \verb|git show b717eda^:randomizations/graph/unified/first-pass-new.lua| (1{,}862 lines). In item-randomizer terms it was a \emph{forward fill}: simulate a playthrough, and at each step put something into a location that's already reachable.
+
+\subsection{How it worked}
+
+\paragraph{Setup.}
+\begin{enumerate}
+  \item Take a random sort of the vanilla graph, with plain room contexts (no abilities), and order the slots by their first rank.
+  \item \emph{Targets:} take the witness (\code{top.path}) of the starting planet's science packs. The mechanic nodes on it (plus nodes flagged \code{important}), in sort order, form a list, and the first one not yet reached is the \emph{current mechanic}.
+  \item For each identity, record the mechanics it reaches first: a breadth-first search to depth 20 that doesn't pass through mechanics.
+  \item Build the split graph (Figure~\ref{fig:split}) with every slot/trav connection cut, and sort it.
+\end{enumerate}
+
+\paragraph{Its notion of ``reachable''.} A slot counted as reachable if it's an OR node with a head prerequisite or any prerequisite with \emph{some} context, or an AND node whose prerequisites share \emph{some} context (\code{slot_absolute_reachable}). An identity counted as reachable if it's an OR node (always), or an AND node whose fixed prerequisites share some context (\code{trav_absolute_reachable}). Both are yes/no questions about whether there's any context at all.
+
+\paragraph{Main loop} (once per slot, Figure~\ref{fig:greedy}).
+\begin{enumerate}
+  \item Take the earliest unassigned, reachable slot.
+  \item Walk the free, reachable identities in one fixed shuffled order and take the first \emph{compatible} one (\code{is_compatible}). It must be the same type, have the same first-reached mechanics (for non-items), and fit the cost window (for items). For ore slots, a useless identity was rejected 90\% of the time.
+  \item If the identity helps the current mechanic, \emph{connect} it: add base $\to$ head and update the sort incrementally. The current mechanic moves on as soon as it has any context. Otherwise, \emph{reserve} it: record the pair but don't connect it, so it adds nothing to the world yet.
+  \item If no pair fits, run the \emph{reservation loop}:
+  \begin{enumerate}[label=(\alph*)]
+    \item connect a reserved pair whose identity helps the current mechanic;
+    \item else swap a free helping identity into a reserved slot;
+    \item else build a chain of swaps through reserved slots;
+    \item else connect the oldest reservation anyway.
+  \end{enumerate}
+  Then try again, up to 10{,}000 times per slot.
+  \item If it's still stuck: below 50\% of slots assigned, the attempt fails and unified retries. Above 50\%, it turns the reachability checks off (``desperation'') and continues. If it gets stuck again, it fails.
+\end{enumerate}
+
+\paragraph{End.} Connect the remaining reservations, sort again, and return. The committed version had no check of what the result kept. The experimental copy added one (\code{GATE_MECHANIC_CONTEXTS}) together with complex contexts, and that check is what exposed the losses below.
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm, every node/.append style={font=\small}]
+\node[oldn, text width=8.6cm] (setup) at (0,0) {Random sort of vanilla (room contexts). Slots in first-rank order. Targets: mechanics on the science-pack witness.};
+\node[oldn, text width=6.4cm] (pick) at (0,-1.35) {Earliest unassigned slot that has \emph{some} context};
+\node[dec, text width=2.9cm] (d1) at (0,-3.05) {free, reachable, compatible identity?};
+\node[dec, text width=2.5cm] (d2) at (0,-5.25) {helps the current target?};
+\node[oldn, text width=3.6cm] (connect) at (-3.7,-7.05) {\textbf{Connect}: add base$\to$head, update the sort};
+\node[oldn, text width=3.6cm] (reserve) at (3.7,-7.05) {\textbf{Reserve}: record the pair, don't connect};
+\node[plain, text width=2.2cm] (next) at (0,-8.35) {next slot};
+\node[oldn, text width=7.4cm] (end) at (0,-9.55) {All assigned: connect leftover reservations, sort again. \emph{Nothing checks what was kept.}};
+\node[oldn, text width=4.0cm, align=left] (loop) at (5.6,-3.05) {\textbf{Reservation loop}\\[1pt]\scriptsize (a) connect a reserved helper\\ (b) swap a free helper in\\ (c) chain swaps\\ (d) else connect the oldest};
+\node[badn, text width=4.0cm] (stuck) at (5.6,-5.25) {Stuck after 10{,}000 tries: below 50\% fail; else turn the checks off};
+\draw[pre] (setup) -- (pick);
+\draw[pre] (pick) -- (d1);
+\draw[pre] (d1) -- node[right, lbl, pos=0.35] {yes} (d2);
+\draw[pre] (d1) -- node[above, lbl] {no} (loop);
+\draw[pre] (loop.north) |- node[above, lbl, pos=0.75] {try again} (pick.east);
+\draw[pre, draw=cbad] (loop) -- node[right, lbl] {no progress} (stuck);
+\draw[pre] (d2.west) -| node[above, lbl, pos=0.25] {yes} (connect.north);
+\draw[pre] (d2.east) -| node[above, lbl, pos=0.25] {no} (reserve.north);
+\draw[pre] (connect.south) |- (next.west);
+\draw[pre] (reserve.south) |- (next.east);
+\draw[pre] (next) -- (end);
+\draw[pre] (next.south west) -- ++(-0.2,-0.2) -| (-6.2,-1.35) -- (pick.west);
+\node[lbl, rotate=90] at (-6.45,-4.8) {until every slot is assigned};
+\end{tikzpicture}
+\caption{The greedy forward fill's control flow (\texttt{b717eda\^{}}). Reservations steered progress toward the next targeted mechanic, and the reservation loop was the only way out of a dead end.}
+\label{fig:greedy}
+\end{figure}
+
+\subsection{Why it lost contexts}
+\label{sec:greedy-losses}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Yes/no reachability.} A slot that has \emph{some} context passes, even if it never has the context the identity is needed in. There are two ways this goes wrong (Figure~\ref{fig:greedy-loss}). In a \emph{static mismatch}, the slot is never reached in that context at all. In a \emph{context-local cycle}, the slot is reached in that context only through the identity it's about to hold.
+  \item \textbf{Targets by node, only on the science path.} A mechanic counted as done once it had \emph{any} context, so a later mechanic that needed it in another room was never protected. Mechanics off the starting planet's science-pack witness weren't targeted at all. The experimental copy's comment on \code{TARGET_ALL_MECHANICS} says ``untargeted ones weren't protected at all''.
+  \item \textbf{No fallback.} A partial assignment that can't be extended is a dead end. The reservation loop only reshuffles pairs that are already placed; it never goes back to a known good state. Desperation mode fills the rest without checks.
+  \item \textbf{Reproducibility.} The ore roll used \code{math.random} rather than the mod's seeded \code{rng}, and rolled again every time the same pair was checked. The experimental copy's fix comment records this.
+\end{enumerate}
+
+\begin{factbox}
+\textbf{Measured on 25 September} (experimental copy with complex contexts and a gate; from that investigation's notes, not re-measured here):
+\begin{itemize}
+  \item 7--12 misplaced identities per seed explained \emph{all} of the roughly 466 lost mechanic pebbles, and every lost pebble was an isolatable context. The roots were static mismatches or context-local cycles. The notes' example is coal's identity landing in the roboport's position, which broke a Vulcanus context.
+  \item Adding a filter so the greedy only used slots reachable in the needed isolatable rooms made it stall at 77--81\% on all 10 retries.
+\end{itemize}
+So the greedy couldn't be patched to keep isolatability. Either it lost contexts or it got stuck.
+\end{factbox}
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\def\lanes#1{%
+  \node[lbl, anchor=east] at (-0.2,0) {Nauvis\,|\,0\,$\cdot$};
+  \node[lbl, anchor=east] at (-0.2,-0.9) {Vulcanus\,|\,1\,$\cdot$};
+  \draw[cgrey!40] (0,0) -- (10.4,0);
+  \draw[cgrey!40] (0,-0.9) -- (10.4,-0.9);
+  \node[anchor=west, font=\small\bfseries] at (-2.2,0.65) {#1};
+}
+% (a) vanilla
+\lanes{(a) Vanilla: X is made at its own position P}
+\node[spebble] (p1) at (1.0,0) {P};
+\node[tpebble] (x1) at (2.0,0) {X};
+\node[spebble] (p2) at (5.0,-0.9) {P};
+\node[tpebble] (x2) at (6.0,-0.9) {X};
+\node[pebble, very thick] (m1) at (8.6,-0.9) {M};
+\draw[thinpre] (p1) -- (x1);
+\draw[thinpre] (p2) -- (x2);
+\draw[thinpre] (x2) -- (m1);
+\node[lbl, anchor=west] at (10.5,-0.9) {mechanic};
+% (b) after greedy
+\begin{scope}[yshift=-2.4cm]
+\lanes{(b) Greedy puts X at position S, which is reachable, but only on Nauvis}
+\node[spebble] (s1) at (3.0,0) {S};
+\node[tpebble] (x3) at (4.0,0) {X};
+\node[ghost, draw=cbad, text=cbad] (s2) at (5.0,-0.9) {S};
+\node[ghost, draw=cbad, text=cbad] (x4) at (6.0,-0.9) {X};
+\node[pebble, very thick, draw=cbad, text=cbad] (m2) at (8.6,-0.9) {M};
+\draw[thinpre] (s1) -- (x3);
+\draw[thinpre, draw=cbad, dashed] (s2) -- (x4);
+\draw[thinpre, draw=cbad, dashed] (x4) -- (m2);
+\node[lbl, anchor=west, text=cbad] at (10.5,-0.9) {lost};
+\node[note, anchor=west] at (4.6,-0.45) {greedy's test: S has some context \checkmark};
+\end{scope}
+\end{tikzpicture}
+\caption{How yes/no reachability loses a context. The lanes are contexts (room\,|\,isolatability\,automatability) and rank grows to the right. In (b), S has no Vulcanus-isolatable pebble, so X doesn't either, and neither does the mechanic M that needed it. In a context-local cycle, S \emph{would} reach Vulcanus, but only by using X there, so moving X to S breaks the loop.}
+\label{fig:greedy-loss}
+\end{figure}

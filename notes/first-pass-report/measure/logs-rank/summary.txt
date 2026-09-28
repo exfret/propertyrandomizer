@@ -1,0 +1,60 @@
+== logs-rank attempt 1 identities 255
+  vanilla vs final (any room)                spearman 0.29 (n=255)  late->early 16/85  early->late 28/85  thirds [[45, 12, 28], [24, 38, 23], [16, 35, 34]]
+  vanilla vs 2nd vanilla sort (noise)        spearman 1.00 (n=255)  late->early 0/85  early->late 0/85  thirds [[83, 2, 0], [2, 83, 0], [0, 0, 85]]
+  vanilla vs final (starting planet)         spearman 0.28 (n=255)  late->early 16/85  early->late 29/85  thirds [[45, 11, 29], [24, 38, 23], [16, 36, 33]]
+  vanilla vs 2nd vanilla (starting planet)   spearman 1.00 (n=255)  late->early 0/85  early->late 0/85  thirds [[83, 2, 0], [2, 83, 0], [0, 0, 85]]
+  late identities: 85; early slots their cost allows: median 72, zero for 3; early slots of their type: median 85
+  late identities now in an early position (by the position's vanilla rank): 16/85
+  biggest moves earlier on the starting planet (vanilla pct -> final pct, new position):
+    capture-robot-rocket               0.83 -> 0.13  at small-lamp
+    fusion-power-cell                  0.97 -> 0.28  at cargo-wagon
+    turbo-underground-belt             0.92 -> 0.29  at big-electric-pole
+    captive-biter-spawner              0.97 -> 0.34  at flamethrower-ammo
+    biter-egg                          0.86 -> 0.25  at steel-furnace
+    artillery-shell                    0.89 -> 0.32  at flamethrower-turret
+    big-mining-drill                   0.82 -> 0.26  at power-switch
+    beacon                             0.56 -> 0.00  at coal
+    heating-tower                      0.72 -> 0.17  at long-handed-inserter
+    foundation                         0.96 -> 0.42  at heat-exchanger
+    scrap                              0.78 -> 0.24  at gate
+    rocket-turret                      0.84 -> 0.31  at refined-hazard-concrete
+== logs-rank attempt 1 identities 255
+  vanilla vs final (any room)                spearman 0.23 (n=255)  late->early 20/85  early->late 23/85  thirds [[37, 25, 23], [28, 29, 28], [20, 31, 34]]
+  vanilla vs 2nd vanilla sort (noise)        spearman 1.00 (n=255)  late->early 0/85  early->late 0/85  thirds [[85, 0, 0], [0, 85, 0], [0, 0, 85]]
+  vanilla vs final (starting planet)         spearman 0.23 (n=255)  late->early 20/85  early->late 23/85  thirds [[37, 25, 23], [28, 29, 28], [20, 31, 34]]
+  vanilla vs 2nd vanilla (starting planet)   spearman 0.99 (n=255)  late->early 0/85  early->late 0/85  thirds [[85, 0, 0], [0, 85, 0], [0, 0, 85]]
+  late identities: 85; early slots their cost allows: median 72, zero for 3; early slots of their type: median 85
+  late identities now in an early position (by the position's vanilla rank): 19/85
+  biggest moves earlier on the starting planet (vanilla pct -> final pct, new position):
+    turbo-splitter                     0.94 -> 0.07  at pipe-to-ground
+    turbo-underground-belt             0.93 -> 0.13  at underground-belt
+    railgun                            1.00 -> 0.23  at fast-splitter
+    railgun-ammo                       0.96 -> 0.22  at big-electric-pole
+    rocket-turret                      0.84 -> 0.15  at fast-inserter
+    biochamber                         0.77 -> 0.11  at small-lamp
+    tree-seed                          0.81 -> 0.20  at display-panel
+    fusion-power-cell                  0.97 -> 0.35  at solar-panel-equipment
+    captive-biter-spawner              0.96 -> 0.35  at speed-module
+    yumako-mash                        0.79 -> 0.18  at submachine-gun
+    combat-shotgun                     0.61 -> 0.02  at wooden-chest
+    jellynut-seed                      0.80 -> 0.21  at piercing-rounds-magazine
+== logs-rank attempt 1 identities 255
+  vanilla vs final (any room)                spearman 0.32 (n=255)  late->early 17/85  early->late 22/85  thirds [[45, 18, 22], [23, 33, 29], [17, 34, 34]]
+  vanilla vs 2nd vanilla sort (noise)        spearman 0.99 (n=255)  late->early 0/85  early->late 0/85  thirds [[83, 2, 0], [2, 83, 0], [0, 0, 85]]
+  vanilla vs final (starting planet)         spearman 0.31 (n=255)  late->early 17/85  early->late 22/85  thirds [[45, 18, 22], [23, 33, 29], [17, 34, 34]]
+  vanilla vs 2nd vanilla (starting planet)   spearman 0.99 (n=255)  late->early 0/85  early->late 0/85  thirds [[83, 2, 0], [2, 83, 0], [0, 0, 85]]
+  late identities: 85; early slots their cost allows: median 72, zero for 3; early slots of their type: median 85
+  late identities now in an early position (by the position's vanilla rank): 18/85
+  biggest moves earlier on the starting planet (vanilla pct -> final pct, new position):
+    fusion-power-cell                  0.97 -> 0.15  at shotgun-shell
+    railgun-ammo                       0.98 -> 0.17  at arithmetic-combinator
+    big-mining-drill                   0.85 -> 0.06  at iron-chest
+    recycler                           0.74 -> 0.04  at stone-brick
+    turbo-transport-belt               0.94 -> 0.34  at oil-refinery
+    nuclear-fuel                       0.68 -> 0.07  at offshore-pump
+    foundry                            0.80 -> 0.20  at constant-combinator
+    tungsten-ore                       0.78 -> 0.18  at display-panel
+    toolbelt-equipment                 0.84 -> 0.26  at pumpjack
+    rocket-turret                      0.85 -> 0.26  at assembling-machine-2
+    cryogenic-plant                    0.95 -> 0.37  at belt-immunity-equipment
+    tree-seed                          0.82 -> 0.25  at programmable-speaker

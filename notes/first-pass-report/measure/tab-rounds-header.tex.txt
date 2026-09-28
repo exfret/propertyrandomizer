@@ -1,0 +1,6 @@
+\begin{tabular}{@{}ccc rrrr rr rr cc cc@{}}
+\toprule
+& & & \multicolumn{4}{c}{\textbf{needs (step 3)}} & \multicolumn{2}{c}{\textbf{adm.\ slots}} & \multicolumn{2}{c}{\textbf{moved}} & \multicolumn{2}{c}{\textbf{moved earlier (shift)}} & & \\
+\cmidrule(lr){4-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}\cmidrule(lr){12-13}
+seed & att. & rnd & travs & needs & launch & pinned & needy & free & vs $M_0$ & vs prev & needy & free & ores & ref.\\
+\midrule

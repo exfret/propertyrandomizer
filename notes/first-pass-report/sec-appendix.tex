@@ -1,0 +1,56 @@
+\section{Where things are in the code}
+\label{app:code}
+
+Line numbers are from the working tree on 26 September 2026 (a snapshot taken while another session was editing both files).
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}p{6.6cm}L@{}}
+\toprule
+\textbf{Location} & \textbf{What it does}\\
+\midrule
+\multicolumn{2}{@{}l}{\file{randomizations/graph/unified/first-pass-new.lua}}\\
+\code{cost_ok}, \code{pair_ok} (83--116) & the cost window, coal's slot, entity positions' own-item costs\\
+\code{first_pass.execute} (119) & entry point, called from \file{execute-new.lua} (``FIRST PASS'')\\
+init sort (129--187) & random complex sort of vanilla (plus Pyanodon's science tiers)\\
+\code{valid_node_for_first_pass} (193) & which nodes take part\\
+SPLIT GRAPH NODES (242) & slot/trav split, base/head connectors, coal's fuel edge\\
+MECHANICS (341) & depth-20 mechanics-reached-first search (for item reflection's costs)\\
+MATCHING (428) & resource items, coupled heads, the call to \code{monotone_matching.run}\\
+final gate (526 on) & kept parts of mechanic pebbles, planet-locked contexts, debt goals\\
+\addlinespace
+\multicolumn{2}{@{}l}{\file{randomizations/graph/unified/skeleton/monotone-matching.lua}}\\
+\code{connect} (36) & slot base $\to$ trav head, plus trav $\to$ slot for items\\
+\code{hard_pebbles}, \code{lost_pebbles} (53, 97) & what the gate checks\\
+\code{make_prover} (130) & backtracking prover with strictly earlier backings\\
+\code{launch_chains}, \code{needs_from_proof} (319, 348) & needs, delivery, launchable slots\\
+\code{random_matching} (426) & admissibility, Kuhn's algorithm, resource rules, cycle repair\\
+\code{blocked_travs} (613) & refinement: blocked identity pebbles on old witnesses\\
+\code{realize} (631) & the matching reflection realizes\\
+debt goals (646--719) & superposed planetary goals (in progress)\\
+\code{matching.run} (732) & rounds, the gate and refinement loop\\
+\addlinespace
+\multicolumn{2}{@{}l}{Elsewhere}\\
+\file{skeleton/protection.lua} & which pebbles are hard\\
+\file{lib/data-utils.lua} & \code{mining_keeps_item_names}, \code{reflected_item_position}, \code{realized_item_assignment}, \code{replacement_gets_fuel}, \code{is_useless_item}\\
+\file{handlers-new/item.lua} & \code{item.reflect}: turns the matching into the game\\
+\file{compat/vanilla.lua} & \code{always_slot_pre}, \code{always_slot_dep}, first pass blacklist\\
+\file{skeleton/test-monotone-matching.lua} & plain-Lua tests for resource slots\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Glossary}
+
+\begin{description}[leftmargin=1.2em, style=nextline]
+  \item[Slot / position] The half of a split node that keeps where an item comes from and which recipes use it.
+  \item[Trav / identity] The half that keeps what the item is and does (places a building, fuel, launch). It's named \texttt{X-trav}.
+  \item[Matching] A one-to-one assignment of travs to slots of the same type. The vanilla one is the identity matching $M_0$.
+  \item[Pebble, rank] A node reached in a context (room and abilities), and its position in a sort.
+  \item[Hard pebble] A pebble first pass must keep: a protected mechanic pebble, a planet-locked recipe pebble (both exact), or a recipe (anywhere).
+  \item[Need] A pair $(t, c)$: identity $t$ is used in context $c$ by a proof of the hard pebbles.
+  \item[Rank rule] A needed identity may only move to a slot reached earlier than itself in each needed context.
+  \item[Gate] A fresh sort of the proposed graph, checking that no hard pebble was lost.
+  \item[Refinement] After a failed gate, the blocked identity pebbles from the lost pebbles' old witnesses are added as needs, and the round proposes again.
+  \item[Reservation (greedy only)] A slot/trav pair that's been chosen but not connected, so it adds nothing to the world until it helps a targeted mechanic.
+\end{description}

@@ -1,0 +1,54 @@
+\section{Side by side: is it a completely new approach?}
+\label{sec:compare}
+
+\subsection{What was kept, changed, removed and added}
+
+Table~\ref{tab:lineage} sorts every part of first pass into four groups: kept, changed, removed and new. It compares the last greedy version (\texttt{b717eda\^{}}) with the current working tree.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}p{2.1cm}L@{}}
+\toprule
+\textbf{Kept} & The slot/trav split and its edge rules (Figure~\ref{fig:split}). Which nodes take part. The first random sort of vanilla, and its science-tier variant for Pyanodon's. The cost window, which moved from \code{is_compatible}'s item branch into \code{cost_ok}. The depth-20 ``mechanics reached first'' search, which now only feeds item reflection's cost scaling. The return values, so promotion and the handlers didn't change.\\
+\addlinespace
+\textbf{Changed} & Sorts now use room \emph{and} ability contexts, plus home contexts. Ore slots used a 90\% reject roll; now they keep new identities, get prefilled, and get cycle repair. The mining exception used to match \code{place_result}; now it's \code{dutils.mining_keeps_item_names}, shared with reflection. Coal used to be a commented-out special case; now its fuel stays on the slot, and \code{pair_ok} applies. Items get the trav $\to$ slot edge, first added in the experimental copy.\\
+\addlinespace
+\textbf{Removed} & The reachability tests. Reservations and the target-mechanic list from the science-pack witness. The reservation loop and its swap chains. Desperation mode and \code{FAILURE_ACCEPTANCE}. Incremental sort updates while filling. \code{is_compatible}'s same-mechanics and recipe checks. The recipe-first-pass branches (\code{SPECIAL_RECIPE_FIRST_PASS}). The debug walkers. \texttt{b717eda} removed 1{,}530 lines from \file{first-pass-new.lua} and added 121, and it deleted the 2{,}110-line experimental copy.\\
+\addlinespace
+\textbf{New} & Hard pebbles from \file{protection.lua}, including planet-locked recipes. The backtracking prover and the needs taken from its proofs. The rank rule. The random perfect matching, with resource rules. Realizing the matching the way reflection will. The gate and refinement. Rounds that start from the last valid matching. First pass's own final gate and retry.\\
+\bottomrule
+\end{tabularx}
+\caption{Code lineage from the greedy fill to monotone matching.}
+\label{tab:lineage}
+\end{table}
+
+\subsection{The answer}
+
+\textbf{Yes, as a search algorithm. No, as a model of the problem.} The \emph{frame} is unchanged: what gets assigned, how the assignment is represented in the graph, and who consumes it. So downstream code (promotion, the handlers, item reflection) didn't have to change when the algorithm was swapped. The \emph{method} was replaced wholesale, not refactored, and no line of the greedy's search loop survives.
+
+It's a different \emph{kind} of algorithm, too:
+
+\begin{itemize}
+  \item The greedy was a \textbf{simulation}. It played the game forward and placed things where the player could already reach. That's the classic forward fill used by many item randomizers. Its correctness depended on the simulation's notion of ``reachable'', and that notion was coarser than what the randomizer has to keep.
+  \item Monotone matching is a \textbf{certification}. It holds a world known to be completable (the current matching), a sort of it, and a fallback that's always available (the same matching). It only accepts a change backed by strictly earlier pebbles, and then checked exactly.
+\end{itemize}
+
+\noindent That second description is also a description of \emph{promotion} (\file{skeleton/promotion.lua}). Promotion's fallback is a recipe's vanilla ingredients. Monotone matching's fallback is the matching it started the round with. Both reason in the same currency: pebbles, ranks, backings, and the protection rules. The context-shift report calls such a triple of world, sort and fallback a \emph{reference}. In those terms, first pass used to be the one part of unified randomization that didn't have one, and now it does.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}p{2.8cm}LL@{}}
+\toprule
+& \textbf{Promotion} (recipes, generic handlers) & \textbf{Monotone matching} (first pass)\\
+\midrule
+Reference world & first pass's split graph, with its matching & the current matching $M$\\
+Sort & one random complex sort & a fresh random complex sort per round\\
+What must hold & promised pebbles are well-founded & hard pebbles of $M_0$ are kept\\
+A change is proposed when & a candidate's backing is strictly earlier & a needed identity's new slot is strictly earlier\\
+Fallback & the recipe's vanilla ingredients & keep $M$\\
+Exact check & UNIFIEDCHECK (built game) & the gate (per proposal), then first pass's gate\\
+\bottomrule
+\end{tabularx}
+\caption{Monotone matching reuses promotion's ideas. Both are ``reference'' constructions in the sense of the context-shift report.}
+\label{tab:kinship}
+\end{table}

@@ -1,0 +1,240 @@
+\section{The new approach: monotone matching}
+\label{sec:matching}
+
+\noindent\textbf{Code:} \file{randomizations/graph/unified/first-pass-new.lua} does the setup, the split and the final gate. \file{randomizations/graph/unified/skeleton/monotone-matching.lua} runs the rounds. \textbf{History:} it landed in \texttt{014b8be} (26 Sep, 00:31) and became the only first pass in \texttt{b717eda} (00:48). Mechanics-aware needs and the reflection model came in \texttt{85efe29}, home contexts in \texttt{8f5e55d}, and starting ores and coal's fuel in \texttt{86362b2}.
+
+\subsection{The idea: move between valid matchings}
+
+The greedy fill searched through \emph{partial} assignments, and most of them can't be completed in a way that keeps everything. Monotone matching searches through \emph{complete, valid} assignments only. It starts from the one assignment known to be valid, vanilla, and makes big random moves. Each move is checked exactly, and a move that fails is simply not taken (Figure~\ref{fig:space}).
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+% ---------------- greedy
+\node[anchor=west, font=\small\bfseries] at (-0.3,2.85) {(a) Greedy: grow a partial assignment};
+\foreach \i/\t/\x in {0/{0 pairs}/0.3, 1/{1 pair}/1.6, 2/{2 pairs}/2.9} {
+  \node[oldn, minimum width=1.1cm] (g\i) at (\x,0.4) {\scriptsize \t};
+}
+\node[font=\small] (gdots) at (3.95,0.4) {$\cdots$};
+\node[badn, minimum width=1.2cm] (gk) at (5.4,1.0) {\scriptsize $k$ pairs: stuck};
+\node[oldn, minimum width=1.2cm] (gn) at (5.4,-0.2) {\scriptsize 255 pairs};
+\draw[pre] (g0) -- (g1); \draw[pre] (g1) -- (g2); \draw[pre] (g2) -- (gdots);
+\draw[pre, draw=cbad] (gdots) -- (gk.west);
+\draw[pre] (gdots) -- (gn.west);
+\node[note, anchor=north west] at (-0.3,-0.75) {A dead end fails the attempt (below 50\%)\\or turns the checks off. Nothing checks\\what the complete assignment kept.};
+% ---------------- matching
+\begin{scope}[xshift=7.9cm]
+\node[anchor=west, font=\small\bfseries] at (-0.3,2.85) {(b) Monotone matching: valid to valid};
+\draw[rounded corners=14pt, fill=cnew!8, draw=cnew] (-0.2,-1.5) rectangle (5.9,1.15);
+\node[lbl, text=cnew, anchor=south east] at (5.85,-1.48) {valid: keeps every hard pebble};
+\node[newn, circle, inner sep=1pt, minimum size=7mm] (m0) at (0.5,0.3) {\scriptsize $M_0$};
+\node[newn, circle, inner sep=1pt, minimum size=7mm] (m1) at (2.0,-0.5) {\scriptsize $M_1$};
+\node[newn, circle, inner sep=1pt, minimum size=7mm] (m2) at (3.6,0.35) {\scriptsize $M_2$};
+\node[newn, circle, inner sep=1pt, minimum size=7mm] (m3) at (5.1,-0.45) {\scriptsize $M_3$};
+\node[badn, circle, inner sep=1pt, minimum size=7mm] (mx) at (3.0,2.05) {\scriptsize $M'$};
+\draw[pre, draw=cnew] (m0) -- (m1);
+\draw[pre, draw=cnew] (m1) -- (m2);
+\draw[pre, draw=cnew] (m2) -- (m3);
+\draw[pre, draw=cbad, dashed] (m1) to[bend left=20] node[left, lbl, text=cbad, pos=0.6] {proposal} (mx);
+\draw[pre, draw=cbad, dashed] (mx) to[bend left=20] node[right, lbl, text=cbad, pos=0.35] {gate fails} (m1);
+\node[lbl, anchor=north] at (m0.south) {vanilla};
+\end{scope}
+\end{tikzpicture}
+\caption{The two search spaces. In (b), every round ends at a valid matching: either the proposal passed the gate, or the round keeps the matching it started with. Failed proposals are rare: 4 of the 74 logged rounds (Section~\ref{sec:measure}).}
+\label{fig:space}
+\end{figure}
+
+\begin{proposition}[Every round ends valid]
+\label{prop:invariant}
+Let $\Hard$ be the hard pebbles of the vanilla matching $M_0$ (Section~\ref{sec:hard}), computed once before round 1. Assume the set of pebbles a complex sort reaches doesn't depend on the sort's random order. Then every round of \code{matching.run} returns a matching that keeps all of $\Hard$: each exact pebble in its context, and each recipe in at least one context.
+\end{proposition}
+\begin{proof}
+By induction on rounds. $M_0$ keeps $\Hard$, because $\Hard$ is read off $M_0$'s own sort. Round $r$ returns one of two things. The first is a proposal whose fresh sort lost nothing in $\Hard$: that's exactly the gate's condition, and by the assumption, one sort speaks for all of them. The second, when refinement gives up, is the matching $M_{r-1}$ the round started with.
+\end{proof}
+
+\noindent The assumption is what home contexts were introduced for. The old tech discovery rule depended on order, so two sorts of one graph could disagree. First pass also runs a second gate after the rounds, against the original graph (Section~\ref{sec:after}). So even if the assumption failed somewhere, a bad result would make the attempt retry rather than ship. Note what the proposition does \emph{not} say: it doesn't say a proposal is likely to pass. That's the job of the proofs and the rank rule, and it's measured rather than proved (Section~\ref{sec:measure}).
+
+\subsection{One round}
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm, every node/.append style={font=\small}]
+\tikzset{rstep/.style={newn, text width=10.6cm, align=left, minimum height=6.5mm}}
+\node[rstep] (s1) at (0,0)      {\textbf{1\;Sort.} A random complex sort of $G(M)$, with home contexts.};
+\node[rstep] (s2) at (0,-1.12)   {\textbf{2\;Prove.} Back every exact hard pebble with strictly earlier pebbles.};
+\node[rstep] (s3) at (0,-2.24)   {\textbf{3\;Needs.} Each identity pebble the proofs really use becomes a need $(t,c)$.};
+\node[rstep] (s4) at (0,-3.36)   {\textbf{4\;Admissible slots.} Type, cost, and the rank rule for every need.};
+\node[rstep] (s5) at (0,-4.48)   {\textbf{5\;Match.} A random perfect matching $M'$ (Kuhn), plus the resource-slot rules.};
+\node[rstep] (s6) at (0,-5.60)   {\textbf{6\;Realize.} Replace $M'$ by the matching item reflection will build.};
+\node[rstep] (s7) at (0,-6.72)   {\textbf{7\;Gate.} Sort $G(M')$. Is every pebble in $\Hard$ still there?};
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5,s5/s6,s6/s7} \draw[pre] (\a) -- (\b);
+\draw[pre, draw=cnew] (s7.west) -- ++(-0.6,0) |- (s1.west);
+\node[lbl, text=cnew, rotate=90, anchor=south] at ($(s1.west)+(-0.65,-3.36)$) {pass: $M \gets M'$, next round (3 in all)};
+\draw[pre, draw=cbad] (s7.east) -- ++(0.6,0) |- (s4.east);
+\node[lbl, text=cbad, anchor=west, align=left] at ($(s4.east)+(0.7,-1.65)$) {lost some:\\add the blocked\\identity pebbles\\as needs};
+\node[badn, text width=2.9cm, font=\scriptsize, anchor=north west] (keep) at ($(s7.east)+(0.3,-0.55)$) {nothing new to add, or 10 refinements: keep $M$};
+\draw[pre, draw=cbad] ($(s7.east)+(0.6,0)$) -- ($(s7.east)+(0.6,-0.55)$);
+\end{tikzpicture}
+\caption{One round of \code{matching.run}. Steps 1--3 run once per round. Steps 4--7 repeat for each refinement. In 70 of 74 logged rounds, the first proposal passed. In the other 4, refinement found nothing to add, and the round kept $M$.}
+\label{fig:round}
+\end{figure}
+
+\subsubsection{Steps 1--2: sort, then prove the hard pebbles}
+
+Each round takes a fresh random complex sort of the current graph $G(M)$. It then proves the \emph{exact} hard pebbles in it: protected mechanic pebbles and planet-locked recipe pebbles. Recipes are left to the gate, since needs for them would be too strict. The prover (\code{make_prover}) builds a \emph{backing} for each goal out of strictly earlier pebbles, like promotion's \code{compute_support}:
+\begin{itemize}
+  \item \textbf{AND node:} every prerequisite needs an earlier pebble that is itself established.
+  \item \textbf{OR node:} the providers' earlier pebbles are tried in rank order, earliest first. If one can't be established, the next one is tried. This backtracking is what \code{top.path}'s single earliest-provider witness lacks.
+  \item \textbf{Nodes that change contexts} (forgetters and emitters): try the incoming contexts that turn into this one, earliest first.
+  \item \textbf{Technologies} can also be backed through the discovery rule (\code{top.discovery_candidates}): an earlier pebble of the tech itself in a home context, plus an earlier pebble of a discoverer of the room.
+\end{itemize}
+Results are memoized. A pebble that's still being evaluated counts as unproven, so backings can't loop. The result is the \emph{closure}: every pebble the proofs use. In the measured runs, every exact hard pebble was proven in every round, and the closure held about 26{,}000--28{,}500 pebbles.
+
+\subsubsection{Step 3: needs}
+
+A \emph{need} is a pair $(t,c)$: identity $t$ must still be available in context $c$. Needs come only from identity (trav) pebbles in the closure, and only from real uses (\code{needs_from_proof}, Figure~\ref{fig:needs}):
+\begin{itemize}
+  \item A trav pebble counts if some user in the proof leads to a real use of the identity. Users on the trav's own launch chain, or the trav itself, are followed further.
+  \item \emph{Delivered} contexts aren't needs. They're backed through the trav's own launch chain (trav $\to$ item-launch $\to$ item-deliver $\to$ trav), so they follow from the context the item was launched from.
+  \item Sometimes a trav's only use in another room is feeding its own slot's consumers there, by delivery. Then the requirement moves to the \emph{slot}: whatever identity it holds must be launchable (\code{requires_launchable}), and the identity itself isn't pinned.
+\end{itemize}
+Because the prover picks one provider per OR, an identity is pinned only where the proof actually uses it. If another provider comes first in the next round's sort, the old one is free again. With these rules, 90--100 of the 255 identities had needs in each measured round, with 215--228 needs between them. The other 155--165 identities were free to go anywhere their type and cost allowed.
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm, every node/.append style={font=\small}]
+\node[box, very thick] (g) at (0,0) {$\peb{\text{mechanic }M}{c}$\;\;rank 90};
+\node[box] (and) at (0,-1.1) {AND};
+\node[box] (bk) at (-3.3,-2.2) {$\peb{\text{build }K}{c}$\;\;rank 50};
+\node[box] (pw) at (3.3,-2.2) {$\peb{\text{power}}{c}$ (OR)\;\;rank 45};
+\node[travn] (tk) at (-3.3,-3.4) {$\peb{K\text{-trav}}{c}$\;\;rank 30};
+\node[travn] (te) at (1.6,-3.4) {$\peb{E\text{-trav}}{c}$\;\;rank 40};
+\node[travn, draw=cgrey, fill=white, text=cgrey] (tf) at (5.0,-3.4) {$\peb{F\text{-trav}}{c}$\;\;rank 44};
+\node[slotn] (sk) at (-3.3,-4.6) {$\peb{\text{slot }k}{c}$\;\;rank 29};
+\node[slotn] (se) at (1.6,-4.6) {$\peb{\text{slot }e}{c}$\;\;rank 39};
+\draw[pre] (and) -- (g);
+\draw[pre] (bk) -- (and);
+\draw[pre] (pw) -- (and);
+\draw[pre] (tk) -- (bk);
+\draw[pre] (te) -- node[left, lbl] {earliest} (pw);
+\draw[pre, draw=cgrey, dashed] (tf) -- node[right, lbl, text=cgrey] {not used} (pw);
+\draw[pre] (sk) -- (tk);
+\draw[pre] (se) -- (te);
+\node[note, anchor=west] at (-6.9,-5.55) {Needs: $(K, c)$ and $(E, c)$. $F$ gets none from this proof, so it's free to move.};
+\node[note, anchor=west] at (-6.9,-5.95) {Slot pebbles are backings too, but only identity pebbles become needs.};
+\end{tikzpicture}
+\caption{Needs come from a proof, not from every route. Power has two providers here. The prover takes the earliest one that it can itself prove ($E$), so only $E$ is pinned in context $c$. The ranks are made up for the example.}
+\label{fig:needs}
+\end{figure}
+
+\subsubsection{Step 4: admissible slots, and the rank rule}
+
+\begin{definition}[Admissible]
+Let $\rk$ be the ranks in this round's sort of $G(M)$. Slot $s$ is \emph{admissible} for trav $t$ if $s$ has the same type as $t$, \code{pair_ok}$(s,t)$ holds, and
+\[
+  \forall\, (t,c)\in\Need:\qquad \peb{s}{c}\text{ exists and }\ \rk\peb{s}{c} \;<\; \rk\peb{t}{c}.
+\]
+If a slot requires a launchable identity, $t$ must also be launchable. The trav's current slot $M^{-1}(t)$ is always admissible.
+\end{definition}
+
+\noindent In words, a needed identity may move only to a position that, in every context it's needed in, was reached \emph{before} the identity itself was reached through its current position. In the next graph, the identity's supply in context $c$ then comes from a pebble that was earlier than the identity. The proof's backing through $t$ only gets \emph{earlier}, and that's what \emph{monotone} refers to. It's the same ``strictly earlier'' condition that makes promotion's promises well-founded.
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\foreach \y/\c in {0/c_1, -1.3/c_2} {
+  \draw[cgrey!60, thick] (0,\y) -- (9.4,\y);
+  \node[lbl, anchor=east] at (-0.15,\y) {context $\c$};
+}
+\draw[-{Stealth}, cgrey] (0,-2.2) -- (9.4,-2.2) node[lbl, anchor=west] {rank};
+\node[tpebble] (x1) at (3.6,0) {$t$};
+\node[tpebble] (x2) at (7.8,-1.3) {$t$};
+\node[spebble] at (1.5,0) {$s_1$};
+\node[spebble] at (5.4,-1.3) {$s_1$};
+\node[spebble, fill=cbad!70, draw=cbad] at (5.0,0) {$s_2$};
+\node[spebble] at (2.7,-1.3) {$s_2$};
+\node[spebble] at (0.7,0) {$s_3$};
+\node[ghost] at (6.6,-1.3) {$s_3$};
+\draw[cbad, thick] (6.4,-1.5) -- (6.8,-1.1) (6.4,-1.1) -- (6.8,-1.5);
+\draw[densely dotted, ctrav] (3.6,0.35) -- (3.6,-2.2);
+\draw[densely dotted, ctrav] (7.8,-0.95) -- (7.8,-2.2);
+\node[note, anchor=north west, text width=3.4cm] at (10.1,0.3) {$s_1$: admissible\\$s_2$: no, later than $t$ in $c_1$\\$s_3$: no, never in $c_2$\\$t$'s own slot: always};
+\end{tikzpicture}
+\caption{The rank rule for an identity $t$ with needs in two contexts. A slot must beat $t$ in \emph{every} needed context.}
+\label{fig:rankrule}
+\end{figure}
+
+\noindent In the measured rounds, identities with needs had on average 38--69 admissible slots besides their own, and free identities about 217. Between 2 and 9 identities per round had none besides their own, so they stayed put that round.
+
+\subsubsection{Step 5: a random perfect matching}
+
+The admissibility graph always has a perfect matching, because the current matching is one (each trav's current slot is admissible). \code{random_matching} finds one with Kuhn's augmenting-path algorithm. It visits the travs in random order and tries each trav's admissible slots in random order, with its current slot \emph{last}, which pushes identities to move. Augmenting paths find a perfect matching whenever one exists, so this step never fails.
+
+\paragraph{Resource slots.} Item reflection doesn't swap two useless items, and ores count as useless, so an ore patch would usually keep mining what it did. The matching steers resource slots toward \emph{new, interesting} identities. An identity is new and interesting for a resource slot if it's not useless (\code{dutils.is_useless_item}) and not the slot's own identity.
+\begin{enumerate}
+  \item A resource slot that already mines something new keeps its identity, so no round undoes it.
+  \item Every other resource slot, in random order, tries up to 5 random admissible new identities. It keeps one only if a perfect matching still exists with it.
+  \item After Kuhn's algorithm finishes, a breadth-first search looks for a \emph{cycle of moves} for each resource slot still without a new identity. Each identity on the cycle moves to a slot it's admissible for, and the cycle ends with a new identity moving into the resource slot, without making another resource slot stop mining something new (Figure~\ref{fig:cycle}).
+\end{enumerate}
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\node[slotn, text width=2.8cm] (r) at (0,0) {resource slot $R$\\[-1pt]{\scriptsize holds $u$ (useless)}};
+\node[slotn, text width=2.8cm] (a) at (5.2,1.3) {slot $A$\\[-1pt]{\scriptsize holds $a$}};
+\node[slotn, text width=2.8cm] (b) at (5.2,-1.3) {slot $B$\\[-1pt]{\scriptsize holds $b$ (interesting)}};
+\draw[pre, draw=ctrav] (r.north) |- node[above, lbl, pos=0.75] {$u$ is admissible at $A$} (a.west);
+\draw[pre, draw=ctrav] (a.south) -- node[right, lbl] {$a$ is admissible at $B$} (b.north);
+\draw[pre, draw=ctrav] (b.west) -| node[below, lbl, pos=0.25] {$b$ is admissible at $R$} (r.south);
+\node[note, anchor=west] at (8.0,0) {After: $R\gets b$, $B\gets a$, $A\gets u$.\\Still a perfect matching;\\every pair is admissible.};
+\end{tikzpicture}
+\caption{Cycle repair for a resource slot. The search is breadth-first from $R$ over ``the identity at this slot may move to that slot''.}
+\label{fig:cycle}
+\end{figure}
+
+\subsubsection{Steps 6--7: realize, gate, refine}
+\label{sec:gate}
+
+\paragraph{Realize.} Reflection places useless identities differently from the matching (\code{dutils.realized_item_assignment}), so the proposal is replaced by the matching reflection will actually build. That's still a perfect matching, and realizing $M_0$ gives $M_0$ back. So the gate judges the game that will actually be built, not an idealized one. The same commit (\texttt{85efe29}) fixed a second place where the model and the game disagreed, in the split. Mining drops of player creations and of tiles now belong to the identity. Before that fix, the Fulgoran ruin's stone brick drop was modeled as a position, which lost about 101 isolated-Fulgora contexts whenever that position held something else.
+
+\paragraph{Gate.} Connect $M'$, sort $G(M')$ from scratch, and list the hard pebbles that are missing (\code{lost_pebbles}). An exact pebble is lost if its context is missing, and a recipe is lost only if it has no pebble at all. If nothing is lost, the proposal is accepted.
+
+\paragraph{Refine.} Otherwise, for each lost pebble, the gate takes its witness in the round's \emph{starting} graph (\code{top.path}). The identity pebbles on that witness that the new sort no longer reaches become extra needs (\code{blocked_travs}). Then steps 4--7 run again with a new random stream. Needs only grow, and each trav's current slot stays admissible whatever its needs, so a perfect matching still exists. If refinement can't add a new need, or after 10 refinements, the round keeps $M$.
+
+\paragraph{Why proposals can fail at all.} The rank rule checks the moved identity's needs, but not the new slot's \emph{own} backing. That backing may use other identities, and those may move too (Figure~\ref{fig:gap}). The gate closes that gap exactly. Refinement closes it only when the missing piece shows up on the lost pebble's old witness. In the failure drawn below, the witness runs through $t$'s old slot, not through $y$, so refinement finds nothing new and the round keeps $M$. All four failed proposals in the logs ended exactly like that, with refinement adding no needs (Table~\ref{tab:failed}).
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm, every node/.append style={font=\small}]
+\node[box, very thick] (g) at (0,0) {goal $\peb{G}{c}$};
+\node[travn] (t) at (0,-1.2) {$\peb{t}{c}$ rank 20};
+\node[slotn] (p) at (-2.8,-2.4) {old slot $p$, rank 19};
+\node[slotn] (s) at (2.8,-2.4) {new slot $s$, rank 10};
+\node[travn] (y) at (2.8,-3.6) {$\peb{y}{c}$ rank 6};
+\node[slotn] (q) at (0.6,-4.8) {old slot $q$, rank 5};
+\node[slotn, draw=cbad, fill=cbad!8] (l) at (5.0,-4.8) {new slot $\ell$: late or never in $c$};
+\draw[pre] (t) -- (g);
+\draw[pre, draw=cgrey, dashed] (p) -- node[above left, lbl] {old} (t);
+\draw[pre, draw=cnew] (s) -- node[above right, lbl, text=cnew] {new ($10<20$: admissible)} (t);
+\draw[pre] (y) -- node[right, lbl] {$s$'s producer uses $y$} (s);
+\draw[pre, draw=cgrey, dashed] (q) -- node[left, lbl] {old} (y);
+\draw[pre, draw=cbad] (l) -- node[right, lbl, text=cbad] {new} (y);
+\node[note, anchor=west] at (-6.6,-3.9) {The proof of $G$ runs through $p$, not $y$,\\so $y$ has no need and is free to move.\\Moving $t$ to $s$ and $y$ to $\ell$ together\\cuts $s$ off in $c$, and $G$ with it.};
+\end{tikzpicture}
+\caption{The gap the gate closes. Each move looks fine by itself, but together they break a slot's own backing.}
+\label{fig:gap}
+\end{figure}
+
+\subsection{After the rounds}
+\label{sec:after}
+
+\code{first_pass.execute} connects the final matching and sorts the split graph once more. It then runs its own gate against the \emph{original} graph's sort: every mechanic pebble keeps its protected part (\code{protection.kept_part}), and every planet-locked recipe keeps its contexts. If anything is lost, it returns \code{false} and unified randomization retries the attempt. Otherwise it returns the matching (\code{slot_to_trav}, \code{trav_to_slot}), the split graph, and its sort, which promotion reasons over. It also returns the planet-locked contexts and the ``mechanics sets'' that item reflection uses to scale costs. That last piece is a leftover from the greedy: the depth-20 breadth-first search now only feeds cost scaling.
+
+\begin{factbox}
+\textbf{Work in progress when this was written} (uncommitted, in another session):
+\begin{itemize}
+  \item \emph{Entity positions.} Entity randomization flags \code{entity-build-item} nodes as \code{first_pass_entity}, so first pass also decides which entity is built where an item used to place another one. Mine-back heads are \emph{coupled} to their slot (\code{connect_extra}). Their cost rule uses the own item's cost within \code{constants.entity_cost_tolerance}.
+  \item \emph{Debt goals.} With planetary changes superposed (\code{SUPERPOSED}, off by default), goals that only the older world reaches must stay reachable with its debt. They're gated on a superposed sort and refined from its witnesses. This is step 2 of the plan in the context-shift report.
+\end{itemize}
+Neither changes the algorithm above. They add slots and goals to it.
+\end{factbox}

@@ -1,0 +1,122 @@
+\section{The problem both versions solve}
+\label{sec:problem}
+
+First pass runs inside unified randomization (\file{randomizations/graph/unified/execute-new.lua}), before the other handlers. It fixes item randomization's permutation, which says which item \emph{identity} each item \emph{position} gets. The handlers that run after it (promotion, recipe ingredients, and the rest) then reason over the graph first pass built. This section covers what stayed the same from the greedy fill to monotone matching.
+
+\subsection{Positions and identities}
+
+For every node that takes part, first pass splits the logic-graph node into two nodes (\file{first-pass-new.lua}, ``SPLIT GRAPH NODES''):
+
+\begin{description}[leftmargin=1.2em, style=nextline]
+  \item[Slot (the position).] It keeps the node's name and the edges that say \emph{where the item comes from} and \emph{which recipes use it}. These are crafting, loot, burnt results, items that spoil into it, resource and asteroid mining, and recipe ingredient uses (the \code{always_slot_pre} and \code{always_slot_dep} tables in \file{compat/vanilla.lua}). Any edge a handler randomizes (a base or head) also stays on the slot.
+  \item[Trav (the identity), named \texttt{X-trav}.] It gets every other fixed edge, which says \emph{what the item is}: it places a building, it's a fuel, it's launched and delivered. It also gets sources that follow the item's name. In the model, mining a building or a tile gives the item under its own name (\code{dutils.mining_keeps_item_names}), so that edge belongs to the identity. Entity randomization's identity heads and bases move here too.
+\end{description}
+
+\noindent The edge slot $\to$ trav is then cut into a base (on the slot) and a head (on the trav). Choosing the assignment means choosing which base connects to which head. Items get one extra edge, trav $\to$ slot. After reflection, the item made at a position \emph{is} the identity's item, so the position's consumers also get the identity's own sources, such as delivery to other rooms or spoiling (\code{connect} in \file{monotone-matching.lua}).
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+% ---------------- (a) logic graph
+\node[anchor=west, font=\small\bfseries] at (-6.9,1.75) {(a) Logic graph};
+\node[plain] (pa1) at (-5.0,0.8) {recipe making X};
+\node[plain] (pa2) at (-5.0,0.0) {mining a resource};
+\node[plain, draw=ctrav] (pa3) at (-5.0,-0.8) {mining B back};
+\node[box, minimum width=1.5cm, minimum height=8mm] (xa) at (-1.8,0) {item X};
+\node[plain] (ua1) at (1.9,1.05) {recipes using X};
+\node[plain, draw=ctrav] (ua2) at (1.9,0.35) {places building B};
+\node[plain, draw=ctrav] (ua3) at (1.9,-0.35) {is a fuel};
+\node[plain, draw=ctrav] (ua4) at (1.9,-1.05) {launch / deliver};
+\draw[thinpre, draw=cslot] (pa1.east) -- (xa);
+\draw[thinpre, draw=cslot] (pa2.east) -- (xa);
+\draw[thinpre, draw=ctrav] (pa3.east) -- (xa);
+\draw[thinpre, draw=cslot] (xa) -- (ua1.west);
+\foreach \u in {ua2,ua3,ua4} \draw[thinpre, draw=ctrav] (xa) -- (\u.west);
+% ---------------- (b) split graph
+\begin{scope}[yshift=-4.7cm]
+\node[anchor=west, font=\small\bfseries] at (-6.9,2.55) {(b) Split graph built by first pass};
+\node[plain] (pb1) at (-5.0,0.75) {recipe making X};
+\node[plain] (pb2) at (-5.0,-0.05) {mining a resource};
+\node[slotn, minimum width=1.7cm] (slot) at (-2.2,0.35) {slot X\\[-2pt]{\scriptsize position}};
+\node[plain] (ub1) at (-2.2,1.6) {recipes using X};
+\node[conn, fill=cslot!35] (base) at (-0.7,-0.9) {};
+\node[conn, fill=ctrav!45] (head) at (0.8,-0.9) {};
+\node[lbl, below=1pt of base] {base};
+\node[lbl, below=1pt of head] {head};
+\node[travn, minimum width=1.7cm] (trav) at (2.5,-0.9) {X-trav\\[-2pt]{\scriptsize identity}};
+\node[plain, draw=ctrav] (ub2) at (5.4,-0.1) {places building B};
+\node[plain, draw=ctrav] (ub3) at (5.4,-0.9) {is a fuel};
+\node[plain, draw=ctrav] (ub4) at (5.4,-1.7) {launch / deliver};
+\node[plain, draw=ctrav] (pb3) at (2.5,-2.35) {mining B back};
+\draw[thinpre, draw=cslot] (pb1.east) -- (slot);
+\draw[thinpre, draw=cslot] (pb2.east) -- (slot);
+\draw[thinpre, draw=cslot] (slot.north) -- (ub1.south);
+\draw[thinpre] (slot.south) |- (base.west);
+\draw[cut] (base) -- node[above, lbl, text=cnew] {chosen} (head);
+\draw[thinpre] (head) -- (trav);
+\foreach \u in {ub2,ub3,ub4} \draw[thinpre, draw=ctrav] (trav.east) -- (\u.west);
+\draw[thinpre, draw=ctrav] (pb3) -- (trav);
+\draw[back] (trav.north) to[bend right=30] node[above, lbl, pos=0.55, text=ctrav] {same item after reflection} (slot.east);
+\end{scope}
+% ---------------- legend
+\begin{scope}[yshift=-7.9cm]
+\draw[thinpre, draw=cslot] (-6.6,0) -- (-5.9,0); \node[lbl, anchor=west] at (-5.8,0) {position edge (stays on slot)};
+\draw[thinpre, draw=ctrav] (-1.4,0) -- (-0.7,0); \node[lbl, anchor=west] at (-0.6,0) {identity edge (moves to trav)};
+\draw[cut] (3.6,0) -- (4.3,0); \node[lbl, anchor=west] at (4.4,0) {chosen by the matching};
+\end{scope}
+\end{tikzpicture}
+\caption{How first pass splits an item. The matching reconnects each slot's base to some trav's head. With the vanilla (identity) matching, (b) behaves like (a). Coal is a special case: item reflection makes whatever replaces coal a chemical fuel, so that fuel edge stays on coal's \emph{slot}, and coal's identity gets a fuel edge of its own (\code{dutils.replacement_gets_fuel}).}
+\label{fig:split}
+\end{figure}
+
+\paragraph{Which nodes take part.} \code{valid_node_for_first_pass} leaves out spoofed and blacklisted nodes, resource mining (\code{entity-mine}), science packs (lab inputs), recipes, technologies and \code{entity-operate}. A node takes part if a handler randomizes one of its prerequisites (it has a head), or if it's an item and item randomization is on. In all three measured seeds, every one of the 255 slots was an item (Section~\ref{sec:measure}). Entity randomization is adding \emph{entity positions} to first pass (the \code{first_pass_entity} flag). That work was in progress and uncommitted when this was written.
+
+\paragraph{Reflection is the model.} Item reflection (\code{item.reflect} in \file{handlers-new/item.lua}) makes the change real. The item made at position $s$ becomes identity $t$'s item, in the recipes that make it and in the recipes that use it. There is one exception: reflection doesn't swap two useless items (\code{dutils.reflected_item_position}). The new first pass gates exactly the matching reflection will realize (Section~\ref{sec:gate}).
+
+\subsection{The assignment is a perfect matching}
+
+Let $\Slots$ be the slots and $\Travs$ the travs, one per slot. An \emph{assignment} is a bijection $M:\Slots\to\Travs$ that pairs only nodes of the same type, and only pairs that \code{pair_ok} allows:
+\begin{itemize}
+  \item \textbf{Cost window:} for items, $\ln c(t) - \ln c(s) \le 5$ and $\ln c(s) - \ln c(t) \le 8$, where $c$ is the material cost (\code{first_pass_max_cost_log_difference_expensive} and \code{_cheap} in \file{helper-tables/constants.lua}). An identity can go into a position that's much more expensive than it more easily than the reverse.
+  \item \textbf{Coal's position} only takes identities with no burnt result (\code{pair_ok}).
+\end{itemize}
+The vanilla game is the \emph{identity matching} $M_0(s) = s$'s own trav. Both algorithms output an $M$. What differs is how they find it and what they check.
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+\foreach \i/\n in {1/A,2/B,3/C,4/D,5/E} {
+  \node[slotn, minimum width=2.4cm] (s\i) at (0,-0.72*\i) {position \n};
+  \node[travn, minimum width=2.4cm] (t\i) at (6,-0.72*\i) {identity \n};
+}
+\foreach \i in {1,...,5} \draw[cgrey!70, dashed] (s\i.east) -- (t\i.west);
+\draw[pre, cnew] (s1.east) -- (t3.west);
+\draw[pre, cnew] (s2.east) -- (t1.west);
+\draw[pre, cnew] (s3.east) -- (t5.west);
+\draw[pre, cnew] (s4.east) -- (t4.west);
+\draw[pre, cnew] (s5.east) -- (t2.west);
+\node[lbl, anchor=south] at (0,-0.3) {slots $\Slots$};
+\node[lbl, anchor=south] at (6,-0.3) {travs $\Travs$};
+\draw[cgrey!70, dashed] (8.1,-1.2) -- (8.8,-1.2); \node[lbl, anchor=west] at (8.9,-1.2) {vanilla $M_0$};
+\draw[pre, cnew] (8.1,-1.8) -- (8.8,-1.8); \node[lbl, anchor=west] at (8.9,-1.8) {a new $M$};
+\node[note, anchor=west] at (8.1,-2.8) {pairs must share a type\\and fit the cost window};
+\end{tikzpicture}
+\caption{The assignment as a bipartite perfect matching. An identity may also stay where it is (D here).}
+\label{fig:bipartite}
+\end{figure}
+
+\subsection{What a valid assignment must keep}
+\label{sec:hard}
+
+\paragraph{Pebbles and contexts.} A \emph{complex sort} (\file{lib/graph/context-sort.lua}, with \code{complex_contexts} and \code{home_contexts}) reaches nodes in \emph{contexts}. A context is a room together with an ability string for isolatability and automatability, written like \texttt{planet:\,vulcanus\,|\,11}. A \emph{pebble} $\peb{v}{c}$ is a node $v$ reached in context $c$, and its \emph{rank} $\rk\peb{v}{c}$ is its position in the sort. ``Earlier'' always means lower rank.
+
+\paragraph{Hard pebbles.} What must survive first pass is decided in one place, \file{randomizations/graph/unified/skeleton/protection.lua}:
+\begin{enumerate}
+  \item \textbf{Mechanic pebbles.} Their room and automatability are always kept. Isolatability is kept for nodes that declare \code{keep_isolatability = true}, or for every node with \code{constants.keep_isolatability}. An unprotected isolatable pebble only needs its non-isolatable counterpart (\code{is_hard_mechanic_pebble}, \code{kept_part}).
+  \item \textbf{Planet-locked recipes} keep every context they have on their planet (\code{planet_locked_recipe_contexts}).
+  \item \textbf{Every recipe} that was reachable stays reachable, in at least one context.
+\end{enumerate}
+Home contexts are never kept for their own sake; they only back the discovery rule. In the measured seeds, the sort had about 275{,}000 pebbles. Of those, 3{,}527--3{,}548 had to be kept exactly and 619--621 recipes had to stay reachable.
+
+\medskip
+This definition of ``valid'' is itself newer than the greedy fill, which never had it: \file{protection.lua} landed in the same commit as monotone matching (014b8be). Section~\ref{sec:greedy} shows the greedy's own, weaker notion.
