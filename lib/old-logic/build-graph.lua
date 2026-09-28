@@ -437,47 +437,58 @@ build_graph.check_surface_conditions = check_surface_conditions
 -- Restrict which nodes we focus on; we don't care about explosions for example
 
 build_graph.prototypes = {}
-
 build_graph.prototypes.entities = {}
-for entity_class, _ in pairs(defines.prototypes.entity) do
-    if entity_class ~= "explosion" and entity_class ~= "smoke-with-trigger" then
-        if data.raw[entity_class] ~= nil then
-            for _, entity in pairs(data.raw[entity_class]) do
-                -- Check only minable corpses
-                if entity_class ~= "corpse" or entity.minable ~= nil then
-                    table.insert(build_graph.prototypes.entities, entity)
+-- entity lookup
+local entities = {}
+-- item lookup
+local items = {}
+-- Get materials
+local materials = {}
+-- export
+build_graph.materials = materials
+
+-- Fills the entity, item and material lists above from data.raw as it is now
+-- They're refilled in place (so everything holding them sees the new contents) each time load() runs, since data.raw changes after this file is first required: unified randomization adds prototypes (like entity randomization's salvage and loot items), and its retries replace data.raw altogether
+local function gather_prototypes()
+    for _, tbl in pairs({ build_graph.prototypes.entities, entities, items, materials }) do
+        for k, _ in pairs(tbl) do
+            tbl[k] = nil
+        end
+    end
+
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if entity_class ~= "explosion" and entity_class ~= "smoke-with-trigger" then
+            if data.raw[entity_class] ~= nil then
+                for _, entity in pairs(data.raw[entity_class]) do
+                    -- Check only minable corpses
+                    if entity_class ~= "corpse" or entity.minable ~= nil then
+                        table.insert(build_graph.prototypes.entities, entity)
+                    end
                 end
             end
         end
     end
-end
 
--- entity lookup
-local entities = {}
-for _, entity in pairs(build_graph.prototypes.entities) do
-    entities[entity.name] = entity
-end
+    for _, entity in pairs(build_graph.prototypes.entities) do
+        entities[entity.name] = entity
+    end
 
--- item lookup
-local items = {}
-for item_class, _ in pairs(defines.prototypes.item) do
-    if data.raw[item_class] ~= nil then
-        for _, item in pairs(data.raw[item_class]) do
-            items[item.name] = item
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                items[item.name] = item
+            end
         end
     end
-end
 
--- Get materials
-local materials = {}
-for _, item in pairs(items) do
-    materials["item-" .. item.name] = item
+    for _, item in pairs(items) do
+        materials["item-" .. item.name] = item
+    end
+    for _, fluid in pairs(data.raw.fluid) do
+        materials["fluid-" .. fluid.name] = fluid
+    end
 end
-for _, fluid in pairs(data.raw.fluid) do
-    materials["fluid-" .. fluid.name] = fluid
-end
--- export
-build_graph.materials = materials
+gather_prototypes()
 
 local mtm_insert = function (many_to_many_lookup_table, key, prototype)
     if many_to_many_lookup_table[key] == nil then
@@ -535,6 +546,7 @@ local function load()
 
     -- Not all of these need to be in load()
     -- Placing them here just ensures that they're updated along with changes to data.raw
+    gather_prototypes()
 
     -- Get buildable things
     --    * place_result
