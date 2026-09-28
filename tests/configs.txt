@@ -28,7 +28,9 @@ oldlogic item=true
 # skip SETTING: leave a setting out of generated configs
 skip seed                   # each run picks its own seed
 skip tech-tree-rebuild      # unfinished: nothing reads it yet
-# Being worked on (visible for now only for that)
+# The unified preview turns off the old graph randomizations, which generated configs like max are there to test, so it gets its own configs below
+skip unified-preview
+# In the unified preview, and hidden on their own for now
 skip planetary-oceans
 skip planetary-resources
 skip unified-entity
@@ -47,6 +49,11 @@ pin dev-unified=false smoke settings
 # nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)
 # In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data or MECHCHECK verdict
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
+# The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development
+config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false
+# With old graph randomizations on too, which the preview turns off (not item: its configs are judged by the old logic's check, which then doesn't run)
+# No science cost check either: it measures old recipe randomization, which is off here
+config preview-with-graph unified nocheck=science-cost unified-preview=true dev-unified=false technology=true recipe=true recipe-science-pack=true recipe-tech-unlock=true
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
 # Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
 # Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost

@@ -119,6 +119,14 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-unified-preview",
+        -- The new unified version for players to try: the unified randomizations still in development, entity randomization, planetary changes other than lightning and freezing, and the tech tree rebuild (config.lua)
+        default_value = false,
+        order = "d-a[unified-preview]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-technology",
         default_value = false,
         order = "d-c[technology]",
@@ -192,6 +200,7 @@ data:extend({
         name = "propertyrandomizer-dev-unified",
         -- Runs the unified randomizations still in development (the forced handlers in randomizations/graph/unified/execute.lua) in every game
         -- prepare-release.sh turns it off in releases, and tests/configs.txt turns it off for some tests
+        -- The unified preview (propertyrandomizer-unified-preview) turns them on too, so it's how releases get them
         default_value = true,
         order = "e-[unified]-a",
         hidden = true,
@@ -292,6 +301,9 @@ data:extend({
         name = "propertyrandomizer-unified-entity",
         default_value = false,
         order = "e-k[entity]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -299,6 +311,9 @@ data:extend({
         name = "propertyrandomizer-unified-entity-biters",
         default_value = false,
         order = "e-ka[entity-biters]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -319,6 +334,9 @@ data:extend({
         name = "propertyrandomizer-tech-tree-rebuild",
         default_value = false,
         order = "f-b[rebuild]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -326,6 +344,9 @@ data:extend({
         name = "propertyrandomizer-planetary-oceans",
         default_value = false,
         order = "f-c[planetary-oceans]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -333,6 +354,9 @@ data:extend({
         name = "propertyrandomizer-planetary-resources",
         default_value = false,
         order = "f-d[planetary-resources]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -340,6 +364,9 @@ data:extend({
         name = "propertyrandomizer-planetary-lightning",
         default_value = false,
         order = "f-e[planetary-lightning]",
+        -- Hidden and off for now, and not in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -347,6 +374,9 @@ data:extend({
         name = "propertyrandomizer-planetary-freezing",
         default_value = false,
         order = "f-f[planetary-freezing]",
+        -- Hidden and off for now, and not in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -354,6 +384,9 @@ data:extend({
         name = "propertyrandomizer-planetary-locks",
         default_value = false,
         order = "f-g[planetary-locks]",
+        -- Hidden for now, in the unified preview
+        hidden = true,
+        forced_value = false,
     },
     {
         setting_type = "startup",
