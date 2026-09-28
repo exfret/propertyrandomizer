@@ -3,6 +3,16 @@
 -- First pass models the game that item reflection builds, so both use these rules: which mining results keep their names, and where useless items go
 
 -- Stand-ins for the Factorio environment
+function table.deepcopy(tbl)
+    if type(tbl) ~= "table" then
+        return tbl
+    end
+    local copy = {}
+    for k, v in pairs(tbl) do
+        copy[k] = table.deepcopy(v)
+    end
+    return copy
+end
 defines = {
     prototypes = {
         item = {
@@ -247,10 +257,88 @@ test("both item randomizations rename recipes by the shared main product rule", 
         assert(string.find(text, "dutils.recipe_main_product(", 1, true) ~= nil, path)
         assert(string.find(text, "results[1].name ==", 1, true) == nil, path .. " matches recipes by their first result")
         assert(string.find(text, "recycling_sources.named_after_ingredient(", 1, true) ~= nil, path .. " renames recycling recipes after a product")
+        -- Both name renamed recipes the same way, once every change is applied
+        assert(string.find(text, "recipe_renames.apply(", 1, true) ~= nil, path .. " names renamed recipes itself")
     end
     assert(string.find(source("data-final-fixes.lua"), "randomizations.fix_recycling_names()", 1, true) ~= nil)
     -- The unified item handler names recipes once it can count how many are named after each item
     assert(string.find(source("randomizations/graph/unified/execute-new.lua"), "handler.after_changes()", 1, true) ~= nil)
+end)
+
+test("a renamed recipe takes its new item's name, icon and place in the menus, and renamed ones sharing an item are numbered", function()
+    -- Stand-ins for the badge icons and the prefix roll, so the test needs no graphics or seed
+    package.loaded["lib/dupe"] = {
+        max_icon_number = 9,
+        recipe_number_icon = function(number)
+            return {
+                icon = "badge-" .. number,
+            }
+        end,
+    }
+    package.loaded["lib/random/rng"] = {
+        int = function(_, max)
+            return 1
+        end,
+    }
+    local constants = require("helper-tables/constants")
+    local locale_utils = require("lib/locale")
+    local recipe_renames = require("lib/recipe-renames")
+
+    local function entry(name)
+        return {
+            type = "item",
+            name = name,
+            amount = 1,
+        }
+    end
+    data.raw.item.plate = {
+        type = "item",
+        name = "plate",
+        icons = {
+            {
+                icon = "plate.png",
+                icon_size = 32,
+            },
+        },
+    }
+    data.raw.item.egg = {
+        type = "item",
+        name = "egg",
+        icon = "egg.png",
+    }
+    -- As the game is after item randomization: breed and cast make plates now, and hatch makes eggs
+    data.raw.recipe = {
+        smelt = {type = "recipe", name = "smelt", results = {entry("plate")}},
+        breed = {type = "recipe", name = "breed", localised_name = {"recipe-name.breed"}, icon = "breed.png", subgroup = "farming", order = "b", results = {entry("plate")}},
+        cast = {type = "recipe", name = "cast", results = {entry("plate")}},
+        hatch = {type = "recipe", name = "hatch", icon = "hatch.png", results = {entry("egg")}},
+        ["egg-recycling"] = {type = "recipe", name = "egg-recycling", categories = {"recycling"}, ingredients = {entry("egg")}, results = {entry("egg")}},
+    }
+    local old_recipes = {
+        ["egg-recycling"] = data.raw.recipe["egg-recycling"],
+    }
+    recipe_renames.apply({
+        breed = {type = "item", name = "plate"},
+        cast = {type = "item", name = "plate"},
+        hatch = {type = "item", name = "egg"},
+    }, old_recipes, "key")
+
+    local recipes = data.raw.recipe
+    -- The only recipe named after eggs (recycling is named after what it recycles) takes the egg's plain name and icon, over its own
+    assert(recipes.hatch.localised_name[1] == locale_utils.find_localised_name(data.raw.item.egg)[1])
+    assert(recipes.hatch.icon == nil and #recipes.hatch.icons == 1 and recipes.hatch.icons[1].icon == "egg.png" and recipes.hatch.icons[1].icon_size == 64)
+    -- Three recipes are named after plates, so the renamed two get a prefix and badges 1 and 2 in name order, and the one that wasn't renamed is left alone
+    for number, name in pairs({"breed", "cast"}) do
+        local recipe = recipes[name]
+        assert(recipe.localised_name[2] == constants.funny_recipe_prefixes[1], name)
+        assert(recipe.localised_name[4][1] == locale_utils.find_localised_name(data.raw.item.plate)[1], name)
+        assert(recipe.icon == nil and #recipe.icons == 2 and recipe.icons[1].icon == "plate.png" and recipe.icons[2].icon == "badge-" .. number, name)
+    end
+    -- A renamed recipe is listed with its new item, so its own subgroup and order go
+    assert(recipes.breed.subgroup == nil and recipes.breed.order == nil)
+    assert(recipes.smelt.localised_name == nil and recipes.smelt.icons == nil)
+    -- The item's own icons aren't shared with the recipes
+    assert(#data.raw.item.plate.icons == 1)
 end)
 
 print(num_passed .. " tests passed")

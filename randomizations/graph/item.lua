@@ -8,6 +8,7 @@ local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local recycling_sources = require("lib/logic/recycling-sources")
+local recipe_renames = require("lib/recipe-renames")
 
 local function get_primary_icon(prot)
     if prot.icon ~= nil then
@@ -571,6 +572,8 @@ randomizations.item_new = function(id)
 
     -- Fix data.raw
     local changes = {}
+    -- Recipe name --> the item it's named after now, as { type, name } (see lib/recipe-renames.lua)
+    local renamed_recipes = {}
     local post_changes = {}
     local post_changes_spoil = {}
     local num_times_changed_graphics_of_simple_entity = {}
@@ -634,29 +637,11 @@ randomizations.item_new = function(id)
                 })
             end
             if fix_localised then
-                -- Find original recipe prototype from dupes if applicable
-                local orig_recipe = recipe
-                if orig_recipe.orig_name ~= nil then
-                    orig_recipe = data.raw.recipe[orig_recipe.orig_name]
-                end
-                if orig_recipe.localised_name == nil then
-                    recipe.localised_name = {"?", {"recipe-name." .. orig_recipe.name}, locale_utils.find_localised_name(item_prototype)}
-                end
-                -- If the original recipe had no icon, recreate the icon as the new item's
-                if orig_recipe.icons == nil and orig_recipe.icon == nil then
-                    local recipe_icons
-                    if item_prototype.icons ~= nil then
-                        recipe.icons = item_prototype.icons
-                    else
-                        local icon_filename, icon_size = get_primary_icon(item_prototype)
-                        recipe.icons = {
-                            {
-                                icon = icon_filename,
-                                icon_size = icon_size
-                            }
-                        }
-                    end
-                end
+                -- Named once every change is applied, when it's known how many recipes share the item
+                renamed_recipes[recipe.name] = {
+                    type = "item",
+                    name = item_node.name,
+                }
             end
         end
 
@@ -1063,6 +1048,8 @@ randomizations.item_new = function(id)
     for ind, change in pairs(post_changes_spoil) do
         change.tbl[change.prop] = spoil_values[ind]
     end
+    -- Renamed recipes take their new item's name and icon, with a prefix and a number badge where several share it, as in unified item randomization
+    recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = id .. "-recipe-names"}))
 
     -- return the maps between slots and items and vice versa to show we succeeded and keep track of old item positions
     return {slot_to_item = slot_to_item, item_to_slot = item_to_slot}

@@ -1,7 +1,6 @@
-local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
-local dupe = require("lib/dupe")
+local recipe_renames = require("lib/recipe-renames")
 local recycling_sources = require("lib/logic/recycling-sources")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
@@ -416,13 +415,6 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             fix_localised = false
                         end
                         if fix_localised then
-                            -- Find original recipe prototype from dupes if applicable
-                            local orig_recipe = recipe
-                            if orig_recipe.orig_name ~= nil then
-                                orig_recipe = data.raw.recipe[orig_recipe.orig_name]
-                            end
-                            orig_recipe.subgroup = nil
-                            orig_recipe.order = nil
                             -- Named in after_changes, once it's known how many recipes share the item
                             renamed_recipes[recipe.name] = {
                                 type = position.type,
@@ -756,8 +748,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
     end
 end
 
--- Renamed recipes take their new item's name and icon, since they may have had their own
--- When several recipes are named after the same item, the renamed ones also get a prefix and a number badge to tell them apart
+-- Renamed recipes take their new item's name and icon, with a prefix and a number badge where several share it (lib/recipe-renames.lua)
 item.after_changes = function()
     -- Resources need whatever fluid is made at their required fluid's position now: reflect renames fluid positions everywhere else, and mining-fluid-required's reflection also writes positions (see lib/item-fluid.lua)
     -- Done here, once every handler has reflected
@@ -767,53 +758,7 @@ item.after_changes = function()
         end
     end
 
-    -- Product material key --> how many recipes are named after it, counting ones reflect didn't rename (recycling recipes are named after what they recycle)
-    local num_named_after = {}
-    for recipe_name, recipe in pairs(data.raw.recipe) do
-        local main_product = dutils.recipe_main_product(recipe)
-        if main_product ~= nil and (main_product.type == "item" or main_product.type == "fluid") and recycling_sources.named_after_ingredient(old_data_raw.recipe, recipe_name) == nil then
-            local product_key = gutils.key(main_product.type, main_product.name)
-            num_named_after[product_key] = (num_named_after[product_key] or 0) + 1
-        end
-    end
-
-    local recipe_names = {}
-    for recipe_name, _ in pairs(renamed_recipes) do
-        table.insert(recipe_names, recipe_name)
-    end
-    table.sort(recipe_names)
-    -- Product material key --> how many of its renamed recipes have been numbered so far
-    local num_numbered = {}
-    for _, recipe_name in pairs(recipe_names) do
-        local recipe = data.raw.recipe[recipe_name]
-        local product_key = gutils.key(renamed_recipes[recipe_name].type, renamed_recipes[recipe_name].name)
-        -- The product's prototype in its position's form (an identity that changed form has one now)
-        local new_item = item_fluid.prot(renamed_recipes[recipe_name])
-        local recipe_icons
-        if new_item.icons ~= nil then
-            recipe_icons = table.deepcopy(new_item.icons)
-        else
-            local icon_filename, icon_size = get_primary_icon(new_item)
-            recipe_icons = {
-                {
-                    icon = icon_filename,
-                    icon_size = icon_size,
-                },
-            }
-        end
-        if (num_named_after[product_key] or 0) >= 2 then
-            recipe.localised_name = {"", constants.funny_recipe_prefixes[rng.int(rng.key({id = "unified-item"}), #constants.funny_recipe_prefixes)], " ", locale_utils.find_localised_name(new_item)}
-            num_numbered[product_key] = (num_numbered[product_key] or 0) + 1
-            -- Only single digit badges exist, so any past that keep the plain item icon
-            if num_numbered[product_key] <= dupe.max_icon_number then
-                table.insert(recipe_icons, dupe.recipe_number_icon(num_numbered[product_key]))
-            end
-        else
-            recipe.localised_name = locale_utils.find_localised_name(new_item)
-        end
-        recipe.icon = nil
-        recipe.icons = recipe_icons
-    end
+    recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = "unified-item"}))
 end
 
 return item
