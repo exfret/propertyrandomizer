@@ -154,6 +154,25 @@ script.on_init(function(event)
             items["wpu-mk01"] = 5
         end
 
+        -- A faster start in the base game or Space Age (pY gets its own above), with at least this many of each (propertyrandomizer-extra-starting-items)
+        -- These are the item's own identities, after the swap above, like pY's
+        if settings.startup["propertyrandomizer-extra-starting-items"].value and not script.active_mods["pyindustry"] then
+            local extra_items = {
+                ["assembling-machine-1"] = 2,
+                ["burner-mining-drill"] = 5,
+                ["stone-furnace"] = 5,
+                ["solar-panel"] = 10,
+                ["small-electric-pole"] = 10,
+            }
+            for item_name, amount in pairs(extra_items) do
+                -- Leave out items a mod removed or hid
+                local item = prototypes.item[item_name]
+                if item ~= nil and not item.hidden then
+                    items[item_name] = math.max(items[item_name] or 0, amount)
+                end
+            end
+        end
+
         remote.call("freeplay", "set_created_items", items)
         remote.call("freeplay", "set_ship_items", ship_items)
         remote.call("freeplay", "set_debris_items", debris_items)

@@ -59,6 +59,13 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-extra-starting-items",
+        default_value = true,
+        order = "b-y[extra-starting-items]",
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-logistic",
         allowed_values = {
