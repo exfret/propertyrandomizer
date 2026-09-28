@@ -153,11 +153,15 @@ for machine_type, _ in pairs(categories.crafting_machines) do
     end
 end
 
--- Remove pure-recycling recipe unlocks and make them unlocked at the start
-local is_pure_recycling = {}
+-- Remove pure-recycling and barreling recipe unlocks and make them unlocked at the start
+-- Barreling recipes are the ones base's data-updates generates into the fill-barrel/empty-barrel subgroups
+-- Barreling only with the unified randomizations still in development (config.dev_unified) for now: with only the legacy ones, the sa/max test lost 161 recipes on seed 1 (MECHCHECK), not yet looked into
+local unlocked_at_start = {}
 for _, recipe in pairs(data.raw.recipe) do
-    if recipe.categories ~= nil and #recipe.categories == 1 and recipe.categories[1] == "recycling" then
-        is_pure_recycling[recipe.name] = true
+    local is_pure_recycling = recipe.categories ~= nil and #recipe.categories == 1 and recipe.categories[1] == "recycling"
+    local is_barreling = config.dev_unified and (recipe.subgroup == "fill-barrel" or recipe.subgroup == "empty-barrel")
+    if is_pure_recycling or is_barreling then
+        unlocked_at_start[recipe.name] = true
         recipe.enabled = true
     end
 end
@@ -165,7 +169,7 @@ for _, tech in pairs(data.raw.technology) do
     if tech.effects ~= nil then
         local new_effects = {}
         for _, effect in pairs(tech.effects) do
-            if effect.type ~= "unlock-recipe" or not is_pure_recycling[effect.recipe] then
+            if effect.type ~= "unlock-recipe" or unlocked_at_start[effect.recipe] == nil then
                 table.insert(new_effects, effect)
             end
         end
