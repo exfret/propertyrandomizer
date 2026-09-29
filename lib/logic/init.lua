@@ -115,12 +115,9 @@ logic.type_info = {}
 logic.edge_info = {}
 
 logic.build = function(ignore_balance_nodes, extra_params)
-    extra_params = table.deepcopy(extra_params or {})
-    -- Match control.lua: ordinary games retain technology unlocks; preview grants them on init.
-    -- An explicit caller choice still takes precedence (including extracted-logic users).
-    if extra_params.tech_gated_unlocks == nil then
-        extra_params.tech_gated_unlocks = config == nil or not config.dev_unified
-    end
+    extra_params = extra_params or {}
+    -- extra_params.tech_gated_unlocks stays off unless the caller sets it: control.lua unlocks mining with fluid and space platforms at the start of every game, so their technologies aren't prereqs here
+    -- Other randomizers extracting this logic, which don't unlock them at the start, pass tech_gated_unlocks = true
 
     --log("Loading lookups")
     lu.load_lookups()

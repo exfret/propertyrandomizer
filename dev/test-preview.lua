@@ -1,5 +1,5 @@
 -- Run from the mod root: lua dev/test-preview.lua
--- Check source defaults, stale saved dev values, and the actual control-stage init callback.
+-- Check source defaults, stale saved dev values, the feature flag, and that control.lua's real init callback grants the start-of-game unlocks in every game (preview or not)
 local setting_prototypes = {}
 data = {
     extend = function(_, entries)
@@ -63,17 +63,14 @@ local function check(preview, saved_dev, test_helper, expected)
     local ok, err = pcall(init)
     assert(not ok and err == boundary, "init failed before graph boundary: " .. tostring(err))
     force.unlock_space_platforms = nil
-    if expected then
-        assert(platform_calls == 1)
-        assert(force.mining_with_fluid == true)
-        assert(force.bulk_inserter_capacity_bonus == 3)
-    else
-        assert(platform_calls == 0 and next(force) == nil, "startup bonuses leaked without preview")
-    end
+    -- The unlocks are granted at the start of every game, not just in the preview (the user's decision, 2026-09-28)
+    assert(platform_calls == 1, "space platforms not unlocked at the start")
+    assert(force.mining_with_fluid == true, "mining with fluid not granted at the start")
+    assert(force.bulk_inserter_capacity_bonus == 3, "bulk inserter bonus not granted at the start")
 end
 
 check(false, false, false, false)
 check(false, true, false, false)
 check(true, false, false, true)
 check(false, true, true, true)
-print("Preview isolation: source defaults, stale dev settings, preview and explicit dev mode passed")
+print("Preview isolation: source defaults, stale dev settings, preview and explicit dev mode passed, and the start-of-game unlocks are granted in every game")

@@ -73,20 +73,18 @@ script.on_init(function(event)
     storage.printed_change_surface_message = false
     storage.player_ind_to_last_return_attempt_ticks = {}
 
-    -- Runtime support for the development pipeline must match its prototype and logic gates.
-    if features.dev_unified then
-        -- Give ability to mine fluid immediately to make things easier
-        game.forces.player.mining_with_fluid = true
-        -- Space platforms too, so no technology has to unlock them (creating one still takes a rocket launch with a starter pack)
-        game.forces.player.unlock_space_platforms()
-        game.forces.player.cliff_deconstruction_enabled = true
-        game.forces.player.unlock_logistic_network = true
-        game.forces.player.character_logistic_requests = true
-        game.forces.player.vehicle_logistics = true
-        game.forces.player.create_ghost_on_entity_death = true
-        -- Make bulk inserters actually bulk when you unlock them
-        game.forces.player.bulk_inserter_capacity_bonus = 3
-    end
+    -- Unlocked at the start of every game, whatever the settings; the logic matches (logic.build in lib/logic/init.lua doesn't make mining with fluid or space platforms need their technologies)
+    -- Give ability to mine fluid immediately to make things easier
+    game.forces.player.mining_with_fluid = true
+    -- Space platforms too, so no technology has to unlock them (creating one still takes a rocket launch with a starter pack)
+    game.forces.player.unlock_space_platforms()
+    game.forces.player.cliff_deconstruction_enabled = true
+    game.forces.player.unlock_logistic_network = true
+    game.forces.player.character_logistic_requests = true
+    game.forces.player.vehicle_logistics = true
+    game.forces.player.create_ghost_on_entity_death = true
+    -- Make bulk inserters actually bulk when you unlock them
+    game.forces.player.bulk_inserter_capacity_bonus = 3
 
     load_dep_graph()
     

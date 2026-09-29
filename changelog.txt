@@ -18,8 +18,9 @@ Date: ?
     - With item randomization, a pure intermediate (i.e.- no uses other than in recipes) replaced by a pure intermediate results in no swap, since that would essentially just be a visual change anyways
     - Starting items respects item randomization changes, so if iron plates are now transport belts, you start with transport belts in your inventory
     - Option to get a small starting inventory bonus to smooth over the beginning of a run
+    - Space platforms, cliff deconstruction when force-building, the logistic network connection button, personal and vehicle logistic requests, ghosts when buildings die, and a bulk inserter capacity bonus are unlocked from the start of the game, like mining with fluid already was
   Bugfixes:
-    - Reachability sanity check uses now correctly uses new logic, which is more accurate; look at the Home tab of the randomizer panel for whether your seed seems to be softlocked
+    - Reachability sanity check now correctly uses new logic, which is more accurate; look at the Home tab of the randomizer panel for whether your seed seems to be softlocked
     - Now loads with 2.1.20
     - Item randomization locale and icon improvements
     - Recycling recipe fixing is fixed
