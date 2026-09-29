@@ -779,4 +779,95 @@ test("an effect created as a building makes one, where there's room, for whoever
     assert(effect.show_in_tooltip == true)
 end)
 
+-- Two cliffs exploded by the same capsule, a capsule thrown for another effect, another capsule that also explodes cliffs, and a cliff nothing explodes
+local function cliff_data()
+    data.raw.item = {
+        ["rock-popper"] = {
+            name = "rock-popper",
+            capsule_action = {
+                type = "destroy-cliffs",
+            },
+        },
+        ["party-popper"] = {
+            name = "party-popper",
+            capsule_action = {
+                type = "throw",
+            },
+        },
+        ["boulder-buster"] = {
+            name = "boulder-buster",
+            capsule_action = {
+                type = "destroy-cliffs",
+            },
+        },
+    }
+    data.raw.cliff = {
+        ["boulder-cliff"] = {
+            name = "boulder-cliff",
+            cliff_explosive = "rock-popper",
+        },
+        ["pebble-cliff"] = {
+            name = "pebble-cliff",
+            cliff_explosive = "rock-popper",
+        },
+        ["bare-cliff"] = {
+            name = "bare-cliff",
+        },
+    }
+end
+-- Gives capsule_name the capsule action from_name started with, as the entity handler does when an effect moves
+local function give_effect(capsule_name, from_action)
+    data.raw.item[capsule_name].capsule_action = table.deepcopy(from_action)
+end
+
+test("cliffs follow their explosive's effect to the capsule that has it now", function()
+    cliff_data()
+    local popper_action = data.raw.item["rock-popper"].capsule_action
+    give_effect("rock-popper", data.raw.item["party-popper"].capsule_action)
+    give_effect("party-popper", popper_action)
+    local changes = common.cliffs_follow_explosives({
+        ["party-popper"] = "rock-popper",
+        ["rock-popper"] = "party-popper",
+    })
+    assert(#changes == 2)
+    assert(changes[1].cliff == "boulder-cliff" and changes[1].from == "rock-popper" and changes[1].to == "party-popper")
+    assert(changes[2].cliff == "pebble-cliff" and changes[2].to == "party-popper")
+    assert(data.raw.cliff["boulder-cliff"].cliff_explosive == "party-popper" and data.raw.cliff["pebble-cliff"].cliff_explosive == "party-popper")
+    assert(data.raw.cliff["bare-cliff"].cliff_explosive == nil)
+end)
+
+test("cliffs whose explosive kept its effect stay as they are", function()
+    cliff_data()
+    -- Only the other cliff-exploding capsule's effect moved
+    give_effect("boulder-buster", data.raw.item["party-popper"].capsule_action)
+    local changes = common.cliffs_follow_explosives({
+        ["boulder-buster"] = "party-popper",
+    })
+    assert(#changes == 0)
+    assert(data.raw.cliff["boulder-cliff"].cliff_explosive == "rock-popper" and data.raw.cliff["pebble-cliff"].cliff_explosive == "rock-popper")
+end)
+
+test("a cliff whose explosive's effect went to a Vestige takes the first capsule by name that still explodes cliffs", function()
+    cliff_data()
+    -- The explosive got another effect, and its own went to a Vestige, which isn't a capsule and so isn't in the map
+    give_effect("rock-popper", data.raw.item["party-popper"].capsule_action)
+    local changes = common.cliffs_follow_explosives({
+        ["rock-popper"] = "party-popper",
+    })
+    assert(#changes == 2 and changes[1].to == "boulder-buster" and changes[2].to == "boulder-buster")
+    assert(data.raw.cliff["boulder-cliff"].cliff_explosive == "boulder-buster")
+end)
+
+test("a cliff forgets its explosive when no capsule explodes cliffs any more", function()
+    cliff_data()
+    give_effect("rock-popper", data.raw.item["party-popper"].capsule_action)
+    give_effect("boulder-buster", data.raw.item["party-popper"].capsule_action)
+    local changes = common.cliffs_follow_explosives({
+        ["rock-popper"] = "party-popper",
+        ["boulder-buster"] = "party-popper",
+    })
+    assert(#changes == 2 and changes[1].to == nil and changes[2].to == nil)
+    assert(data.raw.cliff["boulder-cliff"].cliff_explosive == nil and data.raw.cliff["pebble-cliff"].cliff_explosive == nil)
+end)
+
 print(num_passed .. " tests passed")

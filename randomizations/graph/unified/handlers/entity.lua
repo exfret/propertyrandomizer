@@ -2445,6 +2445,14 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         mark_item(capsule, {"", "Does what [item=" .. from_name .. "] ", locale.find_localised_name(from), " did."}, from)
         log("Entity randomization: using " .. capsule_name .. " does what " .. from_name .. " did")
     end
+    -- Cliffs name the capsule that explodes them, and the game won't load a cliff whose capsule no longer does, so they follow the effect (or forget it, when a Vestige took it)
+    for _, change in pairs(common.cliffs_follow_explosives(capsule_effect)) do
+        if change.to ~= nil then
+            log("Entity randomization: " .. change.cliff .. " is exploded by " .. change.to .. " now, since " .. change.from .. " lost that effect")
+        else
+            log("Entity randomization: " .. change.cliff .. " can't be exploded by a capsule now, since " .. change.from .. " lost that effect and no capsule has it")
+        end
+    end
 
     -- A Vestige with a capsule's effect places an invisible explosion that sets the effect off where it's placed, then goes away by itself
     -- It can't be a ghost (so no blueprints or robots), which is fine for an item that places nothing lasting

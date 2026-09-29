@@ -566,4 +566,46 @@ common.next_upgrade_problem = function(entity)
     return nil
 end
 
+-- Whether an item is a capsule that explodes cliffs when used (a destroy-cliffs capsule action)
+common.explodes_cliffs = function(item)
+    return item ~= nil and item.capsule_action ~= nil and item.capsule_action.type == "destroy-cliffs"
+end
+
+-- Cliffs name the capsule that explodes them (CliffPrototype::cliff_explosive in the 2.1 API docs), and the engine's load checks that its capsule action still explodes cliffs
+-- After capsule effects moved (capsule_effect: capsule --> the capsule whose effect it has now), each cliff whose explosive lost that effect follows it to the capsule that has it now, or to any capsule that still explodes cliffs, or forgets its explosive when none is left (a Vestige took the effect)
+-- Returns one {cliff, from, to} per cliff changed, in cliff name order, with to = nil for a forgotten explosive
+common.cliffs_follow_explosives = function(capsule_effect)
+    local effect_now_on = {}
+    for capsule_name, from_name in pairs(capsule_effect) do
+        effect_now_on[from_name] = capsule_name
+    end
+    -- The first capsule by name that explodes cliffs now, for cliffs whose own explosive's effect no capsule has
+    local fallback
+    for name, item in pairs(dutils.get_all_prots("item")) do
+        if common.explodes_cliffs(item) and (fallback == nil or name < fallback) then
+            fallback = name
+        end
+    end
+    local changes = {}
+    for _, cliff in pairs(data.raw.cliff or {}) do
+        local explosive = cliff.cliff_explosive
+        if explosive ~= nil and not common.explodes_cliffs(dutils.get_prot("item", explosive)) then
+            local new_explosive = effect_now_on[explosive]
+            if new_explosive == nil or not common.explodes_cliffs(dutils.get_prot("item", new_explosive)) then
+                new_explosive = fallback
+            end
+            cliff.cliff_explosive = new_explosive
+            table.insert(changes, {
+                cliff = cliff.name,
+                from = explosive,
+                to = new_explosive,
+            })
+        end
+    end
+    table.sort(changes, function(a, b)
+        return a.cliff < b.cliff
+    end)
+    return changes
+end
+
 return common
