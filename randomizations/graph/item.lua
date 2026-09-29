@@ -176,6 +176,9 @@ randomizations.item_new = function(id)
             -- Shooting with it (see deal-damage-surface)
             ["gun-category-surface"] = true,
             ["ammo-category-surface"] = true,
+            -- What an ammo's action creates (like the capture robot from its rocket) stays on the ammo prototype, so it follows the item like a capsule's use does (build-graph ties it to the ammo's item-surface, its slot)
+            -- Left with the slot, item randomization could put the ammo behind what it spawns (a capture robot rocket made from biter eggs) and only the check of the built game would see the cycle
+            ["spawn-entity-surface"] = true,
             -- Special compat nodes
             ["starter-gun"] = true,
             ["starter-gun-ammo"] = true,
