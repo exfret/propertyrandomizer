@@ -27,6 +27,7 @@ local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local common = require("scripts/common")
 local explorer_sorts = require("scripts/explorer-sorts")
+local explorer_rows = require("scripts/explorer-rows")
 local events = require("scripts/events")
 local customizer = require("scripts/customizer")
 local derandomizer = require("scripts/derandomizer")
@@ -128,6 +129,15 @@ local function size_main_panel(player, main_frame)
     explorer_flow_left.style.maximal_width = common.screen_size(player).width / 6
 end
 
+-- E and Escape close player.opened, which works like Factory Planner's main and modal dialogs.
+-- The main panel is player.opened while it's visible, and the contexts panel while it's open, which hands it back to the main panel when it closes (see on_gui_closed).
+local function close_contexts_panel(player)
+    local contexts_frame = player.gui.screen["randomizer-contexts-panel"]
+    if contexts_frame ~= nil then
+        contexts_frame.destroy()
+    end
+end
+
 local function toggle_randomizer_panel(event)
     local player = game.players[event.player_index]
     local gui = player.gui.screen
@@ -136,11 +146,12 @@ local function toggle_randomizer_panel(event)
         --gui["randomizer-main-panel"].destroy()
         gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
         if gui["randomizer-main-panel"].visible then
-            --player.opened = gui["randomizer-main-panel"]
+            player.opened = gui["randomizer-main-panel"]
             gui["randomizer-main-panel"].force_auto_center()
         else
+            close_contexts_panel(player)
             if player.opened == gui["randomizer-main-panel"] then
-                --player.opened = nil
+                player.opened = nil
             end
         end
         return
@@ -156,7 +167,7 @@ local function toggle_randomizer_panel(event)
     drag_space.style.height = 24
     drag_space.drag_target = main_frame
     title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
-    --player.opened = main_frame
+    player.opened = main_frame
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
     main_tabbed_pane.style.horizontally_stretchable = true
     main_tabbed_pane.style.vertically_stretchable = true
@@ -288,6 +299,9 @@ local type_to_localised = {
     ["entity-kill"] = "Kill: ",
     ["entity-mine"] = "Mine: ",
     ["entity-operate"] = "Operate: ",
+    ["entity-own"] = "Own: ",
+    -- Normally skipped through (scripts/explorer-rows.lua), but shown when it has several ways
+    ["entity-own-operable"] = "Own: ",
     ["entity-rocket-silo"] = "Rocket building: ",
     ["fluid"] = "",
     ["fluid-craft"] = "Craft: ",
@@ -333,6 +347,8 @@ local type_to_localised = {
 local node_type_to_tooltip = {
     ["entity-build-surface-condition"] = "A surface with valid conditions to build this entity on it.",
     ["entity-collision-group"] = "Tiles to build the entity on that it does not collide with.",
+    ["entity-own"] = "Built, captured or otherwise made yours, not found in the wild.",
+    ["entity-own-operable"] = "Built, captured or otherwise made yours, not found in the wild.",
     ["fluid-hold"] = "Ability to hold fluid in some sort of pipe that supports it.",
     ["recipe-category"] = "The ability to craft recipes of this category.",
     ["room"] = "A planet or space platform.",
@@ -598,6 +614,8 @@ local function show_contexts_panel(player, node)
     else
         frame.force_auto_center()
     end
+    -- After the frame exists, so the main panel's on_gui_closed knows it's staying open under it
+    player.opened = frame
     return frame
 end
 
@@ -696,7 +714,13 @@ events.on_event(defines.events.on_gui_click, function(event)
         return
     end
     if event.element.name == "randomizer-contexts-close" then
+        local player = game.players[event.player_index]
         event.element.parent.parent.destroy()
+        -- Hand E/Escape back to the main panel, as closing with them does (see on_gui_closed)
+        local main_frame = player.gui.screen["randomizer-main-panel"]
+        if main_frame ~= nil and main_frame.visible then
+            player.opened = main_frame
+        end
         return
     end
     if event.element.name == "randomizer-explorer-derandomizer-button" then
@@ -714,8 +738,10 @@ events.on_event(defines.events.on_gui_click, function(event)
     end
     if event.element.name == "randomizer-main-close" then
         local player = game.players[event.player_index]
+        -- First, so the main panel's on_gui_closed hides it rather than closing the contexts panel
+        close_contexts_panel(player)
         if player.opened == event.element.parent.parent then
-            --player.opened = nil
+            player.opened = nil
         else
             event.element.parent.parent.visible = false
         end
@@ -728,60 +754,58 @@ events.on_event(defines.events.on_gui_click, function(event)
 end)
 
 events.on_event(defines.events.on_gui_closed, function(event)
-    if event.element ~= nil and event.element.name == "randomizer-main-panel" then
-        event.element.visible = false
-        local player = game.players[event.player_index]
-        if player.opened == event.element then
-            --player.opened = nil
+    if event.element == nil or not event.element.valid then
+        return
+    end
+    local player = game.players[event.player_index]
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if event.element.name == "randomizer-contexts-panel" then
+        -- Hand E/Escape back to the main panel, so they close it next
+        event.element.destroy()
+        if main_frame ~= nil and main_frame.visible then
+            player.opened = main_frame
+        end
+    elseif event.element.name == "randomizer-main-panel" then
+        -- Opening the contexts panel takes player.opened from the main panel, which closes it, but the main panel stays open under the contexts panel
+        if player.gui.screen["randomizer-contexts-panel"] == nil then
+            event.element.visible = false
         end
     end
 end)
 
-local function get_node_leaves(node)
-    local graph = storage.graph
-
-    local open = {node}
-    local leaves = {}
-    local checked = {}
-    local node_to_amount_modifier = {[gutils.key(node)] = 1}
-    local open_ind = 1
-    while open_ind <= #open do
-        local curr_node = open[open_ind]
-        for pre, _ in pairs(curr_node.pre) do
-            local prekey = graph.edges[pre].start
-            if not checked[prekey] then
-                checked[prekey] = true
-                local prenode = graph.nodes[prekey]
-
-                node_to_amount_modifier[prekey] = node_to_amount_modifier[gutils.key(curr_node)]
-                if graph.edges[pre].inds ~= nil then
-                    if prenode.type == "recipe" then
-                        local recipe_prot = prototypes.recipe[prenode.name]
-                        local material_info = decon_to_prot(gutils.deconstruct(curr_node.prot))
-                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] / cutils.find_amount_in_ing_or_prod(recipe_prot.products, {type = material_info.top_level_class, name = material_info.prot.name})
-                    elseif curr_node.type == "recipe" then
-                        local recipe_prot = prototypes.recipe[curr_node.name]
-                        local material_info = decon_to_prot(gutils.deconstruct(prenode.prot))
-                        node_to_amount_modifier[prekey] = node_to_amount_modifier[prekey] * cutils.find_amount_in_ing_or_prod(recipe_prot.ingredients, {type = material_info.top_level_class, name = material_info.prot.name})
-                    end
-                end
-
-                -- Test for whether to propagate more (same op and same canonical)
-                -- Don't check op if there is one prereq (AND/OR equivalent then)
-                -- Also make sure it's not a source (must be included as leaf then!)
-                -- Finally, needs to be the same sort of thing (same node name)
-                if prenode.num_pre ~= 0 and (((prenode.op == node.op or prenode.num_pre == 1) and (graph.type_info[prenode.type].canonical == graph.type_info[node.type].canonical and prenode.name == node.name)) or (node.num_pre == 1 and prenode.type == "fluid-temperature")) then
-                    table.insert(open, prenode)
-                else
-                    table.insert(leaves, prenode)
-                end
-            end
-        end
-
-        open_ind = open_ind + 1
+-- The game only lets one GUI be opened, so like Factory Planner, another GUI opening closes the randomizer panels
+-- (the game closes the contexts panel first, and the main panel's player.opened it hands back gets closed without an event)
+events.on_event(defines.events.on_gui_opened, function(event)
+    if event.element ~= nil and (event.element.name == "randomizer-main-panel" or event.element.name == "randomizer-contexts-panel") then
+        return
     end
+    local player = game.players[event.player_index]
+    close_contexts_panel(player)
+    local main_frame = player.gui.screen["randomizer-main-panel"]
+    if main_frame ~= nil then
+        main_frame.visible = false
+    end
+end)
 
-    return {leaves = leaves, node_to_amount_modifier = node_to_amount_modifier}
+-- Recipe amounts along an edge with inds, for explorer_rows.leaves
+local function recipe_amount_factor(curr_node, prenode)
+    local function material(material_node)
+        local material_info = decon_to_prot(gutils.deconstruct(material_node.prot))
+        return {
+            type = material_info.top_level_class,
+            name = material_info.prot.name,
+        }
+    end
+    if prenode.type == "recipe" then
+        return 1 / cutils.find_amount_in_ing_or_prod(prototypes.recipe[prenode.name].products, material(curr_node))
+    elseif curr_node.type == "recipe" then
+        return cutils.find_amount_in_ing_or_prod(prototypes.recipe[curr_node.name].ingredients, material(prenode))
+    end
+    return 1
+end
+
+local function get_node_leaves(node)
+    return explorer_rows.leaves(storage.graph, node, recipe_amount_factor)
 end
 
 local function expand_node_dropdown(event, node)
@@ -902,19 +926,11 @@ events.on_event(defines.events.on_gui_elem_changed, function(event)
                 local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = "Derandomize!"})
             end
 
-            -- Refer to the operate entity node if there are more requirements to operation than just the entity
+            -- Refer to the operate entity node if there are more requirements to operation than just having the entity
             if node_type_to_use == "entity" then
                 local operate_node = graph.nodes[gutils.key("entity-operate", prot_choice.elem_value)]
-                if operate_node ~= nil then
-                    local to_ignore = {
-                        ["entity"] = true,
-                        ["warmth"] = true,
-                    }
-                    for _, prenode in pairs(gutils.prenodes(graph, operate_node)) do
-                        if not to_ignore[prenode.type] then
-                            node_type_to_use = "entity-operate"
-                        end
-                    end
+                if operate_node ~= nil and explorer_rows.operate_needs_more(graph, operate_node) then
+                    node_type_to_use = "entity-operate"
                 end
             end
             local node = graph.nodes[gutils.key(node_type_to_use, prot_choice.elem_value)]
