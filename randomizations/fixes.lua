@@ -631,6 +631,14 @@ randomizations.fixes = function()
         end
     end]]
 
+    -- Recipes use one fluid box per fluid whenever unified randomization runs (config.dev_unified), so ports go unseen until used (see lib/fluid-ports.lua)
+    if config.dev_unified then
+        local num_indexed = fluid_ports.index_recipe_fluids()
+        if num_indexed > 0 then
+            log("Fluid fixes: " .. num_indexed .. " recipes had their fluids numbered to one fluid box each")
+        end
+    end
+
     -- Recipes with fluids leave hand crafting's category, and mining drills can put out what their resources give (see lib/fluid-ports.lua), with items and fluids trading positions
     if config.item_fluids then
         local num_recategorized = fluid_ports.fix_fluid_crafting_categories()

@@ -604,4 +604,157 @@ test("a pipe connection takes one side of its tile, so a corner keeps its other 
     assert(#pipe_conns.get_available_pipe_connections(machine, true) == 11, "ignoring the energy source frees its tile")
 end)
 
+test("crafting machine ports go unseen until used: one connection per box, drawn only when connected, off without a fluid recipe", function()
+    -- A 3x3 machine whose one input box connects on three tiles, the first through an underground connection
+    local function machine(class, name)
+        return {
+            type = class,
+            name = name,
+            collision_box = { { -1.2, -1.2 }, { 1.2, 1.2 } },
+            crafting_categories = { "other-category" },
+            fluid_boxes = {
+                {
+                    production_type = "input",
+                    volume = 200,
+                    pipe_picture = {},
+                    pipe_connections = {
+                        {
+                            flow_direction = "input",
+                            direction = defines.direction.north,
+                            position = { 0, -1 },
+                            connection_type = "underground",
+                            max_underground_distance = 2,
+                        },
+                        {
+                            flow_direction = "input",
+                            direction = defines.direction.south,
+                            position = { 0, 1 },
+                        },
+                        {
+                            flow_direction = "input",
+                            direction = defines.direction.west,
+                            position = { -1, 0 },
+                        },
+                    },
+                },
+            },
+        }
+    end
+    -- The points the machine has free once its own box keeps one connection, which new boxes fill up to the reserved ones
+    local trimmed = machine("assembling-machine", "trimmed")
+    fluid_ports.hide_unused_ports(trimmed)
+    local num_free = #pipe_conns.get_available_pipe_connections(trimmed)
+    assert(num_free > #pipe_conns.get_available_pipe_connections(machine("assembling-machine", "untrimmed")), "dropped connections free their points")
+    data.raw["assembling-machine"] = { m = machine("assembling-machine", "m") }
+    data.raw.furnace = { f = machine("furnace", "f") }
+    data.raw.recipe = {
+        r = {
+            type = "recipe",
+            name = "r",
+            categories = { "other-category" },
+            ingredients = {
+                { type = "item", name = "a", amount = 1 },
+                { type = "fluid", name = "gas", amount = 10 },
+            },
+            results = {
+                { type = "fluid", name = "brine", amount = 10 },
+            },
+        },
+    }
+    fluid_ports.add_crafting_machine_ports()
+    local machines = {
+        data.raw["assembling-machine"].m,
+        data.raw.furnace.f,
+    }
+    for _, prot in pairs(machines) do
+        local own = prot.fluid_boxes[1]
+        assert(#own.pipe_connections == 1, prot.name .. ": the machine's own box keeps one connection, got " .. #own.pipe_connections)
+        assert(own.pipe_connections[1].position[2] == 1 and own.pipe_connections[1].connection_type == nil, prot.name .. ": the first adjacent connection is the one kept")
+        local num_expected = 1 + num_free - fluid_ports.RESERVED_POINTS
+        assert(#prot.fluid_boxes == num_expected, prot.name .. ": expected " .. num_expected .. " boxes, got " .. #prot.fluid_boxes)
+        local points = {}
+        for _, box in pairs(prot.fluid_boxes) do
+            assert(box.draw_only_when_connected == true, prot.name .. ": every box is drawn only when connected")
+            assert(#box.pipe_connections == 1, prot.name .. ": every box has one connection")
+            local connection = box.pipe_connections[1]
+            local point = connection.position[1] .. "," .. connection.position[2] .. " facing " .. connection.direction
+            assert(points[point] == nil, prot.name .. ": two boxes connect at " .. point)
+            points[point] = true
+        end
+    end
+    assert(data.raw["assembling-machine"].m.fluid_boxes_off_when_no_fluid_recipe == true, "an assembling machine's boxes are off without a fluid recipe")
+    assert(data.raw.furnace.f.fluid_boxes_off_when_no_fluid_recipe == nil, "a furnace has no such property")
+    -- A 1x1 machine whose own box connects twice on its only tile: no room for new boxes, but it still keeps one connection and hides it
+    local function full_machine(name)
+        local full = machine("assembling-machine", name)
+        full.collision_box = { { -0.4, -0.4 }, { 0.4, 0.4 } }
+        full.fluid_boxes[1].pipe_connections = {
+            {
+                flow_direction = "input",
+                direction = defines.direction.north,
+                position = { 0, 0 },
+            },
+            {
+                flow_direction = "input",
+                direction = defines.direction.south,
+                position = { 0, 0 },
+            },
+        }
+        return full
+    end
+    local full_trimmed = full_machine("full-trimmed")
+    fluid_ports.hide_unused_ports(full_trimmed)
+    local num_full_expected = 1 + math.max(#pipe_conns.get_available_pipe_connections(full_trimmed) - fluid_ports.RESERVED_POINTS, 0)
+    local full = full_machine("full")
+    data.raw["assembling-machine"].full = full
+    fluid_ports.add_crafting_machine_ports()
+    assert(#full.fluid_boxes == num_full_expected, "expected " .. num_full_expected .. " boxes on a full machine, got " .. #full.fluid_boxes)
+    assert(#full.fluid_boxes[1].pipe_connections == 1)
+    assert(full.fluid_boxes[1].draw_only_when_connected == true)
+    assert(full.fluid_boxes_off_when_no_fluid_recipe == true)
+    -- Running again changes nothing: the boxes already have one connection each
+    local num_boxes = #data.raw["assembling-machine"].m.fluid_boxes
+    fluid_ports.add_crafting_machine_ports()
+    assert(#data.raw["assembling-machine"].m.fluid_boxes == num_boxes, "no new boxes on a second run")
+    data.raw["assembling-machine"] = nil
+    data.raw.furnace = nil
+    data.raw.recipe = nil
+end)
+
+test("a recipe's fluids are numbered to one fluid box each: ingredients from 1, results from 1, items skipped", function()
+    data.raw.recipe = {
+        r = {
+            type = "recipe",
+            name = "r",
+            ingredients = {
+                { type = "item", name = "a", amount = 1 },
+                { type = "fluid", name = "gas", amount = 10, fluidbox_index = 2 },
+                { type = "fluid", name = "brine", amount = 5 },
+            },
+            results = {
+                { type = "fluid", name = "syrup", amount = 1 },
+                { type = "item", name = "b", amount = 1 },
+                { type = "fluid", name = "mist", amount = 1 },
+            },
+        },
+        dry = {
+            type = "recipe",
+            name = "dry",
+            ingredients = {
+                { type = "item", name = "a", amount = 1 },
+            },
+            results = {
+                { type = "item", name = "b", amount = 1 },
+            },
+        },
+    }
+    assert(fluid_ports.index_recipe_fluids() == 1, "only the recipe with fluids changes")
+    local recipe = data.raw.recipe.r
+    assert(recipe.ingredients[1].fluidbox_index == nil, "items get no number")
+    assert(recipe.ingredients[2].fluidbox_index == 1 and recipe.ingredients[3].fluidbox_index == 2, "ingredients count the input boxes from 1, whatever they had")
+    assert(recipe.results[1].fluidbox_index == 1 and recipe.results[2].fluidbox_index == nil and recipe.results[3].fluidbox_index == 2, "results count the output boxes from 1")
+    assert(fluid_ports.index_recipe_fluids() == 0, "numbering again changes nothing")
+    data.raw.recipe = nil
+end)
+
 print(num_passed .. " tests passed")

@@ -127,60 +127,118 @@ fluid_ports.box_directions = function(num_new, num_in, num_out, want_in, want_ou
     return directions
 end
 
+-- The pipe connection a fluid box keeps when it keeps one: its first adjacent one (connection_type "normal", the default; types/PipeConnectionDefinition.html), or else its first
+local function kept_connection(box)
+    for _, connection in pairs(box.pipe_connections or {}) do
+        if connection.connection_type == nil or connection.connection_type == "normal" then
+            return connection
+        end
+    end
+    return (box.pipe_connections or {})[1]
+end
+
+-- Makes a crafting machine's ports go unseen until used, as py-randomized-preview's prefixes.lua does for its assembling machines:
+--   - every fluid box keeps one pipe connection, so the tiles the others took are free for more boxes
+--   - every fluid box is only drawn when something connects to it (FluidBox::draw_only_when_connected)
+--   - an assembling machine's boxes are off while its recipe has no fluid (AssemblingMachinePrototype::fluid_boxes_off_when_no_fluid_recipe; furnaces don't have it, so theirs stay on)
+-- Returns how many pipe connections were dropped
+fluid_ports.hide_unused_ports = function(machine)
+    local num_dropped = 0
+    for _, box in pairs(machine.fluid_boxes or {}) do
+        local kept = kept_connection(box)
+        if kept ~= nil then
+            num_dropped = num_dropped + #box.pipe_connections - 1
+            box.pipe_connections = { kept }
+        end
+        box.draw_only_when_connected = true
+    end
+    if machine.type == "assembling-machine" or machine.type == "rocket-silo" then
+        machine.fluid_boxes_off_when_no_fluid_recipe = true
+    end
+    return num_dropped
+end
+
 -- Gives every crafting machine as many input and output fluid boxes as its free pipe connection points allow, keeping RESERVED_POINTS points free
 -- A point is one side of an edge tile, so corner tiles have two (see pipe_conns.get_available_pipe_connections)
--- New boxes are only drawn when something connects to them, and assembling machines that had none only switch them on for recipes with fluids
+-- Ports go unseen until used (see hide_unused_ports), the machine's own included: they keep one connection each first, so what they gave up counts as free
 fluid_ports.add_crafting_machine_ports = function()
     for _, class in pairs(sorted_names(categories.crafting_machines)) do
         for _, name in pairs(sorted_names(dutils.prots(class))) do
             local machine = dutils.prots(class)[name]
-            local template = template_box(machine)
-            local free = pipe_conns.get_available_pipe_connections(machine)
-            local num_new = #free - fluid_ports.RESERVED_POINTS
-            if machine.crafting_categories ~= nil and template ~= nil and num_new > 0 then
-                local num_in = 0
-                local num_out = 0
-                for _, box in pairs(machine.fluid_boxes or {}) do
-                    if box.production_type == "input" then
-                        num_in = num_in + 1
-                    elseif box.production_type == "output" then
-                        num_out = num_out + 1
+            if machine.crafting_categories ~= nil then
+                local num_dropped = fluid_ports.hide_unused_ports(machine)
+                local template = template_box(machine)
+                local free = pipe_conns.get_available_pipe_connections(machine)
+                local num_new = #free - fluid_ports.RESERVED_POINTS
+                if template ~= nil and num_new > 0 then
+                    local num_in = 0
+                    local num_out = 0
+                    for _, box in pairs(machine.fluid_boxes or {}) do
+                        if box.production_type == "input" then
+                            num_in = num_in + 1
+                        elseif box.production_type == "output" then
+                            num_out = num_out + 1
+                        end
                     end
-                end
-                local want_in, want_out = recipe_sizes(machine)
-                local had_boxes = machine.fluid_boxes ~= nil and next(machine.fluid_boxes) ~= nil
-                local points = spread_points(free)
-                local template_connection = (template.pipe_connections or {})[1] or {}
-                machine.fluid_boxes = machine.fluid_boxes or {}
-                for i, direction in pairs(fluid_ports.box_directions(num_new, num_in, num_out, want_in, want_out, machine.type == "furnace")) do
-                    local box = table.deepcopy(template)
-                    box.production_type = direction
-                    box.filter = nil
-                    box.volume = template.volume or 1000
-                    box.draw_only_when_connected = true
-                    box.pipe_connections = {
-                        {
-                            flow_direction = direction,
-                            direction = points[i].direction,
-                            position = points[i].position,
-                            connection_category = template_connection.connection_category,
-                        },
-                    }
-                    table.insert(machine.fluid_boxes, box)
-                end
-                if not had_boxes and (machine.type == "assembling-machine" or machine.type == "rocket-silo") then
-                    machine.fluid_boxes_off_when_no_fluid_recipe = true
-                end
-                local num_new_in = 0
-                for _, box in pairs(machine.fluid_boxes) do
-                    if box.production_type == "input" then
-                        num_new_in = num_new_in + 1
+                    local want_in, want_out = recipe_sizes(machine)
+                    local points = spread_points(free)
+                    local template_connection = (template.pipe_connections or {})[1] or {}
+                    machine.fluid_boxes = machine.fluid_boxes or {}
+                    for i, direction in pairs(fluid_ports.box_directions(num_new, num_in, num_out, want_in, want_out, machine.type == "furnace")) do
+                        local box = table.deepcopy(template)
+                        box.production_type = direction
+                        box.filter = nil
+                        box.volume = template.volume or 1000
+                        box.draw_only_when_connected = true
+                        box.pipe_connections = {
+                            {
+                                flow_direction = direction,
+                                direction = points[i].direction,
+                                position = points[i].position,
+                                connection_category = template_connection.connection_category,
+                            },
+                        }
+                        table.insert(machine.fluid_boxes, box)
                     end
+                    local num_all_in = 0
+                    for _, box in pairs(machine.fluid_boxes) do
+                        if box.production_type == "input" then
+                            num_all_in = num_all_in + 1
+                        end
+                    end
+                    log("Fluid ports: " .. name .. " has " .. num_all_in .. " inputs and " .. (#machine.fluid_boxes - num_all_in) .. " other boxes (" .. num_new .. " new, " .. num_dropped .. " connections dropped), for recipes of up to " .. want_in .. " ingredients and " .. want_out .. " results")
+                elseif num_dropped > 0 then
+                    log("Fluid ports: " .. name .. " keeps one connection per fluid box (" .. num_dropped .. " dropped) and has no room for new boxes")
                 end
-                log("Fluid ports: " .. name .. " has " .. num_new_in .. " inputs and " .. (#machine.fluid_boxes - num_new_in) .. " other boxes (" .. num_new .. " new), for recipes of up to " .. want_in .. " ingredients and " .. want_out .. " results")
             end
         end
     end
+end
+
+-- Numbers a recipe's fluids so each uses exactly one of its machine's fluid boxes and the boxes left over stay closed, as vanilla basic oil processing does on the refinery (base/prototypes/recipe.lua): ingredients count the input boxes from 1, results the output boxes (FluidIngredientPrototype::fluidbox_index, which is separate for inputs and outputs)
+-- Without a number, a fluid is offered on every box of its kind, so a machine with many ports shows them all; py-randomized-preview's recipes carry these numbers
+-- Returns how many recipes changed
+fluid_ports.index_recipe_fluids = function()
+    local num_changed = 0
+    for _, recipe in pairs(data.raw.recipe) do
+        local changed = false
+        for _, list in pairs({ recipe.ingredients or {}, recipe.results or {} }) do
+            local index = 0
+            for _, entry in pairs(list) do
+                if entry.type == "fluid" then
+                    index = index + 1
+                    if entry.fluidbox_index ~= index then
+                        entry.fluidbox_index = index
+                        changed = true
+                    end
+                end
+            end
+        end
+        if changed then
+            num_changed = num_changed + 1
+        end
+    end
+    return num_changed
 end
 
 -- The results a resource gives and whether it needs a fluid, as { item = bool, fluid = bool, required_fluid = bool }
