@@ -72,9 +72,8 @@ randomizations.equipment_active_defense_range = function(id)
     end
 end
 
--- Linked randomization
 randomizations.equipment_battery_buffer = function(id)
-    -- Spoof a fake property for linked randomization
+    -- Spoof a fake property so the helper has a number to randomize
     local battery_equipments = {}
     for _, equipment in pairs(data.raw["battery-equipment"]) do
         if equipment.energy_source.buffer_capacity ~= nil then
@@ -84,14 +83,16 @@ randomizations.equipment_battery_buffer = function(id)
         end
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = battery_equipments,
-        property = "buffer_capacity_as_num",
-        range = "small",
-        rounding = "discrete_float",
-        variance = "big",
-    })
+    for _, prototype in pairs(battery_equipments) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "buffer_capacity_as_num",
+            range = "small",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+    end
 
     for _, equipment in pairs(battery_equipments) do
         equipment.energy_source.buffer_capacity = equipment.buffer_capacity_as_num .. "J"
@@ -379,14 +380,16 @@ randomizations.equipment_personal_roboport_construction_radius = function(id)
         equipment_to_old_radius[equipment.name] = equipment.construction_radius
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = roboports,
-        property = "construction_radius",
-        range = "small",
-        variance = "medium",
-        rounding = "discrete"
-    })
+    for _, prototype in pairs(roboports) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "construction_radius",
+            range = "small",
+            variance = "medium",
+            rounding = "discrete",
+        })
+    end
 
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
         locale_utils.create_localised_description(equipment, equipment.construction_radius / equipment_to_old_radius[equipment.name], id, { variance = "medium" })
@@ -403,15 +406,17 @@ randomizations.equipment_personal_roboport_max_robots = function(id)
         end
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = roboports,
-        property = "robot_limit",
-        range = "small",
-        rounding = "discrete",
-        variance = "big",
-        data_type = "uint32",
-    })
+    for _, prototype in pairs(roboports) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "robot_limit",
+            range = "small",
+            rounding = "discrete",
+            variance = "big",
+            data_type = "uint32",
+        })
+    end
 
     for _, equipment in pairs(data.raw["roboport-equipment"]) do
         locale_utils.create_localised_description(equipment, equipment.robot_limit / equipment_to_old_max_robots[equipment.name], id, { variance = "big" })

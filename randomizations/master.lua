@@ -4,7 +4,6 @@ randomizations = {}
 
 -- These are helpers used by the rest of the numerical randomizations
 require("randomizations/helper/energy")
-require("randomizations/helper/linked")
 require("randomizations/helper/trigger")
 
 log("Gathering graph randomizations (if applicable)")

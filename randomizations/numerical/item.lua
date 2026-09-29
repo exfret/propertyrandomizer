@@ -206,14 +206,16 @@ randomizations.armor_inventory_bonus = function(id)
         end
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = prototypes,
-        property = "inventory_size_bonus",
-        rounding = "discrete",
-        variance = "big",
-        data_type = "uint16",
-    })
+    for _, prototype in pairs(prototypes) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "inventory_size_bonus",
+            rounding = "discrete",
+            variance = "big",
+            data_type = "uint16",
+        })
+    end
 
     for _, armor in pairs(data.raw.armor) do
         if armor.inventory_size_bonus ~= nil and armor.inventory_size_bonus > 0 then

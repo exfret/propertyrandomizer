@@ -682,7 +682,6 @@ randomizations.beam_width = function(id)
     end
 end
 
--- Includes tiered randomization based off belt speeds
 randomizations.belt_speed = function(id)
     local belts = {}
     local old_speeds = {}
@@ -695,16 +694,18 @@ randomizations.belt_speed = function(id)
         end
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = belts,
-        property = "speed",
-        range_min = "small",
-        range_max = "big",
-        bias = 0.05,
-        rounding = "pure_discrete",
-        abs_min = 1
-    })
+    for _, prototype in pairs(belts) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "speed",
+            range_min = "small",
+            range_max = "big",
+            bias = 0.05,
+            rounding = "pure_discrete",
+            abs_min = 1,
+        })
+    end
 
     -- Undo earlier multiplication by 256
     for ind, belt in pairs(belts) do
@@ -1090,37 +1091,17 @@ end
 
 -- Includes linked randomization based on crafting speeds
 randomizations.crafting_machine_speed = function(id)
-    -- Separate by crafting category
-    local function category_str(machine)
-        local separator = "aaa"
-        local cat_str = ""
-        for _, cat in pairs(machine.crafting_categories) do
-            cat_str = cat_str .. cat .. separator
-        end
-        return string.sub(cat_str, 1, -4)
-    end
-
-    local category_to_machines = {}
     local machine_to_old_speed = {}
     for crafting_machine_class, _ in pairs(categories.crafting_machines) do
         for _, machine in pairs(data.raw[crafting_machine_class]) do
-            local cat_str = category_str(machine)
-
-            if category_to_machines[cat_str] == nil then
-                category_to_machines[cat_str] = {}
-            end
-            table.insert(category_to_machines[cat_str], machine)
             machine_to_old_speed[machine.name] = machine.crafting_speed
+            randomize({
+                id = id,
+                prototype = machine,
+                property = "crafting_speed",
+                rounding = "discrete_float",
+            })
         end
-    end
-    for _, machine_list in pairs(category_to_machines) do
-        randomizations.linked({
-            separated = true,
-            id = id,
-            prototypes = machine_list,
-            property = "crafting_speed",
-            rounding = "discrete_float"
-        })
     end
 
     -- Scale pollution and energy usage accordingly
@@ -1140,7 +1121,6 @@ randomizations.crafting_machine_speed = function(id)
     end
 end
 
--- Includes linked randomization based on distribution distance
 randomizations.electric_pole_wire_distance = function(id)
     local electric_poles = {}
     local electric_pole_to_old_wire_dist = {}
@@ -1149,14 +1129,16 @@ randomizations.electric_pole_wire_distance = function(id)
         electric_pole_to_old_wire_dist[electric_pole.name] = electric_pole.maximum_wire_distance
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = electric_poles,
-        property = "maximum_wire_distance",
-        abs_min = 1,
-        abs_max = 64,
-        rounding = "discrete"
-    })
+    for _, prototype in pairs(electric_poles) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "maximum_wire_distance",
+            abs_min = 1,
+            abs_max = 64,
+            rounding = "discrete",
+        })
+    end
 
     for _, electric_pole in pairs(electric_poles) do
         if electric_pole_to_old_wire_dist[electric_pole.name] > 0 then
@@ -1165,7 +1147,6 @@ randomizations.electric_pole_wire_distance = function(id)
     end
 end
 
--- Includes linked randomization based on supply area
 randomizations.electric_pole_supply_area = function(id)
     local electric_poles = {}
     local electric_pole_to_old_supply_area = {}
@@ -1181,15 +1162,17 @@ randomizations.electric_pole_supply_area = function(id)
         electric_pole.supply_area_distance = electric_pole.supply_area_distance - get_collision_radius(electric_pole)
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = electric_poles,
-        property = "supply_area_distance",
-        abs_min = 1,
-        abs_max = 64,
-        variance = "small",
-        rounding = "discrete"
-    })
+    for _, prototype in pairs(electric_poles) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "supply_area_distance",
+            abs_min = 1,
+            abs_max = 64,
+            variance = "small",
+            rounding = "discrete",
+        })
+    end
 
     for _, electric_pole in pairs(data.raw["electric-pole"]) do
         local collision_radius = get_collision_radius(electric_pole)
@@ -1550,8 +1533,7 @@ randomizations.inserter_filter = function(id)
     end
 end
 
--- Tier preservation
--- Separate out fast/bulk/stack inserters into separate tier lists
+-- Separate out fast/bulk/stack inserters into separate lists
 randomizations.inserter_speed = function(id)
     local old_rotation_speeds = {}
     local inserter_lists = {
@@ -1574,14 +1556,16 @@ randomizations.inserter_speed = function(id)
     end
 
     for _, list in pairs(inserter_lists) do
-        randomizations.linked({
-            id = id,
-            prototypes = list,
-            property = "rotation_speed",
-            range_min = "small",
-            range_max = "very_big",
-            rounding = "discrete_float",
-        })
+        for _, prototype in pairs(list) do
+            randomize({
+                id = id,
+                prototype = prototype,
+                property = "rotation_speed",
+                range_min = "small",
+                range_max = "very_big",
+                rounding = "discrete_float",
+            })
+        end
     end
 
     -- Fix extension speed
@@ -1595,7 +1579,7 @@ randomizations.inserter_speed = function(id)
 end
 
 randomizations.inventory_sizes = function(id)
-    -- Tier preservation for containers
+    -- Containers
     local container_list = {}
     local container_to_old_size = {}
     for _, class_name in pairs({"container", "logistic-container"}) do
@@ -1608,19 +1592,21 @@ randomizations.inventory_sizes = function(id)
             end
         end
     end
-    randomizations.linked({
-        id = id,
-        prototypes = container_list,
-        property = "inventory_size",
-        abs_min = 1,
-        rounding = "discrete",
-        data_type = "uint16",
-    })
+    for _, prototype in pairs(container_list) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "inventory_size",
+            abs_min = 1,
+            rounding = "discrete",
+            data_type = "uint16",
+        })
+    end
     for _, container in pairs(container_list) do
         locale_utils.create_localised_description(container, container.inventory_size / container_to_old_size[container.name], id)
     end
     
-    -- Tier preservation for cargo wagons
+    -- Cargo wagons
     local wagon_list = {}
     local wagon_to_old_size = {}
     for _, cargo_wagon in pairs(data.raw["cargo-wagon"]) do
@@ -1629,14 +1615,16 @@ randomizations.inventory_sizes = function(id)
             table.insert(wagon_list, cargo_wagon)
         end
     end
-    randomizations.linked({
-        id = id,
-        prototypes = wagon_list,
-        property = "inventory_size",
-        abs_min = 1,
-        rounding = "discrete",
-        data_type = "uint16",
-    })
+    for _, prototype in pairs(wagon_list) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "inventory_size",
+            abs_min = 1,
+            rounding = "discrete",
+            data_type = "uint16",
+        })
+    end
     for _, cargo_wagon in pairs(wagon_list) do
         locale_utils.create_localised_description(cargo_wagon, cargo_wagon.inventory_size / wagon_to_old_size[cargo_wagon.name], id)
     end
@@ -2516,6 +2504,7 @@ randomizations.offshore_pump_speed = function(id)
 end
 
 randomizations.pipe_to_ground_distance = function(id)
+    local underground_pipes = {}
     local underground_pipe_conns = {}
     local pipe_to_old_underground_distances = {}
     for _, pipe in pairs(data.raw["pipe-to-ground"]) do
@@ -2524,19 +2513,23 @@ randomizations.pipe_to_ground_distance = function(id)
         for ind, pipe_connection in pairs(pipe.fluid_box.pipe_connections) do
             if pipe_connection.max_underground_distance ~= nil and pipe_connection.max_underground_distance > 0 then
                 pipe_to_old_underground_distances[pipe.name][ind] = pipe_connection.max_underground_distance
+                table.insert(underground_pipes, pipe)
                 table.insert(underground_pipe_conns, pipe_connection)
             end
         end
     end
 
-    randomizations.linked({
-        id = id,
-        tbls = underground_pipe_conns,
-        property = "max_underground_distance",
-        abs_min = 2,
-        rounding = "discrete",
-        data_type = "uint8",
-    })
+    for ind, prototype in pairs(underground_pipes) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            tbl = underground_pipe_conns[ind],
+            property = "max_underground_distance",
+            abs_min = 2,
+            rounding = "discrete",
+            data_type = "uint8",
+        })
+    end
 
     for _, pipe in pairs(data.raw["pipe-to-ground"]) do
         for ind, pipe_connection in pairs(pipe.fluid_box.pipe_connections) do

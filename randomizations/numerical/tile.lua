@@ -43,7 +43,6 @@ randomizations.tile_pollution_absorption = function (id)
 end
 
 randomizations.tile_walking_speed_modifier = function(id)
-    -- Just do linked randomization to make things easier, so that I don't have to worry about next_direction
     local prototypes = {}
     local tile_to_old_modifier = {}
     for _, tile in pairs(data.raw.tile) do
@@ -53,13 +52,15 @@ randomizations.tile_walking_speed_modifier = function(id)
         end
     end
 
-    randomizations.linked({
-        id = id,
-        prototypes = prototypes,
-        property = "walking_speed_modifier",
-        rounding = "discrete_float",
-        variance = "big",
-    })
+    for _, prototype in pairs(prototypes) do
+        randomize({
+            id = id,
+            prototype = prototype,
+            property = "walking_speed_modifier",
+            rounding = "discrete_float",
+            variance = "big",
+        })
+    end
 
     for _, tile in pairs(data.raw.tile) do
         if tile.walking_speed_modifier ~= nil then
