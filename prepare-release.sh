@@ -6,8 +6,9 @@
 # Builds propertyrandomizer_VERSION (a folder and a zip) next to this folder, with VERSION from the first changelog entry
 # The release ships only what dev/release-files.py lists (files the game reads, the docs players are pointed to, and the Lua the mod can require), so dev tools, notes and cost research data stay out
 # The release is built in a temporary folder and tested there first (the smoke and settings suites of dev/run-tests.py); nothing is written next to this folder unless the tests pass
+# Except with --zip-first: the zip is written before the tests, so it can be uploaded while they run (it's the same content they test); the folder still waits for them to pass
 #
-# Usage: ./prepare-release.sh [dev/run-tests.py options], e.g. ./prepare-release.sh --jobs 4, or --tier precommit for a quick check
+# Usage: ./prepare-release.sh [--zip-first] [dev/run-tests.py options], e.g. ./prepare-release.sh --jobs 4, or --tier precommit for a quick check
 # Parser dependencies are installed in .venv/release on first use. Set PYTHON to choose the Python used to create it.
 set -euo pipefail
 
@@ -39,6 +40,26 @@ PARENT_DIR="$(dirname "$PROJECT_DIR")"
 RELEASE_BASENAME="${PROJECT_NAME}_${VERSION}"
 RELEASE_PATH="$PARENT_DIR/$RELEASE_BASENAME"
 ZIP_FILE="$PARENT_DIR/${RELEASE_BASENAME}.zip"
+
+# --zip-first is this script's own option (see the top); everything else goes to dev/run-tests.py
+ZIP_FIRST=0
+TEST_ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "--zip-first" ]]; then
+        ZIP_FIRST=1
+    else
+        TEST_ARGS+=("$arg")
+    fi
+done
+
+# Zips the release folder found in the given folder, from there, so the zip holds propertyrandomizer_VERSION/... as the mod portal wants
+make_zip() {
+    rm -f "$ZIP_FILE"
+    (
+        cd "$1"
+        zip -rq "$ZIP_FILE" "$RELEASE_BASENAME"
+    )
+}
 
 # Keep release dependencies separate from global Python and other development tools.
 RELEASE_PYTHON="$PROJECT_DIR/.venv/release/bin/python"
@@ -150,24 +171,42 @@ PY
 echo "Updated changelog date to $DATE_STR"
 
 # -------------------------------------------------------------------
+# 5b. With --zip-first, zip the staged release now, so it can be uploaded while the tests run
+#     It's the content the tests check below; the folder still waits for them to pass
+# -------------------------------------------------------------------
+if [[ "$ZIP_FIRST" == 1 ]]; then
+    echo ""
+    echo "Creating zip archive before the tests (--zip-first)..."
+    make_zip "$STAGE_ROOT"
+    echo "Zip file (not tested yet): $ZIP_FILE"
+fi
+
+# -------------------------------------------------------------------
 # 6. Test the release itself, so a file it needs but doesn't ship shows up here
 #    The unified suite is left out: it tests the randomizations still in development, which the release turns off
 # -------------------------------------------------------------------
 echo ""
 echo "Testing the release..."
-if "$RELEASE_PYTHON" dev/run-tests.py smoke settings --dir "$STAGE_PATH" "$@"; then
+if "$RELEASE_PYTHON" dev/run-tests.py smoke settings --dir "$STAGE_PATH" ${TEST_ARGS[@]+"${TEST_ARGS[@]}"}; then
     echo "Tests passed."
 else
     EXIT_CODE=$?
-    echo "Error: tests failed with exit code $EXIT_CODE; nothing was written next to $PROJECT_DIR"
+    if [[ "$ZIP_FIRST" == 1 ]]; then
+        echo "Error: tests failed with exit code $EXIT_CODE; the release folder was not written, and $ZIP_FILE was built before the tests, so look into the failures before uploading it"
+    else
+        echo "Error: tests failed with exit code $EXIT_CODE; nothing was written next to $PROJECT_DIR"
+    fi
     exit "$EXIT_CODE"
 fi
 
 # -------------------------------------------------------------------
 # 7. Replace any earlier build of this version with the tested one
+#    With --zip-first, the zip written before the tests is this same content, so it stays
 # -------------------------------------------------------------------
 rm -rf "$RELEASE_PATH"
-rm -f "$ZIP_FILE"
+if [[ "$ZIP_FIRST" != 1 ]]; then
+    rm -f "$ZIP_FILE"
+fi
 mv "$STAGE_PATH" "$RELEASE_PATH"
 echo "Release folder: $RELEASE_PATH"
 
@@ -276,13 +315,14 @@ awk -v version="$VERSION" '
 echo "---"
 
 # -------------------------------------------------------------------
-# 10. Zip the release folder
+# 10. Zip the release folder (already done before the tests with --zip-first)
 # -------------------------------------------------------------------
-echo "Creating zip archive..."
-(
-    cd "$PARENT_DIR"
-    zip -rq "${RELEASE_BASENAME}.zip" "$RELEASE_BASENAME"
-)
+if [[ "$ZIP_FIRST" == 1 ]]; then
+    echo "Zip archive was created before the tests, with the content that passed them"
+else
+    echo "Creating zip archive..."
+    make_zip "$PARENT_DIR"
+fi
 
 # -------------------------------------------------------------------
 # 11. Show size comparison
