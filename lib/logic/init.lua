@@ -115,7 +115,12 @@ logic.type_info = {}
 logic.edge_info = {}
 
 logic.build = function(ignore_balance_nodes, extra_params)
-    extra_params = extra_params or {}
+    extra_params = table.deepcopy(extra_params or {})
+    -- Match control.lua: ordinary games retain technology unlocks; preview grants them on init.
+    -- An explicit caller choice still takes precedence (including extracted-logic users).
+    if extra_params.tech_gated_unlocks == nil then
+        extra_params.tech_gated_unlocks = config == nil or not config.dev_unified
+    end
 
     --log("Loading lookups")
     lu.load_lookups()

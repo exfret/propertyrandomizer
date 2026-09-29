@@ -84,28 +84,21 @@ mkdir -p "$STAGE_PATH"
 rsync -a --files-from="$STAGE_ROOT/files.txt" "$PROJECT_DIR/" "$STAGE_PATH/"
 
 # -------------------------------------------------------------------
-# 3. Turn off the unified randomizations still in development
-#    (the hidden setting propertyrandomizer-dev-unified, in the copied settings.lua)
+# 3. Verify development handlers are disabled in the source being shipped.
+#    Keep this safe in the checkout too, rather than patching only the package.
 # -------------------------------------------------------------------
-"$RELEASE_PYTHON" - "$STAGE_PATH/settings.lua" <<'PY'
+"$RELEASE_PYTHON" - "$STAGE_PATH/settings.lua" <<'PYTHON'
 import re
 import sys
 
-path = sys.argv[1]
-with open(path, "r", encoding="utf-8") as f:
-    text = f.read()
-
-# forced_value makes sure it's off: for a hidden bool setting it forces the value (https://wiki.factorio.com/Tutorial:Mod_settings)
-pattern = r'(name = "propertyrandomizer-dev-unified",(?:[^{}])*?)default_value = true,'
-new_text, count = re.subn(pattern, r"\g<1>default_value = false,\n        forced_value = false,", text)
-if count != 1:
-    print("Error: could not turn off propertyrandomizer-dev-unified in settings.lua", file=sys.stderr)
-    sys.exit(1)
-
-with open(path, "w", encoding="utf-8") as f:
-    f.write(new_text)
-PY
-echo "Turned off development unified randomizations in the release"
+with open(sys.argv[1], encoding="utf-8") as f:
+    source = f.read()
+match = re.search(r'name = "propertyrandomizer-dev-unified",([^{}]*)', source)
+if match is None or any(re.search(field + r"\s*=\s*" + value + r"\s*,", match[1]) is None
+                        for field, value in (("default_value", "false"), ("forced_value", "false"), ("hidden", "true"))):
+    sys.exit("Error: propertyrandomizer-dev-unified must default to false and be forced false while hidden")
+PYTHON
+echo "Verified development handlers require preview in the release"
 
 # -------------------------------------------------------------------
 # 4. Update info.json version in the release

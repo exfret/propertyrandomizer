@@ -503,8 +503,8 @@ function abstract.build(lu, extra_params)
     -- No: evolution can be turned off in map settings, and how fast it rises isn't tied to progression, so this has no prereqs and is never satisfied.
     -- Spawns that need higher evolution (like big biters) depend on this, so logic never relies on them.
 
-    -- Mining with fluid and space platforms are unlocked at the start of the game (control.lua), so their unlock nodes are only built with extra_params.tech_gated_unlocks
-    -- That's for other randomizers extracting this logic, which don't unlock them at the start
+    -- Ordinary games keep technology unlocks; preview grants them at startup (control.lua).
+    -- logic.build defaults tech_gated_unlocks to match, and callers can override it.
     if extra_params.tech_gated_unlocks then
         ----------------------------------------
         add_node("mining-with-fluid-unlock", "OR", nil, "", { canonical = "mining-with-fluid-unlock", mechanic = true })

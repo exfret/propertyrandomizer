@@ -42,8 +42,10 @@ requires recipe-science-pack recipe=true
 requires unified-entity-biters unified-entity=true
 
 # pin SETTING=VALUE NAME...: configs in one of these suites or with one of these names (generated or hand-picked) get SETTING=VALUE on top of their own settings
-# The unified randomizations still in development (dev-unified, on by default in the repo) are only tested in isolation, in the unified suite
+# Development handlers are off by default, and the test helper enables them only in the unified suite.
 pin dev-unified=false smoke settings
+pin dev-unified=true unified
+pin dev-unified=false preview preview-with-graph
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
 # nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)

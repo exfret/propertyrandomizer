@@ -3,7 +3,12 @@ local fluid_ports = require("lib/fluid-ports")
 local dutils = require("lib/data-utils")
 local pipe_conns = require("lib/pipe-conns")
 
-if mods["pyalternativeenergy"] then
+-- Shared preparation is needed by the legacy graph randomizers too; numerical-only games need none of it.
+if not config.dev_unified and next(config.graph) == nil then
+    return
+end
+
+if mods["pyalternativeenergy"] and config.dev_unified then
     -- Make assembling machines painfully early so they don't get pushed late
     data.raw.recipe["assembling-machine-1"].enabled = true
     data.raw.recipe["assembling-machine-1"].ingredients = {{type = "item", name = "iron-plate", amount = 10}}

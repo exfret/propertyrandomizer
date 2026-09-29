@@ -686,7 +686,7 @@ function concrete.build(lu, extra_params)
                     -- I don't know why the actual amount is divided by 10 (at least in pyanodons) but whatever
                     local fluid_amount = (entity.minable.fluid_amount or 0) / 10
                     add_edge("fluid", entity.minable.required_fluid, { amount = fluid_amount })
-                    -- Mining with fluid is unlocked at the start of the game (control.lua), so the unlock is only a prereq with extra_params.tech_gated_unlocks (see abstract.lua)
+                    -- Ordinary games require the unlock; preview grants it at startup (see logic.build and control.lua).
                     if extra_params.tech_gated_unlocks then
                         add_edge("mining-with-fluid-unlock", "", {
                             abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable

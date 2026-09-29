@@ -198,10 +198,10 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-dev-unified",
-        -- Runs the unified randomizations still in development (the forced handlers in randomizations/graph/unified/execute.lua) in every game
-        -- prepare-release.sh turns it off in releases, and tests/configs.txt turns it off for some tests
-        -- The unified preview (propertyrandomizer-unified-preview) turns them on too, so it's how releases get them
-        default_value = true,
+        -- Preview is the player-facing opt-in. Tests unhide this setting to enable development handlers independently.
+        -- Force it off while hidden so settings saved by older development builds cannot enable them.
+        default_value = false,
+        forced_value = false,
         order = "e-[unified]-a",
         hidden = true,
     },

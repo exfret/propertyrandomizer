@@ -95,8 +95,19 @@ if config.unit_test then
     return
 end
 
+local release_isolation
+if mods["propertyrandomizer-test-helper"] then
+    release_isolation = require("__propertyrandomizer-test-helper__/release-isolation")
+end
+if release_isolation ~= nil then
+    release_isolation.capture()
+end
+
 -- Special prototype fixes
 require("randomizations/prefixes")
+if release_isolation ~= nil then
+    release_isolation.check_prefixes()
+end
 
 local planetary = require("randomizations/planetary/execute")
 
@@ -455,6 +466,10 @@ data:extend({
 -- Add old versions and postfixes
 randomizations.add_old_versions()
 randomizations.post_fixes()
+
+if release_isolation ~= nil then
+    release_isolation.check_prerequisites()
+end
 
 -- Add warnings for control stage
 smuggle_info()

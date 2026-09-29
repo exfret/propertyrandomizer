@@ -1,4 +1,5 @@
 local constants = require("helper-tables/constants")
+local features = require("helper-tables/feature-flags")
 local spec = require("helper-tables/spec")
 
 config = {}
@@ -71,7 +72,7 @@ config.numerical_algorithm = "exfret-random-walk"
 config.technology_delinearization = settings.startup["propertyrandomizer-unified-technology-delinearization"].value
 -- The unified preview turns on the new unified version: entity randomization with biters, the planetary changes other than lightning and freezing, the tech tree rebuild, and the unified randomizations still in development (config.dev_unified below)
 -- Their own settings are hidden for now (tests still set them one at a time), and so are lightning's and freezing's, which are off
-config.unified_preview = settings.startup["propertyrandomizer-unified-preview"].value
+config.unified_preview = features.unified_preview
 config.tech_tree_rebuild = config.unified_preview or settings.startup["propertyrandomizer-tech-tree-rebuild"].value
 -- It isn't made to work with the old graph randomizations (config.graph), so it turns off the ones that are on, and the randomizer panel says which
 if config.unified_preview then
@@ -105,8 +106,8 @@ config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
 
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
--- Whether the unified randomizations still in development run (see settings.lua): always in the unified preview, and in every game while the hidden dev setting is on (off in releases)
-config.dev_unified = config.unified_preview or settings.startup["propertyrandomizer-dev-unified"].value
+-- Whether the unified randomizations still in development run (see settings.lua): in the unified preview, or when the test helper explicitly enables the dev setting
+config.dev_unified = features.dev_unified
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity takes its new position's form (see lib/item-fluid.lua)
 -- It also gives crafting machines extra fluid boxes (lib/fluid-ports.lua); in development, so it would be on with the other unified randomizations still in development (config.dev_unified)
 -- Off while the user playtests the rest (2026-09-27): everything it touches behaves as before it while this is false

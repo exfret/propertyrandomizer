@@ -4,6 +4,7 @@ local mod_gui = require("__core__.lualib.mod-gui")
 local util = require("util")
 
 local events = require("scripts/events")
+local features = require("helper-tables/feature-flags")
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
 local top = require("lib/graph/context-sort")
@@ -72,17 +73,20 @@ script.on_init(function(event)
     storage.printed_change_surface_message = false
     storage.player_ind_to_last_return_attempt_ticks = {}
 
-    -- Give ability to mine fluid immediately to make things easier
-    game.forces.player.mining_with_fluid = true
-    -- Space platforms too, so no technology has to unlock them (creating one still takes a rocket launch with a starter pack)
-    game.forces.player.unlock_space_platforms()
-    game.forces.player.cliff_deconstruction_enabled = true
-    game.forces.player.unlock_logistic_network = true
-    game.forces.player.character_logistic_requests = true
-    game.forces.player.vehicle_logistics = true
-    game.forces.player.create_ghost_on_entity_death = true
-    -- Make bulk inserters actually bulk when you unlock them
-    game.forces.player.bulk_inserter_capacity_bonus = 3
+    -- Runtime support for the development pipeline must match its prototype and logic gates.
+    if features.dev_unified then
+        -- Give ability to mine fluid immediately to make things easier
+        game.forces.player.mining_with_fluid = true
+        -- Space platforms too, so no technology has to unlock them (creating one still takes a rocket launch with a starter pack)
+        game.forces.player.unlock_space_platforms()
+        game.forces.player.cliff_deconstruction_enabled = true
+        game.forces.player.unlock_logistic_network = true
+        game.forces.player.character_logistic_requests = true
+        game.forces.player.vehicle_logistics = true
+        game.forces.player.create_ghost_on_entity_death = true
+        -- Make bulk inserters actually bulk when you unlock them
+        game.forces.player.bulk_inserter_capacity_bonus = 3
+    end
 
     load_dep_graph()
     
@@ -140,7 +144,7 @@ script.on_init(function(event)
             end
         end
 
-        if script.active_mods["pyalternativeenergy"] then
+        if features.dev_unified and script.active_mods["pyalternativeenergy"] then
             -- Add extra items
             items["burner-mining-drill"] = 20
             items["stone-furnace"] = 20
