@@ -57,6 +57,8 @@ local key = gutils.key
 
 local NO_FLUID = "no-fluid-spoof"
 local ROOM = "room"
+-- The resources' category, set on each so the handler never falls back to a default one
+local CATEGORY = "test-rock"
 
 -- The handler's graph after claiming: each resource's head, fed by its vanilla base (no fluid, or fluid y for u), and a base for each fluid whose own head is a spoofed resource nothing randomizes
 local function build()
@@ -71,7 +73,7 @@ local function build()
         gutils.add_node(graph, node_type, name, extra)
         return key(node_type, name)
     end
-    local mcat = lutils.mcat_key("basic-solid", {
+    local mcat = lutils.mcat_key(CATEGORY, {
         input = 1,
         output = 0,
     })
@@ -101,7 +103,7 @@ local function build()
         local resource = {
             type = "resource",
             name = name,
-            category = "basic-solid",
+            category = CATEGORY,
             minable = {
                 mining_time = 1,
                 results = {
