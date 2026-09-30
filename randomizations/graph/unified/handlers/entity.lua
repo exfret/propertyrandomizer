@@ -20,6 +20,7 @@ local locale = require("lib/locale")
 local rng = require("lib/random/rng")
 local material_costs = require("lib/cost/material-costs/sa")
 local common = require("randomizations/graph/unified/handler-helpers/entity")
+local military_rebalance = require("randomizations/graph/unified/handler-helpers/military")
 
 local key = gutils.key
 
@@ -2511,6 +2512,11 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             table.insert(result_units, acquisition.spawn_definition(entry.unit, entry.points))
         end
         dutils.get_prot("entity", spawner_name).result_units = result_units
+    end
+
+    -- Units spawned away from their home planet come in their home spawners' numbers and at their new planet's strength (handler-helpers/military.lua)
+    if config.military_rebalance then
+        military_rebalance.apply()
     end
 
     -- Bulk classes with members only gotten by hand, next to the members still placed by items (group-supply keeps at least one of those wherever vanilla had one)

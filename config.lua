@@ -94,6 +94,8 @@ end
 config.entity_randomization = config.unified_preview or settings.startup["propertyrandomizer-unified-entity"].value
 -- Whether entity randomization can change what unit spawners spawn (and so what biters drop or are)
 config.entity_biters = config.unified_preview or settings.startup["propertyrandomizer-unified-entity-biters"].value
+-- Whether enemies spawned away from their home planet are rebalanced: spawners keep them in their home numbers, and they take their new planet's strength (randomizations/graph/unified/handler-helpers/military.lua)
+config.military_rebalance = settings.startup["propertyrandomizer-military-rebalance"].value
 config.planetary_oceans = config.unified_preview or settings.startup["propertyrandomizer-planetary-oceans"].value
 config.planetary_resources = config.unified_preview or settings.startup["propertyrandomizer-planetary-resources"].value
 config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value

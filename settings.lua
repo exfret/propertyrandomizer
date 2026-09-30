@@ -308,6 +308,13 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-military-rebalance",
+        default_value = true,
+        order = "e-kb[military-rebalance]",
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-unified-technology-delinearization",
         allowed_values = {

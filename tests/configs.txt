@@ -42,6 +42,8 @@ skip planetary-connections
 skip dupes
 skip unified-entity
 skip unified-entity-biters
+# Only does something with biters in entity randomization (on in the preview configs below), and it's on by default
+skip military-rebalance
 # Visible so the user can try it (2026-09-29); the unified suite still turns it on (pinned below)
 skip unified-spoiling
 
