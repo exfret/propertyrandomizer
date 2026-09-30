@@ -6,7 +6,7 @@
 # Skip once with: git commit --no-verify
 set -e
 root="$(git rev-parse --show-toplevel)"
-# The recolored duplicate graphics (dev/make-dupe-graphics.py) are the game's sheets: they ship in releases (untracked files do) but never go in the public repo
+# The recolored duplicate graphics (dev/make-dupe-graphics.py) are the game's sheets: they ship in releases but never go in the public repo; .gitignore keeps them out, and this catches a forced git add
 if git diff --cached --name-only | grep -q '^graphics/dupes/'; then
     echo "pre-commit: graphics/dupes/ is generated from the game's sprites and stays out of the repository; unstage it (git restore --staged graphics/dupes)" >&2
     exit 1

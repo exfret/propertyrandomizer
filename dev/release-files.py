@@ -7,7 +7,7 @@
 #   - the Lua files the stage files (settings.lua, data.lua, control.lua and their -updates and -final-fixes) can require
 #   - the files the shipped Lua names as __propertyrandomizer__/..., like graphics
 # Everything else (dev tools, notes, test configs, cost research data in lib/cost, dead code) stays out without being listed anywhere
-# Files git ignores never ship
+# Files git ignores never ship, except graphics/dupes/: .gitignore keeps the recolored duplicate graphics (the game's own sprites) out of the public repo, but the mod needs them
 #
 # Requires are followed with a Lua parser:
 #   - require("a/b") or require("a.b"), looked up from the mod root and next to the requiring file (either counts)
@@ -140,8 +140,8 @@ class LuaFile:
 
 
 def candidates():
-    # Files in the working tree git doesn't ignore
-    listed = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=REPO, capture_output=True, check=True).stdout.decode()
+    # Files in the working tree git doesn't ignore, plus the ignored graphics/dupes/ (a command-line pattern overrides .gitignore; ignored files inside it, like .DS_Store, still stay out)
+    listed = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "--exclude=!graphics/dupes/", "-z"], cwd=REPO, capture_output=True, check=True).stdout.decode()
     return set(path for path in listed.split("\0") if path != "" and os.path.isfile(os.path.join(REPO, path)))
 
 

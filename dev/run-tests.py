@@ -470,7 +470,8 @@ def snapshot(dest, ref, staged, source_dir):
         if archive.wait() != 0:
             raise SystemExit("git archive " + ref + " failed")
         return
-    listed = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=REPO, capture_output=True, check=True).stdout.decode()
+    # Leaves out what git ignores except graphics/dupes/, which is ignored only to keep it out of the repo (the dupes config needs it), as in dev/release-files.py
+    listed = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "--exclude=!graphics/dupes/", "-z"], cwd=REPO, capture_output=True, check=True).stdout.decode()
     for path in listed.split("\0"):
         src = os.path.join(REPO, path)
         # Tracked files deleted from the working tree are still listed

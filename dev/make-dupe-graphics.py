@@ -29,8 +29,8 @@
 # the same file), its rectangle keeps the original pixels. Spider vehicles also bring their spider-leg prototypes, and
 # every entity brings the icons of the items that place it.
 #
-# The graphics are not committed (the repo is public; the sheets are the game's): generate them before a release, and
-# the release includes them because they are untracked but not ignored.
+# The graphics are never committed (the repo is public; the sheets are the game's), so graphics/dupes/ is gitignored.
+# Generate them before a release: dev/release-files.py ships the folder even though git ignores it.
 #
 # Usage:
 #   dev/make-dupe-graphics.py --dump PATH/data-raw-dump.json [--dupes 3] [--entities dev/dupe-entities.txt]
