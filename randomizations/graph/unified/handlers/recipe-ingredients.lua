@@ -479,12 +479,22 @@ recipe_ingredients.custom_prereq_search = function(params)
                 end
                 local vanilla_recipe_costs = slot_cost_known and cost_lib.get_costs_from_ings(vanilla_material_to_costs, slot_recipe.ingredients) or nil
                 -- Ingredients (candidates, and kept ones whose recipes come later in this run) are priced with fallbacks, like candidate_costs
+                -- The search reads the same prices many times over, and they can't change until this recipe's own update_staged below, so each is worked out once
+                local function cached(costs)
+                    return setmetatable({}, {
+                        __index = function(cache, id)
+                            local cost = costs[id]
+                            rawset(cache, id, cost)
+                            return cost
+                        end,
+                    })
+                end
                 local randomized_material_costs = {}
-                randomized_material_costs.aggregate_cost = candidate_costs
+                randomized_material_costs.aggregate_cost = cached(candidate_costs)
                 randomized_material_costs.complexity_cost = context_costs.NO_COMPLEXITY.material_to_cost
                 randomized_material_costs.resource_costs = {}
                 for _, resource_id in pairs(major_raw_resources) do
-                    randomized_material_costs.resource_costs[resource_id] = fallback_view(randomized_sets.resource(context, resource_id, tier_name).material_to_cost, full_sets.resource(context, resource_id, tier_name).material_to_cost, no_cost)
+                    randomized_material_costs.resource_costs[resource_id] = cached(fallback_view(randomized_sets.resource(context, resource_id, tier_name).material_to_cost, full_sets.resource(context, resource_id, tier_name).material_to_cost, no_cost))
                 end
 
                 local potential_ings = {}

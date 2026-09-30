@@ -349,6 +349,54 @@ test("dynamic imports replace fallback prices and bills when a source becomes mo
     assert(near(original:view("A", "full").material_to_cost["item-jewel"], 2.045))
 end)
 
+test("a staged set refreshes imports only when a full tier is read, pricing as if it had refreshed after every update", function()
+    local info = world()
+    local original = game_set(info, { "item-ore", "item-gem" })
+    local function staged()
+        local overrides = context_costs.data_overrides()
+        overrides.recycle = { "blacklisted" }
+        overrides["cut-gem"] = { "blacklisted" }
+        local set = context_costs.new_set(info, {
+            ing_overrides = overrides,
+            item_recipe_maps = flow_cost.construct_item_recipe_maps(),
+            track_resources = { "item-ore", "item-gem" },
+            imports_from = original,
+            dynamic_imports = true,
+        })
+        return set, overrides
+    end
+    local lazy, lazy_overrides = staged()
+    local eager, eager_overrides = staged()
+    for _, name in pairs({ "recycle", "cut-gem" }) do
+        lazy_overrides[name] = data.raw.recipe[name].ingredients
+        lazy:update(name)
+        eager_overrides[name] = data.raw.recipe[name].ingredients
+        eager:update(name)
+        eager:refresh_imports()
+        -- Local tiers don't use imports, so reading one leaves the refresh for later
+        assert(lazy:view("A", "local").material_to_cost["item-ore"] ~= nil)
+        assert(lazy.stale_rooms["A"] == true and lazy.stale_rooms["B"] == true)
+    end
+    -- A's quotes all come from B's local tier (B mines gems and cuts jewels itself), so reading A's full tier leaves B for later
+    assert(lazy:cost_and_tier("A", "item-jewel", "full") ~= nil)
+    assert(lazy.stale_rooms["A"] == nil and lazy.stale_rooms["B"] == true)
+    for _, context in pairs({ "A", "B" }) do
+        for _, tier_name in pairs({ "local", "full" }) do
+            for _, id in pairs({ "item-ore", "item-debris", "item-gem", "item-plate", "item-jewel" }) do
+                local lazy_cost, lazy_tier = lazy:cost_and_tier(context, id, tier_name)
+                local eager_cost, eager_tier = eager:cost_and_tier(context, id, tier_name)
+                assert(lazy_cost == eager_cost, context .. " " .. tier_name .. " " .. id .. ": " .. tostring(lazy_cost) .. " vs " .. tostring(eager_cost))
+                for _, resource_id in pairs({ "item-ore", "item-gem" }) do
+                    local lazy_bill = lazy_tier.material_to_resources[id] or {}
+                    local eager_bill = eager_tier.material_to_resources[id] or {}
+                    assert(lazy_bill[resource_id] == eager_bill[resource_id], context .. " " .. tier_name .. " " .. id .. " bill of " .. resource_id)
+                end
+            end
+        end
+    end
+    assert(next(lazy.stale_rooms) == nil)
+end)
+
 test("local novelty uses local production rather than imported resource shares", function()
     local info = world()
     local set = game_set(info)

@@ -1,8 +1,13 @@
 local cutils = {}
 
+-- shared_probability when an entry has none (only read)
+local FULL_SHARED_PROBABILITY = {
+    min = 0,
+    max = 1,
+}
+
 cutils.find_amount_in_entry = function(ing_or_prod, extra_params)
     -- TODO: Implement "productivity" extra_params
-    extra_params = extra_params or {}
 
     local amount_expected = ing_or_prod.amount
     if ing_or_prod.amount == nil then
@@ -10,7 +15,7 @@ cutils.find_amount_in_entry = function(ing_or_prod, extra_params)
     end
 
     local independent_probability = ing_or_prod.independent_probability or 1
-    local shared_probability = ing_or_prod.shared_probability or {min = 0, max = 1}
+    local shared_probability = ing_or_prod.shared_probability or FULL_SHARED_PROBABILITY
     local probability = independent_probability * (shared_probability["max"] - shared_probability["min"])
     local extra_count_fraction = ing_or_prod.extra_count_fraction or 0
     return probability * (amount_expected + extra_count_fraction)

@@ -25,17 +25,20 @@ rng.seed = function(key)
 end
 
 rng.value = function(key)
-    if rng.prgs[key] == nil then
+    local state_tbl = rng.prgs[key]
+    if state_tbl == nil then
         rng.seed(key)
+        state_tbl = rng.prgs[key]
     end
 
-    local state_tbl = rng.prgs[key]
-
-    local U = state_tbl["X2"] * A2
-    local V = (state_tbl["X1"] * A2 + state_tbl["X2"] * A1) % D20
+    local X1 = state_tbl["X1"]
+    local X2 = state_tbl["X2"]
+    local U = X2 * A2
+    local V = (X1 * A2 + X2 * A1) % D20
     V = (V * D20 + U) % D40
-    state_tbl["X1"] = math.floor(V / D20)
-    state_tbl["X2"] = V - state_tbl["X1"] * D20
+    X1 = math.floor(V / D20)
+    state_tbl["X1"] = X1
+    state_tbl["X2"] = V - X1 * D20
 
     return V / D40
 end
@@ -64,9 +67,8 @@ rng.shuffle = function(key, tbl)
 end
 
 -- Generates a string key from an object
+-- Only reads params (a prototype can be large, so it isn't copied)
 rng.key = function(params)
-    params = table.deepcopy(params)
-
     local separators = {
         "aaa",
         "bbb",

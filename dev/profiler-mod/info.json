@@ -1,0 +1,8 @@
+{
+	"name": "propertyrandomizer-profiler",
+	"version": "0.1.0",
+	"title": "exfret's Randomizer profiler",
+	"author": "exfret",
+	"factorio_version": "2.1",
+	"description": "Only for dev/run-tests.py --profile: samples the Lua stack during the data stage in Instrument Mode, for dev/profile-report.py."
+}

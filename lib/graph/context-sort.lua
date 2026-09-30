@@ -272,9 +272,12 @@ local function edge_ind(context_info, node_to_context_inds, edge, context)
     if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return start_inds[context]
     end
+    -- The same sources as edge_sources, without building the list
+    local _, inverse = edge_ability_tables(edge.abilities)
+    local room_contexts = context_info.of[context_info.room[context]]
     local earliest_ind
-    for _, source in pairs(edge_sources(context_info, edge, context)) do
-        local ind = start_inds[source]
+    for _, ability_str in pairs(inverse[context_info.abilities[context]]) do
+        local ind = start_inds[room_contexts[ability_str]]
         if ind ~= nil and (earliest_ind == nil or ind < earliest_ind) then
             earliest_ind = ind
         end
@@ -898,6 +901,73 @@ top.sort = function(graph, state, new_conn, extra)
         extra.choose_randomly = true
     end
 
+    -- Without choose_randomly, the next node is the open node with the earliest pebble (lowest index in sorted), or the last one pairs(open) gives if no open node has a pebble yet
+    -- A node's earliest pebble can't change while it's in open (only the node taken out of open gets new pebbles, and they come after its old ones), so the open nodes with one wait in a heap ordered by it
+    -- Indices are unique, so the heap never has to break a tie
+    local use_heap = not extra.choose_randomly
+    local heap_inds = {}
+    local heap_keys = {}
+    local heap_size = 0
+
+    local function heap_push(ind, node_key)
+        heap_size = heap_size + 1
+        local pos = heap_size
+        while pos > 1 do
+            local parent = math.floor(pos / 2)
+            if heap_inds[parent] < ind then
+                break
+            end
+            heap_inds[pos] = heap_inds[parent]
+            heap_keys[pos] = heap_keys[parent]
+            pos = parent
+        end
+        heap_inds[pos] = ind
+        heap_keys[pos] = node_key
+    end
+
+    local function heap_pop()
+        local earliest_key = heap_keys[1]
+        local last_ind = heap_inds[heap_size]
+        local last_key = heap_keys[heap_size]
+        heap_inds[heap_size] = nil
+        heap_keys[heap_size] = nil
+        heap_size = heap_size - 1
+        if heap_size > 0 then
+            local pos = 1
+            while true do
+                local child = 2 * pos
+                if child > heap_size then
+                    break
+                end
+                if child < heap_size and heap_inds[child + 1] < heap_inds[child] then
+                    child = child + 1
+                end
+                if last_ind < heap_inds[child] then
+                    break
+                end
+                heap_inds[pos] = heap_inds[child]
+                heap_keys[pos] = heap_keys[child]
+                pos = child
+            end
+            heap_inds[pos] = last_ind
+            heap_keys[pos] = last_key
+        end
+        return earliest_key
+    end
+
+    -- Puts a node that just entered open in the heap, if it has a pebble
+    local function heap_add(node_key)
+        local earliest
+        for _, ind in pairs(node_to_context_inds[node_key]) do
+            if earliest == nil or ind < earliest then
+                earliest = ind
+            end
+        end
+        if earliest ~= nil then
+            heap_push(earliest, node_key)
+        end
+    end
+
     -- Initialize node_to_context_inds on *all* nodes, etc.
     -- Only do this on new sorts
     -- We'll actually populate initial "open" list later
@@ -906,13 +976,23 @@ top.sort = function(graph, state, new_conn, extra)
             node_to_context_inds[node_key] = {}
         end
     end
+    -- A sort always empties open, but whatever a state still has open goes in the heap too
+    if use_heap then
+        for node_key, _ in pairs(open) do
+            heap_add(node_key)
+        end
+    end
 
-    local function add_to_open(node, context)
-        local node_key = key(node)
+    -- node_key is key(node), when the caller has it
+    local function add_to_open(node, context, node_key)
+        node_key = node_key or key(node)
         if open[node_key] == nil then
             open[node_key] = {}
             table.insert(open_list, node_key)
             open_pos[node_key] = #open_list
+            if use_heap then
+                heap_add(node_key)
+            end
         end
         open[node_key][context] = true
     end
@@ -930,33 +1010,52 @@ top.sort = function(graph, state, new_conn, extra)
 
     -- Checks if this depnode *newly* has context
     -- incoming is the context as it arrives at depnode (after going through the edge)
-    local function process_depnode(depnode, incoming)
-        local depnode_key = key(depnode)
+    -- depnode_key is key(depnode), and edge_key the edge incoming came through, when the caller has them
+    local function process_depnode(depnode, incoming, depnode_key, edge_key)
+        depnode_key = depnode_key or key(depnode)
 
         local check
         if depnode.op == "OR" then
             -- OR is false until proven true
-            check = false
+            -- Any prereq with a pebble proves it, and the one incoming came through usually has one, so it's tried first
+            if edge_key ~= nil and depnode.pre[edge_key] ~= nil and edge_ind(context_info, node_to_context_inds, graph.edges[edge_key], incoming) ~= nil then
+                check = true
+            else
+                check = false
+                for pre, _ in pairs(depnode.pre) do
+                    if edge_ind(context_info, node_to_context_inds, graph.edges[pre], incoming) ~= nil then
+                        check = true
+                        break
+                    end
+                end
+            end
         elseif depnode.op == "AND" then
             -- AND is true until proven false
             check = true
+            for pre, _ in pairs(depnode.pre) do
+                if edge_ind(context_info, node_to_context_inds, graph.edges[pre], incoming) == nil then
+                    check = false
+                    break
+                end
+            end
         else
             error("Invalid node op: " .. tostring(depnode.op))
         end
-        for pre, _ in pairs(depnode.pre) do
-            local edge = graph.edges[pre]
-            if (edge_ind(context_info, node_to_context_inds, edge, incoming) ~= nil) == (not check) then
-                check = not check
-                break
-            end
-        end
 
         if check then
-            local outgoing_contexts = node_transmit(context_info, depnode, incoming)
-            for _, outgoing in pairs(outgoing_contexts) do
+            -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
+            if logic.type_info[depnode.type].context == nil and (complex or context_info.home[incoming] ~= nil) then
                 -- Skip contexts the depnode is already transmitting
-                if node_to_context_inds[depnode_key][outgoing] == nil then
-                    add_to_open(depnode, outgoing)
+                if node_to_context_inds[depnode_key][incoming] == nil then
+                    add_to_open(depnode, incoming, depnode_key)
+                end
+            else
+                local outgoing_contexts = node_transmit(context_info, depnode, incoming)
+                for _, outgoing in pairs(outgoing_contexts) do
+                    -- Skip contexts the depnode is already transmitting
+                    if node_to_context_inds[depnode_key][outgoing] == nil then
+                        add_to_open(depnode, outgoing, depnode_key)
+                    end
                 end
             end
         end
@@ -1061,19 +1160,12 @@ top.sort = function(graph, state, new_conn, extra)
         if extra.choose_randomly then
             -- Use the mod's rng so the sort follows the seed setting
             node_key = open_list[rng.int("context-sort", #open_list)]
+        elseif heap_size > 0 then
+            node_key = heap_pop()
         else
-            local curr_priority
-            for candidate_node_key, contexts in pairs(open) do
-                local node_priority
-                for _, ind in pairs(node_to_context_inds[candidate_node_key]) do
-                    if node_priority == nil or ind < node_priority then
-                        node_priority = ind
-                    end
-                end
-                if curr_priority == nil or (node_priority ~= nil and node_priority < curr_priority) then
-                    node_key = candidate_node_key
-                    curr_priority = node_priority
-                end
+            -- No open node has a pebble yet (see use_heap above)
+            for candidate_node_key, _ in pairs(open) do
+                node_key = candidate_node_key
             end
         end
 
@@ -1092,11 +1184,17 @@ top.sort = function(graph, state, new_conn, extra)
             -- Add the context
             node_to_context_inds[node_key][context] = #sorted
 
+            -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
+            local passes_unchanged = not complex or context_info.home[context] ~= nil
             for dep, _ in pairs(node.dep) do
                 local edge = graph.edges[dep]
                 local depnode = graph.nodes[edge.stop]
-                for _, arriving in pairs(edge_transmit(context_info, edge, context)) do
-                    process_depnode(depnode, arriving)
+                if passes_unchanged or edge.abilities == nil then
+                    process_depnode(depnode, context, edge.stop, dep)
+                else
+                    for _, arriving in pairs(edge_transmit(context_info, edge, context)) do
+                        process_depnode(depnode, arriving, edge.stop, dep)
+                    end
                 end
             end
 

@@ -505,8 +505,16 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
             is_fixed[slot_key] = true
             is_matched[trav_key] = true
         end
+        -- Lists of keys, so a plain copy is a deep one
+        local function copy_list(list)
+            local copy = {}
+            for i, value in pairs(list) do
+                copy[i] = value
+            end
+            return copy
+        end
         local function try(trav_key, visited)
-            local candidates = table.deepcopy(admissible[trav_key])
+            local candidates = copy_list(admissible[trav_key])
             rng.shuffle(rng_key, candidates)
             table.insert(candidates, current_slot[trav_key])
             for _, slot_key in pairs(candidates) do
@@ -520,7 +528,7 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
             end
             return false
         end
-        local order = table.deepcopy(travs)
+        local order = copy_list(travs)
         rng.shuffle(rng_key, order)
         for _, trav_key in pairs(order) do
             if not is_matched[trav_key] and not try(trav_key, {}) then

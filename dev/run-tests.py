@@ -32,6 +32,8 @@
 #     --staged                       test the staged files, which is what a commit would contain (for dev/git-hooks/pre-commit)
 #     --dir PATH                     test a mod folder outside git, like the release prepare-release.sh builds
 #     --seed-offset N                shift every seed, to try the same configs on other seeds
+#     --profile                      sample the Lua stack while each map is created (dev/profiler-mod in Instrument Mode) and write where the time went to profile.txt in its log folder (dev/profile-report.py); loads run a little slower
+#     --dump-data                    also dump each run's data.raw (Factorio's --dump-data, one more load) to data-raw-dump.json in its log folder, and print its SHA-256, to check that two versions build the same game
 
 import argparse
 import concurrent.futures
@@ -39,6 +41,7 @@ import ctypes
 import ctypes.util
 import fcntl
 import fnmatch
+import hashlib
 import importlib.util
 import itertools
 import json
@@ -68,6 +71,8 @@ MOD_NAME = "propertyrandomizer"
 PREFIX = MOD_NAME + "-"
 HELPER_MOD = os.path.join(REPO, "dev", "test-helper-mod")
 HELPER_NAME = "propertyrandomizer-test-helper"
+PROFILER_MOD = os.path.join(REPO, "dev", "profiler-mod")
+PROFILER_NAME = "propertyrandomizer-profiler"
 CONFIGS = os.path.join(REPO, "tests", "configs.txt")
 MOD_CONFIGS = os.path.join(REPO, "tests", "mod-configs")
 DUMP_SETTINGS = os.path.join(REPO, "dev", "dump-settings.lua")
@@ -104,6 +109,9 @@ GAME_VERSION = re.compile(r"Factorio (\d+)\.(\d+)\.(\d+) \(build")
 spec = importlib.util.spec_from_file_location("mod_settings", os.path.join(REPO, "dev", "mod-settings.py"))
 mod_settings = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod_settings)
+spec = importlib.util.spec_from_file_location("profile_report", os.path.join(REPO, "dev", "profile-report.py"))
+profile_report = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(profile_report)
 
 DAT_TYPES = {
     "bool-setting": mod_settings.BOOL,
@@ -311,10 +319,7 @@ class Plan:
         rows = self.pairwise(self.visible, random.Random(23))
         for i, row in enumerate(rows):
             self.add("settings", "pairwise-" + str(i + 1).zfill(2), row)
-        for setting in self.unified:
-            for value in setting.values():
-                if value != setting.default:
-                    self.add("unified", "single-" + setting.name + "=" + fmt(value), {setting.name: value})
+        # No single-setting unified configs: while dev-unified is on, randomizations/graph/unified/execute.lua runs its own handler list whatever the unified-* settings say, so they'd only repeat unified-all on other seeds
         all_unified = {setting.name: True for setting in self.unified if setting.type == "bool-setting"}
         if len(all_unified) > 0:
             self.add("unified", "unified-all", all_unified, seeds=UNIFIED_SEEDS)
@@ -574,12 +579,16 @@ def error_lines(text, limit=6):
 
 
 class Context:
-    def __init__(self, root, snapshot_dir, settings, modsets, version):
+    def __init__(self, root, snapshot_dir, settings, modsets, version, profile, dump_data):
         self.root = root
         self.snapshot = snapshot_dir
         self.settings = settings
         self.modsets = modsets
         self.version = version
+        # Whether map creation runs the profiler (--profile)
+        self.profile = profile
+        # Whether each run also dumps its data.raw (--dump-data)
+        self.dump_data = dump_data
         self.processes = Processes()
 
 
@@ -722,6 +731,9 @@ def run_one(run, ctx):
         os.symlink(path, os.path.join(mods_dir, os.path.basename(path)))
     mod_list = json.loads(json.dumps(modset["list"]))
     mod_list["mods"].append({"name": HELPER_NAME, "enabled": True})
+    if ctx.profile:
+        os.symlink(os.path.join(ctx.root, PROFILER_NAME), os.path.join(mods_dir, PROFILER_NAME))
+        mod_list["mods"].append({"name": PROFILER_NAME, "enabled": True})
     with open(os.path.join(mods_dir, "mod-list.json"), "w") as f:
         json.dump(mod_list, f, indent=2)
     values = [(PREFIX + "seed", mod_settings.SIGNED, run.config.seed)]
@@ -740,8 +752,12 @@ def run_one(run, ctx):
     problems = []
     science_cost_summary = ""
     create_log = os.path.join(run_dir, "create.log")
-    code = ctx.processes.run(base_args + ["--create", save], create_log)
+    # Instrument Mode loads the profiler before every mod's data stage, and the profiler needs the full Lua debug library to sample
+    profile_args = ["--instrument-mod", PROFILER_NAME, "--enable-unsafe-lua-debug-api"] if ctx.profile else []
+    code = ctx.processes.run(base_args + profile_args + ["--create", save], create_log)
     text = read(create_log)
+    if ctx.profile:
+        profile_report.write_report(create_log, os.path.join(run_dir, "profile.txt"), source=ctx.snapshot)
     problems.extend(check_game_version(text, ctx))
     if code != 0:
         problems.append("map creation failed (exit " + str(code) + ")")
@@ -769,11 +785,25 @@ def run_one(run, ctx):
                 problems.extend(error_lines(control_text))
             elif re.search(r"Performed " + str(CONTROL_TICKS) + r" updates", control_text) is None:
                 problems.append("control stage didn't report running " + str(CONTROL_TICKS) + " ticks")
+    dump_hash = None
+    if ctx.dump_data:
+        # Factorio writes the dump to the write-data directory's script-output and exits; it's kept next to the logs
+        code = ctx.processes.run(base_args + ["--dump-data"], os.path.join(run_dir, "dump.log"))
+        dump = os.path.join(data_dir, "script-output", "data-raw-dump.json")
+        if code != 0 or not os.path.exists(dump):
+            problems.append("data.raw dump failed (exit " + str(code) + ")")
+        else:
+            shutil.move(dump, os.path.join(run_dir, "data-raw-dump.json"))
+            digest = hashlib.sha256()
+            with open(os.path.join(run_dir, "data-raw-dump.json"), "rb") as f:
+                for block in iter(lambda: f.read(1 << 20), b""):
+                    digest.update(block)
+            dump_hash = digest.hexdigest()
     # Keep logs; the write-data directory holds the prototype cache and a copy of the log
     shutil.rmtree(data_dir, ignore_errors=True)
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary}
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash}
 
 
 def run_one_safely(run, ctx):
@@ -895,6 +925,8 @@ def main(argv):
     parser.add_argument("--staged", action="store_true", help="test the staged files instead of the working tree")
     parser.add_argument("--dir", help="test this mod folder instead of the working tree")
     parser.add_argument("--seed-offset", type=int, default=0, help="shift every seed")
+    parser.add_argument("--profile", action="store_true", help="sample the Lua stack while each map is created, and write profile.txt in its log folder")
+    parser.add_argument("--dump-data", action="store_true", help="also dump each run's data.raw to data-raw-dump.json in its log folder and print its SHA-256")
     args = parser.parse_args(argv)
     suites = args.suites if len(args.suites) > 0 else SUITES
     if sum(1 for picked in (args.ref is not None, args.staged, args.dir is not None) if picked) > 1:
@@ -918,6 +950,8 @@ def main(argv):
     snapshot_dir = os.path.join(root, MOD_NAME)
     snapshot(snapshot_dir, args.ref, args.staged, args.dir)
     shutil.copytree(HELPER_MOD, os.path.join(root, HELPER_NAME))
+    if args.profile:
+        shutil.copytree(PROFILER_MOD, os.path.join(root, PROFILER_NAME))
     settings = load_settings(snapshot_dir)
     plan = Plan(settings, test_file, args.seed_offset)
     unknown = [suite for suite in suites if suite not in set(config.suite for config in plan.configs)]
@@ -958,7 +992,7 @@ def main(argv):
         raise
 
     point_latest(root)
-    ctx = Context(root, snapshot_dir, settings, modsets, version)
+    ctx = Context(root, snapshot_dir, settings, modsets, version, args.profile, args.dump_data)
     source = "the working tree"
     if args.ref is not None:
         source = "git ref " + args.ref
@@ -989,6 +1023,10 @@ def main(argv):
             line = "[" + str(len(results)).rjust(len(str(len(runs)))) + "/" + str(len(runs)) + "] " + status.ljust(8) + " " + run.name + " (" + duration(result["seconds"]) + ")"
             if not result["ok"]:
                 line += ": " + result["problems"][0]
+            if ctx.profile and os.path.exists(os.path.join(result["dir"], "profile.txt")):
+                line += "\n    profile in " + os.path.join(result["dir"], "profile.txt")
+            if result.get("dump_hash") is not None:
+                line += "\n    data.raw dump SHA-256 " + result["dump_hash"]
             print(line, flush=True)
 
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs)

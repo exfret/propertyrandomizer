@@ -77,6 +77,9 @@ local constants = {
         complexity = 0.01
     },
     target_cost_threshold = 1.5,
+    -- A recipe ingredient search also stops after this many candidates in a row without its points dropping by ing_search_progress_points in all (tiny improvements alone can go on for every candidate when no ingredient fits the recipe's cost)
+    ing_search_stall_candidates = 30,
+    ing_search_progress_points = 0.5,
     aggregate_points_weighting = 1,
     complexity_points_weighting = 2,
     resource_points_weighting = 0.1,

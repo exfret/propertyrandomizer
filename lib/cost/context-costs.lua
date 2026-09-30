@@ -15,6 +15,7 @@ local dutils = require("lib/data-utils")
 local context_costs = {}
 
 -- Rounds of pricing imports from the previous round's costs (the room an import comes from may make it with imports of its own)
+-- Staged sets' refreshes stop there too: quotes between rooms that import from each other's full tiers can keep changing
 local IMPORT_ROUNDS = 3
 
 local function sorted_keys(tbl)
@@ -167,7 +168,7 @@ end
 -- params.imports_from (optional): a set to price imports from, which saves pricing rounds (staged sets take them from the game's, see context_costs.game_set)
 -- params.find_sources (optional): whether its rounds also find where each room's imports come from, into info.import_from (the game's set does, in build)
 -- params.updated_contexts (optional): context --> true for the rooms updates keep up to date (the ones costs are read in); the rest stay as first priced, as import sources
--- params.dynamic_imports (optional): update every source room and refresh changed import quotes after each recipe update.
+-- params.dynamic_imports (optional): update every source room, and refresh a room's changed import quotes before its full tier is next read (see Set:cost_and_tier).
 -- params.recipe_prototypes (optional): a staged recipe table, including regenerated reverse outputs, without changing data.raw.
 local Set = {}
 Set.__index = Set
@@ -308,6 +309,18 @@ end
 -- An explicit tier keeps ingredient prices and their resulting product in the same production network.
 -- Without one, preserve the home-price view used by other callers (see the top of this file).
 function Set:cost_and_tier(context, id, tier_name)
+    -- Full tiers use imports, so a room whose quotes may be stale since the last updates is refreshed first, and home prices (which can use any room's) refresh every stale room
+    -- Local tiers don't use imports, and most updates are followed only by reads of those (mostly in one room), so this skips most refreshes
+    local stale = self.stale_rooms
+    if stale ~= nil and tier_name ~= "local" then
+        if tier_name == nil then
+            if next(stale) ~= nil then
+                self:refresh_imports()
+            end
+        elseif stale[context] ~= nil then
+            self:refresh_imports(context)
+        end
+    end
     local tiers = self.tiers[context]
     if tier_name ~= nil then
         local tier = tiers[tier_name]
@@ -402,13 +415,26 @@ function Set:update(recipe_name)
         end
     end
     if self.params.dynamic_imports == true then
-        self:refresh_imports()
+        -- Any room's quotes may have changed; each room is refreshed when its full tier is next read (see Set:cost_and_tier)
+        self.stale_rooms = self.stale_rooms or {}
+        for _, context in pairs(self.info.contexts) do
+            self.stale_rooms[context] = true
+        end
     end
 end
 
 -- Import prices follow the supplying world's current recipes; original prices only fill unprocessed gaps.
 -- Rebuild affected full tiers because a changed source can raise a price, which the incremental solver cannot undo.
-function Set:refresh_imports()
+-- Runs for all updates since a full tier was last read at once (see Set:cost_and_tier), in rounds until the quotes stop changing (at most IMPORT_ROUNDS)
+-- With a target room, only that room and the stale rooms whose full tiers its quotes read (a source that brings the material in itself, and so on) are brought up to date; the others don't change what it gets
+function Set:refresh_imports(target)
+    local stale = self.stale_rooms or {}
+    local needed = {}
+    for _, context in pairs(self.info.contexts) do
+        if target == nil or context == target then
+            needed[context] = true
+        end
+    end
     local function same_bill(a, b)
         a = a or {}
         b = b or {}
@@ -426,43 +452,51 @@ function Set:refresh_imports()
     end
     for round = 1, IMPORT_ROUNDS do
         local changed = false
+        -- Whether a stale room joined, which next round brings up to date and so rechecks the quotes read from it
+        local joined = false
         local next_tiers = {}
         for _, context in pairs(self.info.contexts) do
-            local tiers = self.tiers[context]
-            local seeds = room_seeds(self.info, context)
-            local bills = {}
-            local different = false
-            for id, source in pairs(self.info.import_from[context]) do
-                if seeds[id] == nil then
-                    local source_tiers = self.tiers[source]
-                    local source_tier = source_tiers["local"]
-                    if source_tier.material_to_cost[id] == nil then
-                        source_tier = source_tiers.full
-                    end
-                    local cost = source_tier.material_to_cost[id]
-                    local bill = source_tier.material_to_resources and source_tier.material_to_resources[id]
-                    if cost == nil and self.params.imports_from ~= nil then
-                        cost, source_tier = self.params.imports_from:cost_and_tier(source, id)
-                        bill = source_tier and source_tier.material_to_resources and source_tier.material_to_resources[id]
-                    end
-                    if cost ~= nil then
-                        seeds[id] = cost
-                        bills[id] = bill
-                    end
-                    if cost ~= tiers.full_seeds[id] or not same_bill(bill, tiers.bills[id]) then
-                        different = true
+            if needed[context] ~= nil then
+                local tiers = self.tiers[context]
+                local seeds = room_seeds(self.info, context)
+                local bills = {}
+                local different = false
+                for id, source in pairs(self.info.import_from[context]) do
+                    if seeds[id] == nil then
+                        local source_tiers = self.tiers[source]
+                        local source_tier = source_tiers["local"]
+                        if source_tier.material_to_cost[id] == nil then
+                            source_tier = source_tiers.full
+                            if stale[source] ~= nil and needed[source] == nil then
+                                needed[source] = true
+                                joined = true
+                            end
+                        end
+                        local cost = source_tier.material_to_cost[id]
+                        local bill = source_tier.material_to_resources and source_tier.material_to_resources[id]
+                        if cost == nil and self.params.imports_from ~= nil then
+                            cost, source_tier = self.params.imports_from:cost_and_tier(source, id)
+                            bill = source_tier and source_tier.material_to_resources and source_tier.material_to_resources[id]
+                        end
+                        if cost ~= nil then
+                            seeds[id] = cost
+                            bills[id] = bill
+                        end
+                        if cost ~= tiers.full_seeds[id] or not same_bill(bill, tiers.bills[id]) then
+                            different = true
+                        end
                     end
                 end
-            end
-            if different then
-                local extra = self:extra(context)
-                extra.raw_bills = bills
-                next_tiers[context] = {
-                    seeds = seeds,
-                    bills = bills,
-                    full = flow_cost.determine_recipe_item_cost(seeds, constants.cost_params.time, constants.cost_params.complexity, extra),
-                }
-                changed = true
+                if different then
+                    local extra = self:extra(context)
+                    extra.raw_bills = bills
+                    next_tiers[context] = {
+                        seeds = seeds,
+                        bills = bills,
+                        full = flow_cost.determine_recipe_item_cost(seeds, constants.cost_params.time, constants.cost_params.complexity, extra),
+                    }
+                    changed = true
+                end
             end
         end
         for context, update in pairs(next_tiers) do
@@ -470,9 +504,12 @@ function Set:refresh_imports()
             self.tiers[context].full_seeds = update.seeds
             self.tiers[context].bills = update.bills
         end
-        if not changed then
+        if not changed and not joined then
             break
         end
+    end
+    for context, _ in pairs(needed) do
+        stale[context] = nil
     end
 end
 

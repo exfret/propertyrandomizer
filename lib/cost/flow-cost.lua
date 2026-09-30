@@ -120,46 +120,36 @@ flow_cost.get_single_resource_table = function(specified_resource_id)
     return resource_table
 end
 
-flow_cost.eval_recipe_cost = function(params)
-    local recipe_name = params.recipe_name
-    local material_to_cost = params.material_to_cost
-    local recipe_time_modifier = params.recipe_time_modifier
-    local recipe_complexity_modifier = params.recipe_complexity_modifier
-    local mode = params.mode
-    local ing_overrides = params.ing_overrides
-    local use_data = params.use_data
-    -- Material -> raw resource vector, when resources are tracked (see determine_recipe_item_cost)
-    local material_to_resources = params.material_to_resources
+-- Read-only stand-in for a missing ingredient list
+local NO_INGREDIENTS = {}
 
-    local new_cost = 0
-    local resources
-    if material_to_resources ~= nil then
-        resources = {}
-    end
-    local reachable = true
-
-    local recipe = (params.recipe_prototypes or data.raw.recipe)[recipe_name]
+-- The ingredients a recipe is priced with (only read), and false if the overrides make it unavailable
+local function priced_ingredients(recipe, recipe_name, ing_overrides, use_data)
     -- A recipe can leave out its ingredients (like the captive spawner's biter eggs)
-    local ings_to_use = recipe.ingredients or {}
+    local ings_to_use = recipe.ingredients or NO_INGREDIENTS
+    local reachable = true
     -- If this has an override, use that instead
     if ing_overrides ~= nil then
-        if ing_overrides[recipe_name] ~= nil then
-            if ing_overrides[recipe_name][1] == "blacklisted" then
-                ings_to_use = {}
+        local override = ing_overrides[recipe_name]
+        if override ~= nil then
+            if override[1] == "blacklisted" then
+                ings_to_use = NO_INGREDIENTS
                 reachable = false
             -- Check that use_data isn't set for whether we use the overrides
             elseif not use_data then
-                ings_to_use = {}
-        
-                for _, ing in pairs(ing_overrides[recipe_name]) do
-                    table.insert(ings_to_use, ing)
-                end
+                ings_to_use = override
             end
         else
-            ings_to_use = {}
+            ings_to_use = NO_INGREDIENTS
             reachable = false
         end
     end
+    return ings_to_use, reachable
+end
+
+-- A recipe's cost from its ingredients' costs, and whether all of them have one
+local function ingredients_cost(recipe, ings_to_use, reachable, material_to_cost, recipe_time_modifier, recipe_complexity_modifier, mode)
+    local new_cost = 0
     for _, ing in pairs(ings_to_use) do
         local ing_material_id = ing.type .. "-" .. ing.name
         local ing_amount = cutils.find_amount_in_entry(ing)
@@ -167,11 +157,6 @@ flow_cost.eval_recipe_cost = function(params)
         if material_to_cost[ing_material_id] ~= nil then
             if mode == nil or mode == "add" then
                 new_cost = new_cost + ing_amount * material_to_cost[ing_material_id]
-                if resources ~= nil then
-                    for resource_id, amount in pairs(material_to_resources[ing_material_id]) do
-                        resources[resource_id] = (resources[resource_id] or 0) + ing_amount * amount
-                    end
-                end
             elseif mode == "max" then
                 new_cost = math.max(new_cost, material_to_cost[ing_material_id])
             else
@@ -192,7 +177,91 @@ flow_cost.eval_recipe_cost = function(params)
     new_cost = new_cost + recipe_time_modifier * energy_required
     new_cost = new_cost + recipe_complexity_modifier
 
-    return {reachable = reachable, cost = new_cost, resources = resources}
+    return reachable, new_cost
+end
+
+-- A recipe's resource bill, summed over its ingredients the same way as its cost
+local function ingredients_bill(ings_to_use, material_to_cost, mode, material_to_resources)
+    local resources = {}
+    for _, ing in pairs(ings_to_use) do
+        local ing_material_id = ing.type .. "-" .. ing.name
+        local ing_amount = cutils.find_amount_in_entry(ing)
+
+        if material_to_cost[ing_material_id] ~= nil then
+            if mode == nil or mode == "add" then
+                for resource_id, amount in pairs(material_to_resources[ing_material_id]) do
+                    resources[resource_id] = (resources[resource_id] or 0) + ing_amount * amount
+                end
+            end
+        else
+            break
+        end
+    end
+    return resources
+end
+
+flow_cost.eval_recipe_cost = function(params)
+    local recipe = (params.recipe_prototypes or data.raw.recipe)[params.recipe_name]
+    local ings_to_use, reachable = priced_ingredients(recipe, params.recipe_name, params.ing_overrides, params.use_data)
+    local cost
+    reachable, cost = ingredients_cost(recipe, ings_to_use, reachable, params.material_to_cost, params.recipe_time_modifier, params.recipe_complexity_modifier, params.mode)
+    -- Material -> raw resource vector, when resources are tracked (see determine_recipe_item_cost)
+    local resources
+    if params.material_to_resources ~= nil then
+        resources = ingredients_bill(ings_to_use, params.material_to_cost, params.mode, params.material_to_resources)
+    end
+    return {
+        reachable = reachable,
+        cost = cost,
+        resources = resources,
+    }
+end
+
+-- Queue entries for the pricing loops, one per recipe and per material, never changed once made
+local recipe_nodes = {}
+local material_nodes = {}
+local function recipe_node(recipe_name)
+    local node = recipe_nodes[recipe_name]
+    if node == nil then
+        node = {
+            type = "recipe",
+            name = recipe_name,
+        }
+        recipe_nodes[recipe_name] = node
+    end
+    return node
+end
+local function material_node(material_id)
+    local node = material_nodes[material_id]
+    if node == nil then
+        node = {
+            type = "material",
+            name = material_id,
+        }
+        material_nodes[material_id] = node
+    end
+    return node
+end
+
+-- Material id (like "item-iron-plate") --> {type, name}, made once per id and never changed
+local material_of_id = {}
+local function material_from_id(material_id)
+    local material = material_of_id[material_id]
+    if material == nil then
+        if string.sub(material_id, 1, 4) == "item" then
+            material = {
+                type = "item",
+                name = string.sub(material_id, 6, -1),
+            }
+        else
+            material = {
+                type = "fluid",
+                name = string.sub(material_id, 7, -1),
+            }
+        end
+        material_of_id[material_id] = material
+    end
+    return material
 end
 
 flow_cost.local_cost_update = function(params)
@@ -213,96 +282,87 @@ flow_cost.local_cost_update = function(params)
     local recipe_to_resources = params.recipe_to_resources
 
     if curr_node.type == "material" then
-        local material_type
-        local material_name
-        if string.sub(curr_node.name, 1, 4) == "item" then
-            material_type = "item"
-            material_name = string.sub(curr_node.name, 6, -1)
-        else
-            material_type = "fluid"
-            material_name = string.sub(curr_node.name, 7, -1)
-        end
-        local curr_node_material = {type = material_type, name = material_name}
+        local curr_node_material = material_from_id(curr_node.name)
+        local recipe_prototypes = params.recipe_prototypes or data.raw.recipe
 
         for recipe_name, _ in pairs(material_to_recipe[curr_node.name]) do
+            -- ing_overrides can be a view that works out each entry (see lib/cost/context-costs.lua), so it's read once
+            local override
+            if ing_overrides ~= nil then
+                override = ing_overrides[recipe_name]
+            end
             -- Don't use blacklisted recipes for item costs
             -- Note: This doesn't seem to do anything, probably safe to delete
-            if ing_overrides == nil or (ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted") then
+            if ing_overrides == nil or (override ~= nil and override[1] ~= "blacklisted") then
                 -- Only check recipes for which this is an ingredient
                 -- We can't use amount here because it takes results into account, which we don't want
-                local recipe_ingredients = (params.recipe_prototypes or data.raw.recipe)[recipe_name].ingredients
-                if ing_overrides ~= nil and ing_overrides[recipe_name] ~= nil and ing_overrides[recipe_name][1] ~= "blacklisted" then
-                    -- Make sure we aren't forced to use data.raw
-                    if not use_data then
-                        recipe_ingredients = {}
-                        for _, ing_override in pairs(ing_overrides[recipe_name]) do
-                            table.insert(recipe_ingredients, ing_override)
-                        end
-                    end
+                local recipe_ingredients = recipe_prototypes[recipe_name].ingredients
+                -- Make sure we aren't forced to use data.raw (the override is only read)
+                if override ~= nil and not use_data then
+                    recipe_ingredients = override
                 end
 
                 if recipe_ingredients ~= nil and cutils.find_amount_in_ing_or_prod(recipe_ingredients, curr_node_material) > 0 then
                     -- Evaluate if the recipe is cheaper now
-                    local cost_info = flow_cost.eval_recipe_cost({
-                        recipe_name = recipe_name,
-                        recipe_prototypes = params.recipe_prototypes,
-                        material_to_cost = material_to_cost,
-                        recipe_time_modifier = recipe_time_modifier,
-                        recipe_complexity_modifier = recipe_complexity_modifier,
-                        mode = mode,
-                        ing_overrides = ing_overrides,
-                        use_data = use_data,
-                        material_to_resources = material_to_resources,
-                    })
+                    local recipe = recipe_prototypes[recipe_name]
+                    local ings_to_use, reachable = priced_ingredients(recipe, recipe_name, ing_overrides, use_data)
+                    local cost
+                    reachable, cost = ingredients_cost(recipe, ings_to_use, reachable, material_to_cost, recipe_time_modifier, recipe_complexity_modifier, mode)
 
-                    if cost_info.reachable and (recipe_to_cost[recipe_name] == nil or cost_info.cost < recipe_to_cost[recipe_name]) then
-                        recipe_to_cost[recipe_name] = cost_info.cost
+                    if reachable and (recipe_to_cost[recipe_name] == nil or cost < recipe_to_cost[recipe_name]) then
+                        recipe_to_cost[recipe_name] = cost
+                        -- The bill only matters for the recipe that sets the cost, so it's made only then
                         if recipe_to_resources ~= nil then
-                            recipe_to_resources[recipe_name] = cost_info.resources
+                            local resources
+                            if material_to_resources ~= nil then
+                                resources = ingredients_bill(ings_to_use, material_to_cost, mode, material_to_resources)
+                            end
+                            recipe_to_resources[recipe_name] = resources
                         end
-                        table.insert(open_nodes, {
-                            type = "recipe",
-                            name = recipe_name
-                        })
+                        table.insert(open_nodes, recipe_node(recipe_name))
                     end
                 end
             end
         end
-    elseif curr_node.type == "recipe" and (ing_overrides == nil or (ing_overrides[curr_node.name] ~= nil and ing_overrides[curr_node.name][1] ~= "blacklisted")) then
-        -- Distribute cost evenly over results
-        local num_results = 0
-        for _, amount in pairs(recipe_to_material[curr_node.name]) do
-            if amount > 0 then
-                num_results = num_results + 1
-            end
+    elseif curr_node.type == "recipe" then
+        -- Read once, like above
+        local override
+        if ing_overrides ~= nil then
+            override = ing_overrides[curr_node.name]
         end
+        if ing_overrides == nil or (override ~= nil and override[1] ~= "blacklisted") then
+            -- Distribute cost evenly over results
+            local num_results = 0
+            for _, amount in pairs(recipe_to_material[curr_node.name]) do
+                if amount > 0 then
+                    num_results = num_results + 1
+                end
+            end
 
-        for material_id, amount in pairs(recipe_to_material[curr_node.name]) do
-            -- Only check materials that are a product of this recipe
-            if amount > 0 then
-                local new_cost
-                if mode == nil or mode == "add" then
-                    new_cost = recipe_to_cost[curr_node.name] / (num_results * amount)
-                elseif mode == "max" then
-                    new_cost = recipe_to_cost[curr_node.name]
-                else
-                    -- I misspelled something
-                    error()
-                end
-                if material_to_cost[material_id] == nil or new_cost < material_to_cost[material_id] then
-                    material_to_cost[material_id] = new_cost
-                    if material_to_resources ~= nil then
-                        -- Same even split as the cost
-                        local resources = {}
-                        for resource_id, resource_amount in pairs(recipe_to_resources[curr_node.name]) do
-                            resources[resource_id] = resource_amount / (num_results * amount)
-                        end
-                        material_to_resources[material_id] = resources
+            for material_id, amount in pairs(recipe_to_material[curr_node.name]) do
+                -- Only check materials that are a product of this recipe
+                if amount > 0 then
+                    local new_cost
+                    if mode == nil or mode == "add" then
+                        new_cost = recipe_to_cost[curr_node.name] / (num_results * amount)
+                    elseif mode == "max" then
+                        new_cost = recipe_to_cost[curr_node.name]
+                    else
+                        -- I misspelled something
+                        error()
                     end
-                    table.insert(open_nodes, {
-                        type = "material",
-                        name = material_id
-                    })
+                    if material_to_cost[material_id] == nil or new_cost < material_to_cost[material_id] then
+                        material_to_cost[material_id] = new_cost
+                        if material_to_resources ~= nil then
+                            -- Same even split as the cost
+                            local resources = {}
+                            for resource_id, resource_amount in pairs(recipe_to_resources[curr_node.name]) do
+                                resources[resource_id] = resource_amount / (num_results * amount)
+                            end
+                            material_to_resources[material_id] = resources
+                        end
+                        table.insert(open_nodes, material_node(material_id))
+                    end
                 end
             end
         end
@@ -346,10 +406,7 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
     
     -- First open nodes are raw resources
     for resource_id, cost in pairs(raw_resource_costs) do
-        table.insert(open_nodes, {
-            type = "material",
-            name = resource_id
-        })
+        table.insert(open_nodes, material_node(resource_id))
         material_to_cost[resource_id] = cost
     end
     if material_to_resources ~= nil then
@@ -385,14 +442,27 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
                 if recipe_to_resources ~= nil then
                     recipe_to_resources[recipe_name] = cost_info.resources
                 end
-                table.insert(open_nodes, {
-                    type = "recipe",
-                    name = recipe_name,
-                })
+                table.insert(open_nodes, recipe_node(recipe_name))
             end
         end
     end
 
+    -- local_cost_update only reads its params, so one table serves every step
+    local update_params = {
+        open_nodes = open_nodes,
+        recipe_prototypes = extra_params.recipe_prototypes,
+        material_to_recipe = material_to_recipe,
+        recipe_to_material = recipe_to_material,
+        material_to_cost = material_to_cost,
+        recipe_to_cost = recipe_to_cost,
+        recipe_time_modifier = recipe_time_modifier,
+        recipe_complexity_modifier = recipe_complexity_modifier,
+        mode = mode,
+        ing_overrides = ing_overrides,
+        use_data = use_data,
+        material_to_resources = material_to_resources,
+        recipe_to_resources = recipe_to_resources,
+    }
     local open_index = 1
     while true do
         local curr_node
@@ -402,22 +472,8 @@ flow_cost.determine_recipe_item_cost = function(raw_resource_costs, recipe_time_
             break
         end
 
-        flow_cost.local_cost_update({
-            open_nodes = open_nodes,
-            curr_node = curr_node,
-            recipe_prototypes = extra_params.recipe_prototypes,
-            material_to_recipe = material_to_recipe,
-            recipe_to_material = recipe_to_material,
-            material_to_cost = material_to_cost,
-            recipe_to_cost = recipe_to_cost,
-            recipe_time_modifier = recipe_time_modifier,
-            recipe_complexity_modifier = recipe_complexity_modifier,
-            mode = mode,
-            ing_overrides = ing_overrides,
-            use_data = use_data,
-            material_to_resources = material_to_resources,
-            recipe_to_resources = recipe_to_resources,
-        })
+        update_params.curr_node = curr_node
+        flow_cost.local_cost_update(update_params)
 
         if open_index >= constants.max_flow_iterations then
             break
@@ -510,10 +566,7 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
 
     local open_nodes = {}
     for _, recipe_name in pairs(new_recipe_names) do
-        table.insert(open_nodes, {
-            type = "recipe",
-            name = recipe_name
-        })
+        table.insert(open_nodes, recipe_node(recipe_name))
 
         -- Add the costs of the recipes to recipe_to_cost
         local cost_info = flow_cost.eval_recipe_cost({
@@ -545,6 +598,22 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
         end
     end
 
+    -- local_cost_update only reads its params, so one table serves every step
+    local update_params = {
+        open_nodes = open_nodes,
+        recipe_prototypes = extra_params.recipe_prototypes,
+        material_to_recipe = material_to_recipe,
+        recipe_to_material = recipe_to_material,
+        material_to_cost = material_to_cost,
+        recipe_to_cost = recipe_to_cost,
+        recipe_time_modifier = recipe_time_modifier,
+        recipe_complexity_modifier = recipe_complexity_modifier,
+        mode = mode,
+        ing_overrides = ing_overrides,
+        use_data = use_data,
+        material_to_resources = material_to_resources,
+        recipe_to_resources = recipe_to_resources,
+    }
     local open_index = 1
     while true do
         local curr_node
@@ -554,22 +623,8 @@ flow_cost.update_recipe_item_costs = function(curr_costs, new_recipe_names, num_
             break
         end
 
-        flow_cost.local_cost_update({
-            open_nodes = open_nodes,
-            curr_node = curr_node,
-            recipe_prototypes = extra_params.recipe_prototypes,
-            material_to_recipe = material_to_recipe,
-            recipe_to_material = recipe_to_material,
-            material_to_cost = material_to_cost,
-            recipe_to_cost = recipe_to_cost,
-            recipe_time_modifier = recipe_time_modifier,
-            recipe_complexity_modifier = recipe_complexity_modifier,
-            mode = mode,
-            ing_overrides = ing_overrides,
-            use_data = use_data,
-            material_to_resources = material_to_resources,
-            recipe_to_resources = recipe_to_resources,
-        })
+        update_params.curr_node = curr_node
+        flow_cost.local_cost_update(update_params)
 
         if open_index >= num_its then
             break

@@ -6,7 +6,8 @@
 # A setting also needs a finite set of values to be covered: a bool, a list of allowed values, or a minimum and a maximum
 #   smoke:    defaults, and every covered visible setting at its last value (true for bools, the maximum for numbers)
 #   settings: each non-default value of each covered visible setting on its own, then pairwise combinations (every two values of two settings meet in some config)
-#   unified:  each non-default value of each unified-* setting on its own, and all unified-* bools on over several seeds (never with other settings: randomizations still in development are only tested in isolation)
+#   unified:  all unified-* bools on over several seeds (never with other settings: randomizations still in development are only tested in isolation)
+#             No config per unified-* setting: while dev-unified is on, randomizations/graph/unified/execute.lua runs its own handler list whatever they say, so those would only repeat this on other seeds
 # Plus the hand-picked configs at the bottom
 
 # wip SUITE: the suite is still being worked on, so its failures are reported but don't fail the run
