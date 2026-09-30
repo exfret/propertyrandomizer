@@ -1,4 +1,4 @@
--- Planetary randomization stages (settings propertyrandomizer-planetary-oceans, -resources, -lightning, -freezing and -locks)
+-- Planetary randomization stages (settings propertyrandomizer-planetary-oceans, -resources, -lightning, -freezing, -locks and -connections)
 -- They run before the rest of randomization, so everything after them, including the mechanic context check, treats the changed world as the starting point.
 -- Ocean swaps (oceans.lua) come with the scaffolding recipes each planet needs (scaffolds.lua); resource swaps (resources.lua) come with edits to the recipes and mining-triggered technologies belonging to that planet, then the extra resource patches each planet still needs.
 -- Lightning (lightning.lua) moves to another planet with what builds lightning attractors; a planet that needed its lightning keeps it as well.
@@ -36,6 +36,7 @@ local scaffolds = require("randomizations/planetary/scaffolds")
 local locks = require("randomizations/planetary/locks")
 local lightning = require("randomizations/planetary/lightning")
 local freezing = require("randomizations/planetary/freezing")
+local connections = require("randomizations/planetary/connections")
 
 local planetary = {}
 
@@ -382,6 +383,20 @@ local function run_lightning(logic, state)
     return nil
 end
 
+-- Draws a new graph of space connections (connections.lua); undone if a planet then lacks something it must keep, which the templates from the same orbits should keep from happening
+local function run_connections(logic, state)
+    log("Planetary connections: " .. connections.execute("planetary-connections"))
+    if not state.careful then
+        state.after = nil
+        return nil
+    end
+    state.after = planetary_check.sort(logic)
+    if not planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK connections") then
+        return "a planet lost something it must keep with the new connections (see PLANETCHECK in the log)"
+    end
+    return nil
+end
+
 -- Moves freezing with the technologies for heating (freezing.lua)
 -- A planet that stops freezing only gains warmth, so whatever fails is on a planet that now freezes, and keeping the old planet frozen as well wouldn't help: the stage is undone instead
 local function run_freezing(logic, state)
@@ -443,6 +458,16 @@ end
 -- Runs every stage that's on; with careful, each stage checks its own result (see state above)
 local function run_stages(logic, state, careful)
     state.careful = careful
+    if config.planetary_connections then
+        local problem = old_graph_problem() or connections.problem()
+        if connections.nothing_to_do() then
+            log("Planetary connections: no space connections to draw again")
+        elseif problem ~= nil then
+            warn("connection graph", "was skipped, since " .. problem .. ".")
+        else
+            run_stage("connection graph", run_connections, logic, state)
+        end
+    end
     if config.planetary_oceans then
         local problem = oceans.problem()
         if problem ~= nil then
@@ -548,6 +573,10 @@ end
 local function run_superposed(logic, state)
     if SWAP_START_WITH ~= nil then
         swap_start(state)
+    end
+    -- The connection graph is a plain change (nothing to repair or owe), drawn before the swaps
+    if config.planetary_connections and old_graph_problem() == nil and connections.problem() == nil then
+        log("Planetary connections: " .. connections.execute("planetary-connections"))
     end
     if config.planetary_oceans then
         local problem = oceans.problem()

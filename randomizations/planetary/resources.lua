@@ -23,6 +23,17 @@ local function sorted_keys(tbl)
     return keys
 end
 
+-- Which run of the resource stage this is (resources.execute counts them): the extra patches' autoplace sets are named per run, so the game's resource-autoplace helper, which remembers every set it made for the rest of the load, never meets a set from a run whose data.raw was put back (a failed fast run before the careful one, or a rolled-again attempt): a remembered set's patch counts live in noise expressions that the put-back data.raw no longer has, and a count of zero divides by zero when the planet generates (an inf crash in the game's spot noise)
+resources.run = 0
+-- Autoplace set names whose expressions this run made, to notice a set meeting a put-back data.raw all the same
+local sets_made = {}
+
+-- The two patch counts the helper keeps per autoplace set, as noise expressions named after the set
+local count_suffixes = {
+    "_regular_resource_patch_set_count",
+    "_starting_resource_patch_set_count",
+}
+
 -- Noise names get referenced inside other expressions, so they need underscores (hyphens would parse as subtraction)
 local function noise_name(...)
     local name = "propertyrandomizer_resource"
@@ -204,8 +215,8 @@ resources.repair = function(planet_name, resource_name)
     local is_fluid = is_fluid_resource(resource)
     local settings = {
         name = resource_name,
-        -- The helper puts the set name into noise expressions unquoted, so it needs underscores (hyphens would parse as subtraction)
-        autoplace_set_name = noise_name(planet_name),
+        -- The helper puts the set name into noise expressions unquoted, so it needs underscores (hyphens would parse as subtraction); one set per planet and run (see resources.run)
+        autoplace_set_name = noise_name(planet_name, "run" .. tostring(resources.run)),
         patch_set_name = resource_name,
         autoplace_control_name = control_name,
         order = resource.autoplace.order or "b",
@@ -238,24 +249,22 @@ resources.add_repair = function(repair)
         data:extend({
             repair.control,
         })
-        -- The helper remembers each autoplace set it made (its patch counts live in two noise expressions it put in data.raw); when data.raw was put back to an earlier state since (a stage undone or rolled again), those expressions are gone while the helper still counts on them, so they're put back first
-        local count_suffixes = {
-            "_regular_resource_patch_set_count",
-            "_starting_resource_patch_set_count",
-        }
+        -- A set this load made whose count expressions are gone met a put-back data.raw: a fresh set keeps the helper's memory of the old one out of the way
+        local set_name = repair.settings.autoplace_set_name
+        if sets_made[set_name] ~= nil and data.raw["noise-expression"][set_name .. "_regular_resource_patch_set_count"] == nil then
+            resources.run = resources.run + 1
+            set_name = noise_name(repair.planet_name, "run" .. tostring(resources.run))
+            repair.settings.autoplace_set_name = set_name
+        end
+        sets_made[set_name] = true
+        local autoplace = resource_autoplace.resource_autoplace_settings(repair.settings)
+        -- The set's patch counts must be at least one, or the planet can't generate (see resources.run)
         for _, suffix in pairs(count_suffixes) do
-            local count_name = repair.settings.autoplace_set_name .. suffix
-            if data.raw["noise-expression"][count_name] == nil then
-                data:extend({
-                    {
-                        type = "noise-expression",
-                        name = count_name,
-                        expression = 0,
-                    },
-                })
+            local count = data.raw["noise-expression"][set_name .. suffix]
+            if count == nil or type(count.expression) ~= "number" or count.expression < 1 then
+                error("Planetary resources: the autoplace set " .. set_name .. " has no patch count for " .. repair.resource_name)
             end
         end
-        local autoplace = resource_autoplace.resource_autoplace_settings(repair.settings)
         repair.probability_name = noise_name(repair.planet_name, repair.resource_name, "extra", "probability")
         repair.richness_name = noise_name(repair.planet_name, repair.resource_name, "extra", "richness")
         data:extend({
@@ -546,6 +555,7 @@ end
 
 -- Returns the slots, assignment and planet --> set of lost resources
 resources.execute = function(id)
+    resources.run = resources.run + 1
     local slots = resources.slots()
     local assignment = resources.random_assignment(slots, id)
     local moves = {}

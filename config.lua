@@ -99,8 +99,10 @@ config.planetary_resources = config.unified_preview or settings.startup["propert
 config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value
 config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freezing"].value
 config.planetary_locks = config.unified_preview or settings.startup["propertyrandomizer-planetary-locks"].value
+-- A new random graph of space connections (randomizations/planetary/connections.lua); the duplicates' planet copies come with it, so the copies aren't just hung beside their originals
+config.planetary_connections = config.dupes or settings.startup["propertyrandomizer-planetary-connections"].value
 -- Whether any planetary stage is on (randomizations/planetary/execute.lua)
-config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks
+config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_connections
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100

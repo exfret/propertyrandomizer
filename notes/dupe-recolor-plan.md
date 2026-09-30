@@ -210,6 +210,39 @@ on Fulgora and its copy (unified doesn't protect keep_planetary_isolatability; a
 Loads took 20 and 26 minutes there; seed 1 needed the careful planetary rerun, whose one-at-a-time scaffold pruning
 alone took 12 minutes with 11 rooms. The user keeps one copy per planet; speed is the next job.
 
+The user's first game with the copies crashed on arriving at Vulcanus 2 (2026-09-30, 00:00): "double value not in
+range for fixed point number: inf" in the game's spot noise while generating the planet's entities. Cause: my
+resource-repair fix above recreated the helper's patch count expressions at zero after the put-back data.raw, and the
+helper, which remembers each autoplace set and its patch set indexes for the whole load, doesn't bump a count for a
+patch set it already knows, so the careful run's repeated repairs (coal and sulfuric acid on Vulcanus 2) divided by a
+zero count. Fix: the repairs' autoplace sets are named per run of the resource stage (resources.run), a set that meets
+a put-back data.raw gets a fresh name, and a zero count is an error at load. The test helper now generates one chunk on
+every planet when dupes, the preview or a planetary setting is on (PRTEST generated lines), so this class of crash
+fails a test run; it costs about 0.1 s per planet. Plain-Lua reproduction of the helper's behavior: scratchpad
+helper-repro.lua (count 1, then 0 after the put-back with the old fix, then 1 with a fresh set).
+
 Not done: the planetary rule for locks over several planets (another session), a random star map graph, unique science
 for modded planets without recolors (they'd share their original's packs), per-copy tuning of the parallel tree's size,
-load time with 11 rooms (sorts in monotone matching, promotion, the rebuild and the slow scaffold pruning).
+load time with 11 rooms (sorts in monotone matching, promotion, the rebuild and the slow scaffold pruning), showing the
+resource swaps in the map settings screen (its rows are autoplace controls, which the swap leaves on their slots) or in
+the randomizer panel.
+
+## Random connection graph (2026-09-30, after midnight)
+
+The user asked for a random space connection graph with vanilla's shape, no hop levels. Built as its own planetary
+stage, randomizations/planetary/connections.lua (setting propertyrandomizer-planetary-connections, off by default,
+not in the preview; skipped with the old graph randomizations like the other stages):
+- Each location wants as many connections as its original has among original locations now (a planet copy counts
+  as its original): in vanilla Nauvis 3, Gleba 4, Fulgora and Aquilo 3, Vulcanus and the edge 2, the shattered planet 1.
+- A spanning tree grows outward from the start, locations taken in order of distance from the sun with a jitter of 8,
+  each joining an already placed location with room; then more connections between locations with room until none is
+  left. Pairs weigh exp(-|gap - typical| / 10), gap being the orbit gap and typical the median gap of the current
+  original connections (10 in vanilla), so twins on one orbit and jumps across the system are both unlikely.
+- A new connection copies the original connection between the most similar pair of orbits (length, asteroids, icons
+  with the ends' icons swapped, from on the same side). Connections already joining a drawn pair stay; the rest go, and
+  fields naming a removed one (the shattered planet distance achievements) point at a drawn connection to the same
+  farther end. Orbits and star map positions stay.
+- Checked like the other stages (rule 1 and rule 3 of the planetary check); undone if it fails.
+- Sample draws: vanilla alone gave 8 connections, vanilla's with gleba-edge in place of aquilo-edge and fulgora-aquilo
+  kept; with the copies 16 among 12 locations, three twin links, one Nauvis-edge jump. Both pass MECHCHECK with 0 lost,
+  and every planet generates a chunk. Configs: planetary-connections and dupes-connections (settings suite).
