@@ -10,6 +10,7 @@ local top = require("lib/graph/context-sort")
 local dupe = require("lib/dupe")
 local recycling_lib = require("lib/recycling")
 local recycling_sources_lib = require("lib/logic/recycling-sources")
+local crafter_slots = require("lib/crafter-slots")
 -- The recipes a rebuilt tech's prerequisites come from
 local witness_recipes = require("lib/logic/witness-recipes")
 
@@ -931,6 +932,10 @@ randomizations.fixes = function()
 end
 
 randomizations.post_fixes = function()
+    -- Crafting machines and labs get the trash slots and furnaces the output slots their recipes need (lib/crafter-slots.lua), the old versions add_old_versions just made included
+    local num_trash_raised, num_results_raised = crafter_slots.apply()
+    log("Crafter slots: " .. num_trash_raised .. " crafting machines and labs got more trash slots, " .. num_results_raised .. " furnaces more output slots")
+
     if DO_FRODO_FIXES then
     -- Reduce large amounts of ingredients
         for _, recipe in pairs(data.raw.recipe) do
