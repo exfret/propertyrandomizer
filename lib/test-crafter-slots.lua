@@ -1,6 +1,6 @@
 -- Plain-Lua regression tests for lib/crafter-slots.lua (not loaded by the mod)
 -- Run from the mod root: lua lib/test-crafter-slots.lua
--- Every crafting machine and lab gets trash slots for spoil results (user, 2026-09-30), and furnaces get an output slot for each item product of their recipes, so every crafter of a recipe's category can craft it as the logic has it
+-- Every crafting machine and lab gets trash slots for spoil results (user, 2026-09-30), and machines with fixed output slots (furnaces) get one for each item product of their recipes, so every crafter of a recipe's category can craft it as the logic has it
 
 -- Stand-ins for the Factorio environment
 defines = {
@@ -21,12 +21,10 @@ local function test(name, fn)
     print("ok - " .. name)
 end
 
--- A crafting machine type other than the furnace (which has fixed output slots), from the mod's own table
+-- A crafting machine type, from the mod's own table; any works, since crafter_slots finds machines with fixed output slots by their result_inventory_size
 local machine_types = {}
 for machine_type, _ in pairs(categories.crafting_machines) do
-    if machine_type ~= "furnace" then
-        table.insert(machine_types, machine_type)
-    end
+    table.insert(machine_types, machine_type)
 end
 table.sort(machine_types)
 local machine_type = machine_types[1]
@@ -34,14 +32,17 @@ local machine_type = machine_types[1]
 local CATEGORY = "test-category"
 local OTHER_CATEGORY = "test-other-category"
 
+-- The prototype tables crafter_slots reads: every item class and crafting machine class, recipes and labs
 local function new_raw()
-    local raw = {
-        item = {},
-        recipe = {},
-        furnace = {},
-        lab = {},
-    }
-    raw[machine_type] = {}
+    local raw = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        raw[item_class] = {}
+    end
+    for machine_class, _ in pairs(categories.crafting_machines) do
+        raw[machine_class] = {}
+    end
+    raw.recipe = {}
+    raw.lab = {}
     return raw
 end
 
@@ -54,22 +55,31 @@ local function add_item(raw, name, spoil_result, spoil_ticks)
     }
 end
 
--- Materials are item names, or { type, name } for another type
+local function item(name)
+    return {
+        type = "item",
+        name = name,
+        amount = 1,
+    }
+end
+
+local function fluid(name)
+    return {
+        type = "fluid",
+        name = name,
+        amount = 1,
+    }
+end
+
+-- Ingredients and results are item names, or materials made by item() and fluid()
 local function add_recipe(raw, name, cats, ingredients, results)
     local function materials(entries)
         local list = {}
         for _, entry in pairs(entries) do
-            local material_type = "item"
-            local material_name = entry
-            if type(entry) == "table" then
-                material_type = entry[1]
-                material_name = entry[2]
+            if type(entry) == "string" then
+                entry = item(entry)
             end
-            table.insert(list, {
-                type = material_type,
-                name = material_name,
-                amount = 1,
-            })
+            table.insert(list, entry)
         end
         return list
     end
@@ -82,21 +92,13 @@ local function add_recipe(raw, name, cats, ingredients, results)
     }
 end
 
-local function add_machine(raw, name, cats, trash)
+-- A crafting machine, with fixed output slots if results is given
+local function add_machine(raw, name, cats, trash, results)
     raw[machine_type][name] = {
         type = machine_type,
         name = name,
         crafting_categories = cats,
         trash_inventory_size = trash,
-    }
-end
-
-local function add_furnace(raw, name, cats, results)
-    raw.furnace[name] = {
-        type = "furnace",
-        name = name,
-        crafting_categories = cats,
-        source_inventory_size = 1,
         result_inventory_size = results,
     }
 end
@@ -191,41 +193,38 @@ test("a lab gets a trash slot for each spoil result of its inputs, and at least 
     assert(raw.lab.spoiling.trash_inventory_size == 2)
 end)
 
-test("a furnace gets an output slot for each item product of a recipe in its categories", function()
+test("a machine with fixed output slots gets one for each item product of a recipe in its categories", function()
     local raw = new_raw()
-    add_item(raw, "shell")
-    add_item(raw, "inserter")
-    add_recipe(raw, "cook-up", { CATEGORY }, { "shell" }, {
-        "inserter",
-        "shell",
-        {
-            "fluid",
-            "steam",
-        },
+    add_item(raw, "casing")
+    add_item(raw, "grabber")
+    add_recipe(raw, "cook-up", { CATEGORY }, { "casing" }, {
+        "grabber",
+        "casing",
+        fluid("vapor"),
     })
-    add_furnace(raw, "oven", { CATEGORY }, 1)
-    add_furnace(raw, "kiln", { OTHER_CATEGORY }, 1)
+    add_machine(raw, "oven", { CATEGORY }, nil, 1)
+    add_machine(raw, "kiln", { OTHER_CATEGORY }, nil, 1)
     local num_trash, num_results = crafter_slots.apply(raw)
     -- The fluid product doesn't take an output slot
-    assert(raw.furnace.oven.result_inventory_size == 2)
-    assert(raw.furnace.kiln.result_inventory_size == 1)
+    assert(raw[machine_type].oven.result_inventory_size == 2)
+    assert(raw[machine_type].kiln.result_inventory_size == 1)
     assert(num_results == 1)
     assert(num_trash == 2)
 end)
 
-test("a furnace with more output slots than its recipes need keeps them, and other crafting machines get none", function()
+test("a machine with more fixed output slots than its recipes need keeps them, and machines without fixed outputs get none", function()
     local raw = new_raw()
-    add_item(raw, "scrap")
+    add_item(raw, "junk")
     add_item(raw, "plate")
     add_item(raw, "cog")
-    add_recipe(raw, "recycle", { CATEGORY }, { "scrap" }, {
+    add_recipe(raw, "sort-junk", { CATEGORY }, { "junk" }, {
         "plate",
         "cog",
     })
-    add_furnace(raw, "recycler", { CATEGORY }, 12)
+    add_machine(raw, "sorter", { CATEGORY }, nil, 12)
     add_machine(raw, "machine", { CATEGORY })
     crafter_slots.apply(raw)
-    assert(raw.furnace.recycler.result_inventory_size == 12)
+    assert(raw[machine_type].sorter.result_inventory_size == 12)
     assert(raw[machine_type].machine.result_inventory_size == nil)
 end)
 
