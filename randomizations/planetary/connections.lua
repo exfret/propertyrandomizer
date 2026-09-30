@@ -5,7 +5,8 @@
 --   * the graph stays connected from the starting planet: a spanning tree grows outward from the sun (each location joins one nearer the sun that's already placed, orbits taken in order with some jitter), then the rest of the connections go in until nobody has room left.
 -- A new connection takes its length, asteroids and icons from the current connection between the most similar pair of orbits, so a route between two orbits is about as long and as dangerous as vanilla's between those orbits.
 -- Connections that already join the right two locations stay as they are; the rest are new prototypes, and old ones go. What names a removed connection (like a distance achievement's tracked connection) names a new connection to the same place instead.
--- Orbits stay, but every location except the starting planet gets a new place on its orbit: of many random layouts across a fan of the map (wider with more locations), each improved by swapping places, the one with the fewest crossing routes, no locations drawn on top of each other and no route passing through a location is kept, and routes are drawn as straight lines so that's what the map shows. Planet copies land wherever the graph reads best, not beside their originals.
+-- Orbits stay, but every location except the starting planet gets a new place on its orbit: of many random layouts across a fan of the map (wider with more locations), each improved by swapping places, the one with the fewest crossing routes, no locations drawn on top of each other and no route passing through a location is kept. Planet copies land wherever the graph reads best, not beside their originals.
+-- Each route is then drawn as a gentle arc between its ends rather than a straight line: a circle's arc (a space connection's "arc" shape around the circle's center as its origin) bulging by a random share of the route's length, to whichever side makes the drawn routes cross and graze locations the least.
 
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
@@ -23,6 +24,11 @@ local LAYOUT_PASSES = 1
 local LAYOUT_SPOTS = 8
 local MIN_GAP = 4
 local ROUTE_GAP = 2.5
+-- How far a route's arc bulges from the straight line between its ends, as a share of that line's length (a random share between these per route), how many straight pieces an arc is taken as when drawn routes are compared, and from how many random starts the arcs' sides are chosen
+local BEND_MIN = 0.08
+local BEND_MAX = 0.16
+local ARC_PIECES = 12
+local SIDE_TRIES = 8
 
 local function sorted_keys(tbl)
     local keys = {}
@@ -312,12 +318,14 @@ local function new_connection(edge, template)
     return connection
 end
 
--- Star map geometry: a location's point for an orientation (RealOrientation: 0 north, clockwise; distance from the sun in map units)
+-- Star map geometry: a location's point for an orientation (RealOrientation: 0 north, clockwise; distance in map units from the location's origin, the sun unless it sets another)
+-- The game puts vanilla Space Age's locations at exactly these points (LuaSpaceLocationPrototype::position, read in a probe on 2.1.20)
 local function point(node, orientation)
     local angle = orientation * 2 * math.pi
+    local center = (location(node) or {}).origin or {}
     return {
-        x = distance(node) * math.sin(angle),
-        y = -distance(node) * math.cos(angle),
+        x = (center.x or center[1] or 0) + distance(node) * math.sin(angle),
+        y = (center.y or center[2] or 0) - distance(node) * math.cos(angle),
     }
 end
 
@@ -523,6 +531,238 @@ local function layout(nodes, edges, key)
     return best, best_cost
 end
 
+-- A route's arc from a to b: the circle through both whose arc between them bulges by bend times their distance, to the left of the way from a to b for side 1 and to the right for side -1
+-- Returns the circle's center (what the connection's origin is) and the arc as ARC_PIECES straight pieces (its ends exactly a and b, so routes sharing an end meet there without crossing), or nil when a and b are the same point
+-- The game draws an "arc" connection around its origin, the shorter way (boskid on the forums for 2.1.20: "origin is only used by shape="arc" as a center point"); both ends being as far from the center, that's this arc
+local function arc(a, b, bend, side)
+    local dx = b.x - a.x
+    local dy = b.y - a.y
+    local chord = math.sqrt(dx * dx + dy * dy)
+    if chord < 1e-6 then
+        return nil
+    end
+    local sagitta = bend * chord
+    local radius = (chord * chord / 4 + sagitta * sagitta) / (2 * sagitta)
+    -- The left of the way from a to b, and the center: across the straight line from the bulge
+    local left_x = -dy / chord
+    local left_y = dx / chord
+    local center = {
+        x = (a.x + b.x) / 2 - side * left_x * (radius - sagitta),
+        y = (a.y + b.y) / 2 - side * left_y * (radius - sagitta),
+    }
+    local start_angle = math.atan2(a.y - center.y, a.x - center.x)
+    local sweep = math.atan2(b.y - center.y, b.x - center.x) - start_angle
+    if sweep > math.pi then
+        sweep = sweep - 2 * math.pi
+    elseif sweep < -math.pi then
+        sweep = sweep + 2 * math.pi
+    end
+    local pieces = {
+        a,
+    }
+    for i = 1, ARC_PIECES - 1 do
+        local angle = start_angle + sweep * i / ARC_PIECES
+        table.insert(pieces, {
+            x = center.x + radius * math.cos(angle),
+            y = center.y + radius * math.sin(angle),
+        })
+    end
+    table.insert(pieces, b)
+    return center, pieces
+end
+
+-- The box around a list of points, to skip pairs of arcs that can't meet
+local function bounds(points)
+    local box = {
+        min_x = math.huge,
+        min_y = math.huge,
+        max_x = -math.huge,
+        max_y = -math.huge,
+    }
+    for _, p in pairs(points) do
+        box.min_x = math.min(box.min_x, p.x)
+        box.min_y = math.min(box.min_y, p.y)
+        box.max_x = math.max(box.max_x, p.x)
+        box.max_y = math.max(box.max_y, p.y)
+    end
+    return box
+end
+
+-- How many times two drawn routes (as their pieces) cross
+local function arc_crossings(p, q, p_box, q_box)
+    if p_box.max_x < q_box.min_x or q_box.max_x < p_box.min_x or p_box.max_y < q_box.min_y or q_box.max_y < p_box.min_y then
+        return 0
+    end
+    local num = 0
+    for i = 1, #p - 1 do
+        for j = 1, #q - 1 do
+            if segments_cross(p[i], p[i + 1], q[j], q[j + 1]) then
+                num = num + 1
+            end
+        end
+    end
+    return num
+end
+
+-- The way a drawn route leaves its end at the given point (its first piece's direction, or its last piece's backwards), as a unit vector
+local function leaving(pieces, at)
+    local near = pieces[2]
+    if pieces[1] ~= at then
+        near = pieces[#pieces - 1]
+    end
+    local dx = near.x - at.x
+    local dy = near.y - at.y
+    local length = math.sqrt(dx * dx + dy * dy)
+    return {
+        x = dx / length,
+        y = dy / length,
+    }
+end
+
+-- Arcs for the routes on the laid-out map: each route bends by a random share, to one side or the other, and the sides are chosen for the drawing with the fewest crossings, then fewest routes grazing a location (weighed as in layout_cost), then fewest routes leaving an end almost the same way (under 10 degrees apart)
+-- The best of SIDE_TRIES random starts, each improved by turning one route's bulge to its other side while that helps
+-- Returns per edge (by index) its bend and { center, pieces } for the side chosen (nil for a route whose ends are drawn on one point, which stays a straight line), and the drawing's cost and crossings
+local function bend_routes(nodes, edges, orientation, key)
+    local points = {}
+    for _, node in pairs(nodes) do
+        points[node] = point(node, orientation[node])
+    end
+    local SIDES = {
+        1,
+        -1,
+    }
+    local shapes = {}
+    for i, edge in pairs(edges) do
+        shapes[i] = {
+            bend = rng.float_range(key, BEND_MIN, BEND_MAX),
+        }
+        for s, side in pairs(SIDES) do
+            local center, pieces = arc(points[edge.from], points[edge.to], shapes[i].bend, side)
+            if center ~= nil then
+                -- What this arc costs on its own: grazing the locations it doesn't end at
+                local own = 0
+                for _, node in pairs(nodes) do
+                    if node ~= edge.from and node ~= edge.to then
+                        local gap2 = math.huge
+                        for k = 1, #pieces - 1 do
+                            gap2 = math.min(gap2, segment_distance2(points[node], pieces[k], pieces[k + 1]))
+                        end
+                        if gap2 < ROUTE_GAP2 then
+                            own = own + 3 + (ROUTE_GAP2 - gap2) / ROUTE_GAP2
+                        end
+                    end
+                end
+                shapes[i][s] = {
+                    center = center,
+                    pieces = pieces,
+                    box = bounds(pieces),
+                    own = own,
+                }
+            end
+        end
+    end
+    -- What each pair of arcs costs together, per pair of sides: 10 per crossing, and 2 for leaving a shared end almost the same way
+    local ALMOST_SAME_WAY = math.cos(math.rad(10))
+    local pair_cost = {}
+    local pair_crossings = {}
+    for i = 1, #edges do
+        pair_cost[i] = {}
+        pair_crossings[i] = {}
+        for j = i + 1, #edges do
+            pair_cost[i][j] = {}
+            pair_crossings[i][j] = {}
+            for si = 1, 2 do
+                pair_cost[i][j][si] = {}
+                pair_crossings[i][j][si] = {}
+                for sj = 1, 2 do
+                    local cost = 0
+                    local num = 0
+                    local p = shapes[i][si]
+                    local q = shapes[j][sj]
+                    if p ~= nil and q ~= nil then
+                        num = arc_crossings(p.pieces, q.pieces, p.box, q.box)
+                        cost = 10 * num
+                        for _, a in pairs({
+                            edges[i].from,
+                            edges[i].to,
+                        }) do
+                            if a == edges[j].from or a == edges[j].to then
+                                local u = leaving(p.pieces, points[a])
+                                local v = leaving(q.pieces, points[a])
+                                if u.x * v.x + u.y * v.y > ALMOST_SAME_WAY then
+                                    cost = cost + 2
+                                end
+                            end
+                        end
+                    end
+                    pair_cost[i][j][si][sj] = cost
+                    pair_crossings[i][j][si][sj] = num
+                end
+            end
+        end
+    end
+    local function own_cost(i, s)
+        local shape = shapes[i][s]
+        return shape ~= nil and shape.own or 0
+    end
+    local function together(i, si, j, sj)
+        if i < j then
+            return pair_cost[i][j][si][sj]
+        end
+        return pair_cost[j][i][sj][si]
+    end
+    local best = nil
+    local best_cost = nil
+    for _ = 1, SIDE_TRIES do
+        local sides = {}
+        for i = 1, #edges do
+            sides[i] = rng.int(key, 2)
+        end
+        local improved = true
+        local passes = 0
+        while improved and passes < 20 do
+            improved = false
+            passes = passes + 1
+            for i = 1, #edges do
+                local other = 3 - sides[i]
+                local change = own_cost(i, other) - own_cost(i, sides[i])
+                for j = 1, #edges do
+                    if j ~= i then
+                        change = change + together(i, other, j, sides[j]) - together(i, sides[i], j, sides[j])
+                    end
+                end
+                if change < 0 then
+                    sides[i] = other
+                    improved = true
+                end
+            end
+        end
+        local cost = 0
+        for i = 1, #edges do
+            cost = cost + own_cost(i, sides[i])
+            for j = i + 1, #edges do
+                cost = cost + pair_cost[i][j][sides[i]][sides[j]]
+            end
+        end
+        if best_cost == nil or cost < best_cost then
+            best = sides
+            best_cost = cost
+        end
+    end
+    local routes = {}
+    local num_crossings = 0
+    for i = 1, #edges do
+        routes[i] = {
+            bend = shapes[i].bend,
+            shape = shapes[i][best[i]],
+        }
+        for j = i + 1, #edges do
+            num_crossings = num_crossings + pair_crossings[i][j][best[i]][best[j]]
+        end
+    end
+    return routes, best_cost, num_crossings
+end
+
 -- Draws and puts the new graph in the game; returns a line for the log
 connections.execute = function(id)
     local key = rng.key({
@@ -588,13 +828,6 @@ connections.execute = function(id)
         end
         table.insert(degrees, node .. " " .. num .. "/" .. target[node])
     end
-    -- Every route is drawn as a straight line, which is what the layout below keeps from crossing
-    for _, name in pairs(sorted_keys(data.raw["space-connection"])) do
-        local connection = data.raw["space-connection"][name]
-        if wanted[pair_key(connection.from, connection.to)] ~= nil then
-            connection.shape = "line"
-        end
-    end
     -- The star map layout
     local orientation, layout_score = layout(graph.nodes, edges, key)
     local places = {}
@@ -606,15 +839,38 @@ connections.execute = function(id)
         end
         table.insert(places, node .. " @ " .. string.format("%.3f", orientation[node] % 1))
     end
+    -- Every route is drawn as an arc around its own center, bulging to the side chosen on the laid-out map (a route whose ends are drawn on one point stays a straight line)
+    local routes_drawn, drawing_cost, num_crossings = bend_routes(graph.nodes, edges, orientation, key)
+    local route_of = {}
+    for i, edge in pairs(edges) do
+        route_of[pair_key(edge.from, edge.to)] = routes_drawn[i]
+    end
+    local num_straight = 0
+    for _, name in pairs(sorted_keys(data.raw["space-connection"])) do
+        local connection = data.raw["space-connection"][name]
+        local route = route_of[pair_key(connection.from, connection.to)]
+        if route ~= nil and route.shape ~= nil then
+            connection.shape = "arc"
+            connection.origin = {
+                x = route.shape.center.x,
+                y = route.shape.center.y,
+            }
+        elseif route ~= nil then
+            connection.shape = "line"
+            connection.origin = nil
+            num_straight = num_straight + 1
+        end
+    end
     connections.edges = edges
     local routes = {}
     for _, edge in pairs(edges) do
         table.insert(routes, edge.from .. " - " .. edge.to .. " (orbits " .. distance(edge.from) .. " and " .. distance(edge.to) .. ")")
     end
-    return #edges .. " connections among " .. #graph.nodes .. " locations, typical orbit gap " .. graph.typical_gap .. " (" .. table.concat(degrees, ", ") .. "); routes: " .. table.concat(routes, ", ") .. "; star map (orientation per location, layout cost " .. string.format("%.1f", layout_score) .. "): " .. table.concat(places, ", ") .. "; kept " .. #sorted_keys(kept) .. ", new " .. #created .. " [" .. table.concat(created, ", ") .. "], removed " .. #removed .. (#retargeted > 0 and ("; what named a removed connection now names: " .. table.concat(retargeted, ", ")) or "")
+    return #edges .. " connections among " .. #graph.nodes .. " locations, typical orbit gap " .. graph.typical_gap .. " (" .. table.concat(degrees, ", ") .. "); routes: " .. table.concat(routes, ", ") .. "; star map (orientation per location, layout cost " .. string.format("%.1f", layout_score) .. "): " .. table.concat(places, ", ") .. "; routes drawn as arcs (drawing cost " .. string.format("%.1f", drawing_cost) .. ", crossings " .. num_crossings .. (num_straight > 0 and (", straight " .. num_straight) or "") .. "); kept " .. #sorted_keys(kept) .. ", new " .. #created .. " [" .. table.concat(created, ", ") .. "], removed " .. #removed .. (#retargeted > 0 and ("; what named a removed connection now names: " .. table.concat(retargeted, ", ")) or "")
 end
 
--- For timing and tests outside the game (scratch harnesses): the layout search on given nodes and edges
+-- For timing and tests outside the game (scratch harnesses): the layout search on given nodes and edges, and the routes' arcs on a layout
 connections.layout = layout
+connections.bend_routes = bend_routes
 
 return connections

@@ -532,6 +532,12 @@ if config.planet_names then
     planet_names.fix_references()
 end
 
+-- Every planet but the starting one gets a random tint, wherever its images show (lib/planet-tints.lua)
+local planet_tints = require("lib/planet-tints")
+if config.planet_tints then
+    planet_tints.execute()
+end
+
 -- What the randomization did, in the log as RESULT lines (lib/result-summary.lua): how the finished game differs from the one before any randomization
 log("Logging what the randomization did")
 result_summary.log(pre_planetary_raw or old_data_raw, data.raw, {

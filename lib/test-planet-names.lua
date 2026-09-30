@@ -18,6 +18,7 @@ bit32 = {
     end,
 }
 
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local planet_names = require("lib/planet-names")
 
@@ -116,10 +117,33 @@ local vanilla_names = {}
 for _, first in pairs(vanilla_parts) do
     for _, middle in pairs(vanilla_parts) do
         for _, last in pairs(vanilla_parts) do
-            mixes[first[1] .. middle[2] .. last[3]] = true
+            mixes[first[1] .. middle[2] .. last[3]] = {
+                first[1],
+                middle[2],
+                last[3],
+            }
         end
     end
     vanilla_names[first[1] .. first[2] .. first[3]] = true
+end
+
+-- The most parts any two of the names share
+local function most_shared(names)
+    local most = 0
+    for i, name in pairs(names) do
+        for j, other in pairs(names) do
+            if i < j then
+                local num = 0
+                for k = 1, 3 do
+                    if mixes[name][k] == mixes[other][k] then
+                        num = num + 1
+                    end
+                end
+                most = math.max(most, num)
+            end
+        end
+    end
+    return most
 end
 
 local num_passed = 0
@@ -263,6 +287,55 @@ test("once every mix is given, a planet keeps its name", function()
     -- 5 * 5 * 5 mixes, less the 5 vanilla names
     assert(num_named == 120, num_named .. " planets named")
     assert(planet_names.name(planet("late")) == nil)
+end)
+
+test("the starting planet keeps its name: nobody else gets it, and the others share at most one part with it and with each other", function()
+    new_game()
+    -- A made-up starting planet named like a mix, so the name it keeps is one the others could have had
+    local old_start = constants.starting_planet
+    constants.starting_planet = "glebo"
+    data.raw.planet.glebo = planet("glebo")
+    data.raw.technology["find-glebo"] = discovery("find-glebo", {
+        "glebo",
+    })
+    for i = 1, 8 do
+        local name = "extra-" .. i
+        data.raw.planet[name] = planet(name)
+    end
+    name_planets()
+    constants.starting_planet = old_start
+    assert(data.raw.planet.glebo.localised_name == nil and planet_names.new_names.glebo == nil, "the starting planet was renamed")
+    assert(data.raw.technology["find-glebo"].localised_name == nil, "the starting planet's discovery was renamed")
+    local names = {
+        "Glebo",
+    }
+    for name, prototype in pairs(data.raw.planet) do
+        if name ~= "glebo" and name ~= "hidden" then
+            assert(prototype.localised_name ~= "Glebo", name .. " got the starting planet's name")
+            table.insert(names, prototype.localised_name)
+        end
+    end
+    -- 11 planets and the start's name: the parts allow 25 names with no two sharing more than one part
+    assert(#names == 12)
+    assert(most_shared(names) <= 1, "two names share " .. most_shared(names) .. " parts")
+end)
+
+test("names given later (copies) keep apart from the ones before while the parts allow it", function()
+    new_game()
+    name_planets()
+    local names = {}
+    for _, prototype in pairs(data.raw.planet) do
+        if prototype.localised_name ~= nil then
+            table.insert(names, prototype.localised_name)
+        end
+    end
+    for i = 1, 12 do
+        local copy = planet("copy-" .. i)
+        data.raw.planet[copy.name] = copy
+        table.insert(names, planet_names.name(copy))
+    end
+    assert(#names == 15)
+    assert(most_shared(names) <= 1, "two names share " .. most_shared(names) .. " parts")
 end)
 
 test("the same seed gives the same names", function()

@@ -25,6 +25,9 @@
 # Planets (dev/dupe-planets.txt) are copied whole by lib/dupe-planets.lua, so their line uses the rotate mode: every pixel's
 # hue turned by the given degrees, on the planet's icon, its star map icon and the image of the technology discovering it.
 # A planet copy's science packs are item lines like any other (they're only copied along with their planet).
+# A planet line's tints= list makes more rotations of the same images, one per angle, at graphics/dupes/tint-<degrees>/...:
+# lib/planet-tints.lua gives every planet but the starting one a random one of them. They're listed per original path in
+# their own manifest, lib/planet-tint-manifest.lua, written from what's on disk whenever a line with tints= is generated.
 #
 # Which sheets are "body" comes from a data.raw dump (dev/run-tests.py --dump-data writes one per run): every PNG
 # reachable from the entity prototype except shadows, glows, lights, layers the game tints at runtime (force/player,
@@ -62,6 +65,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GAME_DATA = "/Applications/factorio.app/Contents/data"
 OUT_DIR = os.path.join(REPO, "graphics", "dupes")
 MANIFEST = os.path.join(REPO, "lib", "dupe-graphics-manifest.lua")
+TINT_MANIFEST = os.path.join(REPO, "lib", "planet-tint-manifest.lua")
+# A planet tint's folder under OUT_DIR, by its hue rotation in degrees
+TINT_FOLDER = "tint-{}"
 
 # How much of a masked pixel becomes the dupe color (the rest keeps the original pixel): a highlight, not a coat
 STRENGTH = 0.7
@@ -102,7 +108,7 @@ NOT_ENTITY_TYPES = {"item", "recipe", "technology", "item-with-entity-data", "am
 
 
 def parse_list(path, kind):
-    """name -> {"kind": "entity"/"item", "mode": "paint"/"grey"/"whole", "hues": [..], "dupes": [(hue, sat)..], mask parameters} in file order"""
+    """name -> {"kind": "entity"/"item", "mode": "paint"/"grey"/"whole", "hues": [..], "dupes": [(hue, sat)..], "tints": [degrees..], mask parameters} in file order"""
     entries = {}
     with open(path) as f:
         for number, line in enumerate(f, 1):
@@ -116,6 +122,7 @@ def parse_list(path, kind):
             params["mode"] = "paint"
             params["hues"] = []
             params["dupes"] = []
+            params["tints"] = []
             for part in parts[1:]:
                 if part in ("whole", "grey", "rotate"):
                     params["mode"] = part
@@ -127,14 +134,18 @@ def parse_list(path, kind):
                     for token in value.split(","):
                         hue, _, sat = token.partition("/")
                         params["dupes"].append((float(hue), float(sat) if sat else DUPE_SATURATION))
+                elif key == "tints":
+                    params["tints"] = [int(v) for v in value.split(",")]
                 elif key in PAINT_DEFAULTS and value != "":
                     params[key] = float(value)
                 else:
-                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
+                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], tints=D[,D2], or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
             if params["mode"] == "paint" and not params["hues"]:
                 sys.exit(f"{path}:{number}: {name} needs hue= (or whole)")
             if params["mode"] == "rotate" and not params["dupes"]:
                 sys.exit(f"{path}:{number}: {name} needs dupes= with each dupe's hue rotation in degrees")
+            if params["tints"] and params["mode"] != "rotate":
+                sys.exit(f"{path}:{number}: {name} has tints=, which only a rotate line (a planet) takes")
             if params["low"] is None:
                 params["low"] = max(0.1, params["sat"] * 0.5)
             if params["strength"] is None:
@@ -506,6 +517,16 @@ def to_image(rgba):
     return Image.fromarray((np.clip(rgba, 0, 1) * 255).astype(np.uint8), "RGBA")
 
 
+def save_sheet(rgba, out_path):
+    """Writes the sheet and returns its size in bytes"""
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    image = to_image(rgba)
+    # 256 colors is visually the same for these sheets and about a sixth of the size (vanilla ships palette PNGs too)
+    image = image.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG)
+    image.save(out_path, optimize=True)
+    return os.path.getsize(out_path)
+
+
 def process(job):
     filename, params, colors, rects = job
     mod, rest = resolve(filename)
@@ -516,13 +537,10 @@ def process(job):
         out = recolor(rgba, params, color, weight)
         for x, y, w, h in rects:
             out[y:y + h, x:x + w] = rgba[y:y + h, x:x + w]
-        out_path = os.path.join(OUT_DIR, str(n), mod, rest)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        image = to_image(out)
-        # 256 colors is visually the same for these sheets and about a sixth of the size (vanilla ships palette PNGs too)
-        image = image.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG)
-        image.save(out_path, optimize=True)
-        written.append(os.path.getsize(out_path))
+        written.append(save_sheet(out, os.path.join(OUT_DIR, str(n), mod, rest)))
+    # A planet's tints (see the header): the whole image turned by each angle
+    for degrees in params["tints"]:
+        written.append(save_sheet(hue_rotate(rgba, degrees), os.path.join(OUT_DIR, TINT_FOLDER.format(degrees), mod, rest)))
     return filename, written
 
 
@@ -567,7 +585,7 @@ def save_rows(rows, path, gap):
 
 
 def write_preview(name, files, params, colors, rects_by_file, out_dir):
-    """Icons and the two sheets with the most colored parts, top-left corners: original, then each dupe"""
+    """Icons and the two sheets with the most colored parts, top-left corners: original, then each dupe, then each planet tint"""
     rows = []
     for f, crop_size, zoom in views(files, params, 2):
         rgba = load_rgba(source_path(f))
@@ -578,6 +596,8 @@ def write_preview(name, files, params, colors, rects_by_file, out_dir):
             for x, y, w, h in rects_by_file.get(f, []):
                 out[y:y + h, x:x + w] = rgba[y:y + h, x:x + w]
             variants.append(out[:crop.shape[0], :crop.shape[1]])
+        for degrees in params["tints"]:
+            variants.append(hue_rotate(crop, degrees))
         rows.append([zoomed(v, zoom) for v in variants])
     if rows:
         save_rows(rows, os.path.join(out_dir, name + ".png"), 0)
@@ -617,6 +637,35 @@ def write_manifest(highest):
         f.write("\n".join(lines))
 
 
+def write_tint_manifest():
+    """The planet tints on disk (every graphics/dupes/tint-<degrees>/ folder), per original path; returns how many paths"""
+    tints = {}
+    pattern = re.compile("^" + TINT_FOLDER.format(r"(\d+)") + "$")
+    for folder in sorted(os.listdir(OUT_DIR)):
+        match = pattern.match(folder)
+        if match is None:
+            continue
+        root = os.path.join(OUT_DIR, folder)
+        for directory, _, names in os.walk(root):
+            for file_name in names:
+                if not file_name.endswith(".png"):
+                    continue
+                mod, _, rest = os.path.relpath(os.path.join(directory, file_name), root).replace(os.sep, "/").partition("/")
+                tints.setdefault("__" + mod + "__/" + rest, []).append(int(match.group(1)))
+    lines = [
+        "-- Generated by dev/make-dupe-graphics.py; don't edit",
+        "-- Original sprite path -> the hue rotations in degrees with a tinted copy at graphics/dupes/tint-<degrees>/<same path> (lib/planet-tints.lua)",
+        "return {",
+        "    files = {",
+    ]
+    for filename in sorted(tints):
+        lines.append("        [" + json.dumps(filename) + "] = {" + ", ".join(str(d) for d in sorted(tints[filename])) + "},")
+    lines += ["    },", "}", ""]
+    with open(TINT_MANIFEST, "w") as f:
+        f.write("\n".join(lines))
+    return len(tints)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dump", required=True, help="data-raw-dump.json from a run with the dupes off")
@@ -654,7 +703,7 @@ def main():
         missing = sorted(f for f in files if not source_path(f))
         size = sum(os.path.getsize(source_path(f)) for f in present)
         colors[name] = dupe_colors(params, numbers)
-        print(f"{name} ({params['kind']}, {params['mode']}, dupes " + ", ".join(f"{n}: {c[0]:.0f}/{c[1]:.2f}" for n, c in sorted(colors[name].items())) + f"): {len(present)} files, {size / 1e6:.1f} MB" + (f", missing {len(missing)}" if missing else ""))
+        print(f"{name} ({params['kind']}, {params['mode']}, dupes " + ", ".join(f"{n}: {c[0]:.0f}/{c[1]:.2f}" for n, c in sorted(colors[name].items())) + (", tints " + ",".join(str(d) for d in params["tints"]) if params["tints"] else "") + f"): {len(present)} files, {size / 1e6:.1f} MB" + (f", missing {len(missing)}" if missing else ""))
         if args.list:
             for f in present:
                 print("   ", f, "(protected " + str(protected[f]) + ")" if f in protected else "")
@@ -691,6 +740,9 @@ def main():
     if not args.only:
         write_manifest(highest)
         print("manifest:", os.path.relpath(MANIFEST, REPO), len(highest), "files")
+    # The tint manifest lists what's on disk, so a run with --only keeps it whole too
+    if any(entries[name]["tints"] for name in per_name):
+        print("tint manifest:", os.path.relpath(TINT_MANIFEST, REPO), write_tint_manifest(), "files")
 
 
 if __name__ == "__main__":

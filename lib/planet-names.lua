@@ -1,9 +1,11 @@
 -- Random planet names (config.planet_names: planetary randomization, the unified randomizations and the duplicates all on)
--- Every planet gets a name of a prefix, a root and a suffix, each from any of the vanilla planets' names (Nau-v-is, Gle-b-a, Ful-go-ra, Vul-can-us, Aqui-l-o), like Glecanus or Aquigora
+-- Every planet but the starting one gets a name of a prefix, a root and a suffix, each from any of the vanilla planets' names (Nau-v-is, Gle-b-a, Ful-go-ra, Vul-can-us, Aqui-l-o), like Glecanus or Aquigora; the starting planet keeps its own
 -- No two planets share a name, and none gets a vanilla name (all three parts from one planet), so no planet passes for another
+-- Names are also told apart by their parts: each new name is one sharing as few parts as there are with the names already in the game (at most one of the three, while the parts allow it), so there's no Glegora beside a Glegoa
 -- Names are given before the duplicates and planetary changes (planet_names.execute, from data-final-fixes.lua), so what those name after a planet (copies, discovery technologies, space connections) takes its new name from the prototype; a planet made later, like a copy, takes a name of its own (planet_names.name)
 -- Localised strings made along the way that name a planet by its locale key get its new name at the end (planet_names.fix_references)
 
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 
 local planet_names = {}
@@ -27,8 +29,10 @@ local LOCALE_KEY_PATTERN = "^space%-location%-name%.(.+)$"
 
 -- Planet name --> the name it goes by now
 planet_names.new_names = {}
--- The names left to give, taken from the end
+-- The names left to give, each as { name, parts = {prefix, root, suffix} }, in a random order
 local unused = {}
+-- The parts of the names in the game: the names given, and the mixes planets keeping their names go by
+local in_use = {}
 
 local function sorted_keys(tbl)
     local keys = {}
@@ -39,8 +43,8 @@ local function sorted_keys(tbl)
     return keys
 end
 
--- Every mix of the vanilla parts except the vanilla names themselves, in a random order
-local function shuffled_names()
+-- Every mix of the vanilla parts, each as { name, parts = {prefix, root, suffix}, vanilla = whether all three come from one planet }
+local function all_mixes()
     local splits = {}
     for _, parts in pairs(VANILLA_PARTS) do
         local prefix, root, suffix = string.match(parts, "^(.-)%-(.-)%-(.-)$")
@@ -50,20 +54,57 @@ local function shuffled_names()
             suffix = suffix,
         })
     end
-    local names = {}
+    local mixes = {}
     for i, first in pairs(splits) do
         for j, middle in pairs(splits) do
             for k, last in pairs(splits) do
-                if i ~= j or j ~= k then
-                    table.insert(names, first.prefix .. middle.root .. last.suffix)
-                end
+                table.insert(mixes, {
+                    name = first.prefix .. middle.root .. last.suffix,
+                    parts = {
+                        first.prefix,
+                        middle.root,
+                        last.suffix,
+                    },
+                    vanilla = i == j and j == k,
+                })
             end
         end
     end
-    rng.shuffle(rng.key({
-        id = "planet-names",
-    }), names)
-    return names
+    return mixes
+end
+
+-- How many of their three parts two names share
+local function num_shared(parts, other)
+    local num = 0
+    for i = 1, 3 do
+        if parts[i] == other[i] then
+            num = num + 1
+        end
+    end
+    return num
+end
+
+-- The index in unused of the name sharing the fewest parts with the names in the game: fewest with any one of them, then fewest in all, the first in the random order among equals
+local function most_distinct()
+    local best = nil
+    local best_most = nil
+    local best_total = nil
+    for i = 1, #unused do
+        local mix = unused[i]
+        local most = 0
+        local total = 0
+        for _, parts in pairs(in_use) do
+            local num = num_shared(mix.parts, parts)
+            most = math.max(most, num)
+            total = total + num
+        end
+        if best == nil or most < best_most or (most == best_most and total < best_total) then
+            best = i
+            best_most = most
+            best_total = total
+        end
+    end
+    return best
 end
 
 -- The one space location a technology discovers (its only unlock-space-location effect), or nil
@@ -100,28 +141,51 @@ local function fixed(str)
     return str, num_fixed
 end
 
--- Gives the planet the next name left and returns it; once they're all given, returns nil and the planet keeps its name
+-- Gives the planet the name left that's most distinct from the names in the game and returns it; once they're all given, returns nil and the planet keeps its name
 planet_names.name = function(planet)
-    local name = table.remove(unused)
-    if name == nil then
+    local index = most_distinct()
+    if index == nil then
         log("Planet names: none left for " .. planet.name .. ", so it keeps its name")
         return nil
     end
-    planet.localised_name = name
-    planet_names.new_names[planet.name] = name
-    log("Planet names: " .. planet.name .. " is " .. name)
-    return name
+    local mix = table.remove(unused, index)
+    table.insert(in_use, mix.parts)
+    planet.localised_name = mix.name
+    planet_names.new_names[planet.name] = mix.name
+    log("Planet names: " .. planet.name .. " is " .. mix.name)
+    return mix.name
 end
 
--- Names every planet that isn't hidden, and each technology discovering just one of them after its new name
+-- Names every planet that isn't hidden but the starting planet, and each technology discovering just one of them after its new name
 planet_names.execute = function()
     planet_names.new_names = {}
-    unused = shuffled_names()
+    unused = {}
+    in_use = {}
+    local planets = {}
+    local kept = {}
     for _, name in pairs(sorted_keys(data.raw.planet or {})) do
         local planet = data.raw.planet[name]
         if planet.hidden ~= true then
-            planet_names.name(planet)
+            if name == constants.starting_planet then
+                kept[name] = true
+            else
+                table.insert(planets, planet)
+            end
         end
+    end
+    -- A planet keeping its name holds its mix, when its name is one (the starting planet's vanilla name, say): nobody else gets it, and the names given keep apart from it too
+    for _, mix in pairs(all_mixes()) do
+        if kept[string.lower(mix.name)] ~= nil then
+            table.insert(in_use, mix.parts)
+        elseif not mix.vanilla then
+            table.insert(unused, mix)
+        end
+    end
+    rng.shuffle(rng.key({
+        id = "planet-names",
+    }), unused)
+    for _, planet in pairs(planets) do
+        planet_names.name(planet)
     end
     local num_techs = 0
     for _, tech in pairs(data.raw.technology or {}) do
