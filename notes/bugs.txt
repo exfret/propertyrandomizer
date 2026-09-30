@@ -14,5 +14,5 @@ This lists bugs/issues before they're moved to their own issues on the github re
 44. Item randomization does not properly account for when icons are less than 64px (like the py guar seeds) - seems like a resource icon property issue actually
 45. Things that are made consumable can be made immediately dysfunctional
 46. Railgun/other projectiles die before reaching target with large range
-49. Fix recycling recipe fixing
 50. Check issue with modules as fuel if that's fixed or not: https://mods.factorio.com/mod/propertyrandomizer/discussion/6a2eb24e2fd1a556763fe4f3
+51. (fixed 2026-09-29: one connection per tile) If two fluidbox pipe connections meet at different directions of a corner, they will not be both shown

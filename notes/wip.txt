@@ -1,3 +1,14 @@
+ * TO DO (2026-09-29): bootstrap "initial infrastructure" against isolatability, in recipe randomization first
+    - Seen on sa/science-cost@750 (recipe=true, old logic 12/12 packs, new checker 9/12, 333 unreachable recipes): legacy recipe randomization gave the lightning rod 1 holmium plate (and the lightning collector 269 holmium solution)
+      It did that on purpose: it preserves the isolatability a recipe has in the new logic (randomizations/graph/recipe.lua:392-432, "Preserving isolatability of lightning-rod on planet: fulgora"), and holmium is the most Fulgora-local ingredient there is
+      The new logic needs an attractor built on a lightning planet before any building lightning can damage operates there (lightning-safe, lib/logic/abstract.lua:303; the edge in lib/logic/concrete.lua:506), so with both attractors needing Fulgora's recycler, nothing on Fulgora can ever run: no electromagnetic science, then no cryogenic or promethium
+      The old logic has no lightning rule (removed 2026-09-28), so it saw nothing wrong; the two logics disagree, and recipe randomization chooses with the old one
+    - The question: an item that bootstraps a room (a lightning attractor for a lightning planet; a heat producer or warmth for a frozen planet, see notes/bootstrap-infrastructure.txt; maybe the platform starter pack) has to be obtainable before the room is bootstrapped
+      Preserving its isolatability in that room asks for the opposite. Which items count as initial infrastructure, and whether the room's isolatability should leave them out, is the design decision
+    - A rule that would fit: sort the new logic once with the bootstrap grants removed (lightning-safe's entity-build edges, the bootstrap heat and warmth grants) for a "pre-bootstrap" reachability, and let a recipe whose product bootstraps a room only take ingredients reachable in that sort, instead of ingredients isolatable in the room
+      Both the legacy recipe randomization and the unified recipe-ingredients handler would need it, and the final check would need to judge attractor recipes the same way. Cost: one extra new-logic sort per recipe randomization
+    - Left alone for now (user, 2026-09-29: small enough to leave); the instrumented copy with per-room traces (ROOMTRACE) is in the session's scratch folder diag750
+
  * BEFORE THE NEXT RELEASE: uncomment the damage type randomizations in helper-tables/spec.lua (artillery_projectile_damage_types, beam_damage_types, capsule_damage_types, combat_robot_damage_types, sticker_damage_types; all in military "more") and capsule_actions (misc "more")
     - Commented out 2026-09-29: with the playtest settings (military and misc at "more") they changed things the logic models after unified's model and check, and MECHCHECK counts every reachable node context as a promise, so SA seeds 1-4 failed after a clean UNIFIEDCHECK, with the fluid flag on and off alike
         - Damage types: took away the only source of a damage type on some surfaces (laser on space platforms from laser turrets' beams, electric on Vulcanus/Aquilo from tesla turrets' beams)
@@ -49,20 +60,28 @@
         - Brainstorm for identities that can't change form yet: conversion recipes (solidify/melt), native role translations (fluid fuel, stream-turret fluids, generated barrels), fluid roles as position roles, position conversion, form icons
         - Open question above: entity fluid inputs and required fluids follow the fluid identity for now, so no entity ever takes an item
 
- * WORK IN PROGRESS (paused 2026-09-27, to pick up in a couple days): spoiling handler, trip line, plant harvesting
+ * WORK IN PROGRESS (paused 2026-09-27, resumed 2026-09-29): spoiling handler, trip line, plant harvesting
     - Committed as 9fd85d6 (2026-09-27), everything below included; the planetary session's lib/logic/bootstrap.lua is its own
-    - Spoiling handler (randomizations/graph/unified/handlers-new/spoiling.lua, see handlers.md): enabled in the dev list in execute-new.lua
+    - Spoiling handler (randomizations/graph/unified/handlers/spoiling.lua, see handlers.md): enabled in the dev list in execute.lua
       Tested on seeds 1-6 of the dev set with no unreachable recipes or lost contexts. Seed 3's first attempt fails its check for reasons unrelated to spoiling and passes on retry
-      Still to do:
-        - prefer new spoil results that have a use other than recycling
-        - give a fuel value to any spoil result with no other use (even if it can be recycled)
-        - test more seeds
+      Spoil results need a sink (lib/item-sinks.lua; plain tests: lua lib/test-item-sinks.lua), reworked 2026-09-29 after the user's corrections:
+        - A sink is a way machines can use an item up on the way to research, not the same as being useful elsewhere
+        - A path ends only at a science pack (labs use it up) or at chemical fuel some burner can burn; placing, launch products, other fuel categories and items used directly (ammo, capsules, modules, ...) don't count
+        - Steps: recipes some machine can craft (scrap recycling included, since hand-written recycling differs from normal recycling), and spoiling
+        - The recycler's generated recycling isn't a step: a result only it takes still gets the fuel (user's answer, 2026-09-29)
+        - The whole game counts, not where the item spoils (user's answer); nothing else ends a path (user's answer)
+        - New results: the search picks each among NEW_RESULT_CHOICES = 3 random items, preferring one with a sink, judged on the game reflect will build (recipes stay with positions, ending a path and spoiling move with the identity)
+        - after_changes gives any spoil result without a sink chemical fuel: spoilage's (250kJ), or the chemical category on top of its own fuel if it already burns in other categories
+        - New result candidates with a sink in the game as it is come first; drawn uniformly, 22 of 48 groups had no choice with a sink, since most final products have none
+        - Tested 2026-09-29 (dev set SA seeds 1-4, preview@1-4): every new result had a sink, and the fallback fired only for vanilla result positions holding an identity without one (rocket-turret, uranium-ore, cargo-landing-pad). All passed but preview@1, whose 10 attempts all lost acid-neutralisation on Fulgora in first pass once config.item_fluids was on. That happens without the spoiling changes too, and preview@1 passes with them and item_fluids off
+        - Stack size: no rule needed for new results; the user expects the game handles a stack spoiling into more than fits a slot
     - Trip line (dutils.survives_trip, constants.spoil_trip_ticks = 30 min): items that spoil sooner can't be delivered to other rooms. Done
     - Platform one-time rule now counts for operating a built entity (entity-own-space), not for having it, which fixes a mine-back leak. Done
       See notes/bootstrap-infrastructure.txt; the planetary session added the fixpoint for freezing moves (lib/logic/bootstrap.lua)
     - Plant harvesting by agricultural towers as automatic (entity-harvest) is written but OFF (AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua)
       With it on, monotone matching lost the same 20 Gleba | 11 hard pebbles every round and added 0 needs, so first pass moved no items
       Seen again 2026-09-29 (evening, while the flag was on): SA seed 3 every round and seeds 1 and 4 in some rounds lose 22 Gleba | 11 pebbles (create-platform), with the fluid flag on and off alike. With the flag off again (below), the fluid copy's SA seeds 1 and 3 pass both checks and seed 3 moves 259 identities in round 2
+      Off again in the main tree since 2026-09-29 (late evening, the user's request through another session): the spoiling work stays out of the main tree for now, so turn the flag on in an isolated copy only; the user's own load at 20:53 had first pass move 0 identities with it on
       Next steps:
         - turn it on and log each lost pebble with the positions on its old path that changed item
         - fix refinement (blocked_travs in skeleton/monotone-matching.lua only counts travs on the path)

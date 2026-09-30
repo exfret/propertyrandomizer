@@ -1,13 +1,3 @@
 CURRENTLY ON:
 
- * Better testing and release scripts; at least ignore more things that need to be ignored, and run tests on release version
-
- * Playtest just a little bit
-
- * Check recipe costs in unified (and non-unified) not inflated too much (use factory planner?)
-
- * Double check settings that need to be hidden are hidden
-    * Tech tree rebuild forced on for new unified and only available through there?
- * Release the new version
-
  * Maybe the work in progress described in wip.txt
