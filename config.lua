@@ -113,6 +113,8 @@ config.dev_unified = features.dev_unified
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
 -- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
 config.item_fluids = config.dev_unified
+-- Whether planets get random names mixed from the vanilla planets' names (lib/planet-names.lua): with planetary randomization, the unified randomizations in development and the duplicates all on (user, 2026-09-30)
+config.planet_names = config.dupes and config.planetary and config.dev_unified
 
 config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value

@@ -21,6 +21,7 @@ local top = require("lib/graph/context-sort")
 local new_logic = require("lib/logic/init")
 local locks = require("randomizations/planetary/locks")
 local oceans = require("randomizations/planetary/oceans")
+local planet_names = require("lib/planet-names")
 
 local dupe_planets = {}
 
@@ -162,6 +163,10 @@ local function copy_planet(planet)
     dupe.recolor_graphics(copy, DUPE_NUMBER)
     copy.orientation = ((planet.orientation or 0) + ORIENTATION_NUDGE) % 1
     copy.order = (planet.order or "") .. "-" .. tostring(DUPE_NUMBER)
+    -- With random planet names, the copy gets one of its own rather than its original's with a number
+    if config.planet_names then
+        planet_names.name(copy)
+    end
     return copy
 end
 

@@ -51,6 +51,12 @@ require("config")
 -- Load compat code
 require("compat/master")
 
+-- Random planet names (lib/planet-names.lua), before the duplicates and planetary changes, so what they name after a planet takes its new name
+local planet_names = require("lib/planet-names")
+if config.planet_names then
+    planet_names.execute()
+end
+
 -- Duplicates of the planets, entities and items with recolored graphics (lib/dupe-planets.lua, lib/dupe.lua), before anything reads the prototypes, so they get randomized like everything else
 local dupe = require("lib/dupe")
 local dupe_planets = require("lib/dupe-planets")
@@ -478,6 +484,11 @@ randomizations.post_fixes()
 
 if release_isolation ~= nil then
     release_isolation.check_prerequisites()
+end
+
+-- Strings that named a planet by its locale key get its new name (lib/planet-names.lua)
+if config.planet_names then
+    planet_names.fix_references()
 end
 
 -- Add warnings for control stage
