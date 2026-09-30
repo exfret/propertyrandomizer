@@ -19,6 +19,10 @@ recipe_category.id = "recipe_category"
 
 recipe_category.with_replacement = true
 
+-- Half the time a recipe tries its old category first, so categories are less chaotic; bases that pay a planetary debt still come before it (see the prereq shuffle in execute.lua)
+-- The old category still has to pass validate, so a recipe it no longer fits picks at random like the rest
+recipe_category.stay_chance = 0.5
+
 -- Furnaces pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (see lib/furnace-selection.lua)
 -- taken[pool index][ingredient key] marks ingredients of recipes that pool's furnaces craft; recipe-ingredients then checks again with the final ingredients
 local pools
@@ -27,11 +31,14 @@ local taken
 local claimed_recipes
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
 local claimed_category
+-- Category node name --> its crafting categories as one sorted string (see stays)
+local cats_keys
 recipe_category.initialize = function()
     pools = furnace_selection.pools()
     taken = nil
     claimed_recipes = {}
     claimed_category = {}
+    cats_keys = {}
 end
 
 -- Recipes that keep their category keep their ingredients in its furnaces; only known once claiming is done, so this runs on first use
@@ -155,6 +162,29 @@ recipe_category.process = function(graph, base, head)
             get_taken()[pool_ind][gutils.key(unique_ing)] = true
         end
     end
+end
+
+-- Category nodes are split by fluid counts (lu.rcats), so a recipe stays in its category with any node of the same crafting categories
+local function cats_key(rcat_name)
+    if cats_keys[rcat_name] == nil and lu.rcats[rcat_name] ~= nil then
+        local cats = table.deepcopy(lu.rcats[rcat_name].cats)
+        table.sort(cats)
+        cats_keys[rcat_name] = table.concat(cats, ",")
+    end
+    return cats_keys[rcat_name]
+end
+
+recipe_category.stays = function(graph, base, head)
+    if head.old_base == nil then
+        return false
+    end
+    local base_owner = gutils.get_owner(graph, base)
+    local old_owner = gutils.get_owner(graph, graph.nodes[head.old_base])
+    if base_owner.type ~= "recipe-category" or old_owner.type ~= "recipe-category" then
+        return false
+    end
+    local old_cats = cats_key(old_owner.name)
+    return old_cats ~= nil and cats_key(base_owner.name) == old_cats
 end
 
 recipe_category.reflect = function(graph, head_to_base, head_to_handler)

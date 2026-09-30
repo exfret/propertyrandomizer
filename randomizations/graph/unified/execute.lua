@@ -657,6 +657,8 @@ unified.execute = function()
     local handler_to_used_prereq_inds = {}
     -- Heads at chunk boundaries (debt mode) whose new base pays for their dependent
     local num_paying_heads = 0
+    -- For handlers with a stay_chance: their heads, how many tried to keep their old connection, and how many kept it (in all, and of those that tried)
+    local handler_to_stay_stats = {}
     for _, handler in pairs(handlers) do
         handler_to_used_prereq_inds[handler.id] = {}
     end
@@ -710,6 +712,40 @@ unified.execute = function()
                     else
                         table.insert(later, ind)
                     end
+                end
+                -- A head that rolls under its handler's stay_chance tries the bases that keep its old connection (the handler's stays) first among the paying bases and among the rest, so paying bases still go first
+                local stay_stats
+                local tries_to_stay = false
+                if head_to_handler[head_key].stay_chance > 0 then
+                    handler_to_stay_stats[handler_id] = handler_to_stay_stats[handler_id] or {
+                        heads = 0,
+                        tried = 0,
+                        kept = 0,
+                        kept_tried = 0,
+                    }
+                    stay_stats = handler_to_stay_stats[handler_id]
+                    stay_stats.heads = stay_stats.heads + 1
+                    tries_to_stay = rng.value(rng.key({id = "unified-stay"})) < head_to_handler[head_key].stay_chance
+                end
+                if tries_to_stay then
+                    stay_stats.tried = stay_stats.tried + 1
+                    local function staying_first(inds)
+                        local first = {}
+                        local rest = {}
+                        for _, ind in pairs(inds) do
+                            if head_to_handler[head_key].stays(random_graph, random_graph.nodes[shuffled_prereqs[ind]], head) then
+                                table.insert(first, ind)
+                            else
+                                table.insert(rest, ind)
+                            end
+                        end
+                        for _, ind in pairs(rest) do
+                            table.insert(first, ind)
+                        end
+                        return first
+                    end
+                    order = staying_first(order)
+                    later = staying_first(later)
                 end
                 for _, ind in pairs(later) do
                     table.insert(order, ind)
@@ -767,6 +803,12 @@ unified.execute = function()
                     prom.resolve_head(head_key, base_key, required_contexts)
                     found_prereq = true
                 end
+                if stay_stats ~= nil and found_prereq and head_to_handler[head_key].stays(random_graph, random_graph.nodes[head_to_base[head_key]], head) then
+                    stay_stats.kept = stay_stats.kept + 1
+                    if tries_to_stay then
+                        stay_stats.kept_tried = stay_stats.kept_tried + 1
+                    end
+                end
                 if not found_prereq then
                     --log_info(2, serpent.block(shuffled_prereqs))
                     log(head_key)
@@ -775,6 +817,9 @@ unified.execute = function()
                 end
             end
         end
+    end
+    for handler_id, stats in pairs(handler_to_stay_stats) do
+        log("STAY " .. handler_id .. ": " .. stats.kept .. " of " .. stats.heads .. " heads kept their old connection; " .. stats.kept_tried .. " of the " .. stats.tried .. " that tried to first")
     end
     if prom ~= nil then
         log("Promotion: " .. num_paying_heads .. " heads at chunk boundaries took bases that pay for them")

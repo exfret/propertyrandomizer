@@ -47,6 +47,8 @@ With first pass and promotion, every resource's fluid is chosen up front, before
 
 Not ready for release
 
+Half the time (stay_chance) a recipe tries its old category first: bases whose category node has the same crafting categories, whatever fluid counts the node has (stays). They come right after any bases that pay a planetary debt, and still have to pass validate, so a recipe its old category no longer fits picks at random like the rest. The STAY log line says how many recipes kept their category.
+
 # recipe-ingredients
 
 Not ready for release

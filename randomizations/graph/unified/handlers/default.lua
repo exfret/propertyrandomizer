@@ -14,6 +14,12 @@ default.required = {
 default.with_replacement = true
 -- Whether to put extra copies with the same priority or at the end (default at the end)
 default.uniform_copies = false
+-- Chance that a head first tries the bases that keep its old connection, as stays says (see the prereq shuffle in execute.lua); 0 never does
+default.stay_chance = 0
+-- Whether connecting base to head keeps head's old connection, for stay_chance
+default.stays = function(graph, base, head)
+    return false
+end
 
 -- How much later prereqs should be repeated to combat bias toward earlier ones
 -- Makes prereqs in first quartile added once, in second quartile added twice, etc.
