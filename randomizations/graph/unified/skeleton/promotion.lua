@@ -1222,11 +1222,6 @@ promotion.new = function(params)
         return true
     end
 
-    -- Rank of a node's pebble in context, or nil (for tests and reporting)
-    state.rank = function(node_key, context)
-        return node_ind(node_key, context)
-    end
-
     -- Checks a candidate base for a generic handler head (e.g. energy source --> entity-operate)
     -- The base must be establishable before the head's dependent in each required context of that dependent (from required_contexts(dep), see backing_bound), and in debt mode solvent where the head is (the no-new-insolvency rule)
     state.head_candidate_ok = function(head_key, base_key, required_contexts)

@@ -3,6 +3,7 @@
 -- Bases are mining-fluid nodes: a fluid together with the resource category variant that takes a fluid input (lutils.mcat_name), since only machines with an input fluid box mine a resource needing a fluid, never the character (fluid_amount > 0 means it can't be mined by hand, see MinableProperties in the API docs)
 -- prefixes.lua gives every mining drill an input fluid box, so this mostly takes hand mining away
 -- A resource can only gain a fluid if its category's fluid input variant has a resource-category node in logic (some resource of that category needed a fluid)
+-- With first pass and promotion, every resource's fluid is chosen up front (choose_up_front below), and the shuffle only chooses them without those
 
 local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
@@ -114,6 +115,145 @@ mining_fluid_required.spoof = function(graph)
             end
         end
     end
+end
+
+-- How many resources need a mining fluid, when the game allows that many (user, 2026-09-30: "about 2-3 ores with fluids per game")
+local MIN_WITH_FLUID = 2
+local MAX_WITH_FLUID = 3
+-- How many resources' fluids are tried on the whole game at most, one sort each (a failing one is cheap when it's an early resource, since cutting it off leaves little to sort)
+local MAX_CHECKS = 8
+
+-- Chooses every resource's mining fluid before promotion ranks anything (see choose_up_front in handlers/default.lua)
+-- A resource needing no fluid has a free vanilla base, so promotion's ranks put its head near the start, and a fluid could only pass if it happened to sort before the resource's mining, which one random order rarely shows (logged on sa/preview seeds 1 to 4 on 2026-09-29: of about 22 fluids each, none passed for any resource but uranium, and once for tungsten)
+-- So random resources each get a random fluid, one at a time, and one keeps it only if with it and the ones kept so far unmineable, each of their fluids is still had wherever its resource was mined
+-- Then no fluid needs any of them, so each is mined wherever it was before and the game reaches everything it did; one that fails (like iron ore needing water on Nauvis, when pumping water takes iron) gives way to the next, and the ones kept so far stay
+-- Every other resource needs no fluid, and a resource that needs one in vanilla keeps it if too few others could take one
+mining_fluid_required.choose_up_front = function(params)
+    local graph = params.random_graph
+    local baseline = params.baseline_sort.node_to_context_inds
+    local unified_key = rng.key({ id = "unified" })
+
+    -- The pool's fluid bases, and a base meaning no fluid
+    local fluid_bases = {}
+    local no_fluid_base
+    local seen = {}
+    for _, base_key in pairs(params.pool) do
+        if seen[base_key] == nil then
+            seen[base_key] = true
+            if gutils.get_owner(graph, graph.nodes[base_key]).name == NO_FLUID then
+                no_fluid_base = no_fluid_base or base_key
+            else
+                table.insert(fluid_bases, base_key)
+            end
+        end
+    end
+
+    local function mine_key(head_key)
+        return gutils.key(gutils.unique_depnode(graph, graph.nodes[head_key]))
+    end
+    local function owner_of(base_key)
+        return gutils.get_owner(graph, graph.nodes[base_key])
+    end
+    -- Whether a sort has the fluid of a fluid base in every one of these contexts (its connection to a head adds or removes no abilities, see below)
+    local function had_in(node_to_context_inds, base_key, contexts)
+        local had = node_to_context_inds[gutils.key(owner_of(base_key))] or {}
+        for context, _ in pairs(contexts) do
+            if had[context] == nil then
+                return false
+            end
+        end
+        return true
+    end
+
+    -- Resources that could take a fluid, in random order, each with a random fluid had wherever it's mined in first pass's sort (which could still need the resource itself; the check below settles that)
+    local candidates = {}
+    for _, head_key in pairs(params.heads) do
+        local contexts = baseline[mine_key(head_key)] or {}
+        local options = {}
+        if next(contexts) ~= nil then
+            for _, base_key in pairs(fluid_bases) do
+                local base = graph.nodes[base_key]
+                if base.abilities == nil and mining_fluid_required.validate(graph, base, graph.nodes[head_key]) and had_in(baseline, base_key, contexts) then
+                    table.insert(options, base_key)
+                end
+            end
+        end
+        if #options > 0 then
+            table.insert(candidates, {
+                head_key = head_key,
+                base_key = options[rng.int(unified_key, #options)],
+            })
+        end
+    end
+    rng.shuffle(unified_key, candidates)
+    -- Last, a resource that needs a fluid in vanilla keeps it
+    for _, head_key in pairs(params.heads) do
+        local old_base = graph.nodes[head_key].old_base
+        if owner_of(old_base).name ~= NO_FLUID then
+            table.insert(candidates, {
+                head_key = head_key,
+                base_key = old_base,
+            })
+        end
+    end
+    local target = MIN_WITH_FLUID - 1 + rng.int(unified_key, MAX_WITH_FLUID - MIN_WITH_FLUID + 1)
+
+    local function describe(head_keys, fluids)
+        local names = {}
+        for _, head_key in pairs(head_keys) do
+            table.insert(names, gutils.get_owner(graph, graph.nodes[head_key]).name .. " <- " .. tostring(owner_of(fluids[head_key]).fluid))
+        end
+        return #names > 0 and table.concat(names, ", ") or "none"
+    end
+
+    -- head key --> fluid base, for the resources with a fluid (in order, the order they got it)
+    local fluids = {}
+    local order = {}
+    local num_checks = 0
+    local next_candidate = 1
+    while #order < target and next_candidate <= #candidates and num_checks < MAX_CHECKS do
+        local candidate = candidates[next_candidate]
+        next_candidate = next_candidate + 1
+        if fluids[candidate.head_key] == nil then
+            fluids[candidate.head_key] = candidate.base_key
+            local trial = table.deepcopy(order)
+            table.insert(trial, candidate.head_key)
+            local cut_off = {}
+            for _, head_key in pairs(trial) do
+                table.insert(cut_off, mine_key(head_key))
+            end
+            local sort_info = params.sort_without(cut_off)
+            num_checks = num_checks + 1
+            local passes = true
+            for _, head_key in pairs(trial) do
+                if not had_in(sort_info.node_to_context_inds, fluids[head_key], baseline[mine_key(head_key)] or {}) then
+                    passes = false
+                    break
+                end
+            end
+            log("Mining fluids up front, check " .. num_checks .. ": " .. describe({ candidate.head_key }, fluids) .. (passes and " kept" or " dropped"))
+            if passes then
+                order = trial
+            else
+                fluids[candidate.head_key] = nil
+            end
+        end
+    end
+
+    -- Every head's base: its fluid, no fluid, or for a resource that needs none in vanilla, its own base
+    local chosen = {}
+    for _, head_key in pairs(params.heads) do
+        local old_base = graph.nodes[head_key].old_base
+        if fluids[head_key] ~= nil then
+            chosen[head_key] = fluids[head_key]
+        elseif owner_of(old_base).name == NO_FLUID then
+            chosen[head_key] = old_base
+        else
+            chosen[head_key] = no_fluid_base or old_base
+        end
+    end
+    log("Mining fluids up front (aiming for " .. target .. "): " .. describe(order, fluids) .. "; every other resource needs none")
+    return chosen
 end
 
 mining_fluid_required.claim = function(graph, prereq, dep, edge)

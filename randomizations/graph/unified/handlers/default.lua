@@ -45,6 +45,14 @@ end
 default.claim = function(graph, prereq, dep, edge)
 end
 
+-- Called with first pass and promotion, before promotion ranks anything, for heads whose new base is chosen up front and checked on the whole game instead of by promotion's fixed ranks
+-- That suits a head whose vanilla base is free (like a resource needing no mining fluid): its dependent can take a later base only if that base happens to sort before the dependent, which one random order rarely shows
+-- params: heads (this handler's heads of randomized dependents), pool (its shuffled bases), random_graph, baseline_sort (first pass's sort of the game), and sort_without(node keys), a sort of the game (first pass's graph, with earlier handlers' up-front choices) where those AND nodes can't be reached
+-- Returns head key --> base key for the heads it decided (promotion starts from them, and the shuffle leaves them alone)
+default.choose_up_front = function(params)
+    return {}
+end
+
 -- Allows for defining a function for the handler to do the prereq search on a dependent themselves
 -- Required for more advanced handlers like the one for recipe ingredients
 default.custom_prereq_search = false

@@ -39,6 +39,10 @@ Not ready for release
 
 # mining-fluid-required
 
+Which fluid mining a resource needs, and whether it needs one at all. Bases are mining-fluid nodes (a fluid with the fluid-input variant of a resource category, which prefixes.lua gives every mining drill), plus a spoofed "no fluid" base fed by true.
+
+With first pass and promotion, every resource's fluid is chosen up front, before promotion ranks anything (choose_up_front, see default.lua). A resource needing no fluid has a free vanilla base, so its head sorts near the start, and promotion's fixed ranks could almost never give it a fluid: on sa/preview seeds 1 to 4 (2026-09-29), none of about 22 fluids passed for any resource but uranium. Instead, random resources each get a random fluid that's had wherever they're mined, one at a time until two or three have one (the user's "about 2-3 ores with fluids per game"), and one keeps it only if, with it and the ones kept so far unmineable, each of their fluids is still had wherever its resource was mined, which one sort of first pass's graph checks per try (sort_without). Then no fluid needs a chosen resource, so the game reaches exactly what it did. One that fails, like iron ore needing water on Nauvis when pumping water takes iron, gives way to the next, a resource that needs a fluid in vanilla keeps it as a last resort, and every other resource needs none.
+
 # recipe-category
 
 Not ready for release

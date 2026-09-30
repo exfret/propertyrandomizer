@@ -532,12 +532,79 @@ unified.execute = function()
         end
     end
 
+    -- Choices some handlers make up front, before promotion ranks anything, like which resources need a mining fluid (see choose_up_front in handlers/default.lua)
+    -- Promotion then starts from these choices, and the shuffle below leaves their heads alone
+    local up_front = {}
+    if DO_FIRST_PASS and USE_PROMOTION then
+        local split_graph = first_pass_info.graph
+        local false_key = key("false", "")
+        assert(split_graph.nodes[false_key] ~= nil, "first pass's graph has no false node")
+        -- A sort of the game (first pass's graph, with earlier handlers' up-front choices) where these AND nodes can't be reached, leaving the graph as it was
+        local function sort_without(node_keys)
+            local removed = {}
+            local added = {}
+            for head_key, base_key in pairs(up_front) do
+                for pre, _ in pairs(table.deepcopy(split_graph.nodes[head_key].pre)) do
+                    table.insert(removed, table.deepcopy(split_graph.edges[pre]))
+                    gutils.remove_edge(split_graph, pre)
+                end
+                local abilities = head_to_handler[head_key].connection_abilities(split_graph.nodes[base_key], split_graph.nodes[head_key])
+                table.insert(added, gutils.ekey(gutils.connect_base_head(split_graph, base_key, head_key, abilities)))
+            end
+            for _, node_key in pairs(node_keys) do
+                assert(split_graph.nodes[node_key].op == "AND", "sort_without can only cut off AND nodes, not " .. node_key)
+                if split_graph.edges[gutils.ekey({
+                    start = false_key,
+                    stop = node_key,
+                })] == nil then
+                    table.insert(added, gutils.ekey(gutils.add_edge(split_graph, false_key, node_key)))
+                end
+            end
+            local sort_info = top.sort(split_graph, nil, nil, {
+                choose_randomly = true,
+                complex_contexts = true,
+                home_contexts = true,
+            })
+            for _, edge_key in pairs(added) do
+                gutils.remove_edge(split_graph, edge_key)
+            end
+            for _, edge in pairs(removed) do
+                gutils.add_edge(split_graph, edge.start, edge.stop, edge)
+            end
+            return sort_info
+        end
+        -- Each handler's heads of randomized dependents
+        local handler_heads = {}
+        for _, dep in pairs(sorted_deps) do
+            for _, head_key in pairs(dep_to_heads[dep]) do
+                local handler_id = head_to_handler[head_key].id
+                handler_heads[handler_id] = handler_heads[handler_id] or {}
+                table.insert(handler_heads[handler_id], head_key)
+            end
+        end
+        for _, handler_id in pairs(handler_ids) do
+            local handler = handlers[handler_id]
+            local choices = handler.choose_up_front({
+                heads = handler_heads[handler.id] or {},
+                pool = handler_to_shuffled_prereqs[handler.id],
+                random_graph = random_graph,
+                baseline_sort = first_pass_info.sort,
+                sort_without = sort_without,
+            })
+            for head_key, base_key in pairs(choices) do
+                up_front[head_key] = base_key
+            end
+        end
+    end
+
     -- One promotion state shared by the generic handlers below and custom searches (like recipe ingredients) after
     -- With first pass, it must reason over first pass's split graph, which is the model reflection builds
     local prom
     if USE_PROMOTION then
         prom = promotion.new({
             graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
+            -- Starting from the choices made up front
+            head_to_base = up_front,
             pool_sort_info = sort_for_pool,
             complex = PROMOTION_COMPLEX_CONTEXTS,
             debt = planetary_debt(),
@@ -586,7 +653,7 @@ unified.execute = function()
         end
     end
 
-    local head_to_base = {}
+    local head_to_base = table.deepcopy(up_front)
     local handler_to_used_prereq_inds = {}
     -- Heads at chunk boundaries (debt mode) whose new base pays for their dependent
     local num_paying_heads = 0
@@ -608,7 +675,7 @@ unified.execute = function()
         local required_contexts
         if prom ~= nil then
             for _, head_key in pairs(dep_to_heads[dep]) do
-                if head_to_handler[head_key].custom_prereq_search == false and required_contexts == nil then
+                if head_to_handler[head_key].custom_prereq_search == false and up_front[head_key] == nil and required_contexts == nil then
                     required_contexts = prom.required_contexts(dep)
                     if #required_contexts == 0 and random_graph.nodes[dep].type == "recipe" and prom.initially_reachable(dep) then
                         -- Every recipe must stay reachable
@@ -625,8 +692,11 @@ unified.execute = function()
             local handler_id = head_to_handler[head_key].id
             local shuffled_prereqs = handler_to_shuffled_prereqs[handler_id]
 
-            -- Check for custom handling, which will be done later
-            if head_to_handler[head_key].custom_prereq_search ~= false then
+            if up_front[head_key] ~= nil then
+                -- Chosen up front, which promotion started from
+                log("Chosen up front: " .. key(gutils.get_owner(random_graph, random_graph.nodes[up_front[head_key]])))
+            elseif head_to_handler[head_key].custom_prereq_search ~= false then
+                -- Custom handling, which will be done later
                 handler_to_heads[handler_id] = handler_to_heads[handler_id] or {}
                 table.insert(handler_to_heads[handler_id], head_key)
             else
