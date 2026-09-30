@@ -479,6 +479,9 @@ data:extend({
 })
 
 -- Add old versions and postfixes
+-- The result summary at the end only counts what add_old_versions makes (lib/result-summary.lua)
+local result_summary = require("lib/result-summary")
+local names_before_old_versions = result_summary.prototype_names(data.raw)
 randomizations.add_old_versions()
 randomizations.post_fixes()
 
@@ -490,6 +493,14 @@ end
 if config.planet_names then
     planet_names.fix_references()
 end
+
+-- What the randomization did, in the log as RESULT lines (lib/result-summary.lua): how the finished game differs from the one before any randomization
+log("Logging what the randomization did")
+result_summary.log(pre_planetary_raw or old_data_raw, data.raw, {
+    prototypes = result_summary.added_since(names_before_old_versions, data.raw),
+    what = "the (Original!) and (Free!) copies add_old_versions makes",
+})
+log("Done logging what the randomization did")
 
 -- Add warnings for control stage
 smuggle_info()
