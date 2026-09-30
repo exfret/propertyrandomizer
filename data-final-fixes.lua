@@ -125,10 +125,18 @@ if release_isolation ~= nil then
 end
 
 local planetary = require("randomizations/planetary/execute")
+local recycling = require("lib/recycling")
 
+-- The game before any planetary change, for rolling the changes again for another attempt of the rest of randomization (superposed mode, see the unified loop below)
+local pre_planetary_raw = nil
+if config.planetary then
+    pre_planetary_raw = table.deepcopy(data.raw)
+end
 -- Planetary randomization goes first, so the rest of randomization and its checks treat the changed world as the starting point
+-- Recycling recipes follow the recipes the changes made or edited (a reward's planet variant, lib/recycling.lua), so the rest of randomization models what the recycler would generate from the changed game rather than what it generated before
 if config.planetary then
     planetary.execute(new_logic)
+    recycling.regenerate(pre_planetary_raw)
 end
 
 old_data_raw = table.deepcopy(data.raw)
@@ -141,20 +149,26 @@ log("Initial reachability check")
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
-new_logic.build(true)
--- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
--- With planetary changes in the game, they're the ones planetary's goals were made with
-local planetary_home_sets = config.planetary and planetary.home_sets()
-new_logic.home_sets = planetary_home_sets or top.home_sets(new_logic.graph)
-local init_sort_info = top.sort(new_logic.graph)
--- With room/ability contexts (isolatability, automatability), for the mechanic context check at the end
-local init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
-    complex_contexts = true,
-    home_contexts = true,
-})
--- Raw material costs and the major resources for recipe costs come from the logic graph's cost model, in the world planetary changes made
 local graph_cost = require("lib/cost/graph-cost")
-graph_cost.derive_cost_options(new_logic.graph, init_sort_info, gutils.key("planet", constants.starting_planet), init_complex_sort_info, new_logic.contexts)
+local init_sort_info
+-- With room/ability contexts (isolatability, automatability), for the mechanic context check at the end
+local init_complex_sort_info
+-- Sorts the world the rest of randomization starts from (the game after planetary changes, which is data.raw now) and derives what depends on it
+local function prepare_world()
+    new_logic.build(true)
+    -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
+    -- With planetary changes in the game, they're the ones planetary's goals were made with
+    local planetary_home_sets = config.planetary and planetary.home_sets()
+    new_logic.home_sets = planetary_home_sets or top.home_sets(new_logic.graph)
+    init_sort_info = top.sort(new_logic.graph)
+    init_complex_sort_info = top.sort(new_logic.graph, nil, nil, {
+        complex_contexts = true,
+        home_contexts = true,
+    })
+    -- Raw material costs and the major resources for recipe costs come from the logic graph's cost model, in the world planetary changes made
+    graph_cost.derive_cost_options(new_logic.graph, init_sort_info, gutils.key("planet", constants.starting_planet), init_complex_sort_info, new_logic.contexts)
+end
+prepare_world()
 
 ----------------------------------------------------------------------
 -- Setup done!
@@ -163,12 +177,19 @@ graph_cost.derive_cost_options(new_logic.graph, init_sort_info, gutils.key("plan
 -- Do unified randomizations first (skipped when no handler is on, see config.dev_unified)
 
 local unified_check = require("randomizations/graph/unified/skeleton/check")
-local recycling = require("lib/recycling")
+-- How many times planetary changes in superposed mode are rolled again for a failed attempt before they're undone instead (see below)
+local PLANETARY_REROLLS = 2
+local num_planetary_rerolls = 0
 for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
     unified_info = unified.execute()
     if unified_info then
         -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
         recycling.regenerate(old_data_raw)
+        -- Planetary changes in superposed mode: the attempt settles what it still owes them (randomizations/planetary/execute.lua), and one that leaves goals owed fails like one that fails the check below
+        local num_owed = 0
+        if config.planetary then
+            num_owed = planetary.settle(new_logic)
+        end
         -- Unified randomization's model can be wrong about the game it builds, so check the game itself (logic rebuilt from it) against the original
         -- An attempt that lost something a player needs fails like any other, so it's retried or errors instead of loading as a softlock
         new_logic.build(true)
@@ -177,11 +198,17 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
             home_contexts = true,
         }), "UNIFIEDCHECK")
         -- The last attempt is kept even then, since a startup error would make the player reset their settings; the final check below warns them instead
-        if not verdict.ok and i < config.unified_num_retries then
-            log("Unified randomization attempt " .. i .. " built a game that loses what the original had (see the UNIFIEDCHECK lines), so it's retried")
+        local problem = nil
+        if not verdict.ok then
+            problem = "loses what the original had (see the UNIFIEDCHECK lines)"
+        elseif num_owed > 0 then
+            problem = "still owes planetary changes " .. num_owed .. " goals (see the Planetary settlement lines)"
+        end
+        if problem ~= nil and i < config.unified_num_retries then
+            log("Unified randomization attempt " .. i .. " built a game that " .. problem .. ", so it's retried")
             unified_info = false
-        elseif not verdict.ok then
-            log("Unified randomization's last attempt built a game that loses what the original had (see the UNIFIEDCHECK lines), and it's kept")
+        elseif problem ~= nil then
+            log("Unified randomization's last attempt built a game that " .. problem .. ", and it's kept")
         end
     end
     if not unified_info then
@@ -190,14 +217,23 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
         end
+        -- In superposed mode the planetary changes are rolled again for the next attempt, since this roll may have no fix for what the attempt owed (what ocean swaps owe has none)
+        -- After PLANETARY_REROLLS rolls they're undone instead, with a warning in the randomizer panel, so a seed is never worse off with them than without
+        if planetary.superposed ~= nil then
+            data.raw = table.deepcopy(pre_planetary_raw)
+            if num_planetary_rerolls < PLANETARY_REROLLS then
+                num_planetary_rerolls = num_planetary_rerolls + 1
+                planetary.reroll(new_logic)
+            else
+                planetary.undo(i)
+            end
+            recycling.regenerate(pre_planetary_raw)
+            old_data_raw = table.deepcopy(data.raw)
+            prepare_world()
+        end
     else
         break
     end
-end
-
--- Planetary changes in superposed mode are settled once the rest of randomization is done (see randomizations/planetary/execute.lua)
-if config.planetary then
-    planetary.settle(new_logic)
 end
 
 -- Do old data raw for derandomization here so that necessary graph randomization tweaks stay
@@ -445,9 +481,9 @@ if old_logic_packs_before ~= nil then
     table.sort(lost_packs)
     log("OLDLOGICCHECK science packs reachable " .. num_kept .. " of " .. num_total .. (#lost_packs > 0 and ("; lost " .. table.concat(lost_packs, ", ")) or ""))
 end
--- What planetary changes kept, checked against the game before them (only logged for now, as PLANETCHECK final)
-if config.planetary then
-    planetary.check_final(new_logic.graph)
+-- What planetary changes kept, checked against the game before them (PLANETCHECK final): in superposed mode what's still lost fails the check like a lost mechanic context, otherwise it's only logged
+if config.planetary and not planetary.check_final(new_logic.graph) then
+    final_check_ok = false
 end
 
 local reachable = 0

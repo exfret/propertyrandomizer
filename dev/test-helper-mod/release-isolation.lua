@@ -30,7 +30,8 @@ function isolation.capture()
     if next(config.graph) == nil then
         before = table.deepcopy(data.raw)
     end
-    if not config.graph.technology and not config.tech_tree_rebuild then
+    -- Planetary stages that move technologies with what they move (rewards, freezing) change prerequisites on purpose
+    if not config.graph.technology and not config.tech_tree_rebuild and not config.planetary_rewards and not config.planetary_freezing then
         prerequisites = {}
         for name, tech in pairs(data.raw.technology) do
             prerequisites[name] = table.deepcopy(tech.prerequisites or {})

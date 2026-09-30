@@ -798,13 +798,27 @@ first_pass.execute = function(params)
             end
             num_explained = num_explained + 1
             log("First pass: " .. string.rep("  ", depth) .. node_key .. " (" .. tostring(node.op) .. ") unreachable")
+            local num_unreachable = 0
             for pre, _ in pairs(node.pre) do
                 local prenode = gutils.prenode(split_graph, pre)
                 if next(ordered_sort.node_to_context_inds[gutils.key(prenode)] or {}) == nil then
+                    num_unreachable = num_unreachable + 1
                     explain(gutils.key(prenode), depth + 1, seen)
                     if node.op == "AND" then
                         break
                     end
+                end
+            end
+            -- An AND node whose inputs are all reachable has no context they share, so show where each input is reachable
+            if node.op == "AND" and num_unreachable == 0 then
+                for pre, _ in pairs(node.pre) do
+                    local prekey = gutils.key(gutils.prenode(split_graph, pre))
+                    local contexts = {}
+                    for context, _ in pairs(ordered_sort.node_to_context_inds[prekey] or {}) do
+                        table.insert(contexts, context)
+                    end
+                    table.sort(contexts)
+                    log("First pass: " .. string.rep("  ", depth + 1) .. prekey .. " reachable in " .. table.concat(contexts, ", ", 1, math.min(8, #contexts)) .. (#contexts > 8 and " ..." or ""))
                 end
             end
         end

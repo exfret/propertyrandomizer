@@ -6,6 +6,7 @@
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local surface_sets = require("lib/surface-sets")
 
 local protection = {}
 
@@ -53,7 +54,7 @@ end
 protection.transported_recipe_contexts = {}
 
 -- Recipes locked to one planet by their surface conditions keep every context they have there, isolatable and automatable included, through all randomization, planetary changes included
--- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform)
+-- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform); a planet and its copies count as one planet (surface_sets.family_of), since no condition can tell them apart
 -- Contexts in protection.transported_recipe_contexts that the sort has are kept too
 -- The graph and sort_info are a logic graph and a complex sort of it, and prototypes come from data.raw, so call this while data.raw is the game that was sorted
 -- Home contexts aren't kept for their own sake, as for planetary_kept_context below
@@ -64,17 +65,22 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
         local node = graph.nodes[node_key]
         local recipe = node ~= nil and node.type == "recipe" and data.raw.recipe[node.name] or nil
         if recipe ~= nil and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
-            local room
-            local is_one_room = true
+            local family
+            local is_one_family = true
             for context, _ in pairs(contexts) do
                 local context_room = top.context_room(context)
-                if room == nil then
-                    room = context_room
-                elseif context_room ~= room then
-                    is_one_room = false
+                if gutils.deconstruct(context_room).type ~= "planet" then
+                    is_one_family = false
+                else
+                    local context_family = surface_sets.family_of(context_room)
+                    if family == nil then
+                        family = context_family
+                    elseif context_family ~= family then
+                        is_one_family = false
+                    end
                 end
             end
-            if room ~= nil and is_one_room and gutils.deconstruct(room).type == "planet" then
+            if family ~= nil and is_one_family then
                 locked[node_key] = {}
                 for context, _ in pairs(contexts) do
                     if top.context_home(context) == nil then

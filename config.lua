@@ -101,10 +101,19 @@ config.planetary_resources = config.unified_preview or settings.startup["propert
 config.planetary_lightning = settings.startup["propertyrandomizer-planetary-lightning"].value
 config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freezing"].value
 config.planetary_locks = config.unified_preview or settings.startup["propertyrandomizer-planetary-locks"].value
+-- Planet rewards (randomizations/planetary/rewards.lua), a work in progress (notes/wip.txt): planets' special machines and other rewards move to other planets
+config.planetary_rewards = settings.startup["propertyrandomizer-planetary-rewards"].value
+-- Work in progress, off by default: outside superposed mode, each planet's science moves into the special machine that arrived there instead of the move being reverted
+config.planetary_rewards_rehome = settings.startup["propertyrandomizer-planetary-rewards-rehome"].value
+-- Only these reward bundles move (bundle ids, which are technology names, comma-separated; a development aid for testing one move at a time): empty for all
+config.planetary_rewards_only = {}
+for name in string.gmatch(settings.startup["propertyrandomizer-planetary-rewards-only"].value, "[^,%s]+") do
+    config.planetary_rewards_only[name] = true
+end
 -- A new random graph of space connections (randomizations/planetary/connections.lua); the duplicates' planet copies come with it, so the copies aren't just hung beside their originals
 config.planetary_connections = config.dupes or settings.startup["propertyrandomizer-planetary-connections"].value
--- Whether any planetary stage is on (randomizations/planetary/execute.lua)
-config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_connections
+-- Whether any planetary stage is on (randomizations/planetary/execute.lua), planet rewards included
+config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100
@@ -112,6 +121,9 @@ config.item_percent_randomized = settings.startup["propertyrandomizer-item-perce
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 -- Whether the unified randomizations still in development run (see settings.lua): in the unified preview, or when the test helper explicitly enables the dev setting
 config.dev_unified = features.dev_unified
+-- Whether the planetary stages that are on run in superposed mode (randomizations/planetary/execute.lua): the game before them stays in the logic as debt for unified randomization to pay, and what's still owed is settled after each of its attempts
+-- Only with the unified randomizations in development, which are what pays and settles the debt; without them the stages repair their own changes as usual
+config.planetary_superposed = config.dev_unified and settings.startup["propertyrandomizer-planetary-superposed"].value
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
 -- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
 config.item_fluids = config.dev_unified

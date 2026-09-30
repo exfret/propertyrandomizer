@@ -235,6 +235,11 @@ check.planet_locked_goals = function(before)
 end
 
 -- What check.required finds missing, as data: each failure has text (for the log), keys (node keys, any of which counts) and context (nil for any context)
+-- Whether a recipe is retired on purpose (rule 1 skips it); randomizations/planetary/execute.lua points this at the reward moves
+check.is_retired = function(recipe_name)
+    return false
+end
+
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
@@ -242,6 +247,8 @@ check.required_failures = function(before, after, variants_of)
     local failures = {}
 
     -- 1. Recipes stay reachable somewhere
+    -- A recipe the game no longer has can't be needed, as the mechanic context check says too: the recycler's regenerated recipes take the names of the recipes recycling their items now (lib/recycling.lua), so a name from before can be gone while its item is still recycled under another
+    -- Neither can a recipe a planet reward retired on purpose (check.is_retired: locked to no surface and unlocked by nothing, with a variant of it on the new planet, see randomizations/planetary/rewards.lua); its own goals follow the variant (rule 2)
     -- A recipe one of its planet variants still makes counts as reachable too, like for rule 2 (a resource swap's variants replace their originals on their planets, see resources.exclude_originals)
     local function variant_reachable(recipe_name)
         for _, variant_name in pairs((variants_of or {})[recipe_name] or {}) do
@@ -253,7 +260,7 @@ check.required_failures = function(before, after, variants_of)
     end
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]
-        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and next(after_contexts[node_key] or {}) == nil and not variant_reachable(node.name) then
+        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and after.graph.nodes[node_key] ~= nil and next(after_contexts[node_key] or {}) == nil and not check.is_retired(node.name) and not variant_reachable(node.name) then
             table.insert(failures, {
                 text = "unreachable " .. node_key,
                 keys = {
@@ -264,7 +271,7 @@ check.required_failures = function(before, after, variants_of)
     end
 
     -- 2. Planet-locked recipes keep every context they had on their planet (isolatable and automatable included; see protection.planet_locked_recipe_contexts), as themselves or as a variant, and follow their lock where it moved (check.planet_locked_goals)
-    -- Exact contexts matter: one-off sources like hand-mined rocks or spawner eggs keep a recipe isolatable while losing its automatable, renewable route
+    -- Exact contexts matter: one-off sources like hand-mined rocks or spawner eggs keep a recipe isolatable while losing its automatable, renewable route (only isolatability may be stronger than the goal's, see top.provides_context)
     for node_key, contexts in pairs(check.planet_locked_goals(before)) do
         local keys = {
             node_key,
@@ -275,7 +282,7 @@ check.required_failures = function(before, after, variants_of)
         for context, _ in pairs(contexts) do
             local works = false
             for _, key in pairs(keys) do
-                if (after_contexts[key] or {})[context] ~= nil then
+                if top.provides_context(after_contexts[key] or {}, context) then
                     works = true
                 end
             end
@@ -290,11 +297,12 @@ check.required_failures = function(before, after, variants_of)
     end
 
     -- 3. Mechanics keep what protection.planetary_kept_context says
-    -- A mechanic node the game no longer has can't be needed (like a fluid-count variant of a recipe category once no recipe has those fluids), so it's skipped, as the mechanic context check does
+    -- A mechanic node the game no longer has can't be needed (like a fluid-count variant of a recipe category once no recipe has those fluids), and neither can one that's no longer a mechanic there (like an item that was a burnt result until randomization moved it), so those are skipped, as the mechanic context check does
     for node_key, kept_contexts in pairs(check.transported_mechanic_goals(before)) do
-        if after.graph.nodes[node_key] ~= nil then
+        local after_node = after.graph.nodes[node_key]
+        if after_node ~= nil and after_node.mechanic then
             for kept, _ in pairs(kept_contexts) do
-                if (after_contexts[node_key] or {})[kept] == nil then
+                if not top.provides_context(after_contexts[node_key] or {}, kept) then
                     table.insert(failures, {
                         text = "mechanic " .. node_key .. " @ " .. kept,
                         keys = {
@@ -377,7 +385,7 @@ check.transported_mechanic_goals = function(before)
     return goals
 end
 
--- Whether nothing check.required_failures looks for is missing
+-- Whether nothing check.required_failures looks for is missing, and the failures
 -- Its log lines start with label (default "PLANETCHECK required")
 check.required = function(before, after, variants_of, is_quiet, label)
     label = label or "PLANETCHECK required"
@@ -393,7 +401,7 @@ check.required = function(before, after, variants_of, is_quiet, label)
             log(label .. " failure: " .. text)
         end
     end
-    return #failures == 0
+    return #failures == 0, failures
 end
 
 -- Indices in a sort of each failure's earliest pebble there (if it has one), so the witnesses of what a change fixes can be found with top.path
@@ -403,7 +411,7 @@ check.goal_inds = function(failures, sort)
         local earliest
         for _, key in pairs(failure.keys) do
             for context, ind in pairs(sort.sort_info.node_to_context_inds[key] or {}) do
-                if (failure.context == nil or context == failure.context) and (earliest == nil or ind < earliest) then
+                if (failure.context == nil or top.provides_context({ [context] = true }, failure.context)) and (earliest == nil or ind < earliest) then
                     earliest = ind
                 end
             end

@@ -371,9 +371,43 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-planetary-rewards",
+        -- Work in progress (notes/wip.txt), off by default: the checkout is the user's playable mod
+        default_value = false,
+        order = "f-ga[planetary-rewards]",
+    },
+    {
+        -- Work in progress, off by default: outside superposed mode, each planet's science moves into the special machine the permutation brought there (randomizations/planetary/rewards.lua, science_needs and rehome_plan)
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-rewards-rehome",
+        default_value = false,
+        order = "f-gc[planetary-rewards-rehome]",
+        hidden = true,
+    },
+    {
+        -- Development aid: only these reward bundles (technology names, comma-separated) move; empty for all
+        setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-planetary-rewards-only",
+        default_value = "",
+        allow_blank = true,
+        order = "f-gb[planetary-rewards-only]",
+        hidden = true,
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-planetary-connections",
         default_value = false,
         order = "f-gb[planetary-connections]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-superposed",
+        default_value = false,
+        order = "f-h[planetary-superposed]",
     },
     {
         setting_type = "startup",

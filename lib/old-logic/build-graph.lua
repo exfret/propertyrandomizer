@@ -220,20 +220,27 @@ recalculate_spoofed_resource_categories()
 build_graph.recalculate_spoofed_resource_categories = recalculate_spoofed_resource_categories
 
 -- Get science pack sets
+-- Recalculated by load() too, since randomization can change technologies' units between this file's first require and the graph build (planet rewards swap a science pack, and superposed planetary changes can be rolled again or undone afterwards)
 
 local science_pack_sets = {}
-for _, tech in pairs(data.raw.technology) do
-    if tech.unit ~= nil then
-        local science_pack_set = {}
-        for _, ing in pairs(tech.unit.ingredients) do
-            table.insert(science_pack_set, ing[1])
-        end
-        table.sort(science_pack_set)
-        if science_pack_sets[compound_key(science_pack_set)] == nil then
-            science_pack_sets[compound_key(science_pack_set)] = science_pack_set
+local function recalculate_science_pack_sets()
+    for set_name, _ in pairs(science_pack_sets) do
+        science_pack_sets[set_name] = nil
+    end
+    for _, tech in pairs(data.raw.technology) do
+        if tech.unit ~= nil then
+            local science_pack_set = {}
+            for _, ing in pairs(tech.unit.ingredients) do
+                table.insert(science_pack_set, ing[1])
+            end
+            table.sort(science_pack_set)
+            if science_pack_sets[compound_key(science_pack_set)] == nil then
+                science_pack_sets[compound_key(science_pack_set)] = science_pack_set
+            end
         end
     end
 end
+recalculate_science_pack_sets()
 
 -- Tables
 
@@ -548,6 +555,7 @@ local function load()
     -- Not all of these need to be in load()
     -- Placing them here just ensures that they're updated along with changes to data.raw
     gather_prototypes()
+    recalculate_science_pack_sets()
 
     -- Get buildable things
     --    * place_result

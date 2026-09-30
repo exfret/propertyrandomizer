@@ -79,12 +79,20 @@ end
 
 -- Recipes and entities whose lock can move: they have surface conditions, aren't science packs, and accept some but not all movable planets
 -- Returns a list of { id, kind, name, node_key, accepted } sorted by id
+-- Family --> its movable rooms, sorted (a planet and its copies are one family, surface_sets.family_of: no condition can tell them apart, so a lock accepts all of them or none, and families are what moves)
+local function movable_families()
+    local families = {}
+    for _, room_key in pairs(sorted_keys(movable_planets())) do
+        local family = surface_sets.family_of(room_key)
+        families[family] = families[family] or {}
+        table.insert(families[family], room_key)
+    end
+    return families
+end
+
 locks.candidates = function()
     local planets = movable_planets()
-    local num_planets = 0
-    for _, _ in pairs(planets) do
-        num_planets = num_planets + 1
-    end
+    local num_families = #sorted_keys(movable_families())
     local lab_inputs = dutils.lab_inputs()
     local candidates = {}
     local function consider(kind, prototype, node_type)
@@ -95,13 +103,14 @@ locks.candidates = function()
             return
         end
         local accepted = surface_sets.accepted(prototype)
-        local num_movable = 0
+        local accepted_families = {}
         for room_key, _ in pairs(accepted) do
             if planets[room_key] ~= nil then
-                num_movable = num_movable + 1
+                accepted_families[surface_sets.family_of(room_key)] = true
             end
         end
-        if num_movable == 0 or num_movable == num_planets then
+        local num_movable = #sorted_keys(accepted_families)
+        if num_movable == 0 or num_movable == num_families then
             return
         end
         table.insert(candidates, {
@@ -132,58 +141,66 @@ locks.candidates = function()
     return candidates
 end
 
--- Draws a new set for each candidate: its movable planets are replaced by as many random movable planets, different ones if it can
+-- Draws a new set for each candidate: its movable planet families are replaced by as many random movable families, different ones if it can (see movable_families)
 -- Returns target id --> moved lock (see locks.moved), without changing the game
 locks.draw = function(candidates, id)
     local key = rng.key({ id = id })
     local movable = movable_planets()
-    local planets = sorted_keys(movable)
+    local family_rooms = movable_families()
+    local families = sorted_keys(family_rooms)
     local drawn = {}
     for _, candidate in pairs(candidates) do
-        local old_movable = {}
+        local old_families = {}
         local fixed = {}
         for room_key, _ in pairs(candidate.accepted) do
             if movable[room_key] ~= nil then
-                old_movable[room_key] = true
+                old_families[surface_sets.family_of(room_key)] = true
             else
                 fixed[room_key] = true
             end
         end
-        local num = #sorted_keys(old_movable)
-        local new_movable
+        local num = #sorted_keys(old_families)
+        local new_families
         -- A few tries for a set that isn't the old one; the last draw is kept either way
         for _ = 1, 10 do
-            local shuffled = table.deepcopy(planets)
+            local shuffled = table.deepcopy(families)
             rng.shuffle(key, shuffled)
-            new_movable = {}
+            new_families = {}
             for i = 1, num do
-                new_movable[shuffled[i]] = true
+                new_families[shuffled[i]] = true
             end
-            if not same_set(new_movable, old_movable) then
+            if not same_set(new_families, old_families) then
                 break
             end
         end
-        -- Which new planet takes each old planet's place: planets in both stay, and the rest pair up at random
+        -- Which new family takes each old family's place: families in both stay, and the rest pair up at random; their rooms pair up in order, so a copy's goals go to the new family's copy where it has one
         local leaving = {}
         local arriving = {}
-        for _, room_key in pairs(sorted_keys(old_movable)) do
-            if new_movable[room_key] == nil then
-                table.insert(leaving, room_key)
+        for _, family in pairs(sorted_keys(old_families)) do
+            if new_families[family] == nil then
+                table.insert(leaving, family)
             end
         end
-        for _, room_key in pairs(sorted_keys(new_movable)) do
-            if old_movable[room_key] == nil then
-                table.insert(arriving, room_key)
+        for _, family in pairs(sorted_keys(new_families)) do
+            if old_families[family] == nil then
+                table.insert(arriving, family)
             end
         end
         rng.shuffle(key, arriving)
         local map = {}
-        for i, room_key in pairs(leaving) do
-            map[room_key] = arriving[i]
+        for i, family in pairs(leaving) do
+            local to_rooms = family_rooms[arriving[i]]
+            for j, room_key in pairs(family_rooms[family]) do
+                if candidate.accepted[room_key] ~= nil then
+                    map[room_key] = to_rooms[(j - 1) % #to_rooms + 1]
+                end
+            end
         end
         local new = copy_set(fixed)
-        for room_key, _ in pairs(new_movable) do
-            new[room_key] = true
+        for family, _ in pairs(new_families) do
+            for _, room_key in pairs(family_rooms[family]) do
+                new[room_key] = true
+            end
         end
         if next(map) ~= nil then
             local prototype = prototype_of(candidate)

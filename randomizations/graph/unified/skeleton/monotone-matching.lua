@@ -42,6 +42,8 @@ local function connection_of(params, slot_key, trav_key)
 end
 
 -- Connect each slot to its assigned trav: slot base --> trav head, plus trav --> slot for items, since reflection makes them the same physical item (so the slot's consumers also get the trav's identity-based sources, like delivery and spoilage)
+-- A fluid position (a fluid-temperature node, an AND of being made and being held, see lib/logic/concrete.lua) gets the same back edge into its making (fluid-create-temperature): its consumers can then use the identity's own sources too, pumping and barrels for a fluid identity (lib/item-fluid.lua moves those to the identity) or delivery for an item identity, which is how a recipe locked to a planet that doesn't make the fluid still gets it there
+-- Only when the trav is an OR node (an item, or a fluid with sources of its own): a fluid trav without them is an AND node fed by its head alone, so the edge would add nothing but a cycle through AND nodes, which needs derivation can't follow
 -- The slot_to_base and trav_to_head connectors come from params, and params.connect_extra(graph, slot_key, trav_key) (optional) connects anything else that follows the pair
 local function connect(graph, params, assignment)
     for slot_key, trav_key in pairs(assignment) do
@@ -56,6 +58,13 @@ local function connect(graph, params, assignment)
         gutils.add_edge(graph, connection.base or key(params.slot_to_base[slot_key]), key(params.trav_to_head[trav_key]), extra)
         if slot.type == "item" and slot.op == "OR" then
             gutils.add_edge(graph, trav_key, slot_key)
+        elseif slot.type == "fluid-temperature" and graph.nodes[trav_key].op == "OR" then
+            for pre, _ in pairs(slot.pre) do
+                local prenode = gutils.prenode(graph, pre)
+                if prenode.type == "fluid-create-temperature" then
+                    gutils.add_edge(graph, trav_key, key(prenode))
+                end
+            end
         end
         if params.connect_extra ~= nil then
             params.connect_extra(graph, slot_key, trav_key)
@@ -800,12 +809,12 @@ local function debt_goals_of(graph, sort_info, debt)
     return goals, sup_graph, sup_sort
 end
 
--- Debt goals (from debt_goals_of) that a sort of a superposed graph misses: exact goals need their context, recipes any context
+-- Debt goals (from debt_goals_of) that a sort of a superposed graph misses: exact goals need their context (or its isolatable counterpart, see top.provides_context), recipes any context
 matching.lost_debt_goals = function(goals, sup_sort)
     local sup_nci = sup_sort.node_to_context_inds
     local lost = {}
     for _, pebble in pairs(goals.exact) do
-        if (sup_nci[pebble.node_key] or {})[pebble.context] == nil then
+        if not top.provides_context(sup_nci[pebble.node_key] or {}, pebble.context) then
             table.insert(lost, pebble)
         end
     end

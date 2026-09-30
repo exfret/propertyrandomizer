@@ -1909,47 +1909,44 @@ function concrete.build(lu, extra_params)
                 abilities = table.deepcopy(tech_abilities),
             })
         elseif tech.research_trigger ~= nil then
-            -- Trigger-based research
+            -- Trigger-based research, through an OR node over what meets the trigger (technology-trigger below)
+            -- So a planetary change that edits a trigger (randomizations/planetary) only replaces inputs of an OR node, which superposition keeps as debt (lib/graph/superpose.lua)
+            add_edge("technology-trigger", nil, {
+                abilities = table.deepcopy(tech_abilities),
+            })
+        end
+
+        if tech.research_trigger ~= nil then
+            ----------------------------------------
+            add_node("technology-trigger", "OR")
+            ----------------------------------------
+            -- Can we do what triggers this technology's research?
+            -- A mine-entity trigger is met by mining any one of its entities (MineEntityTechnologyTrigger in the 2.1 docs), so each gets an edge; the other kinds name one thing
+
             local trigger = tech.research_trigger
 
             if trigger.type == "mine-entity" then
-                -- TODO: Support for multiple mined entities on a trigger
-                -- Right now, this just supports one
-                add_edge("entity-mine", trigger.entities[1], {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                for _, entity_name in pairs(trigger.entities or {}) do
+                    add_edge("entity-mine", entity_name)
+                end
             elseif trigger.type == "craft-item" then
-                add_edge("item-craft", trigger.item, {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                add_edge("item-craft", trigger.item)
             elseif trigger.type == "craft-fluid" then
-                add_edge("fluid-craft", trigger.fluid, {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                add_edge("fluid-craft", trigger.fluid)
             elseif trigger.type == "send-item-to-orbit" then
                 -- Need to deliver the specified item (must have space surface to receive it)
-                add_edge("item-launch", trigger.item, {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                add_edge("item-launch", trigger.item)
             elseif trigger.type == "capture-spawner" then
                 -- If trigger.entity is set, we need that specific spawner; otherwise any will do
                 if trigger.entity ~= nil then
-                    add_edge("entity-capture-spawner", trigger.entity, {
-                        abilities = table.deepcopy(tech_abilities),
-                    })
+                    add_edge("entity-capture-spawner", trigger.entity)
                 else
-                    add_edge("capture-spawner", "", {
-                        abilities = table.deepcopy(tech_abilities),
-                    })
+                    add_edge("capture-spawner", "")
                 end
             elseif trigger.type == "build-entity" then
-                add_edge("entity-build", trigger.entity, {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                add_edge("entity-build", trigger.entity)
             elseif trigger.type == "create-space-platform" then
-                add_edge("create-platform", "", {
-                    abilities = table.deepcopy(tech_abilities),
-                })
+                add_edge("create-platform", "")
             end
         end
     end
