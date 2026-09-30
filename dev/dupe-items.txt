@@ -1,0 +1,40 @@
+# Items whose duplicates get recolored graphics (dev/make-dupe-graphics.py), in the line format of dev/dupe-entities.txt:
+#   name hue=H[,H2] dupes=C2,C3 [mask parameters]      paint of the given hue is the mask
+#   name grey dupes=C2,C3 [val=V] [smax=S] [...]       the light unsaturated parts are the mask
+#   name whole dupes=C2,C3                              the whole sprite, only a fallback
+# dupes= gives the dupes' colors and how many there are (one color, one dupe). What gets recolored: the item's icon and
+# belt pictures, the icons of the recipes that make it, the grid sprite of the equipment it places and, for an armor, the
+# character's animation sheets for it (lib/dupe.lua copies the animations for the armor's dupe).
+# Check a line with: dev/make-dupe-graphics.py --dump ... --inspect DIR --only NAME
+#
+# Modules: the body plate is the paint, the bulbs keep their own color where it differs. Each kind's dupes stay away from
+# the other kinds' colors (speed blue, productivity red, efficiency green, quality white), so no blue, red or green body
+speed-module hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
+speed-module-2 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
+speed-module-3 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
+productivity-module hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
+productivity-module-2 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
+productivity-module-3 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
+efficiency-module hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
+efficiency-module-2 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
+efficiency-module-3 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
+quality-module grey val=0.45 smax=0.2 dupes=185,30
+quality-module-2 grey val=0.45 smax=0.2 dupes=185,30
+quality-module-3 grey val=0.45 smax=0.2 dupes=185,30
+# Fuels: the two cells are green and cyan already, so their dupes are warm, the fusion cell's second a pale gold.
+# A saturated part (cells, module bodies, solar cells) takes the color at full strength: a partial blend of two opposite colors is grey
+nutrients grey val=0.35 smax=0.15 min=150 dupes=130,355
+uranium-fuel-cell hue=120 half=30 sat=0.3 strength=1 dupes=50/0.8,355
+fusion-power-cell hue=190 half=25 sat=0.3 strength=1 dupes=30/0.7,50/0.3
+# Weapons and ammo: grey metal, so the body plates take an accent; the tesla glow stays cyan
+submachine-gun grey val=0.4 smax=0.3 dupes=130,355
+rocket-launcher grey val=0.45 smax=0.3 dupes=130,30
+teslagun grey val=0.5 smax=0.2 dupes=30,355
+tesla-ammo grey val=0.45 smax=0.35 dupes=130,355
+# Armor and equipment: colors follow the building relatives (solar panel green/orange, roboport green/red); the portable fusion reactor is white, so grey mode
+mech-armor hue=30 half=18 sat=0.45 low=0.3 val=0.35 strength=0.85 dupes=130,355
+solar-panel-equipment hue=210 half=25 sat=0.25 strength=1 dupes=130,30
+fusion-reactor-equipment grey val=0.5 smax=0.2 dupes=130,30
+exoskeleton-equipment grey val=0.3 smax=0.25 dupes=30,185
+personal-roboport-equipment hue=40 half=25 sat=0.2 dupes=130,355
+toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185

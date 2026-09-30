@@ -6,6 +6,11 @@
 # Skip once with: git commit --no-verify
 set -e
 root="$(git rev-parse --show-toplevel)"
+# The recolored duplicate graphics (dev/make-dupe-graphics.py) are the game's sheets: they ship in releases (untracked files do) but never go in the public repo
+if git diff --cached --name-only | grep -q '^graphics/dupes/'; then
+    echo "pre-commit: graphics/dupes/ is generated from the game's sprites and stays out of the repository; unstage it (git restore --staged graphics/dupes)" >&2
+    exit 1
+fi
 python3 "$root/dev/style-check.py" --staged
 if git diff --cached --name-only | grep -qE '\.lua$|^info\.json$|^locale/|^tests/'; then
     python3 "$root/dev/run-tests.py" --tier precommit --staged

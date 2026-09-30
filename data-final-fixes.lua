@@ -51,6 +51,13 @@ require("config")
 -- Load compat code
 require("compat/master")
 
+-- Duplicates of the entities with recolored graphics (lib/dupe.lua), before anything reads the prototypes, so they get randomized like everything else
+local dupe = require("lib/dupe")
+if config.dupes then
+    log("Adding duplicates")
+    dupe.execute()
+end
+
 local new_logic = require("lib/logic/init")
 
 local unified_info

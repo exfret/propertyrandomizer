@@ -1,0 +1,67 @@
+# Entities whose duplicates get recolored graphics (dev/make-dupe-graphics.py): where the paint is, and the dupes' colors
+#   name hue=H[,H2] dupes=C2,C3 [mask parameters]
+#       The paint: pixels within half degrees (25) of a listed hue. Pixels with saturation >= sat (0.35) and
+#       brightness >= val (0.3) surely are paint and seed the mask; it grows through connected pixels of the hue with
+#       saturation >= low (half of sat) down to dark shadow; then it is filled by panel: where at least dens (0.5) of
+#       a win x win window (9) is already paint, the highlights and weathering in between are too, a closing of radius
+#       close (2) bridges gaps, regions under min pixels (40) go and holes under hole pixels (800) fill.
+#       dupes= gives the dupes' colors as hues (0 red, 30 orange, 50 yellow, 130 green, 185 teal), each optionally with
+#       its own saturation as H/S, and how many dupes there are (one color, one dupe); without it the palette hues
+#       farthest from the paint are used, one per dupe number up to --dupes.
+#       strength= (0.7) is how far a masked pixel goes to the dupe color: lower it where the mask has to be large.
+#       Check a line with: dev/make-dupe-graphics.py --dump ... --inspect DIR --only NAME
+#   name grey dupes=C2,C3 [val=V] [smax=S] [vmax=X] [mask parameters]
+#       For a machine with no paint: its light metal plates are the mask (saturation <= smax (0.18), brightness
+#       between val (0.3) and vmax (0.97) seed it, it grows into slightly duller or darker plate), so rust and shadow stay
+#   name whole dupes=C2,C3
+#       the whole sprite is colorized: only a fallback
+# Colors avoid what a relative already wears: no red or blue inserter (long-handed, fast), no blue assembler (tier 2)
+# Duplicates of anything else fall back to the number badge
+bulk-inserter hue=85 half=30 sat=0.3 dupes=185,30
+stack-inserter hue=45 half=20 sat=0.5 dupes=185,130
+pipe hue=37 half=22 sat=0.2 low=0.1 dupes=185,130
+pipe-to-ground hue=37 half=22 sat=0.2 low=0.1 dupes=185,130
+pump hue=18 half=14 sat=0.45 val=0.45 win=5 dupes=185,130
+logistic-robot hue=30 half=25 sat=0.15 val=0.35 dupes=185,50
+construction-robot hue=40 half=25 sat=0.18 val=0.35 dupes=130,30
+roboport hue=40,215 half=15 sat=0.3 low=0.25 val=0.35 dupes=130,355
+boiler hue=70 half=30 sat=0.18 low=0.1 val=0.2 dupes=185,30
+steam-engine grey val=0.5 win=5 dupes=130,30
+solar-panel hue=195 half=25 sat=0.3 dupes=130,30
+accumulator hue=225 half=30 sat=0.12 low=0.07 val=0.3 win=13 dens=0.4 hole=3000 dupes=130,30
+nuclear-reactor hue=35 half=25 sat=0.18 val=0.3 dupes=130,185
+heat-exchanger hue=5 half=25 sat=0.3 dupes=130,185
+steam-turbine hue=40 half=25 sat=0.15 val=0.3 dupes=185,130
+fusion-reactor hue=215 half=25 sat=0.15 val=0.2 win=13 close=3 hole=2000 dupes=130,30
+fusion-generator hue=208 half=25 sat=0.12 val=0.25 win=13 close=3 hole=2000 dupes=130,30
+electric-mining-drill hue=38 half=14 sat=0.4 val=0.45 dupes=185,130
+big-mining-drill hue=5 half=18 sat=0.35 dupes=185,50
+pumpjack hue=100 half=30 sat=0.3 dupes=185,30
+electric-furnace grey val=0.6 smax=0.22 win=5 dupes=130,355
+foundry hue=18 half=15 sat=0.45 low=0.3 dupes=130,185
+agricultural-tower hue=42 half=12 sat=0.5 low=0.35 val=0.5 win=11 close=3 dupes=185,355
+biochamber hue=58 half=18 sat=0.3 dupes=185,30
+assembling-machine-3 hue=60 half=18 sat=0.3 low=0.15 win=9 dens=0.5 close=2 hole=800 dupes=355,185
+oil-refinery hue=18 half=18 sat=0.35 low=0.2 win=13 dens=0.4 close=3 hole=3000 strength=0.55 dupes=130,185
+chemical-plant hue=38 half=13 sat=0.4 low=0.22 val=0.25 win=11 dupes=130,355
+centrifuge hue=50 half=12 sat=0.3 dupes=130,185
+electromagnetic-plant hue=220 half=30 sat=0.2 low=0.08 val=0.2 win=11 close=3 hole=2000 dupes=130,355
+cryogenic-plant hue=175 half=30 sat=0.12 low=0.06 val=0.25 win=13 dens=0.4 close=4 hole=4000 dupes=30,355
+biolab hue=350 half=35 sat=0.2 low=0.1 win=13 close=3 hole=4000 dupes=130,185
+lightning-collector hue=25 half=20 sat=0.3 dupes=185,130
+heating-tower hue=25 half=20 sat=0.4 val=0.4 win=5 dupes=130,185
+beacon hue=15 half=20 sat=0.35 dupes=130,185
+rocket-silo hue=60 half=20 sat=0.3 min=150 hole=600 dupes=355,185
+asteroid-collector grey val=0.72 win=3 min=200 strength=0.5 dupes=185,30
+crusher grey val=0.72 win=3 min=200 dupes=130,355
+thruster grey val=0.6 win=5 dupes=185,30
+gun-turret hue=35 half=20 sat=0.3 dupes=130,355
+flamethrower-turret hue=20 half=20 sat=0.3 dupes=130,185
+laser-turret hue=40 half=15 sat=0.4 dupes=355,185
+artillery-turret hue=50 half=15 sat=0.35 val=0.35 dupes=355,130
+rocket-turret hue=70,25 half=20 sat=0.25 low=0.12 dupes=355,185
+railgun-turret hue=30 half=20 sat=0.4 dupes=130,185
+locomotive grey val=0.25 smax=0.2 win=5 dupes=130,185
+car hue=25 half=20 sat=0.3 hole=800 dupes=130,185
+spidertron grey val=0.15 dupes=130,355
+cargo-wagon grey val=0.62 smax=0.2 win=3 dupes=130,185

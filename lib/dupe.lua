@@ -2,9 +2,10 @@ local categories = require("helper-tables/categories")
 
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
-local patching = require("lib/patching")
 
 local resource_autoplace = require("resource-autoplace")
+-- Which original sprite paths have recolored copies under graphics/dupes/<n>/ (dev/make-dupe-graphics.py)
+local dupe_graphics = require("lib/dupe-graphics-manifest")
 
 -- TODO: This file is really messy and a lot of functionality could be factored out into separate functions, maybe clean this up
 
@@ -42,6 +43,120 @@ end
 -- Keep track of things that were already duplicated if needed
 -- Also counts duplicates as having been duplicated
 dupe.has_been_duplicated = {}
+-- Names of duplicates whose sprites were swapped for recolored copies, so they don't also get number badges on their entity graphics
+dupe.recolored = {}
+
+-- The recolored copy's path for an original sprite path, or nil when there is none for this dupe number
+local function recolored_path(filename, dupe_number)
+    if type(filename) ~= "string" then
+        return nil
+    end
+    local highest = dupe_graphics.files[filename]
+    if highest == nil or dupe_number > highest then
+        return nil
+    end
+    local mod_name, rest = string.match(filename, "^__([^_]+)__/(.*)$")
+    if mod_name == nil then
+        return nil
+    end
+    return "__propertyrandomizer__/graphics/dupes/" .. tostring(dupe_number) .. "/" .. mod_name .. "/" .. rest
+end
+
+-- Swaps every sprite path in the table (filename, filenames, stripes, icon) for its recolored copy; returns how many were swapped
+local function recolor_graphics(tbl, dupe_number)
+    local swapped = 0
+    for key, value in pairs(tbl) do
+        if type(value) == "table" then
+            swapped = swapped + recolor_graphics(value, dupe_number)
+        elseif key == "filename" or key == "icon" or (type(key) == "number" and type(value) == "string") then
+            local new_path = recolored_path(value, dupe_number)
+            if new_path ~= nil then
+                tbl[key] = new_path
+                swapped = swapped + 1
+            end
+        end
+    end
+    return swapped
+end
+dupe.recolor_graphics = recolor_graphics
+
+-- The items that place this entity
+dupe.placing_items = function(entity)
+    local items = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                if item.place_result == entity.name then
+                    table.insert(items, item)
+                end
+            end
+        end
+    end
+    return items
+end
+
+-- Whether one of the prototype's icons has a recolored copy for this dupe number
+local function icons_have_recolor(prototype, dupe_number)
+    local icons = prototype.icons or {{icon = prototype.icon}}
+    for _, icon in pairs(icons) do
+        if recolored_path(icon.icon, dupe_number) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+-- Whether this entity is one of those with recolored graphics for this dupe number: its placing item's icon has a recolored copy
+-- (sheets are shared between entities, remnants carry the entity's icon, but an item's icon is its own)
+dupe.has_recolor = function(entity, dupe_number)
+    for _, item in pairs(dupe.placing_items(entity)) do
+        if icons_have_recolor(item, dupe_number) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Whether this item is one of those with recolored graphics for this dupe number (its own icon has a recolored copy)
+dupe.item_has_recolor = icons_have_recolor
+
+-- The prototype of this name among the classes of a base type (entity, item, equipment)
+local function find_prototype(base_type, name)
+    for class_name, _ in pairs(defines.prototypes[base_type]) do
+        if data.raw[class_name] ~= nil and data.raw[class_name][name] ~= nil then
+            return data.raw[class_name][name]
+        end
+    end
+    return nil
+end
+
+-- Whether the item is the recipe's main product: main_product when given, else its only result
+local function makes_item(recipe, item_name)
+    local product = recipe.main_product
+    if product == nil and recipe.results ~= nil and #recipe.results == 1 then
+        product = recipe.results[1].name
+    end
+    if product ~= item_name or recipe.results == nil then
+        return false
+    end
+    for _, result in pairs(recipe.results) do
+        if result.type == "item" and result.name == item_name then
+            return true
+        end
+    end
+    return false
+end
+
+-- The recipes (not hidden) that make this item as their main product
+dupe.item_recipes = function(item)
+    local recipes = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        if recipe.hidden ~= true and makes_item(recipe, item.name) then
+            table.insert(recipes, recipe)
+        end
+    end
+    return recipes
+end
 
 -- Most other functions have dupe_number instead of extra_info, I'm converting over to more informative extra_info over time
 dupe.prototype = function(prototype, extra_info)
@@ -132,18 +247,22 @@ dupe.recipe = function(recipe, extra_info)
         new_recipe.localised_name = {"propertyrandomizer.recipe_dupe", locale_utils.find_localised_name(recipe), tostring(extra_info)}
     end
 
-    -- Recipe tech unlocks
+    -- Recipe tech unlocks: the copy is unlocked wherever the original is (found first, then added, so the effects aren't changed while they're read)
+    local unlocking = {}
     for _, technology in pairs(data.raw.technology) do
         if technology.effects ~= nil then
             for _, effect in pairs(technology.effects) do
                 if effect.type == "unlock-recipe" and effect.recipe == recipe.name then
-                    table.insert(technology.effects, {
-                        type = "unlock-recipe",
-                        recipe = new_recipe.name
-                    })
+                    table.insert(unlocking, technology)
                 end
             end
         end
+    end
+    for _, technology in pairs(unlocking) do
+        table.insert(technology.effects, {
+            type = "unlock-recipe",
+            recipe = new_recipe.name,
+        })
     end
 
     -- Only fix icons if it's not a specially suffixed recipe
@@ -159,18 +278,20 @@ end
 
 dupe.item = function(item, dupe_number)
     local new_item = dupe.prototype(item, dupe_number)
+    recolor_graphics(new_item, dupe_number)
 
-    -- Check if there was a recipe for this item and duplicate it if so
-    if data.raw.recipe[item.name] ~= nil then
-        local new_item_recipe = dupe.recipe(data.raw.recipe[item.name], dupe_number)
-        -- Override recipe's special localised name and icon
-        new_item_recipe.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(item), tostring(dupe_number)}
-        new_item_recipe.icons[#new_item_recipe.icons].shift[1] = -new_item_recipe.icons[#new_item_recipe.icons].shift[1]
-        patching.replace_ing_or_result(new_item_recipe.results, "item", item.name, {
-            type = "item",
-            name = new_item.name,
-            amount = 1
-        })
+    -- The recipes that make this item make the copy too, with the same amounts (found first, since duplicating adds recipes)
+    for _, recipe in pairs(dupe.item_recipes(item)) do
+        local new_recipe = dupe.recipe(recipe, dupe_number)
+        recolor_graphics(new_recipe, dupe_number)
+        -- Named as the item's copy rather than as a recipe copy, with the number badge on the left like the item's
+        new_recipe.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(recipe), tostring(dupe_number)}
+        new_recipe.icons[#new_recipe.icons].shift[1] = -new_recipe.icons[#new_recipe.icons].shift[1]
+        for _, result in pairs(new_recipe.results) do
+            if result.type == "item" and result.name == item.name then
+                result.name = new_item.name
+            end
+        end
     end
 
     for _, icon_prefix_type in pairs({"", "dark_background_"}) do
@@ -187,13 +308,62 @@ dupe.item = function(item, dupe_number)
                 item_icons = new_item[icon_prefix_type .. "icons"]
             end
             table.insert(item_icons, {
-                -- extra_info is the dupe_number on this part
-                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[extra_info],
+                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
                 icon_size = 120,
                 scale = 1 / 6,
                 shift = {-7, -7}
             })
             new_item[icon_prefix_type .. "icons"] = item_icons
+        end
+    end
+
+    -- The equipment this item places gets its copy, with the recolored grid sprite where there is one and a number badge otherwise
+    if item.place_as_equipment_result ~= nil then
+        local equipment = find_prototype("equipment", item.place_as_equipment_result)
+        if equipment ~= nil then
+            local new_equipment = dupe.prototype(equipment, dupe_number)
+            if recolor_graphics(new_equipment, dupe_number) == 0 then
+                new_equipment.sprite = {
+                    layers = {
+                        new_equipment.sprite,
+                        {
+                            filename = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
+                            size = 120,
+                            scale = 0.3,
+                            shift = {-15, -15},
+                        },
+                    },
+                }
+            end
+            new_item.place_as_equipment_result = new_equipment.name
+            new_equipment.take_result = new_item.name
+        end
+    end
+
+    -- An armor's copy needs the character's animations for that armor: a copy of them with recolored sheets where there are some, else a place in the original's list of armors
+    if item.type == "armor" then
+        for _, character in pairs(data.raw.character) do
+            local copies = {}
+            for _, animation in pairs(character.animations or {}) do
+                local worn = false
+                for _, armor_name in pairs(animation.armors or {}) do
+                    if armor_name == item.name then
+                        worn = true
+                    end
+                end
+                if worn then
+                    local copy = table.deepcopy(animation)
+                    copy.armors = {new_item.name}
+                    if recolor_graphics(copy, dupe_number) > 0 then
+                        table.insert(copies, copy)
+                    else
+                        table.insert(animation.armors, new_item.name)
+                    end
+                end
+            end
+            for _, copy in pairs(copies) do
+                table.insert(character.animations, copy)
+            end
         end
     end
 
@@ -305,6 +475,10 @@ end
 
 dupe.entity = function(entity, dupe_number)
     local new_entity = dupe.prototype(entity, dupe_number)
+    -- Recolored sprites where they exist; the number badge on the entity graphics is only for entities without them
+    if recolor_graphics(new_entity, dupe_number) > 0 then
+        dupe.recolored[new_entity.name] = true
+    end
 
     -- If this entity is placeable duplicate its item
     local associated_item
@@ -317,15 +491,9 @@ dupe.entity = function(entity, dupe_number)
         end
     end
     if associated_item == nil then
-        for item_class, _ in pairs(defines.prototypes.item) do
-            if data.raw[item_class] ~= nil then
-                for _, item in pairs(data.raw[item_class]) do
-                    if item.place_result == entity.name then
-                        -- This technically doesn't work if multiple things can place the same thing, but that's uncommon
-                        associated_item = item
-                    end
-                end
-            end
+        -- This technically doesn't work if multiple things can place the same thing, but that's uncommon
+        for _, item in pairs(dupe.placing_items(entity)) do
+            associated_item = item
         end
     end
     if associated_item ~= nil then
@@ -372,6 +540,9 @@ end
 
 dupe.rolling_stock = function(rolling_stock, dupe_number)
     local new_rolling_stock = dupe.entity(rolling_stock, dupe_number)
+    if dupe.recolored[new_rolling_stock.name] then
+        return new_rolling_stock
+    end
 
     -- Change graphics
     if new_rolling_stock.pictures ~= nil then
@@ -408,8 +579,31 @@ dupe.rolling_stock = function(rolling_stock, dupe_number)
     return new_rolling_stock
 end
 
+-- A spider vehicle's legs are their own prototypes, so they are duplicated (and recolored) with it
+dupe.spider_vehicle = function(spider_vehicle, dupe_number)
+    local new_spider_vehicle = dupe.entity(spider_vehicle, dupe_number)
+
+    local legs = new_spider_vehicle.spider_engine.legs
+    if legs.leg ~= nil then
+        legs = {legs}
+    end
+    local new_legs = {}
+    for _, leg_spec in pairs(legs) do
+        local leg = data.raw["spider-leg"][leg_spec.leg]
+        if new_legs[leg.name] == nil then
+            new_legs[leg.name] = dupe.entity(leg, dupe_number)
+        end
+        leg_spec.leg = new_legs[leg.name].name
+    end
+
+    return new_spider_vehicle
+end
+
 dupe.turret = function(turret, dupe_number)
     local new_turret = dupe.entity(turret, dupe_number)
+    if dupe.recolored[new_turret.name] then
+        return new_turret
+    end
 
     -- Change graphics
     for _, animation_type in pairs({"folded_animation", "preparing_animation", "prepared_animation", "prepared_alternative_animation", "starting_attack_animation", "attacking_animation", "ending_attack_animation", "folding_animation"}) do
@@ -441,6 +635,9 @@ end
 
 dupe.robot = function(robot, dupe_number)
     local new_robot = dupe.entity(robot, dupe_number)
+    if dupe.recolored[new_robot.name] then
+        return new_robot
+    end
 
     -- Graphics
     local anim_keys = {"idle", "in_motion"}
@@ -464,6 +661,9 @@ end
 
 dupe.roboport = function(roboport, dupe_number)
     local new_roboport = dupe.entity(roboport, dupe_number)
+    if dupe.recolored[new_roboport.name] then
+        return new_roboport
+    end
 
     for _, animation_type in pairs({"door_animation_up", "door_animation_down"}) do
         new_roboport[animation_type] = add_icon_to_anim(new_roboport[animation_type], dupe_number)
@@ -474,6 +674,9 @@ end
 
 dupe.logistic_container = function(logistic_container, dupe_number)
     local new_logistic_container = dupe.entity(logistic_container, dupe_number)
+    if dupe.recolored[new_logistic_container.name] then
+        return new_logistic_container
+    end
 
     if new_logistic_container.animation ~= nil then
         new_logistic_container.animation = add_icon_to_anim(new_logistic_container.animation, dupe_number)
@@ -497,6 +700,9 @@ end
 
 dupe.boiler = function(boiler, dupe_number)
     local new_boiler = dupe.entity(boiler, dupe_number)
+    if dupe.recolored[new_boiler.name] then
+        return new_boiler
+    end
 
     if new_boiler.pictures ~= nil then
         for _, picture in pairs(new_boiler.pictures) do
@@ -509,6 +715,9 @@ end
 
 dupe.generator = function(generator, dupe_number)
     local new_generator = dupe.entity(generator, dupe_number)
+    if dupe.recolored[new_generator.name] then
+        return new_generator
+    end
 
     if new_generator.pictures ~= nil then
         for _, picture in pairs(new_generator.pictures) do
@@ -527,6 +736,9 @@ end
 
 dupe.solar_panel = function(solar_panel, dupe_number)
     local new_solar_panel = dupe.entity(solar_panel, dupe_number)
+    if dupe.recolored[new_solar_panel.name] then
+        return new_solar_panel
+    end
 
     if new_solar_panel.picture ~= nil then
         if new_solar_panel.picture.sheet ~= nil then
@@ -555,6 +767,9 @@ end
 
 dupe.reactor = function(reactor, dupe_number)
     local new_reactor = dupe.entity(reactor, dupe_number)
+    if dupe.recolored[new_reactor.name] then
+        return new_reactor
+    end
 
     if new_reactor.picture ~= nil then
         new_reactor.picture = {
@@ -575,6 +790,9 @@ end
 
 dupe.crafting_machine = function(crafting_machine, dupe_number)
     local new_crafting_machine = dupe.entity(crafting_machine, dupe_number)
+    if dupe.recolored[new_crafting_machine.name] then
+        return new_crafting_machine
+    end
 
     if new_crafting_machine.graphics_set ~= nil then
         if new_crafting_machine.graphics_set.animation ~= nil then
@@ -605,6 +823,9 @@ end
 
 dupe.beacon = function(beacon, dupe_number)
     local new_beacon = dupe.entity(beacon, dupe_number)
+    if dupe.recolored[new_beacon.name] then
+        return new_beacon
+    end
 
     if new_beacon.graphics_set ~= nil then
         if new_beacon.graphics_set.animation_list then
@@ -621,6 +842,9 @@ end
 
 dupe.mining_drill = function(mining_drill, dupe_number)
     local new_mining_drill = dupe.entity(mining_drill, dupe_number)
+    if dupe.recolored[new_mining_drill.name] then
+        return new_mining_drill
+    end
 
     for _, graphics_set_key in pairs({"graphics_set", "wet_mining_graphics_set"}) do
         if new_mining_drill[graphics_set_key] ~= nil then
@@ -800,249 +1024,74 @@ dupe.resource = function(resource, dupe_number)
     return new_resource
 end
 
-dupe.equipment = function(equipment, dupe_number)
-    local new_equipment = dupe.prototype(equipment, dupe_number)
-
-    local old_item_name = equipment.take_result or equipment.name
-    local old_item
-    for item_class, _ in pairs(defines.prototypes.item) do
-        if data.raw[item_class] ~= nil and data.raw[item_class][old_item_name] then
-            old_item = data.raw[item_class][old_item_name]
-            break
-        end
-    end
-    local new_item = dupe.item(old_item, dupe_number)
-    new_item.place_as_equipment_result = new_equipment.name
-    new_equipment.take_result = new_item.name
-
-    new_equipment.sprite = {
-        layers = {
-            new_equipment.sprite,
-            {
-                filename = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-                size = 120,
-                scale = 0.3,
-                shift = {-15, -15}
-            }
-        }
-    }
-
-    return new_equipment
-end
-
--- Create the duplicates
+-- Create the duplicates: the entities and items with recolored graphics
+-- The technology and resource duplication functions above are older work that isn't wired in yet
 dupe.execute = function()
-    if config.watch_the_world_burn then
-        -- Tech tree
-        local techs_to_dupe = {}
-        for _, tech in pairs(data.raw.technology) do
-            -- Don't dupe techs with levels since those were having issues that I don't want to deal with right now
-            local prefix, suffix = tech.name:match("^(.*)%-(%d+)$")
-            if suffix == nil or tonumber(suffix) == nil then
-                table.insert(techs_to_dupe, tech)
-            end
-        end
-        for _, tech in pairs(techs_to_dupe) do
-            for i = 2, 4 do
-                dupe.technology(tech, i)
-            end
-        end
-    end
+    -- The dupe numbers come with the recolor sets shipped with the mod (dev/make-dupe-graphics.py): a thing gets dupe n when its icon has a recolor for n
+    local num_dupes = dupe_graphics.max_dupe
 
-    local num_dupes = 2
-    -- Dupe some things extra times in watch the world burn mode
-    if config.watch_the_world_burn then
-        num_dupes = 3
-    end
-
-    -- Duplicate science pack recipes
-    -- Turned off until I generalize it (right now, it assumes the recipe is named the same as the science pack)
-    --[[for _, science_pack in pairs(data.raw.tool) do
-        if data.raw.recipe[science_pack.name] ~= nil then
-            for i = 2, num_dupes do
-                dupe.recipe(data.raw.recipe[science_pack.name], i)
-            end
-        end
-    end
-    for i = 2, num_dupes do
-        dupe.recipe(data.raw.recipe["rocket-part"], i)
-    end]]
-
-    local items_to_dupe = {}
-    for _, ammo in pairs(data.raw.ammo) do
-        table.insert(items_to_dupe, ammo)
-    end
-    for _, item in pairs(items_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.item(item, i)
-        end
-    end
-
-    local rolling_stock_to_dupe = {}
-    for _, locomotive in pairs(data.raw.locomotive) do
-        table.insert(rolling_stock_to_dupe, locomotive)
-    end
-    for _, rolling_stock in pairs(rolling_stock_to_dupe) do    
-        dupe.rolling_stock(rolling_stock, 2)
-    end
-
-    local turrets_to_dupe = {}
-    for turret_category, _ in pairs(categories.turrets) do
-        for _, turret in pairs(data.raw[turret_category]) do
-            table.insert(turrets_to_dupe, turret)
-        end
-    end
-    for _, turret in pairs(turrets_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.turret(turret, i)
-        end
-    end
-
-    local robots_to_dupe = {}
-    for _, bot_class in pairs({"construction-robot", "logistic-robot"}) do
-        for _, bot in pairs(data.raw[bot_class]) do
-            table.insert(robots_to_dupe, bot)
-        end
-    end
-    for _, robot in pairs(robots_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.robot(robot, i)
-        end
-    end
-
-    local roboports_to_dupe = {}
-    for _, roboport in pairs(data.raw.roboport) do
-        table.insert(roboports_to_dupe, roboport)
-    end
-    for _, roboport in pairs(roboports_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.roboport(roboport, i)
-        end
-    end
-
-    -- Add logistic chests, mainly for recipe rando or other graph randos
-    local logistic_containers_to_dupe = {}
-    for _, logistic_container in pairs(data.raw["logistic-container"]) do
-        table.insert(logistic_containers_to_dupe, logistic_container)
-    end
-    for _, logistic_container in pairs(logistic_containers_to_dupe) do
-        dupe.logistic_container(logistic_container, 2)
-    end
-
-    local boilers_to_dupe = {}
-    for _, boiler in pairs(data.raw.boiler) do
-        table.insert(boilers_to_dupe, boiler)
-    end
-    for _, boiler in pairs(boilers_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.boiler(boiler, i)
-        end
-    end
-
-    local generators_to_dupe = {}
-    for _, generator in pairs(data.raw.generator) do
-        table.insert(generators_to_dupe, generator)
-    end
-    for _, generator in pairs(generators_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.generator(generator, i)
-        end
-    end
-
-    local solar_panels_to_dupe = {}
-    for _, solar_panel in pairs(data.raw["solar-panel"]) do
-        table.insert(solar_panels_to_dupe, solar_panel)
-    end
-    for _, solar_panel in pairs(solar_panels_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.solar_panel(solar_panel, i)
-        end
-    end
-
-    local reactors_to_dupe = {}
-    for _, reactor in pairs(data.raw.reactor) do
-        table.insert(reactors_to_dupe, reactor)
-    end
-    for _, reactor in pairs(reactors_to_dupe) do
-        dupe.reactor(reactor, 2)
-    end
-
-    if data.raw["agricultural-tower"] ~= nil then
-        local ag_towers_to_dupe = {}
-        for _, ag_tower in pairs(data.raw["agricultural-tower"]) do
-            table.insert(ag_towers_to_dupe, ag_tower)
-        end
-        for _, ag_tower in pairs(ag_towers_to_dupe) do
-            -- Agricultural towers have the same graphics to be changed as crafting machines
-            dupe.crafting_machine(ag_tower, 2)
-        end
-    end
-
-    local crafting_machines_to_dupe = {}
-    for crafting_machine_class, _ in pairs(categories.crafting_machines) do
-        for _, crafting_machine in pairs(data.raw[crafting_machine_class]) do
-            local to_duplicate = true
-            if to_duplicate then
-                table.insert(crafting_machines_to_dupe, crafting_machine)
-            end
-        end
-    end
-    for _, crafting_machine in pairs(crafting_machines_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.crafting_machine(crafting_machine, i)
-        end
-    end
-
-    local beacons_to_dupe = {}
-    for _, beacon in pairs(data.raw.beacon) do
-        table.insert(beacons_to_dupe, beacon)
-    end
-    for _, beacon in pairs(beacons_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.beacon(beacon, i)
-        end
-    end
-
-    local mining_drills_to_dupe = {}
-    for _, mining_drill in pairs(data.raw["mining-drill"]) do
-        table.insert(mining_drills_to_dupe, mining_drill)
-    end
-    for _, mining_drill in pairs(mining_drills_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.mining_drill(mining_drill, i)
-        end
-    end
-
-    local equipment_to_dupe = {}
-    for equipment_class, _ in pairs(defines.prototypes.equipment) do
-        if data.raw[equipment_class] ~= nil then
-            for _, equipment in pairs(data.raw[equipment_class]) do
-                if equipment.type ~= "equipment-ghost" then
-                    table.insert(equipment_to_dupe, equipment)
+    -- Entities: the ones with recolored graphics, whatever their type (the list lives in dev/dupe-entities.txt)
+    -- Found first, since duplicating adds prototypes to the tables being read
+    local entities_to_dupe = {}
+    for entity_class, _ in pairs(defines.prototypes.entity) do
+        if data.raw[entity_class] ~= nil then
+            for _, entity in pairs(data.raw[entity_class]) do
+                if entity.hidden ~= true then
+                    for i = 2, num_dupes do
+                        if dupe.has_recolor(entity, i) then
+                            table.insert(entities_to_dupe, {
+                                prototype = entity,
+                                dupe_number = i,
+                            })
+                        end
+                    end
                 end
             end
         end
     end
-    for _, equipment in pairs(equipment_to_dupe) do
-        for i = 2, num_dupes do
-            dupe.equipment(equipment, i)
+    -- Legs come with their spider vehicle
+    local leg_names = {}
+    for _, entry in pairs(entities_to_dupe) do
+        if entry.prototype.type == "spider-vehicle" then
+            local legs = entry.prototype.spider_engine.legs
+            if legs.leg ~= nil then
+                legs = {legs}
+            end
+            for _, leg_spec in pairs(legs) do
+                leg_names[leg_spec.leg] = true
+            end
+        end
+    end
+    for _, entry in pairs(entities_to_dupe) do
+        if leg_names[entry.prototype.name] == nil then
+            if entry.prototype.type == "spider-vehicle" then
+                dupe.spider_vehicle(entry.prototype, entry.dupe_number)
+            else
+                dupe.entity(entry.prototype, entry.dupe_number)
+            end
         end
     end
 
-    if config.watch_the_world_burn then
-        local resources_to_dupe = {}
-        for _, resource_name in pairs({"coal", "stone", "iron-ore", "copper-ore", "uranium-ore", "tungsten-ore"}) do
-            if data.raw.resource[resource_name] ~= nil then
-                local resource = data.raw.resource[resource_name]
-                table.insert(resources_to_dupe, resource)
+    -- Items: the ones with recolored icons that no entity brought along (modules, fuels, guns, ammo, armor and the items that place equipment; the list lives in dev/dupe-items.txt)
+    local items_to_dupe = {}
+    for item_class, _ in pairs(defines.prototypes.item) do
+        if data.raw[item_class] ~= nil then
+            for _, item in pairs(data.raw[item_class]) do
+                if item.hidden ~= true and not dupe.has_been_duplicated[rng.key({prototype = item})] then
+                    for i = 2, num_dupes do
+                        if dupe.item_has_recolor(item, i) then
+                            table.insert(items_to_dupe, {
+                                prototype = item,
+                                dupe_number = i,
+                            })
+                        end
+                    end
+                end
             end
         end
-        for _, resource in pairs(resources_to_dupe) do
-            -- CRITICAL TODO: Set back to 2
-            for i = 2, 4 do
-                dupe.resource(resource, i)
-            end
-        end
+    end
+    for _, entry in pairs(items_to_dupe) do
+        dupe.item(entry.prototype, entry.dupe_number)
     end
 end
 

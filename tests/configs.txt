@@ -37,6 +37,8 @@ skip planetary-resources
 skip planetary-lightning
 skip planetary-freezing
 skip planetary-locks
+# The duplicates setting is being worked on too; its graphics (graphics/dupes/, made by dev/make-dupe-graphics.py) are generated and not in git, so it's only tested by the dupes config below
+skip dupes
 skip unified-entity
 skip unified-entity-biters
 
@@ -61,6 +63,8 @@ config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false
 # No science cost check either: it measures old recipe randomization, which is off here
 config preview-with-graph unified nocheck=science-cost unified-preview=true dev-unified=false technology=true recipe=true recipe-science-pack=true recipe-tech-unlock=true
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
+# Duplicates on their own (the setting is skipped above); needs the generated graphics/dupes/ next to the mod, as a release has them
+config dupes settings dupes=true
 # Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
 # Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost
 # Missing baseline or final prices fail: every science pack must be covered.

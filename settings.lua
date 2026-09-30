@@ -60,9 +60,6 @@ data:extend({
         name = "propertyrandomizer-dupes",
         default_value = false,
         order = "b-z[dupes]",
-        -- Hidden while broken
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
