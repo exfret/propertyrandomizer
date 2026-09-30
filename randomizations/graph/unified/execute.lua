@@ -55,6 +55,8 @@ local handler_ids = {}
 -- Handlers still in development, forced on in every game while the hidden setting propertyrandomizer-dev-unified is (config.dev_unified; off in releases)
 RECIPE_INGS_DIR = "FORWARD"
 local enabled = {}
+-- Spoiling also needs its own setting (propertyrandomizer-unified-spoiling, visible and off by default; tests/configs.txt pins it on for unified-all), since the checkout is the user's playable mod and spoiling is still being worked on (user, 2026-09-29)
+local is_spoiling_on = config.unified["spoiling"] == true
 if config.dev_unified then
     -- CRITICAL TODO: REMOVE!
     config.unified = {
@@ -87,7 +89,7 @@ if config.dev_unified then
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
         ["recipe-ingredients"] = true,
-        ["spoiling"] = true,
+        ["spoiling"] = is_spoiling_on,
     }
 end
 -- Entity randomization (handlers/entity.lua) is behind its own startup setting

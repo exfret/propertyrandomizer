@@ -352,6 +352,21 @@ recycling.vanilla = function(raw)
     return info
 end
 
+-- The recycling recipes the recycler generated, as recipe name --> true: the recycler's from before randomization in old_raw (whatever randomization did to them since, like renaming what they recycle), and ones regeneration made in raw
+-- Hand-written recycling recipes, like scrap recycling, aren't among them
+recycling.generated_names = function(raw, old_raw)
+    local is_generated = {}
+    for recycling_name, _ in pairs(recycling.vanilla(old_raw)) do
+        is_generated[recycling_name] = true
+    end
+    for recipe_name, recipe in pairs(raw.recipe) do
+        if recycling.looks_generated(recipe) then
+            is_generated[recipe_name] = true
+        end
+    end
+    return is_generated
+end
+
 -- Replaces the recycling recipes the recycler generated with what it generates from data.raw now
 -- old_raw is the game before randomization, for which recipes the recycler generated there and which recipe each was made from
 -- Every generated recycling recipe is unlocked from the start
@@ -362,16 +377,7 @@ recycling.regenerate = function(old_raw)
         return
     end
 
-    -- Generated recipes: the recycler's from before randomization (whatever randomization did to them since), and ones an earlier call made
-    local is_generated = {}
-    for recycling_name, _ in pairs(vanilla) do
-        is_generated[recycling_name] = true
-    end
-    for recipe_name, recipe in pairs(raw.recipe) do
-        if recycling.looks_generated(recipe) then
-            is_generated[recipe_name] = true
-        end
-    end
+    local is_generated = recycling.generated_names(raw, old_raw)
 
     -- The generated recipes there are now, by name
     local old_recipes = {}

@@ -24,6 +24,8 @@ local concrete = {}
 
 -- Whether agricultural towers harvesting plants counts as automatic (entity-harvest)
 -- Automation reachability is separate from whether materials have prices.
+-- Gleba's automation comes from it, since its fruit is harvested (user, 2026-09-29: good for Gleba to have those automated contexts)
+-- It was off for a while because first pass then often moved no items: first pass traded the spoiling handler's spoil edges among themselves, which nothing applies, and so lost Gleba's automated chains in its model; the spoiling handler now keeps those edges out of first pass
 local AUTOMATABLE_PLANT_HARVESTING = true
 
 function concrete.build(lu, extra_params)

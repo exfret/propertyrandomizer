@@ -224,10 +224,10 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-unified-spoiling",
+        -- Visible so the user can try spoiling while it's worked on, and off by default, since the checkout is their playable mod (user, 2026-09-29)
+        -- It only takes effect with the other unified randomizations still in development (propertyrandomizer-dev-unified, or the unified preview; see randomizations/graph/unified/execute.lua)
         default_value = false,
         order = "e-c[spoiling]",
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",

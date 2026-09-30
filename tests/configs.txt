@@ -41,6 +41,8 @@ skip planetary-locks
 skip dupes
 skip unified-entity
 skip unified-entity-biters
+# Visible so the user can try it (2026-09-29); the unified suite still turns it on (pinned below)
+skip unified-spoiling
 
 # requires SETTING OTHER=VALUE: SETTING does nothing unless OTHER=VALUE, so generated configs that change SETTING set OTHER too
 requires item-percent item=true
@@ -51,6 +53,8 @@ requires unified-entity-biters unified-entity=true
 # Development handlers (dev-unified, on by default in the checkout and off in releases) are only tested in the unified suite
 pin dev-unified=false smoke settings
 pin dev-unified=true unified
+# Spoiling runs only with its own setting too, which is visible and so isn't among the hidden unified-* settings unified-all turns on
+pin unified-spoiling=true unified-all
 pin dev-unified=false preview preview-with-graph
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)

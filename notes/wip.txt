@@ -62,7 +62,7 @@
 
  * WORK IN PROGRESS (paused 2026-09-27, resumed 2026-09-29): spoiling handler, trip line, plant harvesting
     - Committed as 9fd85d6 (2026-09-27), everything below included; the planetary session's lib/logic/bootstrap.lua is its own
-    - Spoiling handler (randomizations/graph/unified/handlers/spoiling.lua, see handlers.md): enabled in the dev list in execute.lua
+    - Spoiling handler (randomizations/graph/unified/handlers/spoiling.lua, see handlers.md): in the dev list in execute.lua, but since 2026-09-29 only with its own setting on (propertyrandomizer-unified-spoiling: visible so the user can try it, off by default; tests/configs.txt pins it on for unified-all), so it's off in the user's games unless they turn it on (user: unfinished work in the main tree is fine behind a setting off by default)
       Tested on seeds 1-6 of the dev set with no unreachable recipes or lost contexts. Seed 3's first attempt fails its check for reasons unrelated to spoiling and passes on retry
       Spoil results need a sink (lib/item-sinks.lua; plain tests: lua lib/test-item-sinks.lua), reworked 2026-09-29 after the user's corrections:
         - A sink is a way machines can use an item up on the way to research, not the same as being useful elsewhere
@@ -78,11 +78,10 @@
     - Trip line (dutils.survives_trip, constants.spoil_trip_ticks = 30 min): items that spoil sooner can't be delivered to other rooms. Done
     - Platform one-time rule now counts for operating a built entity (entity-own-space), not for having it, which fixes a mine-back leak. Done
       See notes/bootstrap-infrastructure.txt; the planetary session added the fixpoint for freezing moves (lib/logic/bootstrap.lua)
-    - Plant harvesting by agricultural towers as automatic (entity-harvest) is written but OFF (AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua)
-      With it on, monotone matching lost the same 20 Gleba | 11 hard pebbles every round and added 0 needs, so first pass moved no items
-      Seen again 2026-09-29 (evening, while the flag was on): SA seed 3 every round and seeds 1 and 4 in some rounds lose 22 Gleba | 11 pebbles (create-platform), with the fluid flag on and off alike. With the flag off again (below), the fluid copy's SA seeds 1 and 3 pass both checks and seed 3 moves 259 identities in round 2
-      Off again in the main tree since 2026-09-29 (late evening, the user's request through another session): the spoiling work stays out of the main tree for now, so turn the flag on in an isolated copy only; the user's own load at 20:53 had first pass move 0 identities with it on
-      Next steps:
-        - turn it on and log each lost pebble with the positions on its old path that changed item
-        - fix refinement (blocked_travs in skeleton/monotone-matching.lua only counts travs on the path)
-        - check that first pass moves items again
+    - Plant harvesting by agricultural towers as automatic (entity-harvest, AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua): ON again in the main tree since 2026-09-29 (late evening, user: "It would be good for gleba to have those automated contexts"), after a fix worked out in an isolated copy
+      The regression (first pass losing 20-22 Gleba | 11 pebbles like create-platform in every round, adding 0 needs, and moving no items) came from the spoiling handler, not from refinement as suspected:
+        - make_orands puts an orand under every edge into an item, and first pass makes a slot of any node a head feeds, so the orands of the ~10 vanilla spoil edges the spoiling handler claims were first pass slots
+        - First pass traded them among themselves (like iron bacteria spoiling into what yumako mash did), which reflect never applies, so its model lost Gleba's automated ore chains; the travs already had those contexts as needs, so refinement had nothing to add
+        - Fix: the spoiling handler puts its edges' orands on first_pass.blacklist, like the entity handler; first pass's slots are now only items (255) and fluids (15). Regression test in lib/logic/test-spoiling.lua
+      Tested with the flag on: dev set SA seeds 1-8 (first pass moves ~240-250 items every round), preview@2-4, sa/defaults, and the SA configs with the old graph randomizations under MECHCHECK. All passed except sa/science-cost@750, the known lightning-rod bootstrap failure above with the same numbers
+      Hard pebbles first pass keeps exactly went from 6228 to 6359, and UNIFIEDCHECK's mechanic contexts from 6048 to 6106 (Gleba's automated chains); loads were no slower (dev seeds 1-4: 6m50s vs 8m46s for the main tree before the change, with the user's game running)

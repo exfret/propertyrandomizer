@@ -99,4 +99,24 @@ test("spoil edges keep the spoiling item's abilities, since waiting takes no pla
     assert(string.find(spoil_edge, "abilities =", 1, true) == nil, "a spoil edge that sets abilities would stop spoiling from carrying automatability")
 end)
 
+test("first pass doesn't trade spoil edges, since the spoiling handler matches them itself and reflect applies only its matching", function()
+    -- make_orands puts an orand under every edge into an item, and first pass makes a slot of any node a claimed edge (a head) feeds, so each claimed spoil edge's orand would be a first pass slot
+    -- First pass would then trade what spoil edges lead to (like bacteria spoiling into spoilage instead of ore) in a model nothing applies, and lose Gleba's automated chains there, which left it moving no items (2026-09-29)
+    -- So the handler blacklists them, as the entity handler does for its slots
+    local function source(path)
+        local handle = assert(io.open(path, "r"))
+        local text = handle:read("*a")
+        handle:close()
+        return text
+    end
+    local handler = source("randomizations/graph/unified/handlers/spoiling.lua")
+    local spoof = string.match(handler, "spoiling%.spoof = function%(graph%)(.-)\nend\n")
+    assert(spoof ~= nil, "couldn't find the spoiling handler's spoof")
+    local loop = string.match(spoof, "for edge_key, edge in pairs%(graph%.edges%) do%s+if edge%.spoils_into ~= nil then%s+([^\n]+)")
+    assert(loop ~= nil and string.find(loop, "randomization_info.options.first_pass.blacklist[key(\"orand\", edge_key)] = true", 1, true) ~= nil, "spoof should keep every spoil edge's orand out of first pass")
+    -- The blacklist names orands the way make_orands does, after the edge each one splits
+    assert(string.find(source("lib/graph/graph-utils.lua"), "gutils.make_orand(graph, edge_key)", 1, true) ~= nil)
+    assert(string.find(source("randomizations/graph/unified/first-pass.lua"), "randomization_info.options.first_pass.blacklist[node_key]", 1, true) ~= nil)
+end)
+
 print(num_passed .. " tests passed")

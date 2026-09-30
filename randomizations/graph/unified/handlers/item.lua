@@ -238,6 +238,26 @@ item.reflect = function(graph, head_to_base, head_to_handler)
     end
     -- First pass gated this assignment as reflection realizes it (see item_fluid.realized_assignment), so it's applied as it is
     local reflected_positions = item_fluid.reflected_positions(identity_at)
+    -- The new pairings, for reading a game's log (the old greedy first pass logged each one as it made it): each position that holds another identity now, with that identity
+    -- Item randomization only runs among the unified randomizations still in development, so this only shows up in dev mode
+    local moved_positions = {}
+    for position_key, identity_key in pairs(identity_at) do
+        if identity_key ~= position_key then
+            table.insert(moved_positions, position_key)
+        end
+    end
+    table.sort(moved_positions)
+    for _, position_key in pairs(moved_positions) do
+        local position = gutils.deconstruct(position_key)
+        local identity = gutils.deconstruct(identity_at[position_key])
+        -- Forms as in the form change line below
+        if position.type ~= identity.type then
+            log("Item randomization: " .. identity.name .. " (" .. identity.type .. ") takes " .. position.name .. "'s position (" .. position.type .. ")")
+        else
+            log("Item randomization: " .. identity.name .. " takes " .. position.name .. "'s position")
+        end
+    end
+    log("Item randomization: " .. #moved_positions .. " positions hold another identity")
     UNIFIED_MATERIAL_RENAMES = {}
     for trav_key, slot_key in pairs(trav_to_slot) do
     --for head_key, base_key in pairs(head_to_base) do
