@@ -248,6 +248,27 @@ dupe.get_recipe_icons = function(recipe)
     return recipe_icons
 end
 
+-- A layer's scale defaults to (expected_icon_size / 2) / icon_size, and its shift counts expected_icon_size / 2 units across the icon (IconData)
+-- Items, fluids and recipes expect 64 and technologies 256, so on a technology a layer without a scale grows by itself, and one with a scale (like a number badge) needs its scale and shift made as much larger
+local TECHNOLOGY_ICON_RATIO = 256 / 64
+
+-- A copy of an item's, fluid's or recipe's icon layers that looks the same on a technology
+dupe.technology_icons = function(icons)
+    local technology_icons = table.deepcopy(icons)
+    for _, layer in pairs(technology_icons) do
+        if layer.scale ~= nil then
+            layer.scale = TECHNOLOGY_ICON_RATIO * layer.scale
+        end
+        if layer.shift ~= nil then
+            layer.shift = {
+                TECHNOLOGY_ICON_RATIO * (layer.shift.x or layer.shift[1]),
+                TECHNOLOGY_ICON_RATIO * (layer.shift.y or layer.shift[2]),
+            }
+        end
+    end
+    return technology_icons
+end
+
 -- Whether researching the technology takes an item the recipe makes (a science pack's recipe can't be unlocked by a technology that needs the pack)
 local function research_needs_result(technology, recipe)
     if technology.unit == nil or technology.unit.ingredients == nil then
