@@ -310,6 +310,27 @@ promotion.new = function(params)
         return pre_ind({ key = node_key }, context)
     end
 
+    -- The rank a pebble's backing must stay below: its own, except for a head's
+    -- A head only ever backs its dependent, so its pebble can use anything established before the dependent's pebble in the same context
+    -- Its own rank only reflects its vanilla base: a head whose vanilla base is free (like a resource that needs no mining fluid) sorts near the start however late its dependent comes, so no later base could ever pass
+    -- Ranks still strictly decrease along backings if the head's pebble counts as ranked just before its dependent's; a dependent that changes contexts keeps the head's own rank
+    local function backing_bound(ind)
+        local pebble = sorted[ind]
+        local node = graph.nodes[pebble.node_key]
+        if node.type ~= "head" then
+            return ind
+        end
+        local dep = gutils.unique_depnode(graph, node)
+        if dep == nil or logic.type_info[dep.type].context ~= nil then
+            return ind
+        end
+        local dep_ind = node_ind(key(dep), pebble.context)
+        if dep_ind == nil or dep_ind < ind then
+            return ind
+        end
+        return dep_ind
+    end
+
     -- A base as a prereq of a head, carrying the abilities of the edge connecting them
     local function base_pre(base_key, head_key)
         return {
@@ -428,7 +449,7 @@ promotion.new = function(params)
         end
 
         if logic.type_info[node.type].context == nil then
-            return back_with(ind, pres, node.op, pebble.context, est)
+            return back_with(backing_bound(ind), pres, node.op, pebble.context, est)
         end
 
         -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
@@ -1135,16 +1156,17 @@ promotion.new = function(params)
         end
     end
 
-    -- Earliest established pebble of base_key before the head's pebble in context that gets context to the head through their connection (so its abilities count), or nil
+    -- Earliest established pebble of base_key that can back the head's pebble in context (before its dependent's, see backing_bound) and gets context to the head through their connection (so its abilities count), or nil
     -- With solvent (debt mode), the earliest solvent one
     local function base_backing(base_key, head_key, context, solvent)
         local head_ind = node_ind(head_key, context)
         if head_ind == nil then
             return nil
         end
+        local bound = backing_bound(head_ind)
         local est = solvent and establish_solvent or establish
         for _, i in pairs(pre_inds(base_pre(base_key, head_key), context)) do
-            if i < head_ind and est(i) then
+            if i < bound and est(i) then
                 return i
             end
         end
@@ -1200,8 +1222,13 @@ promotion.new = function(params)
         return true
     end
 
+    -- Rank of a node's pebble in context, or nil (for tests and reporting)
+    state.rank = function(node_key, context)
+        return node_ind(node_key, context)
+    end
+
     -- Checks a candidate base for a generic handler head (e.g. energy source --> entity-operate)
-    -- The base must be establishable before the head in each required context of the head's dependent (from required_contexts(dep)), and in debt mode solvent where the head is (the no-new-insolvency rule)
+    -- The base must be establishable before the head's dependent in each required context of that dependent (from required_contexts(dep), see backing_bound), and in debt mode solvent where the head is (the no-new-insolvency rule)
     state.head_candidate_ok = function(head_key, base_key, required_contexts)
         assert(#required_contexts > 0, "head_candidate_ok needs required contexts (from required_contexts) for " .. head_key)
         for _, context in pairs(required_contexts) do

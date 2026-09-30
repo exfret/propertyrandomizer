@@ -473,6 +473,77 @@ test("models built for first pass don't count on a head that starts detached, be
     assert(subdivided.nodes[key(conns.head)] ~= nil and subdivided.nodes[key(conns.base)] ~= nil)
 end)
 
+test("a head's new base only has to come before the head's dependent, like a resource gaining a mining fluid", function()
+    -- Mechanic m (mining a resource) needs its head (the fluid slot) and item w
+    -- The head's vanilla base is free (fed by start, like needing no fluid), so the head sorts near the start
+    -- Base late (a fluid) is at the end of a chain from start and feeds w's mine, so it sorts after the head but before m
+    -- Base after is fed by m's own product, so it sorts after m
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local function node(node_type, name, op, extra)
+        extra = extra or {}
+        extra.op = op
+        gutils.add_node(graph, node_type, name, extra)
+        return key(node_type, name)
+    end
+    local start = node("start", "", "AND")
+    graph.sources[start] = true
+    local base_free = node("base", "free-m", "AND")
+    gutils.add_edge(graph, start, base_free)
+    local head = node("head", "free-m", "OR", {
+        old_base = base_free,
+    })
+    graph.nodes[base_free].old_head = head
+    local m = node("mine", "m", "AND", {
+        mechanic = true,
+    })
+    gutils.add_edge(graph, head, m)
+    local prev = start
+    for _, name in pairs({
+        "c1",
+        "c2",
+    }) do
+        local mine = node("mine", name, "AND")
+        gutils.add_edge(graph, prev, mine)
+        prev = node("item", name, "OR")
+        gutils.add_edge(graph, mine, prev)
+    end
+    local base_late = node("base", "late-m", "AND")
+    gutils.add_edge(graph, prev, base_late)
+    local mine_w = node("mine", "w", "AND")
+    gutils.add_edge(graph, base_late, mine_w)
+    local item_w = node("item", "w", "OR")
+    gutils.add_edge(graph, mine_w, item_w)
+    gutils.add_edge(graph, item_w, m)
+    local item_m = node("item", "m", "OR")
+    gutils.add_edge(graph, m, item_m)
+    local base_after = node("base", "after-m", "AND")
+    gutils.add_edge(graph, item_m, base_after)
+
+    local prom = promotion.new({
+        graph = graph,
+    })
+    assert(#prom.promise_mechanics() == 0)
+    local contexts = prom.required_contexts(m)
+    assert(#contexts > 0)
+    -- The ranks this is about, checked so a change in the sort's tie-breaking can't make the test pass vacuously: the head is one step from start and base late ends a chain, so the sort's first-open-node pick under the rng stub takes the head first in either order of start's dependents
+    for _, context in pairs(contexts) do
+        assert(prom.rank(head, context) < prom.rank(base_late, context))
+        assert(prom.rank(base_late, context) < prom.rank(m, context))
+        assert(prom.rank(m, context) < prom.rank(base_after, context))
+    end
+    -- Bounded by the head's own rank, base late would be refused and the head could only ever keep its free base
+    assert(prom.head_candidate_ok(head, base_late, contexts))
+    -- A base that needs the dependent itself would be a cycle
+    assert(not prom.head_candidate_ok(head, base_after, contexts))
+    -- Resolving keeps the head and m established (resolve_head errors otherwise)
+    prom.resolve_head(head, base_late, contexts)
+    assert(prom.head_candidate_ok(head, base_late, contexts))
+end)
+
 ----------------------------------------------------------------------
 -- Debt mode: promotion over a superposition of two worlds (see lib/graph/superpose.lua)
 ----------------------------------------------------------------------
