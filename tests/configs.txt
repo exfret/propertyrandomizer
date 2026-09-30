@@ -72,6 +72,10 @@ config preview-with-graph unified nocheck=science-cost unified-preview=true dev-
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
 # Duplicates on their own (the setting is skipped above); needs the generated graphics/dupes/ next to the mod, as a release has them
 config dupes settings dupes=true
+# Resource swaps alone (the setting is skipped above), with the starting planet's resources in the swap
+config planetary-resources settings seeds=1,2 planetary-resources=true
+# Resource swaps with the planet copies: recipes a planet shares with its copy follow its swap through planet variants, so few extra patches are needed
+config dupes-resources settings seeds=1,2 dupes=true planetary-resources=true
 # A new random connection graph (the setting is skipped above), alone and with the planet copies
 config planetary-connections settings planetary-connections=true
 config dupes-connections settings dupes=true planetary-connections=true

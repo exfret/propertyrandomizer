@@ -293,6 +293,31 @@ surface_sets.value = function(room_key, property_name)
     return value
 end
 
+-- Families: a planet and its copies (lib/dupe-planets.lua, which records a copy's original as its orig_name through dupe.prototype) are one family, since their surface properties are the same and no condition can tell them apart; every other room is a family of its own
+-- The family is named after its original's room key
+surface_sets.family_of = function(room_key)
+    local room = gutils.deconstruct(room_key)
+    if room.type == "planet" then
+        local prototype = (data.raw.planet or {})[room.name]
+        if prototype ~= nil and prototype.orig_name ~= nil and (data.raw.planet or {})[prototype.orig_name] ~= nil then
+            return gutils.key("planet", prototype.orig_name)
+        end
+    end
+    return room_key
+end
+
+-- The rooms of a room's family, as room key --> true
+surface_sets.family_rooms = function(room_key)
+    local family = surface_sets.family_of(room_key)
+    local rooms = {}
+    for _, other in pairs(surface_sets.room_keys()) do
+        if surface_sets.family_of(other) == family then
+            rooms[other] = true
+        end
+    end
+    return rooms
+end
+
 -- The rooms (logic keys) that accept a prototype's surface conditions now
 surface_sets.accepted = function(prototype)
     return surface_sets.accepting(prototype.surface_conditions or {}, surface_sets.room_keys(), surface_sets.value)

@@ -5,7 +5,7 @@
 --   * the graph stays connected from the starting planet: a spanning tree grows outward from the sun (each location joins one nearer the sun that's already placed, orbits taken in order with some jitter), then the rest of the connections go in until nobody has room left.
 -- A new connection takes its length, asteroids and icons from the current connection between the most similar pair of orbits, so a route between two orbits is about as long and as dangerous as vanilla's between those orbits.
 -- Connections that already join the right two locations stay as they are; the rest are new prototypes, and old ones go. What names a removed connection (like a distance achievement's tracked connection) names a new connection to the same place instead.
--- Orbits and positions on the star map don't change.
+-- Orbits stay, but every location except the starting planet gets a new place on its orbit: of many random layouts across a fan of the map (wider with more locations), each improved by swapping places, the one with the fewest crossing routes, no locations drawn on top of each other and no route passing through a location is kept, and routes are drawn as straight lines so that's what the map shows. Planet copies land wherever the graph reads best, not beside their originals.
 
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
@@ -16,6 +16,13 @@ local connections = {}
 local GAP_SCALE = 10
 -- How far, in distance from the sun, the order the tree grows in may shuffle locations (so equal and near orbits come in a random order)
 local ORDER_JITTER = 8
+-- The star map layout: layouts tried, place swaps tried on each, then passes moving each location to the best of LAYOUT_SPOTS spots along the fan; how far apart locations are drawn (map units; a location's apparent size is about 1 to 1.5) and routes kept from locations they don't end at
+local LAYOUT_TRIES = 20
+local LAYOUT_SWAPS = 60
+local LAYOUT_PASSES = 1
+local LAYOUT_SPOTS = 8
+local MIN_GAP = 4
+local ROUTE_GAP = 2.5
 
 local function sorted_keys(tbl)
     local keys = {}
@@ -305,6 +312,217 @@ local function new_connection(edge, template)
     return connection
 end
 
+-- Star map geometry: a location's point for an orientation (RealOrientation: 0 north, clockwise; distance from the sun in map units)
+local function point(node, orientation)
+    local angle = orientation * 2 * math.pi
+    return {
+        x = distance(node) * math.sin(angle),
+        y = -distance(node) * math.cos(angle),
+    }
+end
+
+local function side(o, a, b)
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+end
+
+-- Whether the segments p1-p2 and p3-p4 cross properly
+local function segments_cross(p1, p2, p3, p4)
+    local d1 = side(p3, p4, p1)
+    local d2 = side(p3, p4, p2)
+    local d3 = side(p1, p2, p3)
+    local d4 = side(p1, p2, p4)
+    return ((d1 > 0 and d2 < 0) or (d1 < 0 and d2 > 0)) and ((d3 > 0 and d4 < 0) or (d3 < 0 and d4 > 0))
+end
+
+local function distance2(a, b)
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+end
+
+-- Squared distance from p to the segment a-b
+local function segment_distance2(p, a, b)
+    local dx = b.x - a.x
+    local dy = b.y - a.y
+    local length2 = dx * dx + dy * dy
+    local t = 0
+    if length2 > 0 then
+        t = math.max(0, math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2))
+    end
+    local qx = a.x + t * dx - p.x
+    local qy = a.y + t * dy - p.y
+    return qx * qx + qy * qy
+end
+
+-- How bad a layout is: crossing routes weigh most, then locations drawn on top of each other, then routes through locations, then a little for long routes
+-- points[i] is location i's point; edges are pairs of location indexes (index_edges below), so the inner loops touch numbers only
+local MIN_GAP2 = MIN_GAP * MIN_GAP
+local ROUTE_GAP2 = ROUTE_GAP * ROUTE_GAP
+local function layout_cost(num_nodes, index_edges, points)
+    local cost = 0
+    for i, edge in pairs(index_edges) do
+        local from = points[edge[1]]
+        local to = points[edge[2]]
+        for j = i + 1, #index_edges do
+            local other = index_edges[j]
+            if edge[1] ~= other[1] and edge[1] ~= other[2] and edge[2] ~= other[1] and edge[2] ~= other[2] and segments_cross(from, to, points[other[1]], points[other[2]]) then
+                cost = cost + 10
+            end
+        end
+        for node = 1, num_nodes do
+            if node ~= edge[1] and node ~= edge[2] then
+                local gap2 = segment_distance2(points[node], from, to)
+                if gap2 < ROUTE_GAP2 then
+                    cost = cost + 3 + (ROUTE_GAP2 - gap2) / ROUTE_GAP2
+                end
+            end
+        end
+        cost = cost + distance2(from, to) / 40000
+    end
+    for a = 1, num_nodes do
+        for b = a + 1, num_nodes do
+            local gap2 = distance2(points[a], points[b])
+            if gap2 < MIN_GAP2 then
+                cost = cost + 5 + (MIN_GAP2 - gap2) / MIN_GAP2
+            end
+        end
+    end
+    return cost
+end
+
+-- The locations in the order of a depth-first walk of the graph from the start, neighbors in a random order each time: a layout that spreads them out in this order has most routes between neighbors along the fan
+local function walk_order(nodes, edges, key)
+    local neighbors = {}
+    for _, node in pairs(nodes) do
+        neighbors[node] = {}
+    end
+    for _, edge in pairs(edges) do
+        table.insert(neighbors[edge.from], edge.to)
+        table.insert(neighbors[edge.to], edge.from)
+    end
+    local order = {}
+    local seen = {}
+    local function visit(node)
+        seen[node] = true
+        table.insert(order, node)
+        local around = {}
+        for _, other in pairs(neighbors[node]) do
+            table.insert(around, other)
+        end
+        rng.shuffle(key, around)
+        for _, other in pairs(around) do
+            if seen[other] == nil then
+                visit(other)
+            end
+        end
+    end
+    local start = constants.starting_planet
+    if neighbors[start] ~= nil then
+        visit(start)
+    end
+    for _, node in pairs(nodes) do
+        if seen[node] == nil then
+            visit(node)
+        end
+    end
+    return order
+end
+
+-- New orientations for every location but the starting planet: the best of LAYOUT_TRIES layouts, each spreading the locations evenly (with jitter) over a fan around the current layout's middle (a quarter turn for seven locations, wider for more) in the order of a random depth-first walk, then improved by LAYOUT_SWAPS place swaps
+-- Returns orientation per node and the cost of the layout
+local function layout(nodes, edges, key)
+    local start = constants.starting_planet
+    local index_of = {}
+    for i, node in pairs(nodes) do
+        index_of[node] = i
+    end
+    local index_edges = {}
+    for _, edge in pairs(edges) do
+        table.insert(index_edges, {
+            index_of[edge.from],
+            index_of[edge.to],
+        })
+    end
+    local movable = {}
+    local sin_sum = 0
+    local cos_sum = 0
+    for _, node in pairs(nodes) do
+        if node ~= start then
+            table.insert(movable, node)
+        end
+        local current = (location(node) or {}).orientation or 0
+        sin_sum = sin_sum + math.sin(current * 2 * math.pi)
+        cos_sum = cos_sum + math.cos(current * 2 * math.pi)
+    end
+    local center = math.atan2(sin_sum, cos_sum) / (2 * math.pi)
+    local span = math.min(0.6, math.max(0.25, 0.25 * #nodes / 7))
+    local lo = center - span / 2
+    local start_orientation = (location(start) or {}).orientation or 0
+    local best = nil
+    local best_cost = nil
+    for _ = 1, LAYOUT_TRIES do
+        local orientation = {}
+        local points = {}
+        orientation[start] = start_orientation
+        local order = {}
+        for _, node in pairs(walk_order(nodes, edges, key)) do
+            if node ~= start then
+                table.insert(order, node)
+            end
+        end
+        for i, node in pairs(order) do
+            orientation[node] = lo + span * (i - 0.5 + rng.float_range(key, -0.4, 0.4)) / #order
+        end
+        for i, node in pairs(nodes) do
+            points[i] = point(node, orientation[node])
+        end
+        local cost = layout_cost(#nodes, index_edges, points)
+        for _ = 1, LAYOUT_SWAPS do
+            local a = movable[rng.int(key, #movable)]
+            local b = movable[rng.int(key, #movable)]
+            if a ~= b then
+                orientation[a], orientation[b] = orientation[b], orientation[a]
+                local old_a = points[index_of[a]]
+                local old_b = points[index_of[b]]
+                points[index_of[a]] = point(a, orientation[a])
+                points[index_of[b]] = point(b, orientation[b])
+                local swapped_cost = layout_cost(#nodes, index_edges, points)
+                if swapped_cost <= cost then
+                    cost = swapped_cost
+                else
+                    orientation[a], orientation[b] = orientation[b], orientation[a]
+                    points[index_of[a]] = old_a
+                    points[index_of[b]] = old_b
+                end
+            end
+        end
+        -- Each location in turn moves to the best of a few spots along the fan (its own place among them), a couple of times over
+        for _ = 1, LAYOUT_PASSES do
+            for _, node in pairs(movable) do
+                local index = index_of[node]
+                local best_spot = orientation[node]
+                local best_point = points[index]
+                for spot = 1, LAYOUT_SPOTS do
+                    local candidate = lo + span * (spot - 0.5 + rng.float_range(key, -0.3, 0.3)) / LAYOUT_SPOTS
+                    orientation[node] = candidate
+                    points[index] = point(node, candidate)
+                    local moved_cost = layout_cost(#nodes, index_edges, points)
+                    if moved_cost < cost then
+                        cost = moved_cost
+                        best_spot = candidate
+                        best_point = points[index]
+                    end
+                end
+                orientation[node] = best_spot
+                points[index] = best_point
+            end
+        end
+        if best_cost == nil or cost < best_cost then
+            best = orientation
+            best_cost = cost
+        end
+    end
+    return best, best_cost
+end
+
 -- Draws and puts the new graph in the game; returns a line for the log
 connections.execute = function(id)
     local key = rng.key({
@@ -370,12 +588,33 @@ connections.execute = function(id)
         end
         table.insert(degrees, node .. " " .. num .. "/" .. target[node])
     end
+    -- Every route is drawn as a straight line, which is what the layout below keeps from crossing
+    for _, name in pairs(sorted_keys(data.raw["space-connection"])) do
+        local connection = data.raw["space-connection"][name]
+        if wanted[pair_key(connection.from, connection.to)] ~= nil then
+            connection.shape = "line"
+        end
+    end
+    -- The star map layout
+    local orientation, layout_score = layout(graph.nodes, edges, key)
+    local places = {}
+    for _, node in pairs(graph.nodes) do
+        local prototype = location(node)
+        if prototype ~= nil and node ~= constants.starting_planet then
+            prototype.orientation = orientation[node] % 1
+            prototype.parked_platforms_orientation = nil
+        end
+        table.insert(places, node .. " @ " .. string.format("%.3f", orientation[node] % 1))
+    end
     connections.edges = edges
     local routes = {}
     for _, edge in pairs(edges) do
         table.insert(routes, edge.from .. " - " .. edge.to .. " (orbits " .. distance(edge.from) .. " and " .. distance(edge.to) .. ")")
     end
-    return #edges .. " connections among " .. #graph.nodes .. " locations, typical orbit gap " .. graph.typical_gap .. " (" .. table.concat(degrees, ", ") .. "); routes: " .. table.concat(routes, ", ") .. "; kept " .. #sorted_keys(kept) .. ", new " .. #created .. " [" .. table.concat(created, ", ") .. "], removed " .. #removed .. (#retargeted > 0 and ("; what named a removed connection now names: " .. table.concat(retargeted, ", ")) or "")
+    return #edges .. " connections among " .. #graph.nodes .. " locations, typical orbit gap " .. graph.typical_gap .. " (" .. table.concat(degrees, ", ") .. "); routes: " .. table.concat(routes, ", ") .. "; star map (orientation per location, layout cost " .. string.format("%.1f", layout_score) .. "): " .. table.concat(places, ", ") .. "; kept " .. #sorted_keys(kept) .. ", new " .. #created .. " [" .. table.concat(created, ", ") .. "], removed " .. #removed .. (#retargeted > 0 and ("; what named a removed connection now names: " .. table.concat(retargeted, ", ")) or "")
 end
+
+-- For timing and tests outside the game (scratch harnesses): the layout search on given nodes and edges
+connections.layout = layout
 
 return connections

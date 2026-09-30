@@ -26,6 +26,7 @@ local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
 local top = require("lib/graph/context-sort")
+local staged = require("lib/graph/staged-sort")
 local superpose = require("lib/graph/superpose")
 local settlement = require("lib/graph/settlement")
 local planetary_check = require("randomizations/planetary/check")
@@ -81,18 +82,23 @@ local function run_oceans(logic, state, old_raw)
     return nil
 end
 
-local function log_edits(edits, trigger_edits)
-    log("Planetary resources: " .. #edits .. " recipes and " .. #trigger_edits .. " technology triggers edited to follow the swap")
+local function log_edits(edits, trigger_edits, variants)
+    variants = variants or {}
+    log("Planetary resources: " .. #edits .. " recipes edited, " .. #variants .. " planet variants and " .. #trigger_edits .. " technology triggers edited to follow the swap")
     for _, edit in pairs(edits) do
         log("Planetary resource edit: " .. resources.describe_edit(edit))
+    end
+    for _, plan in pairs(variants) do
+        log("Planetary resource variant: " .. resources.describe_variant(plan))
     end
     for _, edit in pairs(trigger_edits) do
         log("Planetary resource trigger edit: " .. resources.describe_trigger_edit(edit))
     end
 end
 
--- Swaps resources, and has the recipes and mining-triggered technologies belonging to one planet follow its swap
--- Returns what resources.execute does, then the recipe edits and the trigger edits
+-- Swaps resources, and has the recipes and mining-triggered technologies belonging to one planet follow its swap (recipes a planet shares with its copies through planet variants)
+-- The variants count as their originals for the checks (state.variants_of)
+-- Returns what resources.execute does, then the recipe edits, the trigger edits and the variant plans
 local function swap_resources(state)
     planetary_check.moved_features["resources"] = true
     local slots, assignment, lost = resources.execute("planetary-resources")
@@ -103,35 +109,140 @@ local function swap_resources(state)
         planet_recipes[candidate.planet] = planet_recipes[candidate.planet] or {}
         planet_recipes[candidate.planet][candidate.recipe_name] = true
     end
-    local edits = resources.edits(resources.substitutions(slots, assignment, lost), state.before, planet_recipes)
+    local substitutions, alternates = resources.substitutions(slots, assignment, lost)
+    local edits, variants = resources.edits(substitutions, state.before, planet_recipes, alternates)
     for _, edit in pairs(edits) do
         resources.add_edit(edit)
+    end
+    state.variants_of = state.variants_of or {}
+    for _, plan in pairs(variants) do
+        resources.add_variant(plan)
+        state.variants_of[plan.recipe_name] = state.variants_of[plan.recipe_name] or {}
+        table.insert(state.variants_of[plan.recipe_name], plan.variant.name)
+    end
+    if #variants > 0 then
+        locks.realize()
     end
     -- So do technologies belonging to one planet that are researched by mining a resource it lost
     local trigger_edits = resources.trigger_edits(resources.replacements(slots, assignment, lost), state.before)
     for _, edit in pairs(trigger_edits) do
         resources.add_trigger_edit(edit)
     end
-    return slots, assignment, lost, edits, trigger_edits
+    return slots, assignment, lost, edits, trigger_edits, variants
+end
+
+-- The variants replace their originals on their planets (user, 2026-09-30), once the patches are chosen: each original stops accepting its variants' planets (resources.exclude_originals), except where a planet still needs it
+-- A planet can need its original where its variant's new ingredient is harder to get from its own resources than the original's was, like uranium ore, which is mined with sulfuric acid (base/prototypes/entity/resources.lua).
+-- So the goals that fail without the originals get them back through gates in a staged sort, one per original and planet, like the lock stage's "widen", and only the gates on their witnesses open.
+-- If a goal fails even with every original back, the exclusions all go, leaving the game the patches were chosen for as it was.
+-- Returns the excluded originals still excluded (resources.exclude_originals' entries, planet_rooms narrowed to those still excluded) and how many planets got an original back
+local function exclude_originals(logic, state, variants)
+    local excluded = resources.exclude_originals(variants)
+    if #excluded == 0 then
+        return {}, 0
+    end
+    locks.realize()
+    local after = planetary_check.sort(logic)
+    local failures = planetary_check.required_failures(state.before, after, state.variants_of)
+    if #failures == 0 then
+        return excluded, 0
+    end
+    local add = {}
+    local include_of_gate = {}
+    for _, entry in pairs(excluded) do
+        local stop = gutils.key("recipe-surface-condition", entry.recipe_name)
+        for _, room_key in pairs(sorted_keys(entry.planet_rooms)) do
+            local start = gutils.key("room", room_key)
+            table.insert(add, {
+                start = start,
+                stop = stop,
+                stage = "include",
+            })
+            include_of_gate[start .. " --> " .. stop] = {
+                entry = entry,
+                room_key = room_key,
+            }
+        end
+    end
+    local staged_sort = staged.sort({
+        graph = after.graph,
+        stages = {
+            "include",
+        },
+        add = add,
+        extra = {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = planetary_check.home_sets,
+        },
+    })
+    planetary_check.num_sorts = planetary_check.num_sorts + 1
+    local with_all = {
+        graph = staged_sort.graph,
+        sort_info = staged_sort.sort_info,
+    }
+    if #planetary_check.required_failures(state.before, with_all, state.variants_of) > 0 then
+        resources.include_originals(excluded)
+        locks.realize()
+        log("Planetary resources: the originals stay makeable beside their variants, since some planets can't do without them even with every original back")
+        return {}, 0
+    end
+    local num_back = 0
+    for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(failures, with_all))) do
+        local include = gate.kind == "add" and include_of_gate[gate.start .. " --> " .. gate.stop] or nil
+        if include ~= nil and include.entry.planet_rooms[include.room_key] ~= nil then
+            include.entry.planet_rooms[include.room_key] = nil
+            local lock = locks.fixed["recipe/" .. include.entry.recipe_name]
+            if lock ~= nil then
+                lock.rooms[include.room_key] = true
+            end
+            num_back = num_back + 1
+        end
+    end
+    local still = {}
+    for _, entry in pairs(excluded) do
+        if next(entry.planet_rooms) == nil then
+            resources.include_originals({
+                entry,
+            })
+        else
+            table.insert(still, entry)
+        end
+    end
+    locks.realize()
+    return still, num_back
 end
 
 local function run_resources(logic, state)
-    local slots, assignment, lost, edits, trigger_edits = swap_resources(state)
+    local slots, assignment, lost, edits, trigger_edits, variants = swap_resources(state)
+    local excluded = {}
 
     -- What the swap still breaks without any extra patches
     local without = planetary_check.sort(logic)
     local failures = planetary_check.required_failures(state.before, without, state.variants_of)
     if #failures == 0 then
-        log_edits(edits, trigger_edits)
-        log("Planetary resources: no extra patches needed")
-        state.after = without
+        local num_back
+        excluded, num_back = exclude_originals(logic, state, variants)
+        log_edits(edits, trigger_edits, variants)
+        log("Planetary resources: " .. #excluded .. " originals replaced by their variants, " .. num_back .. " kept beside them where a planet still needs them; no extra patches needed")
+        state.after = nil
+        if state.careful == true then
+            state.after = planetary_check.sort(logic)
+            if #excluded > 0 and not planetary_check.required(state.before, state.after, state.variants_of, true) then
+                resources.include_originals(excluded)
+                locks.realize()
+                state.after = planetary_check.sort(logic)
+            end
+        end
         return nil
     end
     for _, failure in pairs(failures) do
         log("Planetary resources: without extra patches, failing " .. failure.text)
     end
 
-    -- Every extra patch that could help (each resource a planet lost), then only those on the witnesses (earliest-provider paths) of what broke
+    -- Every extra patch that could help (each resource a planet lost), then only those the witnesses (earliest-provider paths) of what broke can't do without
+    -- A patch is a planet's map placing the resource, which the logic has as an edge from the planet's autoplace node to the resource's entity (lib/logic/concrete.lua); those edges go behind a gate in a staged sort (lib/graph/staged-sort.lua) of the game without patches, so a witness goes through a patch only where the recipe edits, planet variants and new resources can't do it
+    -- (A plain sort of the game with every patch kept whatever patch its witnesses happened to use, even where a variant did the same)
     local repairs = {}
     for _, planet_name in pairs(sorted_keys(lost)) do
         for _, resource_name in pairs(sorted_keys(lost[planet_name])) do
@@ -142,22 +253,81 @@ local function run_resources(logic, state)
             end
         end
     end
-    local with_all = planetary_check.sort(logic)
+    logic.build(true, {
+        home_sets = planetary_check.home_sets,
+    })
+    local repair_of_edge = {}
+    local add = {}
+    for _, repair in pairs(repairs) do
+        local start = gutils.key("room-autoplace", gutils.key("planet", repair.planet_name))
+        local stop = gutils.key("entity", repair.resource_name)
+        for edge_key, edge in pairs(logic.graph.edges) do
+            if edge.start == start and edge.stop == stop and without.graph.edges[edge_key] == nil then
+                local extra = {}
+                for field, value in pairs(edge) do
+                    if field ~= "start" and field ~= "stop" and field ~= "object_type" then
+                        extra[field] = table.deepcopy(value)
+                    end
+                end
+                table.insert(add, {
+                    start = start,
+                    stop = stop,
+                    extra = extra,
+                    stage = "patch",
+                })
+                repair_of_edge[start .. " --> " .. stop] = repair
+            end
+        end
+    end
+    for _, repair in pairs(repairs) do
+        resources.remove_repair(repair)
+    end
+    local staged_sort = staged.sort({
+        graph = without.graph,
+        stages = {
+            "patch",
+        },
+        add = add,
+        extra = {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = planetary_check.home_sets,
+        },
+    })
+    planetary_check.num_sorts = planetary_check.num_sorts + 1
+    local with_all = {
+        graph = staged_sort.graph,
+        sort_info = staged_sort.sort_info,
+    }
     local used = {}
-    for ind, _ in pairs(top.path(with_all.graph, planetary_check.goal_inds(failures, with_all), with_all.sort_info).in_path) do
-        local pebble = with_all.sort_info.sorted[ind]
-        used[pebble.node_key .. " @ " .. top.context_room(pebble.context)] = true
+    for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(failures, with_all))) do
+        if gate.kind == "add" then
+            local repair = repair_of_edge[gate.start .. " --> " .. gate.stop]
+            if repair ~= nil then
+                used[repair] = true
+            end
+        end
     end
     local kept = {}
     for _, repair in pairs(repairs) do
-        if used[gutils.key("entity", repair.resource_name) .. " @ " .. gutils.key("planet", repair.planet_name)] ~= nil then
+        if used[repair] ~= nil then
+            resources.add_repair(repair)
             table.insert(kept, repair)
-        else
-            resources.remove_repair(repair)
         end
     end
+    local num_back
+    excluded, num_back = exclude_originals(logic, state, variants)
     local function log_kept()
-        log_edits(edits, trigger_edits)
+        log_edits(edits, trigger_edits, variants)
+        if #variants > 0 then
+            local num_planets = 0
+            for _, entry in pairs(excluded) do
+                for _, _ in pairs(entry.planet_rooms) do
+                    num_planets = num_planets + 1
+                end
+            end
+            log("Planetary resources: " .. #excluded .. " originals replaced by their variants on " .. num_planets .. " planets, " .. num_back .. " kept beside them where a planet still needs them")
+        end
         log("Planetary resources: " .. #kept .. " of " .. #repairs .. " possible extra patches needed")
         for _, repair in pairs(kept) do
             log("Planetary resources: extra " .. repair.resource_name .. " patches on " .. repair.planet_name)
@@ -169,6 +339,14 @@ local function run_resources(logic, state)
         return nil
     end
     state.after = planetary_check.sort(logic)
+    if #excluded > 0 and not planetary_check.required(state.before, state.after, state.variants_of, true) then
+        -- The originals the variants replace may be what's missing, so they come back first
+        resources.include_originals(excluded)
+        locks.realize()
+        excluded = {}
+        num_back = 0
+        state.after = planetary_check.sort(logic)
+    end
     if not planetary_check.required(state.before, state.after, state.variants_of, true) then
         -- The witnesses missed something, so try every extra patch
         for _, repair in pairs(repairs) do
@@ -178,15 +356,30 @@ local function run_resources(logic, state)
         state.after = planetary_check.sort(logic)
         if not planetary_check.required(state.before, state.after, state.variants_of, true) then
             -- The edits themselves may be what's in the way (like a new ingredient only a later drill can mine), so try the original recipes and technology triggers
-            log("Planetary resources: every extra patch still wasn't enough, so trying without recipe and trigger edits")
+            log("Planetary resources: every extra patch still wasn't enough, so trying without recipe and trigger edits and planet variants")
             for _, edit in pairs(edits) do
                 resources.remove_edit(edit)
             end
             for _, edit in pairs(trigger_edits) do
                 resources.remove_trigger_edit(edit)
             end
+            resources.include_originals(excluded)
+            excluded = {}
+            for _, plan in pairs(variants) do
+                resources.remove_variant(plan)
+                local names = state.variants_of[plan.recipe_name] or {}
+                for i = #names, 1, -1 do
+                    if names[i] == plan.variant.name then
+                        table.remove(names, i)
+                    end
+                end
+            end
+            if #variants > 0 then
+                locks.realize()
+            end
             edits = {}
             trigger_edits = {}
+            variants = {}
             state.after = planetary_check.sort(logic)
             if not planetary_check.required(state.before, state.after, state.variants_of) then
                 return "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)"
@@ -570,13 +763,31 @@ local function swap_start(state)
 end
 
 -- Superposed mode: runs every swap that's on raw, then superposes the game before them on the game after
+-- The connection graph for superposed mode, drawn before the reference sort: routes are a plain change with nothing to repair, and if the routes it replaces stayed in the superposition as debt, the goals only they had (like their asteroids) could never be paid, since the game no longer has those routes, so every attempt would still owe them
+-- Like every stage, it never stops the game from loading: an error undoes it
+local function draw_connections_first()
+    if connections.nothing_to_do() then
+        log("Planetary connections: no space connections to draw again")
+        return
+    end
+    local problem = old_graph_problem() or connections.problem()
+    if problem ~= nil then
+        warn("connection graph", "was skipped, since " .. problem .. ".")
+        return
+    end
+    local old_raw = table.deepcopy(data.raw)
+    local is_drawn, result = pcall(connections.execute, "planetary-connections")
+    if is_drawn then
+        log("Planetary connections: " .. result)
+    else
+        data.raw = old_raw
+        warn("connection graph", "was undone, since of an error: " .. tostring(result) .. ".")
+    end
+end
+
 local function run_superposed(logic, state)
     if SWAP_START_WITH ~= nil then
         swap_start(state)
-    end
-    -- The connection graph is a plain change (nothing to repair or owe), drawn before the swaps
-    if config.planetary_connections and old_graph_problem() == nil and connections.problem() == nil then
-        log("Planetary connections: " .. connections.execute("planetary-connections"))
     end
     if config.planetary_oceans then
         local problem = oceans.problem()
@@ -594,8 +805,8 @@ local function run_superposed(logic, state)
         end
     end
     if config.planetary_resources then
-        local _, _, _, edits, trigger_edits = swap_resources(state)
-        log_edits(edits, trigger_edits)
+        local _, _, _, edits, trigger_edits, variants = swap_resources(state)
+        log_edits(edits, trigger_edits, variants)
     end
     if config.planetary_lightning and old_graph_problem() == nil and lightning.problem() == nil then
         local map = lightning.execute("planetary-lightning")
@@ -732,6 +943,10 @@ planetary.execute = function(logic)
     -- The first sort sets the home sets every later one uses
     planetary_check.home_sets = nil
     planetary_check.num_sorts = 0
+    -- In superposed mode the connection graph is drawn before the game before the changes is sorted, so it's part of that reference world (see draw_connections_first)
+    if (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
+        draw_connections_first()
+    end
     local is_ok = pcall(function()
         state.before = planetary_check.sort(logic)
     end)

@@ -86,22 +86,48 @@ local function recipe_icon_layers(recipe)
     return nil
 end
 
+-- A recipe's icon layers with a planet's icon as a badge in their top right corner, for a planet variant of the recipe, or nil when either has no icon
+scaffolds.badged_icons = function(recipe, planet_name)
+    local icons = recipe_icon_layers(recipe)
+    local planet_icon = icon_layers(data.raw.planet[planet_name])
+    if icons == nil or planet_icon == nil then
+        return nil
+    end
+    local badge = planet_icon[1]
+    badge.scale = 16 / badge.icon_size
+    badge.shift = {
+        8,
+        -8,
+    }
+    table.insert(icons, badge)
+    return icons
+end
+
+-- A planet variant's name: the recipe's display name with the planet's, like "Concrete (Gleba)"
+-- A planet with a localised name of its own (a planet copy, lib/dupe-planets.lua, which has no locale key) goes by that
+scaffolds.variant_name = function(recipe, planet_name)
+    local planet = data.raw.planet[planet_name]
+    local planet_label = { "space-location-name." .. planet_name }
+    if planet ~= nil and planet.localised_name ~= nil then
+        planet_label = planet.localised_name
+    end
+    return {
+        "",
+        recipe_display_name(recipe),
+        " (",
+        planet_label,
+        ")",
+    }
+end
+
 -- The recipe with every old_fluid ingredient made with new_fluid instead (merged into new_fluid's amount if it's already an ingredient)
 -- It's a planned planet variant: named after the planet (like "Concrete (Gleba)"), with the planet's icon in its top right corner, and only makeable on that planet
 local function variant_recipe(recipe, old_fluid, new_fluid, planet_name)
     local variant = table.deepcopy(recipe)
     variant.name = "propertyrandomizer-" .. recipe.name .. "-with-" .. new_fluid
-    variant.localised_name = { "", recipe_display_name(recipe), " (", { "space-location-name." .. planet_name }, ")" }
-    local icons = recipe_icon_layers(recipe)
-    local planet_icon = icon_layers(data.raw.planet[planet_name])
-    if icons ~= nil and planet_icon ~= nil then
-        local badge = planet_icon[1]
-        badge.scale = 16 / badge.icon_size
-        badge.shift = {
-            8,
-            -8,
-        }
-        table.insert(icons, badge)
+    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    local icons = scaffolds.badged_icons(recipe, planet_name)
+    if icons ~= nil then
         variant.icons = icons
         variant.icon = nil
     end
@@ -388,7 +414,8 @@ scaffolds.execute = function(assignment, oceans, logic, before, should_verify)
     local edits = {}
     scaffolds.kept = {}
     for _, candidate in pairs(kept) do
-        if planetary_check.only_on(before, candidate.original, candidate.planet) then
+        -- Only its own room: editing the original changes it for every planet, a copy of this one included (check.only_on_room)
+        if planetary_check.only_on_room(before, candidate.original, candidate.planet) then
             local original = data.raw.recipe[candidate.original]
             table.insert(edits, {
                 candidate = candidate,

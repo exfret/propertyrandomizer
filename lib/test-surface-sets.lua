@@ -214,4 +214,31 @@ do
     check(num_unrealized == 0, num_unrealized .. " random sets were left unrealized with the default pool")
 end
 
+-- Families: a planet copy (orig_name, lib/dupe-planets.lua) is in its original's family, and every other room is its own
+data = {
+    raw = {
+        planet = {
+            rocky = {},
+            ["rocky-exfret-2-copy"] = {
+                orig_name = "rocky",
+            },
+            mossy = {},
+        },
+    },
+}
+lookups = {
+    rooms = {
+        ["planet: rocky"] = { type = "planet", name = "rocky" },
+        ["planet: rocky-exfret-2-copy"] = { type = "planet", name = "rocky-exfret-2-copy" },
+        ["planet: mossy"] = { type = "planet", name = "mossy" },
+        ["surface: orbit"] = { type = "surface", name = "orbit" },
+    },
+}
+check(surface_sets.family_of("planet: rocky-exfret-2-copy") == "planet: rocky", "a copy is in its original's family")
+check(surface_sets.family_of("planet: rocky") == "planet: rocky", "an original is its own family")
+check(surface_sets.family_of("planet: mossy") == "planet: mossy", "a planet without copies is its own family")
+check(surface_sets.family_of("surface: orbit") == "surface: orbit", "a surface is its own family")
+local rocky_rooms = surface_sets.family_rooms("planet: rocky-exfret-2-copy")
+check(rocky_rooms["planet: rocky"] and rocky_rooms["planet: rocky-exfret-2-copy"] and rocky_rooms["planet: mossy"] == nil and rocky_rooms["surface: orbit"] == nil, "a family's rooms are the original and its copies")
+
 print("test-surface-sets: " .. num_checks .. " checks passed")

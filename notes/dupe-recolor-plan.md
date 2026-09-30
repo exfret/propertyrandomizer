@@ -230,8 +230,9 @@ the randomizer panel.
 ## Random connection graph (2026-09-30, after midnight)
 
 The user asked for a random space connection graph with vanilla's shape, no hop levels. Built as its own planetary
-stage, randomizations/planetary/connections.lua (setting propertyrandomizer-planetary-connections, off by default,
-not in the preview; skipped with the old graph randomizations like the other stages):
+stage, randomizations/planetary/connections.lua (setting propertyrandomizer-planetary-connections, off by default and
+not in the preview, but always on with Duplicates at the user's request; a game without connections skips it quietly;
+skipped with the old graph randomizations like the other stages):
 - Each location wants as many connections as its original has among original locations now (a planet copy counts
   as its original): in vanilla Nauvis 3, Gleba 4, Fulgora and Aquilo 3, Vulcanus and the edge 2, the shattered planet 1.
 - A spanning tree grows outward from the start, locations taken in order of distance from the sun with a jitter of 8,
@@ -246,3 +247,102 @@ not in the preview; skipped with the old graph randomizations like the other sta
 - Sample draws: vanilla alone gave 8 connections, vanilla's with gleba-edge in place of aquilo-edge and fulgora-aquilo
   kept; with the copies 16 among 12 locations, three twin links, one Nauvis-edge jump. Both pass MECHCHECK with 0 lost,
   and every planet generates a chunk. Configs: planetary-connections and dupes-connections (settings suite).
+
+## The starting planet in the resource swap (2026-09-30, after midnight)
+
+The user asked for Nauvis's resources to enter the resource permutation too (the start keeps its water ocean). Done in
+resources.slots (the start's placements are slots like the others, except in superposed mode, where a start without its
+ores would be a whole-game debt), with a new rule 4 in check.required: the starting planet's science packs keep every
+context they had there, so the repairs give the start back what its own science needs. Resource swaps alone on sa seeds
+1-2: Nauvis's six slots took other planets' resources, its recipes specific to it followed the swap (the oil recipes
+took the geyser's sulfuric acid, uranium processing took calcite on seed 2), and the repairs put copper, crude oil, iron
+and uranium patches back near the crash site as the check demanded; MECHCHECK ok. In the base game the six slots
+permute among themselves (iron in copper's footprint and so on), with no edits and no patches. Worth revisiting: an
+in-place edit and a repair of the same resource can both happen (uranium processing takes calcite while an extra uranium
+patch comes back for the mining mechanic), which is the pre-existing interplay of edits and repairs, now visible on the
+start.
+
+## Star map layout (2026-09-30, afternoon)
+
+The user asked for a more planar map with the copies not beside their originals. connections.lua now lays the map out
+after drawing the graph: every location but the starting planet gets a new orientation on its own orbit. Of 20 layouts,
+each spreading the locations evenly (with jitter) over a fan around the old layout's middle (a quarter turn for seven
+locations, wider for more) in the order of a random depth-first walk of the graph, improved by 60 place swaps and one
+pass moving each location to the best of 8 spots along the fan, the cheapest wins: a crossing pair of routes costs 10,
+two locations drawn within 4 map units of each other 5 plus the overlap, a route passing within 2.5 units of a location
+it doesn't end at 3 plus the gap, and route length a little. Routes are drawn as straight lines (shape = "line") so what
+the search judges is what the map shows. About 0.7 s in plain Lua 5.4 for 12 locations (a harness in the scratchpad,
+layout-harness.lua and layout-sweep.lua, times connections.layout outside the game). Results: vanilla alone 0 crossings;
+with the copies one crossing on every seed tried, which looks like the floor for that graph with orbits fixed. The
+copies land wherever the graph reads best. Not done: orbits (distances) don't change; the start stays put.
+
+## The old logic and planetary rerolls (2026-09-30, afternoon)
+
+The user's game failed to load at lib/old-logic/build-graph-compat.lua:22 (a nil connection node) after the planetary
+changes were rolled three times in superposed mode: each roll drew a new connection graph with new route names, but the
+old logic's graph is built once, when its file is first required (at "Loading in new dependency graph file", after the
+first planetary run), and the compat step then looked the latest roll's routes to Aquilo up in it by their current names.
+Fix: data-final-fixes.lua rebuilds the old graph (build_graph.load()) right before the custom nodes, and the compat's
+Aquilo rule skips connections the graph doesn't have. Costs one old-graph build (about a second). My test loads never
+rerolled, which is why they passed; the reroll path itself still has no dedicated test.
+
+## Superposed mode and the connection graph (2026-09-30, late afternoon)
+
+The user plays with planetary-superposed on. Two findings from their loads:
+- Their load before the old-logic crash owed about 13,500 goals on each of 3 unified attempts (so it rerolled twice, then
+  would have undone the planetary changes). 40 of the starting debt's goals were space-connection-asteroids mechanics of
+  routes my graph had replaced: nodes only the reference world had, which no attempt can pay. Most of the rest were
+  science-pack-set mechanic contexts that the raw swaps break (PLANETCHECK superposed: 13,418 failures on the first roll),
+  many more than without the copies because the split creates many science sets.
+- Their next load crashed at unified/execute.lua:242 (a nil node): another session's new, uncommitted with-debt
+  dependents sort (sort_for_deps, 2e) includes old-world-only nodes that superpose.add_debt adds, and its loop read every
+  node from subdiv_graph. The replaced routes' nodes were the first old-only nodes to reach it.
+Fixes: in superposed mode the connection graph is drawn before the reference sort (draw_connections_first in
+planetary/execute.lua), so routes are part of the reference world and never debt; the claiming loop skips nodes the
+game's graph doesn't have (a guard inside 2e's hunk, 2e told). New config dupes-superposed (unified suite).
+- Root cause of the ~13,600 owed goals (found 2026-09-30, evening): session 2e made check.specific_to and check.only_on
+  count a planet and its copies as one family (right for locks). The resource stage's in-place recipe edits used
+  specific_to, so Nauvis 2 losing crude oil to a fluorine vent edited basic and advanced oil processing to take fluorine,
+  for Nauvis too, which had kept its crude oil: no plastics on Nauvis, nothing after them, no space platform. The old
+  crude-oil edge was a debt edge into the recipe (an AND node), which the superposition leaves out, so the debt reached
+  nothing more than the game: promotion owed 0, unified paid nothing, and the settlement's fixes (patches, lock
+  widening) can't undo a recipe edit. Fix: exact-room tests (check.only_on_room, check.specific_to_room and their node_
+  versions) for the three in-place edits (resource recipe edits, resource trigger edits, scaffolds' edited original);
+  test randomizations/planetary/test-in-place-edits.lua. Planetary stage on sa/dupes-superposed@1: in-place edits 23 to
+  2, debt edges into AND nodes 23 to 2, raw-world failures 13,418 to 6,123 (mostly science-set contexts, now behind debt
+  edges unified and the settlement can act on). Full load not yet run.
+- 2026-09-30, evening: superposed mode is off for now (flag off in the user's game, per b2 relaying the user's decision);
+  its code stays. My superposed-only pieces stay too (the connection draw before the reference sort, the start kept out of
+  the resource swap in superposed mode), so it still works if turned back on; only the dupes-superposed test config went.
+  The exact-room in-place edit fix stays either way: the same family-test bug hits normal mode's edits.
+
+## Resource swaps follow through planet variants (2026-09-30, evening)
+
+The user saw 17 extra resource patches on one load and asked why recipes weren't following the swap (their 2026-09-26
+rule). With the copies almost every recipe is shared, so in-place edits couldn't follow two swaps; patches covered it.
+User decision: duplicate recipes per planet ("I'm more okay with duplicating the recipes this way now that we're doing
+duplication anyways"). Built in randomizations/planetary/resources.lua and execute.lua's run_resources:
+- A recipe only one room made is still edited in place. Any other recipe a planet made from its own resources (or as one
+  of the only planets making it) that takes a resource it lost gets a planned variant for that planet: "Iron plate
+  (Nauvis)" taking scrap, named and badged like the ocean variants, unlocked like the original, locked to the planet
+  (locks.fix). Barrels are left out (a hidden conversion otherwise).
+- A lost resource whose slot chain loops back to the planet's own resources takes the first new resource of its kind.
+  A replacement that a furnace-type machine already takes (furnaces pick recipes by input, FurnacePrototype in
+  doc-html/prototype-api.json) gives way to another new resource of the same form; edits and variants of one pass claim
+  their ingredients there.
+- Mining triggers of shared resources (oil processing: crude oil, uranium processing, calcite processing) keep the
+  resource and add each losing planet's replacement (a mine-entity trigger is met by any listed entity).
+- Patches are chosen with a staged sort: each patch's autoplace edge sits behind a gate, so a patch stays only where no
+  edit, variant or new resource can do it (the plain sort kept whatever its witnesses happened to use).
+Results, sa/dupes-resources seeds 1-2: patches 17 and 16 before, 3 and 4 after, with 41 and 48 variants; MECHCHECK ok.
+The remaining patches serve rocket building and electricity isolatability on that planet (like coal as fuel).
+- Variants replace their originals (user, 2026-09-30, later): after the patches are chosen, each original without surface
+  conditions of its own stops accepting its variants' planets (a fixed lock on every other room, locks.fix with
+  depends_on, so the lock goes when data.raw is put back without the variants). Excluding every original broke
+  isolatable rocket building and power on some planets, where the variant's new ingredient is harder to get locally
+  (uranium ore is mined with sulfuric acid, base/prototypes/entity/resources.lua), so a staged sort with one "include"
+  gate per original and planet gives an original back only where a failing goal's witness needs it, and all exclusions
+  go if a goal fails even with every original back. Rule 1 (recipes stay reachable) counts variants now.
+  Results: with the copies, seed 1 replaced 22 originals on 34 planets, kept 5 beside their variants, 3 patches; seed 2
+  replaced 20 on 26, kept 20, 4 patches. Without copies: 6 replaced, 0 kept, 1 patch; 11 replaced, 3 kept, 2 patches.
+  MECHCHECK ok on all four.

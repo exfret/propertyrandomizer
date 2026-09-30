@@ -211,6 +211,8 @@ log("Building dependency graph (if applicable)")
 local build_graph
 local build_graph_compat
 build_graph = require("lib/old-logic/build-graph")
+-- The old graph was first built when its file was required, before unified randomization and any planetary reroll (which draws new space connections, among other things); the custom nodes below look prototypes up by their current names in it, so it's built again from the game as it is now
+build_graph.load()
 -- Make dependency graph global
 dep_graph = build_graph.graph
 

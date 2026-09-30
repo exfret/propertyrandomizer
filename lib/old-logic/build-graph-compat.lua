@@ -460,16 +460,18 @@ local function load(graph)
             end
             for _, node_type in pairs(arrivals) do
                 local conn_node = graph[build_graph.key(node_type, connection.name)]
+                -- A connection the graph doesn't have (drawn after the graph was built, see data-final-fixes.lua) can't take the rule
+                if conn_node ~= nil then
+                    require_first(conn_node, {
+                        type = "rocket-turret",
+                        name = "canonical"
+                    })
 
-                require_first(conn_node, {
-                    type = "rocket-turret",
-                    name = "canonical"
-                })
-
-                require_first(conn_node, {
-                    type = "rocket-ammo",
-                    name = "canonical"
-                })
+                    require_first(conn_node, {
+                        type = "rocket-ammo",
+                        name = "canonical"
+                    })
+                end
             end
         end
     end

@@ -230,6 +230,21 @@ end
 -- A lock the planner couldn't realize (the pool of new properties ran out) goes back to its original conditions
 -- Returns the ids of locks that went back
 locks.realize = function()
+    -- A fixed lock that exists for recipes the game no longer has (data.raw was put back to a state from before them) goes, with its prototype's own conditions back
+    for _, id in pairs(sorted_keys(locks.fixed)) do
+        local lock = locks.fixed[id]
+        if lock.depends_on ~= nil then
+            local is_needed = false
+            for _, recipe_name in pairs(lock.depends_on) do
+                if data.raw.recipe[recipe_name] ~= nil then
+                    is_needed = true
+                end
+            end
+            if not is_needed then
+                locks.release(lock.kind, lock.name)
+            end
+        end
+    end
     local lists = {
         locks.moved,
         locks.fixed,
@@ -358,8 +373,9 @@ end
 -- Fixes a lock to exactly these rooms on purpose (a planet copy's science pack recipes, see lib/dupe-planets.lua): every later realize keeps it, and it's never drawn, transported or reverted
 -- The kind is "recipe" or "entity"; the prototype needn't have surface conditions yet (a starting planet's science pack has none)
 -- Doesn't realize, so a caller can fix several locks and realize once (locks.realize needs the logic's lookups loaded)
+-- depends_on (optional): recipe names the lock exists for (the planet variants that replace an original, see resources.exclude_originals); once none of them is in the game (data.raw put back to a state from before them), realize puts the prototype's own conditions back and forgets the lock
 -- Returns the lock's target id, or nil if there's no such prototype
-locks.fix = function(kind, name, rooms)
+locks.fix = function(kind, name, rooms, depends_on)
     local prototype
     local node_type
     if kind == "recipe" then
@@ -383,8 +399,28 @@ locks.fix = function(kind, name, rooms)
         new = copy_set(rooms),
         map = {},
         rooms = copy_set(rooms),
+        depends_on = depends_on,
     }
     return target_id
+end
+
+-- Puts a fixed lock's prototype back as it was (its own conditions and description) and forgets the lock
+locks.release = function(kind, name)
+    local target_id = kind .. "/" .. name
+    local lock = locks.fixed[target_id]
+    if lock == nil then
+        return
+    end
+    local prototype = prototype_of(lock)
+    if prototype ~= nil then
+        if next(lock.original) == nil then
+            prototype.surface_conditions = nil
+        else
+            prototype.surface_conditions = table.deepcopy(lock.original)
+        end
+        prototype.localised_description = table.deepcopy(lock.original_description)
+    end
+    locks.fixed[target_id] = nil
 end
 
 -- Forgets a fixed lock (the prototype keeps whatever conditions it has until the next realize, which no longer plans for it)

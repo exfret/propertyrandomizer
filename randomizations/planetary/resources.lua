@@ -1,7 +1,10 @@
 -- Planetary resource swaps (setting propertyrandomizer-planetary-resources)
 -- Each resource placement on a planet (where and how much of a resource that planet's map generates) is a slot, and resources are travelers.
--- Resources trade slots between the planets other than the starting planet, ores (mined as items) with ores and wells (mined as fluids) with wells, so each planet gets other resources exactly where its old ones were.
+-- Resources trade slots between all the planets, the starting planet included, ores (mined as items) with ores and wells (mined as fluids) with wells, so each planet gets other resources exactly where its old ones were.
+-- The starting planet keeps what its early game and its own science need through the extra patches (a planet's repairs put a patch near where you land), so it can start with tungsten in its iron's footprint and an iron patch beside the crash site.
+-- In superposed mode the starting planet stays out: without extra patches up front, a start without its ores would be a whole-game debt the rest of randomization can't pay (see the Gleba start experiment in randomizations/planetary/execute.lua).
 -- Recipes belonging to that planet follow the swap, taking what replaced a lost resource instead of it (an edit; like calcite --> the new resource's item in Vulcanus's lava recipes).
+-- A recipe other planets make too (like copper plate, or anything a planet shares with its copies, lib/dupe-planets.lua) can't follow the swap in place, so each planet that made it from its own resources and lost one of them gets a planned variant of its own instead, like "Copper plate (Nauvis 2)" taking what replaced copper ore there, locked to that planet; the original stays for the planets that kept the resource or import it.
 -- So do technologies belonging to that planet that are researched by mining a lost resource: they're researched by mining its replacement instead.
 -- A planet that still can't make what it must (see check.required) gets a few extra patches of a lost resource back (a repair); only the repairs the logic needs are kept.
 -- Everything is read from the planets' map gen settings, so planets and resources from other mods take part too.
@@ -9,8 +12,12 @@
 local resource_autoplace = require("__core__/lualib/resource-autoplace")
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
 local rng = require("lib/random/rng")
 local planetary_check = require("randomizations/planetary/check")
+local locks = require("randomizations/planetary/locks")
+local scaffolds = require("randomizations/planetary/scaffolds")
+local surface_sets = require("lib/surface-sets")
 
 local resources = {}
 
@@ -53,7 +60,7 @@ local function is_fluid_resource(resource)
     return false
 end
 
--- Every resource placement on the planets other than the starting planet, in a fixed order
+-- Every resource placement on the planets (the starting planet's too, except in superposed mode), in a fixed order
 -- A slot's probability and richness are what that planet uses for the resource: its override if it has one, or else the resource's own autoplace
 resources.slots = function()
     local slots = {}
@@ -61,7 +68,8 @@ resources.slots = function()
         local planet = data.raw.planet[planet_name]
         local map_gen_settings = planet.map_gen_settings or {}
         local entity_settings = (map_gen_settings.autoplace_settings or {}).entity
-        if planet_name ~= constants.starting_planet and entity_settings ~= nil and entity_settings.settings ~= nil then
+        local is_start_kept_out = planet_name == constants.starting_planet and config.planetary_superposed
+        if not is_start_kept_out and entity_settings ~= nil and entity_settings.settings ~= nil then
             local overrides = map_gen_settings.property_expression_names or {}
             for _, resource_name in pairs(sorted_keys(entity_settings.settings)) do
                 local resource = data.raw.resource[resource_name]
@@ -348,10 +356,24 @@ resources.replacements = function(slots, assignment, lost)
         slot_of[slot.planet_name] = slot_of[slot.planet_name] or {}
         slot_of[slot.planet_name][slot.resource_name] = i
     end
+    -- Planet --> kind --> the resources new to it of that kind, sorted (for a lost resource whose slots lead back to the planet's own resources)
+    local new_of_kind = {}
+    for i, slot in pairs(slots) do
+        local name = assignment[i]
+        if slot_of[slot.planet_name][name] == nil then
+            new_of_kind[slot.planet_name] = new_of_kind[slot.planet_name] or {}
+            new_of_kind[slot.planet_name][slot.kind] = new_of_kind[slot.planet_name][slot.kind] or {}
+            new_of_kind[slot.planet_name][slot.kind][name] = true
+        end
+    end
     local replacements = {}
     for i, slot in pairs(slots) do
         if (lost[slot.planet_name] or {})[slot.resource_name] ~= nil then
             local replacement_name = replacement(assignment, slot_of[slot.planet_name], i)
+            -- The lost resource's slots can lead back to the planet's own resources (its tungsten slot holding the coal it already had), so none of them is new: then the first new resource of the same kind the planet gained takes its place in recipes, if there's one
+            if replacement_name == nil then
+                replacement_name = sorted_keys((new_of_kind[slot.planet_name] or {})[slot.kind] or {})[1]
+            end
             if replacement_name ~= nil then
                 replacements[slot.planet_name] = replacements[slot.planet_name] or {}
                 replacements[slot.planet_name][slot.resource_name] = replacement_name
@@ -362,9 +384,34 @@ resources.replacements = function(slots, assignment, lost)
 end
 
 -- Planet --> (product key --> substitution), one substitution for each resource the planet lost: from what that resource was mined into, to what its replacement is mined into
+-- Also returns planet --> list of what each resource new to the planet is mined into (sorted), the alternatives when a machine picking recipes by ingredient already has a recipe taking the replacement
 resources.substitutions = function(slots, assignment, lost)
     local substitutions = {}
     local replacements = resources.replacements(slots, assignment, lost)
+    local own = {}
+    for _, slot in pairs(slots) do
+        own[slot.planet_name] = own[slot.planet_name] or {}
+        own[slot.planet_name][slot.resource_name] = true
+    end
+    local alternates = {}
+    local listed = {}
+    for i, slot in pairs(slots) do
+        local name = assignment[i]
+        if own[slot.planet_name][name] == nil then
+            local product = mined_product(data.raw.resource[name])
+            listed[slot.planet_name] = listed[slot.planet_name] or {}
+            if product ~= nil and listed[slot.planet_name][product_key(product)] == nil then
+                listed[slot.planet_name][product_key(product)] = true
+                alternates[slot.planet_name] = alternates[slot.planet_name] or {}
+                table.insert(alternates[slot.planet_name], product)
+            end
+        end
+    end
+    for _, products in pairs(alternates) do
+        table.sort(products, function(a, b)
+            return product_key(a) < product_key(b)
+        end)
+    end
     for _, planet_name in pairs(sorted_keys(replacements)) do
         for _, resource_name in pairs(sorted_keys(replacements[planet_name])) do
             local from = mined_product(data.raw.resource[resource_name])
@@ -378,7 +425,7 @@ resources.substitutions = function(slots, assignment, lost)
             end
         end
     end
-    return substitutions
+    return substitutions, alternates
 end
 
 -- Crafting categories where the machine picks the recipe by its ingredient (furnaces, recyclers), so two recipes there can't share one
@@ -392,9 +439,12 @@ local function picked_by_ingredient_categories()
     return categories
 end
 
--- Whether another recipe in one of the recipe's picked-by-ingredient categories already takes the product
-local function is_ingredient_taken(recipe, product, picked_by_ingredient)
+-- Whether another recipe in one of the recipe's picked-by-ingredient categories already takes the product, or an edit or variant planned in the same pass does (claimed: category --> product key --> true)
+local function is_ingredient_taken(recipe, product, picked_by_ingredient, claimed)
     for _, category in pairs(recipe.categories or {}) do
+        if picked_by_ingredient[category] ~= nil and ((claimed or {})[category] or {})[product_key(product)] ~= nil then
+            return true
+        end
         if picked_by_ingredient[category] ~= nil then
             for other_name, other in pairs(data.raw.recipe) do
                 local shares_category = false
@@ -418,7 +468,7 @@ end
 
 -- The recipe's ingredients with each substitution made (merged into the new ingredient's amount if it's already an ingredient), or nil if the edit can't be made
 -- It can't when the recipe makes something it would now take (a loop), or when a machine picking recipes by ingredient couldn't tell it apart from another recipe
-local function substituted_ingredients(recipe, planet_substitutions, picked_by_ingredient)
+local function substituted_ingredients(recipe, planet_substitutions, picked_by_ingredient, claimed, planet_alternates)
     local results = {}
     for _, result in pairs(recipe.results or {}) do
         results[product_key(result)] = true
@@ -430,10 +480,23 @@ local function substituted_ingredients(recipe, planet_substitutions, picked_by_i
         local new_ingredient = table.deepcopy(ingredient)
         local substitution = planet_substitutions[product_key(ingredient)]
         if substitution ~= nil then
-            if results[product_key(substitution.to)] ~= nil or is_ingredient_taken(recipe, substitution.to, picked_by_ingredient) then
+            local to = substitution.to
+            -- When the replacement can't be used here (a loop, or a machine picking recipes by ingredient that already takes it), another resource new to the planet of the same form can
+            local function usable(product)
+                return product.type == ingredient.type and results[product_key(product)] == nil and not is_ingredient_taken(recipe, product, picked_by_ingredient, claimed)
+            end
+            if not usable(to) then
+                to = nil
+                for _, alternate in pairs(planet_alternates or {}) do
+                    if to == nil and usable(alternate) then
+                        to = alternate
+                    end
+                end
+            end
+            if to == nil then
                 return nil
             end
-            new_ingredient.name = substitution.to.name
+            new_ingredient.name = to.name
             -- Temperature limits were about the old fluid
             new_ingredient.temperature = nil
             new_ingredient.minimum_temperature = nil
@@ -454,30 +517,192 @@ local function substituted_ingredients(recipe, planet_substitutions, picked_by_i
     return ingredients
 end
 
--- Recipe edits: every recipe belonging to one planet (check.specific_to in the sort before) takes what replaced each resource that planet lost
+-- Whether a recipe was reachable in a planet's room in the sort, or with is_isolatable_only, made there from the planet's own resources
+local function reachable_in(sort, recipe_name, planet_name, is_isolatable_only)
+    local room = gutils.key("planet", planet_name)
+    for context, _ in pairs(sort.sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}) do
+        local abilities = top.context_abilities(context) or ""
+        if top.context_room(context) == room and (not is_isolatable_only or string.sub(abilities, 1, 1) == "1") then
+            return true
+        end
+    end
+    return false
+end
+
+-- Recipe edits: every recipe belonging to one planet (check.specific_to_room in the sort before) takes what replaced each resource that planet lost
 -- Other planets could only make these recipes with imports, so at most they import the new ingredient instead
 -- These are more than a visual change, since the new ingredient is mined differently (another drill, another amount, another spot on the map)
+-- Any other recipe a planet made from its own resources that takes a resource it lost (a recipe several planets make, or one it shares with its copies) gets a planet variant for that planet instead (resources.variant_plan), since editing it in place would change it for the others
+-- A replacement a machine picking recipes by ingredient already takes there gives way to another resource new to the planet of the same form
+-- Edits and variants made in one pass claim their new ingredients in machines that pick recipes by ingredient, so two of them can't take the same one there
 -- planet_recipes: planet --> set of recipes that belong to it but weren't in the sort before (like the ocean stage's planet variants)
-resources.edits = function(substitutions, before, planet_recipes)
+-- Returns the edits and the variant plans
+resources.edits = function(substitutions, before, planet_recipes, alternates)
     local picked_by_ingredient = picked_by_ingredient_categories()
-    local edits = {}
-    for _, planet_name in pairs(sorted_keys(substitutions)) do
-        for _, recipe_name in pairs(sorted_keys(data.raw.recipe)) do
-            local recipe = data.raw.recipe[recipe_name]
-            if planetary_check.specific_to(before, recipe_name, planet_name) or (planet_recipes[planet_name] or {})[recipe_name] ~= nil then
-                local ingredients = substituted_ingredients(recipe, substitutions[planet_name], picked_by_ingredient)
-                if ingredients ~= nil then
-                    table.insert(edits, {
-                        planet_name = planet_name,
-                        recipe_name = recipe_name,
-                        old_ingredients = recipe.ingredients,
-                        new_ingredients = ingredients,
-                    })
+    local claimed = {}
+    local function claim(recipe, ingredients)
+        for _, category in pairs(recipe.categories or {}) do
+            if picked_by_ingredient[category] ~= nil then
+                claimed[category] = claimed[category] or {}
+                for _, ingredient in pairs(ingredients) do
+                    claimed[category][product_key(ingredient)] = true
                 end
             end
         end
     end
-    return edits
+    local edits = {}
+    local variants = {}
+    for _, planet_name in pairs(sorted_keys(substitutions)) do
+        for _, recipe_name in pairs(sorted_keys(data.raw.recipe)) do
+            local recipe = data.raw.recipe[recipe_name]
+            -- Barreling is transport rather than a use: a barrel filled with the new fluid but emptied into the old one would be a hidden conversion (the ocean stage leaves them out for the same reason, scaffolds.lua)
+            local is_barreling = recipe.subgroup == "fill-barrel" or recipe.subgroup == "empty-barrel"
+            -- Belonging to exactly this planet's room (check.specific_to_room): an in-place edit changes the recipe for every planet, a copy of this one included
+            local is_own = not is_barreling and (planetary_check.specific_to_room(before, recipe_name, planet_name) or (planet_recipes[planet_name] or {})[recipe_name] ~= nil)
+            -- Any other recipe this planet made itself, from its own resources (or as one of the only planets that could make it at all): its supply of the lost resource is gone, whoever else makes the recipe, so it follows the swap through a variant of its own (like iron plate on a Nauvis whose iron ore went elsewhere, while Gleba still smelts the iron its bacteria make)
+            local is_shared = not is_own and not is_barreling and (reachable_in(before, recipe_name, planet_name, true) or (planetary_check.only_on(before, recipe_name, planet_name) and reachable_in(before, recipe_name, planet_name, false)))
+            if is_own or is_shared then
+                local ingredients = substituted_ingredients(recipe, substitutions[planet_name], picked_by_ingredient, claimed, (alternates or {})[planet_name])
+                if ingredients ~= nil then
+                    claim(recipe, ingredients)
+                    if is_own then
+                        table.insert(edits, {
+                            planet_name = planet_name,
+                            recipe_name = recipe_name,
+                            old_ingredients = recipe.ingredients,
+                            new_ingredients = ingredients,
+                        })
+                    else
+                        table.insert(variants, resources.variant_plan(recipe, planet_name, ingredients))
+                    end
+                end
+            end
+        end
+    end
+    return edits, variants
+end
+
+-- Technologies unlocking a recipe, sorted
+local function unlocking_technologies(recipe_name)
+    local technologies = {}
+    for _, technology in pairs(data.raw.technology) do
+        for _, effect in pairs(technology.effects or {}) do
+            if effect.type == "unlock-recipe" and effect.recipe == recipe_name then
+                table.insert(technologies, technology.name)
+            end
+        end
+    end
+    table.sort(technologies)
+    return technologies
+end
+
+-- A planned planet variant of a recipe a planet shares with its copies: the recipe with the planet's new ingredients, named after the planet (like "Copper plate (Nauvis 2)") with its icon as a badge, unlocked by the same technologies and locked to that planet (resources.add_variant)
+-- Returns { planet_name, recipe_name (the original's), old_ingredients (the original's), variant (the prototype), technologies }
+resources.variant_plan = function(recipe, planet_name, ingredients)
+    local variant = table.deepcopy(recipe)
+    variant.name = "propertyrandomizer-" .. recipe.name .. "-on-" .. planet_name
+    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    local icons = scaffolds.badged_icons(recipe, planet_name)
+    if icons ~= nil then
+        variant.icons = icons
+        variant.icon = nil
+    end
+    variant.ingredients = table.deepcopy(ingredients)
+    return {
+        planet_name = planet_name,
+        recipe_name = recipe.name,
+        old_ingredients = table.deepcopy(recipe.ingredients),
+        variant = variant,
+        technologies = unlocking_technologies(recipe.name),
+    }
+end
+
+-- Puts a variant in the game, locked to its planet (a fixed lock, randomizations/planetary/locks.lua); locks.realize must run after (once for several)
+resources.add_variant = function(plan)
+    data:extend({
+        table.deepcopy(plan.variant),
+    })
+    for _, technology_name in pairs(plan.technologies) do
+        local technology = data.raw.technology[technology_name]
+        if technology ~= nil then
+            technology.effects = technology.effects or {}
+            table.insert(technology.effects, {
+                type = "unlock-recipe",
+                recipe = plan.variant.name,
+            })
+        end
+    end
+    locks.fix("recipe", plan.variant.name, {
+        [gutils.key("planet", plan.planet_name)] = true,
+    })
+end
+
+-- Takes a variant back out of the game; locks.realize must run after (once for several)
+resources.remove_variant = function(plan)
+    data.raw.recipe[plan.variant.name] = nil
+    for _, technology in pairs(data.raw.technology) do
+        local effects = technology.effects or {}
+        for i = #effects, 1, -1 do
+            if effects[i].type == "unlock-recipe" and effects[i].recipe == plan.variant.name then
+                table.remove(effects, i)
+            end
+        end
+    end
+    locks.unfix("recipe", plan.variant.name)
+end
+
+-- On a planet that got a variant, the variant replaces the original there (user, 2026-09-30): each original stops accepting the planets with a variant of it, through a fixed lock on every other room (locks.fix), which goes again if the variants do
+-- Only originals without surface conditions of their own: a planet-locked original (like acid neutralisation) stays free for the lock stage's random moves, and keeps its variant beside it
+-- locks.realize must run after; a set the new surface properties can't give (the pool ran out) leaves that original makeable everywhere, as without this
+-- Returns the excluded originals: list of { recipe_name, planet_rooms = room key --> true }, sorted
+resources.exclude_originals = function(variants)
+    local planets_of = {}
+    local variants_of = {}
+    for _, plan in pairs(variants) do
+        planets_of[plan.recipe_name] = planets_of[plan.recipe_name] or {}
+        planets_of[plan.recipe_name][gutils.key("planet", plan.planet_name)] = true
+        variants_of[plan.recipe_name] = variants_of[plan.recipe_name] or {}
+        table.insert(variants_of[plan.recipe_name], plan.variant.name)
+    end
+    local excluded = {}
+    for _, recipe_name in pairs(sorted_keys(planets_of)) do
+        local recipe = data.raw.recipe[recipe_name]
+        local id = "recipe/" .. recipe_name
+        if recipe ~= nil and (recipe.surface_conditions == nil or next(recipe.surface_conditions) == nil) and locks.fixed[id] == nil and locks.moved[id] == nil then
+            local rooms = {}
+            for _, room_key in pairs(surface_sets.room_keys()) do
+                if planets_of[recipe_name][room_key] == nil then
+                    rooms[room_key] = true
+                end
+            end
+            locks.fix("recipe", recipe_name, rooms, variants_of[recipe_name])
+            table.insert(excluded, {
+                recipe_name = recipe_name,
+                planet_rooms = planets_of[recipe_name],
+            })
+        end
+    end
+    return excluded
+end
+
+-- Makes excluded originals makeable on those planets again (their own conditions back); locks.realize must run after
+resources.include_originals = function(excluded)
+    for _, entry in pairs(excluded) do
+        locks.release("recipe", entry.recipe_name)
+    end
+end
+
+-- What a variant changed, for the log
+resources.describe_variant = function(plan)
+    local old_names = {}
+    for _, ingredient in pairs(plan.old_ingredients or {}) do
+        table.insert(old_names, ingredient.name)
+    end
+    local new_names = {}
+    for _, ingredient in pairs(plan.variant.ingredients) do
+        table.insert(new_names, ingredient.name)
+    end
+    return plan.variant.name .. " (" .. table.concat(old_names, " + ") .. " --> " .. table.concat(new_names, " + ") .. ")"
 end
 
 resources.add_edit = function(edit)
@@ -501,9 +726,10 @@ resources.describe_edit = function(edit)
     return edit.recipe_name .. " on " .. edit.planet_name .. " (" .. table.concat(old_names, " + ") .. " --> " .. table.concat(new_names, " + ") .. ")"
 end
 
--- Technology edits: a technology researched by mining a resource that only one planet had (check.node_specific_to of the resource's entity in the sort before) is researched by mining what replaced that resource there once the planet loses it, like recipe edits (like calcite processing when calcite's slot on Vulcanus now holds coal)
+-- Technology edits: a technology researched by mining a resource that only one planet had (check.node_specific_to_room of the resource's entity in the sort before) is researched by mining what replaced that resource there once the planet loses it, like recipe edits (like calcite processing when calcite's slot on Vulcanus now holds coal)
 -- It goes by the resource rather than the technology, since the discovery rule makes a technology isolatable on later planets too (like calcite processing on Aquilo, whose home set includes Vulcanus)
 -- A mining trigger lists entities, any one of which counts, so only those lost resources in it are replaced
+-- A resource more than one planet had (like crude oil on Nauvis, its copy and Aquilo) stays in the list, since the others may still mine it, and each planet that lost it adds what replaced it there, so every planet can still research the technology from its own resources (like oil processing by mining a geyser on a Nauvis whose crude oil went elsewhere)
 -- Swaps keep resources within their kind (ores with ores, wells with wells), so the new resource is mined the same way as the old one
 -- The replacements come from resources.replacements
 resources.trigger_edits = function(replacements, before)
@@ -514,17 +740,30 @@ resources.trigger_edits = function(replacements, before)
             local entities = {}
             local is_listed = {}
             local planet_names = {}
+            local function list(name)
+                if is_listed[name] == nil then
+                    is_listed[name] = true
+                    table.insert(entities, name)
+                end
+            end
             for _, entity_name in pairs(trigger.entities or {}) do
                 local new_name = entity_name
+                local added = {}
                 for _, planet_name in pairs(sorted_keys(replacements)) do
-                    if new_name == entity_name and replacements[planet_name][entity_name] ~= nil and planetary_check.node_specific_to(before, gutils.key("entity", entity_name), planet_name) then
-                        new_name = replacements[planet_name][entity_name]
-                        table.insert(planet_names, planet_name)
+                    local replacement = replacements[planet_name][entity_name]
+                    if replacement ~= nil then
+                        if new_name == entity_name and planetary_check.node_specific_to_room(before, gutils.key("entity", entity_name), planet_name) then
+                            new_name = replacement
+                            table.insert(planet_names, planet_name)
+                        else
+                            table.insert(added, replacement)
+                            table.insert(planet_names, planet_name)
+                        end
                     end
                 end
-                if is_listed[new_name] == nil then
-                    is_listed[new_name] = true
-                    table.insert(entities, new_name)
+                list(new_name)
+                for _, name in pairs(added) do
+                    list(name)
                 end
             end
             if #planet_names > 0 then

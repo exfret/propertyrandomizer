@@ -4,13 +4,16 @@
 --   2. Recipes locked to one planet by surface conditions (its science pack, pentapod eggs, soils, the foundry...) keep every context they had there (isolatable and automatable included), as themselves or as a variant. The rest of randomization keeps them too (protection.planet_locked_recipe_contexts).
 --   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building and electricity also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
 --      Other isolatability (like another planet's science or steam power) may be lost; that's the gameplay change.
+--   4. The starting planet's science packs (the lab inputs it could make before) keep every context they had there, isolatable and automatable included: the start makes its own science (every planet does, the user's rule), and its resources take part in the swaps.
 -- Sorts use home contexts (the order-independent discovery rule, see lib/graph/context-sort.lua), like the rest of randomization and its checks.
 -- check.tiles_unchanged makes sure tile collision (so where offshore pumps work) is exactly as before.
 -- check.run is a fuller report: which planets each science pack is isolatable on, and which mechanic contexts moved.
 -- All output goes to the log with the prefix PLANETCHECK
 
+local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local surface_sets = require("lib/surface-sets")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local check = {}
@@ -76,16 +79,19 @@ local function deep_equal(a, b)
     return true
 end
 
+-- A planet and its copies count as one planet here (surface_sets.family_of; a planet's rooms below are its family's), since no surface condition can tell them apart
+check.family_of = surface_sets.family_of
+
 -- Whether a recipe was only ever reachable on the given planet in the given sort (so editing it can't cost another planet anything)
 -- node_only_on is the same for any node, by its key
 check.node_only_on = function(sort, node_key, planet_name)
-    local room = gutils.key("planet", planet_name)
+    local rooms = surface_sets.family_rooms(gutils.key("planet", planet_name))
     local contexts = sort.sort_info.node_to_context_inds[node_key] or {}
     if next(contexts) == nil then
         return false
     end
     for context, _ in pairs(contexts) do
-        if top.context_room(context) ~= room then
+        if rooms[top.context_room(context)] == nil then
             return false
         end
     end
@@ -103,6 +109,44 @@ check.node_specific_to = function(sort, node_key, planet_name)
     if check.node_only_on(sort, node_key, planet_name) then
         return true
     end
+    local rooms = surface_sets.family_rooms(gutils.key("planet", planet_name))
+    local is_isolatable_there = false
+    for context, _ in pairs(sort.sort_info.node_to_context_inds[node_key] or {}) do
+        if is_isolatable(context) then
+            if rooms[top.context_room(context)] == nil then
+                return false
+            end
+            is_isolatable_there = true
+        end
+    end
+    return is_isolatable_there
+end
+
+check.specific_to = function(sort, recipe_name, planet_name)
+    return check.node_specific_to(sort, gutils.key("recipe", recipe_name), planet_name)
+end
+
+-- The same two tests for exactly one planet's room, its copies not counting (a copy is another room here)
+-- For in-place edits (resource swaps' recipe and trigger edits, the ocean stage's edited originals): an edit changes a recipe or technology for every planet, so it may only follow one room's change when no other room, a copy of the same planet included, made it at all (only_on_room) or from its own resources (specific_to_room)
+-- With tests that count a planet's copies as the planet (right for locks), a planet copy that lost a resource edited a recipe its original still makes from the resource it kept (like oil processing taking fluorine on Nauvis too), which cut off everything after it
+check.node_only_on_room = function(sort, node_key, planet_name)
+    local room = gutils.key("planet", planet_name)
+    local contexts = sort.sort_info.node_to_context_inds[node_key] or {}
+    if next(contexts) == nil then
+        return false
+    end
+    for context, _ in pairs(contexts) do
+        if top.context_room(context) ~= room then
+            return false
+        end
+    end
+    return true
+end
+
+check.node_specific_to_room = function(sort, node_key, planet_name)
+    if check.node_only_on_room(sort, node_key, planet_name) then
+        return true
+    end
     local room = gutils.key("planet", planet_name)
     local is_isolatable_there = false
     for context, _ in pairs(sort.sort_info.node_to_context_inds[node_key] or {}) do
@@ -116,8 +160,12 @@ check.node_specific_to = function(sort, node_key, planet_name)
     return is_isolatable_there
 end
 
-check.specific_to = function(sort, recipe_name, planet_name)
-    return check.node_specific_to(sort, gutils.key("recipe", recipe_name), planet_name)
+check.only_on_room = function(sort, recipe_name, planet_name)
+    return check.node_only_on_room(sort, gutils.key("recipe", recipe_name), planet_name)
+end
+
+check.specific_to_room = function(sort, recipe_name, planet_name)
+    return check.node_specific_to_room(sort, gutils.key("recipe", recipe_name), planet_name)
 end
 
 -- Offshore pumps (and anything else going by tile collision) only work where they originally did.
@@ -194,9 +242,18 @@ check.required_failures = function(before, after, variants_of)
     local failures = {}
 
     -- 1. Recipes stay reachable somewhere
+    -- A recipe one of its planet variants still makes counts as reachable too, like for rule 2 (a resource swap's variants replace their originals on their planets, see resources.exclude_originals)
+    local function variant_reachable(recipe_name)
+        for _, variant_name in pairs((variants_of or {})[recipe_name] or {}) do
+            if next(after_contexts[gutils.key("recipe", variant_name)] or {}) ~= nil then
+                return true
+            end
+        end
+        return false
+    end
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]
-        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and next(after_contexts[node_key] or {}) == nil then
+        if node ~= nil and node.type == "recipe" and next(contexts) ~= nil and next(after_contexts[node_key] or {}) == nil and not variant_reachable(node.name) then
             table.insert(failures, {
                 text = "unreachable " .. node_key,
                 keys = {
@@ -249,7 +306,39 @@ check.required_failures = function(before, after, variants_of)
             end
         end
     end
+    -- 4. The starting planet's science packs keep every context they had there
+    for node_key, contexts in pairs(check.start_science_goals(before)) do
+        for context, _ in pairs(contexts) do
+            if not top.provides_context(after_contexts[node_key] or {}, context) then
+                table.insert(failures, {
+                    text = "starting planet's science " .. node_key .. " @ " .. context,
+                    keys = {
+                        node_key,
+                    },
+                    context = context,
+                })
+            end
+        end
+    end
     return failures
+end
+
+-- The starting planet's science packs and the contexts they had there (rule 4 of check.required): every lab input (science packs are whatever labs take) with a context in the starting planet's room, as node key --> context --> true
+check.start_science_goals = function(before)
+    local goals = {}
+    local start_room = gutils.key("planet", constants.starting_planet)
+    for _, lab in pairs(data.raw.lab or {}) do
+        for _, pack_name in pairs(lab.inputs or {}) do
+            local node_key = gutils.key("item", pack_name)
+            for context, _ in pairs(before.sort_info.node_to_context_inds[node_key] or {}) do
+                if top.context_room(context) == start_room then
+                    goals[node_key] = goals[node_key] or {}
+                    goals[node_key][context] = true
+                end
+            end
+        end
+    end
+    return goals
 end
 
 -- Everything check.required keeps in an exact context (rule 3's mechanic goals and rule 2's planet-locked recipe contexts), as node key --> context --> true
