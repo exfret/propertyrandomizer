@@ -34,6 +34,7 @@ local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
+local item_fluid = require("lib/item-fluid")
 local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
@@ -805,6 +806,10 @@ unified.execute = function()
                     change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
                 end
             else
+                -- A fluid's amount can be fractional, to two decimals (user, 2026-09-29; items and fluids trading positions scale amounts across forms)
+                if config.item_fluids and change.tbl.type == "fluid" then
+                    change.tbl[change.prop] = item_fluid.round_amount("fluid", change.tbl[change.prop])
+                end
                 change.tbl[change.prop] = math.min(65535, change.tbl[change.prop])
             end
         end

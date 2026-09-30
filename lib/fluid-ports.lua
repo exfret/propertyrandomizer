@@ -7,8 +7,8 @@ local pipe_conns = require("lib/pipe-conns")
 
 local fluid_ports = {}
 
--- Pipe connection points each crafting machine keeps free: two for a fluid's way in and out, and one for a fluid energy source's input (user, 2026-09-26)
-fluid_ports.RESERVED_POINTS = 3
+-- Pipe connection points each crafting machine keeps free: one, for a fluid energy source's input (user, 2026-09-29)
+fluid_ports.RESERVED_POINTS = 1
 
 -- A recipe with a fluid can't be crafted by hand (CharacterPrototype has no fluid boxes), so it trades this category for the one below, as pypostprocessing's add_ingredient does (lib/metas/recipe.lua) (user's rule, 2026-09-26)
 fluid_ports.HAND_CATEGORY = "crafting"
@@ -159,7 +159,7 @@ fluid_ports.hide_unused_ports = function(machine)
 end
 
 -- Gives every crafting machine as many input and output fluid boxes as its free pipe connection points allow, keeping RESERVED_POINTS points free
--- A point is one side of an edge tile, so corner tiles have two (see pipe_conns.get_available_pipe_connections)
+-- A point is one side of a free edge tile, one per tile (see pipe_conns.get_possible_pipe_connections)
 -- Ports go unseen until used (see hide_unused_ports), the machine's own included: they keep one connection each first, so what they gave up counts as free
 fluid_ports.add_crafting_machine_ports = function()
     for _, class in pairs(sorted_names(categories.crafting_machines)) do
@@ -272,10 +272,12 @@ local function drill_box(drill, production_type)
     }
 end
 
--- Makes every mining drill able to put out what the resources of its categories give now: an output fluid box for fluid results, a place for item results (vector_to_place_result, which is {0, 0} on drills like pumpjacks that only put out fluids), and an input fluid box for a required fluid
--- prefixes.lua already gives every drill an input fluid box; this covers resources whose results or required fluids randomization changed
+-- Makes every mining drill able to put out what the resources of its categories give: an output fluid box for fluid results, a place for item results (vector_to_place_result, which is {0, 0} on drills like pumpjacks that only put out fluids), and an input fluid box for a required fluid
+-- With both_forms, every drill gets the output box (where a pipe connection point is free) and the place for items whatever its resources give: with items and fluids trading positions a pumpjack drops items and an electric mining drill fills a pipe (user, 2026-09-29), and prefixes.lua does this before the logic looks at drills (lib/lookup/2-simple/mining.lua)
+-- A drill without vector_to_place_result halts on an item result (prototypes/MiningDrillPrototype.html)
+-- prefixes.lua already gives every drill an input fluid box
 -- Returns how many drills changed
-fluid_ports.fit_mining_drills = function()
+fluid_ports.fit_mining_drills = function(both_forms)
     local num_changed = 0
     for _, name in pairs(sorted_names(dutils.prots("mining-drill"))) do
         local drill = data.raw["mining-drill"][name]
@@ -284,6 +286,10 @@ fluid_ports.fit_mining_drills = function()
             mines[cat] = true
         end
         local needs = {}
+        if both_forms then
+            needs.item = true
+            needs.fluid = true
+        end
         for _, resource in pairs(dutils.prots("resource")) do
             if mines[resource.category or "basic-solid"] ~= nil then
                 for need, _ in pairs(resource_needs(resource)) do
@@ -326,13 +332,15 @@ fluid_ports.has_fluid = function(recipe)
     return false
 end
 
--- The categories a recipe has once hand crafting's category is traded for the fluid one (see HAND_CATEGORY), or nil if nothing changes
+-- Whether the game has the fluid crafting category to trade hand crafting's for (fix_fluid_crafting_categories and first pass's model only trade when it does)
+fluid_ports.fluid_category_exists = function()
+    return data.raw["recipe-category"] ~= nil and data.raw["recipe-category"][fluid_ports.HAND_CATEGORY_WITH_FLUID] ~= nil
+end
+
+-- A category list with hand crafting's category traded for the fluid one (see HAND_CATEGORY), or nil if it has no hand crafting category
 -- Other categories stay, like vanilla Space Age's {"crafting-with-fluid", "electromagnetics"} recipes
-fluid_ports.categories_with_fluid = function(recipe)
-    if not fluid_ports.has_fluid(recipe) then
-        return nil
-    end
-    local cats = furnace_selection.recipe_categories(recipe)
+-- First pass's model uses the same rule for a recipe that gets a fluid (item_fluid.recipe_category_key), and fix_fluid_crafting_categories applies it to the game
+fluid_ports.trade_hand_category = function(cats)
     local has_hand = false
     for _, cat in pairs(cats) do
         if cat == fluid_ports.HAND_CATEGORY then
@@ -357,9 +365,17 @@ fluid_ports.categories_with_fluid = function(recipe)
     return new_cats
 end
 
+-- The categories a recipe has once hand crafting's category is traded for the fluid one (see trade_hand_category), or nil if nothing changes
+fluid_ports.categories_with_fluid = function(recipe)
+    if not fluid_ports.has_fluid(recipe) then
+        return nil
+    end
+    return fluid_ports.trade_hand_category(furnace_selection.recipe_categories(recipe))
+end
+
 -- Applies categories_with_fluid to every recipe, if the fluid category exists; returns how many recipes changed
 fluid_ports.fix_fluid_crafting_categories = function()
-    if data.raw["recipe-category"] == nil or data.raw["recipe-category"][fluid_ports.HAND_CATEGORY_WITH_FLUID] == nil then
+    if not fluid_ports.fluid_category_exists() then
         return 0
     end
     local num_changed = 0

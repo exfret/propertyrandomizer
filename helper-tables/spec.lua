@@ -162,13 +162,14 @@ local spec = {
             val = "more"
         }
     },
-    artillery_projectile_damage_types = {
+    -- Off for now (2026-09-29): it took away the only source of a damage type on some surfaces, which the logic check counts as a lost context; see notes/wip.txt
+    --[[artillery_projectile_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     artillery_projectile_effect_radius = {
         category = "numerical",
         setting = {
@@ -278,13 +279,14 @@ local spec = {
             val = "more"
         }
     },
-    beam_damage_types = {
+    -- Off for now (2026-09-29): it took away the only source of a damage type on some surfaces, which the logic check counts as a lost context; see notes/wip.txt
+    --[[beam_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     beam_width = {
         category = "numerical",
         setting = {
@@ -344,13 +346,14 @@ local spec = {
             val = "less"
         }
     },
-    capsule_actions = {
+    -- Off for now (2026-09-29): it hands a capsule's action to an item the old context-free logic calls reachable, which can lose that robot on a planet (a lost context in the logic check); see notes/wip.txt
+    --[[capsule_actions = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
         }
-    },
+    },]]
     capsule_cooldown = {
         category = "numerical",
         setting = {
@@ -358,13 +361,14 @@ local spec = {
             val = "more"
         }
     },
-    capsule_damage_types = {
+    -- Off for now (2026-09-29): it took away the only source of a damage type on some surfaces, which the logic check counts as a lost context; see notes/wip.txt
+    --[[capsule_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     -- Applies to fish and the fruits in space age
     capsule_healing = {
         category = "numerical",
@@ -452,13 +456,14 @@ local spec = {
             val = "more"
         }
     },
-    combat_robot_damage_types = {
+    -- Off for now (2026-09-29): it took away the only source of a damage type on some surfaces, which the logic check counts as a lost context; see notes/wip.txt
+    --[[combat_robot_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     combat_robot_lifetime = {
         category = "numerical",
         setting = {
@@ -1495,13 +1500,14 @@ local spec = {
             val = "more"
         }
     },
-    sticker_damage_types = {
+    -- Off for now (2026-09-29): it took away the only source of a damage type on some surfaces, which the logic check counts as a lost context; see notes/wip.txt
+    --[[sticker_damage_types = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-military",
             val = "more"
         }
-    },
+    },]]
     sticker_duration = {
         category = "numerical",
         setting = {

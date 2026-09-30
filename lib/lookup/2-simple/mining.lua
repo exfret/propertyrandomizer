@@ -20,20 +20,68 @@ end
 
 -- END repeated header
 
+-- With items and fluids trading positions, a resource's results can change form (item_fluid.resource_category_key), so every fluid count some drill of the category can serve gets a spoofed category too
+-- Returns resource category --> { input = whether a drill of it has an input fluid box, output = whether one has an output fluid box }, or nil when it doesn't apply
+local function drill_fluid_boxes()
+    if config == nil or not config.item_fluids then
+        return nil
+    end
+    local boxes = {}
+    for _, drill in pairs(prots("mining-drill")) do
+        for _, cat in pairs(drill.resource_categories or {}) do
+            boxes[cat] = boxes[cat] or {
+                input = false,
+                output = false,
+            }
+            boxes[cat].input = boxes[cat].input or drill.input_fluid_box ~= nil
+            boxes[cat].output = boxes[cat].output or drill.output_fluid_box ~= nil
+        end
+    end
+    return boxes
+end
+
+-- Every fluid count combination the drills of a resource's category can serve, as a list of { input, output }
+local function fluid_combinations(boxes, category)
+    local combinations = {}
+    local can = boxes[category] or {
+        input = false,
+        output = false,
+    }
+    for input = 0, (can.input and 1 or 0) do
+        for output = 0, (can.output and 1 or 0) do
+            table.insert(combinations, {
+                input = input,
+                output = output,
+            })
+        end
+    end
+    return combinations
+end
+
 -- Mining categories (spoofed with fluid counts)
 stage.mcats = function()
     local mcats = {}
-
-    for _, resource in pairs(data.raw.resource) do
-        local name = lutils.mcat_name(resource)
+    local function add_mcat(cat, fluids)
+        local name = lutils.mcat_key(cat, fluids)
         if mcats[name] == nil then
-            local fluids = lutils.find_mining_fluids(resource)
-
             mcats[name] = {
-                cat = resource.category or "basic-solid",
+                cat = cat,
                 input = fluids.input,
                 output = fluids.output,
             }
+        end
+    end
+
+    local boxes = drill_fluid_boxes()
+    for _, resource in pairs(data.raw.resource) do
+        if resource.minable ~= nil then
+            add_mcat(resource.category or "basic-solid", lutils.find_mining_fluids(resource))
+            -- Every count the category's drills can serve
+            if boxes ~= nil then
+                for _, fluids in pairs(fluid_combinations(boxes, resource.category or "basic-solid")) do
+                    add_mcat(resource.category or "basic-solid", fluids)
+                end
+            end
         end
     end
 
@@ -77,6 +125,7 @@ end
 stage.mcat_to_mcats = function()
     local mcat_to_mcats = {}
 
+    local boxes = drill_fluid_boxes()
     for _, resource in pairs(prots("resource")) do
         if resource.minable ~= nil then
             local base_cat = resource.category or "basic-solid"
@@ -86,6 +135,12 @@ stage.mcat_to_mcats = function()
                 mcat_to_mcats[base_cat] = {}
             end
             mcat_to_mcats[base_cat][spoofed_key] = true
+            -- Every count the category's drills can serve (see drill_fluid_boxes)
+            if boxes ~= nil then
+                for _, fluids in pairs(fluid_combinations(boxes, base_cat)) do
+                    mcat_to_mcats[base_cat][lutils.mcat_key(base_cat, fluids)] = true
+                end
+            end
         end
     end
 

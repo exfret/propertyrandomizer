@@ -108,10 +108,9 @@ config.item_percent_randomized = settings.startup["propertyrandomizer-item-perce
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 -- Whether the unified randomizations still in development run (see settings.lua): in the unified preview, or when the test helper explicitly enables the dev setting
 config.dev_unified = features.dev_unified
--- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity takes its new position's form (see lib/item-fluid.lua)
--- In development, so it would be on with the other unified randomizations still in development (config.dev_unified)
--- Off while the user playtests the rest (2026-09-27): everything it touches behaves as before it while this is false
-config.item_fluids = false
+-- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
+-- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
+config.item_fluids = config.dev_unified
 
 config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value

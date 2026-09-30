@@ -66,8 +66,8 @@ local orig_graph
 local node_science_level
 -- Recipe name --> the product reflect made it named after, as {type, name}
 local renamed_recipes
--- Fluid position name --> name of the fluid identity there, for required fluids (see after_changes)
-local required_fluid_renames
+-- Position material key --> the identity reflect put there, as {type, name} (see lib/item-fluid.lua)
+local new_identity_at
 local py_scaling = { -- Roughly in GW expected for an "average" base, but the ratios are what matter anyways
     0.1, -- pre-auto
     0.2, -- auto
@@ -92,7 +92,7 @@ item.initialize = function()
     orig_graph = nil
     node_science_level = {}
     renamed_recipes = {}
-    required_fluid_renames = {}
+    new_identity_at = {}
     -- What reflect renames, for checks comparing the final game with the original (see item_fluid.final_node_key), or nil if it didn't run
     UNIFIED_MATERIAL_RENAMES = nil
 end
@@ -219,8 +219,9 @@ item.reflect = function(graph, head_to_base, head_to_handler)
 
     -- Order mk's to go in order (solves certain cost problems)
 
-    -- Position material key --> the identity reflect put there, as {type, name} (see lib/item-fluid.lua)
-    local new_identity_at = {}
+    new_identity_at = {}
+    -- A barrel's filling and emptying recipes follow its fluid's identity (see item_fluid.move_identity_sources), so they aren't renamed with the fluid's position
+    local barrel_recipes = config.item_fluids and item_fluid.container_recipes(item_fluid.fluid_containers(old_data_raw.recipe)) or {}
 
     local num_times_changed_graphics_of_simple_entity = {}
     -- Position material key --> material key of the identity first pass assigned there, for items and fluids (see lib/item-fluid.lua)
@@ -235,7 +236,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             end
         end
     end
-    local is_useless = item_fluid.useless_predicate(identity_at)
+    -- First pass gated this assignment as reflection realizes it (see item_fluid.realized_assignment), so it's applied as it is
+    local reflected_positions = item_fluid.reflected_positions(identity_at)
     UNIFIED_MATERIAL_RENAMES = {}
     for trav_key, slot_key in pairs(trav_to_slot) do
     --for head_key, base_key in pairs(head_to_base) do
@@ -255,8 +257,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         local position = slot ~= nil and item_fluid.material_of_node(split_graph, slot) or nil
         local identity = item_fluid.material_of_node(split_graph, trav)
         if position ~= nil and identity ~= nil then
-            -- Useless items aren't swapped with each other, so a useless identity can go to a different position (see dutils.reflected_item_position, which first pass models too)
-            local reflected_position = dutils.reflected_item_position(identity_at, item_fluid.material_key(position), item_fluid.material_key(identity), is_useless)
+            -- Useless materials aren't swapped with each other, so a useless identity can be at a different position than the matching's (see item_fluid.realized_assignment, which first pass models too), or kept at its own
+            local reflected_position = reflected_positions[item_fluid.material_key(identity)]
             if reflected_position == nil then
                 -- Don't actually do the switch in this case
             else
@@ -264,27 +266,17 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     log(identity.name .. " NOW WITH " .. position.name)
                     position = gutils.deconstruct(reflected_position)
                 end
-                -- The prototypes of the position's own material and of the identity, each in its old form
+                -- The prototypes of the position's own material and of the identity, each in its own form
                 local slot_item = item_fluid.prot(position)
                 local trav_item = item_fluid.prot(identity)
+                -- An identity keeps its form: the recipes and resources at a position of the other form take or make it in its own (see lib/item-fluid.lua)
                 local changes_form = position.type ~= identity.type
+                if changes_form then
+                    log(identity.name .. " (" .. identity.type .. ") takes " .. position.name .. "'s position (" .. position.type .. ")")
+                end
 
                 new_identity_at[item_fluid.material_key(position)] = identity
                 UNIFIED_MATERIAL_RENAMES[item_fluid.material_key(position)] = identity
-
-                -- An identity at a position of the other form becomes that form: it gets a prototype of it with its own name and look, and its old one is made nowhere now (see lib/item-fluid.lua)
-                if changes_form then
-                    local new_prot
-                    if position.type == "fluid" then
-                        new_prot = item_fluid.fluid_from_item(trav_item, slot_item)
-                    else
-                        new_prot = item_fluid.item_from_fluid(trav_item, slot_item)
-                    end
-                    data:extend({ new_prot })
-                    trav_item.hidden = true
-                    trav_item.hidden_in_factoriopedia = true
-                    log(identity.name .. " becomes a " .. position.type .. " at " .. position.name .. "'s position")
-                end
 
                 if mods["pypostprocessing"] and not changes_form and position.type == "item" then
                     if trav_item.place_result ~= nil then
@@ -310,7 +302,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 end
 
                 -- Find cost relative to position where this satisfies a mechanic, not the "actual" cost, which could be inflated too early in the game
-                -- Only a position of the identity's own form has a comparable cost (an item's and a fluid's units differ)
+                -- Costs are per unit of either form (lib/cost), so they compare across forms
                 -- A trav the final sort doesn't reach has no such position, and then its cost isn't known (no multiplier)
                 local trav_mechanics_key = trav_to_mechanics_key[gutils.key(trav)]
                 local trav_rank = (mechanics_sets_to_nodes[trav_mechanics_key] or {})[gutils.key(trav)]
@@ -330,15 +322,20 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     if to_use_for_trav_cost ~= nil then
                         trav_cost = material_to_cost[gutils.key("item", to_use_for_trav_cost.name)]
                     end
-                elseif trav_cost_material ~= nil and trav_cost_material.type == identity.type then
+                elseif trav_cost_material ~= nil then
                     trav_cost = material_to_cost[item_fluid.material_key(trav_cost_material)]
                 end
                 local multiplier = 1
                 local exact_multiplier = 1
-                -- An identity changing form takes its new position's amounts as they are
-                if not changes_form and slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
-                    multiplier = math.max(1, math.floor(slot_cost / trav_cost))
-                    exact_multiplier = math.max(1, slot_cost / trav_cost)
+                if slot_cost ~= nil and trav_cost ~= nil and trav_cost ~= 0 then
+                    if changes_form then
+                        -- Across forms the ratio goes both ways, since a fluid's amounts are many times an item's (user, 2026-09-29: the same cost rule, with fluids fractional to two decimals and items whole, see item_fluid.round_amount)
+                        exact_multiplier = slot_cost / trav_cost
+                        multiplier = exact_multiplier
+                    else
+                        multiplier = math.max(1, math.floor(slot_cost / trav_cost))
+                        exact_multiplier = math.max(1, slot_cost / trav_cost)
+                    end
                 end
 
                 for _, recipe in pairs(data.raw.recipe) do
@@ -346,6 +343,11 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         -- Try just checking recipe's dont_randomize property
                         -- Needs handling in first pass as well
                         -- CRITICAL TODO (need this so we don't get like slaughterhouse recipes with confusing names)
+                        -- A barrel's recipes keep taking and making the barrel's own fluid, wherever it's made now
+                        local barrel = barrel_recipes[position.name]
+                        if position.type == "fluid" and barrel ~= nil and (barrel.fill[recipe.name] ~= nil or barrel.empty[recipe.name] ~= nil) then
+                            return true
+                        end
                         return false
                     end
                     local function dont_process_recipe_ings(recipe)
@@ -374,6 +376,23 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                         table.insert(changes, {
                                                             tbl = ing_or_prod,
                                                             prop = temperature_key,
+                                                            new_val = nil,
+                                                        })
+                                                    end
+                                                end
+                                            end
+                                            -- An identity of the other form: the entry takes its form and drops what only the position's form has (see item_fluid.FORM_ONLY_FIELDS)
+                                            if changes_form then
+                                                table.insert(changes, {
+                                                    tbl = ing_or_prod,
+                                                    prop = "type",
+                                                    new_val = identity.type,
+                                                })
+                                                for _, field in pairs(item_fluid.FORM_ONLY_FIELDS[position.type]) do
+                                                    if ing_or_prod[field] ~= nil then
+                                                        table.insert(changes, {
+                                                            tbl = ing_or_prod,
+                                                            prop = field,
                                                             new_val = nil,
                                                         })
                                                     end
@@ -416,8 +435,9 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         end
                         if fix_localised then
                             -- Named in after_changes, once it's known how many recipes share the item
+                            -- The identity in its own form (see lib/recipe-renames.lua)
                             renamed_recipes[recipe.name] = {
-                                type = position.type,
+                                type = identity.type,
                                 name = trav_item.name,
                             }
                         end
@@ -453,6 +473,14 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                 local has_result = false
 
                                 if entity.minable ~= nil then
+                                    -- A mining amount in the identity's form: whole for items (one for unstackable ones), two decimals for fluids
+                                    local function mining_amount(amount)
+                                        local new_amount = item_fluid.round_amount(identity.type, multiplier * amount)
+                                        if identity.type == "item" and not dutils.is_stackable(trav_item) then
+                                            new_amount = 1
+                                        end
+                                        return math.min(65535, new_amount)
+                                    end
                                     if entity.minable.results ~= nil then
                                         for _, result in pairs(entity.minable.results) do
                                             if (result.type or "item") == position.type and result.name == position.name then
@@ -469,17 +497,29 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                         new_val = nil,
                                                     })
                                                 end
+                                                -- An identity of the other form comes out in its form, and the drill drops it or fills its output box (see fluid_ports.fit_mining_drills)
+                                                if changes_form then
+                                                    table.insert(changes, {
+                                                        tbl = result,
+                                                        prop = "type",
+                                                        new_val = identity.type,
+                                                    })
+                                                    for _, field in pairs(item_fluid.FORM_ONLY_FIELDS[position.type]) do
+                                                        if result[field] ~= nil then
+                                                            table.insert(changes, {
+                                                                tbl = result,
+                                                                prop = field,
+                                                                new_val = nil,
+                                                            })
+                                                        end
+                                                    end
+                                                end
                                                 for _, amount_key in pairs({"amount", "amount_min", "amount_max"}) do
                                                     if result[amount_key] ~= nil then
-                                                        local new_amount = multiplier * result[amount_key]
-                                                        if position.type == "item" and not dutils.is_stackable(trav_item) then
-                                                            new_amount = 1
-                                                        end
-                                                        new_amount = math.min(65535, new_amount)
                                                         table.insert(changes, {
                                                             tbl = result,
                                                             prop = amount_key,
-                                                            new_val = new_amount,
+                                                            new_val = mining_amount(result[amount_key]),
                                                         })
                                                     end
                                                 end
@@ -488,20 +528,41 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                             end
                                         end
                                     elseif position.type == "item" and entity.minable.result == position.name then
-                                        table.insert(changes, {
-                                            tbl = entity.minable,
-                                            prop = "result",
-                                            new_val = trav_item.name,
-                                        })
-                                        local new_count = multiplier * (entity.minable.count or 1)
-                                        if not dutils.is_stackable(trav_item) then
-                                            new_count = 1
+                                        if changes_form then
+                                            -- The single item result and its count (MinableProperties::result and count) become a results list holding the fluid
+                                            table.insert(changes, {
+                                                tbl = entity.minable,
+                                                prop = "result",
+                                                new_val = nil,
+                                            })
+                                            table.insert(changes, {
+                                                tbl = entity.minable,
+                                                prop = "count",
+                                                new_val = nil,
+                                            })
+                                            table.insert(changes, {
+                                                tbl = entity.minable,
+                                                prop = "results",
+                                                new_val = {
+                                                    {
+                                                        type = identity.type,
+                                                        name = trav_item.name,
+                                                        amount = mining_amount(entity.minable.count or 1),
+                                                    },
+                                                },
+                                            })
+                                        else
+                                            table.insert(changes, {
+                                                tbl = entity.minable,
+                                                prop = "result",
+                                                new_val = trav_item.name,
+                                            })
+                                            table.insert(changes, {
+                                                tbl = entity.minable,
+                                                prop = "count",
+                                                new_val = mining_amount(entity.minable.count or 1),
+                                            })
                                         end
-                                        table.insert(changes, {
-                                            tbl = entity.minable,
-                                            prop = "count",
-                                            new_val = new_count,
-                                        })
 
                                         has_result = true
                                     end
@@ -609,54 +670,73 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 -- Change trigger techs (crafting an item for item positions, a fluid for fluid positions)
                 for _, technology in pairs(data.raw.technology) do
                     if technology.research_trigger ~= nil then
-                        if position.type == "fluid" and technology.research_trigger.type == "craft-fluid" and technology.research_trigger.fluid == position.name then
+                        local trigger = technology.research_trigger
+                        -- A craft-item trigger names its item and count, a craft-fluid trigger its fluid and amount (types/CraftItemTechnologyTrigger.html and CraftFluidTechnologyTrigger.html); an identity of the other form turns one into the other
+                        local function retrigger(new_type, old_field, new_field, old_amount, new_amount, amount)
                             table.insert(changes, {
-                                tbl = technology.research_trigger,
-                                prop = "fluid",
+                                tbl = trigger,
+                                prop = "type",
+                                new_val = new_type,
+                            })
+                            table.insert(changes, {
+                                tbl = trigger,
+                                prop = old_field,
+                                new_val = nil,
+                            })
+                            table.insert(changes, {
+                                tbl = trigger,
+                                prop = new_field,
                                 new_val = trav_item.name,
                             })
+                            table.insert(changes, {
+                                tbl = trigger,
+                                prop = old_amount,
+                                new_val = nil,
+                            })
+                            table.insert(changes, {
+                                tbl = trigger,
+                                prop = new_amount,
+                                new_val = item_fluid.round_amount(identity.type, amount * exact_multiplier),
+                            })
                         end
-                        if position.type == "item" and technology.research_trigger.type == "craft-item" then
-                            if technology.research_trigger.item == slot_item.name then
+                        if position.type == "fluid" and trigger.type == "craft-fluid" and trigger.fluid == position.name then
+                            if changes_form then
+                                retrigger("craft-item", "fluid", "item", "amount", "count", trigger.amount or 1)
+                            else
                                 table.insert(changes, {
-                                    tbl = technology.research_trigger,
-                                    prop = "item",
+                                    tbl = trigger,
+                                    prop = "fluid",
                                     new_val = trav_item.name,
                                 })
                             end
-                            if type(technology.research_trigger.item) == "table" and technology.research_trigger.item.name == slot_item.name then
-                                table.insert(changes, {
-                                    tbl = technology.research_trigger.item,
-                                    prop = "name",
-                                    new_val = trav_item.name,
-                                })
+                        end
+                        if position.type == "item" and trigger.type == "craft-item" then
+                            local trigger_item = trigger.item
+                            if type(trigger_item) == "table" then
+                                trigger_item = trigger_item.name
+                            end
+                            if trigger_item == slot_item.name then
+                                if changes_form then
+                                    retrigger("craft-fluid", "item", "fluid", "count", "amount", trigger.count or 1)
+                                elseif type(trigger.item) == "table" then
+                                    table.insert(changes, {
+                                        tbl = trigger.item,
+                                        prop = "name",
+                                        new_val = trav_item.name,
+                                    })
+                                else
+                                    table.insert(changes, {
+                                        tbl = trigger,
+                                        prop = "item",
+                                        new_val = trav_item.name,
+                                    })
+                                end
                             end
                         end
                     end
                 end
 
-                -- Fluid positions are also what tiles pump, what filtered offshore pumps make, and what resources need to be mined (the last after every handler reflected, see after_changes)
-                if position.type == "fluid" then
-                    for _, tile in pairs(dutils.prots("tile")) do
-                        if tile.fluid == position.name then
-                            table.insert(changes, {
-                                tbl = tile,
-                                prop = "fluid",
-                                new_val = trav_item.name,
-                            })
-                        end
-                    end
-                    for _, pump in pairs(dutils.prots("offshore-pump")) do
-                        if pump.fluid_box ~= nil and pump.fluid_box.filter == position.name then
-                            table.insert(changes, {
-                                tbl = pump.fluid_box,
-                                prop = "filter",
-                                new_val = trav_item.name,
-                            })
-                        end
-                    end
-                    required_fluid_renames[position.name] = trav_item.name
-                end
+                -- What tiles and filtered offshore pumps give, what resources need to be mined and what entities take stay with the fluid identity, so nothing at the position changes for them (see lib/item-fluid.lua)
 
                 for _, item in pairs(dutils.get_all_prots("item")) do
                     -- Replace spoil results (not things that spoil), which are always items
@@ -729,11 +809,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
             if not not_unique and unique_resource ~= nil then
                 local new_identity = new_identity_at[unique_resource]
                 if new_identity ~= nil then
-                    -- In the position's form (an identity that changed form has a prototype of it now)
-                    local new_item = item_fluid.prot({
-                        type = gutils.deconstruct(unique_resource).type,
-                        name = new_identity.name,
-                    })
+                    -- In the identity's own form
+                    local new_item = item_fluid.prot(new_identity)
                     local suffix = ""
                     if string.len(drill.name) >= 4 then
                         local old_suffix = string.sub(drill.name, -4, -1)
@@ -750,14 +827,6 @@ end
 
 -- Renamed recipes take their new item's name and icon, with a prefix and a number badge where several share it (lib/recipe-renames.lua)
 item.after_changes = function()
-    -- Resources need whatever fluid is made at their required fluid's position now: reflect renames fluid positions everywhere else, and mining-fluid-required's reflection also writes positions (see lib/item-fluid.lua)
-    -- Done here, once every handler has reflected
-    for _, resource in pairs(dutils.prots("resource")) do
-        if resource.minable ~= nil and resource.minable.required_fluid ~= nil and required_fluid_renames[resource.minable.required_fluid] ~= nil then
-            resource.minable.required_fluid = required_fluid_renames[resource.minable.required_fluid]
-        end
-    end
-
     recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = "unified-item"}))
 end
 

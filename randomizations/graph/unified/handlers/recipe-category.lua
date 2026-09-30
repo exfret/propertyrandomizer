@@ -123,8 +123,10 @@ recipe_category.validate = function(graph, base, head, extra)
 
         -- Check if there are the appropriate fluid connections
         -- We don't need to check equality exactly because we have a lot of duplicates
+        -- With items and fluids trading positions, the recipe's counts include what first pass changed on its node (fluid_delta, see item_fluid.rewire_form_change)
         local recipe_fluids = lutils.find_recipe_fluids(recipe_prot)
-        if recipe_fluids.input > base_rcat.input or recipe_fluids.output > base_rcat.output then
+        local delta = head_owner.fluid_delta or {}
+        if recipe_fluids.input + (delta.input or 0) > base_rcat.input or recipe_fluids.output + (delta.output or 0) > base_rcat.output then
             return false
         end
 

@@ -67,7 +67,8 @@ end
 -- Hard pebbles, in two lists:
 --   * exact: protected mechanic pebbles, and every pebble of a recipe locked to one planet (see protection.lua), which must keep their exact contexts
 --   * recipes: each reachable recipe's earliest pebble asking for no abilities and not in a home context, which only has to stay reachable somewhere (and only the gate checks)
-local function hard_pebbles(graph, sort_info)
+-- params.recipe_may_vanish(node_key) (optional) names recipes that may become unreachable, like the recycling recipes of a position a fluid takes (see lib/item-fluid.lua rewire_form_change): the game regenerates them for the item identity under the same name
+local function hard_pebbles(graph, sort_info, params)
     local exact = {}
     local recipes = {}
     local locked = protection.planet_locked_recipe_contexts(graph, sort_info)
@@ -90,7 +91,7 @@ local function hard_pebbles(graph, sort_info)
                     })
                 end
             end
-        elseif node ~= nil and node.type == "recipe" then
+        elseif node ~= nil and node.type == "recipe" and not (params ~= nil and params.recipe_may_vanish ~= nil and params.recipe_may_vanish(node_key)) then
             local best_context
             local best_ind
             for context, ind in pairs(context_inds) do
@@ -697,12 +698,25 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
     return slot_match
 end
 
+-- How many lost pebbles blocked_travs looks at: the earliest ones (in the previous sort) are the roots of the loss, and the rest follow from them, while each witness costs a path search (a proposal once lost thousands and took minutes)
+local BLOCKED_PEBBLES_LIMIT = 300
+
 -- Trav pebbles on the witnesses (in the previous graph) of the lost pebbles that are missing from the new sort
 local function blocked_travs(graph, sort_info, lost, new_sort)
     local blocked = {}
+    local earliest = {}
     for _, pebble in pairs(lost) do
         local ind = (sort_info.node_to_context_inds[pebble.node_key] or {})[pebble.context]
         if ind ~= nil then
+            table.insert(earliest, ind)
+        end
+    end
+    table.sort(earliest)
+    if #earliest > BLOCKED_PEBBLES_LIMIT then
+        log("Monotone matching: witnesses of the " .. BLOCKED_PEBBLES_LIMIT .. " earliest of " .. #earliest .. " lost pebbles")
+    end
+    for n, ind in pairs(earliest) do
+        if n <= BLOCKED_PEBBLES_LIMIT then
             for i, _ in pairs(top.path(graph, { ind }, sort_info).in_path) do
                 local q = sort_info.sorted[i]
                 if graph.nodes[q.node_key].trav and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
@@ -814,6 +828,7 @@ matching.superposed_sort = superposed_sort
 --   cross_type_ok(slot, trav) (optional): whether a trav can go in a slot of another node type at all (pair_ok still has to allow it too); without it, slots only take travs of their own type
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
+--   recipe_may_vanish(node_key) (optional): recipes the gate doesn't hold on to (see hard_pebbles)
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
 --   connection(slot_key, trav_key) (optional): where the connection of a slot/trav pair starts and what abilities it gains or loses (see connection_of)
 --   connect_extra(graph, slot_key, trav_key) (optional): connects anything else that follows a slot/trav pair (see connect)
@@ -829,7 +844,7 @@ matching.run = function(params)
     table.sort(travs)
     local graph = connect(table.deepcopy(params.unconnected_graph), params, assignment)
     local sort_info = complex_sort(graph)
-    local exact, recipes = hard_pebbles(graph, sort_info)
+    local exact, recipes = hard_pebbles(graph, sort_info, params)
     log("Monotone matching: " .. #exact .. " hard pebbles kept exactly (mechanics and planet-locked recipes), " .. #recipes .. " recipes")
 
     -- The superposed graph and sort of the current matching, whose witnesses tell which travs a lost debt goal needs
@@ -956,6 +971,107 @@ matching.run = function(params)
             sup_graph = kept_sup_graph
             sup_sort = kept_sup_sort
         end
+    end
+
+    -- Positions of different forms trade identities afterwards (params.form_swaps, items and fluids trading positions, see lib/item-fluid.lua): such a trade moves recipes to other crafters, which the needs above can't repair, so trades are gated like a round and kept only when nothing is lost
+    -- Each trial gates a batch of trades with one sort (most trades pass, and a sort is what a trial costs); a failing batch's trades are gated one by one
+    -- params.form_swaps: { candidates = function(assignment) --> list of { slot key, slot key, preferred = whether to try it before the others }, form_of = function(node key) --> the form of a slot or trav, max_trials (gates), max_swaps (trades kept), batch (trades per gate, 1 when nil) }
+    if params.form_swaps ~= nil then
+        local swaps = params.form_swaps
+        local candidates = swaps.candidates(assignment)
+        rng.shuffle(rng.key({ id = "monotone-matching-form-swaps" }), candidates)
+        -- Preferred candidates come first in their shuffled order, so the others are only tried once those run out
+        local ordered = {}
+        for i = 1, #candidates do
+            if candidates[i].preferred == true then
+                table.insert(ordered, candidates[i])
+            end
+        end
+        local num_preferred = #ordered
+        for i = 1, #candidates do
+            if candidates[i].preferred ~= true then
+                table.insert(ordered, candidates[i])
+            end
+        end
+        candidates = ordered
+        log("Monotone matching: " .. #candidates .. " form trade candidates, " .. num_preferred .. " preferred")
+        local num_trials = 0
+        local num_kept = 0
+        -- Whether both positions of a candidate still hold identities of their own form (an earlier trade may have taken either)
+        local function open(pair)
+            return swaps.form_of(assignment[pair[1]]) == swaps.form_of(pair[1]) and swaps.form_of(assignment[pair[2]]) == swaps.form_of(pair[2])
+        end
+        -- The assignment with the given trades (of positions no two share) made, as reflection realizes it
+        local function traded(pairs_to_trade)
+            local trial = table.deepcopy(assignment)
+            for _, pair in pairs(pairs_to_trade) do
+                trial[pair[1]] = assignment[pair[2]]
+                trial[pair[2]] = assignment[pair[1]]
+            end
+            return realize(params, trial)
+        end
+        -- What a trial assignment loses: hard pebbles, or debt goals once it keeps every hard pebble (empty when it passes)
+        local function gate(trial)
+            num_trials = num_trials + 1
+            local trial_graph = connect(table.deepcopy(params.unconnected_graph), params, trial)
+            local trial_sort = complex_sort(trial_graph)
+            local lost = lost_pebbles(exact, recipes, trial_sort)
+            if #lost == 0 and debt_goals ~= nil then
+                local _, trial_sup_sort = superposed_sort(trial_graph, params.debt)
+                lost = matching.lost_debt_goals(debt_goals, trial_sup_sort)
+            end
+            return lost
+        end
+        local function keep(trial, pairs_kept)
+            assignment = trial
+            num_kept = num_kept + #pairs_kept
+            for _, pair in pairs(pairs_kept) do
+                log("Monotone matching: form trade kept, " .. assignment[pair[1]] .. " at " .. pair[1] .. " and " .. assignment[pair[2]] .. " at " .. pair[2])
+            end
+        end
+        local function budget_left()
+            return num_trials < swaps.max_trials and num_kept < swaps.max_swaps
+        end
+        local next_candidate = 1
+        while next_candidate <= #candidates and budget_left() do
+            -- The next batch: candidates whose positions are still open and that share no position within the batch
+            local batch = {}
+            local taken = {}
+            while next_candidate <= #candidates and #batch < math.min(swaps.batch or 1, swaps.max_swaps - num_kept) do
+                local pair = candidates[next_candidate]
+                next_candidate = next_candidate + 1
+                if open(pair) and taken[pair[1]] == nil and taken[pair[2]] == nil then
+                    table.insert(batch, pair)
+                    taken[pair[1]] = true
+                    taken[pair[2]] = true
+                end
+            end
+            if #batch == 0 then
+                break
+            end
+            local trial = traded(batch)
+            local lost = gate(trial)
+            if #lost == 0 then
+                keep(trial, batch)
+            elseif #batch == 1 then
+                log("Monotone matching: form trade dropped, " .. assignment[batch[1][2]] .. " at " .. batch[1][1] .. " and " .. assignment[batch[1][1]] .. " at " .. batch[1][2] .. " lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. lost[1].context .. ")")
+            else
+                log("Monotone matching: a batch of " .. #batch .. " form trades lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. lost[1].context .. "), so each is gated alone")
+                for _, pair in pairs(batch) do
+                    if not budget_left() then
+                        break
+                    end
+                    local trial_one = traded({ pair })
+                    local lost_one = gate(trial_one)
+                    if #lost_one == 0 then
+                        keep(trial_one, { pair })
+                    else
+                        log("Monotone matching: form trade dropped, " .. assignment[pair[2]] .. " at " .. pair[1] .. " and " .. assignment[pair[1]] .. " at " .. pair[2] .. " lost " .. #lost_one .. " pebbles (e.g. " .. lost_one[1].node_key .. " @ " .. lost_one[1].context .. ")")
+                    end
+                end
+            end
+        end
+        log("Monotone matching: " .. num_kept .. " form trades kept in " .. num_trials .. " trials (" .. #candidates .. " candidates)")
     end
     return assignment, debt_goals
 end

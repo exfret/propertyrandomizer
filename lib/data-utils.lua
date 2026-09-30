@@ -130,7 +130,7 @@ end
 -- identity_at: item position name --> name of the item identity assigned there (a permutation of the same names)
 -- Reflection doesn't swap two useless items (see is_useless_item), since that would only change names
 -- A useless identity instead goes to the first position along its cycle whose assigned identity is useless, so non-useless identities always land where they were assigned
--- is_useless (optional) says which identities are useless, for keys other than item names (item_fluid.is_useless_material takes item and fluid material keys, see lib/item-fluid.lua)
+-- is_useless (optional) says which identities are useless, for keys other than item names (item_fluid.realized_assignment is this rule for items and fluids together, see lib/item-fluid.lua)
 -- Returns the position where reflection puts identity (assigned to position), or nil if reflection leaves it alone
 dutils.reflected_item_position = function(identity_at, position, identity, is_useless)
     is_useless = is_useless or function(name)

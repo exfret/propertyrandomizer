@@ -8,6 +8,7 @@ local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local dutils = require("lib/data-utils")
 local tutils = require("lib/trigger")
+local fluid_ports = require("lib/fluid-ports")
 
 local prots = dutils.prots
 
@@ -76,22 +77,88 @@ stage.rcats = function()
     -- Vanilla resource category to rcat names for it
     local vanilla_to_rcats = {}
 
-    for _, recipe in pairs(lu.recipes) do
-        local name = lutils.rcat_name(recipe)
+    local function add_rcat(cats, fluids)
+        local name = lutils.rcat_key(cats, fluids)
         if rcats[name] == nil then
-            local fluids = lutils.find_recipe_fluids(recipe)
-
             rcats[name] = {
-                cats = recipe.categories or {"crafting"},
+                cats = cats,
                 input = fluids.input,
                 output = fluids.output,
             }
-            for _, vanilla_name in pairs(recipe.categories or {"crafting"}) do
+            for _, vanilla_name in pairs(cats) do
                 vanilla_to_rcats[vanilla_name] = vanilla_to_rcats[vanilla_name] or {}
                 vanilla_to_rcats[vanilla_name][name] = true
             end
         end
     end
+    for _, recipe in pairs(lu.recipes) do
+        add_rcat(recipe.categories or {"crafting"}, lutils.find_recipe_fluids(recipe))
+    end
+    local num_vanilla = 0
+    for _, _ in pairs(rcats) do
+        num_vanilla = num_vanilla + 1
+    end
+
+    -- With items and fluids trading positions, a recipe's fluid counts change (item_fluid.recipe_category_key), so every count a crafter of its categories can serve gets a category too, for its categories and for hand crafting's traded for the fluid one (fluid_ports.trade_hand_category)
+    -- Each category is a mechanic node with a pebble per context that the matching's gate keeps exactly and every sort pays for, so the counts stop at the recipes' own ingredient and result counts, which a recipe's fluid counts can't exceed
+    if config ~= nil and config.item_fluids then
+        -- Category --> the most fluid inputs and outputs a machine crafting it has
+        local most = {}
+        for class, _ in pairs(categories.crafting_machines) do
+            for _, machine in pairs(prots(class)) do
+                local fluids = {
+                    input = 0,
+                    output = 0,
+                }
+                for _, box in pairs(machine.fluid_boxes or {}) do
+                    if box.production_type == "input" then
+                        fluids.input = fluids.input + 1
+                    elseif box.production_type == "output" then
+                        fluids.output = fluids.output + 1
+                    end
+                end
+                for _, cat in pairs(machine.crafting_categories or {}) do
+                    most[cat] = most[cat] or {
+                        input = 0,
+                        output = 0,
+                    }
+                    most[cat].input = math.max(most[cat].input, fluids.input)
+                    most[cat].output = math.max(most[cat].output, fluids.output)
+                end
+            end
+        end
+        local function add_combinations(cats, num_ingredients, num_results)
+            local max_input = 0
+            local max_output = 0
+            for _, cat in pairs(cats) do
+                max_input = math.max(max_input, (most[cat] or {}).input or 0)
+                max_output = math.max(max_output, (most[cat] or {}).output or 0)
+            end
+            for input = 0, math.min(max_input, num_ingredients) do
+                for output = 0, math.min(max_output, num_results) do
+                    add_rcat(cats, {
+                        input = input,
+                        output = output,
+                    })
+                end
+            end
+        end
+        for _, recipe in pairs(lu.recipes) do
+            local cats = recipe.categories or {"crafting"}
+            local num_ingredients = #(recipe.ingredients or {})
+            local num_results = #(recipe.results or {})
+            add_combinations(cats, num_ingredients, num_results)
+            local traded = fluid_ports.fluid_category_exists() and fluid_ports.trade_hand_category(cats) or nil
+            if traded ~= nil then
+                add_combinations(traded, num_ingredients, num_results)
+            end
+        end
+    end
+    local num_rcats = 0
+    for _, _ in pairs(rcats) do
+        num_rcats = num_rcats + 1
+    end
+    log("Recipe categories with fluid counts: " .. num_rcats .. " (" .. num_vanilla .. " from the recipes' own counts)")
 
     lu.rcats = rcats
     lu.vanilla_to_rcats = vanilla_to_rcats

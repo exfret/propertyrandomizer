@@ -56,11 +56,18 @@ lutils.is_compatible_rcat = function(machine, rcat)
 
     return false
 end
-lutils.rcat_name = function(recipe)
-    local fluids = lutils.find_recipe_fluids(recipe)
-    local cats_table = recipe.categories or {"crafting"}
+-- The spoofed recipe category name of a category list with these fluid counts ({ input, output }), which recipe-category nodes are named by
+lutils.rcat_key = function(cats, fluids)
+    local cats_table = {}
+    for _, cat in pairs(cats) do
+        table.insert(cats_table, cat)
+    end
     table.sort(cats_table)
     return gutils.concat({gutils.concat(cats_table), fluids.input, fluids.output})
+end
+
+lutils.rcat_name = function(recipe)
+    return lutils.rcat_key(recipe.categories or {"crafting"}, lutils.find_recipe_fluids(recipe))
 end
 
 -- Spoofed fuel category for burning an item: its fuel categories as one sorted key, so a burner of any of them can burn it
@@ -101,13 +108,17 @@ lutils.find_mining_fluids = function(resource)
 
     return fluids
 end
+-- The spoofed resource category name of a category with these fluid counts ({ input, output }), which resource-category nodes are named by
+lutils.mcat_key = function(category, fluids)
+    return gutils.concat({category, fluids.input, fluids.output})
+end
+
 lutils.mcat_name = function(resource)
     if resource.minable == nil then
         return ""
     end
 
-    local fluids = lutils.find_mining_fluids(resource)
-    return gutils.concat({resource.category or "basic-solid", fluids.input, fluids.output})
+    return lutils.mcat_key(resource.category or "basic-solid", lutils.find_mining_fluids(resource))
 end
 
 lutils.fcat_combo_name = function(energy_source)

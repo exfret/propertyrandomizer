@@ -18,6 +18,11 @@ defines = {
         item = {
             item = 0,
         },
+        entity = {
+            kettle = 0,
+            sprayer = 0,
+            intake = 0,
+        },
     },
     direction = {
         north = 0,
@@ -52,8 +57,9 @@ randomization_info = {
     },
 }
 package.loaded["lib/locale"] = {
+    -- As lib/locale.lua: a prototype's own localised name, or its class's locale key
     find_localised_name = function(prot)
-        return { prot.type .. "-name." .. prot.name }
+        return prot.localised_name or { prot.type .. "-name." .. prot.name }
     end,
 }
 
@@ -80,13 +86,15 @@ local function add_item(name, is_useless)
         place_result = (not is_useless) and name or nil,
     }
 end
-local function add_fluid(name)
+-- A useless fluid has no fuel value (and no entity in data.raw takes it by name)
+local function add_fluid(name, is_useless)
     data.raw.fluid[name] = {
         type = "fluid",
         name = name,
         default_temperature = 15,
         base_color = { 0, 0, 1 },
         flow_color = { 0, 0, 1 },
+        fuel_value = (is_useless == false) and "1MJ" or nil,
     }
 end
 
@@ -94,8 +102,71 @@ end
 -- Where reflection puts identities
 ----------------------------------------------------------------------------------------------------
 
-test("fluids and items becoming fluids land where they're assigned; useless items only detour among item positions", function()
+test("a useless fluid has no fuel value, and no entity takes it by name", function()
+    data.raw.fluid = {}
+    add_fluid("brine", true)
+    add_fluid("gas", true)
+    add_fluid("oil", true)
+    add_fluid("mist", true)
+    add_fluid("fuel", false)
+    data.raw.kettle = {
+        kettle = {
+            type = "kettle",
+            name = "kettle",
+            fluid_box = {
+                volume = 200,
+                filter = "gas",
+                pipe_connections = {},
+            },
+            output_fluid_box = {
+                volume = 200,
+                filter = "mist",
+                production_type = "output",
+                pipe_connections = {},
+            },
+        },
+    }
+    data.raw.sprayer = {
+        flamer = {
+            type = "sprayer",
+            name = "flamer",
+            attack_parameters = {
+                type = "stream",
+                fluids = {
+                    { type = "oil" },
+                },
+            },
+        },
+    }
+    -- A filtered offshore pump makes its fluid, which is the fluid's position
+    data.raw.intake = {
+        intake = {
+            type = "intake",
+            name = "intake",
+            fluid_box = {
+                volume = 100,
+                filter = "brine",
+                production_type = "output",
+                pipe_connections = {},
+            },
+        },
+    }
+    item_fluid.recalculate_entity_fluids()
+    assert(item_fluid.is_useless_fluid(data.raw.fluid.brine), "only made")
+    assert(item_fluid.is_useless_fluid(data.raw.fluid.mist), "only made by a kettle")
+    assert(not item_fluid.is_useless_fluid(data.raw.fluid.gas), "a kettle takes gas")
+    assert(not item_fluid.is_useless_fluid(data.raw.fluid.oil), "a turret fires oil")
+    assert(not item_fluid.is_useless_fluid(data.raw.fluid.fuel), "a fuel")
+    assert(item_fluid.is_useless_material(key("fluid", "brine")) and not item_fluid.is_useless_material(key("fluid", "gas")))
+    data.raw.kettle = nil
+    data.raw.sprayer = nil
+    data.raw.intake = nil
+    item_fluid.recalculate_entity_fluids()
+end)
+
+test("useless items only detour among item positions and useless fluids among fluid positions; everything else lands where it's assigned", function()
     math.randomseed(2)
+    local num_fluid_detours = 0
     for trial = 1, 3000 do
         data.raw.item = {}
         data.raw.fluid = {}
@@ -103,7 +174,7 @@ test("fluids and items becoming fluids land where they're assigned; useless item
         local n = math.random(2, 12)
         for i = 1, n do
             if math.random() < 0.35 then
-                add_fluid("fluid-" .. i)
+                add_fluid("fluid-" .. i, math.random() < 0.5)
                 table.insert(materials, key("fluid", "fluid-" .. i))
             else
                 add_item("item-" .. i, math.random() < 0.5)
@@ -123,28 +194,46 @@ test("fluids and items becoming fluids land where they're assigned; useless item
             identity_at[materials[i]] = shuffled[i]
         end
 
-        local is_useless = item_fluid.useless_predicate(identity_at)
-        local realized = dutils.realized_item_assignment(identity_at, is_useless)
+        local realized = item_fluid.realized_assignment(identity_at)
         local seen = {}
         for _, position in pairs(materials) do
             local identity = realized[position]
             assert(identity ~= nil and not seen[identity], "not a permutation")
             seen[identity] = true
             local assigned = identity_at[position]
-            local assigned_changes_form = gutils.deconstruct(assigned).type ~= gutils.deconstruct(position).type
-            if gutils.deconstruct(assigned).type == "fluid" or assigned_changes_form or not item_fluid.is_useless_material(assigned) then
-                assert(identity == assigned, "an identity that isn't a useless item at an item position moved")
+            local position_form = gutils.deconstruct(position).type
+            -- Non-useless identities, and identities changing form, land where they're assigned
+            if gutils.deconstruct(assigned).type ~= position_form or not item_fluid.is_useless_material(assigned) then
+                assert(identity == assigned, "an identity that isn't useless in its position's form moved")
             end
-            -- Anything that changes form was assigned there (first pass allowed that pair)
-            if gutils.deconstruct(identity).type ~= gutils.deconstruct(position).type then
-                assert(identity == assigned, "a detour changed an identity's form")
+            -- Anything else here is a useless identity of the position's form: detoured, or kept at its own position
+            if identity ~= assigned then
+                assert(gutils.deconstruct(identity).type == position_form, "a detour changed an identity's form")
+                assert(item_fluid.is_useless_material(identity), "a detour moved a non-useless identity")
+                if position_form == "fluid" then
+                    num_fluid_detours = num_fluid_detours + 1
+                end
             end
         end
-        local again = dutils.realized_item_assignment(realized, item_fluid.useless_predicate(realized))
+        -- Two useless materials of the same form never just trade names (ones of different forms can, since each changes form)
         for _, position in pairs(materials) do
-            assert(again[position] == realized[position], "realizing a realized assignment changed it")
+            local identity = realized[position]
+            if identity ~= position and gutils.deconstruct(identity).type == gutils.deconstruct(position).type and item_fluid.is_useless_material(identity) and item_fluid.is_useless_material(position) and realized[identity] == position then
+                error("two useless materials swapped")
+            end
+        end
+        -- Reflection applies the realized assignment as it is: every identity away from its own position is switched, and a useless one kept at its own isn't
+        local positions = item_fluid.reflected_positions(realized)
+        for _, position in pairs(materials) do
+            local identity = realized[position]
+            if identity ~= position or not item_fluid.is_useless_material(identity) then
+                assert(positions[identity] == position)
+            else
+                assert(positions[identity] == nil)
+            end
         end
     end
+    assert(num_fluid_detours > 0, "the trials never detoured a fluid")
 end)
 
 test("with only items, the rule is item reflection's own", function()
@@ -172,7 +261,7 @@ test("with only items, the rule is item reflection's own", function()
             by_key[key("item", names[i])] = key("item", shuffled[i])
         end
         local realized_names = dutils.realized_item_assignment(by_name)
-        local realized_keys = dutils.realized_item_assignment(by_key, item_fluid.useless_predicate(by_key))
+        local realized_keys = item_fluid.realized_assignment(by_key)
         for i = 1, n do
             assert(realized_keys[key("item", names[i])] == key("item", realized_names[names[i]]))
         end
@@ -180,168 +269,384 @@ test("with only items, the rule is item reflection's own", function()
 end)
 
 ----------------------------------------------------------------------------------------------------
--- Which identities can change form
+-- Positions and identities
 ----------------------------------------------------------------------------------------------------
 
-test("only plain items can become fluids, and only fluids that aren't fuels can become items", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    local plain = {
-        type = "item",
-        name = "widget",
-        stack_size = 100,
-    }
-    assert(item_fluid.item_can_be_fluid(plain))
-    for _, field in pairs({ "place_result", "plant_result", "place_as_equipment_result", "spoil_result", "burnt_result" }) do
-        local item = table.deepcopy(plain)
-        item[field] = "something"
-        assert(not item_fluid.item_can_be_fluid(item), field)
-    end
-    local fuel = table.deepcopy(plain)
-    fuel.fuel_value = "4MJ"
-    assert(not item_fluid.item_can_be_fluid(fuel))
-    local spoiling = table.deepcopy(plain)
-    spoiling.spoil_ticks = 600
-    assert(not item_fluid.item_can_be_fluid(spoiling))
-    -- Other item types (like modules, which go in module slots) are used as what they are, which a fluid can't be
-    assert(not item_fluid.item_can_be_fluid({ type = "gizmo-type", name = "gizmo", stack_size = 50 }))
-    data.raw.lab.lab = { inputs = { "widget" } }
-    assert(not item_fluid.item_can_be_fluid(plain), "a lab input")
-    data.raw.lab = {}
-
-    assert(item_fluid.fluid_can_be_item({ type = "fluid", name = "gas" }))
-    assert(not item_fluid.fluid_can_be_item({ type = "fluid", name = "burnable-gas", fuel_value = "1MJ" }))
-    assert(not item_fluid.fluid_can_be_item({ type = "fluid", name = "p", parameter = true }))
-end)
-
--- A toy split graph: an item slot and trav with a delivery chain, a fluid slot (a fluid-temperature node) and trav, and their base/head connectors as first pass makes them
-local function toy_split_graph(item_name, fluid_name)
+-- A toy graph as first pass splits it: nodes by type and name, an orand on each edge into an OR node (as gutils.make_orands puts one), with the bookkeeping make_orand keeps
+local function toy_graph()
     local graph = {
         nodes = {},
         edges = {},
         sources = {},
+        node_to_orands = {},
+        orand_to_parent = {},
+        orand_to_child = {},
     }
     local function node(node_type, name, op)
         local added = gutils.add_node(graph, node_type, name)
         added.op = op
+        if op == "OR" then
+            graph.node_to_orands[key(added)] = {}
+        else
+            graph.node_to_orands[key(added)] = { key(added) }
+        end
         return added
     end
-    local function orand_edge(start, stop)
-        -- Edges into OR nodes go through an orand (gutils.make_orand)
-        local orand = node("orand", start.type .. start.name .. stop.type .. stop.name, "AND")
-        gutils.add_edge(graph, key(start), key(orand))
-        gutils.add_edge(graph, key(orand), key(stop))
-        return orand
+    local function edge(start, stop, extra)
+        if stop.op == "OR" then
+            local orand = node("orand", key(start) .. " --> " .. key(stop), "AND")
+            graph.node_to_orands[key(stop)][key(orand)] = true
+            graph.orand_to_parent[key(orand)] = key(stop)
+            graph.orand_to_child[key(orand)] = key(start)
+            gutils.add_edge(graph, key(start), key(orand), extra)
+            gutils.add_edge(graph, key(orand), key(stop))
+            return orand
+        end
+        return gutils.add_edge(graph, key(start), key(stop), extra)
     end
-
-    local item_slot = node("item", item_name, "OR")
-    item_slot.old_trav = key("item", item_name .. "-trav")
-    local item_trav = node("item", item_name .. "-trav", "OR")
-    item_trav.old_slot = key(item_slot)
-    local item_head = node("head", item_name, "OR")
-    orand_edge(item_head, item_trav)
-    local launch = node("item-launch", item_name, "AND")
-    gutils.add_edge(graph, key(item_trav), key(launch))
-    local deliver = node("item-deliver", item_name, "AND")
-    gutils.add_edge(graph, key(launch), key(deliver))
-    orand_edge(deliver, item_trav)
-
-    local fluid_node = node("fluid", fluid_name, "OR")
-    local fluid_slot = node("fluid-temperature", key(fluid_name, "15"), "AND")
-    fluid_slot.old_trav = key("fluid-temperature", key(fluid_name, "15") .. "-trav")
-    local fluid_trav = node("fluid-temperature", key(fluid_name, "15") .. "-trav", "AND")
-    fluid_trav.old_slot = key(fluid_slot)
-    local fluid_head = node("head", fluid_name, "OR")
-    gutils.add_edge(graph, key(fluid_head), key(fluid_trav))
-    orand_edge(fluid_trav, fluid_node)
-    local create = node("fluid-create-temperature", key(fluid_name, "15"), "OR")
-    gutils.add_edge(graph, key(create), key(fluid_slot))
-    local craft = node("fluid-craft-temperature", key(fluid_name, "15"), "OR")
-    orand_edge(craft, create)
-    local hold = node("fluid-hold", fluid_name, "OR")
-    gutils.add_edge(graph, key(hold), key(fluid_slot))
-    return graph, item_trav, fluid_trav, fluid_node, fluid_slot, launch
+    return graph, node, edge
 end
 
-test("an item trav with only its delivery can become a fluid; one with anything else can't", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    local graph, item_trav, fluid_trav = toy_split_graph("widget", "gas")
-    assert(item_fluid.can_change_form(graph, item_trav))
-    assert(item_fluid.can_change_form(graph, fluid_trav))
-    -- An identity role (say it fuels something) keeps it an item
-    local burner = gutils.add_node(graph, "fuel-category", "chemical")
-    burner.op = "OR"
-    gutils.add_edge(graph, key(item_trav), key(burner))
-    assert(not item_fluid.can_change_form(graph, item_trav))
+-- An item position as first pass leaves it on the slot: made by a recipe through item-craft, taken by a recipe, with its base to the trav
+local function toy_item_slot(graph, node, edge, name)
+    local slot = node("item", name, "OR")
+    local craft = node("item-craft", name, "OR")
+    edge(craft, slot)
+    local make = node("recipe", name .. "-make", "AND")
+    edge(make, craft)
+    local use = node("recipe", name .. "-use", "AND")
+    edge(slot, use)
+    -- Its own connection: base --> head --> trav, as first pass cuts the slot --> trav edge
+    local base = node("base", name, "AND")
+    edge(slot, base)
+    local head = node("head", name, "OR")
+    base.old_head = key(head)
+    head.old_base = key(base)
+    local trav = node("item", name .. "-trav", "OR")
+    trav.trav = true
+    trav.old_slot = key(slot)
+    edge(head, trav)
+    return slot, craft, make, use
+end
+
+-- A fluid position as first pass leaves it on the slot: a fluid-temperature node made through fluid-create-temperature by a recipe (fluid-craft-temperature), held in pipes, taken by a recipe through a temperature range, with its base to the trav
+local function toy_fluid_slot(graph, node, edge, name)
+    local temp = key(name, "15")
+    local slot = node("fluid-temperature", temp, "AND")
+    local create = node("fluid-create-temperature", temp, "OR")
+    edge(create, slot)
+    edge(node("fluid-hold", name, "OR"), slot)
+    local craft = node("fluid-craft-temperature", temp, "OR")
+    edge(craft, create)
+    local make = node("recipe", name .. "-make", "AND")
+    edge(make, craft)
+    local range = node("fluid-temperature-range", key(name, key("nil", "nil")), "OR")
+    edge(slot, range)
+    local use = node("recipe", name .. "-use", "AND")
+    edge(range, use)
+    local base = node("base", name, "AND")
+    edge(slot, base)
+    local head = node("head", name, "OR")
+    base.old_head = key(head)
+    head.old_base = key(base)
+    local trav = node("fluid-temperature", temp .. "-trav", "AND")
+    trav.trav = true
+    trav.old_slot = key(slot)
+    edge(head, trav)
+    return slot, create, craft, make, range, use
+end
+
+-- A trav of a form, as first pass names one after its own slot (which has to exist for material_of_node)
+local function toy_trav(graph, node, form, name)
+    local slot_key
+    if form == "item" then
+        slot_key = key(node("item", name, "OR"))
+    else
+        slot_key = key(node("fluid-temperature", key(name, "15"), "AND"))
+    end
+    local trav = node(gutils.deconstruct(slot_key).type, gutils.deconstruct(slot_key).name .. "-trav", "OR")
+    trav.old_slot = slot_key
+    return trav
+end
+
+local function category_of(graph, node_of_recipe)
+    for pre, _ in pairs(node_of_recipe.pre) do
+        local prenode = gutils.prenode(graph, pre)
+        if prenode.type == "recipe-category" or prenode.type == "resource-category" then
+            return key(prenode)
+        end
+    end
+    return nil
+end
+
+test("an item position takes a fluid when its roles are recipes and resource mining, and a fluid position takes an item when recipes and resources make it", function()
+    data.raw.resource = {
+        ore = {
+            type = "resource",
+            name = "ore",
+            minable = {},
+        },
+    }
+    local graph, node, edge = toy_graph()
+    local slot = toy_item_slot(graph, node, edge, "gear")
+    assert(item_fluid.position_takes(graph, slot, "item"))
+    assert(item_fluid.position_takes(graph, slot, "fluid"))
+    -- A resource mined into it is fine; a rock isn't, since mining it gives items by hand
+    edge(node("entity-mine", "ore", "AND"), slot)
+    assert(item_fluid.position_takes(graph, slot, "fluid"))
+    edge(node("entity-mine", "rock", "AND"), slot)
+    assert(not item_fluid.position_takes(graph, slot, "fluid"), "a rock can't give a fluid")
+    -- Roles only an item fills: loot, being spoiled into, being a burnt result, being an asteroid chunk's, fueling burners like coal
+    local function refuses(role_type, as_dep)
+        local other_graph, other_node, other_edge = toy_graph()
+        local other_slot = toy_item_slot(other_graph, other_node, other_edge, "gear")
+        local role = other_node(role_type, "role", as_dep and "OR" or "AND")
+        if as_dep then
+            other_edge(other_slot, role)
+        else
+            other_edge(role, other_slot)
+        end
+        return not item_fluid.position_takes(other_graph, other_slot, "fluid")
+    end
+    assert(refuses("entity-kill"), "loot")
+    assert(refuses("item"), "spoiled into")
+    assert(refuses("item-burn"), "a burnt result")
+    assert(refuses("asteroid-chunk-mine"), "an asteroid chunk")
+    assert(refuses("fuel-category", true), "a fuel")
+    -- A fluid position: made by recipes and resources, taken by recipes through temperature ranges
+    local fluid_graph, fluid_node, fluid_edge = toy_graph()
+    local fluid_slot, create = toy_fluid_slot(fluid_graph, fluid_node, fluid_edge, "brine")
+    assert(item_fluid.position_takes(fluid_graph, fluid_slot, "item"))
+    fluid_edge(fluid_node("entity-mine", "ore", "AND"), create)
+    assert(item_fluid.position_takes(fluid_graph, fluid_slot, "item"))
+    -- Made by operating an entity (like a boiler's steam) isn't
+    fluid_edge(fluid_node("entity-operate", "heater", "AND"), create)
+    assert(not item_fluid.position_takes(fluid_graph, fluid_slot, "item"))
+    data.raw.resource = nil
 end)
 
-test("a launch leading to something besides delivery keeps an item from becoming a fluid", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    local graph, item_trav, _, _, _, launch = toy_split_graph("widget", "gas")
-    local product = gutils.add_node(graph, "item", "space-science")
-    product.op = "OR"
-    gutils.add_edge(graph, key(launch), key(product))
-    assert(not item_fluid.can_change_form(graph, item_trav))
+test("pumping a fluid and barreling it follow its identity: they feed a source the trav needs, and filling takes the trav", function()
+    local graph, node, edge = toy_graph()
+    local slot, create, craft, make, range, use = toy_fluid_slot(graph, node, edge, "brine")
+    local trav = graph.nodes[key("fluid-temperature", key("brine", "15") .. "-trav")]
+    local offshore = node("fluid-create-offshore-temperature", key("brine", "15"), "OR")
+    edge(offshore, create)
+    local empty = node("recipe", "empty-brine-keg", "AND")
+    edge(empty, craft)
+    local fill = node("recipe", "brine-keg", "AND")
+    edge(range, fill)
+    local recipes = item_fluid.container_recipes({
+        {
+            filled = "brine-keg",
+            held = "brine",
+            vessel = "keg",
+            fill = "brine-keg",
+            empty = "empty-brine-keg",
+        },
+    })
+    local source_key = item_fluid.move_identity_sources(graph, key(slot), key(trav), recipes)
+    assert(source_key ~= nil and graph.nodes[source_key].op == "OR")
+    assert(graph.edges[gutils.ekey({ start = source_key, stop = key(trav) })] ~= nil and trav.op == "OR", "the source is another way to the trav")
+    local function feeds(parent_key, child)
+        for _, prenode in pairs(gutils.prenodes(graph, graph.nodes[parent_key])) do
+            if prenode.type == "orand" and key(gutils.unique_prenode(graph, prenode)) == key(child) then
+                return true
+            end
+        end
+        return false
+    end
+    assert(feeds(source_key, offshore) and feeds(source_key, empty), "pumping and emptying feed the source")
+    assert(not feeds(key(create), offshore) and not feeds(key(craft), empty), "and not the position")
+    assert(feeds(key(craft), make), "the position keeps its recipe")
+    assert(graph.node_to_orands[source_key] ~= nil and next(graph.node_to_orands[source_key]) ~= nil, "the orand bookkeeping follows")
+    assert(graph.node_to_orands[key(create)][key(gutils.prenodes(graph, graph.nodes[source_key])[1])] == nil)
+    assert(graph.edges[gutils.ekey({ start = key(trav), stop = key(fill) })] ~= nil, "filling takes the trav")
+    assert(graph.edges[gutils.ekey({ start = key(range), stop = key(fill) })] == nil)
+    assert(graph.edges[gutils.ekey({ start = key(range), stop = key(use) })] ~= nil, "other users still take the position")
+    -- A fluid with no such makers gets no source, and an item slot is left alone
+    local plain_graph, plain_node, plain_edge = toy_graph()
+    local plain_slot = toy_fluid_slot(plain_graph, plain_node, plain_edge, "syrup")
+    assert(item_fluid.move_identity_sources(plain_graph, key(plain_slot), key("fluid-temperature", key("syrup", "15") .. "-trav"), recipes) == nil)
+    local item_slot = toy_item_slot(graph, node, edge, "gear")
+    assert(item_fluid.move_identity_sources(graph, key(item_slot), key("item", "gear-trav"), recipes) == nil)
 end)
 
-test("a fluid whose node leads somewhere (a boiler, a turret) can't become an item", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    local graph, _, fluid_trav, fluid_node = toy_split_graph("widget", "gas")
-    local boiler = gutils.add_node(graph, "entity-operate-fluid", "boiler")
-    boiler.op = "OR"
-    gutils.add_edge(graph, key(fluid_node), key(boiler))
-    assert(not item_fluid.can_change_form(graph, fluid_trav))
+test("a recipe's category node follows its fluid counts, trading hand crafting for the fluid category, and a resource's follows its results", function()
+    data.raw["recipe-category"] = {
+        [fluid_ports.HAND_CATEGORY_WITH_FLUID] = {},
+    }
+    local recipe = {
+        type = "recipe",
+        name = "r",
+    }
+    local function counts(input, output)
+        return {
+            input = input,
+            output = output,
+        }
+    end
+    assert(item_fluid.recipe_category_key(recipe, counts(0, 0)) == key("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY, 0, 0 })))
+    assert(item_fluid.recipe_category_key(recipe, counts(1, 0)) == key("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY_WITH_FLUID, 1, 0 })))
+    recipe.categories = { "other-category" }
+    assert(item_fluid.recipe_category_key(recipe, counts(2, 1)) == key("recipe-category", gutils.concat({ "other-category", 2, 1 })))
+    -- Without the fluid category, hand crafting's stays
+    data.raw["recipe-category"] = nil
+    recipe.categories = nil
+    assert(item_fluid.recipe_category_key(recipe, counts(1, 0)) == key("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY, 1, 0 })))
+    local resource = {
+        type = "resource",
+        name = "ore",
+        category = "deep",
+    }
+    assert(item_fluid.resource_category_key(resource, counts(0, 1)) == key("resource-category", gutils.concat({ "deep", 0, 1 })))
 end)
 
-test("a name taken in the other form keeps an identity in its own", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    add_fluid("widget")
-    local graph, item_trav = toy_split_graph("widget", "gas")
-    assert(not item_fluid.can_change_form(graph, item_trav))
+test("amounts come whole for items and to two decimals for fluids", function()
+    assert(item_fluid.round_amount("item", 0.2) == 1 and item_fluid.round_amount("item", 2.5) == 3 and item_fluid.round_amount("item", 2.49) == 2)
+    assert(item_fluid.round_amount("fluid", 0.004) == 0.01 and item_fluid.round_amount("fluid", 7) == 7, "a fluid ingredient's amount can't be 0")
+    assert(math.abs(item_fluid.round_amount("fluid", 12.346) - 12.35) < 1e-9)
+end)
+
+test("a fluid at an item position moves its recipes and resource to the categories of their new fluid counts, and its recycling leads nowhere", function()
+    data.raw["recipe-category"] = {
+        [fluid_ports.HAND_CATEGORY_WITH_FLUID] = {},
+    }
+    data.raw.resource = {
+        ore = {
+            type = "resource",
+            name = "ore",
+            category = "deep",
+            minable = {
+                results = {
+                    { type = "item", name = "gear", amount = 1 },
+                },
+            },
+        },
+    }
+    local function recipe(name, ingredients, results, cats)
+        return {
+            type = "recipe",
+            name = name,
+            categories = cats,
+            ingredients = ingredients,
+            results = results,
+        }
+    end
+    data.raw.recipe = {
+        ["gear-make"] = recipe("gear-make", { { type = "item", name = "a", amount = 1 } }, { { type = "item", name = "gear", amount = 1 } }),
+        ["gear-use"] = recipe("gear-use", { { type = "item", name = "gear", amount = 1 } }, { { type = "item", name = "b", amount = 1 } }),
+        ["gear-recycling"] = recipe("gear-recycling", { { type = "item", name = "gear", amount = 1 } }, {}, { item_fluid.RECYCLING_CATEGORY }),
+        ["z-recycling"] = recipe("z-recycling", { { type = "item", name = "z", amount = 1 } }, { { type = "item", name = "gear", amount = 1 } }, { item_fluid.RECYCLING_CATEGORY }),
+    }
+    local graph, node, edge = toy_graph()
+    local slot, craft, make, use = toy_item_slot(graph, node, edge, "gear")
+    local ore = node("entity-mine", "ore", "AND")
+    edge(ore, slot)
+    local recycle_use = node("recipe", "gear-recycling", "AND")
+    edge(slot, recycle_use)
+    local recycle_make = node("recipe", "z-recycling", "AND")
+    edge(recycle_make, craft)
+    local hand = node("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY, 0, 0 }), "OR")
+    edge(hand, make)
+    edge(hand, use)
+    local recycling = node("recipe-category", gutils.concat({ item_fluid.RECYCLING_CATEGORY, 0, 0 }), "OR")
+    edge(recycling, recycle_use)
+    edge(recycling, recycle_make)
+    local mining = node("resource-category", gutils.concat({ "deep", 0, 0 }), "OR")
+    edge(mining, ore)
+    local trav = toy_trav(graph, node, "fluid", "brine")
+    -- Without category nodes for the new counts, the pair is out; an item identity needs none
+    assert(not item_fluid.form_change_ok(graph, slot, trav))
+    assert(item_fluid.form_change_ok(graph, slot, toy_trav(graph, node, "item", "cog")))
+    local with_input = node("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY_WITH_FLUID, 1, 0 }), "OR")
+    local with_output = node("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY_WITH_FLUID, 0, 1 }), "OR")
+    assert(not item_fluid.form_change_ok(graph, slot, trav), "the resource still needs a category for a fluid result")
+    local mining_fluid = node("resource-category", gutils.concat({ "deep", 0, 1 }), "OR")
+    assert(item_fluid.form_change_ok(graph, slot, trav))
+
+    item_fluid.rewire_form_change(graph, key(slot), key(trav))
+    assert(category_of(graph, make) == key(with_output), "the maker makes a fluid now")
+    assert(category_of(graph, use) == key(with_input), "the user takes a fluid now")
+    assert(category_of(graph, ore) == key(mining_fluid), "the resource gives a fluid now")
+    local false_key = key("false", "")
+    assert(graph.edges[gutils.ekey({ start = false_key, stop = key(recycle_use) })] ~= nil, "recycling the fluid leads nowhere")
+    local maker_feeds = false
+    for _, prenode in pairs(gutils.prenodes(graph, craft)) do
+        if prenode.type == "orand" and key(gutils.unique_prenode(graph, prenode)) == key(recycle_make) then
+            maker_feeds = true
+        end
+    end
+    assert(not maker_feeds and next(recycle_make.dep) == nil, "getting the fluid out of the recycler leads nowhere")
+    assert(category_of(graph, recycle_use) == key(recycling), "recycling recipes keep their category")
+
+    -- A second position of the same recipe adds up: the user also takes another item position that a fluid takes
+    local other_slot = node("item", "cog", "OR")
+    edge(other_slot, use)
+    table.insert(data.raw.recipe["gear-use"].ingredients, { type = "item", name = "cog", amount = 1 })
+    local both_inputs = node("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY_WITH_FLUID, 2, 0 }), "OR")
+    item_fluid.rewire_form_change(graph, key(other_slot), key(toy_trav(graph, node, "fluid", "syrup")))
+    assert(category_of(graph, use) == key(both_inputs))
+
+    -- An item at a fluid position goes the other way: its recipes lose a fluid
+    local fluid_graph, fluid_node, fluid_edge = toy_graph()
+    local fluid_slot, _, _, fluid_make, _, fluid_use = toy_fluid_slot(fluid_graph, fluid_node, fluid_edge, "brine")
+    data.raw.recipe = {
+        ["brine-make"] = recipe("brine-make", { { type = "item", name = "a", amount = 1 } }, { { type = "fluid", name = "brine", amount = 10 } }, { "other-category" }),
+        ["brine-use"] = recipe("brine-use", { { type = "fluid", name = "brine", amount = 10 } }, { { type = "item", name = "b", amount = 1 } }, { "other-category" }),
+    }
+    fluid_edge(fluid_node("recipe-category", gutils.concat({ "other-category", 0, 1 }), "OR"), fluid_make)
+    fluid_edge(fluid_node("recipe-category", gutils.concat({ "other-category", 1, 0 }), "OR"), fluid_use)
+    local item_trav = toy_trav(fluid_graph, fluid_node, "item", "gear")
+    assert(not item_fluid.form_change_ok(fluid_graph, fluid_slot, item_trav))
+    local dry = fluid_node("recipe-category", gutils.concat({ "other-category", 0, 0 }), "OR")
+    assert(item_fluid.form_change_ok(fluid_graph, fluid_slot, item_trav))
+    item_fluid.rewire_form_change(fluid_graph, key(fluid_slot), key(item_trav))
+    assert(category_of(fluid_graph, fluid_make) == key(dry) and category_of(fluid_graph, fluid_use) == key(dry))
+    data.raw["recipe-category"] = nil
+    data.raw.resource = nil
+    data.raw.recipe = nil
 end)
 
 -- A fluid as the game's graph has it before first pass splits it: made by a recipe (through fluid-craft-temperature), held in pipes, and leading to its fluid node
-local function toy_fluid_graph(fluid_name)
-    local graph = {
-        nodes = {},
-        edges = {},
-        sources = {},
+test("a position's takers are the recipes taking it, recycling aside, which is all a fluid there is used through", function()
+    data.raw.recipe = {
+        ["gear-recycling"] = {
+            type = "recipe",
+            name = "gear-recycling",
+            categories = { item_fluid.RECYCLING_CATEGORY },
+            ingredients = { { type = "item", name = "gear", amount = 1 } },
+            results = {},
+        },
     }
-    local function node(node_type, name, op)
-        local added = gutils.add_node(graph, node_type, name)
-        added.op = op
-        return added
-    end
-    local function orand_edge(start, stop)
-        local orand = node("orand", start.type .. start.name .. stop.type .. stop.name, "AND")
-        gutils.add_edge(graph, key(start), key(orand))
-        gutils.add_edge(graph, key(orand), key(stop))
-    end
+    local graph, node, edge = toy_graph()
+    local slot = toy_item_slot(graph, node, edge, "gear")
+    assert(item_fluid.position_takers(graph, slot) == 1)
+    edge(slot, node("recipe", "gear-recycling", "AND"))
+    assert(item_fluid.position_takers(graph, slot) == 1, "recycling doesn't count")
+    edge(slot, node("recipe", "gear-other-use", "AND"))
+    assert(item_fluid.position_takers(graph, slot) == 2)
+    -- An end product: made, never taken
+    local lone = node("item", "pole", "OR")
+    edge(node("recipe", "pole-make", "AND"), lone)
+    assert(item_fluid.position_takers(graph, lone) == 0)
+    data.raw.recipe = nil
+end)
+
+local function toy_fluid_graph(fluid_name)
+    local graph, node, edge = toy_graph()
     local fluid_node = node("fluid", fluid_name, "OR")
     local temperature = node("fluid-temperature", key(fluid_name, "15"), "AND")
-    orand_edge(temperature, fluid_node)
+    edge(temperature, fluid_node)
     local create = node("fluid-create-temperature", key(fluid_name, "15"), "OR")
-    gutils.add_edge(graph, key(create), key(temperature))
+    edge(create, temperature)
     local craft = node("fluid-craft-temperature", key(fluid_name, "15"), "OR")
-    orand_edge(craft, create)
-    local hold = node("fluid-hold", fluid_name, "OR")
-    gutils.add_edge(graph, key(hold), key(temperature))
-    return graph, temperature, fluid_node, create
+    edge(craft, create)
+    edge(node("recipe", fluid_name .. "-make", "AND"), craft)
+    edge(node("fluid-hold", fluid_name, "OR"), temperature)
+    return graph, temperature, fluid_node, create, node, edge
 end
 
-test("fluid slots are single-temperature fluids made by recipes, mining and pumping", function()
+test("fluid slots are single-temperature fluids made by recipes and mining, not pumped from tiles", function()
     data.raw.fluid = {}
     data.raw.resource = {
         well = {
@@ -350,117 +655,35 @@ test("fluid slots are single-temperature fluids made by recipes, mining and pump
         },
     }
     add_fluid("gas")
-    local graph, temperature, fluid_node, create = toy_fluid_graph("gas")
-    assert(item_fluid.fluid_slot_ok(graph, temperature, {}))
-    assert(not item_fluid.fluid_slot_ok(graph, temperature, { ["fluid-gas"] = { type = "fluid", name = "gas" } }), "a round trip material")
+    local graph, temperature, fluid_node, create, node, edge = toy_fluid_graph("gas")
+    assert(item_fluid.fluid_slot_ok(graph, temperature))
     randomization_info.options.first_pass.blacklist[key("fluid", "gas")] = true
-    assert(not item_fluid.fluid_slot_ok(graph, temperature, {}), "blacklisted")
+    assert(not item_fluid.fluid_slot_ok(graph, temperature), "blacklisted")
     randomization_info.options.first_pass.blacklist = {}
     -- Mined from a resource is fine
-    local well = gutils.add_node(graph, "entity-mine", "well")
-    well.op = "AND"
-    local orand = gutils.add_node(graph, "orand", "well")
-    orand.op = "AND"
-    gutils.add_edge(graph, key(well), key(orand))
-    gutils.add_edge(graph, key(orand), key(create))
-    assert(item_fluid.fluid_slot_ok(graph, temperature, {}))
+    edge(node("entity-mine", "well", "AND"), create)
+    assert(item_fluid.fluid_slot_ok(graph, temperature))
+    -- A fluid pumped from tiles keeps its position, even one recipes make too: pumping follows its identity, and nothing else could be made there early
+    local pumped_graph, pumped_temperature, _, pumped_create, pumped_node, pumped_edge = toy_fluid_graph("brine")
+    add_fluid("brine")
+    assert(item_fluid.fluid_slot_ok(pumped_graph, pumped_temperature), "made by a recipe")
+    pumped_edge(pumped_node("fluid-create-offshore-temperature", key("brine", "15"), "OR"), pumped_create)
+    assert(not item_fluid.fluid_slot_ok(pumped_graph, pumped_temperature), "pumped")
     -- A second temperature (like steam's) isn't
-    local hot = gutils.add_node(graph, "fluid-temperature", key("gas", "500"))
-    hot.op = "AND"
-    local hot_orand = gutils.add_node(graph, "orand", "hot")
-    hot_orand.op = "AND"
-    gutils.add_edge(graph, key(hot), key(hot_orand))
-    gutils.add_edge(graph, key(hot_orand), key(fluid_node))
-    assert(not item_fluid.fluid_slot_ok(graph, temperature, {}))
+    edge(node("fluid-temperature", key("gas", "500"), "AND"), fluid_node)
+    assert(not item_fluid.fluid_slot_ok(graph, temperature))
+    data.raw.resource = nil
 end)
 
 test("a fluid made by operating a machine (like a boiler's steam) isn't a slot", function()
     data.raw.fluid = {}
-    data.raw.resource = {}
     add_fluid("gas")
-    local graph, temperature, _, create = toy_fluid_graph("gas")
-    local boiler = gutils.add_node(graph, "entity-operate", "boiler")
-    boiler.op = "AND"
-    local orand = gutils.add_node(graph, "orand", "boiler")
-    orand.op = "AND"
-    gutils.add_edge(graph, key(boiler), key(orand))
-    gutils.add_edge(graph, key(orand), key(create))
-    assert(not item_fluid.fluid_slot_ok(graph, temperature, {}))
+    local graph, temperature, _, create, node, edge = toy_fluid_graph("gas")
+    edge(node("entity-operate", "heater", "AND"), create)
+    assert(not item_fluid.fluid_slot_ok(graph, temperature))
 end)
 
-test("an item at a fluid position loses what delivery brings it, and nothing else", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    local graph, item_trav = toy_split_graph("widget", "gas")
-    item_fluid.cut_delivery(graph, key(item_trav))
-    local sources = {}
-    for _, prenode in pairs(gutils.prenodes(graph, item_trav)) do
-        if prenode.type == "orand" then
-            prenode = gutils.unique_prenode(graph, prenode)
-        end
-        table.insert(sources, prenode.type)
-    end
-    assert(#sources == 1 and sources[1] == "head", "delivery still feeds the trav")
-    assert(graph.nodes[key("item-launch", "widget")] ~= nil and next(item_trav.dep) ~= nil, "the chain's nodes stay")
-end)
-
-test("mining that needs a fluid moves from the fluid's node to its position", function()
-    data.raw.item = {}
-    data.raw.fluid = {}
-    add_item("widget", true)
-    add_fluid("gas")
-    local graph, _, _, fluid_node, fluid_slot = toy_split_graph("widget", "gas")
-    local ore = gutils.add_node(graph, "entity-mine", "ore")
-    ore.op = "AND"
-    gutils.add_edge(graph, key(fluid_node), key(ore))
-    local boiler = gutils.add_node(graph, "entity-operate-fluid", "boiler")
-    boiler.op = "OR"
-    gutils.add_edge(graph, key(fluid_node), key(boiler))
-    item_fluid.move_position_deps(graph, key(fluid_slot))
-    assert(graph.edges[gutils.ekey({ start = key(fluid_slot), stop = key(ore) })] ~= nil)
-    assert(graph.edges[gutils.ekey({ start = key(fluid_node), stop = key(ore) })] == nil)
-    assert(graph.edges[gutils.ekey({ start = key(fluid_node), stop = key(boiler) })] ~= nil, "an identity role stays")
-end)
-
-test("converted prototypes take the identity's name and look, and the position's flow and stacking", function()
-    local item = {
-        type = "item",
-        name = "widget",
-        icon = "widget.png",
-        icon_size = 64,
-        order = "w",
-        stack_size = 100,
-    }
-    local position_fluid = {
-        type = "fluid",
-        name = "gas",
-        default_temperature = 25,
-        max_temperature = 100,
-        base_color = { 1, 0, 0 },
-        flow_color = { 1, 0, 0 },
-        fuel_value = "1MJ",
-        icon = "gas.png",
-    }
-    local fluid = item_fluid.fluid_from_item(item, position_fluid)
-    assert(fluid.type == "fluid" and fluid.name == "widget" and fluid.icon == "widget.png")
-    assert(fluid.default_temperature == 25 and fluid.max_temperature == 100)
-    assert(fluid.fuel_value == nil and fluid.auto_barrel == false)
-    local position_item = {
-        type = "item",
-        name = "gear",
-        subgroup = "intermediate",
-        order = "g",
-        stack_size = 200,
-        weight = 1000,
-    }
-    local new_item = item_fluid.item_from_fluid(position_fluid, position_item)
-    assert(new_item.type == "item" and new_item.name == "gas" and new_item.icon == "gas.png")
-    assert(new_item.stack_size == 200 and new_item.weight == 1000 and new_item.subgroup == "intermediate")
-end)
-
-test("checks find a material's nodes under the identity reflection put at its position", function()
+test("checks find a material's nodes under the identity reflection put at its position, unless the identity is of the other form", function()
     data.raw.fluid = {}
     add_fluid("gas")
     data.raw.fluid.gas.default_temperature = 25
@@ -487,19 +710,119 @@ test("checks find a material's nodes under the identity reflection put at its po
     -- Items: every node type built for the item follows it
     assert(item_fluid.final_node_key(key("thing", "plate"), renames, type_info) == key("thing", "powder"))
     assert(item_fluid.final_node_key(key("thing-made", "plate"), renames, type_info) == key("thing-made", "powder"))
-    -- Changing form: gear's position has an item named after the fluid now, and oil's position a fluid named after the item
-    assert(item_fluid.final_node_key(key("thing", "gear"), renames, type_info) == key("thing", "oil"))
-    assert(item_fluid.final_node_key(key("liquid", "oil"), renames, type_info) == key("liquid", "gear"))
+    -- An identity of the other form: the position's nodes have no counterpart of their type, so their keys stay
+    assert(item_fluid.final_node_key(key("thing", "gear"), renames, type_info) == key("thing", "gear"))
+    assert(item_fluid.final_node_key(key("liquid", "oil"), renames, type_info) == key("liquid", "oil"))
     -- Fluids: by name, and with a temperature (the identity's own default) or a range (kept)
     assert(item_fluid.final_node_key(key("liquid", "sea"), renames, type_info) == key("liquid", "gas"))
     assert(item_fluid.final_node_key(key("liquid-at", key("sea", "15")), renames, type_info) == key("liquid-at", key("gas", "25")))
     assert(item_fluid.final_node_key(key("liquid-in-range", key("sea", key("nil", "nil"))), renames, type_info) == key("liquid-in-range", key("gas", key("nil", "nil"))))
-    -- A fluid an item became takes its position's temperature (it's a copy of the position's fluid)
     assert(item_fluid.final_node_key(key("liquid-at", key("lake", "15")), renames, type_info) == key("liquid-at", key("rock-melt", "15")))
     -- Other nodes, and everything without renames, keep their keys
     assert(item_fluid.final_node_key(key("process", "plate"), renames, type_info) == key("process", "plate"))
-    assert(item_fluid.final_node_key(key("machine-needing-liquid", "boiler"), renames, type_info) == key("machine-needing-liquid", "boiler"))
+    assert(item_fluid.final_node_key(key("machine-needing-liquid", "heater"), renames, type_info) == key("machine-needing-liquid", "heater"))
     assert(item_fluid.final_node_key(key("thing", "plate"), nil, type_info) == key("thing", "plate"))
+end)
+
+----------------------------------------------------------------------------------------------------
+-- Containers
+----------------------------------------------------------------------------------------------------
+
+local function entry(entry_type, name, amount)
+    return {
+        type = entry_type,
+        name = name,
+        amount = amount,
+    }
+end
+
+test("containers are items a recipe fills with one fluid and another empties into that fluid again", function()
+    local recipes = {
+        ["brine-keg"] = {
+            ingredients = {
+                entry("fluid", "brine", 50),
+                entry("item", "keg", 1),
+            },
+            results = {
+                entry("item", "brine-keg", 1),
+            },
+        },
+        ["empty-brine-keg"] = {
+            ingredients = {
+                entry("item", "brine-keg", 1),
+            },
+            results = {
+                entry("fluid", "brine", 50),
+                entry("item", "keg", 1),
+            },
+        },
+        -- Emptying with a loss still counts
+        ["oil-can"] = {
+            ingredients = {
+                entry("item", "can", 1),
+                entry("fluid", "oil", 50),
+            },
+            results = {
+                entry("item", "oil-can", 1),
+            },
+        },
+        ["empty-oil-can"] = {
+            ingredients = {
+                entry("item", "oil-can", 1),
+            },
+            results = {
+                entry("item", "can", 1),
+                entry("fluid", "oil", 40),
+            },
+        },
+        -- Emptying into another fluid, or without the container back, doesn't
+        ["gas-can"] = {
+            ingredients = {
+                entry("fluid", "gas", 50),
+                entry("item", "can", 1),
+            },
+            results = {
+                entry("item", "gas-can", 1),
+            },
+        },
+        ["vent-gas-can"] = {
+            ingredients = {
+                entry("item", "gas-can", 1),
+            },
+            results = {
+                entry("fluid", "mist", 50),
+                entry("item", "can", 1),
+            },
+        },
+        ["burn-oil-can"] = {
+            ingredients = {
+                entry("item", "oil-can", 1),
+            },
+            results = {
+                entry("fluid", "oil", 50),
+            },
+        },
+        ["keg"] = {
+            ingredients = {
+                entry("item", "ingot", 1),
+            },
+            results = {
+                entry("item", "keg", 1),
+            },
+        },
+    }
+    local containers = item_fluid.fluid_containers(recipes)
+    assert(#containers == 2)
+    assert(containers[1].filled == "brine-keg" and containers[1].held == "brine" and containers[1].vessel == "keg")
+    assert(containers[1].fill == "brine-keg" and containers[1].empty == "empty-brine-keg")
+    assert(containers[2].filled == "oil-can" and containers[2].held == "oil" and containers[2].vessel == "can")
+    assert(containers[2].fill == "oil-can" and containers[2].empty == "empty-oil-can")
+    -- The filled items stay put, and the recipes go by the fluid they hold
+    local items = item_fluid.container_items(containers)
+    assert(items["brine-keg"] and items["oil-can"] and items["keg"] == nil and items["gas-can"] == nil)
+    local by_fluid = item_fluid.container_recipes(containers)
+    assert(by_fluid.brine.fill["brine-keg"] and by_fluid.brine.empty["empty-brine-keg"] and by_fluid.oil.fill["oil-can"] and by_fluid.oil.empty["empty-oil-can"])
+    assert(by_fluid.gas == nil)
 end)
 
 ----------------------------------------------------------------------------------------------------
@@ -568,7 +891,7 @@ test("a recipe with a fluid leaves hand crafting's category and keeps its others
     assert(#cats == 1 and cats[1] == with_fluid)
 end)
 
-test("a pipe connection takes one side of its tile, so a corner keeps its other side", function()
+test("a pipe connection takes its whole tile, and a corner tile only offers its north or south side", function()
     local machine = {
         type = "assembling-machine",
         name = "m",
@@ -577,22 +900,22 @@ test("a pipe connection takes one side of its tile, so a corner keeps its other 
             {
                 production_type = "input",
                 pipe_connections = {
-                    { flow_direction = "input", direction = defines.direction.north, position = { -1, -1 } },
+                    {
+                        flow_direction = "input",
+                        direction = defines.direction.west,
+                        position = { -1, -1 },
+                    },
                 },
             },
         },
     }
     local free = pipe_conns.get_available_pipe_connections(machine)
-    -- A 3x3 machine has 12 connection points: 3 tiles on each side, corners counted once per side
-    assert(#free == 11, "expected 11 free points, got " .. #free)
-    local corner_west_free = false
+    -- A 3x3 machine has 8 connection points, one per edge tile; the taken corner tile is out, whichever way its connection faces
+    assert(#free == 7, "expected 7 free points, got " .. #free)
     for _, point in pairs(free) do
-        assert(not (point.position[1] == -1 and point.position[2] == -1 and point.direction == defines.direction.north), "the taken side is free")
-        if point.position[1] == -1 and point.position[2] == -1 and point.direction == defines.direction.west then
-            corner_west_free = true
-        end
+        assert(not (point.position[1] == -1 and point.position[2] == -1), "the taken corner tile is free")
+        assert(point.direction == defines.direction.north or point.direction == defines.direction.south or point.position[2] == 0, "a corner tile offers its east or west side")
     end
-    assert(corner_west_free, "the corner's other side isn't free")
     -- A heat connection takes its whole tile
     machine.energy_source = {
         type = "heat",
@@ -600,8 +923,8 @@ test("a pipe connection takes one side of its tile, so a corner keeps its other 
             { position = { 1, 1 }, direction = defines.direction.south },
         },
     }
-    assert(#pipe_conns.get_available_pipe_connections(machine) == 9)
-    assert(#pipe_conns.get_available_pipe_connections(machine, true) == 11, "ignoring the energy source frees its tile")
+    assert(#pipe_conns.get_available_pipe_connections(machine) == 6)
+    assert(#pipe_conns.get_available_pipe_connections(machine, true) == 7, "ignoring the energy source frees its tile")
 end)
 
 test("crafting machine ports go unseen until used: one connection per box, drawn only when connected, off without a fluid recipe", function()

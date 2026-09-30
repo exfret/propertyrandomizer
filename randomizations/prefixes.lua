@@ -218,8 +218,12 @@ if assm1 ~= nil and assm2 ~= nil then
     end
 end
 
--- Extra fluid boxes on every crafting machine, for fluids that randomization moves around (see lib/fluid-ports.lua)
+-- Extra fluid boxes on every crafting machine, for fluids that randomization moves around, and every mining drill able to drop items and fill a pipe, since a resource can give either form then (see lib/fluid-ports.lua)
+-- Before the logic looks at machines and drills, so it knows what they can craft and mine
 -- The ports go on whenever unified randomization runs (config.dev_unified), since recipes with fluids move around then (user, 2026-09-29)
 if config.dev_unified then
     fluid_ports.add_crafting_machine_ports()
+end
+if config.item_fluids then
+    fluid_ports.fit_mining_drills(true)
 end

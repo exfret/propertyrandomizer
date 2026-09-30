@@ -768,6 +768,12 @@ function abstract.build(lu, extra_params)
     -- Can we satisfy this AND node that comes right before an OR?
 
     ----------------------------------------
+    add_node("fluid-identity-source", "OR", nil, "", { canonical = "fluid-identity-source" })
+    ----------------------------------------
+    -- Can we get a fluid identity by a way of its own, like pumping it from tiles or emptying its barrels?
+    -- First pass makes one of these next to the head of each fluid trav (item_fluid.move_identity_sources, with items and fluids trading positions); this dummy registers the type for the sorts
+
+    ----------------------------------------
     add_node("cost-unit", "AND", nil, "", { canonical = "cost", cost = 1 })
     ----------------------------------------
     -- Can we make something more expensive?
