@@ -64,6 +64,7 @@ package.loaded["lib/locale"] = {
 }
 
 local gutils = require("lib/graph/graph-utils")
+local lutils = require("lib/logic/logic-utils")
 local dutils = require("lib/data-utils")
 local item_fluid = require("lib/item-fluid")
 local fluid_ports = require("lib/fluid-ports")
@@ -308,6 +309,23 @@ local function toy_graph()
 end
 
 -- An item position as first pass leaves it on the slot: made by a recipe through item-craft, taken by a recipe, with its base to the trav
+-- One of an item, as an ingredient or result list
+local function one_item(name)
+    return {
+        {
+            type = "item",
+            name = name,
+            amount = 1,
+        },
+    }
+end
+
+-- A hand-written recipe's categories in the recycling category and another one that isn't hand crafting's (like Space Age's scrap recycling, which the character can craft too)
+local HAND_WRITTEN_RECYCLING_CATEGORIES = {
+    "by-hand",
+    item_fluid.RECYCLING_CATEGORY,
+}
+
 local function toy_item_slot(graph, node, edge, name)
     local slot = node("item", name, "OR")
     local craft = node("item-craft", name, "OR")
@@ -532,11 +550,20 @@ test("a fluid at an item position moves its recipes and resource to the categori
             results = results,
         }
     end
+    -- A recipe of the shape the recycler generates (recycling.looks_generated), which lib/recycling.lua regenerates
+    local function generated_recycling(name, ingredients, results)
+        local generated = recipe(name, ingredients, results, { item_fluid.RECYCLING_CATEGORY })
+        generated.hidden = true
+        generated.unlock_results = false
+        return generated
+    end
     data.raw.recipe = {
         ["gear-make"] = recipe("gear-make", { { type = "item", name = "a", amount = 1 } }, { { type = "item", name = "gear", amount = 1 } }),
         ["gear-use"] = recipe("gear-use", { { type = "item", name = "gear", amount = 1 } }, { { type = "item", name = "b", amount = 1 } }),
-        ["gear-recycling"] = recipe("gear-recycling", { { type = "item", name = "gear", amount = 1 } }, {}, { item_fluid.RECYCLING_CATEGORY }),
-        ["z-recycling"] = recipe("z-recycling", { { type = "item", name = "z", amount = 1 } }, { { type = "item", name = "gear", amount = 1 } }, { item_fluid.RECYCLING_CATEGORY }),
+        ["gear-recycling"] = generated_recycling("gear-recycling", one_item("gear"), {}),
+        ["z-recycling"] = generated_recycling("z-recycling", one_item("z"), one_item("gear")),
+        -- Hand-written, like Space Age's scrap recycling: no generated shape, so it changes category like any recipe
+        ["junk-recycling"] = recipe("junk-recycling", one_item("junk"), one_item("gear"), HAND_WRITTEN_RECYCLING_CATEGORIES),
     }
     local graph, node, edge = toy_graph()
     local slot, craft, make, use = toy_item_slot(graph, node, edge, "gear")
@@ -546,6 +573,17 @@ test("a fluid at an item position moves its recipes and resource to the categori
     edge(slot, recycle_use)
     local recycle_make = node("recipe", "z-recycling", "AND")
     edge(recycle_make, craft)
+    local junk_make = node("recipe", "junk-recycling", "AND")
+    edge(junk_make, craft)
+    local junk_hand = node("recipe-category", lutils.rcat_key(HAND_WRITTEN_RECYCLING_CATEGORIES, {
+        input = 0,
+        output = 0,
+    }), "OR")
+    edge(junk_hand, junk_make)
+    local junk_fluid = node("recipe-category", lutils.rcat_key(HAND_WRITTEN_RECYCLING_CATEGORIES, {
+        input = 0,
+        output = 1,
+    }), "OR")
     local hand = node("recipe-category", gutils.concat({ fluid_ports.HAND_CATEGORY, 0, 0 }), "OR")
     edge(hand, make)
     edge(hand, use)
@@ -578,6 +616,15 @@ test("a fluid at an item position moves its recipes and resource to the categori
     end
     assert(not maker_feeds and next(recycle_make.dep) == nil, "getting the fluid out of the recycler leads nowhere")
     assert(category_of(graph, recycle_use) == key(recycling), "recycling recipes keep their category")
+    -- A hand-written recipe in the recycling category keeps making the position, now a fluid, in the category with a fluid result: the one hand crafting (its other category isn't hand crafting's, the one traded for the fluid one) can't serve, like the game's scrap recycling once a fluid takes one of its results
+    local junk_feeds = false
+    for _, prenode in pairs(gutils.prenodes(graph, craft)) do
+        if prenode.type == "orand" and key(gutils.unique_prenode(graph, prenode)) == key(junk_make) then
+            junk_feeds = true
+        end
+    end
+    assert(junk_feeds, "a hand-written recycling recipe still makes the fluid")
+    assert(category_of(graph, junk_make) == key(junk_fluid), "a hand-written recycling recipe needs the category of its new fluid counts")
 
     -- A second position of the same recipe adds up: the user also takes another item position that a fluid takes
     local other_slot = node("item", "cog", "OR")
@@ -608,13 +655,22 @@ test("a fluid at an item position moves its recipes and resource to the categori
 end)
 
 -- A fluid as the game's graph has it before first pass splits it: made by a recipe (through fluid-craft-temperature), held in pipes, and leading to its fluid node
-test("a position's takers are the recipes taking it, recycling aside, which is all a fluid there is used through", function()
+test("a position's takers are the recipes taking it, the recycler's generated ones aside, which is all a fluid there is used through", function()
     data.raw.recipe = {
         ["gear-recycling"] = {
             type = "recipe",
             name = "gear-recycling",
             categories = { item_fluid.RECYCLING_CATEGORY },
-            ingredients = { { type = "item", name = "gear", amount = 1 } },
+            hidden = true,
+            unlock_results = false,
+            ingredients = one_item("gear"),
+            results = {},
+        },
+        ["gear-sorting"] = {
+            type = "recipe",
+            name = "gear-sorting",
+            categories = HAND_WRITTEN_RECYCLING_CATEGORIES,
+            ingredients = one_item("gear"),
             results = {},
         },
     }
@@ -622,9 +678,11 @@ test("a position's takers are the recipes taking it, recycling aside, which is a
     local slot = toy_item_slot(graph, node, edge, "gear")
     assert(item_fluid.position_takers(graph, slot) == 1)
     edge(slot, node("recipe", "gear-recycling", "AND"))
-    assert(item_fluid.position_takers(graph, slot) == 1, "recycling doesn't count")
+    assert(item_fluid.position_takers(graph, slot) == 1, "the recycler's generated recycling doesn't count")
+    edge(slot, node("recipe", "gear-sorting", "AND"))
+    assert(item_fluid.position_takers(graph, slot) == 2, "a hand-written recipe in the recycling category counts, since the game keeps it as it is")
     edge(slot, node("recipe", "gear-other-use", "AND"))
-    assert(item_fluid.position_takers(graph, slot) == 2)
+    assert(item_fluid.position_takers(graph, slot) == 3)
     -- An end product: made, never taken
     local lone = node("item", "pole", "OR")
     edge(node("recipe", "pole-make", "AND"), lone)

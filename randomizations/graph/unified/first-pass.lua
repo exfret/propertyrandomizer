@@ -651,10 +651,10 @@ first_pass.execute = function(params)
         end,
         debt = params.debt,
         connect_extra = connect_pair_extra,
-        -- A recycling recipe leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change); the game regenerates it for the item identity under the same name, which the checks see reachable
+        -- A recycling recipe the recycler generates leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change); the game regenerates it for the item identity under the same name, which the checks see reachable
         recipe_may_vanish = function(node_key)
             local recipe = data.raw.recipe[gutils.deconstruct(node_key).name]
-            return config.item_fluids and recipe ~= nil and item_fluid.is_recycling_recipe(recipe)
+            return config.item_fluids and item_fluid.regenerated_recycling(recipe)
         end,
         -- Trades between an item position and a fluid position, where each position takes the other's identity (see cross_type_ok and pair_ok)
         form_swaps = {

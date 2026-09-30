@@ -10,6 +10,7 @@ local dutils = require("lib/data-utils")
 local fluid_ports = require("lib/fluid-ports")
 local furnace_selection = require("lib/furnace-selection")
 local lutils = require("lib/logic/logic-utils")
+local recycling = require("lib/recycling")
 
 local item_fluid = {}
 
@@ -584,6 +585,13 @@ end
 -- The recycler's crafting category (lib/recycling.lua regenerates its recipes), whose recipes take and give items only
 item_fluid.RECYCLING_CATEGORY = "recycling"
 
+-- Whether a recipe is one the recycler generates (recycling.looks_generated), which lib/recycling.lua regenerates after randomization from the recipes it reverses, dropping fluids, so a fluid at one of its positions leads nowhere (see rewire_form_change)
+-- A hand-written recipe in the recycling category stays as reflection leaves it: Space Age's scrap recycling (categories recycling and hand-crafting, space-age/prototypes/recipe.lua) makes a fluid then, and its crafters are those of that fluid count, which hand crafting isn't
+local function regenerated_recycling(recipe)
+    return recipe ~= nil and recycling.looks_generated(recipe)
+end
+item_fluid.regenerated_recycling = regenerated_recycling
+
 item_fluid.is_recycling_recipe = function(recipe)
     for _, cat in pairs(furnace_selection.recipe_categories(recipe)) do
         if cat == item_fluid.RECYCLING_CATEGORY then
@@ -592,9 +600,8 @@ item_fluid.is_recycling_recipe = function(recipe)
     end
     return false
 end
-local is_recycling_recipe = item_fluid.is_recycling_recipe
 
--- The category node a recipe or resource at a position needs once the position holds an identity of the other form, or nil for a recycling recipe (see rewire_form_change)
+-- The category node a recipe or resource at a position needs once the position holds an identity of the other form, or nil for a recipe the recycler generates (see rewire_form_change)
 -- user: an entry of position_users; delta: 1 for a fluid identity at an item position, -1 for an item identity at a fluid position
 local function category_key_after(user, delta)
     local node = user.node
@@ -605,7 +612,7 @@ local function category_key_after(user, delta)
         return item_fluid.resource_category_key(resource, fluids)
     end
     local recipe = data.raw.recipe[node.name]
-    if is_recycling_recipe(recipe) then
+    if regenerated_recycling(recipe) then
         return nil
     end
     local fluids = with_delta(lutils.find_recipe_fluids(recipe), node.fluid_delta)
@@ -614,14 +621,14 @@ local function category_key_after(user, delta)
     return item_fluid.recipe_category_key(recipe, fluids)
 end
 
--- How many recipes take a position, recycling ones aside (with a fluid there they lead nowhere, see rewire_form_change)
+-- How many recipes take a position, the recycler's generated ones aside (with a fluid there they lead nowhere, see rewire_form_change)
 -- A fluid at an item position is used through those recipes only, since an item's own roles (placing, equipping, fueling) go with the item identity, so a fluid at a position none takes is made and never used; first pass prefers positions some recipe takes for fluids (form_swaps candidates)
 item_fluid.position_takers = function(graph, slot)
     local takers = 0
     for _, user in pairs(position_users(graph, slot)) do
         if user.takes > 0 and user.node.type == "recipe" then
             local recipe = data.raw.recipe[user.node.name]
-            if recipe == nil or not is_recycling_recipe(recipe) then
+            if recipe == nil or not regenerated_recycling(recipe) then
                 takers = takers + 1
             end
         end
@@ -696,7 +703,7 @@ end
 
 -- Rewires the split graph for a pair of different forms, once monotone matching connected it (first pass's connect_extra, on a copy of the graph per matching)
 -- The recipes at the position take or make the identity's form now, so each needs the recipe-category of its new fluid counts (see recipe_category_key; several positions of one recipe can change, so the node carries the counts it gained as fluid_delta), and a resource mined into the position needs the resource-category of its counts
--- A recycler takes and gives items only (lib/recycling.lua drops fluid ingredients when it regenerates recycling recipes), so with a fluid at the position its recycling recipes lead nowhere: the recycling recipe taking it needs the false node, and a recycling recipe making it loses its orand into the position's item-craft node
+-- A recycler's generated recipes take and give items only (lib/recycling.lua drops fluid ingredients when it regenerates them), so with a fluid at the position they lead nowhere: the recycling recipe taking it needs the false node, and a recycling recipe making it loses its orand into the position's item-craft node; a hand-written recipe in the recycling category, like scrap recycling, changes category like any other (regenerated_recycling)
 -- A recipe left without a category node (two fluids on one furnace, which form_change_ok keeps from happening one pair at a time) leads nowhere too, so the matching's gate sees it
 item_fluid.rewire_form_change = function(graph, slot_key, trav_key)
     local slot = graph.nodes[slot_key]
@@ -710,7 +717,7 @@ item_fluid.rewire_form_change = function(graph, slot_key, trav_key)
         local node = user.node
         local target = category_key_after(user, delta)
         if target == nil then
-            -- A recycling recipe: taking the position leads nowhere, and so does making it
+            -- A recipe the recycler generates: taking the position leads nowhere, and so does making it
             if user.takes > 0 then
                 make_unreachable(graph, node_key)
             end
