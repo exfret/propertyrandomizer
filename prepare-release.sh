@@ -105,8 +105,9 @@ mkdir -p "$STAGE_PATH"
 rsync -a --files-from="$STAGE_ROOT/files.txt" "$PROJECT_DIR/" "$STAGE_PATH/"
 
 # -------------------------------------------------------------------
-# 3. Verify development handlers are disabled in the source being shipped.
-#    Keep this safe in the checkout too, rather than patching only the package.
+# 3. Turn off the unified randomizations still in development in the release
+#    (the hidden setting propertyrandomizer-dev-unified, on in the checkout), then verify the copied settings.lua
+#    forced_value keeps it off even for players whose saved settings came from a development build (for a hidden setting it forces the value, https://wiki.factorio.com/Tutorial:Mod_settings)
 # -------------------------------------------------------------------
 "$RELEASE_PYTHON" - "$STAGE_PATH/settings.lua" <<'PYTHON'
 import re
@@ -114,12 +115,17 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as f:
     source = f.read()
+source, count = re.subn(r'(name = "propertyrandomizer-dev-unified",(?:[^{}])*?)default_value = true,', r"\g<1>default_value = false,\n        forced_value = false,", source)
+if count > 1:
+    sys.exit("Error: more than one propertyrandomizer-dev-unified setting in settings.lua")
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    f.write(source)
 match = re.search(r'name = "propertyrandomizer-dev-unified",([^{}]*)', source)
 if match is None or any(re.search(field + r"\s*=\s*" + value + r"\s*,", match[1]) is None
                         for field, value in (("default_value", "false"), ("forced_value", "false"), ("hidden", "true"))):
     sys.exit("Error: propertyrandomizer-dev-unified must default to false and be forced false while hidden")
 PYTHON
-echo "Verified development handlers require preview in the release"
+echo "Turned off development unified randomizations in the release (the unified preview still turns them on)"
 
 # -------------------------------------------------------------------
 # 4. Update info.json version in the release

@@ -10,9 +10,16 @@ data = {
 }
 mods = {}
 dofile("settings.lua")
+-- In the checkout the development handlers are on by default (hidden, not forced, so tests can pin them either way)
 local dev_setting = setting_prototypes["propertyrandomizer-dev-unified"]
-assert(dev_setting.default_value == false)
-assert(dev_setting.hidden == true and dev_setting.forced_value == false)
+assert(dev_setting.default_value == true)
+assert(dev_setting.hidden == true and dev_setting.forced_value == nil)
+-- What prepare-release.sh ships (it checks the copy it patches has exactly this)
+local release_setting = {
+    default_value = false,
+    forced_value = false,
+    hidden = true,
+}
 
 -- Keep control.lua's real callback; stop at the graph-loading boundary after the force setup.
 local init
@@ -41,13 +48,16 @@ package.loaded["lib/graph/context-sort"] = {}
 package.loaded["scripts/explorer-sorts"] = {}
 package.loaded["lib/graph/graph-utils"] = {}
 
-local function check(preview, saved_dev, test_helper, expected)
+-- setting is the dev-unified prototype, saved_dev its value in mod-settings.dat (nil for none)
+local function check(setting, preview, saved_dev, test_helper, expected)
     settings = { startup = {} }
     settings.startup["propertyrandomizer-unified-preview"] = { value = preview }
-    -- Hidden forced_value overrides saved settings; the test helper removes that restriction.
+    -- Hidden forced_value overrides saved settings; the test helper removes that restriction
     local dev_value = saved_dev
-    if not test_helper then
-        dev_value = dev_setting.forced_value
+    if setting.hidden == true and setting.forced_value ~= nil and test_helper == false then
+        dev_value = setting.forced_value
+    elseif dev_value == nil then
+        dev_value = setting.default_value
     end
     settings.startup["propertyrandomizer-dev-unified"] = { value = dev_value }
     local features = dofile("helper-tables/feature-flags.lua")
@@ -69,8 +79,13 @@ local function check(preview, saved_dev, test_helper, expected)
     assert(force.bulk_inserter_capacity_bonus == 3, "bulk inserter bonus not granted at the start")
 end
 
-check(false, false, false, false)
-check(false, true, false, false)
-check(true, false, false, true)
-check(false, true, true, true)
-print("Preview isolation: source defaults, stale dev settings, preview and explicit dev mode passed, and the start-of-game unlocks are granted in every game")
+-- The checkout: on unless a test pins it off
+check(dev_setting, false, nil, false, true)
+check(dev_setting, false, false, true, false)
+check(dev_setting, true, false, true, true)
+-- A release: off, even with a value saved by a development build, unless the preview turns it on
+check(release_setting, false, nil, false, false)
+check(release_setting, false, true, false, false)
+check(release_setting, true, false, false, true)
+check(release_setting, false, true, true, true)
+print("Preview isolation: checkout and release defaults, stale dev settings, preview and explicit dev mode passed, and the start-of-game unlocks are granted in every game")

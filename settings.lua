@@ -198,10 +198,10 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-dev-unified",
-        -- Preview is the player-facing opt-in. Tests unhide this setting to enable development handlers independently.
-        -- Force it off while hidden so settings saved by older development builds cannot enable them.
-        default_value = false,
-        forced_value = false,
+        -- Runs the unified randomizations still in development (the forced handlers in randomizations/graph/unified/execute.lua) in every game
+        -- prepare-release.sh turns it off in releases (forced off, so settings saved by development builds can't turn it on), and tests/configs.txt pins it per suite
+        -- The unified preview (propertyrandomizer-unified-preview) turns them on too, so it's how releases get them
+        default_value = true,
         order = "e-[unified]-a",
         hidden = true,
     },
@@ -301,9 +301,6 @@ data:extend({
         name = "propertyrandomizer-unified-entity",
         default_value = false,
         order = "e-k[entity]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -311,9 +308,6 @@ data:extend({
         name = "propertyrandomizer-unified-entity-biters",
         default_value = false,
         order = "e-ka[entity-biters]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -334,9 +328,6 @@ data:extend({
         name = "propertyrandomizer-tech-tree-rebuild",
         default_value = false,
         order = "f-b[rebuild]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -344,9 +335,6 @@ data:extend({
         name = "propertyrandomizer-planetary-oceans",
         default_value = false,
         order = "f-c[planetary-oceans]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -354,9 +342,6 @@ data:extend({
         name = "propertyrandomizer-planetary-resources",
         default_value = false,
         order = "f-d[planetary-resources]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -364,9 +349,6 @@ data:extend({
         name = "propertyrandomizer-planetary-lightning",
         default_value = false,
         order = "f-e[planetary-lightning]",
-        -- Hidden and off for now, and not in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -374,9 +356,6 @@ data:extend({
         name = "propertyrandomizer-planetary-freezing",
         default_value = false,
         order = "f-f[planetary-freezing]",
-        -- Hidden and off for now, and not in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
@@ -384,9 +363,6 @@ data:extend({
         name = "propertyrandomizer-planetary-locks",
         default_value = false,
         order = "f-g[planetary-locks]",
-        -- Hidden for now, in the unified preview
-        hidden = true,
-        forced_value = false,
     },
     {
         setting_type = "startup",
