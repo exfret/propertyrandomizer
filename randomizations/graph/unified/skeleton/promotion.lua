@@ -1401,6 +1401,17 @@ promotion.new = function(params)
             for _, edge_key in pairs(added_edges) do
                 gutils.remove_edge(graph, edge_key)
             end
+            for _, edge in pairs(removed_edges) do
+                gutils.add_edge(graph, edge.start, edge.stop, edge)
+            end
+        end
+        clear_cache()
+        if ok and should_commit then
+            collect_payments()
+        end
+        return ok
+    end
+
     -- Whether every recipe among the dependents of these pebbles (of one recipe, no longer establishable at their ranks) keeps some context it can be established in, following dependents whose pebbles can't be established either: a rewire must never leave a recipe reachable nowhere, which would fail the attempt when the recipe is anchored (required_contexts)
     -- Promised pebbles need no following: a promised pebble's backing is promised too, so one that used the recipe's pebble is caught by try_rewires on the recipe. Bounded, since a common product's dependents are most of the graph (a recipe making one is promised anyway)
     -- Returns whether they do (and how many pebbles it took), and otherwise why not
@@ -1504,17 +1515,6 @@ promotion.new = function(params)
             recipe_info[recipe_key] = nil
             clear_cache()
             log("Promotion: " .. recipe_key .. " can't require " .. rcat_key .. ": " .. reason)
-        end
-        return ok
-    end
-
-            for _, edge in pairs(removed_edges) do
-                gutils.add_edge(graph, edge.start, edge.stop, edge)
-            end
-        end
-        clear_cache()
-        if ok and should_commit then
-            collect_payments()
         end
         return ok
     end

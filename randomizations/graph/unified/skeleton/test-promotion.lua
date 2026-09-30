@@ -544,6 +544,51 @@ test("a head's new base only has to come before the head's dependent, like a res
     assert(prom.head_candidate_ok(head, base_late, contexts))
 end)
 
+-- Whether node_key is among the nodes currently feeding the recipe in promotion's graph
+local function recipe_needs(prom, node_key)
+    for _, pre_key in pairs(prom.pre_keys_of(r)) do
+        if pre_key == node_key then
+            return true
+        end
+    end
+    return false
+end
+
+test("a recipe can require a further category node that comes before it, like the fluid category of its planned shape", function()
+    local graph = build_graph(true)
+    -- A crafter z's mine also needs, so it sorts before r in every context
+    local crafter = key("mine", "crafter")
+    gutils.add_node(graph, "mine", "crafter", {
+        op = "AND",
+    })
+    gutils.add_edge(graph, key("start", ""), crafter)
+    gutils.add_edge(graph, crafter, key("mine", "z"))
+    -- A fresh promotion state has it (a misplaced block once defined it inside try_rewires, so every game with recipe shapes crashed before any rewire ran)
+    local prom = promotion.new({
+        graph = graph,
+    })
+    assert(#prom.promise_mechanics() == 0)
+    assert(prom.require_recipe_category(r, crafter))
+    assert(recipe_needs(prom, crafter))
+    -- Asking again changes nothing
+    assert(prom.require_recipe_category(r, crafter))
+end)
+
+test("a recipe can't require a category node only its own product leads to, and is left as it was", function()
+    local graph = build_graph(true)
+    local crafter = key("mine", "crafter")
+    gutils.add_node(graph, "mine", "crafter", {
+        op = "AND",
+    })
+    gutils.add_edge(graph, key("item", "p"), crafter)
+    local prom = promotion.new({
+        graph = graph,
+    })
+    assert(#prom.promise_mechanics() == 0)
+    assert(not prom.require_recipe_category(r, crafter))
+    assert(not recipe_needs(prom, crafter))
+end)
+
 ----------------------------------------------------------------------
 -- Debt mode: promotion over a superposition of two worlds (see lib/graph/superpose.lua)
 ----------------------------------------------------------------------
