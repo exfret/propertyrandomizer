@@ -51,7 +51,7 @@ end
 -- Ingredients used per furnace pool, for recipe randomization: recipes one furnace crafts mustn't share an ingredient
 -- Any shared ingredient counts, which is stricter than the selection rules but never lets a collision through
 -- categories_of (optional): a recipe's categories where they'll end up (like after recipe-category randomization), else its own; raw (optional): as in pools
--- Returns a tracker with pools_of(recipe) (the pool indices whose furnaces craft it), take(recipe, material) (the recipe uses the material) and is_taken(pool_inds, material)
+-- Returns a tracker with pools_of(recipe) (the pool indices whose furnaces craft it), take(recipe, material) (the recipe uses the material), reserve(recipe, material) and release(recipe) (holding a material for a recipe until it's placed), and is_taken(pool_inds, material, recipe) (used, or held for another recipe than recipe)
 furnace_selection.tracker = function(categories_of, raw)
     local pools = furnace_selection.pools(raw)
     local taken = {}
@@ -63,14 +63,44 @@ furnace_selection.tracker = function(categories_of, raw)
         local categories = categories_of ~= nil and categories_of(recipe) or nil
         return furnace_selection.pools_for(pools, categories or furnace_selection.recipe_categories(recipe))
     end
+    -- Materials held for a recipe that isn't placed yet, per pool, as material key --> recipe name
+    local reserved = {}
+    for pool_ind, _ in pairs(pools) do
+        reserved[pool_ind] = {}
+    end
     tracker.take = function(recipe, material)
         for _, pool_ind in pairs(tracker.pools_of(recipe)) do
             taken[pool_ind][material.type .. "-" .. material.name] = true
         end
     end
-    tracker.is_taken = function(pool_inds, material)
+    -- Holds a material for a recipe in its pools until release(recipe), so no other recipe its furnaces craft takes it first
+    -- For what a recipe falls back to without asking the tracker, like its vanilla ingredients when nothing else fits; the first recipe to reserve a material keeps it
+    tracker.reserve = function(recipe, material)
+        for _, pool_ind in pairs(tracker.pools_of(recipe)) do
+            local material_key = material.type .. "-" .. material.name
+            if reserved[pool_ind][material_key] == nil then
+                reserved[pool_ind][material_key] = recipe.name
+            end
+        end
+    end
+    tracker.release = function(recipe)
+        for pool_ind, _ in pairs(pools) do
+            for material_key, holder in pairs(reserved[pool_ind]) do
+                if holder == recipe.name then
+                    reserved[pool_ind][material_key] = nil
+                end
+            end
+        end
+    end
+    -- Whether a material is used, or held for a recipe other than recipe (optional), in any of these pools
+    tracker.is_taken = function(pool_inds, material, recipe)
+        local material_key = material.type .. "-" .. material.name
         for _, pool_ind in pairs(pool_inds) do
-            if taken[pool_ind][material.type .. "-" .. material.name] ~= nil then
+            if taken[pool_ind][material_key] ~= nil then
+                return true
+            end
+            local holder = reserved[pool_ind][material_key]
+            if holder ~= nil and (recipe == nil or holder ~= recipe.name) then
                 return true
             end
         end

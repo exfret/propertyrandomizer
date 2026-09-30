@@ -491,6 +491,14 @@ recipe_ingredients.custom_prereq_search = function(params)
     local furnace_pools_of = furnaces.pools_of
     local take = furnaces.take
     local is_taken = furnaces.is_taken
+    local reserve = furnaces.reserve
+    local release = furnaces.release
+    -- The recipe whose slot a dependent fills, which sets its budget and what it falls back to
+    local function slot_recipe_of(node)
+        -- The original slot recipe sets the budget even when first pass changes which recipe fills it.
+        local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
+        return data.raw.recipe[slot_node.name], slot_node
+    end
     -- Ingredients that won't change: all of those in recipes this search leaves alone, and those kept in recipes it randomizes
     local to_process = {}
     for _, dep in pairs(sorted_deps) do
@@ -508,6 +516,20 @@ recipe_ingredients.custom_prereq_search = function(params)
                     if result.type == ing.type and result.name == ing.name then
                         take(recipe, ing)
                     end
+                end
+            end
+        end
+    end
+    -- A recipe whose search fails falls back to its slot's vanilla ingredients without asking the tracker, so those are held for it until it's done
+    -- Otherwise a recipe searched earlier could take one as a new ingredient in the same furnace (copper cable falling back to copper plate after firearm magazines took it in smelting, base preview seed 1 on 2026-09-30)
+    for _, dep in pairs(sorted_deps) do
+        local node = random_graph.nodes[dep]
+        if node.type == "recipe" and to_process[node.name] ~= nil then
+            local dependent_recipe = data.raw.recipe[node.name]
+            local slot_recipe = slot_recipe_of(node)
+            if dependent_recipe ~= nil and slot_recipe ~= nil then
+                for _, ing in pairs(slot_recipe.ingredients or {}) do
+                    reserve(dependent_recipe, ing)
                 end
             end
         end
@@ -551,9 +573,7 @@ recipe_ingredients.custom_prereq_search = function(params)
             assert(dependent_recipe ~= nil)
             -- Ignore the heads etc., just find good ings via search
 
-            -- The original slot recipe sets the budget even when first pass changes which recipe fills it.
-            local slot_node = (do_first_pass and random_graph.nodes[trav_to_slot[key(node.type, first_pass.make_trav_name(node.name))] ]) or node
-            local slot_recipe = data.raw.recipe[slot_node.name]
+            local slot_recipe, slot_node = slot_recipe_of(node)
             assert(slot_recipe ~= nil)
             log("Old context: " .. slot_node.name)
 
@@ -591,7 +611,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                             pin_is_own = true
                         end
                     end
-                    if not pin_is_own and is_taken(dependent_pools, material) then
+                    if not pin_is_own and is_taken(dependent_pools, material, dependent_recipe) then
                         log("Furnace selection: pinned ingredient " .. material_key .. " of " .. dependent_recipe.name .. " is already used by another recipe its furnaces craft")
                     end
                 end
@@ -658,7 +678,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                             end
 
                             -- Don't share an ingredient with another recipe the same furnace crafts
-                            if is_taken(dependent_pools, prereq_owner) then
+                            if is_taken(dependent_pools, prereq_owner, dependent_recipe) then
                                 return false
                             end
 
@@ -933,6 +953,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                         take(dependent_recipe, prereq_owner)
                     end
                 end
+                -- Its ingredients are taken now, so what was held for its fallback is free again
+                release(dependent_recipe)
 
                 if prom ~= nil and #required_contexts > 0 then
                     prom.resolve(dep, new_owner_keys, required_contexts)

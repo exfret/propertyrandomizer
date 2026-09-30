@@ -26,8 +26,10 @@ recipe_category.stay_chance = 0.5
 
 -- Furnaces pick their recipe by ingredient, so recipes one furnace can craft mustn't share one (see lib/furnace-selection.lua)
 -- taken[pool index][ingredient key] marks ingredients of recipes that pool's furnaces craft; recipe-ingredients then checks again with the final ingredients
+-- reserved[pool index][ingredient key] holds the ingredient of a claimed recipe that pool's furnaces craft in vanilla until the recipe is placed: the shuffle falls back to a recipe's vanilla category without asking validate, so another recipe moved into that furnace mustn't take it first (steel plate falling back to smelting after iron gear wheels took iron plate there, base preview seed 2 on 2026-09-30)
 local pools
 local taken
+local reserved
 -- Recipes whose category this handler randomizes; the rest stay where they are
 local claimed_recipes
 -- Keep track of whether we've claimed a category so we only give it a bonus the first time
@@ -37,23 +39,28 @@ local cats_keys
 recipe_category.initialize = function()
     pools = furnace_selection.pools()
     taken = nil
+    reserved = nil
     claimed_recipes = {}
     claimed_category = {}
     cats_keys = {}
 end
 
--- Recipes that keep their category keep their ingredients in its furnaces; only known once claiming is done, so this runs on first use
+-- Recipes that keep their category keep their ingredients in its furnaces, and claimed recipes a furnace crafts in vanilla get theirs held (see reserved); only known once claiming is done, so this runs on first use
 local function get_taken()
     if taken == nil then
         taken = {}
+        reserved = {}
         for pool_ind, _ in pairs(pools) do
             taken[pool_ind] = {}
+            reserved[pool_ind] = {}
         end
         for recipe_name, recipe in pairs(lu.recipes) do
-            if claimed_recipes[recipe_name] == nil then
-                for _, pool_ind in pairs(furnace_selection.pools_for(pools, furnace_selection.recipe_categories(recipe))) do
-                    for _, ing in pairs(recipe.ingredients or {}) do
+            for _, pool_ind in pairs(furnace_selection.pools_for(pools, furnace_selection.recipe_categories(recipe))) do
+                for _, ing in pairs(recipe.ingredients or {}) do
+                    if claimed_recipes[recipe_name] == nil then
                         taken[pool_ind][gutils.key(ing)] = true
+                    elseif reserved[pool_ind][gutils.key(ing)] == nil then
+                        reserved[pool_ind][gutils.key(ing)] = recipe_name
                     end
                 end
             end
@@ -131,10 +138,14 @@ recipe_category.validate = function(graph, base, head, extra)
                 return false
             end
 
-            -- Also check that this one ingredient isn't used by another recipe these furnaces craft
+            -- Also check that this one ingredient isn't used by another recipe these furnaces craft, or held for one
             local unique_ing = recipe_prot.ingredients[1]
             for _, pool_ind in pairs(base_pools) do
                 if get_taken()[pool_ind][gutils.key(unique_ing)] then
+                    return false
+                end
+                local holder = reserved[pool_ind][gutils.key(unique_ing)]
+                if holder ~= nil and holder ~= head_owner.name then
                     return false
                 end
             end
@@ -172,6 +183,15 @@ recipe_category.process = function(graph, base, head)
 
     local base_owner = gutils.get_owner(graph, base)
 
+    -- Placed now, so what was held for it is free again, and its ingredient is taken wherever it went
+    get_taken()
+    for _, held in pairs(reserved) do
+        for ing_key, holder in pairs(held) do
+            if holder == head_owner.name then
+                held[ing_key] = nil
+            end
+        end
+    end
     local base_pools = furnace_selection.pools_for(pools, lu.rcats[base_owner.name].cats)
     if #base_pools > 0 then
         local recipe_prot = lu.recipes[head_owner.name]

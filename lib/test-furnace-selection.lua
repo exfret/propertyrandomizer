@@ -157,4 +157,24 @@ test("the tracker only blocks ingredients used by recipes a common furnace craft
     assert(moved.is_taken(moved.pools_of(data.raw.recipe.dumpling), item("clay")))
 end)
 
+test("a reserved ingredient is held for its recipe until it's placed, since a fallback to it doesn't ask the tracker", function()
+    add_furnace("oven", { "baking", "roasting" })
+    add_recipe("bread", { "baking" }, { item("dough") })
+    add_recipe("crust", { "roasting" }, { item("flour") })
+    local tracker = furnace_selection.tracker()
+    -- Bread may fall back to dough, so crust can't take dough in the oven meanwhile
+    tracker.reserve(data.raw.recipe.bread, item("dough"))
+    assert(tracker.is_taken(tracker.pools_of(data.raw.recipe.crust), item("dough"), data.raw.recipe.crust))
+    -- Bread itself can still choose it
+    assert(not tracker.is_taken(tracker.pools_of(data.raw.recipe.bread), item("dough"), data.raw.recipe.bread))
+    -- A later reservation doesn't take it over
+    tracker.reserve(data.raw.recipe.crust, item("dough"))
+    assert(tracker.is_taken(tracker.pools_of(data.raw.recipe.crust), item("dough"), data.raw.recipe.crust))
+    -- Once bread is placed with something else, dough is free again
+    tracker.release(data.raw.recipe.bread)
+    tracker.take(data.raw.recipe.bread, item("rye"))
+    assert(not tracker.is_taken(tracker.pools_of(data.raw.recipe.crust), item("dough"), data.raw.recipe.crust))
+    assert(tracker.is_taken(tracker.pools_of(data.raw.recipe.crust), item("rye"), data.raw.recipe.crust))
+end)
+
 print(num_passed .. " tests passed")
