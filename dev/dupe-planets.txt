@@ -1,0 +1,13 @@
+# Planets whose copies get recolored graphics (dev/make-dupe-graphics.py), in the line format of dev/dupe-entities.txt:
+#   name rotate dupes=D2                                every pixel's hue turned by D2 degrees (a whole other world, not a painted part)
+# dupes= gives one rotation per copy; lib/dupe-planets.lua copies a planet iff its icon has a recolor for that copy.
+# What gets recolored: the planet's icon, its star map icon, and the icons of the technologies discovering it.
+# The copy's science packs are listed in dev/dupe-items.txt (they're copied with the planet, never on their own).
+# Check a line with: dev/make-dupe-graphics.py --dump ... --preview DIR --only NAME
+# Chosen so the five copies differ from every original and from each other: Nauvis with red seas and blue land, green lava on
+# Vulcanus, a blue Gleba, a pale green Fulgora with pink lightning, and an olive Aquilo
+nauvis rotate dupes=180
+vulcanus rotate dupes=90
+gleba rotate dupes=150
+fulgora rotate dupes=120
+aquilo rotate dupes=180

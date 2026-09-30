@@ -51,10 +51,12 @@ require("config")
 -- Load compat code
 require("compat/master")
 
--- Duplicates of the entities with recolored graphics (lib/dupe.lua), before anything reads the prototypes, so they get randomized like everything else
+-- Duplicates of the planets, entities and items with recolored graphics (lib/dupe-planets.lua, lib/dupe.lua), before anything reads the prototypes, so they get randomized like everything else
 local dupe = require("lib/dupe")
+local dupe_planets = require("lib/dupe-planets")
 if config.dupes then
     log("Adding duplicates")
+    dupe_planets.execute()
     dupe.execute()
 end
 

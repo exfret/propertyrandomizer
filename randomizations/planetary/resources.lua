@@ -238,6 +238,23 @@ resources.add_repair = function(repair)
         data:extend({
             repair.control,
         })
+        -- The helper remembers each autoplace set it made (its patch counts live in two noise expressions it put in data.raw); when data.raw was put back to an earlier state since (a stage undone or rolled again), those expressions are gone while the helper still counts on them, so they're put back first
+        local count_suffixes = {
+            "_regular_resource_patch_set_count",
+            "_starting_resource_patch_set_count",
+        }
+        for _, suffix in pairs(count_suffixes) do
+            local count_name = repair.settings.autoplace_set_name .. suffix
+            if data.raw["noise-expression"][count_name] == nil then
+                data:extend({
+                    {
+                        type = "noise-expression",
+                        name = count_name,
+                        expression = 0,
+                    },
+                })
+            end
+        end
         local autoplace = resource_autoplace.resource_autoplace_settings(repair.settings)
         repair.probability_name = noise_name(repair.planet_name, repair.resource_name, "extra", "probability")
         repair.richness_name = noise_name(repair.planet_name, repair.resource_name, "extra", "richness")

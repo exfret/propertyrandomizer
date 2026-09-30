@@ -22,6 +22,10 @@
 # armor, the character's animation sheets for it (lib/dupe.lua copies those animations for the armor's dupe). How many
 # dupes a thing gets is its line's dupes= list (one color, one dupe; without the list, every number up to --dupes).
 #
+# Planets (dev/dupe-planets.txt) are copied whole by lib/dupe-planets.lua, so their line uses the rotate mode: every pixel's
+# hue turned by the given degrees, on the planet's icon, its star map icon and the image of the technology discovering it.
+# A planet copy's science packs are item lines like any other (they're only copied along with their planet).
+#
 # Which sheets are "body" comes from a data.raw dump (dev/run-tests.py --dump-data writes one per run): every PNG
 # reachable from the entity prototype except shadows, glows, lights, layers the game tints at runtime (force/player,
 # recipe, module colors), and the tables listed in SKIP_KEYS (shared pipe covers, connectors, reflections, remnants,
@@ -34,7 +38,7 @@
 #
 # Usage:
 #   dev/make-dupe-graphics.py --dump PATH/data-raw-dump.json [--dupes 3] [--entities dev/dupe-entities.txt]
-#       [--items dev/dupe-items.txt] [--jobs 4] [--only NAME ...] [--preview DIR] [--list]
+#       [--items dev/dupe-items.txt] [--planets dev/dupe-planets.txt] [--jobs 4] [--only NAME ...] [--preview DIR] [--list]
 #   The dump should come from a run with the dupes off and the mods whose entities are listed (Space Age for the full list).
 #   --preview writes one image per entity (icon and main sheets: original, then each dupe) to look the settings over.
 #   --inspect writes one image per entity with the mask itself drawn (magenta over grey) next to the original and dupe 2,
@@ -113,7 +117,7 @@ def parse_list(path, kind):
             params["hues"] = []
             params["dupes"] = []
             for part in parts[1:]:
-                if part in ("whole", "grey"):
+                if part in ("whole", "grey", "rotate"):
                     params["mode"] = part
                     continue
                 key, _, value = part.partition("=")
@@ -126,9 +130,11 @@ def parse_list(path, kind):
                 elif key in PAINT_DEFAULTS and value != "":
                     params[key] = float(value)
                 else:
-                    sys.exit(f"{path}:{number}: expected whole, grey, hue=H[,H2], dupes=H[/S],H[/S], or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
+                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
             if params["mode"] == "paint" and not params["hues"]:
                 sys.exit(f"{path}:{number}: {name} needs hue= (or whole)")
+            if params["mode"] == "rotate" and not params["dupes"]:
+                sys.exit(f"{path}:{number}: {name} needs dupes= with each dupe's hue rotation in degrees")
             if params["low"] is None:
                 params["low"] = max(0.1, params["sat"] * 0.5)
             if params["strength"] is None:
@@ -317,12 +323,33 @@ def gather_item(raw, name, protected):
     return files
 
 
+def gather_planet(raw, name, protected):
+    """A planet's icons and star map icons, and the icons of the technologies discovering it (not the constant overlay they share)"""
+    planet = raw.get("planet", {}).get(name)
+    if planet is None:
+        return None
+    files = icon_filenames(planet)
+    if planet.get("starmap_icon"):
+        files.add(planet["starmap_icon"])
+    for icon in planet.get("starmap_icons") or []:
+        if icon.get("icon"):
+            files.add(icon["icon"])
+    for tech in raw.get("technology", {}).values():
+        for effect in tech.get("effects") or []:
+            if effect.get("type") == "unlock-space-location" and effect.get("space_location") == name:
+                files |= {f for f in icon_filenames(tech) if "/constants/" not in f}
+    return files
+
+
+GATHERERS = {"entity": gather_entity, "item": gather_item, "planet": gather_planet}
+
+
 def gather(raw, entries):
     """(name -> set of original filenames (sheets and icons), filename -> protected rectangles)"""
     per_name = {}
     protected = {}
     for name, params in entries.items():
-        files = (gather_item if params["kind"] == "item" else gather_entity)(raw, name, protected)
+        files = GATHERERS[params["kind"]](raw, name, protected)
         if files is None:
             print("not in the dump, skipped:", name, file=sys.stderr)
             continue
@@ -449,7 +476,21 @@ def dupe_color(color):
     return tuple(float(c) for c in rgb)
 
 
+def hue_rotate(rgba, degrees):
+    """Every pixel's hue turned by degrees (a rotation about the grey axis, so greys stay grey): for planets, a whole other world rather than a painted part"""
+    theta = math.radians(degrees)
+    c, s = math.cos(theta), math.sin(theta)
+    k = (1 - c) / 3
+    r = math.sqrt(1 / 3) * s
+    m = np.array([[c + k, k - r, k + r], [k + r, c + k, k - r], [k - r, k + r, c + k]], dtype=np.float32)
+    out = rgba.copy()
+    out[..., :3] = np.clip(rgba[..., :3] @ m.T, 0, 1)
+    return out
+
+
 def recolor(rgba, params, color, weight=None):
+    if params["mode"] == "rotate":
+        return hue_rotate(rgba, color[0])
     if params["mode"] == "whole":
         return colorize(rgba, dupe_color(color), np.ones(rgba.shape[:2], dtype=np.float32) * (rgba[..., 3] > 0), params["strength"])
     if weight is None:
@@ -469,7 +510,7 @@ def process(job):
     filename, params, colors, rects = job
     mod, rest = resolve(filename)
     rgba = load_rgba(source_path(filename))
-    weight = paint_mask(rgba, params) if params["mode"] != "whole" else None
+    weight = paint_mask(rgba, params) if params["mode"] in ("paint", "grey") else None
     written = []
     for n, color in sorted(colors.items()):
         out = recolor(rgba, params, color, weight)
@@ -491,12 +532,15 @@ def most_painted(sheets, params, count):
         image = Image.open(source_path(f)).convert("RGBA")
         image.thumbnail((512, 512))
         rgba = np.asarray(image).astype(np.float32) / 255
-        return float(paint_mask(rgba, params).sum()) if params["mode"] != "whole" else float((rgba[..., 3] > 0).sum())
+        return float(paint_mask(rgba, params).sum()) if params["mode"] in ("paint", "grey") else float((rgba[..., 3] > 0).sum())
     return sorted(sheets, key=painted_pixels, reverse=True)[:count]
 
 
 def views(files, params, sheet_count):
     """(file, crop size, zoom) to show: the icons at 4x (their full-size mip), then the sheets with the most paint at 2x"""
+    if params["mode"] == "rotate":
+        # Planets: whole images, the small icons enlarged
+        return [(f, 64, 4) if Image.open(source_path(f)).width <= 64 else (f, 512, 1) for f in files]
     icons = [f for f in files if "/icons/" in f]
     sheets = [f for f in files if "/icons/" not in f]
     return [(f, 64, 4) for f in icons[:4]] + [(f, 260, 2) for f in most_painted(sheets, params, sheet_count)]
@@ -546,7 +590,7 @@ def write_inspection(name, files, params, colors, rects_by_file, out_dir):
     for f, crop_size, zoom in views(files, params, 1):
         rgba = load_rgba(source_path(f))
         rgba = rgba[:min(rgba.shape[0], crop_size), :min(rgba.shape[1], crop_size)]
-        weight = paint_mask(rgba, params) if params["mode"] != "whole" else np.ones(rgba.shape[:2], dtype=np.float32) * (rgba[..., 3] > 0)
+        weight = paint_mask(rgba, params) if params["mode"] in ("paint", "grey") else np.ones(rgba.shape[:2], dtype=np.float32) * (rgba[..., 3] > 0)
         grey = luminance(rgba[..., :3])[..., None] * np.ones(3, dtype=np.float32) * 0.6 + 0.2
         shown = rgba.copy()
         shown[..., :3] = grey * (1 - weight[..., None]) + np.array([1.0, 0.1, 0.9], dtype=np.float32) * weight[..., None]
@@ -578,19 +622,21 @@ def main():
     parser.add_argument("--dump", required=True, help="data-raw-dump.json from a run with the dupes off")
     parser.add_argument("--entities", default=os.path.join(REPO, "dev", "dupe-entities.txt"))
     parser.add_argument("--items", default=os.path.join(REPO, "dev", "dupe-items.txt"))
+    parser.add_argument("--planets", default=os.path.join(REPO, "dev", "dupe-planets.txt"))
     parser.add_argument("--dupes", type=int, default=3, help="highest dupe number (2..N) for a line without dupes=; a line with dupes= gets one dupe per color")
     parser.add_argument("--jobs", type=int, default=4)
-    parser.add_argument("--only", action="append", help="only these entities or items (no manifest rewrite)")
+    parser.add_argument("--only", action="append", help="only these entities, items or planets (no manifest rewrite)")
     parser.add_argument("--preview", help="write a preview image per entity or item to this folder instead of generating")
     parser.add_argument("--inspect", help="write a mask inspection image per entity or item to this folder instead of generating")
     parser.add_argument("--list", action="store_true", help="print the sheets per entity or item and exit")
     args = parser.parse_args()
 
     entries = parse_list(args.entities, "entity")
-    for name, params in parse_list(args.items, "item").items():
-        if name in entries:
-            sys.exit(f"{name} is listed both as an entity and as an item")
-        entries[name] = params
+    for path, kind in ((args.items, "item"), (args.planets, "planet")):
+        for name, params in parse_list(path, kind).items():
+            if name in entries:
+                sys.exit(f"{name} is listed twice ({entries[name]['kind']} and {kind})")
+            entries[name] = params
     if args.only:
         entries = {name: params for name, params in entries.items() if name in args.only}
     with open(args.dump) as f:

@@ -156,3 +156,60 @@ personal roboport and toolbelt equipment. Built on the same machinery:
 - Not done: a module dupe keeps the original's beacon_tint (a speed module dupe still tints machines blue); the manifest
   could carry the dupe colors for that later. Personal roboport mk2 and the other battery/shield equipment aren't in
   the list; one line each would add them.
+
+## Planets (2026-09-29, night)
+
+What was built (lib/dupe-planets.lua, run before the other duplicates):
+- One copy of every planet whose icon has a recolor (dev/dupe-planets.txt: hue rotations of the icon, the star map icon and
+  the discovery technology's image, chosen by eye from three-angle previews). The copy is the planet prototype under a new
+  name, so it keeps map generation (its own terrain from the name-derived seed), surface properties, pollutant, lightning
+  and freezing. It sits beside its original on the star map (orientation nudged by 0.035 turns).
+- Ocean tiles: clones of the handwritten family in oceans.lua (dupe.tile keeps the clone in every name-based rule:
+  landfill and other tile conditions, neighbors, transitions, autoplace restrictions), registered as the copy's family, so
+  an ocean swap can treat the copy as its own slot. The user chose duplicating the handwritten table over deriving it.
+- Connections: each connection of the original again to the copy, and one between copies where both ends have copies
+  (31 connections from 9 in vanilla Space Age).
+- Discovery: a copy of each technology discovering the original; Nauvis (nothing discovers it) gets one modeled on the
+  cheapest discovery technology (Fulgora's in vanilla, first by name among the 1000-unit ones), with only the discovery
+  and platform-travel effects.
+- Science: a planet's own packs are the lab inputs whose recipes only it accepts; for the starting planet, whose packs have
+  no conditions, those its recipes let it make at all. Of those, the ones with recolors (dev/dupe-items.txt: the four
+  planet packs; military, production and utility for Nauvis, the user's pick) are copied, added to every lab taking the
+  original, and locked to the copy. Locks use the new properties through locks.fixed (never drawn, transported or reverted
+  with moved locks): the original's recipe is fixed to its planet, the copy's to the copy. Nauvis's originals stay
+  unlocked (vanilla).
+- Parallel tree: every technology whose research takes a copied pack (no infinite or leveled research, no discovery
+  technologies) gets a copy taking the copies instead, prerequisites mapped to copies where they exist, no effects of its
+  own. Duplicated recipes are unlocked there instead of in the original technology (dupe.recipe), unless the copy's
+  research takes what the recipe makes. Split: each copied pack in an original technology becomes the copy with
+  probability 1/3. A plain sort before and after the split checks that everything reachable stays reachable, else the
+  split is undone.
+- Numbers on vanilla Space Age: 5 planets, 21 ocean tiles, 22 connections, 5 discovery technologies, 7 packs with 11
+  locks, 117 parallel technologies (0 unreachable), 78 pack flips in 60 technologies; the stage takes about a second,
+  and the dupes load went from 15.4 s to 18.1 s in the settings suite (the graph has 11 rooms instead of 6).
+- Base game: no technology discovers a space location, so no planet is copied (and science packs are never copied on
+  their own).
+
+First preview runs (sa seeds 1-2, unified preview with the planetary stages) found two things the copies exposed:
+- Scaffold variants (oceans.lua's planet variants) locked themselves with "a property whose value is unique to the planet".
+  With copies no vanilla property is unique, so they took the new property my science locks had introduced, whose values
+  the lock stage reassigns whenever it realizes its plan; the variants then pointed at the wrong room, Aquilo lost its
+  ammonia route, the lock stage failed even with every lock widened, and first pass lost the variants' protected contexts
+  on every attempt of seed 1. Fix: variants are fixed locks now (locks.fix in scaffolds.add, locks.unfix in remove), so
+  every realize plans for them; realize also forgets locks whose prototype is gone (a restored data.raw).
+- The careful rerun of the resource stage crashed in the game's resource-autoplace helper: it caches each autoplace set
+  and the two count noise expressions it made, and a restored data.raw had lost the expressions. Fix: add_repair puts
+  them back before calling the helper. Latent before the copies, since it needs a failed fast run after repairs.
+- Load time before the fixes, seed 2: 543 s against 110 s for the same preview without dupes on the same busy machine
+  (unified 377 s against 86 s, fixes and rebuild 87 s against 9 s, planetary 43 s against 9 s including the failed rerun).
+
+After the fixes (sa seeds 1-2, preview with dupes, on a machine running eight Factorio processes): both pass. No
+planetary stage undone, 47-48 locks moved among originals and copies, UNIFIEDCHECK ok, MECHCHECK ok (12.7-12.8k mechanic
+contexts, 0 lost beyond isolatability). PLANETCHECK final: seed 2 0 failures, seed 1 40, all isolatable rocket building
+on Fulgora and its copy (unified doesn't protect keep_planetary_isolatability; a known gap the copies make likelier).
+Loads took 20 and 26 minutes there; seed 1 needed the careful planetary rerun, whose one-at-a-time scaffold pruning
+alone took 12 minutes with 11 rooms. The user keeps one copy per planet; speed is the next job.
+
+Not done: the planetary rule for locks over several planets (another session), a random star map graph, unique science
+for modded planets without recolors (they'd share their original's packs), per-copy tuning of the parallel tree's size,
+load time with 11 rooms (sorts in monotone matching, promotion, the rebuild and the slow scaffold pruning).

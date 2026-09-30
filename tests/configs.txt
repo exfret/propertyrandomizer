@@ -69,6 +69,8 @@ config preview-with-graph unified nocheck=science-cost unified-preview=true dev-
 config graph-standard settings technology=true recipe=true item=true recipe-tech-unlock=true
 # Duplicates on their own (the setting is skipped above); needs the generated graphics/dupes/ next to the mod, as a release has them
 config dupes settings dupes=true
+# Duplicates with the unified preview, planetary changes included (planet copies are made for them); the unified suite is wip
+config dupes-preview unified seeds=1,2 unified-preview=true dev-unified=false dupes=true
 # Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
 # Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost
 # Missing baseline or final prices fail: every science pack must be covered.

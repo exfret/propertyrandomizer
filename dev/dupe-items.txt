@@ -38,3 +38,13 @@ fusion-reactor-equipment grey val=0.5 smax=0.2 dupes=130,30
 exoskeleton-equipment grey val=0.3 smax=0.25 dupes=30,185
 personal-roboport-equipment hue=40 half=25 sat=0.2 dupes=130,355
 toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185
+
+# Science packs: copied only with their planet's copy (lib/dupe-planets.lua), each locked to that copy. The flask's liquid is
+# the paint; each dupe stays away from the other packs' colors
+metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 dupes=170
+agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 dupes=200
+electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 dupes=50
+cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 dupes=340
+military-science-pack grey val=0.35 smax=0.3 dupes=130
+production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 dupes=30
+utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 dupes=185

@@ -54,6 +54,9 @@ end
 --   * map: old room --> new room, for each old planet that isn't in the new set (which new planet took its place)
 --   * rooms: rooms that accept it now (new, plus whatever widening gave back)
 locks.moved = {}
+-- Target id --> fixed lock, in the same form: a lock given exactly these rooms on purpose (a planet copy's science packs, see lib/dupe-planets.lua)
+-- Fixed locks are realized together with the moved ones, but never drawn again, transported, reverted or forgotten with them
+locks.fixed = {}
 
 local function prototype_of(lock)
     if lock.kind == "recipe" then
@@ -86,6 +89,9 @@ locks.candidates = function()
     local candidates = {}
     local function consider(kind, prototype, node_type)
         if prototype.hidden or prototype.surface_conditions == nil or next(prototype.surface_conditions) == nil then
+            return
+        end
+        if locks.fixed[kind .. "/" .. prototype.name] ~= nil then
             return
         end
         local accepted = surface_sets.accepted(prototype)
@@ -220,16 +226,24 @@ local function rooms_text(rooms)
     return text
 end
 
--- Puts every moved lock's current rooms in the game: new surface properties for all of them (lib/surface-sets.lua), their conditions, and their description lines
+-- Puts every moved and fixed lock's current rooms in the game: new surface properties for all of them (lib/surface-sets.lua), their conditions, and their description lines
 -- A lock the planner couldn't realize (the pool of new properties ran out) goes back to its original conditions
 -- Returns the ids of locks that went back
 locks.realize = function()
+    local lists = {
+        locks.moved,
+        locks.fixed,
+    }
     local requests = {}
-    for _, id in pairs(sorted_keys(locks.moved)) do
-        table.insert(requests, {
-            id = id,
-            rooms = locks.moved[id].rooms,
-        })
+    for _, list in pairs(lists) do
+        for _, id in pairs(sorted_keys(list)) do
+            if prototype_of(list[id]) ~= nil then
+                table.insert(requests, {
+                    id = id,
+                    rooms = list[id].rooms,
+                })
+            end
+        end
     end
     local plan = surface_sets.plan(requests, surface_sets.room_keys(), surface_sets.POOL)
     surface_sets.apply_properties(plan, surface_sets.POOL)
@@ -237,32 +251,37 @@ locks.realize = function()
     for _, id in pairs(plan.unrealized) do
         unrealized[id] = true
     end
-    for _, id in pairs(sorted_keys(locks.moved)) do
-        local lock = locks.moved[id]
-        local prototype = prototype_of(lock)
-        if unrealized[id] ~= nil then
-            prototype.surface_conditions = table.deepcopy(lock.original)
-            prototype.localised_description = table.deepcopy(lock.original_description)
-            locks.moved[id] = nil
-        else
-            local conditions = plan.conditions[id]
-            if next(conditions) == nil then
-                prototype.surface_conditions = nil
+    for _, list in pairs(lists) do
+        for _, id in pairs(sorted_keys(list)) do
+            local lock = list[id]
+            local prototype = prototype_of(lock)
+            if prototype == nil then
+                -- The prototype is gone (data.raw was put back to a state from before it, like a scaffold variant after a rolled-again ocean swap), so the lock is forgotten
+                list[id] = nil
+            elseif unrealized[id] ~= nil then
+                prototype.surface_conditions = table.deepcopy(lock.original)
+                prototype.localised_description = table.deepcopy(lock.original_description)
+                list[id] = nil
             else
-                prototype.surface_conditions = conditions
+                local conditions = plan.conditions[id]
+                if next(conditions) == nil then
+                    prototype.surface_conditions = nil
+                else
+                    prototype.surface_conditions = conditions
+                end
+                -- The description line goes after the original description (found from its locale key if the prototype had none of its own)
+                prototype.localised_description = table.deepcopy(lock.original_description)
+                prototype.localised_description = {
+                    "",
+                    locale_utils.find_localised_description(prototype, {
+                        with_newline = true,
+                    }),
+                    {
+                        "propertyrandomizer.planet_lock",
+                        rooms_text(lock.rooms),
+                    },
+                }
             end
-            -- The description line goes after the original description (found from its locale key if the prototype had none of its own)
-            prototype.localised_description = table.deepcopy(lock.original_description)
-            prototype.localised_description = {
-                "",
-                locale_utils.find_localised_description(prototype, {
-                    with_newline = true,
-                }),
-                {
-                    "propertyrandomizer.planet_lock",
-                    rooms_text(lock.rooms),
-                },
-            }
         end
     end
     return sorted_keys(unrealized)
@@ -334,6 +353,43 @@ locks.move = function(kind, name, map)
     }
     locks.realize()
     return target_id
+end
+
+-- Fixes a lock to exactly these rooms on purpose (a planet copy's science pack recipes, see lib/dupe-planets.lua): every later realize keeps it, and it's never drawn, transported or reverted
+-- The kind is "recipe" or "entity"; the prototype needn't have surface conditions yet (a starting planet's science pack has none)
+-- Doesn't realize, so a caller can fix several locks and realize once (locks.realize needs the logic's lookups loaded)
+-- Returns the lock's target id, or nil if there's no such prototype
+locks.fix = function(kind, name, rooms)
+    local prototype
+    local node_type
+    if kind == "recipe" then
+        prototype = data.raw.recipe[name]
+        node_type = "recipe-surface-condition"
+    else
+        prototype = dutils.get_prot("entity", name)
+        node_type = "entity-build-surface-condition"
+    end
+    if prototype == nil then
+        return nil
+    end
+    local target_id = kind .. "/" .. name
+    locks.fixed[target_id] = {
+        kind = kind,
+        name = name,
+        node_key = gutils.key(node_type, name),
+        original = table.deepcopy(prototype.surface_conditions or {}),
+        original_description = table.deepcopy(prototype.localised_description),
+        old = copy_set(rooms),
+        new = copy_set(rooms),
+        map = {},
+        rooms = copy_set(rooms),
+    }
+    return target_id
+end
+
+-- Forgets a fixed lock (the prototype keeps whatever conditions it has until the next realize, which no longer plans for it)
+locks.unfix = function(kind, name)
+    locks.fixed[kind .. "/" .. name] = nil
 end
 
 -- Gives a moved lock these rooms and puts every lock in the game again (other locks' conditions may change, but not their rooms)
@@ -411,9 +467,9 @@ locks.lock_of_recipe = function(recipe_key)
     return nil
 end
 
--- One line per moved lock for the log
+-- One line per moved or fixed lock for the log
 locks.describe = function(target_id)
-    local lock = locks.moved[target_id]
+    local lock = locks.moved[target_id] or locks.fixed[target_id]
     local function names(rooms)
         local list = {}
         for _, room_key in pairs(sorted_keys(rooms)) do

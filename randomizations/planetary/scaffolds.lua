@@ -3,6 +3,7 @@
 -- A plain conversion from the new fluid to the old one is also a candidate, as a last resort.
 -- Only the variants on the witnesses of what each changed planet must keep stay, so only what's required to change gets a variant.
 -- A needed variant whose original only that planet used becomes an edit of the original instead of a duplicate.
+-- A variant is locked to its planet through the lock stage's fixed locks (locks.fix), so the lock tells the planet from its copies and stays right whenever the locks are realized again.
 -- Everything else the planet did with its old fluid is lost locally, which is the actual gameplay change.
 -- Machines (boilers, heat exchangers) never get duplicates, since new entities would need new graphics.
 
@@ -10,6 +11,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local planetary_check = require("randomizations/planetary/check")
+local locks = require("randomizations/planetary/locks")
 
 local scaffolds = {}
 
@@ -84,58 +86,6 @@ local function recipe_icon_layers(recipe)
     return nil
 end
 
--- A surface property's value on a planet or surface prototype, falling back to the property's default
-local function property_value(room, property_name)
-    local value = (room.surface_properties or {})[property_name]
-    if value == nil then
-        value = data.raw["surface-property"][property_name].default_value
-    end
-    return value
-end
-
--- A surface condition only the given planet meets, or nil if there's none
--- It uses a property that existing recipes already lock recipes to planets with (most used first, like pressure), since other randomizations may change the rest (like day length); the value has to be one no other planet or surface has
-local function planet_only_condition(planet_name)
-    local uses = {}
-    for _, recipe in pairs(data.raw.recipe) do
-        for _, condition in pairs(recipe.surface_conditions or {}) do
-            uses[condition.property] = (uses[condition.property] or 0) + 1
-        end
-    end
-    local property_names = {}
-    for property_name, _ in pairs(uses) do
-        if data.raw["surface-property"][property_name] ~= nil then
-            table.insert(property_names, property_name)
-        end
-    end
-    table.sort(property_names, function(a, b)
-        if uses[a] ~= uses[b] then
-            return uses[a] > uses[b]
-        end
-        return a < b
-    end)
-    local planet = data.raw.planet[planet_name]
-    for _, property_name in pairs(property_names) do
-        local value = property_value(planet, property_name)
-        local is_unique = true
-        -- Rooms as the logic defines them (lib/lookup/1-raw.lua, built by the logic build before this runs), so the condition matches what the logic checks
-        for _, room in pairs(lookups.rooms) do
-            local prototype = (data.raw[room.type] or {})[room.name]
-            if prototype ~= nil and prototype ~= planet and property_value(prototype, property_name) == value then
-                is_unique = false
-            end
-        end
-        if is_unique then
-            return {
-                property = property_name,
-                min = value,
-                max = value,
-            }
-        end
-    end
-    return nil
-end
-
 -- The recipe with every old_fluid ingredient made with new_fluid instead (merged into new_fluid's amount if it's already an ingredient)
 -- It's a planned planet variant: named after the planet (like "Concrete (Gleba)"), with the planet's icon in its top right corner, and only makeable on that planet
 local function variant_recipe(recipe, old_fluid, new_fluid, planet_name)
@@ -173,21 +123,7 @@ local function variant_recipe(recipe, old_fluid, new_fluid, planet_name)
         end
     end
     variant.ingredients = ingredients
-    -- A planned planet variant can only be made on its planet
-    local condition = planet_only_condition(planet_name)
-    if condition ~= nil then
-        local conditions = table.deepcopy(variant.surface_conditions or {})
-        local has_property = false
-        for _, existing in pairs(conditions) do
-            if existing.property == condition.property then
-                has_property = true
-            end
-        end
-        if not has_property then
-            table.insert(conditions, condition)
-        end
-        variant.surface_conditions = conditions
-    end
+    -- A planned planet variant can only be made on its planet: add() fixes its lock to the planet (randomizations/planetary/locks.lua), which is the only way to tell a planet from its copies (lib/dupe-planets.lua)
     return variant
 end
 
@@ -292,6 +228,12 @@ local function add(candidate)
     for _, technology_name in pairs(candidate.technologies) do
         add_unlock(technology_name, candidate.recipe_name)
     end
+    if candidate.kind == "variant" then
+        locks.fix("recipe", candidate.recipe_name, {
+            [gutils.key("planet", candidate.planet)] = true,
+        })
+        locks.realize()
+    end
 end
 
 local function remove_unlocks(recipe_name)
@@ -310,6 +252,10 @@ local function remove(candidate)
         data.raw[prototype.type][prototype.name] = nil
     end
     remove_unlocks(candidate.recipe_name)
+    if candidate.kind == "variant" then
+        locks.unfix("recipe", candidate.recipe_name)
+        locks.realize()
+    end
 end
 
 -- Drops as much of each group as passes() allows: all of a group if that passes, or else each half in turn, down to single candidates

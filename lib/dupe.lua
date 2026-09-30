@@ -2,6 +2,7 @@ local categories = require("helper-tables/categories")
 
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
+local dutils = require("lib/data-utils")
 
 local resource_autoplace = require("resource-autoplace")
 -- Which original sprite paths have recolored copies under graphics/dupes/<n>/ (dev/make-dupe-graphics.py)
@@ -40,11 +41,23 @@ dupe.recipe_number_icon = function(number)
     }
 end
 
+-- Number badge layer for an icon list (a 120 px badge), at the given scale and shift
+dupe.number_badge = function(number, scale, shift)
+    return {
+        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[number],
+        icon_size = 120,
+        scale = scale,
+        shift = shift,
+    }
+end
+
 -- Keep track of things that were already duplicated if needed
 -- Also counts duplicates as having been duplicated
 dupe.has_been_duplicated = {}
 -- Names of duplicates whose sprites were swapped for recolored copies, so they don't also get number badges on their entity graphics
 dupe.recolored = {}
+-- Original technology name --> its copy in the parallel technology tree (lib/dupe-planets.lua): a duplicate's recipe is unlocked by the copy of the technology unlocking the original, where there is one
+dupe.technology_copies = {}
 
 -- The recolored copy's path for an original sprite path, or nil when there is none for this dupe number
 local function recolored_path(filename, dupe_number)
@@ -68,7 +81,7 @@ local function recolor_graphics(tbl, dupe_number)
     for key, value in pairs(tbl) do
         if type(value) == "table" then
             swapped = swapped + recolor_graphics(value, dupe_number)
-        elseif key == "filename" or key == "icon" or (type(key) == "number" and type(value) == "string") then
+        elseif key == "filename" or key == "icon" or key == "starmap_icon" or (type(key) == "number" and type(value) == "string") then
             local new_path = recolored_path(value, dupe_number)
             if new_path ~= nil then
                 tbl[key] = new_path
@@ -129,6 +142,7 @@ local function find_prototype(base_type, name)
     end
     return nil
 end
+dupe.find_prototype = find_prototype
 
 -- Whether the item is the recipe's main product: main_product when given, else its only result
 local function makes_item(recipe, item_name)
@@ -234,6 +248,21 @@ dupe.get_recipe_icons = function(recipe)
     return recipe_icons
 end
 
+-- Whether researching the technology takes an item the recipe makes (a science pack's recipe can't be unlocked by a technology that needs the pack)
+local function research_needs_result(technology, recipe)
+    if technology.unit == nil or technology.unit.ingredients == nil then
+        return false
+    end
+    for _, ingredient in pairs(technology.unit.ingredients) do
+        for _, result in pairs(recipe.results or {}) do
+            if result.type == "item" and result.name == ingredient[1] then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 dupe.recipe = function(recipe, extra_info)
     local has_number_suffix = true
     if type(extra_info) == "table" then
@@ -248,6 +277,7 @@ dupe.recipe = function(recipe, extra_info)
     end
 
     -- Recipe tech unlocks: the copy is unlocked wherever the original is (found first, then added, so the effects aren't changed while they're read)
+    -- Where the unlocking technology has a copy in the parallel tree (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes
     local unlocking = {}
     for _, technology in pairs(data.raw.technology) do
         if technology.effects ~= nil then
@@ -259,7 +289,12 @@ dupe.recipe = function(recipe, extra_info)
         end
     end
     for _, technology in pairs(unlocking) do
-        table.insert(technology.effects, {
+        local target = dupe.technology_copies[technology.name]
+        if target == nil or research_needs_result(target, new_recipe) then
+            target = technology
+        end
+        target.effects = target.effects or {}
+        table.insert(target.effects, {
             type = "unlock-recipe",
             recipe = new_recipe.name,
         })
@@ -291,6 +326,10 @@ dupe.item = function(item, dupe_number)
             if result.type == "item" and result.name == item.name then
                 result.name = new_item.name
             end
+        end
+        -- A recipe with several results names its main product (like the cryogenic science pack's, which gives fluoroketone back)
+        if new_recipe.main_product == item.name then
+            new_recipe.main_product = new_item.name
         end
     end
 
@@ -471,6 +510,49 @@ local function add_icon_to_anim(anim, dupe_number)
             }
         }
     }
+end
+
+-- Clones a tile under a dupe name for a planet copy (lib/dupe-planets.lua); the clone follows every name-based rule the original is in (tile placement like landfill, foundation, ice platforms and soils; neighbor rules; transitions; autoplace tile restrictions), so it behaves like the original wherever the copy generates it
+-- To the player it's the same tile, so it keeps the original's name
+dupe.tile = function(tile, dupe_number)
+    local new_tile = dupe.prototype(tile, dupe_number)
+    new_tile.localised_name = locale_utils.find_localised_name(tile)
+    new_tile.hidden_in_factoriopedia = true
+    local function follow(names)
+        if type(names) ~= "table" then
+            return
+        end
+        local listed = false
+        for _, name in pairs(names) do
+            if name == tile.name then
+                listed = true
+            end
+        end
+        if listed then
+            table.insert(names, new_tile.name)
+        end
+    end
+    for item_class, _ in pairs(defines.prototypes.item) do
+        for _, item in pairs(data.raw[item_class] or {}) do
+            if item.place_as_tile ~= nil then
+                follow(item.place_as_tile.tile_condition)
+            end
+        end
+    end
+    for _, other in pairs(data.raw.tile) do
+        follow(other.allowed_neighbors)
+        for _, transition in pairs(other.transitions or {}) do
+            follow(transition.to_tiles)
+        end
+    end
+    for _, group in pairs(data.raw) do
+        for _, prototype in pairs(group) do
+            if type(prototype) == "table" and type(prototype.autoplace) == "table" then
+                follow(prototype.autoplace.tile_restriction)
+            end
+        end
+    end
+    return new_tile
 end
 
 dupe.entity = function(entity, dupe_number)
@@ -1073,11 +1155,13 @@ dupe.execute = function()
     end
 
     -- Items: the ones with recolored icons that no entity brought along (modules, fuels, guns, ammo, armor and the items that place equipment; the list lives in dev/dupe-items.txt)
+    -- Science packs only come with planet copies (lib/dupe-planets.lua), never on their own
+    local lab_inputs = dutils.lab_inputs()
     local items_to_dupe = {}
     for item_class, _ in pairs(defines.prototypes.item) do
         if data.raw[item_class] ~= nil then
             for _, item in pairs(data.raw[item_class]) do
-                if item.hidden ~= true and not dupe.has_been_duplicated[rng.key({prototype = item})] then
+                if item.hidden ~= true and lab_inputs[item.name] == nil and not dupe.has_been_duplicated[rng.key({prototype = item})] then
                     for i = 2, num_dupes do
                         if dupe.item_has_recolor(item, i) then
                             table.insert(items_to_dupe, {
