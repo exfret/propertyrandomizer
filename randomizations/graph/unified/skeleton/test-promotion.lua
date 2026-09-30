@@ -811,9 +811,9 @@ test("a recipe whose promises are all owed also keeps a context it's solvent in"
     assert(#contexts == 2 and contexts[1] == "A" and contexts[2] == "B")
 end)
 
-test("a recipe that owes something only through its ingredients is a chunk boundary, and an ingredient that doesn't need the debt pays for it", function()
+test("a recipe that owes something is a chunk boundary, and an ingredient that doesn't need the debt pays its part of it", function()
     local graph, debt = build_debt_worlds()
-    -- Melting also takes lava directly, through an edge no handler randomizes, so it owes through that edge
+    -- Melting also takes lava directly, through an edge no handler randomizes, so it owes through that edge as well
     gutils.add_node(graph, "recipe", "melt", {
         op = "AND",
     })
@@ -831,9 +831,10 @@ test("a recipe that owes something only through its ingredients is a chunk bound
     assert(#boundary == 1 and boundary[1] == "A", "r owes only in A, and only through its lava slot")
     assert(prom.pays(r, z, boundary))
     assert(not prom.pays(r, lava, boundary))
+    -- An owed chain is paid link by link: melting's ingredients pay their part in A even while its lava edge is still owed there, so it's a boundary too
     assert(#prom.recipe_boundary_contexts(melt, {
         "A",
-    }) == 0, "no ingredient choice pays for melting in A")
+    }) == 1, "melting owes in A, so its ingredient choices pay their part")
 end)
 
 test("a head whose dependent owes something only through it is a chunk boundary, and a base that doesn't need the debt pays for it", function()

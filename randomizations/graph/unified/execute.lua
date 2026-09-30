@@ -36,6 +36,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
 local top = require("lib/graph/context-sort")
+local superpose = require("lib/graph/superpose")
 local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
@@ -149,9 +150,9 @@ end
 -- Whether any handler is on, so there's anything for unified randomization to do
 unified.has_handlers = #handler_ids > 0
 
--- Planetary changes in superposed mode hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
+-- Planetary changes in superposed mode (any planetary stage with the planetary-superposed setting) hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
 local function planetary_debt()
-    if config.planetary_oceans or config.planetary_resources then
+    if config.planetary then
         return planetary.superposed
     end
     return nil
@@ -203,6 +204,17 @@ unified.execute = function()
 
     local sort_for_claiming = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
     log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.sorted))
+    -- The dependents to randomize come from a sort that includes planetary changes' debt when there is one (superposed mode): a recipe only the debt reaches (a planet's science pack once its machine moved away) has no pebble in the game's own sort, and a recipe with no pebble here was never randomized, so nothing could ever re-home it; promotion then keeps it owed and the settlement sends the machine home
+    -- The debt edges live only in this copy: the claimed heads and bases come from subdiv_graph, the game's graph
+    local sort_for_deps = sort_for_claiming
+    if planetary_debt() ~= nil then
+        local deps_graph = table.deepcopy(spoofed_graph)
+        local added = superpose.add_debt(deps_graph, planetary_debt())
+        if #added > 0 then
+            sort_for_deps = top.sort(deps_graph, nil, nil, { choose_randomly = true })
+            log("Claiming: " .. #added .. " debt edges added for the dependents to randomize; " .. #sort_for_deps.sorted .. " pebbles with them, " .. #sort_for_claiming.sorted .. " without")
+        end
+    end
     local subdiv_graph = table.deepcopy(spoofed_graph)
 
     local added_to_deps = {}
@@ -222,12 +234,13 @@ unified.execute = function()
     end
     local dep_to_heads = {}
     local head_to_handler = {}
-    for ind, pebble in pairs(sort_for_claiming.sorted) do
+    for ind, pebble in pairs(sort_for_deps.sorted) do
         -- Get node from subdiv_graph
         local node_key = pebble.node_key
         local node = subdiv_graph.nodes[node_key]
 
-        if node.op == "AND" and node.type ~= "base" then
+        -- A node only the game before planetary changes has (superpose.add_debt adds those to the debt copy, like a route a planetary change replaced, or a connector for an old edge) has nothing to claim or randomize in the game's graph
+        if node ~= nil and node.op == "AND" and node.type ~= "base" then
             if not added_to_deps[node_key] then
                 added_to_deps[node_key] = true
                 -- Just make sure this isn't spoofed
@@ -734,6 +747,9 @@ unified.execute = function()
                         table.insert(later, ind)
                     end
                 end
+                if #paying_contexts > 0 then
+                    log("Promotion: boundary head of " .. dep .. " (" .. handler_id .. ") in " .. table.concat(paying_contexts, ", ") .. ": " .. #order .. " of " .. #shuffled_prereqs .. " bases pay")
+                end
                 -- A head that rolls under its handler's stay_chance tries the bases that keep its old connection (the handler's stays) first among the paying bases and among the rest, so paying bases still go first
                 local stay_stats
                 local tries_to_stay = false
@@ -795,7 +811,7 @@ unified.execute = function()
                         if head_to_handler[head_key].validate(random_graph, base, head, {
                             init_sort = sort_for_claiming, -- Needed for tech rando
                         }) then
-                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ")")
+                            log("Accepted prereq " .. key(gutils.get_owner(random_graph, base)) .. " (" .. key(gutils.get_owner(random_graph, random_graph.nodes[base.old_head])) .. ") for " .. dep .. (#paying_contexts > 0 and (prom.head_pays(head_key, base_key, paying_contexts) and " (pays)" or " (doesn't pay)") or ""))
                             head_to_handler[head_key].process(random_graph, base, head)
                             found_prereq = true
                             handler_to_used_prereq_inds[handler_id][ind] = true

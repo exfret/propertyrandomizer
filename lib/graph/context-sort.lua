@@ -111,6 +111,20 @@ top.context_home = function(context)
     return string.sub(context, j + 1, -1)
 end
 
+-- Whether a node's contexts in a sort (context --> anything) provide a goal context: the context itself, or its isolatable counterpart when the goal isn't isolatable, since whatever can be had isolatably can be had without isolatability too (a sort records the contexts of its routes, so the weaker one needn't be there on its own)
+-- Nothing else is implied: automatability must match, and home contexts and simple contexts are looked up unchanged
+-- The checks of what randomization must keep compare goal contexts through this (randomizations/planetary/check.lua, settlement's witnesses, first pass's debt goals), like the mechanic context check's kept parts (skeleton/protection.lua)
+top.provides_context = function(contexts, context)
+    if contexts[context] ~= nil then
+        return true
+    end
+    local abilities = top.context_abilities(context)
+    if abilities == nil or top.context_home(context) ~= nil or string.sub(abilities, ISOLATABILITY, ISOLATABILITY) ~= "0" then
+        return false
+    end
+    return contexts[top.context_key(top.context_room(context), with_ability(abilities, ISOLATABILITY))] ~= nil
+end
+
 -- Gets the lookup tables for the contexts used in a sort
 -- For simple contexts, the contexts are just the rooms, exactly as in consistent-sort.lua
 -- home_sets (from top.home_sets) adds home contexts, or is nil for none

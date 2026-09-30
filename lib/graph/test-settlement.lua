@@ -216,4 +216,86 @@ test("a debt edge no settler owns is reported as unsettled", function()
     })] ~= nil)
 end)
 
+test("a goal without isolatability is provided by its isolatable counterpart, and nothing else is implied", function()
+    local rock_both = top.context_key(ROCK, "11")
+    assert(top.provides_context({ [rock_both] = 1 }, top.context_key(ROCK, "01")))
+    assert(top.provides_context({ [rock_both] = 1 }, rock_both))
+    -- Automatability isn't implied, and isolatability isn't implied the other way round
+    assert(not top.provides_context({ [rock_both] = 1 }, top.context_key(ROCK, "00")))
+    assert(not top.provides_context({ [top.context_key(ROCK, "01")] = 1 }, rock_both))
+    -- Other rooms, home contexts and simple contexts are looked up as they are
+    assert(not top.provides_context({ [rock_both] = 1 }, top.context_key(HOME, "01")))
+    assert(not top.provides_context({ [rock_both] = 1 }, top.home_context_key(top.context_key(ROCK, "01"), "1")))
+    assert(not top.provides_context({ [ROCK] = 1 }, top.context_key(ROCK, "01")))
+end)
+
+test("a debt edge whose start the game lost since the superposition brings that node along, so an old node it fed stays reachable through the debt", function()
+    -- The old world melts metal on the rock planet in its own recipe (old-melt), which needs the lava pumped there and a category (cat); the game has the category at first but no old-melt, and its metal has no provider
+    local function world(is_old)
+        local graph = {
+            nodes = {},
+            edges = {},
+            sources = {},
+        }
+        local nodes = {}
+        local function node(name, node_type, op, pres, node_name)
+            gutils.add_node(graph, node_type, node_name or name, {
+                op = op,
+            })
+            nodes[name] = key(node_type, node_name or name)
+            for _, pre in pairs(pres) do
+                gutils.add_edge(graph, nodes[pre], nodes[name])
+            end
+        end
+        node("start", "start", "AND", {})
+        node("home", "room", "OR", { "start" }, HOME)
+        node("rock", "room", "OR", { "start" }, ROCK)
+        node("pump-lava", "stuff", "OR", { is_old and "rock" or "home" })
+        node("cat", "stuff", "OR", { "start" })
+        if is_old then
+            node("old-melt", "make", "AND", {
+                "pump-lava",
+                "cat",
+            })
+            node("metal", "stuff", "OR", { "old-melt" })
+        else
+            node("metal", "stuff", "OR", {})
+        end
+        return graph, nodes
+    end
+    local old, nodes = world(true)
+    local game = world(false)
+    local debt = superpose.union(game, old)
+    assert(debt.old_nodes[nodes["old-melt"]] and not debt.old_nodes[nodes["cat"]], "only old-melt is the old world's own")
+    -- Randomization then loses the category node from the game
+    gutils.remove_edge(game, gutils.ekey({
+        start = nodes["start"],
+        stop = nodes["cat"],
+    }))
+    game.nodes[nodes["cat"]] = nil
+    game[nodes["cat"]] = nil
+    local failures = {
+        {
+            text = "metal @ rock",
+            keys = {
+                nodes["metal"],
+            },
+            context = ROCK,
+        },
+    }
+    local owed = settlement.owed_edges(game, {}, failures, debt)
+    assert(owed[gutils.ekey({
+        start = nodes["cat"],
+        stop = nodes["old-melt"],
+    })] ~= nil, "the old recipe's category edge is on the witness")
+    assert(owed[gutils.ekey({
+        start = nodes["start"],
+        stop = nodes["cat"],
+    })] ~= nil, "the lost category node came along with its own in-edge")
+    assert(owed[gutils.ekey({
+        start = nodes["rock"],
+        stop = nodes["pump-lava"],
+    })] ~= nil, "the lava pump's old edge is on the witness too")
+end)
+
 print(num_passed .. " tests passed")

@@ -1022,8 +1022,9 @@ promotion.new = function(params)
         return false
     end
 
-    -- Chunk boundaries (debt mode): the contexts among required_contexts where the recipe owes something (it has no solvent backing) only through its ingredients, since its other prereqs are solvent there
-    -- A contradiction's chunk (what only the debt reaches, downstream of it) stops at randomized edges like these, so ingredients that are all solvent there pay for the recipe
+    -- Chunk boundaries (debt mode): the contexts among required_contexts where the recipe owes something (it has no solvent backing), so solvent ingredients pay their part of it
+    -- An owed chain (a planet's science pack, the plates it takes, the molten metal they take, each in a category its planet lost) is paid link by link: deps go in sort order, so a recipe's ingredients are chosen after their own recipes, and once its other prereqs are paid too the recipe is solvent
+    -- (Asking for the other prereqs to be solvent already would leave every link but the last unpaid, so nothing would ever pay)
     -- Without debt there are none
     state.recipe_boundary_contexts = function(recipe_key, required_contexts)
         local boundary = {}
@@ -1033,16 +1034,7 @@ promotion.new = function(params)
         for _, context in pairs(required_contexts) do
             local ind = nci[recipe_key][context]
             if not establish_solvent(ind) then
-                local is_boundary = true
-                for _, pre in pairs(get_recipe_info(recipe_key).fixed) do
-                    if not has_solvent_pre(pre, context, ind) then
-                        is_boundary = false
-                        break
-                    end
-                end
-                if is_boundary then
-                    table.insert(boundary, context)
-                end
+                table.insert(boundary, context)
             end
         end
         return boundary
@@ -1179,8 +1171,8 @@ promotion.new = function(params)
         return debt ~= nil and head_ind ~= nil and establish_solvent(head_ind)
     end
 
-    -- Chunk boundaries for a generic handler head (debt mode): the contexts among required_contexts where the head's dependent owes something only through this head, since its other prereqs are solvent there (or it's an OR node)
-    -- A base that's solvent there pays for the dependent
+    -- Chunk boundaries for a generic handler head (debt mode): the contexts among required_contexts where the head's dependent owes something (it has no solvent backing) and this head isn't solvent there yet, so a solvent base pays this head's part of it
+    -- Like recipe_boundary_contexts, an owed chain is paid link by link (a recipe's category after the recipes of its ingredients), so the dependent's other prereqs needn't be solvent yet
     -- Dependents that forget or emit contexts aren't handled, and without debt there are none
     state.head_boundary_contexts = function(head_key, required_contexts)
         local boundary = {}
@@ -1196,12 +1188,9 @@ promotion.new = function(params)
             local ind = (nci[dep_key] or {})[context]
             if ind ~= nil and not establish_solvent(ind) then
                 local is_boundary = true
-                if dep.op == "AND" then
-                    for _, pre in pairs(get_pres(dep)) do
-                        if pre.key ~= head_key and not has_solvent_pre(pre, context, ind) then
-                            is_boundary = false
-                            break
-                        end
+                for _, pre in pairs(get_pres(dep)) do
+                    if pre.key == head_key and has_solvent_pre(pre, context, ind) then
+                        is_boundary = false
                     end
                 end
                 if is_boundary then
