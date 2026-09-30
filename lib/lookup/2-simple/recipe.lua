@@ -9,6 +9,7 @@ local lutils = require("lib/logic/logic-utils")
 local dutils = require("lib/data-utils")
 local tutils = require("lib/trigger")
 local fluid_ports = require("lib/fluid-ports")
+local constants = require("helper-tables/constants")
 
 local prots = dutils.prots
 
@@ -101,7 +102,15 @@ stage.rcats = function()
 
     -- With items and fluids trading positions, a recipe's fluid counts change (item_fluid.recipe_category_key), so every count a crafter of its categories can serve gets a category too, for its categories and for hand crafting's traded for the fluid one (fluid_ports.trade_hand_category)
     -- Each category is a mechanic node with a pebble per context that the matching's gate keeps exactly and every sort pays for, so the counts stop at the recipes' own ingredient and result counts, which a recipe's fluid counts can't exceed
-    if config ~= nil and config.item_fluids then
+    -- With recipe shapes (config.recipe_shapes, lib/recipe-shape.lua), a recipe can take up to as many ingredients as the largest recipe, so its input counts go up to that, or to the most fluids a plan gives (constants.recipe_shape.max_fluids) if that's fewer
+    if config ~= nil and (config.item_fluids or config.recipe_shapes) then
+        local largest_count = 0
+        if config.recipe_shapes then
+            for _, recipe in pairs(lu.recipes) do
+                largest_count = math.max(largest_count, #(recipe.ingredients or {}))
+            end
+            largest_count = math.min(largest_count, constants.recipe_shape.max_fluids)
+        end
         -- Category --> the most fluid inputs and outputs a machine crafting it has
         local most = {}
         for class, _ in pairs(categories.crafting_machines) do
@@ -145,7 +154,7 @@ stage.rcats = function()
         end
         for _, recipe in pairs(lu.recipes) do
             local cats = recipe.categories or {"crafting"}
-            local num_ingredients = #(recipe.ingredients or {})
+            local num_ingredients = math.max(#(recipe.ingredients or {}), largest_count)
             local num_results = #(recipe.results or {})
             add_combinations(cats, num_ingredients, num_results)
             local traded = fluid_ports.fluid_category_exists() and fluid_ports.trade_hand_category(cats) or nil

@@ -86,6 +86,11 @@ local function get_costs_from_ings(material_to_costs, ings)
     return costs
 end
 
+-- The form an ingredient has in the game: its form field when the caller says it (with items and fluids trading positions, a candidate's position and its identity can differ in form, see lib/item-fluid.lua), else its type
+local function form_of(ing)
+    return ing.form or ing.type
+end
+
 -- Gives a function from an amount of all_ings[ing_ind] to the costs of all_ings, as get_costs_from_ings gives them, with the other amounts staying as they are.
 -- The other ingredients are added up once, so each amount tried only adds its own share; the sums can differ from get_costs_from_ings in the last bits, since they're added in another order.
 local function varied_amount_costs(material_to_costs, all_ings, ing_ind)
@@ -138,10 +143,14 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
     -- The ingredient's own amount is left alone; the amounts tried only go through costs_at
     local costs_at = varied_amount_costs(material_to_costs, all_ings, ing_ind)
 
+    -- Amounts are at most 2^16, and a fluid's at most extra_params.fluid_amount_cap when given (recipe shapes cap them at the largest fluid amount any recipe takes, see lib/recipe-shape.lua)
+    local max_amount = 65535
+    if extra_params.fluid_amount_cap ~= nil and form_of(all_ings[ing_ind]) == "fluid" then
+        max_amount = math.max(1, math.floor(extra_params.fluid_amount_cap))
+    end
     local best_points
     local lower_bound = 0.25
     local upper_bound = 1
-    -- Amounts are at most 2^16
     for i = 1, 16 do
         local costs = costs_at(upper_bound)
         local curr_points = calculate_points(old_recipe_costs, costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
@@ -153,13 +162,16 @@ local function optimize_single_ing(old_recipe_costs, material_to_costs, all_ings
             best_points = curr_points
         end
 
+        if upper_bound >= max_amount then
+            break
+        end
         lower_bound = lower_bound * 2
-        upper_bound = upper_bound * 2
+        upper_bound = math.min(upper_bound * 2, max_amount)
     end
 
-    -- If upper bound is too high, decrease it by one
-    if upper_bound == 65536 then
-        upper_bound = 65535
+    -- If upper bound is too high, decrease it to the most an amount can be
+    if upper_bound > max_amount then
+        upper_bound = max_amount
     end
 
     local best_amount
@@ -249,8 +261,11 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     if #proposed_ings == 1 then
         -- Always don't preserve resource costs in this case
         -- TODO: Think about moving this single-ingredient check outside this function?
-        local optimization_info = optimize_single_ing(old_recipe_costs, material_to_costs, proposed_ings, 1, {dont_preserve_resource_costs = true})
-        
+        local optimization_info = optimize_single_ing(old_recipe_costs, material_to_costs, proposed_ings, 1, {
+            dont_preserve_resource_costs = true,
+            fluid_amount_cap = extra_params.fluid_amount_cap,
+        })
+
         proposed_ings[1].amount = optimization_info.best_amount
         return optimization_info.best_points
     end
@@ -271,7 +286,10 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
     for ing_ind, ing in pairs(proposed_ings) do
         -- Only set amounts for ingredients we're randomizing
         if ing_ind <= num_ings_to_find then
-            ing.amount = optimize_single_ing(recipe_costs_to_use, material_to_costs, {ing}, 1, {dont_preserve_resource_costs = dont_preserve_resource_costs}).best_amount
+            ing.amount = optimize_single_ing(recipe_costs_to_use, material_to_costs, {ing}, 1, {
+                dont_preserve_resource_costs = dont_preserve_resource_costs,
+                fluid_amount_cap = extra_params.fluid_amount_cap,
+            }).best_amount
         end
     end
 
@@ -295,7 +313,10 @@ local function calculate_optimal_amounts(old_recipe_costs, material_to_costs, pr
 
         for i = 1, 2 * (#proposed_ings) do
             local ing_ind = rng.int("recipe-ingredients-calculate-optimal-amounts", num_ings_to_find)
-            local optimization_info = optimize_single_ing(recipe_costs_to_use, material_to_costs, proposed_ings, ing_ind, {dont_preserve_resource_costs = dont_preserve_resource_costs})
+            local optimization_info = optimize_single_ing(recipe_costs_to_use, material_to_costs, proposed_ings, ing_ind, {
+                dont_preserve_resource_costs = dont_preserve_resource_costs,
+                fluid_amount_cap = extra_params.fluid_amount_cap,
+            })
             -- Get actual points
             local this_proposal_curr_points = calculate_points(old_recipe_costs, optimization_info.costs, {dont_preserve_resource_costs = dont_preserve_resource_costs})
             optimization_info.best_points = this_proposal_curr_points
@@ -331,18 +352,26 @@ end
 
 -- Note: I removed fluid_slots and old_num_fluids from extra_params in favor of is_fluid_index
 local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_costs, material_to_costs, extra_params)
+    if extra_params == nil then
+        extra_params = {}
+    end
+    -- The forms of the slots to fill, as a list of "item"/"fluid" (recipe shapes, see lib/recipe-shape.lua), in place of num_ings_to_find and is_fluid_index
+    local is_fluid_index = {}
+    if extra_params.slot_forms ~= nil then
+        num_ings_to_find = #extra_params.slot_forms
+        for ind, form in pairs(extra_params.slot_forms) do
+            if form == "fluid" then
+                is_fluid_index[ind] = true
+            end
+        end
+    elseif extra_params.is_fluid_index ~= nil then
+        is_fluid_index = extra_params.is_fluid_index
+    end
+
     -- If there's nothing to randomize, return
     if num_ings_to_find == 0 then
         -- There must be unrandomized_ings in this case
         return {ings = extra_params.unrandomized_ings, points = 0, inds = {}}
-    end
-
-    if extra_params == nil then
-        extra_params = {}
-    end
-    local is_fluid_index = {}
-    if extra_params.is_fluid_index ~= nil then
-        is_fluid_index = extra_params.is_fluid_index
     end
     local unrandomized_ings = {}
     if extra_params.unrandomized_ings ~= nil then
@@ -401,8 +430,8 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
             local ind = rng.int("recipe-ingredients-search-for-ings", #potential_ings)
 
             if check_unused(ind) then
-                -- Also check fluid indices
-                if (is_fluid_index[index_in_ings] and potential_ings[ind].type == "fluid") or (not is_fluid_index[index_in_ings] and potential_ings[ind].type == "item") then
+                -- Also check fluid indices, by the form the candidate has in the game
+                if (is_fluid_index[index_in_ings] and form_of(potential_ings[ind]) == "fluid") or (not is_fluid_index[index_in_ings] and form_of(potential_ings[ind]) == "item") then
                     return ind
                 end
             end
@@ -426,13 +455,21 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
 
     local curr_ings = {}
     for ind_in_curr_ing, ind in pairs(curr_ing_inds) do
-        curr_ings[ind_in_curr_ing] = {type = potential_ings[ind].type, name = potential_ings[ind].name}
+        curr_ings[ind_in_curr_ing] = {
+            type = potential_ings[ind].type,
+            name = potential_ings[ind].name,
+            form = potential_ings[ind].form,
+        }
     end
     -- Add unrandomized ings back in
     for _, unrandomized_ing in pairs(unrandomized_ings) do
         table.insert(curr_ings, unrandomized_ing)
     end
-    local curr_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, curr_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs}) - novelty_bonus(curr_ings)
+    local amount_params = {
+        dont_preserve_resource_costs = dont_preserve_resource_costs,
+        fluid_amount_cap = extra_params.fluid_amount_cap,
+    }
+    local curr_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, curr_ings, num_ings_to_find, amount_params) - novelty_bonus(curr_ings)
 
     -- Candidates tried so far, and how many had been when the points last made real progress (see constants.ing_search_stall_candidates)
     local num_tried = 0
@@ -451,11 +488,15 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
                 local ind_to_swap = j
                 local new_ind_to_use = i
 
-                -- Just straight up preserve fluid indices for now
-                if (is_fluid_index[ind_to_swap] and potential_ings[new_ind_to_use].type == "fluid") or (not is_fluid_index[ind_to_swap] and potential_ings[new_ind_to_use].type == "item") then
+                -- Just straight up preserve fluid indices for now, by the form the candidate has in the game
+                if (is_fluid_index[ind_to_swap] and form_of(potential_ings[new_ind_to_use]) == "fluid") or (not is_fluid_index[ind_to_swap] and form_of(potential_ings[new_ind_to_use]) == "item") then
                     local new_ings = table.deepcopy(curr_ings)
-                    new_ings[ind_to_swap] = {type = potential_ings[new_ind_to_use].type, name = potential_ings[new_ind_to_use].name}
-                    local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, {dont_preserve_resource_costs = dont_preserve_resource_costs}) - novelty_bonus(new_ings)
+                    new_ings[ind_to_swap] = {
+                        type = potential_ings[new_ind_to_use].type,
+                        name = potential_ings[new_ind_to_use].name,
+                        form = potential_ings[new_ind_to_use].form,
+                    }
+                    local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, amount_params) - novelty_bonus(new_ings)
 
                     -- Bonus negative points if new ingredient is not from starting planet
                     if starting_planet_reachable ~= nil and not starting_planet_reachable[build_graph.key(potential_ings[new_ind_to_use].type, potential_ings[new_ind_to_use].name)] then

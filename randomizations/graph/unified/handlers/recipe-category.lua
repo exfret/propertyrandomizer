@@ -12,6 +12,7 @@ local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local lu = require("lib/lookup/init")
 local furnace_selection = require("lib/furnace-selection")
+local recipe_shape = require("lib/recipe-shape")
 
 local recipe_category = {}
 
@@ -110,12 +111,23 @@ recipe_category.validate = function(graph, base, head, extra)
         local vanilla_rcats = base_rcat.cats
         local recipe_prot = lu.recipes[head_owner.name]
 
+        -- The shape the recipe is planned to take, if recipe shapes are on (lib/recipe-shape.lua), which decides its ingredients instead of the vanilla list
+        local plan = recipe_shape.planned(head_owner.name)
+
         -- First, if a furnace crafts this rcat, make sure the recipe has exactly one ingredient and output
         -- This is technically incorrect, but I don't keep track of input/output bases of furnaces in logic now, so I'll leave that as a later problem
         -- TODO: Fix this problem later
+        -- A planned recipe may take one item and one fluid, the most a furnace picks a recipe by (auxiliary/furnace-recipe-selection.html in the API docs)
         local base_pools = furnace_selection.pools_for(pools, vanilla_rcats)
         if #base_pools > 0 then
-            if recipe_prot.ingredients == nil or #recipe_prot.ingredients ~= 1 or recipe_prot.results == nil or #recipe_prot.results ~= 1 then
+            if recipe_prot.results == nil or #recipe_prot.results ~= 1 then
+                return false
+            end
+            if plan ~= nil then
+                if plan.num_items > 1 or plan.model_fluids > 1 then
+                    return false
+                end
+            elseif recipe_prot.ingredients == nil or #recipe_prot.ingredients ~= 1 then
                 return false
             end
 
@@ -133,7 +145,14 @@ recipe_category.validate = function(graph, base, head, extra)
         -- With items and fluids trading positions, the recipe's counts include what first pass changed on its node (fluid_delta, see item_fluid.rewire_form_change)
         local recipe_fluids = lutils.find_recipe_fluids(recipe_prot)
         local delta = head_owner.fluid_delta or {}
-        if recipe_fluids.input + (delta.input or 0) > base_rcat.input or recipe_fluids.output + (delta.output or 0) > base_rcat.output then
+        local fluids_in = recipe_fluids.input + (delta.input or 0)
+        local fluids_out = recipe_fluids.output + (delta.output or 0)
+        if plan ~= nil then
+            -- The fluids the model's category serves for the plan, with first pass's on the recipe (the plan read them from the model's graph; execute.lua carries them onto this one too)
+            fluids_in = plan.model_fluids + (plan.delta.input or 0)
+            fluids_out = recipe_fluids.output + (plan.delta.output or 0)
+        end
+        if fluids_in > base_rcat.input or fluids_out > base_rcat.output then
             return false
         end
 

@@ -184,4 +184,176 @@ test("a search no candidate can satisfy stops once it stops making real progress
     assert(num >= constants.ing_search_stall_candidates and num <= constants.ing_search_stall_candidates + 1, "looked at " .. num .. " candidates")
 end)
 
+-- The forms of slots, as recipe shapes name them
+local FLUID = "fluid"
+local ITEM = "item"
+
+-- Material costs with fluids "f<k>" at fluid_costs[k] next to the items of costs_for
+local function costs_with_fluids(aggregate, fluid_costs)
+    local costs = costs_for(aggregate)
+    for k, cost in pairs(fluid_costs) do
+        costs.aggregate_cost["fluid-f" .. k] = cost
+        costs.resource_costs["item-ore"]["fluid-f" .. k] = cost * 0.25
+        costs.resource_costs["item-coal"]["fluid-f" .. k] = cost * 0.75
+    end
+    return costs
+end
+
+test("slot forms decide how many slots there are and which take a fluid, kept ingredients after them", function()
+    local aggregate = {}
+    for k = 1, 6 do
+        aggregate[k] = 1
+    end
+    local material_to_costs = costs_with_fluids(aggregate, { 1, 1, 1 })
+    local pool = candidates(6)
+    for k = 1, 3 do
+        table.insert(pool, {
+            type = "fluid",
+            name = "f" .. k,
+        })
+    end
+    local target = {
+        aggregate_cost = 3,
+        complexity_cost = 0,
+        resource_costs = {
+            ["item-ore"] = 0.75,
+            ["item-coal"] = 2.25,
+        },
+    }
+    -- The count passed is ignored in favor of the forms
+    local result = cost_lib.search_for_ings(pool, 99, target, material_to_costs, {
+        slot_forms = { FLUID, ITEM, ITEM },
+        unrandomized_ings = {},
+    })
+    assert(type(result) ~= "string", result)
+    assert(#result.ings == 3)
+    assert(result.ings[1].type == "fluid" and result.ings[2].type == "item" and result.ings[3].type == "item")
+    assert(#result.inds == 3)
+    local kept = {
+        type = "item",
+        name = "c6",
+        amount = 2,
+    }
+    result = cost_lib.search_for_ings(pool, 99, target, material_to_costs, {
+        slot_forms = { FLUID },
+        unrandomized_ings = { kept },
+    })
+    assert(#result.ings == 2 and result.ings[1].type == "fluid" and result.ings[2].name == "c6")
+    result = cost_lib.search_for_ings(pool, 99, target, material_to_costs, {
+        slot_forms = {},
+        unrandomized_ings = { kept },
+    })
+    assert(#result.ings == 1 and result.ings[1].name == "c6", "no slots means only the kept ingredients")
+    -- Without forms, the count and the fluid index are what they were
+    result = cost_lib.search_for_ings(pool, 2, target, material_to_costs, {
+        is_fluid_index = { [2] = true },
+        unrandomized_ings = {},
+    })
+    assert(#result.ings == 2 and result.ings[1].type == "item" and result.ings[2].type == "fluid")
+end)
+
+test("a candidate fills a slot by the form it says it has in the game, not its type", function()
+    -- Items and fluids trading positions: the pool has an item position holding a fluid identity (form fluid) and a fluid position holding an item identity (form item)
+    local aggregate = {}
+    for k = 1, 4 do
+        aggregate[k] = 1
+    end
+    local material_to_costs = costs_with_fluids(aggregate, { 1, 1 })
+    local pool = candidates(4)
+    pool[1].form = FLUID
+    table.insert(pool, {
+        type = "fluid",
+        name = "f1",
+        form = ITEM,
+    })
+    table.insert(pool, {
+        type = "fluid",
+        name = "f2",
+    })
+    local target = {
+        aggregate_cost = 2,
+        complexity_cost = 0,
+        resource_costs = {
+            ["item-ore"] = 0.5,
+            ["item-coal"] = 1.5,
+        },
+    }
+    for _ = 1, 8 do
+        local result = cost_lib.search_for_ings(pool, 99, target, material_to_costs, {
+            slot_forms = { FLUID, FLUID },
+            unrandomized_ings = {},
+        })
+        assert(type(result) ~= "string", result)
+        -- Only c1 (form fluid) and f2 (a fluid) fit fluid slots; f1 says it's an item in the game
+        for _, ing in pairs(result.ings) do
+            assert(ing.name == "c1" or ing.name == "f2", ing.name)
+            assert((ing.form or ing.type) == FLUID)
+        end
+    end
+    -- The amount cap follows the form too
+    local material_to_costs_cheap = costs_with_fluids({ 0.001 }, { 0.001 })
+    local dear = {
+        aggregate_cost = 100,
+        complexity_cost = 0,
+        resource_costs = {
+            ["item-ore"] = 25,
+            ["item-coal"] = 75,
+        },
+    }
+    local as_fluid = {
+        {
+            type = "item",
+            name = "c1",
+            amount = 1,
+            form = FLUID,
+        },
+    }
+    assert(cost_lib.optimize_single_ing(dear, material_to_costs_cheap, as_fluid, 1, { fluid_amount_cap = 1000 }).best_amount == 1000)
+end)
+
+test("a fluid's amount stops at the cap, an item's doesn't", function()
+    local material_to_costs = costs_with_fluids({ 0.001 }, { 0.001 })
+    local target = {
+        aggregate_cost = 100,
+        complexity_cost = 0,
+        resource_costs = {
+            ["item-ore"] = 25,
+            ["item-coal"] = 75,
+        },
+    }
+    local fluid = {
+        {
+            type = "fluid",
+            name = "f1",
+            amount = 1,
+        },
+    }
+    local uncapped = cost_lib.optimize_single_ing(target, material_to_costs, fluid, 1, {})
+    assert(uncapped.best_amount > 1000, "uncapped picks " .. uncapped.best_amount)
+    local capped = cost_lib.optimize_single_ing(target, material_to_costs, fluid, 1, { fluid_amount_cap = 1000 })
+    assert(capped.best_amount == 1000, "capped picks " .. capped.best_amount)
+    local item = {
+        {
+            type = "item",
+            name = "c1",
+            amount = 1,
+        },
+    }
+    local item_info = cost_lib.optimize_single_ing(target, material_to_costs, item, 1, { fluid_amount_cap = 1000 })
+    assert(item_info.best_amount > 1000, "items aren't capped")
+    -- Through the search too
+    local fluid_pool = {
+        {
+            type = "fluid",
+            name = "f1",
+        },
+    }
+    local result = cost_lib.search_for_ings(fluid_pool, 1, target, material_to_costs, {
+        is_fluid_index = { true },
+        unrandomized_ings = {},
+        fluid_amount_cap = 1000,
+    })
+    assert(result.ings[1].amount <= 1000, "the search picked " .. result.ings[1].amount)
+end)
+
 print(num_passed .. " tests passed")

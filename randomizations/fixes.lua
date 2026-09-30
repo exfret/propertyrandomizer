@@ -639,10 +639,14 @@ randomizations.fixes = function()
         end
     end
 
-    -- Recipes with fluids leave hand crafting's category, and mining drills can put out what their resources give (see lib/fluid-ports.lua), with items and fluids trading positions
-    if config.item_fluids then
+    -- Recipes with fluids leave hand crafting's category (see lib/fluid-ports.lua) whenever randomization can give a recipe a fluid: items and fluids trading positions, or recipe shapes (lib/recipe-shape.lua), whose models both assume it
+    -- With items and fluids trading positions, mining drills can also put out what their resources give
+    if config.item_fluids or config.recipe_shapes then
         local num_recategorized = fluid_ports.fix_fluid_crafting_categories()
-        local num_drills_fitted = fluid_ports.fit_mining_drills()
+        local num_drills_fitted = 0
+        if config.item_fluids then
+            num_drills_fitted = fluid_ports.fit_mining_drills()
+        end
         if num_recategorized > 0 or num_drills_fitted > 0 then
             log("Fluid fixes: " .. num_recategorized .. " recipes with fluids left hand crafting's category, " .. num_drills_fitted .. " mining drills fitted to what their resources give")
         end

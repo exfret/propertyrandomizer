@@ -1401,6 +1401,113 @@ promotion.new = function(params)
             for _, edge_key in pairs(added_edges) do
                 gutils.remove_edge(graph, edge_key)
             end
+    -- Whether every recipe among the dependents of these pebbles (of one recipe, no longer establishable at their ranks) keeps some context it can be established in, following dependents whose pebbles can't be established either: a rewire must never leave a recipe reachable nowhere, which would fail the attempt when the recipe is anchored (required_contexts)
+    -- Promised pebbles need no following: a promised pebble's backing is promised too, so one that used the recipe's pebble is caught by try_rewires on the recipe. Bounded, since a common product's dependents are most of the graph (a recipe making one is promised anyway)
+    -- Returns whether they do (and how many pebbles it took), and otherwise why not
+    -- On a space platform the whole downstream of a hand-crafted recipe can flip, since the sort often ranked an item's pebble there through hand crafting before its delivery from a planet, so the bound is generous; every recipe reached keeps its planet contexts
+    local DEPENDENT_PEBBLES_CHECKED = 4000
+    local function dependents_keep_a_context(lost_inds)
+        local visited = {}
+        local queue = {}
+        for _, ind in pairs(lost_inds) do
+            visited[ind] = true
+            table.insert(queue, ind)
+        end
+        local num_checked = 0
+        while #queue > 0 do
+            local ind = table.remove(queue)
+            local node_key = sorted[ind].node_key
+            local node = graph.nodes[node_key]
+            if node.type == "recipe" and earliest_establishable_context(node_key) == nil then
+                return false, node_key .. " could no longer be established anywhere"
+            end
+            for dep, _ in pairs(node.dep) do
+                local dep_key = graph.edges[dep].stop
+                for _, dep_ind in pairs(nci[dep_key] or {}) do
+                    if visited[dep_ind] == nil then
+                        visited[dep_ind] = true
+                        num_checked = num_checked + 1
+                        if num_checked > DEPENDENT_PEBBLES_CHECKED then
+                            return false, "more than " .. DEPENDENT_PEBBLES_CHECKED .. " dependent pebbles to check"
+                        end
+                        if not establish(dep_ind) then
+                            table.insert(queue, dep_ind)
+                        end
+                    end
+                end
+            end
+        end
+        return true, num_checked
+    end
+
+    -- Requires a recipe-category node of a recipe on top of its category edge, like the node serving the fluids its planned shape takes (lib/recipe-shape.lua): a direct edge into the recipe, so the requirement sits at the recipe's own rank, after its ingredients
+    -- Not by pointing its category edge elsewhere: that edge ends at the base of its recipe-category head (or the recipe, without that handler), and the sort ranked the base right after hand crafting's free category, before any fluid crafter, so almost no fluid category could back it. The category head or edge stays as it is, and the model asks for both, which is only more careful than the game (the recipe-category handler keeps the category it picks serving the planned fluids)
+    -- Kept only if every promised pebble of the recipe can still be established (as try_rewires checks), and wherever the recipe can no longer be established at its rank (mostly a space platform, where it was hand crafted before any assembler arrives, and the node's pebble ranks after its), no recipe among its dependents is left establishable nowhere (dependents_keep_a_context; a product delivered from a planet backs them regardless). Otherwise the edge goes away again
+    -- Returns whether the recipe now requires the node (also when it did already)
+    state.require_recipe_category = function(recipe_key, rcat_key)
+        if graph.nodes[rcat_key] == nil or graph.nodes[recipe_key] == nil then
+            return false
+        end
+        local edge_key = gutils.ekey({
+            start = rcat_key,
+            stop = recipe_key,
+        })
+        if graph.edges[edge_key] ~= nil then
+            return true
+        end
+        -- The contexts the recipe can be established in now
+        clear_cache()
+        local established_before = {}
+        for context, ind in pairs(nci[recipe_key] or {}) do
+            if establish(ind) then
+                established_before[context] = debt ~= nil and establish_solvent(ind)
+            end
+        end
+        -- The recipe's fixed prereqs are cached, and this adds one
+        gutils.add_edge(graph, rcat_key, recipe_key)
+        recipe_info[recipe_key] = nil
+        clear_cache()
+        local changes = { { node_key = recipe_key } }
+        local ok = state.try_rewires(changes, false)
+        local reason
+        if not ok then
+            reason = "a promised pebble of it would lose its backing"
+        else
+            -- Pebbles of the recipe no longer established at their ranks, whose dependents may have used them
+            local lost = {}
+            for context, was_solvent in pairs(established_before) do
+                local ind = nci[recipe_key][context]
+                if not establish(ind) or (was_solvent and not establish_solvent(ind)) then
+                    table.insert(lost, ind)
+                end
+            end
+            if #lost > 0 then
+                local num_checked
+                ok, reason = dependents_keep_a_context(lost)
+                if ok then
+                    num_checked = reason
+                    reason = nil
+                    log("Promotion: " .. recipe_key .. " requires " .. rcat_key .. " with " .. #lost .. " of its pebbles established later; " .. num_checked .. " dependent pebbles checked")
+                else
+                    reason = "at " .. #lost .. " of its pebbles, " .. reason
+                end
+            end
+        end
+        if ok then
+            ok = state.try_rewires(changes, true)
+            if not ok then
+                reason = "committing it failed"
+            end
+        end
+        if not ok then
+            gutils.remove_edge(graph, edge_key)
+            recipe_info[recipe_key] = nil
+            clear_cache()
+            log("Promotion: " .. recipe_key .. " can't require " .. rcat_key .. ": " .. reason)
+        end
+        return ok
+    end
+
             for _, edge in pairs(removed_edges) do
                 gutils.add_edge(graph, edge.start, edge.stop, edge)
             end

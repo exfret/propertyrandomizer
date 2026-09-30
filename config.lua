@@ -118,6 +118,9 @@ config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value
 
 ----------------------------------------------------------------------
+-- Whether unified recipe randomization changes recipes' shapes: how many ingredients they take and how many of those are fluids, favoring fluids (see lib/recipe-shape.lua and notes/recipe-shape-plan.md)
+-- In development, so it's on with the other unified randomizations still in development (config.dev_unified), since 2026-09-30 with the user's go-ahead after the isolated runs in the plan's status section; everything it touches behaves as before it while this is false
+config.recipe_shapes = config.dev_unified
 -- Presets
 ----------------------------------------------------------------------
 

@@ -520,6 +520,15 @@ unified.execute = function()
     ----------------------------------------------------------------------------------------------------
 
     local random_graph = table.deepcopy(cut_graph)
+    -- First pass's fluid counts on recipes and resources (fluid_delta, see item_fluid.rewire_form_change) are on its graph, while handlers' validate gets this one, so they're carried over
+    -- Without this, the recipe-category handler saw no fluid on a recipe whose kept ingredient's position took a fluid identity, and moved it to hand crafting (base seed 1, 2026-09-30: copper plates' recipe, which the game then couldn't craft anywhere)
+    if DO_FIRST_PASS then
+        for node_key, node in pairs(first_pass_info.graph.nodes) do
+            if node.fluid_delta ~= nil and random_graph.nodes[node_key] ~= nil then
+                random_graph.nodes[node_key].fluid_delta = table.deepcopy(node.fluid_delta)
+            end
+        end
+    end
 
     for _, handler in pairs(handlers) do
         rng.shuffle(rng.key({id = "unified"}), handler_to_shuffled_prereqs[handler.id])
@@ -624,6 +633,18 @@ unified.execute = function()
         log("Promotion: promised " .. num_single_context_recipes .. " recipes that are reachable in only one context")
         log("Promotion: promised " .. prom.num_promised .. " pebbles for mechanics; " .. #failed .. " mechanic pebbles could not be established; " .. tostring(prom.num_lost_before) .. " mechanic contexts and " .. tostring(prom.num_recipes_lost_before) .. " recipes already lost before randomization")
         prom.log_debt("start")
+    end
+
+    -- Decisions handlers make for every dependent before any head is randomized, like the shapes recipes take (see handlers/default.lua, before_heads)
+    for _, handler_id in pairs(handler_ids) do
+        handlers[handler_id].before_heads({
+            random_graph = random_graph,
+            promotion = prom,
+            sorted_deps = sorted_deps,
+            split_graph = (first_pass_info or {}).graph,
+            trav_to_slot = (first_pass_info or {}).trav_to_slot,
+            do_first_pass = DO_FIRST_PASS,
+        })
     end
 
     -- TODO: Tech delinearization (pull out to a helper)

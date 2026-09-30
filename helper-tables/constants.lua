@@ -87,6 +87,20 @@ local constants = {
     -- Points off in recipe ingredient searches per ingredient whose cost comes from raw resources outside the starting ones (scaled by that share), so newer resources get used
     new_resource_bonus = 0.5,
     max_num_failed_attempts_ing_search = 10000,
+    -- Recipe shapes (lib/recipe-shape.lua, config.recipe_shapes): how unified recipe randomization changes how many ingredients a recipe takes and how many are fluids
+    recipe_shape = {
+        -- A recipe gains a fluid slot with this chance, a second one on top with the next, and one with a fluid loses one with the last (never both)
+        -- Gains are only kept where promotion accepts the fluid crafters before the recipe (about two in five on Space Age seeds, since the random sort often puts a recipe before the crafters), while losses always go through, so gains are drawn well above losses
+        fluid_gain_chance = 0.35,
+        fluid_second_gain_chance = 0.15,
+        fluid_loss_chance = 0.1,
+        -- The range of the walk that picks a recipe's number of ingredients from its own (lib/random/randnum.lua: "small" makes 3 into 2 to 6)
+        count_range = "small",
+        -- The most fluid slots a plan gives a recipe, however many boxes its crafters have; it also bounds the category nodes the logic builds per fluid count (each is a mechanic node with a pebble per context in every sort, so they cost load time)
+        max_fluids = 4,
+        -- The most pool entries one ingredient edge of a rarely taken fluid gets, so every fluid is proposed about as often as the median one
+        max_fluid_copies = 8,
+    },
     -- Item randomization
     item_randomization_cost_factor_threshold = 100,
     item_randomization_max_fallbacks = 100,

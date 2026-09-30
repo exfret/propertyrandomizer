@@ -51,6 +51,10 @@ end
 default.claim = function(graph, prereq, dep, edge)
 end
 
+-- Called once promotion has promised the mechanics and before any head is randomized, for decisions a handler makes for every dependent up front, like the shapes recipes take (lib/recipe-shape.lua), with promotion's state (params.promotion, nil without promotion) to keep the model honest; params also carry random_graph, sorted_deps, split_graph and trav_to_slot (first pass's, or nil), and do_first_pass
+default.before_heads = function(params)
+end
+
 -- Called with first pass and promotion, before promotion ranks anything, for heads whose new base is chosen up front and checked on the whole game instead of by promotion's fixed ranks
 -- That suits a head whose vanilla base is free (like a resource needing no mining fluid): its dependent can take a later base only if that base happens to sort before the dependent, which one random order rarely shows
 -- params: heads (this handler's heads of randomized dependents), pool (its shuffled bases), random_graph, baseline_sort (first pass's sort of the game), and sort_without(node keys), a sort of the game (first pass's graph, with earlier handlers' up-front choices) where those AND nodes can't be reached
