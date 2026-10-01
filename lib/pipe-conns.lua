@@ -41,7 +41,8 @@ pipe_conns.get_pipe_conns = function(prototype, fluid_box_properties)
     return {conns = pipe_conns, positions = fluid_box_positions, directions = fluid_box_directions}
 end
 
--- returns a table of all possible pipe connections
+-- Returns a table of all possible pipe connections: one per edge tile, since connection points of one entity can't share positions (types/FluidBox.html, pipe_connections)
+-- A corner tile gets its north or south side; its east or west side is only used when the prototype already has a connection there
 pipe_conns.get_possible_pipe_connections = function (prototype)
     if not prototype.collision_box then return {} end
     local connections = {}
@@ -57,7 +58,7 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
       connections[#connections+1] = {position = {x + shift.x,  shift.y}, direction = defines.direction.north}
       connections[#connections+1] = {position = {x + shift.x, -shift.y}, direction = defines.direction.south}
     end
-    for y = 0, height do
+    for y = 1, height - 1 do
       connections[#connections+1] = {position = { shift.x, y + shift.y}, direction = defines.direction.west}
       connections[#connections+1] = {position = {-shift.x, y + shift.y}, direction = defines.direction.east}
     end
@@ -65,20 +66,17 @@ pipe_conns.get_possible_pipe_connections = function (prototype)
 end
 
 -- Returns the possible pipe connections (see get_possible_pipe_connections) that don't clash with the prototype's own connections
--- A pipe connection takes one side of one tile, so a corner tile keeps its other side free (checked headless on 2.1.20: two fluid boxes connecting on one corner tile, facing north and west, were each fed their own fluid and crafted a two-fluid recipe, although FluidBox::pipe_connections says connections can't share positions)
--- Heat connections and connections given by positions (which move with the entity's direction) take their whole tile
+-- Every existing pipe or heat connection takes its whole tile, whichever way it faces: FluidBox::pipe_connections says an entity's connection points can't share positions, and two on one corner tile facing north and west did connect (checked headless on 2.1.20) but only one of them got its arrow and fluid icon in alt mode
+-- Connections given by positions (which move with the entity's direction) take the tile of their first position
 pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_source)
     ignore_energy_source = ignore_energy_source or false
 
-    -- {position, direction} of each taken side, and positions of wholly taken tiles
-    local taken_sides = {}
+    -- Positions of taken tiles
     local taken_tiles = {}
 
-    -- Sides only count separately with items and fluids trading positions (config.item_fluids, whose extra fluid boxes use them); otherwise a connection takes its whole tile, as before
-    local side_aware = config ~= nil and config.item_fluids
     local function add_to_taken(pipe_conn)
         if pipe_conn.position ~= nil then
-            table.insert(taken_sides, {position = pipe_conn.position, direction = side_aware and pipe_conn.direction or nil})
+            table.insert(taken_tiles, pipe_conn.position)
         end
         if pipe_conn.positions ~= nil then
             table.insert(taken_tiles, pipe_conn.positions[1])
@@ -141,12 +139,6 @@ pipe_conns.get_available_pipe_connections = function(prototype, ignore_energy_so
         local doesnt_collide = true
         for _, position in pairs(taken_tiles) do
             if same_tile(position, connection.position) then
-                doesnt_collide = false
-            end
-        end
-        for _, side in pairs(taken_sides) do
-            -- A connection without a direction is taken to use its whole tile
-            if same_tile(side.position, connection.position) and (side.direction == nil or side.direction == connection.direction) then
                 doesnt_collide = false
             end
         end

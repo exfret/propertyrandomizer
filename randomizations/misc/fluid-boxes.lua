@@ -79,9 +79,14 @@ randomizations.fluid_box_locations = function(id)
             local to_randomize = true
             for _, fluid_box in pairs(fluid_boxes) do to_randomize = to_randomize and validate_fluid_box(fluid_box) end
 
+            -- One possible connection per edge tile, so there must be enough tiles for every connection
+            local possible_connections = pipe_conns.get_possible_pipe_connections(prototype)
+            local num_connections = 0
+            for _, fluid_box in pairs(fluid_boxes) do num_connections = num_connections + #fluid_box.pipe_connections end
+            for _, connections in pairs(heat_connections) do num_connections = num_connections + #connections end
+            if num_connections > #possible_connections then to_randomize = false end
+
             if to_randomize then
-                -- generate all possible connections (position and direction)
-                local possible_connections = pipe_conns.get_possible_pipe_connections(prototype)
                 -- duplicate, because they are the same
                 local possible_underground_connections = table.deepcopy(possible_connections)
 

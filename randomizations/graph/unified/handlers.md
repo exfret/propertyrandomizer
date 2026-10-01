@@ -55,8 +55,6 @@ Not ready for release
 
 Recipe shapes (config.recipe_shapes, lib/recipe-shape.lua, notes/recipe-shape-plan.md): how many distinct ingredients a recipe takes and how many are fluids change too, favoring fluids. Before any head is randomized (before_heads), every claimed recipe gets a planned shape: its count from randnum's walk ("small" range), fluid slots gained or lost by the chances in constants.recipe_shape, capped by the fluid input boxes of its crafters (the logic's recipe-category nodes with a crafter, through item_fluid.recipe_category_key), the furnace rule (one item and one fluid at most), the crafters' ingredient_count and the largest count in data.raw. A plan that gains fluids makes the category node serving them a further prerequisite of the recipe through promotion (require_recipe_category, a direct edge, since the recipe's category base was ranked right after hand crafting's free category), which refuses it when it unbacks a promised pebble (so a recipe the skeleton needs hand-craftable can't gain a fluid) or, where the recipe can no longer be established at its rank (mostly a space platform, where hand crafting came before any assembler), when a recipe among its dependents would be left establishable nowhere; refused, the plan backs off one fluid at a time. Only gains change the model: with fewer fluids the vanilla node stays, merely pessimistic, and vanilla ingredients always fit. The recipe-category handler reads the plans for its furnace and fluid box checks. The search fills the planned slots (slot_forms in recipe-cost.lua), falling down a ladder (one fluid fewer at a time, then vanilla's shape) before today's fallback to vanilla ingredients, and caps fluid amounts at the largest any recipe takes. With items and fluids trading positions, a candidate fills a slot by its identity's form (the candidate's form field), so a fluid identity at an item position counts as a fluid, and the game's fluid count never exceeds what the model's category serves; that rule is on whenever positions trade, shapes or not. Fluids few recipes take get more pool entries (claim's copies, uniform_copies), so every fluid is proposed about as often as the median one. The RECIPESHAPES log lines say what the plans did and how the shapes came out. Recipes with fluids leave hand crafting's category in fixes.lua, as with items and fluids trading positions.
 
-# recipe-tech-unlocks
-
 # spoiling
 
 Not ready for release
@@ -78,7 +76,5 @@ Spoil results need a sink, a way machines can use them up on the way to research
 # starting-planet
 
 Not ready for release
-
-# tech-prereqs
 
 # tech-science-packs

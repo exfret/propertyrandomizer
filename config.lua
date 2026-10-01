@@ -139,6 +139,9 @@ config.fixpass_variants = true
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
 -- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
 config.item_fluids = config.dev_unified
+-- Whether unified recipe randomization changes recipes' shapes: how many ingredients they take and how many of those are fluids, favoring fluids (see lib/recipe-shape.lua and notes/recipe-shape-plan.md)
+-- In development, so it's on with the other unified randomizations still in development (config.dev_unified), since 2026-09-30 with the user's go-ahead after the isolated runs in the plan's status section; everything it touches behaves as before it while this is false
+config.recipe_shapes = config.dev_unified
 -- Whether planets get random names mixed from the vanilla planets' names (lib/planet-names.lua): with planetary randomization, the unified randomizations in development and the duplicates all on (user, 2026-09-30)
 config.planet_names = config.dupes and config.planetary and config.dev_unified
 -- Whether every planet but the starting one gets a random tint (lib/planet-tints.lua), copies included: with the random names, so the planets are disguised together
@@ -148,9 +151,6 @@ config.bias_setting = settings.startup["propertyrandomizer-bias"].value
 config.chaos_setting = settings.startup["propertyrandomizer-chaos"].value
 
 ----------------------------------------------------------------------
--- Whether unified recipe randomization changes recipes' shapes: how many ingredients they take and how many of those are fluids, favoring fluids (see lib/recipe-shape.lua and notes/recipe-shape-plan.md)
--- In development, so it's on with the other unified randomizations still in development (config.dev_unified), since 2026-09-30 with the user's go-ahead after the isolated runs in the plan's status section; everything it touches behaves as before it while this is false
-config.recipe_shapes = config.dev_unified
 -- Presets
 ----------------------------------------------------------------------
 

@@ -1,3 +1,5 @@
+ * WIP for gleba enemy rebalance: Gleba enemies spawn other enemies right now, which can often be way too powerful; fix!
+
  * TO DO (2026-09-29): bootstrap "initial infrastructure" against isolatability, in recipe randomization first
     - Seen on sa/science-cost@750 (recipe=true, old logic 12/12 packs, new checker 9/12, 333 unreachable recipes): legacy recipe randomization gave the lightning rod 1 holmium plate (and the lightning collector 269 holmium solution)
       It did that on purpose: it preserves the isolatability a recipe has in the new logic (randomizations/graph/recipe.lua:392-432, "Preserving isolatability of lightning-rod on planet: fulgora"), and holmium is the most Fulgora-local ingredient there is
@@ -95,6 +97,13 @@
     - Superposed mode (planetary-superposed, off): off for now (user, 2026-09-30); its code stays
     - Known: in the preview the cryogenic plant and fusion reactor go home when resource swaps and random lock moves break the big mining drill chain (another session is prototyping a generic repair pass after the planetary moves); PROTECT_TRANSPORTED stays off (with it, promotion restarts unified attempts on moved items' recycling recipes, 7 of 8 on preview seed 1); in the preview, planet-locked recipes other stages made (a railway bundle) move as rewards too, not examined
     - Off in the user's game (user, 2026-10-01): their saved planetary-rewards setting was on, now false in their mods/mod-settings.dat (the setting's default stays off). In their 00:57 load (the preview, two copies per planet, every planetary stage, the fix pass, re-homing off) the stage spent about 9 minutes (1,199-1,753 s, nothing logged between rewards.lua:1412 and :2454) picking 16 moves: the biochamber, foundry, electromagnetic plant, cryogenic plant, fusion reactor and railway, with their copies. All 16 went back: the biochamber, the foundry and electromagnetic plant copy 2 because their old planets still needed them, then the other 13 when the lock stage's check failed ("the witnesses missed something"), so about 10 minutes for no change. Open: what makes picking the moves this slow with two copies per planet
+
+ * WORK IN PROGRESS (2026-09-30): two copies per planet and per-copy home locks (aabbb79: lib/dupe-planets.lua, lib/dupe-planet-locks.lua, randomizations/planetary/locks.lua)
+    - Unverified: no two-copy preview load has reached a final MECHCHECK yet. dev/run-tests.py stops a load at 45 minutes (TIMEOUT_SECONDS), so use a longer cap or an in-game load. Since the "needed by" cut the planetary stage takes about 8 minutes; each unified attempt about 20-27 minutes on a busy machine
+    - Retries: a moved lock spanning two families (like iron bacteria on the Aquilo family plus Gleba 3) isn't protected by unified (PROTECT_TRANSPORTED is off), so the per-attempt PLANETCHECK retries (the user's load lost 12 goals in attempt 1, 10 of them bacteria). b2 is building an in-place lock revert for these; check.spare_building_recipes already drops goals of spare duplicated buildings
+    - Release: graphics/dupes is gitignored, so regenerate it (dev/make-dupe-graphics.py --dump with a data.raw dump of a dupes-off Space Age load) to ship copy 3's planets and the split science packs
+    - lib/test-item-fluid.lua fails at HEAD since 474a97d or earlier ("expected 7 free points, got 11"); it passes with other sessions' uncommitted unified changes
+    - Untested with two copies: the old graph randomizations, superposed mode, planet rewards
 
  * WORK IN PROGRESS (2026-10-01): up to 8 duplicates (setting propertyrandomizer-dupe-count, 1-8, default 2; dupe numbers 2 up to count + 1, capped by lib/dupe-graphics-manifest.lua's max_dupe and the number badges via dupe.highest_number in lib/dupe.lua)
     - Untested in game at any count past 2 (user, 2026-10-01: testing it would take prohibitively long); expect longer loads and more failed attempts
