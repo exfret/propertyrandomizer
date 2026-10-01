@@ -653,6 +653,18 @@ local function compute_rooms_needed(graph)
     return {
         needed = needed,
         intersect = intersect,
+        -- The rooms in either set
+        union = function(set1, set2)
+            return combine("union", set1, set2)
+        end,
+        -- The set without one room
+        without = function(set, room)
+            local i = room_ind[room]
+            if i == nil or string.sub(set, i, i) ~= "1" then
+                return set
+            end
+            return string.sub(set, 1, i - 1) .. "0" .. string.sub(set, i + 1)
+        end,
         -- Set string --> room --> true
         decode = function(set)
             local decoded = {}
@@ -689,8 +701,9 @@ local function sorted_keys(set)
     return keys
 end
 
--- Home sets: a room's home set is the rooms its discoverers (see top.is_discoverer) can't be reached without, like Nauvis and space platforms for Vulcanus
--- Those rooms have been used by the time the room is discovered, so with home contexts, a tech that can be had using only them is isolatable there once it's discovered (see discover_home_rooms in top.sort)
+-- Home sets: a room's home set is the rooms its discoverers (see top.is_discoverer) can't be reached without, like Nauvis and space platforms for Vulcanus, and the rooms the room itself can't be reached without (the route there: the locations on the way, which have to be discovered, and the asteroid defense along it)
+-- Those rooms have been used by the time the room is discovered and reached, so with home contexts, a tech that can be had using only them is isolatable there once it's discovered (see discover_home_rooms in top.sort); isolatable contexts there only matter once it's reached
+-- The route mostly needs no more than the discovery, but where discoveries follow the star map (randomizations/planetary/discovery.lua), a far planet's route passes planets that need other planets' packs, and isolatability may use the techs gotten by the time the room is reached (lib/logic/builder.lua)
 -- Returns { ids = list of home set ids, sets = id --> { rooms = room --> true, discovered = room --> true for the rooms it's the home set of }, of = room --> home set id }
 -- Rooms with the same home set share it, and rooms with no reachable discoverer have none
 -- Home sets are meant to come from the vanilla graph, so a sort of a randomized graph should pass the vanilla ones as extra.home_sets
@@ -713,6 +726,13 @@ top.home_sets = function(graph)
                     needs_of_room[discovered.room] = info.intersect(needs_of_room[discovered.room], node_needs)
                 end
             end
+        end
+    end
+    -- And what reaching the room needs (its room node's rooms, the room itself aside)
+    for room, needs in pairs(needs_of_room) do
+        local reach = (info.needed[gutils.key("room", room)] or {})[room]
+        if reach ~= nil then
+            needs_of_room[room] = info.union(needs, info.without(reach, room))
         end
     end
 

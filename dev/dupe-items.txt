@@ -40,11 +40,16 @@ personal-roboport-equipment hue=40 half=25 sat=0.2 dupes=130,355
 toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185
 
 # Science packs: copied only with their planet's copy (lib/dupe-planets.lua), each locked to that copy. The flask's liquid is
-# the paint; each dupe stays away from the other packs' colors
-metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 dupes=170
-agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 dupes=200
-electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 dupes=50
-cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 dupes=340
-military-science-pack grey val=0.35 smax=0.3 dupes=130
-production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 dupes=30
-utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 dupes=185
+# the paint. A pack copy has no number badge (user, 2026-09-30), so its color alone has to tell it apart: no copy shares a
+# color with a pack of the same flask shape (base packs are conical: red 0, gold 42, green 122, cyan 196, violet 277, grey,
+# white; Space Age's round: orange 27, chartreuse 67, blue 236, navy 244, magenta 330), and the copies all differ. Only the
+# hue 160 is free of every pack, so the other copies share a hue with a pack of the other shape, told apart by the flask
+# (and by lightness where the source is dark: brown from military, maroon from cryogenic). The old utility copy (185) read
+# as a chemical pack. Each color carries a strong saturation (the /S in dupes=), like the originals
+metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 dupes=159/0.8
+agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 dupes=105/0.8
+electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 dupes=290/0.8
+cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 dupes=355/0.85
+military-science-pack grey val=0.35 smax=0.3 dupes=25/0.8
+production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 dupes=236/0.8
+utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 dupes=318/0.6

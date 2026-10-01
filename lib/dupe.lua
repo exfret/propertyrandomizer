@@ -332,7 +332,9 @@ dupe.recipe = function(recipe, extra_info)
     return new_recipe
 end
 
-dupe.item = function(item, dupe_number)
+-- options (optional): no_badge leaves the number badge off the copy's icons and its recipes' (science packs, which their recolor alone tells apart)
+dupe.item = function(item, dupe_number, options)
+    options = options or {}
     local new_item = dupe.prototype(item, dupe_number)
     recolor_graphics(new_item, dupe_number)
 
@@ -340,9 +342,13 @@ dupe.item = function(item, dupe_number)
     for _, recipe in pairs(dupe.item_recipes(item)) do
         local new_recipe = dupe.recipe(recipe, dupe_number)
         recolor_graphics(new_recipe, dupe_number)
-        -- Named as the item's copy rather than as a recipe copy, with the number badge on the left like the item's
+        -- Named as the item's copy rather than as a recipe copy, with the number badge (which dupe.recipe put last) on the left like the item's
         new_recipe.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(recipe), tostring(dupe_number)}
-        new_recipe.icons[#new_recipe.icons].shift[1] = -new_recipe.icons[#new_recipe.icons].shift[1]
+        if options.no_badge == true then
+            table.remove(new_recipe.icons)
+        else
+            new_recipe.icons[#new_recipe.icons].shift[1] = -new_recipe.icons[#new_recipe.icons].shift[1]
+        end
         for _, result in pairs(new_recipe.results) do
             if result.type == "item" and result.name == item.name then
                 result.name = new_item.name
@@ -355,7 +361,7 @@ dupe.item = function(item, dupe_number)
     end
 
     for _, icon_prefix_type in pairs({"", "dark_background_"}) do
-        if new_item[icon_prefix_type .. "icon"] ~= nil or new_item[icon_prefix_type .. "icons"] ~= nil then
+        if options.no_badge ~= true and (new_item[icon_prefix_type .. "icon"] ~= nil or new_item[icon_prefix_type .. "icons"] ~= nil) then
             local item_icons
             if new_item[icon_prefix_type .. "icons"] == nil then
                 item_icons = {

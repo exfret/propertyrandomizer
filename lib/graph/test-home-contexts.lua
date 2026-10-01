@@ -721,4 +721,52 @@ test("a room with several discoverers only needs what they all need", function()
     assert(rooms[HOME] ~= nil and rooms[via_a] == nil and rooms[via_b] == nil)
 end)
 
+test("a room's home set also has the rooms its route needs, not just its discoverers'", function()
+    -- The far planet's discovery needs only home, but it's only reached through the via planet, as when discovery follows the star map (randomizations/planetary/discovery.lua)
+    local far = "planet: far"
+    local via = "planet: via"
+    set_rooms({ HOME, far, via })
+    data.raw["planet"] = {
+        far = {
+            type = "planet",
+            name = "far",
+        },
+    }
+    data.raw["technology"] = {
+        ["find-far"] = {
+            effects = {
+                {
+                    type = "unlock-space-location",
+                    space_location = "far",
+                },
+            },
+        },
+    }
+    local graph = new_graph()
+    gutils.add_node(graph, "start", "", {
+        op = "AND",
+    })
+    for _, room in pairs({ HOME, via, far }) do
+        gutils.add_node(graph, "room", room, {
+            op = "OR",
+        })
+    end
+    add_edge(graph, key("start", ""), key("room", HOME))
+    add_edge(graph, key("room", HOME), key("room", via))
+    gutils.add_node(graph, "technology", "find-far", {
+        op = "AND",
+    })
+    add_edge(graph, key("room", HOME), key("technology", "find-far"))
+    gutils.add_node(graph, "reach", "far", {
+        op = "AND",
+    })
+    add_edge(graph, key("technology", "find-far"), key("reach", "far"))
+    add_edge(graph, key("room", via), key("reach", "far"))
+    add_edge(graph, key("reach", "far"), key("room", far))
+    local home_sets = top.home_sets(graph)
+    local rooms = home_sets.sets[home_sets.of[far]].rooms
+    -- The route's via planet counts (the player has been there by the time the far planet is reached), the far planet itself doesn't
+    assert(rooms[HOME] ~= nil and rooms[via] ~= nil and rooms[far] == nil)
+end)
+
 print(tostring(num_passed) .. " tests passed")

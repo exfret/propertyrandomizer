@@ -125,6 +125,7 @@ if release_isolation ~= nil then
 end
 
 local planetary = require("randomizations/planetary/execute")
+local transport = require("randomizations/planetary/transport")
 local fix_pass = require("randomizations/planetary/fix-pass")
 local recycling = require("lib/recycling")
 
@@ -204,6 +205,32 @@ local num_planetary_rerolls = 0
 -- Outside superposed mode, how many attempts that lose only what planetary changes kept (PLANETCHECK attempt) are retried before one is kept anyway, for the final check to warn about; each retry costs a whole attempt
 local PLANETARY_LOSS_RETRIES = 2
 local num_planetary_loss_retries = 0
+-- How many times the planet goals an attempt lost get the items they need made shippable and are checked again (randomizations/planetary/transport.lua); each time costs a sort, where a retry costs a whole attempt
+local SHIP_ROUNDS = 3
+-- Makes shippable the items that planet goals an attempt lost need only from another planet, and checks the attempt again
+-- Returns how many goals are still lost
+local function ship_for_goals(num_lost, failures, sort_info)
+    for _ = 1, SHIP_ROUNDS do
+        local blockers = transport.blockers(new_logic.graph, sort_info, failures, transport.unshippable_in(new_logic.graph))
+        if #blockers == 0 then
+            return num_lost
+        end
+        local lines = transport.apply(blockers, function(item_name)
+            return lookups.weight[item_name]
+        end)
+        log("Planetary transport: " .. num_lost .. " planet goals lost need items that can't travel to their planet, made shippable: " .. table.concat(lines, ", "))
+        new_logic.build(true)
+        local resorted = top.sort(new_logic.graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+        })
+        num_lost, failures, sort_info = planetary.check_attempt(new_logic.graph, resorted)
+        if num_lost == 0 then
+            return 0
+        end
+    end
+    return num_lost
+end
 for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
     unified_info = unified.execute()
     if unified_info then
@@ -225,7 +252,13 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         -- Outside superposed mode the planetary stages repaired their changes before unified randomization ran, so an attempt that loses what they kept is retried too, up to PLANETARY_LOSS_RETRIES times
         local num_lost_planetary = 0
         if config.planetary then
-            num_lost_planetary = planetary.check_attempt(new_logic.graph, attempt_sort_info)
+            local lost_goals
+            local check_sort_info
+            num_lost_planetary, lost_goals, check_sort_info = planetary.check_attempt(new_logic.graph, attempt_sort_info)
+            -- Goals lost only because an item can't travel to their planet are kept by making it shippable, instead of retrying the whole attempt (user, 2026-09-30)
+            if verdict.ok and num_lost_planetary > 0 then
+                num_lost_planetary = ship_for_goals(num_lost_planetary, lost_goals, check_sort_info)
+            end
         end
         -- The last attempt is kept even then, since a startup error would make the player reset their settings; the final check below warns them instead
         local problem = nil
@@ -247,8 +280,9 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         end
     end
     if not unified_info then
-        -- The next attempt rebuilds logic from this (see unified.execute)
+        -- The next attempt rebuilds logic from this (see unified.execute), and none of this attempt's items stay shippable
         data.raw = table.deepcopy(old_data_raw)
+        transport.applied = {}
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
         end
@@ -476,6 +510,12 @@ if config.misc.colors ~= "no" then
 end
 
 log("Done applying extra randomizations")
+
+-- Items made shippable for planet goals stay so, though later randomization changed weights and spoil times again (randomizations/planetary/transport.lua)
+local num_reshipped = transport.reapply()
+if num_reshipped > 0 then
+    log("Planetary transport: " .. num_reshipped .. " items made shippable again after later randomization")
+end
 
 log("Applying fixes")
 

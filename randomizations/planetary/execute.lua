@@ -23,6 +23,10 @@ local SWAP_START_WITH = nil
 -- Retested 2026-09-30 on sa/preview seeds 1-3: no PLANETCHECK final failures with it (1, 2 and 2 without), but on seed 1 promotion still ended 7 of 8 unified attempts with such a recycling recipe unreachable (the moved item's pebble can't be established before the recycling recipe's rank), which tripled the load; the per-attempt planetary check retries the lost goals instead
 local PROTECT_TRANSPORTED = false
 
+-- Whether discovery technologies follow the star map the connection graph draws (discovery.lua, run in draw_map_first)
+-- Off: it works (sa/dupes-preview seeds 1-2 passed MECHCHECK, 2026-09-30) but every planet gets a home set of its own, and the lock stage and unified's attempts got so much slower that loads took about 5 times as long (seed 2: 38 instead of 7.5 minutes)
+local DISCOVERY_FOLLOWS_MAP = false
+
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
@@ -40,6 +44,7 @@ local locks = require("randomizations/planetary/locks")
 local lightning = require("randomizations/planetary/lightning")
 local freezing = require("randomizations/planetary/freezing")
 local connections = require("randomizations/planetary/connections")
+local discovery = require("randomizations/planetary/discovery")
 local rewards = require("randomizations/planetary/rewards")
 -- The check's rule 1 skips recipes a reward retired (rewards.bundle_of_retired)
 planetary_check.is_retired = function(recipe_name)
@@ -788,6 +793,42 @@ local function run_connections(logic, state)
     return nil
 end
 
+-- The recipe and technology nodes reachable in the current game, by a plain sort (no contexts)
+local function reachable_nodes(logic)
+    logic.build(true, {
+        home_sets = planetary_check.home_sets,
+    })
+    local sort_info = top.sort(logic.graph)
+    local reachable = {}
+    for node_key, contexts in pairs(sort_info.node_to_context_inds or {}) do
+        local node = logic.graph.nodes[node_key]
+        if next(contexts) ~= nil and node ~= nil and (node.type == "recipe" or node.type == "technology") then
+            reachable[node_key] = true
+        end
+    end
+    return reachable
+end
+
+-- Discovery technologies follow the star map the connection graph drew (discovery.lua), as part of drawing the map first (see draw_map_first)
+-- The new order changes which planets come before which, so it isn't checked against what planets had before it (their home sets were the old order's); it's undone if it leaves anything out of reach, like a discovery that waits on itself through a planet before it whose packs need it
+local function run_discovery(logic, state)
+    local before = reachable_nodes(logic)
+    log("Planetary discovery: " .. discovery.execute())
+    local after = reachable_nodes(logic)
+    local lost = {}
+    for node_key, _ in pairs(before) do
+        if after[node_key] == nil then
+            table.insert(lost, node_key)
+        end
+    end
+    table.sort(lost)
+    if #lost > 0 then
+        return "a discovery waited on itself, leaving " .. #lost .. " recipes and technologies out of reach (" .. table.concat(lost, ", ", 1, math.min(#lost, 10)) .. ")"
+    end
+    state.after = nil
+    return nil
+end
+
 -- Moves freezing (freezing.lua) without any repair; returns the planets that gave their freezing away (empty if none did)
 local function move_freezing()
     local map = freezing.execute("planetary-freezing")
@@ -959,7 +1000,8 @@ end
 -- With fix (the planetary fix pass, see run_fix_first), the stages it can repair run fix pass first and then the old way; the connection graph and locks run the old way
 local function run_stages(logic, state, careful, fix)
     state.careful = careful
-    if config.planetary_connections then
+    -- Outside superposed mode the map was drawn first (draw_map_first)
+    if config.planetary_connections and state.map_first ~= true then
         local problem = old_graph_problem() or connections.problem()
         if connections.nothing_to_do() then
             log("Planetary connections: no space connections to draw again")
@@ -1049,6 +1091,38 @@ local function run_stages(logic, state, careful, fix)
             run_stage(what, run_locks, logic, state)
         end
     end
+end
+
+-- Draws the star map first, outside superposed mode: the connection graph (checked like any stage, against the game before it) and, with DISCOVERY_FOLLOWS_MAP, the discovery order that follows it (run_discovery), and then the game they make is the one the other stages are checked against, sorted again with home sets of its own
+-- The map can change which planets come before which (a far planet's route passes planets that need other planets' packs), which the old home sets don't know (see top.home_sets), so the other stages couldn't be checked against the old game with its home sets
+-- state.before becomes the map's game, and state.map_first keeps run_stages from drawing the graph again
+local function draw_map_first(logic, state)
+    state.map_first = true
+    if connections.nothing_to_do() then
+        log("Planetary connections: no space connections to draw again")
+        return
+    end
+    local problem = old_graph_problem() or connections.problem()
+    if problem ~= nil then
+        warn("connection graph", "was skipped, since " .. problem .. ".")
+        return
+    end
+    state.careful = true
+    local is_drawn = run_stage("connection graph", run_connections, logic, state)
+    if not is_drawn then
+        return
+    end
+    if DISCOVERY_FOLLOWS_MAP then
+        local discovery_problem = discovery.problem()
+        if discovery_problem ~= nil then
+            warn("discovery technologies", "were skipped, since " .. discovery_problem .. ".")
+        else
+            run_stage("discovery technologies", run_discovery, logic, state)
+        end
+    end
+    planetary_check.home_sets = nil
+    state.before = planetary_check.sort(logic)
+    state.after = nil
 end
 
 -- The game before planetary changes as debt for promotion (see superposed mode at the top), or nil
@@ -1360,6 +1434,14 @@ planetary.execute = function(logic)
     if not is_ok then
         warn("changes", "were skipped, since the logic couldn't be sorted.")
         return
+    end
+    -- Outside superposed mode the star map comes first, and the rest is checked against the game it makes (see draw_map_first)
+    if not (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
+        local is_drawn, problem = pcall(draw_map_first, logic, state)
+        if not is_drawn then
+            warn("changes", "were skipped, since of an error: " .. tostring(problem) .. ".")
+            return
+        end
     end
 
     -- Planet rewards first log every bundle of the game before any change (rewards.lua), then the reward bundles move with the lock stage (move_locks)
@@ -1762,10 +1844,10 @@ end
 -- Checks the game an attempt of the rest of randomization built against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK attempt)
 -- The attempt's logic graph comes with sort_info, its sort with room/ability and home contexts, which is only redone if its home sets aren't the stages' own
 -- Outside superposed mode (where planetary.settle does this) the stages repaired their changes before the rest of randomization ran, so an attempt that loses what they kept is retried like one that fails UNIFIEDCHECK (see data-final-fixes.lua)
--- Returns how many goals the attempt lost (0 in superposed mode or without planetary changes)
+-- Returns how many goals the attempt lost (0 in superposed mode or without planetary changes), the lost goals (see planetary_check.required_failures) and the sort they were found in
 planetary.check_attempt = function(graph, sort_info)
     if planetary.before == nil or planetary.superposed ~= nil then
-        return 0
+        return 0, {}, sort_info
     end
     if sort_info.home_sets ~= planetary_check.home_sets then
         sort_info = top.sort(graph, nil, nil, {
@@ -1778,7 +1860,7 @@ planetary.check_attempt = function(graph, sort_info)
         graph = graph,
         sort_info = sort_info,
     }, planetary.before.variants_of, false, "PLANETCHECK attempt")
-    return #failures
+    return #failures, failures, sort_info
 end
 
 -- Undoes every stage's bookkeeping, so the changes can be rolled again on the game before them (planetary.reroll)

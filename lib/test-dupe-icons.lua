@@ -1,4 +1,4 @@
--- Plain-Lua regression tests for technology icons made from recipe icons in lib/dupe.lua (not loaded by the mod)
+-- Plain-Lua regression tests for icons in lib/dupe.lua: technology icons made from recipe icons, and item copies' number badges (not loaded by the mod)
 -- Run from the mod root: lua lib/test-dupe-icons.lua
 -- The tech tree rebuild (randomizations/fixes.lua) gives each rebuilt technology its recipe's icons, and every layer has to grow with the first one, number badges too
 
@@ -71,6 +71,87 @@ test("a recipe with a single icon gets it unchanged", function()
         icon = "gear.png",
     }))
     assert(#icons == 1 and icons[1].icon == "gear.png" and icons[1].icon_size == 64 and icons[1].scale == nil)
+end)
+
+-- Stand-ins for what dupe.item reads: prototypes in data.raw, the item classes, rng keys and localised names
+local function fresh_data()
+    data = {
+        raw = {
+            tool = {},
+            fluid = {},
+            recipe = {},
+            technology = {},
+        },
+    }
+    function data:extend(prototypes)
+        for _, prototype in pairs(prototypes) do
+            self.raw[prototype.type] = self.raw[prototype.type] or {}
+            self.raw[prototype.type][prototype.name] = prototype
+        end
+    end
+    defines = {
+        prototypes = {
+            item = {
+                tool = 0,
+            },
+            equipment = {},
+        },
+    }
+    package.loaded["lib/random/rng"].key = function(info)
+        return info.prototype.type .. ":" .. info.prototype.name
+    end
+    package.loaded["lib/locale"].find_localised_name = function(prototype)
+        return prototype.name
+    end
+    data:extend({
+        {
+            type = "tool",
+            name = "flask",
+            icon = "flask.png",
+        },
+        {
+            type = "recipe",
+            name = "flask",
+            results = {
+                {
+                    type = "item",
+                    name = "flask",
+                    amount = 1,
+                },
+            },
+        },
+    })
+end
+
+-- Whether any of the icon layers is a number badge
+local function has_badge(icons)
+    for _, layer in pairs(icons or {}) do
+        if string.find(layer.icon, "number_", 1, true) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+test("a science pack copy (no_badge) has no number badge on its icon or its recipe's", function()
+    fresh_data()
+    local copy = dupe.item(data.raw.tool.flask, 2, {
+        no_badge = true,
+    })
+    assert(copy.icons == nil and copy.icon == "flask.png")
+    local recipe_copy = data.raw.recipe["flask-exfret-2-copy"]
+    assert(recipe_copy ~= nil and recipe_copy.results[1].name == copy.name)
+    assert(#recipe_copy.icons == 1 and recipe_copy.icons[1].icon == "flask.png" and not has_badge(recipe_copy.icons))
+    -- The originals stay as they were
+    assert(data.raw.tool.flask.icons == nil and data.raw.recipe.flask.icons == nil)
+end)
+
+test("any other item copy keeps its number badges", function()
+    fresh_data()
+    local copy = dupe.item(data.raw.tool.flask, 2)
+    assert(has_badge(copy.icons) and copy.icons[#copy.icons].shift[1] == -7)
+    local recipe_copy = data.raw.recipe["flask-exfret-2-copy"]
+    assert(has_badge(recipe_copy.icons) and recipe_copy.icons[#recipe_copy.icons].shift[1] == -7)
 end)
 
 print(num_passed .. " tests passed")

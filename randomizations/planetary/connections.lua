@@ -6,6 +6,7 @@
 -- A new connection takes its length, asteroids and icons from the current connection between the most similar pair of orbits, so a route between two orbits is about as long and as dangerous as vanilla's between those orbits.
 -- Connections that already join the right two locations stay as they are; the rest are new prototypes, and old ones go. What names a removed connection (like a distance achievement's tracked connection) names a new connection to the same place instead.
 -- Orbits stay, but every location except the starting planet gets a new place on its orbit: of many random layouts across a fan of the map (wider with more locations), each improved by swapping places, the one with the fewest crossing routes, no locations drawn on top of each other and no route passing through a location is kept. Planet copies land wherever the graph reads best, not beside their originals.
+-- Space locations past every planet that aren't planets themselves (in Space Age, the solar system edge and the shattered planet beyond it) are the end of the game rather than stops on the way (user, 2026-09-30), so the graph isn't drawn through them: they keep the connections they have (the edge to the outermost planets and their copies, the shattered planet right after the edge), which the layout and the arcs below still place.
 -- Each route is then drawn as a gentle arc between its ends rather than a straight line: a circle's arc (a space connection's "arc" shape around the circle's center as its origin) bulging by a random share of the route's length, to whichever side makes the drawn routes cross and graze locations the least.
 
 local constants = require("helper-tables/constants")
@@ -94,32 +95,76 @@ local function weighted_pick(key, items, weights)
     return items[#items]
 end
 
--- The current graph: its locations (sorted), which pairs are joined (pair key --> connection name), each location's connections among original locations only, and the typical (median) orbit gap of those connections
+-- The locations at the end of the game (see the top): not planets, and farther from the sun than every planet, as a set
+local function outer_locations(names)
+    local farthest_planet = nil
+    for _, planet in pairs(data.raw.planet or {}) do
+        if planet.hidden ~= true and (farthest_planet == nil or (planet.distance or 0) > farthest_planet) then
+            farthest_planet = planet.distance or 0
+        end
+    end
+    local outer = {}
+    for name, _ in pairs(names) do
+        if farthest_planet ~= nil and data.raw.planet[name] == nil and distance(name) > farthest_planet then
+            outer[name] = true
+        end
+    end
+    return outer
+end
+
+-- The current graph: its locations (sorted; nodes all of them, drawn those the new graph is drawn among, without the end of the game), which pairs are joined (pair key --> connection name), each location's connections among original locations only (those to the end of the game aside), the typical (median) orbit gap of those connections, and the connections to the end of the game (links, as { from, to } with from on the nearer orbit, and how many each location has)
 local function current_graph()
     local nodes = {}
-    local joined = {}
-    local original_degree = {}
-    local gaps = {}
     for _, name in pairs(sorted_keys(data.raw["space-connection"] or {})) do
         local connection = data.raw["space-connection"][name]
         nodes[connection.from] = true
         nodes[connection.to] = true
+    end
+    if location(constants.starting_planet) ~= nil then
+        nodes[constants.starting_planet] = true
+    end
+    local outer = outer_locations(nodes)
+    local joined = {}
+    local original_degree = {}
+    local gaps = {}
+    local outer_links = {}
+    local num_outer_links = {}
+    for _, name in pairs(sorted_keys(data.raw["space-connection"] or {})) do
+        local connection = data.raw["space-connection"][name]
         joined[pair_key(connection.from, connection.to)] = name
-        if origin(connection.from) == connection.from and origin(connection.to) == connection.to then
+        if outer[connection.from] ~= nil or outer[connection.to] ~= nil then
+            local from = connection.from
+            local to = connection.to
+            if distance(to) < distance(from) then
+                from, to = to, from
+            end
+            table.insert(outer_links, {
+                from = from,
+                to = to,
+            })
+            num_outer_links[connection.from] = (num_outer_links[connection.from] or 0) + 1
+            num_outer_links[connection.to] = (num_outer_links[connection.to] or 0) + 1
+        elseif origin(connection.from) == connection.from and origin(connection.to) == connection.to then
             original_degree[connection.from] = (original_degree[connection.from] or 0) + 1
             original_degree[connection.to] = (original_degree[connection.to] or 0) + 1
             table.insert(gaps, math.abs(distance(connection.from) - distance(connection.to)))
         end
     end
-    if location(constants.starting_planet) ~= nil then
-        nodes[constants.starting_planet] = true
+    local drawn = {}
+    for _, name in pairs(sorted_keys(nodes)) do
+        if outer[name] == nil then
+            table.insert(drawn, name)
+        end
     end
     table.sort(gaps)
     return {
         nodes = sorted_keys(nodes),
+        drawn = drawn,
         joined = joined,
         original_degree = original_degree,
         typical_gap = gaps[math.ceil(#gaps / 2)] or 0,
+        outer_links = outer_links,
+        num_outer_links = num_outer_links,
     }
 end
 
@@ -139,16 +184,16 @@ connections.problem = function()
     return nil
 end
 
--- The new connections as a list of { from, to } (from on the nearer orbit), and each location's number of connections wanted
+-- The new connections among the drawn locations as a list of { from, to } (from on the nearer orbit), and each location's number of connections wanted (its original's, which leaves out those to the end of the game, kept on top)
 local function draw(graph, key)
     local start = constants.starting_planet
     local target = {}
-    for _, node in pairs(graph.nodes) do
+    for _, node in pairs(graph.drawn) do
         target[node] = math.max(1, graph.original_degree[origin(node)] or 1)
     end
     local used = {}
     local adjacent = {}
-    for _, node in pairs(graph.nodes) do
+    for _, node in pairs(graph.drawn) do
         used[node] = 0
         adjacent[node] = {}
     end
@@ -170,7 +215,7 @@ local function draw(graph, key)
     -- A spanning tree grown from the start outward: locations come in order of their distance from the sun (with some jitter), and each joins one already placed, preferring nearby orbits and locations with room left
     local order = {}
     local jittered = {}
-    for _, node in pairs(graph.nodes) do
+    for _, node in pairs(graph.drawn) do
         if node ~= start then
             table.insert(order, node)
             jittered[node] = distance(node) + rng.float_range(key, -ORDER_JITTER, ORDER_JITTER)
@@ -208,8 +253,8 @@ local function draw(graph, key)
     while true do
         local candidates = {}
         local weights = {}
-        for i, a in pairs(graph.nodes) do
-            for j, b in pairs(graph.nodes) do
+        for i, a in pairs(graph.drawn) do
+            for j, b in pairs(graph.drawn) do
                 if i < j and used[a] < target[a] and used[b] < target[b] and adjacent[a][b] == nil then
                     table.insert(candidates, {
                         a,
@@ -770,6 +815,10 @@ connections.execute = function(id)
     })
     local graph = current_graph()
     local edges, target = draw(graph, key)
+    -- The end of the game keeps its connections, which the layout and the arcs still see
+    for _, link in pairs(graph.outer_links) do
+        table.insert(edges, link)
+    end
     local wanted = {}
     for _, edge in pairs(edges) do
         wanted[pair_key(edge.from, edge.to)] = edge
@@ -826,7 +875,7 @@ connections.execute = function(id)
                 num = num + 1
             end
         end
-        table.insert(degrees, node .. " " .. num .. "/" .. target[node])
+        table.insert(degrees, node .. " " .. num .. "/" .. (target[node] ~= nil and tostring(target[node] + (graph.num_outer_links[node] or 0)) or "end of the game"))
     end
     -- The star map layout
     local orientation, layout_score = layout(graph.nodes, edges, key)
