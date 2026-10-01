@@ -489,7 +489,13 @@ function abstract.build(lu, extra_params)
     end
 
     ----------------------------------------
-    add_node("capture-spawner", "OR", nil, "", { canonical = "capture-spawner", mechanic = true })
+    add_node("capture-spawner", "OR", nil, "", {
+        canonical = "capture-spawner",
+        mechanic = true,
+        -- Biter moves (randomizations/planetary/enemies.lua) take spawners off the starting planet's copies, and capturing one is only kept on the starting planet, which keeps its own (user, 2026-10-01)
+        planetary_feature = "biters",
+        feature_stays_on_start = true,
+    })
     ----------------------------------------
     -- Can we capture any spawner?
 

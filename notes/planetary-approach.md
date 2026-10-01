@@ -25,13 +25,14 @@ All in `data-final-fixes.lua` and `randomizations/planetary/execute.lua`:
    - resource swaps (`resources.lua`)
    - lightning moves (`lightning.lua`)
    - freezing moves (`freezing.lua`)
+   - demolisher moves, then biter moves (`enemies.lua`), each its own stage
    - planet locks and rewards (`locks.lua`, `rewards.lua`)
 4. **The end of the stages** (`finish`): home sets are checked again if the changes moved them, and the game before the changes is kept for the checks after randomization (`planetary.before`).
 5. **Unified randomization** (`randomizations/graph/unified/execute.lua`), which keeps what section 5 says.
 6. **The per-attempt check** (`planetary.check_attempt`, logged as PLANETCHECK attempt). An attempt that loses planet goals first gets the items those goals lack made shippable (`transport.lua`). If goals are still lost, it's retried, at most twice per load (`PLANETARY_LOSS_RETRIES` in data-final-fixes.lua). After that the attempt is kept.
 7. **The final checks**: MECHCHECK (unified's own), and PLANETCHECK final (`planetary.check_final`), which warns in the randomizer panel about planet goals the finished game lost.
 
-The unified preview turns on ocean swaps, resource swaps and locks. Planet copies bring the connection graph with them. Lightning, freezing, rewards and the fix pass have settings of their own.
+The unified preview turns on ocean swaps, resource swaps and locks. Planet copies bring the connection graph with them. Lightning, freezing, enemy moves, rewards and the fix pass have settings of their own.
 
 With the planetary fix pass on (section 4), the stages wait until unified is loaded (`planetary.pending`, `planetary.run_pending`), since the fix pass repairs with unified's handlers.
 
@@ -51,11 +52,14 @@ With the fix pass on, two rules relax. Rocket building may use machines delivere
 ## 4. Repairs: each stage's own, and the fix pass
 
 **Each stage's own repairs:**
-- **Oceans.** The recipes that took the old ocean fluid get variants that take the new one, in the same machine, and a plain conversion from the new fluid to the old one is a last resort. A variant is kept only where a lost goal's witness needs it, and becomes an edit of the original where only that planet used it (`scaffolds.execute`). Each variant is locked to its planet. A swap that still fails is rolled again a few times (`OCEAN_TRIES`).
-- **Resources.** Recipes and mining triggers that belong to one planet follow its swap, as edits or as planet variants where the recipe is shared. Extra resource patches then cover what's still missing, chosen through a staged sort.
+- **Oceans.** The recipes that took the old ocean fluid get variants that take the new one, in the same machine. A variant is kept only where a lost goal's witness needs it, and becomes an edit of the original where only that planet used it (`scaffolds.execute`). Each planet gets its own variants, named after it and locked to it.
+  - A plain conversion from the new fluid to the old one is a last resort. A game keeps at most `scaffolds.MAX_CONVERSIONS` (1, user, 2026-10-01); planets that would need more get their own oceans back, with a panel warning.
+  - A swap that still fails is rolled again a few times (`OCEAN_TRIES`).
+- **Resources.** The starting planet keeps its starting-area resources and its wells (`resources.in_starting_area`, user, 2026-10-01). In vanilla that keeps Nauvis's iron, copper, coal and stone (starting-area placement, `base/prototypes/entity/resources.lua`) and its crude oil (a well); uranium still swaps. Recipes and mining triggers that belong to one planet follow its swap, as edits or as planet variants where the recipe is shared. Extra resource patches then cover what's still missing, chosen through a staged sort. A run with more than half as many extra patches as planets fails in `dev/run-tests.py`.
 - **Lightning.** What builds lightning attractors follows lightning (locks and unlocks). A planet that loses lightning may start from delivered buildings (section 7). A planet that still can't do without lightning keeps it as well (`lightning.keep_old`).
 - **Freezing.** The research for heat sources follows freezing to the new frozen planet: its discovery becomes the prerequisite, and mining something only that planet's family has becomes the trigger. If a planet that now freezes loses something, the stage is undone.
 - **Locks.** A lock that breaks what its old planet must keep accepts that planet again ("widen") or goes back. Rewards move whole bundles and re-home the old planet's science.
+- **Enemies** (work in progress, user, 2026-10-01: a quick shuffle). Demolisher territories (`map_gen_settings.territory_settings`) go to random planets other than the start, one per planet. The start's enemies come with their map gen slider (`enemy-base`), so each copy's slider goes to a random planet other than the start and other than planets with another pollutant (Gleba). A planet that gets biters gets the start's pollutant if it has none. The start keeps its own biters, since its captured spawners make biter eggs. Capturing a spawner is then a goal only on the start (the capture-spawner node's `planetary_feature = "biters"` with `feature_stays_on_start`). There are no repairs and no fix pass: a stage that still loses something is undone on its own.
 
 **The planetary fix pass** (setting `propertyrandomizer-planetary-fix-pass`, `randomizations/planetary/fix-pass.lua`; work in progress, off by default):
 - It covers resource swaps, lightning and freezing. The stage first moves without its own repairs. The fix pass then repairs it by changing what unified's handlers change: recipe ingredients and categories, energy sources, science packs, research triggers and prerequisites. It prefers what replaced the old thing on that planet, and makes a planet copy of a shared recipe when nothing fits everywhere.
@@ -94,7 +98,7 @@ A finite delivered start is fine when the planet can then make the thing itself 
 
 ## 9. Settings and tests
 
-- Settings: `propertyrandomizer-planetary-oceans`, `-resources`, `-lightning`, `-freezing`, `-locks`, `-rewards` (with `-rewards-rehome` and `-rewards-only`), `-connections` and `-fix-pass`. `-superposed` is off and stays until superposed mode is removed.
+- Settings: `propertyrandomizer-planetary-oceans`, `-resources`, `-lightning`, `-freezing`, `-locks`, `-rewards` (with `-rewards-rehome` and `-rewards-only`), `-connections`, `-enemies` (off by default, not in superposed mode) and `-fix-pass`. `-superposed` is off and stays until superposed mode is removed.
 - Test configs in `tests/configs.txt`, all in the unified suite: `preview`, `dupes-preview`, `rewards`, `rewards-foundry`, `preview-rewards`, `fix-pass`, `fix-pass-climate`, `fix-pass-preview`, and the superposed ones. The settings suite also has single-stage configs: `planetary-resources`, `dupes-resources`, `dupes-oceans`, `planetary-connections` and `dupes-connections`.
 
 ## 10. Open work

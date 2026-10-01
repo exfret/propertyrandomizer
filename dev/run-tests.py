@@ -6,6 +6,8 @@
 #   - the game used the settings the config asked for
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
 #   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
+#   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, randomizations/planetary/scaffolds.lua)
+#   - resource swaps left at most half an extra patch per planet they work on (PLANETCHECK extra patches, randomizations/planetary/resources.lua)
 #   - the new map runs some ticks without errors (the control stage)
 # Configs matching an oldlogic line in tests/configs.txt (for now, old item randomization) are judged by the old logic's check of the built game (OLDLOGICCHECK) instead of the two reachability checks
 # Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (randomizations/planetary/check.lua)
@@ -100,6 +102,14 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
+# Conversion recipes the ocean scaffolds left in the game, logged at the end of planetary randomization
+CONVERSIONS = re.compile(r"PLANETCHECK conversions: (\d+) in the game[^:\r\n]*:? ?([^\r\n]*)")
+# The user's rule (2026-10-01): one conversion is the worst that should ever happen, so a game never has more
+MAX_CONVERSIONS = 1
+# Extra patches resource swaps gave planets back (a planet keeping a resource it lost), logged at the end of planetary randomization
+EXTRA_PATCHES = re.compile(r"PLANETCHECK extra patches: (\d+) on (\d+) planets:? ?([^\r\n]*)")
+# The user's limit (2026-10-01): half an extra patch per planet, so 7 for the 15 planets of two copies each
+MAX_EXTRA_PATCHES_PER_PLANET = 0.5
 SETTING_LINE = re.compile(r"PRTEST setting (\S+) = (.*)$", re.MULTILINE)
 REACHABILITY = re.compile(r"PRTEST reachability (\d+) of (\d+)")
 OLD_LOGIC_CHECK = re.compile(r"OLDLOGICCHECK science packs reachable (\d+) of (\d+)(?:; lost (.*))?")
@@ -659,6 +669,24 @@ def check_old_logic(text):
     return []
 
 
+def check_conversions(text):
+    # Every end of planetary randomization logs its count; a load can have several (the superposed mode's attempts), and none breaks the rule
+    problems = []
+    for found, names in CONVERSIONS.findall(text):
+        if int(found) > MAX_CONVERSIONS:
+            problems.append("ocean swaps left " + found + " conversion recipes in the game (at most " + str(MAX_CONVERSIONS) + "): " + names)
+    return problems
+
+
+def check_extra_patches(text):
+    problems = []
+    for found, planets, names in EXTRA_PATCHES.findall(text):
+        limit = int(MAX_EXTRA_PATCHES_PER_PLANET * int(planets))
+        if int(found) > limit:
+            problems.append("resource swaps left " + found + " extra patches on " + planets + " planets (at most " + str(limit) + "): " + names)
+    return problems
+
+
 def check_verdict(text):
     # The last verdict is the end-of-load one; unified randomization also logs one per attempt, under another label
     verdicts = VERDICT.findall(text)
@@ -765,6 +793,8 @@ def run_one(run, ctx):
         problems.extend(error_lines(text))
     else:
         problems.extend(check_settings(text, run, ctx))
+        problems.extend(check_conversions(text))
+        problems.extend(check_extra_patches(text))
         reported = dict(SETTING_LINE.findall(text))
         if reported.get(PREFIX + "recipe") == "true" and reported.get(PREFIX + "test-unit") != "true" and "science-cost" not in run.config.nocheck:
             cost_problems, science_cost_summary = check_science_costs(text)

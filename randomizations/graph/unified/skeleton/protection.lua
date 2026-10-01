@@ -115,12 +115,14 @@ end
 -- Planetary changes run before the rest of randomization, which then keeps whatever contexts they leave, so on purpose they keep less:
 --   1. Rooms and automatability, as always.
 --   2. Isolatability only for nodes built with keep_planetary_isolatability = true (a planet must still build and launch rockets and make electricity from its own resources); others keep their non-isolatable counterpart.
---   3. Nothing for nodes of a feature a planetary change moves (built with planetary_feature), since those follow their feature.
+--   3. Nothing for nodes of a feature a planetary change moves (built with planetary_feature), since those follow their feature; nodes also built with feature_stays_on_start = true still keep their starting planet contexts, since the feature never leaves it.
 -- moved_features is the set of planetary_feature names being moved
 -- Home contexts keep nothing of their own, as for kept_part
 protection.planetary_kept_context = function(node, context, moved_features)
     if node.planetary_feature ~= nil and moved_features[node.planetary_feature] ~= nil then
-        return nil
+        if node.feature_stays_on_start ~= true or top.context_room(context) ~= gutils.key("planet", constants.starting_planet) then
+            return nil
+        end
     end
     if top.context_home(context) ~= nil then
         return nil

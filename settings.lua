@@ -413,6 +413,14 @@ data:extend({
         order = "f-gb[planetary-connections]",
     },
     {
+        -- Work in progress (randomizations/planetary/enemies.lua, notes/wip.txt), off by default: the checkout is the user's playable mod
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-enemies",
+        default_value = false,
+        order = "f-gd[planetary-enemies]",
+    },
+    {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-planetary-superposed",

@@ -116,8 +116,10 @@ for name in string.gmatch(settings.startup["propertyrandomizer-planetary-rewards
 end
 -- A new random graph of space connections (randomizations/planetary/connections.lua); the duplicates' planet copies come with it, so the copies aren't just hung beside their originals
 config.planetary_connections = config.dupes or settings.startup["propertyrandomizer-planetary-connections"].value
+-- Demolisher territories and the starting planet's kinds of enemies move to other planets (randomizations/planetary/enemies.lua), a work in progress (notes/wip.txt)
+config.planetary_enemies = settings.startup["propertyrandomizer-planetary-enemies"].value
 -- Whether any planetary stage is on (randomizations/planetary/execute.lua), planet rewards included
-config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections
+config.planetary = config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies
 
 config.item_new_num_retries = settings.startup["propertyrandomizer-item-retries"].value
 config.item_percent_randomized = settings.startup["propertyrandomizer-item-percent"].value / 100

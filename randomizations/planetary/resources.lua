@@ -35,6 +35,11 @@ resources.run = 0
 -- Autoplace set names whose expressions this run made, to notice a set meeting a put-back data.raw all the same
 local sets_made = {}
 
+-- Every extra patch slider made so far, as control name --> planet name, for counting the patches the game ends up with (resources.log_extra_patches)
+resources.repair_controls = {}
+-- How many planets the latest resource swap worked on, or nil before any
+resources.num_planets = nil
+
 -- The two patch counts the helper keeps per autoplace set, as noise expressions named after the set
 local count_suffixes = {
     "_regular_resource_patch_set_count",
@@ -99,17 +104,48 @@ resources.slots = function()
     return slots
 end
 
+-- Whether a slot's resource has patches in the starting area: the game's resource-autoplace helper (core/lualib/resource-autoplace.lua) writes has_starting_area_placement = 1 into the patches expression a resource's probability reads
+-- Follows the slot's probability (its planet's override, or the resource's own) one var() deep; placements written some other way don't count
+resources.in_starting_area = function(slot)
+    local expression = slot.probability
+    if slot.probability_name ~= nil then
+        local named = data.raw["noise-expression"][slot.probability_name]
+        expression = named and named.expression
+    end
+    if type(expression) ~= "string" then
+        return false
+    end
+    for name in string.gmatch(expression, "var%('([^']+)'%)") do
+        local patches = data.raw["noise-expression"][name]
+        if patches ~= nil and type(patches.expression) == "string" and string.find(patches.expression, "has_starting_area_placement = 1", 1, true) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
 -- Slot index --> the resource now placed there; resources move only within their kind, and each one moves if it can
+-- The starting planet keeps its starting area's resources and its wells (user, 2026-10-01, like it keeps its ocean's fluid): everything after its first minutes is made from them (crude oil has no starting area patches but is as basic), and losing them broke the other planets too through the recipes they share
 resources.random_assignment = function(slots, id)
     local key = rng.key({ id = id })
     local assignment = {}
+    local kept = {}
+    for i, slot in pairs(slots) do
+        if slot.planet_name == constants.starting_planet and (resources.in_starting_area(slot) or slot.kind == "well") then
+            assignment[i] = slot.resource_name
+            table.insert(kept, slot.resource_name)
+        end
+    end
+    if #kept > 0 then
+        log("Planetary resources: the starting planet keeps its starting area's resources and its wells: " .. table.concat(kept, ", "))
+    end
     for _, kind in pairs({
         "ore",
         "well",
     }) do
         local indices = {}
         for i, slot in pairs(slots) do
-            if slot.kind == kind then
+            if slot.kind == kind and assignment[i] == nil then
                 table.insert(indices, i)
             end
         end
@@ -215,6 +251,7 @@ resources.repair = function(planet_name, resource_name)
     end
     local resource = data.raw.resource[resource_name]
     local control_name = "propertyrandomizer-extra-" .. planet_name .. "-" .. resource_name
+    resources.repair_controls[control_name] = planet_name
     local control = table.deepcopy(template)
     control.name = control_name
     control.order = "z-" .. resource_name
@@ -600,7 +637,7 @@ end
 -- Returns { planet_name, recipe_name (the original's), old_ingredients (the original's), variant (the prototype), technologies }
 resources.variant_plan = function(recipe, planet_name, ingredients)
     local variant = table.deepcopy(recipe)
-    variant.name = "propertyrandomizer-" .. recipe.name .. "-on-" .. planet_name
+    variant.name = scaffolds.planet_variant_name(recipe.name, planet_name)
     variant.localised_name = scaffolds.variant_name(recipe, planet_name)
     local icons = scaffolds.badged_icons(recipe, planet_name)
     if icons ~= nil then
@@ -796,6 +833,11 @@ end
 resources.execute = function(id)
     resources.run = resources.run + 1
     local slots = resources.slots()
+    local planets = {}
+    for _, slot in pairs(slots) do
+        planets[slot.planet_name] = true
+    end
+    resources.num_planets = #sorted_keys(planets)
     local assignment = resources.random_assignment(slots, id)
     local moves = {}
     for i, slot in pairs(slots) do
@@ -804,6 +846,27 @@ resources.execute = function(id)
     log("Planetary resources (planet slot <-- resource): " .. table.concat(moves, ", "))
     local lost = resources.apply(slots, assignment)
     return slots, assignment, lost
+end
+
+-- Logs the extra patches the planets have, and how many planets resource swaps work on (PLANETCHECK extra patches, which dev/run-tests.py holds to half a patch per planet)
+-- A patch counts while its planet lists its slider: taking a repair back out (resources.remove_repair) leaves the slider prototype in data.raw
+resources.log_extra_patches = function()
+    if resources.num_planets == nil then
+        return
+    end
+    local names = {}
+    for _, control_name in pairs(sorted_keys(resources.repair_controls)) do
+        local planet = data.raw.planet[resources.repair_controls[control_name]] or {}
+        local controls = (planet.map_gen_settings or {}).autoplace_controls or {}
+        if controls[control_name] ~= nil then
+            table.insert(names, control_name)
+        end
+    end
+    local listed = ""
+    if #names > 0 then
+        listed = ": " .. table.concat(names, ", ")
+    end
+    log("PLANETCHECK extra patches: " .. #names .. " on " .. resources.num_planets .. " planets" .. listed)
 end
 
 return resources

@@ -47,6 +47,7 @@ local freezing = require("randomizations/planetary/freezing")
 local connections = require("randomizations/planetary/connections")
 local discovery = require("randomizations/planetary/discovery")
 local rewards = require("randomizations/planetary/rewards")
+local enemies = require("randomizations/planetary/enemies")
 -- The check's rule 1 skips recipes a reward retired (rewards.bundle_of_retired)
 planetary_check.is_retired = function(recipe_name)
     return rewards.bundle_of_retired(recipe_name) ~= nil
@@ -74,10 +75,42 @@ end
 -- Sorts are what planetary changes cost, so stages first run without checking their own result (state.careful false): each stage's first sort also checks every earlier stage, and one sort at the end checks the last
 -- Only if that fails does everything run again carefully, each stage checking itself and being undone on its own
 
+-- A planet's name for the randomizer panel, after its icon: its new name if it got one (lib/planet-names.lua), or else its prototype name
+local function planet_label(planet_name)
+    local planet = data.raw.planet[planet_name]
+    local name = planet_name
+    if planet ~= nil and type(planet.localised_name) == "string" then
+        name = planet.localised_name
+    end
+    return "[img=space-location." .. planet_name .. "] " .. name
+end
+
 local function run_oceans(logic, state, old_raw)
     planetary_check.moved_features["oceans"] = true
     local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
-    local variants_of, after = scaffolds.execute(assignment, oceans, logic, state.before, state.careful)
+    local variants_of, after, past_limit = scaffolds.execute(assignment, oceans, logic, state.before, state.careful)
+    -- Planets that would need a conversion past scaffolds.MAX_CONVERSIONS get their own oceans back (user, 2026-10-01: one conversion is the worst that should happen), and the swap is made again from the game before it
+    -- Each round gives at least one more planet its own ocean back, so this ends
+    local put_back = {}
+    while past_limit ~= nil and #past_limit > 0 do
+        assignment = table.deepcopy(assignment)
+        for _, planet_name in pairs(past_limit) do
+            assignment[planet_name] = planet_name
+            table.insert(put_back, planet_name)
+        end
+        scaffolds.forget()
+        data.raw = table.deepcopy(old_raw)
+        log("Planetary oceans (planet <-- family), with " .. table.concat(put_back, ", ") .. " given their own oceans back: " .. serpent.line(assignment))
+        clone_to_slot = oceans.apply(assignment)
+        variants_of, after, past_limit = scaffolds.execute(assignment, oceans, logic, state.before, state.careful)
+    end
+    if #put_back > 0 then
+        local labels = {}
+        for _, planet_name in pairs(put_back) do
+            table.insert(labels, planet_label(planet_name))
+        end
+        warn("ocean swaps", "left " .. table.concat(labels, ", ") .. " their own oceans, since each would have needed a recipe making its old ocean's fluid from its new one, and a game gets " .. scaffolds.MAX_CONVERSIONS .. " at most.")
+    end
     -- Tile collision staying exactly as it was is part of how the swap works, so a difference means something unexpected happened
     local tile_problems = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
     if #tile_problems > 0 then
@@ -94,6 +127,34 @@ local function run_oceans(logic, state, old_raw)
     end
     return nil
 end
+
+-- Whether the starting planet's copies give their biters to random planets too (enemies.move_biters)
+-- Capturing a spawner (a mechanic) is then only kept on the starting planet, which keeps its own (user, 2026-10-01; the capture-spawner node's planetary_feature "biters" in lib/logic/abstract.lua)
+local MOVE_BITERS = true
+
+-- Moves demolisher territories (enemies.lua), and with MOVE_BITERS the starting planet's enemies off its copies, each as its own stage with its own feature (planetary_check.moved_features)
+-- Nothing models demolishers as hazards, so a careful run's check only confirms nothing else broke
+local function run_enemy_stage(feature, move)
+    return function(logic, state)
+        planetary_check.moved_features[feature] = true
+        move()
+        if not state.careful then
+            state.after = nil
+            return nil
+        end
+        state.after = planetary_check.sort(logic)
+        if not planetary_check.required(state.before, state.after, state.variants_of) then
+            return "a planet lost something it must keep (see PLANETCHECK in the log)"
+        end
+        return nil
+    end
+end
+local run_demolishers = run_enemy_stage("demolishers", function()
+    enemies.move_demolishers("planetary-demolishers")
+end)
+local run_biters = run_enemy_stage("biters", function()
+    enemies.move_biters("planetary-biters")
+end)
 
 local function log_edits(edits, trigger_edits, variants)
     variants = variants or {}
@@ -994,7 +1055,7 @@ local function run_stages(logic, state, careful, fix)
                     if is_done then
                         break
                     end
-                    scaffolds.kept = {}
+                    scaffolds.forget()
                     if not should_retry then
                         break
                     end
@@ -1048,6 +1109,12 @@ local function run_stages(logic, state, careful, fix)
             else
                 old_way()
             end
+        end
+    end
+    if config.planetary_enemies then
+        run_stage("demolisher moves", run_demolishers, logic, state)
+        if MOVE_BITERS then
+            run_stage("biter moves", run_biters, logic, state)
         end
     end
     if config.planetary_locks or config.planetary_rewards then
@@ -1359,6 +1426,8 @@ local function finish(state, old_raw)
         planetary_check.run(state.before, state.after)
     end
     log("Planetary: " .. planetary_check.num_sorts .. " sorts")
+    scaffolds.log_conversions()
+    resources.log_extra_patches()
     -- Moved features are the stages whose changes are still in the game
     if next(planetary_check.moved_features) ~= nil then
         planetary.before = {
@@ -1426,7 +1495,7 @@ planetary.execute = function(logic)
             log("Planet rewards: the dry run stopped on an error: " .. tostring(problem))
         end
     end
-    if not (config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections) and SWAP_START_WITH == nil then
+    if not (config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies) and SWAP_START_WITH == nil then
         log("Planetary: " .. planetary_check.num_sorts .. " sorts (no stage that changes the game is on)")
         return
     end

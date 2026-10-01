@@ -1825,7 +1825,7 @@ end
 -- A member recipe remade for the target with the target's own ingredients (target_ingredients): a planet variant named after the target, with the target's icon as a badge, that the caller locks to the target's rooms (locks.fix) and unlocks with the bundle's technology (edit_tech's renamed)
 local function variant_recipe(recipe, ingredients, target_name)
     local variant = table.deepcopy(recipe)
-    variant.name = "propertyrandomizer-" .. recipe.name .. "-on-" .. target_name
+    variant.name = scaffolds.planet_variant_name(recipe.name, target_name)
     variant.localised_name = scaffolds.variant_name(recipe, target_name)
     local icons = scaffolds.badged_icons(recipe, target_name)
     if icons ~= nil then
