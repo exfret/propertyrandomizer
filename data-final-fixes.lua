@@ -627,6 +627,12 @@ log("Done logging what the randomization did")
 -- Add warnings for control stage
 smuggle_info()
 
+-- The finished data.raw in the log between markers (setting propertyrandomizer-dump-data-raw), for extracting into a mod that loads this game without randomizing it again; the format the py version wrote, which lib/cost/lower-bounder's scripts read too
+if config.dump_data_raw == true then
+    log("Writing data.raw to the log")
+    log("__DATA_RAW_BEGIN__\n" .. serpent.dump(data.raw) .. "\n__DATA_RAW_END__")
+end
+
 log("Done!")
 
 -- Set config back to nil so that globals aren't floating around

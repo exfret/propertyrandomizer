@@ -480,6 +480,13 @@ data:extend({
         allow_blank = true,
         order = "z-custom-override",
     },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-dump-data-raw",
+        default_value = false,
+        order = "z-dump-data-raw",
+    },
     -- Hidden settings for testing purposes
     {
         setting_type = "startup",

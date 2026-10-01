@@ -22,6 +22,8 @@ config.seed = 23 + settings.startup["propertyrandomizer-seed"].value
 if settings.startup["propertyrandomizer-dupes"].value then
     config.dupes = true
 end
+-- Whether the finished data.raw is written to the log at the end of loading (data-final-fixes.lua)
+config.dump_data_raw = settings.startup["propertyrandomizer-dump-data-raw"].value
 if settings.startup["propertyrandomizer-test-unit"].value then
     config.unit_test = true
 end

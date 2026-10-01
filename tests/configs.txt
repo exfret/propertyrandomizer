@@ -28,6 +28,7 @@ oldlogic item=true
 
 # skip SETTING: leave a setting out of generated configs
 skip seed                   # each run picks its own seed
+skip dump-data-raw          # writes all of data.raw to the log
 skip tech-tree-rebuild      # unfinished: nothing reads it yet
 # The unified preview turns off the old graph randomizations, which generated configs like max are there to test, so it gets its own configs below
 skip unified-preview
