@@ -56,7 +56,7 @@ end
 dupe.has_been_duplicated = {}
 -- Names of duplicates whose sprites were swapped for recolored copies, so they don't also get number badges on their entity graphics
 dupe.recolored = {}
--- Original technology name --> its copy in the parallel technology tree (lib/dupe-planets.lua): a duplicate's recipe is unlocked by the copy of the technology unlocking the original, where there is one
+-- Dupe number --> original technology name --> its copy with that number (lib/dupe-planets.lua: in that number's parallel technology tree, or discovering that number's planet copy): a duplicate's recipe is unlocked by the copy with its number of the technology unlocking the original, where there is one
 dupe.technology_copies = {}
 
 -- The recolored copy's path for an original sprite path, or nil when there is none for this dupe number
@@ -298,10 +298,15 @@ dupe.recipe = function(recipe, extra_info)
     end
 
     -- Recipe tech unlocks: the copy is unlocked wherever the original is (found first, then added, so the effects aren't changed while they're read)
-    -- Where the unlocking technology has a copy in the parallel tree (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes
+    -- Where the unlocking technology has a copy with the recipe's dupe number (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes
+    -- Technology copies themselves (which unlock what their originals do) are left out, so a duplicate isn't unlocked in another number's tree, or twice
+    local copies = {}
+    if type(extra_info) == "number" then
+        copies = dupe.technology_copies[extra_info] or {}
+    end
     local unlocking = {}
     for _, technology in pairs(data.raw.technology) do
-        if technology.effects ~= nil then
+        if technology.effects ~= nil and technology.dupe_number == nil then
             for _, effect in pairs(technology.effects) do
                 if effect.type == "unlock-recipe" and effect.recipe == recipe.name then
                     table.insert(unlocking, technology)
@@ -309,16 +314,20 @@ dupe.recipe = function(recipe, extra_info)
             end
         end
     end
+    local unlocked_by = {}
     for _, technology in pairs(unlocking) do
-        local target = dupe.technology_copies[technology.name]
+        local target = copies[technology.name]
         if target == nil or research_needs_result(target, new_recipe) then
             target = technology
         end
-        target.effects = target.effects or {}
-        table.insert(target.effects, {
-            type = "unlock-recipe",
-            recipe = new_recipe.name,
-        })
+        if unlocked_by[target.name] == nil then
+            unlocked_by[target.name] = true
+            target.effects = target.effects or {}
+            table.insert(target.effects, {
+                type = "unlock-recipe",
+                recipe = new_recipe.name,
+            })
+        end
     end
 
     -- Only fix icons if it's not a specially suffixed recipe

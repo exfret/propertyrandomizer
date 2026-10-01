@@ -6,10 +6,12 @@
 # What gets recolored: the planet's icon, its star map icon, and the icons of the technologies discovering it.
 # The copy's science packs are listed in dev/dupe-items.txt (they're copied with the planet, never on their own).
 # Check a line with: dev/make-dupe-graphics.py --dump ... --preview DIR --only NAME
-# Chosen so the five copies differ from every original and from each other: Nauvis with red seas and blue land, green lava on
-# Vulcanus, a blue Gleba, a pale green Fulgora with pink lightning, and an olive Aquilo
-nauvis rotate dupes=180 tints=60,90,120,150,180,210,240,270,300
-vulcanus rotate dupes=90 tints=60,90,120,150,180,210,240,270,300
-gleba rotate dupes=150 tints=60,90,120,150,180,210,240,270,300
-fulgora rotate dupes=120 tints=60,90,120,150,180,210,240,270,300
-aquilo rotate dupes=180 tints=60,90,120,150,180,210,240,270,300
+# Two copies per planet (dupe numbers 2 and 3), chosen so the ten copies differ from every original and from each other.
+# Second copies: Nauvis with red seas and blue land, green lava on Vulcanus, a blue Gleba, a pale green Fulgora with pink
+# lightning, and an olive Aquilo. Third copies: Nauvis with purple seas and green land, blue lava on Vulcanus, a pink-red Gleba,
+# a blue-violet Fulgora, and a purple Aquilo
+nauvis rotate dupes=180,90 tints=60,90,120,150,180,210,240,270,300
+vulcanus rotate dupes=90,180 tints=60,90,120,150,180,210,240,270,300
+gleba rotate dupes=150,300 tints=60,90,120,150,180,210,240,270,300
+fulgora rotate dupes=120,240 tints=60,90,120,150,180,210,240,270,300
+aquilo rotate dupes=180,60 tints=60,90,120,150,180,210,240,270,300

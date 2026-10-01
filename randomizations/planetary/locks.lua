@@ -2,6 +2,7 @@
 -- A lock is the set of rooms (planets and surfaces) whose surface properties a recipe's or entity's surface conditions accept
 -- This stage chooses new sets, then gives each moved recipe or entity conditions for exactly its set (lib/surface-sets.lua), replacing its old ones; it never reasons about conditions themselves
 -- The planets of a lock other than the starting planet are redrawn among the planets other than the starting planet, as many as before; the starting planet and surfaces (like space platforms) keep their places in it
+-- A lock on only some of a planet's copies (a duplicate's home lock, lib/dupe-planet-locks.lua) keeps their copy numbers when it moves: foundry 2 goes from Vulcanus's copy 2 to another planet's copy 2
 -- Science packs (lab inputs) keep their locks, since each planet makes its own science
 -- A moved recipe's goals follow it (check.transport): on its new planet it must be automatable, imports allowed
 -- What a planet must keep otherwise (its science, planet-locked recipes that didn't move, mechanics) stays where it was, so a lock can get its old planet back as well (widening), or its old set back (reverting)
@@ -9,7 +10,6 @@
 local constants = require("helper-tables/constants")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
-local locale_utils = require("lib/locale")
 local rng = require("lib/random/rng")
 local surface_sets = require("lib/surface-sets")
 
@@ -49,13 +49,14 @@ end
 -- Target id --> moved lock:
 --   * kind ("recipe" or "entity") and name
 --   * node_key: the logic node whose in-edges from rooms are the lock (recipe-surface-condition or entity-build-surface-condition)
---   * original: the prototype's surface conditions before this stage, and original_description its localised_description
+--   * original: the prototype's surface conditions before this stage (the game shows where a recipe or entity works from its conditions, so a lock doesn't touch descriptions)
 --   * old: rooms that accepted it before, and new: rooms drawn for it
 --   * map: old room --> new room, for each old planet that isn't in the new set (which new planet took its place)
 --   * rooms: rooms that accept it now (new, plus whatever widening gave back)
 locks.moved = {}
 -- Target id --> fixed lock, in the same form: a lock given exactly these rooms on purpose (a planet copy's science packs, see lib/dupe-planets.lua)
 -- Fixed locks are realized together with the moved ones, but never drawn again, transported, reverted or forgotten with them
+-- A fixed lock with movable set is a home lock instead (locks.fix_home): this stage can move it like a lock of the prototype's own conditions, and while it's moved the moved lock is the one in the game; reverting or forgetting the move brings the home lock back
 locks.fixed = {}
 
 local function prototype_of(lock)
@@ -63,6 +64,15 @@ local function prototype_of(lock)
         return data.raw.recipe[lock.name]
     end
     return dutils.get_prot("entity", lock.name)
+end
+
+-- The conditions a move of this target goes back to: the prototype's own from before its home lock if it has one, else its current ones
+local function own_original(target_id, prototype)
+    local home = locks.fixed[target_id]
+    if home ~= nil and home.movable then
+        return table.deepcopy(home.original)
+    end
+    return table.deepcopy(prototype.surface_conditions)
 end
 
 -- Planets whose place in locks can change: every planet but the starting one, as room keys
@@ -79,7 +89,7 @@ end
 
 -- Recipes and entities whose lock can move: they have surface conditions, aren't science packs, and accept some but not all movable planets
 -- Returns a list of { id, kind, name, node_key, accepted } sorted by id
--- Family --> its movable rooms, sorted (a planet and its copies are one family, surface_sets.family_of: no condition can tell them apart, so a lock accepts all of them or none, and families are what moves)
+-- Family --> its movable rooms, sorted (a planet and its copies are one family, surface_sets.family_of: none of the game's own properties tells them apart, so families are what moves; a lock on only some of a family's rooms, a duplicate's home lock, takes the same copies of the family it moves to, see locks.draw)
 local function movable_families()
     local families = {}
     for _, room_key in pairs(sorted_keys(movable_planets())) do
@@ -88,6 +98,17 @@ local function movable_families()
         table.insert(families[family], room_key)
     end
     return families
+end
+
+-- The room of the list with the same copy number as this room (surface_sets.copy_number), or nil
+local function same_copy(rooms, room_key)
+    local number = surface_sets.copy_number(room_key)
+    for _, other in pairs(rooms) do
+        if surface_sets.copy_number(other) == number then
+            return other
+        end
+    end
+    return nil
 end
 
 locks.candidates = function()
@@ -99,7 +120,8 @@ locks.candidates = function()
         if prototype.hidden or prototype.surface_conditions == nil or next(prototype.surface_conditions) == nil then
             return
         end
-        if locks.fixed[kind .. "/" .. prototype.name] ~= nil then
+        local fixed = locks.fixed[kind .. "/" .. prototype.name]
+        if fixed ~= nil and not fixed.movable then
             return
         end
         local accepted = surface_sets.accepted(prototype)
@@ -141,7 +163,7 @@ locks.candidates = function()
     return candidates
 end
 
--- Draws a new set for each candidate: its movable planet families are replaced by as many random movable families, different ones if it can (see movable_families)
+-- Draws a new set for each candidate: its movable planet families are replaced by as many random movable families, different ones if it can (see movable_families), each new family with as many of its copies as the lock had of the old one (all of them, or the same copy numbers)
 -- Returns target id --> moved lock (see locks.moved), without changing the game
 locks.draw = function(candidates, id)
     local key = rng.key({ id = id })
@@ -152,18 +174,58 @@ locks.draw = function(candidates, id)
     for _, candidate in pairs(candidates) do
         local old_families = {}
         local fixed = {}
+        -- The copy numbers of the movable rooms it's on
+        local numbers = {}
         for room_key, _ in pairs(candidate.accepted) do
             if movable[room_key] ~= nil then
                 old_families[surface_sets.family_of(room_key)] = true
+                numbers[surface_sets.copy_number(room_key)] = true
             else
                 fixed[room_key] = true
             end
         end
         local num = #sorted_keys(old_families)
+        -- The old families it's on whole: every room of the family, the starting planet included (a lock on the starting planet's copy 2 alone isn't on its whole family, even where that's the family's only movable room)
+        local whole_families = {}
+        local is_whole = true
+        for family, _ in pairs(old_families) do
+            whole_families[family] = true
+            for room_key, _ in pairs(surface_sets.family_rooms(family)) do
+                if candidate.accepted[room_key] == nil then
+                    whole_families[family] = nil
+                    is_whole = false
+                end
+            end
+        end
+        -- The families it can go to: any for a lock on whole families, else those with a movable copy of each number it's on (an original's lock, on copy 1, can't go to the starting planet's family, whose copy 1 never moves)
+        local eligible = families
+        if not is_whole then
+            eligible = {}
+            for _, family in pairs(families) do
+                local has_all = true
+                for number, _ in pairs(numbers) do
+                    local has_number = false
+                    for _, room_key in pairs(family_rooms[family]) do
+                        if surface_sets.copy_number(room_key) == number then
+                            has_number = true
+                        end
+                    end
+                    if not has_number then
+                        has_all = false
+                    end
+                end
+                if has_all then
+                    table.insert(eligible, family)
+                end
+            end
+            if #eligible < num then
+                eligible = families
+            end
+        end
         local new_families
         -- A few tries for a set that isn't the old one; the last draw is kept either way
         for _ = 1, 10 do
-            local shuffled = table.deepcopy(families)
+            local shuffled = table.deepcopy(eligible)
             rng.shuffle(key, shuffled)
             new_families = {}
             for i = 1, num do
@@ -173,7 +235,7 @@ locks.draw = function(candidates, id)
                 break
             end
         end
-        -- Which new family takes each old family's place: families in both stay, and the rest pair up at random; their rooms pair up in order, so a copy's goals go to the new family's copy where it has one
+        -- Which new family takes each old family's place: families in both stay, and the rest pair up at random; their rooms pair up by copy number (in order where the new family has no copy of that number), so a copy's goals go to the new family's copy
         local leaving = {}
         local arriving = {}
         for _, family in pairs(sorted_keys(old_families)) do
@@ -188,28 +250,39 @@ locks.draw = function(candidates, id)
         end
         rng.shuffle(key, arriving)
         local map = {}
+        local new = copy_set(fixed)
         for i, family in pairs(leaving) do
             local to_rooms = family_rooms[arriving[i]]
             for j, room_key in pairs(family_rooms[family]) do
                 if candidate.accepted[room_key] ~= nil then
-                    map[room_key] = to_rooms[(j - 1) % #to_rooms + 1]
+                    local to = same_copy(to_rooms, room_key) or to_rooms[(j - 1) % #to_rooms + 1]
+                    map[room_key] = to
+                    new[to] = true
+                end
+            end
+            -- A lock on the whole family gets the whole new family; a lock on some of its copies only gets the same copies of the new family
+            if whole_families[family] ~= nil then
+                for _, room_key in pairs(to_rooms) do
+                    new[room_key] = true
                 end
             end
         end
-        local new = copy_set(fixed)
+        -- A family that stays keeps the rooms it had in the lock
         for family, _ in pairs(new_families) do
-            for _, room_key in pairs(family_rooms[family]) do
-                new[room_key] = true
+            if old_families[family] ~= nil then
+                for _, room_key in pairs(family_rooms[family]) do
+                    if candidate.accepted[room_key] ~= nil then
+                        new[room_key] = true
+                    end
+                end
             end
         end
         if next(map) ~= nil then
-            local prototype = prototype_of(candidate)
             drawn[candidate.id] = {
                 kind = candidate.kind,
                 name = candidate.name,
                 node_key = candidate.node_key,
-                original = table.deepcopy(prototype.surface_conditions),
-                original_description = table.deepcopy(prototype.localised_description),
+                original = own_original(candidate.id, prototype_of(candidate)),
                 old = copy_set(candidate.accepted),
                 new = new,
                 map = map,
@@ -220,30 +293,7 @@ locks.draw = function(candidates, id)
     return drawn
 end
 
--- A description line naming the rooms a lock accepts, like "Works only on: [planet=gleba] [planet=vulcanus]"
-local function rooms_text(rooms)
-    local text = { "" }
-    for _, room_key in pairs(sorted_keys(rooms)) do
-        local room = gutils.deconstruct(room_key)
-        if #text > 1 then
-            table.insert(text, " ")
-        end
-        if room.type == "planet" then
-            table.insert(text, "[planet=" .. room.name .. "]")
-        else
-            table.insert(text, {
-                "?",
-                {
-                    room.type .. "-name." .. room.name,
-                },
-                room.name,
-            })
-        end
-    end
-    return text
-end
-
--- Puts every moved and fixed lock's current rooms in the game: new surface properties for all of them (lib/surface-sets.lua), their conditions, and their description lines
+-- Puts every moved and fixed lock's current rooms in the game: new surface properties for all of them (lib/surface-sets.lua), and their conditions
 -- A lock the planner couldn't realize (the pool of new properties ran out) goes back to its original conditions
 -- Returns the ids of locks that went back
 locks.realize = function()
@@ -266,10 +316,14 @@ locks.realize = function()
         locks.moved,
         locks.fixed,
     }
+    -- A home lock whose target moved waits while the move lasts (see locks.fixed)
+    local function is_waiting(list, id)
+        return list == locks.fixed and locks.moved[id] ~= nil
+    end
     local requests = {}
     for _, list in pairs(lists) do
         for _, id in pairs(sorted_keys(list)) do
-            if prototype_of(list[id]) ~= nil then
+            if prototype_of(list[id]) ~= nil and not is_waiting(list, id) then
                 table.insert(requests, {
                     id = id,
                     rooms = list[id].rooms,
@@ -283,17 +337,23 @@ locks.realize = function()
     for _, id in pairs(plan.unrealized) do
         unrealized[id] = true
     end
+    -- Whether a moved lock that went back has a home lock to bring back (which needs another plan)
+    local is_home_back = false
     for _, list in pairs(lists) do
         for _, id in pairs(sorted_keys(list)) do
             local lock = list[id]
             local prototype = prototype_of(lock)
-            if prototype == nil then
+            if is_waiting(list, id) then
+                -- The moved lock is the one in the game
+            elseif prototype == nil then
                 -- The prototype is gone (data.raw was put back to a state from before it, like a scaffold variant after a rolled-again ocean swap), so the lock is forgotten
                 list[id] = nil
             elseif unrealized[id] ~= nil then
                 prototype.surface_conditions = table.deepcopy(lock.original)
-                prototype.localised_description = table.deepcopy(lock.original_description)
                 list[id] = nil
+                if list == locks.moved and locks.fixed[id] ~= nil then
+                    is_home_back = true
+                end
             else
                 local conditions = plan.conditions[id]
                 if next(conditions) == nil then
@@ -301,19 +361,12 @@ locks.realize = function()
                 else
                     prototype.surface_conditions = conditions
                 end
-                -- The description line goes after the original description (found from its locale key if the prototype had none of its own)
-                prototype.localised_description = table.deepcopy(lock.original_description)
-                prototype.localised_description = {
-                    "",
-                    locale_utils.find_localised_description(prototype, {
-                        with_newline = true,
-                    }),
-                    {
-                        "propertyrandomizer.planet_lock",
-                        rooms_text(lock.rooms),
-                    },
-                }
             end
+        end
+    end
+    if is_home_back then
+        for _, id in pairs(locks.realize()) do
+            unrealized[id] = true
         end
     end
     return sorted_keys(unrealized)
@@ -376,8 +429,7 @@ locks.move = function(kind, name, map)
         kind = kind,
         name = name,
         node_key = gutils.key(node_type, name),
-        original = table.deepcopy(prototype.surface_conditions),
-        original_description = table.deepcopy(prototype.localised_description),
+        original = own_original(target_id, prototype),
         old = accepted,
         new = new,
         map = used_map,
@@ -411,7 +463,6 @@ locks.fix = function(kind, name, rooms, depends_on)
         name = name,
         node_key = gutils.key(node_type, name),
         original = table.deepcopy(prototype.surface_conditions or {}),
-        original_description = table.deepcopy(prototype.localised_description),
         old = copy_set(rooms),
         new = copy_set(rooms),
         map = {},
@@ -421,7 +472,18 @@ locks.fix = function(kind, name, rooms, depends_on)
     return target_id
 end
 
--- Puts a fixed lock's prototype back as it was (its own conditions and description) and forgets the lock
+-- Fixes a home lock (see locks.fixed): like locks.fix, but the lock stage can still move it, keeping its copy numbers (a duplicate's lock to its planet copies, see lib/dupe-planet-locks.lua)
+-- Doesn't realize either
+-- Returns the lock's target id, or nil if there's no such prototype
+locks.fix_home = function(kind, name, rooms)
+    local target_id = locks.fix(kind, name, rooms)
+    if target_id ~= nil then
+        locks.fixed[target_id].movable = true
+    end
+    return target_id
+end
+
+-- Puts a fixed lock's prototype back as it was (its own conditions) and forgets the lock
 locks.release = function(kind, name)
     local target_id = kind .. "/" .. name
     local lock = locks.fixed[target_id]
@@ -435,7 +497,6 @@ locks.release = function(kind, name)
         else
             prototype.surface_conditions = table.deepcopy(lock.original)
         end
-        prototype.localised_description = table.deepcopy(lock.original_description)
     end
     locks.fixed[target_id] = nil
 end
@@ -469,7 +530,6 @@ locks.revert = function(target_ids)
         if lock ~= nil then
             local prototype = prototype_of(lock)
             prototype.surface_conditions = table.deepcopy(lock.original)
-            prototype.localised_description = table.deepcopy(lock.original_description)
             reverted[target_id] = lock
             locks.moved[target_id] = nil
         end

@@ -58,12 +58,15 @@ if config.planet_names then
 end
 
 -- Duplicates of the planets, entities and items with recolored graphics (lib/dupe-planets.lua, lib/dupe.lua), before anything reads the prototypes, so they get randomized like everything else
+-- Then each planet-locked duplicate goes to its own copy of the planets, and the original to the original planets (lib/dupe-planet-locks.lua)
 local dupe = require("lib/dupe")
 local dupe_planets = require("lib/dupe-planets")
+local dupe_planet_locks = require("lib/dupe-planet-locks")
 if config.dupes then
     log("Adding duplicates")
     dupe_planets.execute()
     dupe.execute()
+    dupe_planet_locks.execute()
 end
 
 local new_logic = require("lib/logic/init")

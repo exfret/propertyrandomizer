@@ -25,6 +25,9 @@
 # Planets (dev/dupe-planets.txt) are copied whole by lib/dupe-planets.lua, so their line uses the rotate mode: every pixel's
 # hue turned by the given degrees, on the planet's icon, its star map icon and the image of the technology discovering it.
 # A planet copy's science packs are item lines like any other (they're only copied along with their planet).
+# An item line's split=side colors only the right half of the mask (by area, in each mip level of an icon sheet), so the left
+# half keeps the original's color: a science pack copy shows its original's color and its own side by side (split=layer
+# colors the bottom half instead).
 # A planet line's tints= list makes more rotations of the same images, one per angle, at graphics/dupes/tint-<degrees>/...:
 # lib/planet-tints.lua gives every planet but the starting one a random one of them. They're listed per original path in
 # their own manifest, lib/planet-tint-manifest.lua, written from what's on disk whenever a line with tints= is generated.
@@ -81,6 +84,8 @@ PALETTE_HUES = (355.0, 30.0, 50.0, 130.0, 185.0)
 PAINT_DEFAULTS = {"half": 25.0, "sat": 0.35, "val": 0.3, "low": None, "min": 40.0, "hole": 800.0, "smax": 0.18, "vmax": 0.97, "win": 9.0, "dens": 0.5, "close": 2.0, "strength": None}
 # Feathering of the mask edge, in pixels
 EDGE_SIGMA = 0.8
+# How a line's split= halves the mask: the part right of (side) or below (layer) the line that halves its area
+SPLITS = ("side", "layer")
 
 # Layers the game colors itself, or that aren't the body
 TINT_FLAGS = ("draw_as_shadow", "draw_as_glow", "draw_as_light", "apply_runtime_tint", "apply_recipe_tint", "apply_module_tint", "tint_as_overlay")
@@ -123,6 +128,7 @@ def parse_list(path, kind):
             params["hues"] = []
             params["dupes"] = []
             params["tints"] = []
+            params["split"] = None
             for part in parts[1:]:
                 if part in ("whole", "grey", "rotate"):
                     params["mode"] = part
@@ -136,16 +142,20 @@ def parse_list(path, kind):
                         params["dupes"].append((float(hue), float(sat) if sat else DUPE_SATURATION))
                 elif key == "tints":
                     params["tints"] = [int(v) for v in value.split(",")]
+                elif key == "split" and value in SPLITS:
+                    params["split"] = value
                 elif key in PAINT_DEFAULTS and value != "":
                     params[key] = float(value)
                 else:
-                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], tints=D[,D2], or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
+                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], tints=D[,D2], split=side|layer, or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
             if params["mode"] == "paint" and not params["hues"]:
                 sys.exit(f"{path}:{number}: {name} needs hue= (or whole)")
             if params["mode"] == "rotate" and not params["dupes"]:
                 sys.exit(f"{path}:{number}: {name} needs dupes= with each dupe's hue rotation in degrees")
             if params["tints"] and params["mode"] != "rotate":
                 sys.exit(f"{path}:{number}: {name} has tints=, which only a rotate line (a planet) takes")
+            if params["split"] is not None and params["mode"] == "rotate":
+                sys.exit(f"{path}:{number}: {name} has split=, which a rotate line (a planet) can't take")
             if params["low"] is None:
                 params["low"] = max(0.1, params["sat"] * 0.5)
             if params["strength"] is None:
@@ -499,13 +509,47 @@ def hue_rotate(rgba, degrees):
     return out
 
 
+def mip_blocks(width, height):
+    """(x, size) of each mip level of an icon sheet, laid side by side at halving sizes (a sheet without mips is one block)"""
+    if width <= height:
+        return [(0, width)]
+    blocks, x, size = [], 0, height
+    while x < width and size >= 1:
+        blocks.append((x, size))
+        x += size
+        size //= 2
+    return blocks
+
+
+def split_weight(weight, split):
+    """The weight right of (side) or below (layer) the line that halves its area in each mip level, so the rest keeps the original's color"""
+    out = np.zeros_like(weight)
+    height, width = weight.shape
+    for x0, size in mip_blocks(width, height):
+        block = weight[:size, x0:x0 + size]
+        if block.sum() <= 0:
+            continue
+        axis = 0 if split == "side" else 1
+        totals = np.cumsum(block.sum(axis=axis))
+        mid = int(np.searchsorted(totals, totals[-1] / 2))
+        keep = np.zeros_like(block)
+        if split == "side":
+            keep[:, mid:] = 1
+        else:
+            keep[mid:, :] = 1
+        out[:size, x0:x0 + size] = block * keep
+    return out
+
+
 def recolor(rgba, params, color, weight=None):
     if params["mode"] == "rotate":
         return hue_rotate(rgba, color[0])
     if params["mode"] == "whole":
-        return colorize(rgba, dupe_color(color), np.ones(rgba.shape[:2], dtype=np.float32) * (rgba[..., 3] > 0), params["strength"])
-    if weight is None:
+        weight = np.ones(rgba.shape[:2], dtype=np.float32) * (rgba[..., 3] > 0)
+    elif weight is None:
         weight = paint_mask(rgba, params)
+    if params["split"] is not None:
+        weight = split_weight(weight, params["split"])
     return colorize(rgba, dupe_color(color), weight, params["strength"])
 
 

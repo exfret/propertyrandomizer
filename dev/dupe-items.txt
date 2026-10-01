@@ -45,11 +45,18 @@ toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185
 # white; Space Age's round: orange 27, chartreuse 67, blue 236, navy 244, magenta 330), and the copies all differ. Only the
 # hue 160 is free of every pack, so the other copies share a hue with a pack of the other shape, told apart by the flask
 # (and by lightness where the source is dark: brown from military, maroon from cryogenic). The old utility copy (185) read
-# as a chemical pack. Each color carries a strong saturation (the /S in dupes=), like the originals
-metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 dupes=159/0.8
-agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 dupes=105/0.8
-electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 dupes=290/0.8
-cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 dupes=355/0.85
-military-science-pack grey val=0.35 smax=0.3 dupes=25/0.8
-production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 dupes=236/0.8
-utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 dupes=318/0.6
+# as a chemical pack. Each color carries a strong saturation (the /S in dupes=), like the originals.
+# The second color is the third copy's (dupe 3; the original is 1). With 26 packs only lime and teal were free among the
+# conical flasks, so utility's third copy is bright orange (no other conical pack is orange; military's brown copy is much
+# darker) and military's is lime-olive (the closest call, next to logistic's green). Each round third copy takes a hue a
+# conical original has (red: automation, gold: utility, cyan: chemical, dark green: logistic), told apart by flask shape and
+# lightness. Runners-up for a slot: pale mint 140/0.35, pale lavender 270/0.3
+# split=side (user, 2026-09-30): each copy colors only the right half of the liquid, so the left half keeps the original's
+# color and a copy reads as its original's color beside its own
+metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 split=side dupes=159/0.8,0/0.9
+agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=105/0.8,195/0.85
+electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=290/0.8,48/0.85
+cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 split=side dupes=355/0.85,128/0.8
+military-science-pack grey val=0.35 smax=0.3 split=side dupes=25/0.8,85/0.8
+production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=236/0.8,165/0.85
+utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 split=side dupes=318/0.6,28/0.9

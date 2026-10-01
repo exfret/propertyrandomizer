@@ -621,37 +621,24 @@ local function run_locks(logic, state)
     local used = {}
     -- Reward bundles the witnesses need back on their old planets (a member's lock accepting its old planet again, or its technology asking for its old ties): each goes back entirely (user, 2026-09-30: a revert rather than a share), with why, for the log
     local needed_bundles = {}
-    -- Which goals need each gate (their own witness goes through it, a witness walk per goal), for the log
-    local needed_by = {}
+    -- One witness walk for all of them; the log doesn't say which goals needed each repair, since a walk per goal for that took minutes with thousands of failures (user, 2026-09-30: cut it)
     if #rest > 0 then
-        for _, failure in pairs(rest) do
-            for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds({ failure }, with_all))) do
-                if gate.kind == "add" then
-                    local gate_key = gutils.ekey(gate)
-                    needed_by[gate_key] = needed_by[gate_key] or {}
-                    if #needed_by[gate_key] < 3 then
-                        table.insert(needed_by[gate_key], failure.text)
-                    end
-                end
-            end
-        end
         for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(rest, with_all))) do
-            local why = " (needed by " .. table.concat(needed_by[gutils.ekey(gate)] or {}, "; ") .. ")"
             if gate.kind == "add" and gate.stage == "widen" then
                 local lock, id = locks.lock_of_node(gate.stop)
                 if lock ~= nil then
                     local _, bundle_id = rewards.bundle_of_lock(id)
                     if bundle_id ~= nil then
-                        needed_bundles[bundle_id] = why
+                        needed_bundles[bundle_id] = ""
                     else
                         used[id] = used[id] or {}
-                        used[id][gutils.deconstruct(gate.start).name] = why
+                        used[id][gutils.deconstruct(gate.start).name] = true
                     end
                 end
             elseif gate.kind == "add" and gate.stage == "tie" then
                 local edge = tie_of_edge[gutils.ekey(gate)]
                 if edge ~= nil and rewards.moved[edge.bundle_id] ~= nil then
-                    needed_bundles[edge.bundle_id] = why
+                    needed_bundles[edge.bundle_id] = ""
                 end
             end
         end
@@ -682,9 +669,9 @@ local function run_locks(logic, state)
         for room_key, _ in pairs(new_rooms[id]) do
             rooms[room_key] = true
         end
-        for room_key, why in pairs(used[id] or {}) do
+        for room_key, _ in pairs(used[id] or {}) do
             rooms[room_key] = true
-            log("Planet locks: " .. id .. " accepts " .. room_key .. " again" .. why)
+            log("Planet locks: " .. id .. " accepts " .. room_key .. " again")
         end
         lock.rooms = rooms
     end

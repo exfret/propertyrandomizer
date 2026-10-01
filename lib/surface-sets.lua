@@ -306,6 +306,18 @@ surface_sets.family_of = function(room_key)
     return room_key
 end
 
+-- A room's copy number in its family: n for a planet's copy with dupe number n (the dupe_number dupe.prototype records), 1 for an original and every room that isn't a planet copy
+surface_sets.copy_number = function(room_key)
+    local room = gutils.deconstruct(room_key)
+    if room.type == "planet" then
+        local prototype = (data.raw.planet or {})[room.name]
+        if prototype ~= nil and type(prototype.dupe_number) == "number" and surface_sets.family_of(room_key) ~= room_key then
+            return prototype.dupe_number
+        end
+    end
+    return 1
+end
+
 -- The rooms of a room's family, as room key --> true
 surface_sets.family_rooms = function(room_key)
     local family = surface_sets.family_of(room_key)

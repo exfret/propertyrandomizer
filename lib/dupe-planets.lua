@@ -1,12 +1,13 @@
 -- Planet copies (setting propertyrandomizer-dupes; run from data-final-fixes.lua before the other duplicates)
--- A copy of every planet whose icon has a recolored copy (dev/dupe-planets.txt, made by dev/make-dupe-graphics.py), so planetary randomization has more planets to make different
+-- A copy of every planet for each dupe number its icon has a recolored copy for (dev/dupe-planets.txt, made by dev/make-dupe-graphics.py: two, numbers 2 and 3, the original being 1), so planetary randomization has more planets to make different
 -- A copy is the planet prototype again under a new name: the same map generation (from its own seed, since the game seeds a planet by its name), surface properties, pollutant, lightning and freezing. With it come:
 --   * ocean tiles of its own: clones of its original's handwritten ocean family (randomizations/planetary/oceans.lua), so an ocean swap can give it another ocean than its original's
---   * space connections: each connection of the original again, ending at the copy; where both ends have copies, one between the copies too
+--   * space connections: each connection of the original again, ending at the copy; where both ends have copies with the same number, one between the copies too
 --   * discovery: a copy of each technology discovering the original, discovering the copy; the starting planet, which nothing discovers, gets one modeled on the cheapest discovery technology
 --   * science: copies of the planet's own science packs that have recolored icons (dev/dupe-items.txt, with no number badge), named after the copy, locked to the copy while the originals stay locked to their planet (lib/surface-sets.lua properties, through randomizations/planetary/locks.lua); every lab takes the copies
---   * a parallel technology tree: a copy of each technology whose research takes a copied pack, taking the copies instead, and of each technology on the way from a copied planet's discovery to its packs, rooted at the copy's discovery (so a copy's packs don't wait on its original), with prerequisites among the copies; the duplicates' recipes are unlocked there (dupe.recipe)
---   * a split: a share of the original technologies take a copied pack instead of the original, decided by branch of the tree, so the two trees interleave; infinite research takes a random mix, and the endgame (research taking every planet's packs) takes both halves; checked with the logic graph (what was reachable stays reachable), else undone
+--   * a parallel technology tree per dupe number: a copy of each technology whose research takes a copied pack, taking that number's copies instead, and of each technology on the way from a copied planet's discovery to its packs, rooted at the copy's discovery (so a copy's packs don't wait on its original), with prerequisites among the copies; the duplicates' recipes with that number are unlocked there (dupe.recipe)
+--   * a split: a share of the original technologies take a copied pack instead of the original (one of its copies), decided by branch of the tree, so the trees interleave; infinite research takes a random mix, and the endgame (research taking every planet's packs) takes every version; checked with the logic graph (what was reachable stays reachable), else undone
+-- The duplicates belong to the copies with their number (lib/dupe-planet-locks.lua)
 -- Everything else works on the copy as on its original, since surface conditions go by properties and the copy has its original's
 -- A planet's own science packs are the lab inputs whose recipes only that planet accepts; for the starting planet, whose packs have no conditions, the lab inputs whose recipes it accepts at all
 
@@ -26,14 +27,10 @@ local planet_names = require("lib/planet-names")
 
 local dupe_planets = {}
 
--- One copy per planet: the dupe number its recolored graphics carry
-local DUPE_NUMBER = 2
--- How far along its orbit a copy sits from its original on the star map, as a fraction of a turn
+-- How far along its orbit each further copy sits from its original on the star map, as a fraction of a turn
 local ORIENTATION_NUDGE = 0.035
--- The share of the copied science packs in original technologies that become the copies instead (the split: roots of the tree's branches, see split)
+-- The share of the copied science packs in original technologies that become one of the copies instead (the split: roots of the tree's branches, see split)
 local SPLIT_SHARE = 1 / 3
--- The share of the copied science packs in infinite and leveled research that become the copies instead (see mix_infinite)
-local INFINITE_SHARE = 1 / 2
 -- Where a copied technology's number badge goes on its icon (like the other duplicates')
 local BADGE_SCALE = 1 / 3
 local BADGE_SHIFT = {
@@ -160,12 +157,12 @@ local function owned_by(planet, recipes, room_keys)
     return true
 end
 
--- The planet prototype again under the copy's name, beside its original on the star map
-local function copy_planet(planet)
-    local copy = dupe.prototype(planet, DUPE_NUMBER)
-    dupe.recolor_graphics(copy, DUPE_NUMBER)
-    copy.orientation = ((planet.orientation or 0) + ORIENTATION_NUDGE) % 1
-    copy.order = (planet.order or "") .. "-" .. tostring(DUPE_NUMBER)
+-- The planet prototype again under the name of its copy with this dupe number, beside its original on the star map
+local function copy_planet(planet, number)
+    local copy = dupe.prototype(planet, number)
+    dupe.recolor_graphics(copy, number)
+    copy.orientation = ((planet.orientation or 0) + ORIENTATION_NUDGE * (number - 1)) % 1
+    copy.order = (planet.order or "") .. "-" .. tostring(number)
     -- With random planet names, the copy gets one of its own rather than its original's with a number
     if config.planet_names then
         planet_names.name(copy)
@@ -175,8 +172,10 @@ end
 
 -- Clones of the original's ocean tiles for the copy (its map generation places the clones instead), registered as the copy's ocean family
 -- Returns how many tiles were cloned
+-- Dupe number --> original tile name --> its clone with that number (planets sharing an ocean tile share its clones)
 local tile_clones = {}
-local function copy_tiles(planet, copy)
+local function copy_tiles(planet, copy, number)
+    tile_clones[number] = tile_clones[number] or {}
     local family = oceans.families[planet.name]
     local map_gen_settings = copy.map_gen_settings or {}
     local tile_settings = ((map_gen_settings.autoplace_settings or {}).tile or {}).settings
@@ -192,11 +191,11 @@ local function copy_tiles(planet, copy)
         for _, tile_name in pairs(family[depth]) do
             local tile = data.raw.tile[tile_name]
             if tile ~= nil then
-                if tile_clones[tile_name] == nil then
-                    tile_clones[tile_name] = dupe.tile(tile, DUPE_NUMBER)
+                if tile_clones[number][tile_name] == nil then
+                    tile_clones[number][tile_name] = dupe.tile(tile, number)
                     num_cloned = num_cloned + 1
                 end
-                local clone = tile_clones[tile_name]
+                local clone = tile_clones[number][tile_name]
                 tile_settings[clone.name] = table.deepcopy(tile_settings[tile_name]) or {}
                 tile_settings[tile_name] = nil
                 table.insert(new_family[depth], clone.name)
@@ -208,78 +207,84 @@ local function copy_tiles(planet, copy)
     return num_cloned
 end
 
--- Copies of the space connections ending at copied planets: each connection again per copied end, and one between two copies where both ends have one
+-- Copies of the space connections ending at copied planets: each connection again per copied end, and one between two copies with the same dupe number where both ends have one
+-- copies: dupe number --> original planet name --> its copy with that number
 -- Returns how many connections were added
 local function copy_connections(copies)
     local num_added = 0
     for _, connection in pairs(sorted_prototypes("space-connection")) do
-        local from_copy = copies[connection.from]
-        local to_copy = copies[connection.to]
-        local variants = {}
-        if from_copy ~= nil then
-            table.insert(variants, {
-                suffix = "from",
-                from = from_copy.name,
-                to = connection.to,
-            })
-        end
-        if to_copy ~= nil then
-            table.insert(variants, {
-                suffix = "to",
-                from = connection.from,
-                to = to_copy.name,
-            })
-        end
-        if from_copy ~= nil and to_copy ~= nil then
-            table.insert(variants, {
-                suffix = "both",
-                from = from_copy.name,
-                to = to_copy.name,
-            })
-        end
-        for _, variant in pairs(variants) do
-            local copy = dupe.prototype(connection, {
-                suffix = tostring(DUPE_NUMBER) .. "-" .. variant.suffix,
-            })
-            copy.from = variant.from
-            copy.to = variant.to
-            copy.order = (connection.order or "") .. "-" .. variant.suffix
-            copy.localised_name = {
-                "",
-                location_name(variant.from),
-                " - ",
-                location_name(variant.to),
-            }
-            -- The connection's icons show its ends: an end's planet icon becomes the copy's where the end is a copy
-            local ends = {
-                connection.from,
-                connection.to,
-            }
-            for _, icon in pairs(copy.icons or {}) do
-                for _, original_name in pairs(ends) do
-                    local original = data.raw.planet[original_name]
-                    local planet_copy = copies[original_name]
-                    if original ~= nil and planet_copy ~= nil and icon.icon == original.icon and (variant.from == planet_copy.name or variant.to == planet_copy.name) then
-                        icon.icon = planet_copy.icon
+        for _, number in pairs(sorted_keys(copies)) do
+            local from_copy = copies[number][connection.from]
+            local to_copy = copies[number][connection.to]
+            local variants = {}
+            if from_copy ~= nil then
+                table.insert(variants, {
+                    suffix = "from",
+                    from = from_copy.name,
+                    to = connection.to,
+                })
+            end
+            if to_copy ~= nil then
+                table.insert(variants, {
+                    suffix = "to",
+                    from = connection.from,
+                    to = to_copy.name,
+                })
+            end
+            if from_copy ~= nil and to_copy ~= nil then
+                table.insert(variants, {
+                    suffix = "both",
+                    from = from_copy.name,
+                    to = to_copy.name,
+                })
+            end
+            for _, variant in pairs(variants) do
+                local copy = dupe.prototype(connection, {
+                    suffix = tostring(number) .. "-" .. variant.suffix,
+                })
+                copy.from = variant.from
+                copy.to = variant.to
+                copy.order = (connection.order or "") .. "-" .. variant.suffix .. "-" .. tostring(number)
+                copy.localised_name = {
+                    "",
+                    location_name(variant.from),
+                    " - ",
+                    location_name(variant.to),
+                }
+                -- The connection's icons show its ends: an end's planet icon becomes the copy's where the end is a copy
+                local ends = {
+                    connection.from,
+                    connection.to,
+                }
+                for _, icon in pairs(copy.icons or {}) do
+                    for _, original_name in pairs(ends) do
+                        local original = data.raw.planet[original_name]
+                        local planet_copy = copies[number][original_name]
+                        if original ~= nil and planet_copy ~= nil and icon.icon == original.icon and (variant.from == planet_copy.name or variant.to == planet_copy.name) then
+                            icon.icon = planet_copy.icon
+                        end
                     end
                 end
+                num_added = num_added + 1
             end
-            num_added = num_added + 1
         end
     end
     return num_added
 end
 
--- Copies of the technologies discovering the original, discovering the copy; a planet nothing discovers gets one modeled on the cheapest discovery technology
--- discovery_copies gets original technology name --> its copy's name, for the parallel tree's prerequisites
+-- Copies of the technologies discovering the original, discovering the copy (with its dupe number); a planet nothing discovers gets one modeled on the cheapest discovery technology
+-- discovery_copies gets original technology name --> its copy's name, for the parallel tree's prerequisites (of the tree with this number)
 -- Returns how many technologies were added
-local function copy_discovery(planet, copy, discovery, model, discovery_copies)
+local function copy_discovery(planet, copy, number, discovery, model, discovery_copies)
     local techs = discovery[planet.name]
     local num_added = 0
     if techs ~= nil then
+        dupe.technology_copies[number] = dupe.technology_copies[number] or {}
         for _, tech in pairs(techs) do
-            local copy_tech = dupe.prototype(tech, DUPE_NUMBER)
+            local copy_tech = dupe.prototype(tech, number)
             discovery_copies[tech.name] = copy_tech.name
+            -- A duplicate of a recipe the original discovers is discovered with the copy that has its number (dupe.recipe)
+            dupe.technology_copies[number][tech.name] = copy_tech
             for _, effect in pairs(copy_tech.effects or {}) do
                 if effect.type == "unlock-space-location" and effect.space_location == planet.name then
                     effect.space_location = copy.name
@@ -289,16 +294,16 @@ local function copy_discovery(planet, copy, discovery, model, discovery_copies)
                 "propertyrandomizer.planet_discovery",
                 copy.localised_name,
             }
-            if dupe.recolor_graphics(copy_tech, DUPE_NUMBER) == 0 then
+            if dupe.recolor_graphics(copy_tech, number) == 0 then
                 copy_tech.icons = table.deepcopy(icon_list(tech))
-                table.insert(copy_tech.icons, dupe.number_badge(DUPE_NUMBER, BADGE_SCALE, BADGE_SHIFT))
+                table.insert(copy_tech.icons, dupe.number_badge(number, BADGE_SCALE, BADGE_SHIFT))
             end
             num_added = num_added + 1
         end
         return num_added
     end
     local copy_tech = dupe.prototype(model, {
-        suffix = tostring(DUPE_NUMBER) .. "-" .. planet.name,
+        suffix = tostring(number) .. "-" .. planet.name,
     })
     -- Only the discovery itself (and travel to platforms, which the model's discovery may bring): the model's recipe unlocks belong to its own planet
     local effects = {}
@@ -324,19 +329,23 @@ local function copy_discovery(planet, copy, discovery, model, discovery_copies)
     return 1
 end
 
--- Copies of the planet's own science packs with recolored icons, locked to the copy (fixes, applied by the caller), taken by every lab that takes the original
+-- Copies of the planet's own science packs with recolored icons for the copy's dupe number, locked to the copy (fixes, applied by the caller), taken by every lab that takes the original
 -- Each copy and its recipes are named after the copy planet, since no number badge sets it apart
--- Fills in packs: copies (original pack name --> copy name), owner (pack name --> the planet whose own pack it is, for originals and copies alike) and recipe_copies (original recipe name --> the copy's recipe name)
+-- Fills in packs: copies (dupe number --> original pack name --> copy name), owner (pack name --> the planet whose own pack it is, for originals and copies alike) and recipe_copies (dupe number --> original recipe name --> the copy's recipe name)
 -- Returns how many packs were copied
-local function copy_packs(planet, copy, room_keys, packs, fixes)
+local function copy_packs(planet, copy, number, room_keys, packs, fixes)
+    packs.copies[number] = packs.copies[number] or {}
+    packs.recipe_copies[number] = packs.recipe_copies[number] or {}
     local num_copied = 0
     for _, pack_name in pairs(sorted_keys(dutils.lab_inputs())) do
         local pack = dupe.find_prototype("item", pack_name)
-        if pack ~= nil and pack.hidden ~= true and not dupe.has_been_duplicated[rng.key({prototype = pack})] and dupe.item_has_recolor(pack, DUPE_NUMBER) then
+        -- An original pack, not duplicated by anything else (one copied here for another dupe number is copied again)
+        local is_free = pack ~= nil and pack.orig_name == nil and (not dupe.has_been_duplicated[rng.key({prototype = pack})] or packs.owner[pack_name] ~= nil)
+        if is_free and pack.hidden ~= true and dupe.item_has_recolor(pack, number) then
             local recipes = dupe.item_recipes(pack)
             if #recipes > 0 and owned_by(planet, recipes, room_keys) then
                 -- No number badge: a pack copy's color alone tells it apart from every other pack (dev/dupe-items.txt)
-                local new_pack = dupe.item(pack, DUPE_NUMBER, {
+                local new_pack = dupe.item(pack, number, {
                     no_badge = true,
                 })
                 new_pack.default_import_location = copy.name
@@ -350,12 +359,13 @@ local function copy_packs(planet, copy, room_keys, packs, fixes)
                         table.insert(lab.inputs, new_pack.name)
                     end
                 end
-                packs.copies[pack.name] = new_pack.name
+                local is_first_copy = packs.owner[pack.name] == nil
+                packs.copies[number][pack.name] = new_pack.name
                 packs.owner[pack.name] = planet.name
                 packs.owner[new_pack.name] = copy.name
                 -- The original's recipes stay its planet's alone (where they were locked at all), the copy's are the copy's alone
                 for _, recipe in pairs(recipes) do
-                    if recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
+                    if is_first_copy and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
                         table.insert(fixes, {
                             recipe = recipe.name,
                             rooms = {
@@ -373,7 +383,7 @@ local function copy_packs(planet, copy, room_keys, packs, fixes)
                     })
                     local original = data.raw.recipe[recipe.orig_name]
                     if original ~= nil then
-                        packs.recipe_copies[original.name] = recipe.name
+                        packs.recipe_copies[number][original.name] = recipe.name
                         recipe.localised_name = {
                             "propertyrandomizer.planet_pack",
                             locale_utils.find_localised_name(original),
@@ -473,32 +483,40 @@ local function add_discovery_chain(chain, discovery_names, pack_recipe_names, ne
     end
 end
 
--- The parallel tree: a copy of each candidate taking the copied packs, and of each technology on a copied planet's discovery chain (add_discovery_chain), with prerequisites among the copies: a copied technology's copy, else a copied planet's discovery technology's copy (discovery_copies), else the original
--- A candidate's copy has no effects of its own yet (the duplicates' recipes are unlocked there, see dupe.recipe); a chain copy unlocks the recipes its original does (not its bonuses), with pack recipes swapped for their copies (packs.recipe_copies), whose unlocks move off the original
+-- The parallel tree of a dupe number: a copy of each candidate taking that number's copied packs, and of each technology on a copied planet's discovery chain (add_discovery_chain), with prerequisites among the copies: a copied technology's copy, else a copied planet's discovery technology's copy (discovery_copies, that number's), else the original
+-- A candidate's copy has no effects of its own yet (the duplicates' recipes with that number are unlocked there, see dupe.recipe); a chain copy unlocks the recipes its original does (not its bonuses), with pack recipes swapped for that number's copies (packs.recipe_copies), whose unlocks move off the original
 -- Returns original name --> copy, and the unlocks moved (see undo_moves)
-local function parallel_tree(candidates, chain, packs, discovery_copies)
+local function parallel_tree(candidates, chain, packs, discovery_copies, number)
+    local pack_copies = packs.copies[number]
+    local recipe_copies = packs.recipe_copies[number]
     local copied = {}
+    dupe.technology_copies[number] = dupe.technology_copies[number] or {}
     local function copy_of(tech)
-        local copy = dupe.prototype(tech, DUPE_NUMBER)
+        local copy = dupe.prototype(tech, number)
         copy.effects = nil
         copy.essential = nil
         for _, ingredient in pairs((copy.unit or {}).ingredients or {}) do
-            if packs.copies[ingredient[1]] ~= nil then
-                ingredient[1] = packs.copies[ingredient[1]]
+            if pack_copies[ingredient[1]] ~= nil then
+                ingredient[1] = pack_copies[ingredient[1]]
             end
         end
         copy.icons = table.deepcopy(icon_list(tech))
-        table.insert(copy.icons, dupe.number_badge(DUPE_NUMBER, BADGE_SCALE, BADGE_SHIFT))
+        table.insert(copy.icons, dupe.number_badge(number, BADGE_SCALE, BADGE_SHIFT))
         copied[tech.name] = copy
-        dupe.technology_copies[tech.name] = copy
+        dupe.technology_copies[number][tech.name] = copy
         return copy
     end
     for _, tech in pairs(candidates) do
-        copy_of(tech)
+        if takes_any(tech, pack_copies) then
+            copy_of(tech)
+        end
     end
-    local is_recipe_copy = {}
-    for _, copy_name in pairs(packs.recipe_copies) do
-        is_recipe_copy[copy_name] = true
+    -- Pack copies' recipes of every number: this tree moves its own number's, and its copies leave the others' to their trees
+    local copy_number_of = {}
+    for other_number, other_recipe_copies in pairs(packs.recipe_copies) do
+        for _, copy_name in pairs(other_recipe_copies) do
+            copy_number_of[copy_name] = other_number
+        end
     end
     local moves = {}
     for _, tech_name in pairs(sorted_keys(chain)) do
@@ -507,7 +525,8 @@ local function parallel_tree(candidates, chain, packs, discovery_copies)
         local kept = {}
         local copy_effects = {}
         for _, effect in pairs(tech.effects or {}) do
-            if effect.type == "unlock-recipe" and is_recipe_copy[effect.recipe] then
+            local copy_number = effect.type == "unlock-recipe" and copy_number_of[effect.recipe] or nil
+            if copy_number == number then
                 -- A pack copy's recipe: the copy unlocks it instead (through its original's recipe below)
                 table.insert(moves, {
                     tech = tech,
@@ -516,10 +535,10 @@ local function parallel_tree(candidates, chain, packs, discovery_copies)
                 })
             else
                 table.insert(kept, effect)
-                if effect.type == "unlock-recipe" then
+                if effect.type == "unlock-recipe" and copy_number == nil then
                     table.insert(copy_effects, {
                         type = "unlock-recipe",
-                        recipe = packs.recipe_copies[effect.recipe] or effect.recipe,
+                        recipe = recipe_copies[effect.recipe] or effect.recipe,
                     })
                 end
             end
@@ -557,20 +576,18 @@ local function undo_moves(moves)
     end
 end
 
--- The endgame joins both halves: a technology whose research takes a pack of every planet with copied packs (like the solar system edge's discovery, or research productivity) takes the other half of each copied pack it takes as well, originals and parallel copies alike, so the original and the copied tree meet at the end
+-- The endgame joins every version: a technology whose research takes a pack of every planet with copied packs (like the solar system edge's discovery, or research productivity) takes every other version of each copied pack it takes as well, originals and parallel copies alike, so the original and the copied trees meet at the end
 -- Returns the ingredients added (tech, ingredient), so they can be undone, and the set of the technologies' names
 local function join_endgame(packs)
-    -- Pack (original or copy) --> the original planet it belongs to, and --> its version on the other half
+    -- Pack (original or copy) --> the original planet it belongs to
     local family = {}
-    local other_half = {}
     local families = {}
-    for original, copy in pairs(packs.copies) do
+    for original, versions in pairs(packs.versions) do
         local owner = packs.owner[original]
-        family[original] = owner
-        family[copy] = owner
         families[owner] = true
-        other_half[original] = copy
-        other_half[copy] = original
+        for _, version in pairs(versions) do
+            family[version] = owner
+        end
     end
     local added = {}
     local joined = {}
@@ -594,13 +611,15 @@ local function join_endgame(packs)
                 joined[tech.name] = true
                 local additions = {}
                 for _, ingredient in pairs(tech.unit.ingredients) do
-                    local other = other_half[ingredient[1]]
-                    if other ~= nil and has[other] == nil then
-                        has[other] = true
-                        table.insert(additions, {
-                            other,
-                            ingredient[2],
-                        })
+                    local original = packs.original_of[ingredient[1]]
+                    for _, other in pairs(original ~= nil and packs.versions[original] or {}) do
+                        if has[other] == nil then
+                            has[other] = true
+                            table.insert(additions, {
+                                other,
+                                ingredient[2],
+                            })
+                        end
                     end
                 end
                 for _, ingredient in pairs(additions) do
@@ -616,11 +635,11 @@ local function join_endgame(packs)
     return added, joined
 end
 
--- The split: a share of the copied packs in the original technologies' research become the copies, chosen by branch of the tree rather than pack by pack
--- For each copied pack, a technology decides like the nearest technologies it needs that decided about that pack (through prerequisites that don't take it): where they all agree it follows them, where they disagree it sides with one at random (weighted by how many took each side), and where none decided it's a root that takes the copy with probability SPLIT_SHARE
--- So a branch takes one planet's version of a pack, while its roots decide on their own; technologies in skip (the endgame's, which take both halves) don't decide
+-- The split: a share of the copied packs in the original technologies' research become one of their copies, chosen by branch of the tree rather than pack by pack
+-- For each copied pack, a technology decides like the nearest technologies it needs that decided about that pack (through prerequisites that don't take it): where they all agree it follows them, where they disagree it sides with one at random (weighted by how many took each version), and where none decided it's a root that takes a copy (a random one of them) with probability SPLIT_SHARE
+-- So a branch takes one planet's version of a pack, while its roots decide on their own; technologies in skip (the endgame's, which take every version) don't decide
 -- Returns the flips made, so they can be undone
-local function split(candidates, pack_copies, skip)
+local function split(candidates, packs, skip)
     local key = rng.key({
         id = "dupe-planets-split",
     })
@@ -630,7 +649,7 @@ local function split(candidates, pack_copies, skip)
             deciding[tech.name] = true
         end
     end
-    -- Pack --> technology name --> "copy", "original" or false (no decision), found when first asked
+    -- Pack --> technology name --> the version it takes (the pack itself or one of its copies), or false (no decision), found when first asked
     local decisions = {}
     local function decide(tech_name, pack)
         decisions[pack] = decisions[pack] or {}
@@ -640,30 +659,41 @@ local function split(candidates, pack_copies, skip)
         -- Stored first, so a prerequisite cycle ends here
         decisions[pack][tech_name] = false
         local tech = data.raw.technology[tech_name]
-        local num_copy = 0
-        local num_original = 0
+        -- How many prerequisites took each version, in the order first seen
+        local counts = {}
+        local seen = {}
+        local total = 0
         for _, prerequisite in pairs((tech or {}).prerequisites or {}) do
             local decision = decide(prerequisite, pack)
-            if decision == "copy" then
-                num_copy = num_copy + 1
-            elseif decision == "original" then
-                num_original = num_original + 1
+            if decision ~= false then
+                if counts[decision] == nil then
+                    counts[decision] = 0
+                    table.insert(seen, decision)
+                end
+                counts[decision] = counts[decision] + 1
+                total = total + 1
             end
         end
         local decision = false
-        if num_copy > 0 and num_original == 0 then
-            decision = "copy"
-        elseif num_original > 0 and num_copy == 0 then
-            decision = "original"
-        elseif num_copy > 0 then
-            decision = "original"
-            if rng.value(key) * (num_copy + num_original) < num_copy then
-                decision = "copy"
+        if #seen == 1 then
+            decision = seen[1]
+        elseif #seen > 1 then
+            local roll = rng.value(key) * total
+            for _, version in pairs(seen) do
+                decision = version
+                roll = roll - counts[version]
+                if roll < 0 then
+                    break
+                end
             end
         elseif deciding[tech_name] ~= nil and takes(tech, pack) then
-            decision = "original"
+            decision = pack
             if rng.value(key) < SPLIT_SHARE then
-                decision = "copy"
+                local copies = packs.copies_of[pack]
+                decision = copies[1]
+                if #copies > 1 then
+                    decision = copies[rng.int(key, #copies)]
+                end
             end
         end
         decisions[pack][tech_name] = decision
@@ -673,13 +703,15 @@ local function split(candidates, pack_copies, skip)
     for _, tech in pairs(candidates) do
         if deciding[tech.name] ~= nil then
             for _, ingredient in pairs(tech.unit.ingredients) do
-                local pack_copy = pack_copies[ingredient[1]]
-                if pack_copy ~= nil and decide(tech.name, ingredient[1]) == "copy" then
-                    table.insert(flips, {
-                        ingredient = ingredient,
-                        original = ingredient[1],
-                    })
-                    ingredient[1] = pack_copy
+                if packs.versions[ingredient[1]] ~= nil then
+                    local version = decide(tech.name, ingredient[1])
+                    if version ~= false and version ~= ingredient[1] then
+                        table.insert(flips, {
+                            ingredient = ingredient,
+                            original = ingredient[1],
+                        })
+                        ingredient[1] = version
+                    end
                 end
             end
         end
@@ -687,9 +719,9 @@ local function split(candidates, pack_copies, skip)
     return flips
 end
 
--- Infinite and leveled research takes copied packs too, which the parallel tree and the split leave out: each copied pack in its research becomes the copy with probability INFINITE_SHARE, so the copies stay useful once the tree runs out; technologies in skip (the endgame's) are left alone
+-- Infinite and leveled research takes copied packs too, which the parallel trees and the split leave out: each copied pack in its research becomes a random one of its versions (itself or a copy, all as likely), so the copies stay useful once the trees run out; technologies in skip (the endgame's) are left alone
 -- Returns the flips made, so they can be undone
-local function mix_infinite(pack_copies, skip)
+local function mix_infinite(packs, skip)
     local key = rng.key({
         id = "dupe-planets-infinite",
     })
@@ -697,13 +729,16 @@ local function mix_infinite(pack_copies, skip)
     for _, tech in pairs(sorted_prototypes("technology")) do
         if is_leveled(tech) and tech.unit.ingredients ~= nil and not is_discovery(tech) and skip[tech.name] == nil and not dupe.has_been_duplicated[rng.key({prototype = tech})] then
             for _, ingredient in pairs(tech.unit.ingredients) do
-                local pack_copy = pack_copies[ingredient[1]]
-                if pack_copy ~= nil and rng.value(key) < INFINITE_SHARE then
-                    table.insert(flips, {
-                        ingredient = ingredient,
-                        original = ingredient[1],
-                    })
-                    ingredient[1] = pack_copy
+                local versions = packs.versions[ingredient[1]]
+                if versions ~= nil then
+                    local version = versions[rng.int(key, #versions)]
+                    if version ~= ingredient[1] then
+                        table.insert(flips, {
+                            ingredient = ingredient,
+                            original = ingredient[1],
+                        })
+                        ingredient[1] = version
+                    end
                 end
             end
         end
@@ -756,38 +791,75 @@ dupe_planets.execute = function()
     for _, name in pairs(sorted_keys(data.raw.surface or {})) do
         table.insert(room_keys, gutils.key("surface", name))
     end
-    -- The planets to copy: not hidden, with recolored graphics, and discoverable
+    -- The planets to copy: not hidden, with recolored graphics for some dupe number, and discoverable; each gets a copy per number it has recolored graphics for
     local planets = {}
+    local numbers_of = {}
     for _, planet in pairs(sorted_prototypes("planet")) do
-        if planet.hidden ~= true and dupe.item_has_recolor(planet, DUPE_NUMBER) and (discovery[planet.name] ~= nil or model ~= nil) then
-            table.insert(planets, planet)
+        if planet.hidden ~= true and (discovery[planet.name] ~= nil or model ~= nil) then
+            local numbers = {}
+            for number = 2, dupe.max_icon_number do
+                if dupe.item_has_recolor(planet, number) then
+                    table.insert(numbers, number)
+                end
+            end
+            if #numbers > 0 then
+                table.insert(planets, planet)
+                numbers_of[planet.name] = numbers
+            end
         end
     end
     if #planets == 0 then
         return
     end
 
+    -- Dupe number --> original planet name --> its copy with that number
     local copies = {}
+    -- copies and recipe_copies by dupe number (see copy_packs); versions: original pack name --> it and its copies, by number; copies_of: original pack name --> its copies; original_of: version --> original pack name
     local packs = {
         copies = {},
         owner = {},
         recipe_copies = {},
+        versions = {},
+        copies_of = {},
+        original_of = {},
     }
+    -- Dupe number --> original discovery technology name --> its copy's name
     local discovery_copies = {}
     local fixes = {}
     local names = {}
+    local num_copies = 0
     local num_tiles = 0
     local num_discovery = 0
     local num_packs = 0
     for _, planet in pairs(planets) do
-        local copy = copy_planet(planet)
-        copies[planet.name] = copy
-        table.insert(names, planet.name)
-        num_tiles = num_tiles + copy_tiles(planet, copy)
-        num_discovery = num_discovery + copy_discovery(planet, copy, discovery, model, discovery_copies)
-        num_packs = num_packs + copy_packs(planet, copy, room_keys, packs, fixes)
+        table.insert(names, planet.name .. " x" .. #numbers_of[planet.name])
+        for _, number in pairs(numbers_of[planet.name]) do
+            local copy = copy_planet(planet, number)
+            copies[number] = copies[number] or {}
+            copies[number][planet.name] = copy
+            discovery_copies[number] = discovery_copies[number] or {}
+            num_copies = num_copies + 1
+            num_tiles = num_tiles + copy_tiles(planet, copy, number)
+            num_discovery = num_discovery + copy_discovery(planet, copy, number, discovery, model, discovery_copies[number])
+            num_packs = num_packs + copy_packs(planet, copy, number, room_keys, packs, fixes)
+        end
     end
     local num_connections = copy_connections(copies)
+    local numbers = sorted_keys(copies)
+    for _, number in pairs(numbers) do
+        for original, copy in pairs(packs.copies[number] or {}) do
+            if packs.versions[original] == nil then
+                packs.versions[original] = {
+                    original,
+                }
+                packs.copies_of[original] = {}
+                packs.original_of[original] = original
+            end
+            table.insert(packs.versions[original], copy)
+            table.insert(packs.copies_of[original], copy)
+            packs.original_of[copy] = original
+        end
+    end
 
     -- The science pack locks need the logic's lookups (which rooms there are now)
     lu.load_lookups()
@@ -800,15 +872,15 @@ dupe_planets.execute = function()
         log("Planet copies: no surface properties left for " .. target_id .. ", so it keeps its old lock")
     end
 
-    -- The parallel tree with each copied planet's discovery chain, checked against the game without it (only the moved pack unlocks can lose anything), and undone to the old unlocks if it loses something
+    -- The parallel trees (one per dupe number) with each copied planet's discovery chain, checked against the game without them (only the moved pack unlocks can lose anything), and undone to the old unlocks if they lose something
     local reachable_without_tree = reachable_nodes()
-    local candidates = tree_candidates(packs.copies)
+    local candidates = tree_candidates(packs.versions)
     local chain = {}
     local needs = prerequisite_closure()
     for _, planet in pairs(planets) do
         local pack_recipe_names = {}
         for pack_name, owner in pairs(packs.owner) do
-            if owner == planet.name and packs.copies[pack_name] ~= nil then
+            if owner == planet.name and packs.versions[pack_name] ~= nil then
                 for _, recipe in pairs(dupe.item_recipes(dupe.find_prototype("item", pack_name))) do
                     pack_recipe_names[recipe.name] = true
                 end
@@ -820,7 +892,18 @@ dupe_planets.execute = function()
         end
         add_discovery_chain(chain, discovery_names, pack_recipe_names, needs)
     end
-    local copied, moves = parallel_tree(candidates, chain, packs, discovery_copies)
+    -- Copied technology name --> its copy, over every tree
+    local copied = {}
+    local moves = {}
+    for _, number in pairs(numbers) do
+        local tree_copied, tree_moves = parallel_tree(candidates, chain, packs, discovery_copies[number], number)
+        for _, copy in pairs(tree_copied) do
+            copied[copy.name] = copy
+        end
+        for _, move in pairs(tree_moves) do
+            table.insert(moves, move)
+        end
+    end
     local before = reachable_nodes()
     local lost = lost_nodes(reachable_without_tree, before)
     if #lost > 0 then
@@ -832,8 +915,8 @@ dupe_planets.execute = function()
 
     -- The endgame's join, the split and the infinite research's mix, checked against the game with the tree, and all undone if they lose something
     local additions, joined = join_endgame(packs)
-    local flips = split(candidates, packs.copies, joined)
-    local infinite_flips = mix_infinite(packs.copies, joined)
+    local flips = split(candidates, packs, joined)
+    local infinite_flips = mix_infinite(packs, joined)
     local after = reachable_nodes()
     lost = lost_nodes(before, after)
     if #lost > 0 then
@@ -865,7 +948,7 @@ dupe_planets.execute = function()
         end
     end
 
-    log("Planet copies: " .. #planets .. " planets (" .. table.concat(names, ", ") .. "), " .. num_tiles .. " ocean tiles, " .. num_connections .. " connections, " .. num_discovery .. " discovery technologies, " .. num_packs .. " science packs (" .. #fixes .. " locks), " .. #sorted_keys(copied) .. " parallel technologies (" .. #sorted_keys(chain) .. " on discovery chains, " .. #moves .. " pack unlocks moved to them, " .. num_unreachable_copies .. " unreachable), " .. #flips .. " science packs split, " .. #infinite_flips .. " in infinite research, " .. #additions .. " added to " .. #sorted_keys(joined) .. " endgame technologies")
+    log("Planet copies: " .. num_copies .. " copies of " .. #planets .. " planets (" .. table.concat(names, ", ") .. "), " .. num_tiles .. " ocean tiles, " .. num_connections .. " connections, " .. num_discovery .. " discovery technologies, " .. num_packs .. " science packs (" .. #fixes .. " locks), " .. #sorted_keys(copied) .. " parallel technologies (" .. #sorted_keys(chain) .. " on discovery chains, " .. #moves .. " pack unlocks moved to them, " .. num_unreachable_copies .. " unreachable), " .. #flips .. " science packs split, " .. #infinite_flips .. " in infinite research, " .. #additions .. " added to " .. #sorted_keys(joined) .. " endgame technologies")
 end
 
 return dupe_planets

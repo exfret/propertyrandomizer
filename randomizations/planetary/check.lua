@@ -2,6 +2,7 @@
 -- check.required is what a planetary change must keep:
 --   1. Every recipe that was reachable stays reachable somewhere.
 --   2. Recipes locked to one planet by surface conditions (its science pack, pentapod eggs, soils, the foundry...) keep every context they had there (isolatable and automatable included), as themselves or as a variant. The rest of randomization keeps them too (protection.planet_locked_recipe_contexts).
+--      Except a spare version of a duplicated building (check.spare_building_recipes): another version of it is automatable somewhere and nothing else takes it.
 --   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building and electricity also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
 --      Other isolatability (like another planet's science or steam power) may be lost; that's the gameplay change.
 --   4. The starting planet's science packs (the lab inputs it could make before) keep every context they had there, isolatable and automatable included: the start makes its own science (every planet does, the user's rule), and its resources take part in the swaps.
@@ -14,6 +15,7 @@ local constants = require("helper-tables/constants")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local recycling = require("lib/recycling")
 local surface_sets = require("lib/surface-sets")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
@@ -297,6 +299,61 @@ check.imported_contexts = function(after)
     return after.imported_nci
 end
 
+-- Spare versions of duplicated buildings (rule 2's exception): an item placing a building and its copies (lib/dupe.lua, which records a copy's original as its orig_name) are versions of one building, so one serves as well as another
+-- A recipe whose main product is one of them is spare when another version is automatable somewhere in the game checked (after, a sort from check.sort) and no recipe but the item's own recycling takes it
+-- (user, 2026-09-30: "if a dupe is a building and one of its copies is already gettable and it's not used anywhere else maybe don't worry about it"); the building's work (mining, crafting, power) is still kept by rule 3's mechanics
+-- Returns recipe node key --> true
+check.spare_building_recipes = function(after)
+    local after_contexts = after.sort_info.node_to_context_inds
+    -- Building item name --> its family (the original's name), and family --> its versions' names
+    local family_of = {}
+    local versions = {}
+    for _, item in pairs(dutils.get_all_prots("item")) do
+        if item.place_result ~= nil and item.place_result ~= "" then
+            local family = item.name
+            if type(item.dupe_number) == "number" and item.orig_name ~= nil then
+                family = item.orig_name
+            end
+            family_of[item.name] = family
+            versions[family] = versions[family] or {}
+            table.insert(versions[family], item.name)
+        end
+    end
+    -- Items a recipe takes, recycling aside
+    local is_taken = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        if not recycling.looks_generated(recipe) then
+            for _, ingredient in pairs(recipe.ingredients or {}) do
+                if ingredient.type == "item" then
+                    is_taken[ingredient.name] = true
+                end
+            end
+        end
+    end
+    local function is_automatable(item_name)
+        for context, _ in pairs(after_contexts[gutils.key("item", item_name)] or {}) do
+            local abilities = top.context_abilities(context)
+            if abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+                return true
+            end
+        end
+        return false
+    end
+    local spare = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        local product = dutils.recipe_main_product(recipe)
+        local family = product ~= nil and product.type == "item" and family_of[product.name] or nil
+        if family ~= nil and #versions[family] > 1 and is_taken[product.name] == nil then
+            for _, other in pairs(versions[family]) do
+                if other ~= product.name and is_automatable(other) then
+                    spare[gutils.key("recipe", recipe.name)] = true
+                end
+            end
+        end
+    end
+    return spare
+end
+
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
@@ -329,6 +386,9 @@ check.required_failures = function(before, after, variants_of)
 
     -- 2. Planet-locked recipes keep every context they had on their planet (isolatable and automatable included; see protection.planet_locked_recipe_contexts), as themselves or as a variant, and follow their lock where it moved (check.planet_locked_goals)
     -- Exact contexts matter: one-off sources like hand-mined rocks or spawner eggs keep a recipe isolatable while losing its automatable, renewable route (only isolatability may be stronger than the goal's, see top.provides_context)
+    -- A spare version of a duplicated building (check.spare_building_recipes) loses its goals without failing; they're only logged (check.last_spare_goals)
+    local spare = check.spare_building_recipes(after)
+    local spare_goals = {}
     for node_key, contexts in pairs(check.planet_locked_goals(before)) do
         local keys = {
             node_key,
@@ -343,7 +403,9 @@ check.required_failures = function(before, after, variants_of)
                     works = true
                 end
             end
-            if not works then
+            if not works and spare[node_key] ~= nil then
+                table.insert(spare_goals, "planet-locked " .. node_key .. " @ " .. context)
+            elseif not works then
                 table.insert(failures, {
                     text = "planet-locked " .. node_key .. " @ " .. context,
                     keys = keys,
@@ -352,6 +414,8 @@ check.required_failures = function(before, after, variants_of)
             end
         end
     end
+    table.sort(spare_goals)
+    check.last_spare_goals = spare_goals
 
     -- 3. Mechanics keep what protection.planetary_kept_context says
     -- A mechanic node the game no longer has can't be needed (like a fluid-count variant of a recipe category once no recipe has those fluids), and neither can one that's no longer a mechanic there (like an item that was a burnt result until randomization moved it), so those are skipped, as the mechanic context check does
@@ -480,6 +544,13 @@ check.required = function(before, after, variants_of, is_quiet, label)
             log(label .. " soft: " .. #check.last_soft_failures .. " rocket building goals of planets next to the start lost (not failures)")
             for i = 1, math.min(#check.last_soft_failures, 12) do
                 log(label .. " soft: " .. check.last_soft_failures[i])
+            end
+        end
+        -- So are spare versions of duplicated buildings (rule 2's exception)
+        if #(check.last_spare_goals or {}) > 0 then
+            log(label .. " spare: " .. #check.last_spare_goals .. " goals of duplicated buildings another version covers lost (not failures)")
+            for i = 1, math.min(#check.last_spare_goals, 12) do
+                log(label .. " spare: " .. check.last_spare_goals[i])
             end
         end
     end
