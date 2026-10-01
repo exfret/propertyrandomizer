@@ -1,4 +1,4 @@
--- Superposition of two worlds' logic graphs, like the game before and after a planetary change (see notes/context-shift-report)
+-- Superposition of two worlds' logic graphs, like the game before and after a planetary change (see notes/old/context-shift-report)
 -- It has every node and edge of either world, and the edges only the old world has are debt edges (edge.debt = true): they won't be in the game unless something pays for them
 -- Adding in-edges to OR nodes only grows what the sort reaches, so when every debt edge that changes a node of the new world goes into an OR node, the superposition reaches everything either world reaches
 -- That makes it a reference for both worlds' goals, where promotion can start before anything is repaired (planetary features all enter the logic through edges into OR nodes)

@@ -3,7 +3,7 @@
 --   * a relaxed edge (a prerequisite of an AND node that a repair could replace): m --> r becomes m --> slot --> r plus gate --> slot, so once the gate is open r no longer needs m (it counts as filled by anything)
 --   * an added edge (like a debt edge from an older world): u --> v becomes u --> join --> v, where join also needs the gate, so the edge only exists once the gate is open
 -- Earliest-provider witnesses (top.path) then go through a gate only where nothing reached before its stage works, so they use cheaper stages before costlier ones
--- Used to find where contradictions need repairs and which debt edges a superposed reference still owes (see notes/context-shift-report)
+-- Used to find where contradictions need repairs and which debt edges a superposed reference still owes (see notes/old/context-shift-report)
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")

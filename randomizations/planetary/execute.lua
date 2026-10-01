@@ -9,7 +9,7 @@
 -- None ever stops the game from loading: anything that goes wrong (including errors, for mod compatibility) undoes that stage instead.
 -- Ocean swaps that fail their check are first rolled again with a new assignment a few times (OCEAN_TRIES).
 
--- Superposed mode (setting propertyrandomizer-planetary-superposed, config.planetary_superposed; see notes/context-shift-report): the swaps come with their root repairs (scaffolds.lua's fluid replacements, and the recipe and trigger edits that follow resource swaps) but no extra patches, and the game before them goes to the rest of randomization as debt (planetary.superposed)
+-- Superposed mode (setting propertyrandomizer-planetary-superposed, config.planetary_superposed; see notes/old/context-shift-report): the swaps come with their root repairs (scaffolds.lua's fluid replacements, and the recipe and trigger edits that follow resource swaps) but no extra patches, and the game before them goes to the rest of randomization as debt (planetary.superposed)
 -- Root repairs are fine as fixes though not as random choices (like water or lava taking a lost fluid's place), and they change what unified never changes, what processes a pumped fluid or mined resource
 -- Promotion then keeps the goals the swaps still break while unified's choices pay for what they can (see skeleton/promotion.lua), and what's still owed after that is settled (planetary.settle); an attempt of the rest of randomization that still owes goals is retried with the changes rolled again (planetary.reroll, see data-final-fixes.lua), and what the kept attempt still lost is warned about in the randomizer panel (planetary.check_final)
 -- Works with entity randomization too: its subdivided acquisition edges leave the debt edges as they are (on seeds 1-2, promotion added and skipped the same debt edges with it on as with it off)
@@ -885,30 +885,12 @@ local function run_stage(what, stage, logic, state, can_retry)
     return true, false
 end
 
--- The planetary fix pass (config.planetary_fix_pass, randomizations/planetary/fix-pass.lua): what took each planet's old things' places in the stages' moves, planet --> old node key --> new node key, which the fix pass repairs with first (like the fluid now in lava's ocean)
+-- The planetary fix pass (config.planetary_fix_pass, randomizations/planetary/fix-pass.lua): what took each planet's old things' places in the stages' moves, planet --> old node key --> new node key, which the fix pass repairs with first (like the ore that took a lost ore's place)
 planetary.replacements = {}
 
 local function add_replacement(planet_name, old_key, new_key)
     planetary.replacements[planet_name] = planetary.replacements[planet_name] or {}
     planetary.replacements[planet_name][old_key] = new_key
-end
-
--- Swaps oceans without the root repairs (scaffolds.lua), for the fix pass to repair first; returns a problem, or nil
-local function move_oceans(logic, state, old_raw)
-    planetary_check.moved_features["oceans"] = true
-    local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
-    for planet_name, family in pairs(assignment) do
-        local old_fluid = oceans.families[planet_name].fluid
-        local new_fluid = oceans.families[family].fluid
-        if old_fluid ~= new_fluid then
-            add_replacement(planet_name, gutils.key("fluid", old_fluid), gutils.key("fluid", new_fluid))
-        end
-    end
-    local tile_problems = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
-    if #tile_problems > 0 then
-        return "tile collision changed (" .. table.concat(tile_problems, "; ") .. ")"
-    end
-    return nil
 end
 
 -- Swaps resources without the recipe and trigger edits, planet variants and extra patches that follow the swap (swap_resources, run_resources), for the fix pass to repair first; returns nil
@@ -985,7 +967,7 @@ local function run_fix_first(what, move, old_way, logic, state, fix)
 end
 
 -- Runs every stage that's on; with careful, each stage checks its own result (see state above)
--- With fix (the planetary fix pass, see run_fix_first), the stages it can repair run fix pass first and then the old way; the connection graph and locks run the old way
+-- With fix (the planetary fix pass, see run_fix_first), the stages it repairs (resource swaps, lightning and freezing moves) run fix pass first and then the old way; the connection graph, ocean swaps and locks run the old way
 local function run_stages(logic, state, careful, fix)
     state.careful = careful
     -- Outside superposed mode the map was drawn first (draw_map_first)
@@ -1018,11 +1000,8 @@ local function run_stages(logic, state, careful, fix)
                     end
                 end
             end
-            if fix ~= nil then
-                run_fix_first("ocean swaps", move_oceans, old_way, logic, state, fix)
-            else
-                old_way()
-            end
+            -- Ocean swaps keep their scaffolds even with the fix pass (user, 2026-10-01): a few targeted recipe variants in about 2 s, where the fix pass took 12-94 s for broader changes (like the foundry taking sulfur) and still left goals for the scaffolds
+            old_way()
         end
     end
     if config.planetary_resources then

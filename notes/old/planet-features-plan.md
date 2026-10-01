@@ -1,5 +1,7 @@
 # Planet feature moves, with duplicated planets
 
+Moved to notes/old/ on 2026-10-01, when superposed mode was retired from the plans. The current approach is in notes/planetary-approach.md, which section 10 below started.
+
 Plan written 2026-09-29 for the request: move things like Vulcanus giving big mining drills, Gleba having a spoiling theme and Aquilo's lithium processing chain, mixed in with duplicated planets, in ways superposed randomization can repair. Superposed mode is off for now (user, 2026-09-30); section 10 says how the moves work without it. Nothing below is implemented yet. It builds on the planetary stages in `randomizations/planetary/` and on superposed mode (`notes/context-shift-report`, `lib/graph/settlement.lua`).
 
 ## 1. The idea

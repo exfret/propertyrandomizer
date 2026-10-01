@@ -1,0 +1,615 @@
+# Freezing per move with planet copies (b2, 2026-10-01): parked work, not applied. Made against commit 867a968; apply with git apply --3way (execute.lua's part changes only run_freezing).
+diff --git a/lib/dupe.lua b/lib/dupe.lua
+index f5f1061..b711415 100644
+--- a/lib/dupe.lua
++++ b/lib/dupe.lua
+@@ -58,6 +58,9 @@ dupe.has_been_duplicated = {}
+ dupe.recolored = {}
+ -- Dupe number --> original technology name --> its copy with that number (lib/dupe-planets.lua: in that number's parallel technology tree, or discovering that number's planet copy): a duplicate's recipe is unlocked by the copy with its number of the technology unlocking the original, where there is one
+ dupe.technology_copies = {}
++-- Whether dupe.recipe gives a duplicate the copy with its number of research by trigger (trigger_technology_copy): on for the duplicates dupe.execute makes, once the planet copies are done
++-- The planet copies' own duplicates (their science packs) keep the original's research: their parallel trees copy what's on a copied planet's discovery chain themselves, trigger research included, and would replace an earlier copy of the same name
++dupe.copies_trigger_research = false
+ 
+ -- The recolored copy's path for an original sprite path, or nil when there is none for this dupe number
+ local function recolored_path(filename, dupe_number)
+@@ -284,6 +287,50 @@ local function research_needs_result(technology, recipe)
+     return false
+ end
+ 
++-- Number badge placement on a technology's icon, as on the parallel trees' copies (lib/dupe-planets.lua)
++local TECHNOLOGY_BADGE_SCALE = 1 / 3
++local TECHNOLOGY_BADGE_SHIFT = {
++    -40,
++    -40,
++}
++
++-- The copy with this number of a technology researched by a trigger, made the first time a duplicate with that number is unlocked there (user, 2026-10-01: "make sure that other entities similarly get duplicated trigger techs")
++-- So each number's duplicates have research of their own, which a planetary change can move on its own: a frozen planet's copy takes its heat source's research to its own new frozen planet (randomizations/planetary/freezing.lua) instead of every copy sharing one
++-- Research taking science packs needs none of this: the parallel trees copy what takes a copied pack (lib/dupe-planets.lua)
++-- The copy keeps the trigger, has no effects of its own (dupe.recipe adds the duplicates' unlocks) and takes the copies with its number of its prerequisites where there are some (a planet copy's discovery, a parallel tree's copy)
++-- Only where there are planet copies with that number (their technology copies), so nil otherwise: without them (like base game duplicates without Space Age) nothing sets a number's duplicates apart, and they share their original's research
++local function trigger_technology_copy(technology, number)
++    local copies = dupe.technology_copies[number]
++    if copies == nil then
++        return nil
++    end
++    if copies[technology.name] ~= nil then
++        return copies[technology.name]
++    end
++    local copy = dupe.prototype(technology, number)
++    copy.effects = nil
++    copy.essential = nil
++    local prerequisites = {}
++    for _, prerequisite in pairs(technology.prerequisites or {}) do
++        table.insert(prerequisites, copies[prerequisite] ~= nil and copies[prerequisite].name or prerequisite)
++    end
++    copy.prerequisites = prerequisites
++    local icons = technology.icons
++    if icons == nil then
++        icons = {
++            {
++                icon = technology.icon,
++                icon_size = technology.icon_size,
++            },
++        }
++    end
++    copy.icons = table.deepcopy(icons)
++    copy.icon = nil
++    table.insert(copy.icons, dupe.number_badge(number, TECHNOLOGY_BADGE_SCALE, TECHNOLOGY_BADGE_SHIFT))
++    copies[technology.name] = copy
++    return copy
++end
++
+ dupe.recipe = function(recipe, extra_info)
+     local has_number_suffix = true
+     if type(extra_info) == "table" then
+@@ -298,7 +345,7 @@ dupe.recipe = function(recipe, extra_info)
+     end
+ 
+     -- Recipe tech unlocks: the copy is unlocked wherever the original is (found first, then added, so the effects aren't changed while they're read)
+-    -- Where the unlocking technology has a copy with the recipe's dupe number (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes
++    -- Where the unlocking technology has a copy with the recipe's dupe number (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes; a technology researched by a trigger gets that copy now (trigger_technology_copy)
+     -- Technology copies themselves (which unlock what their originals do) are left out, so a duplicate isn't unlocked in another number's tree, or twice
+     local copies = {}
+     if type(extra_info) == "number" then
+@@ -317,6 +364,9 @@ dupe.recipe = function(recipe, extra_info)
+     local unlocked_by = {}
+     for _, technology in pairs(unlocking) do
+         local target = copies[technology.name]
++        if target == nil and type(extra_info) == "number" and technology.research_trigger ~= nil and dupe.copies_trigger_research then
++            target = trigger_technology_copy(technology, extra_info)
++        end
+         if target == nil or research_needs_result(target, new_recipe) then
+             target = technology
+         end
+@@ -1151,6 +1201,8 @@ end
+ dupe.execute = function()
+     -- The dupe numbers come with the recolor sets shipped with the mod (dev/make-dupe-graphics.py): a thing gets dupe n when its icon has a recolor for n
+     local num_dupes = dupe_graphics.max_dupe
++    -- The planet copies are done (lib/dupe-planets.lua runs first), so research by trigger can get its copies now (dupe.copies_trigger_research)
++    dupe.copies_trigger_research = true
+ 
+     -- Entities: the ones with recolored graphics, whatever their type (the list lives in dev/dupe-entities.txt)
+     -- Found first, since duplicating adds prototypes to the tables being read
+diff --git a/randomizations/planetary/freezing.lua b/randomizations/planetary/freezing.lua
+index a2d4f34..c3be255 100644
+--- a/randomizations/planetary/freezing.lua
++++ b/randomizations/planetary/freezing.lua
+@@ -3,12 +3,14 @@
+ -- It moves as a group with what heats buildings there: a technology unlocking a heat source (a reactor, like the heating tower) that belongs to another planet (a prerequisite that discovers it, or a trigger mining something there) is researched on the new frozen planet instead
+ -- That way the new frozen planet can heat its buildings from its own discovery on (warmth, see lib/logic/abstract.lua).
+ -- Warmth isn't a planetary feature: every room must stay warm, so the new frozen planet must be able to heat its buildings, and the old one is warm without heating
+--- A planet that stops freezing only gains warmth, so what a move can break is on the new frozen planet; if it breaks something, the move is undone
++-- A planet that stops freezing only gains warmth, so what a move can break is on its new frozen planet, or wherever the heating research it took away was used before the new planet is discovered (freezing.move_editing_research_of)
++-- Each move stands alone (user, 2026-10-01): each takes its own version of the heating research (lib/dupe.lua gives each duplicate a copy of research by trigger), and a move that breaks something goes back by itself (freezing.revert_move)
+ 
+ local constants = require("helper-tables/constants")
+ local dutils = require("lib/data-utils")
+ local gutils = require("lib/graph/graph-utils")
+ local rng = require("lib/random/rng")
++local surface_sets = require("lib/surface-sets")
+ 
+ local freezing = {}
+ 
+@@ -105,14 +107,21 @@ local function planets_placing(entity_name)
+     return planets
+ end
+ 
+--- A minable entity only this planet's map generation places (the first by name), or nil
++-- A minable entity only this planet's family (it and its copies, surface_sets.family_of) places in map generation (the first by name), or nil
++-- Copies place the same entities as their original, so no planet of a family has one of its own
+ local function entity_only_on(planet_name)
++    local family = surface_sets.family_of(gutils.key("planet", planet_name))
+     local settings = ((((data.raw.planet[planet_name] or {}).map_gen_settings or {}).autoplace_settings or {}).entity or {}).settings or {}
+     for _, entity_name in pairs(sorted_keys(settings)) do
+         local entity = dutils.get_prot("entity", entity_name)
+         if entity ~= nil and entity.minable ~= nil then
+-            local planets = planets_placing(entity_name)
+-            if next(planets) == planet_name and next(planets, planet_name) == nil then
++            local is_family_only = true
++            for placing, _ in pairs(planets_placing(entity_name)) do
++                if surface_sets.family_of(gutils.key("planet", placing)) ~= family then
++                    is_family_only = false
++                end
++            end
++            if is_family_only then
+                 return entity_name
+             end
+         end
+@@ -120,10 +129,57 @@ local function entity_only_on(planet_name)
+     return nil
+ end
+ 
++-- Which version of the heat source research each move takes: the originals (number 1) or the copies with one dupe number (lib/dupe.lua)
++-- map: old planet name --> new planet name; versions: number --> names of that version's heat source technologies
++-- Returns old planet name --> number, with each number taken once; a move with no version left takes none
++-- Every planet accepts every version of a heat source (lib/dupe-planet-locks.lua leaves them alone), so the version only decides where research leaves: a move takes the one with its new planet's copy number (surface_sets.copy_number) if that's left, keeping it in that copy's technology tree (often where it already was, like a Gleba copy's own), or else the one with its old planet's, or else the lowest left
++-- Moves choose in the order of their old planets' names, each rule for every move before the next rule
++freezing.pick_versions = function(map, versions)
++    local moves = sorted_keys(map)
++    local version_of = {}
++    local taken = {}
++    local function take(old_planet, number)
++        if version_of[old_planet] == nil and versions[number] ~= nil and taken[number] == nil then
++            version_of[old_planet] = number
++            taken[number] = true
++        end
++    end
++    for _, old_planet in pairs(moves) do
++        take(old_planet, surface_sets.copy_number(gutils.key("planet", map[old_planet])))
++    end
++    for _, old_planet in pairs(moves) do
++        take(old_planet, surface_sets.copy_number(gutils.key("planet", old_planet)))
++    end
++    for _, old_planet in pairs(moves) do
++        for _, number in pairs(sorted_keys(versions)) do
++            take(old_planet, number)
++        end
++    end
++    return version_of
++end
++
++-- The moves an order makes (planet i gets planet order[i]'s freezing), as old planet name --> new planet name: from each planet that stops freezing to one that starts
++-- planets: names by index; frozen: index --> whether that planet froze before
++-- A planet that freezes before and after only passes freezing along (it gets another frozen planet's), so a new frozen planet's move is followed back through such planets to the one that stopped freezing
++-- That way putting one move back (freezing.revert_move) freezes the planet that lost its freezing again, and no planet's freezing goes missing
++freezing.net_moves = function(planets, frozen, order)
++    local map = {}
++    for i, j in pairs(order) do
++        if frozen[j] and not frozen[i] then
++            -- Planet i is in a cycle of the order, so following it from j comes back to i, which didn't freeze, before it could loop
++            while frozen[order[j]] do
++                j = order[j]
++            end
++            map[planets[j]] = planets[i]
++        end
++    end
++    return map
++end
++
+ -- The last move, for freezing.revert:
+ --   * map: old planet name --> new planet name
+ --   * old_frozen: planet name --> whether it froze before
+---   * tech_edits: list of { tech, prerequisites (before), research_trigger (before) }
++--   * tech_edits: list of { tech, prerequisites (before), research_trigger (before), move (the old planet whose move it followed) }
+ freezing.last = nil
+ 
+ -- Moves freezing among the planets other than the starting planet, with its group (see the top of this file)
+@@ -154,27 +210,33 @@ freezing.execute = function(id)
+             break
+         end
+     end
+-    local map = {}
+-    for i, j in pairs(order) do
+-        if frozen[j] and not frozen[i] then
+-            map[planets[j]] = planets[i]
+-        end
+-    end
++    local map = freezing.net_moves(planets, frozen, order)
+     for i, name in pairs(planets) do
+         data.raw.planet[name].entities_require_heating = frozen[order[i]] or nil
+     end
+ 
+-    -- Heating follows: a heat source technology discovered with (or researched by mining on) a planet other than the new frozen one gets the new planet's discovery as prerequisite and one of its own entities as trigger
++    -- Heating follows: a heat source technology discovered with (or researched by mining on) a planet other than the new frozen one gets the new planet's discovery as prerequisite and one of its family's own entities as trigger
++    -- Each move takes one version of the heat source research (freezing.pick_versions), so moves of a planet's copies each take their own
++    local versions = {}
++    for _, tech_name in pairs(heating_technologies()) do
++        local number = data.raw.technology[tech_name].dupe_number or 1
++        versions[number] = versions[number] or {}
++        table.insert(versions[number], tech_name)
++    end
++    local version_of = freezing.pick_versions(map, versions)
++    local moves = sorted_keys(map)
+     local tech_edits = {}
+-    for _, new_planet in pairs(sorted_keys(freezing.inverse(map))) do
++    for _, old_planet in pairs(moves) do
++        local new_planet = map[old_planet]
+         local discovery = discoverers(new_planet)[1]
+         local trigger_entity = entity_only_on(new_planet)
+-        for _, tech_name in pairs(heating_technologies()) do
++        for _, tech_name in pairs(versions[version_of[old_planet]] or {}) do
+             local tech = data.raw.technology[tech_name]
+             local edit = {
+                 tech = tech_name,
+                 prerequisites = table.deepcopy(tech.prerequisites),
+                 research_trigger = table.deepcopy(tech.research_trigger),
++                move = old_planet,
+             }
+             local changed = false
+             if discovery ~= nil then
+@@ -226,6 +288,18 @@ freezing.new_frozen_rooms = function()
+     return rooms
+ end
+ 
++-- The move (by its old planet's name) whose heating research edits have this room's copy number (surface_sets.copy_number), or nil
++-- Research a move took away from where it was can cost planets that don't freeze what they heated or powered with until the move's new planet is discovered; a planet copy's discovery chain and technology tree are its copy number's (lib/dupe-planets.lua), so that's the move to blame there
++freezing.move_editing_research_of = function(room_key)
++    local number = surface_sets.copy_number(room_key)
++    for _, edit in pairs(freezing.last.tech_edits) do
++        if (data.raw.technology[edit.tech].dupe_number or 1) == number then
++            return edit.move
++        end
++    end
++    return nil
++end
++
+ -- new planet name --> old planet name, for a map from freezing.execute
+ freezing.inverse = function(map)
+     local inverse = {}
+@@ -259,6 +333,29 @@ freezing.revert = function()
+     end
+ end
+ 
++-- Puts one move of the last back (by its old planet's name), leaving the others: the old planet freezes again, its new planet doesn't, and the technology edits that followed this move go back
++freezing.revert_move = function(old_planet)
++    local last = freezing.last
++    local new_planet = last.map[old_planet]
++    if new_planet == nil then
++        return
++    end
++    data.raw.planet[old_planet].entities_require_heating = last.old_frozen[old_planet] or nil
++    data.raw.planet[new_planet].entities_require_heating = last.old_frozen[new_planet] or nil
++    local kept = {}
++    for _, edit in pairs(last.tech_edits) do
++        if edit.move == old_planet then
++            local tech = data.raw.technology[edit.tech]
++            tech.prerequisites = table.deepcopy(edit.prerequisites)
++            tech.research_trigger = table.deepcopy(edit.research_trigger)
++        else
++            table.insert(kept, edit)
++        end
++    end
++    last.tech_edits = kept
++    last.map[old_planet] = nil
++end
++
+ -- One line for the log
+ freezing.describe = function()
+     local parts = {}
+diff --git a/randomizations/planetary/test-freezing.lua b/randomizations/planetary/test-freezing.lua
+new file mode 100644
+index 0000000..3418d7d
+--- /dev/null
++++ b/randomizations/planetary/test-freezing.lua
+@@ -0,0 +1,260 @@
++-- Plain-Lua regression test for freezing moves with planet copies (randomizations/planetary/freezing.lua), not loaded by the mod
++-- Run from the mod root: lua randomizations/planetary/test-freezing.lua
++--
++-- Each move stands alone (user, 2026-10-01): it takes its own version of the heat source research (the originals, or the copies with one dupe number), a failure is blamed on one move, and that move goes back by itself.
++-- These pin down which version a move takes (freezing.pick_versions), which move a planet that doesn't freeze blames (freezing.move_editing_research_of) and what going back undoes (freezing.revert_move).
++
++-- Stand-ins for the Factorio environment
++function table.deepcopy(tbl)
++    if type(tbl) ~= "table" then
++        return tbl
++    end
++    local copy = {}
++    for k, v in pairs(tbl) do
++        copy[k] = table.deepcopy(v)
++    end
++    return copy
++end
++function log(msg) end
++serpent = {
++    block = tostring,
++    line = tostring,
++}
++settings = {
++    startup = {},
++}
++mods = {}
++-- Nothing here is random (the generator needs Factorio's bit32)
++package.loaded["lib/random/rng"] = {}
++
++local gutils = require("lib/graph/graph-utils")
++local freezing = require("randomizations/planetary/freezing")
++
++local num_checks = 0
++local function check(condition, message)
++    num_checks = num_checks + 1
++    if not condition then
++        error("FAILED: " .. message)
++    end
++end
++
++-- A planet and its copies with dupe numbers 2 and 3, named as lib/dupe-planets.lua names them
++local function add_family(planets, name)
++    planets[name] = {
++        name = name,
++    }
++    for number = 2, 3 do
++        local copy_name = name .. "-exfret-" .. number .. "-copy"
++        planets[copy_name] = {
++            name = copy_name,
++            orig_name = name,
++            dupe_number = number,
++        }
++    end
++end
++
++local function reset_data()
++    local planets = {}
++    for _, name in pairs({ "nauvis", "gleba", "fulgora", "vulcanus", "aquilo" }) do
++        add_family(planets, name)
++    end
++    data = {
++        raw = {
++            planet = planets,
++            technology = {
++                ["heating-tower"] = {
++                    name = "heating-tower",
++                    prerequisites = { "planet-discovery-gleba" },
++                    research_trigger = {
++                        type = "mine-entity",
++                        entities = { "copper-stromatolite" },
++                    },
++                },
++                ["heating-tower-exfret-2-copy"] = {
++                    name = "heating-tower-exfret-2-copy",
++                    dupe_number = 2,
++                    prerequisites = { "planet-discovery-gleba-exfret-2-copy" },
++                    research_trigger = {
++                        type = "mine-entity",
++                        entities = { "copper-stromatolite" },
++                    },
++                },
++                ["heating-tower-exfret-3-copy"] = {
++                    name = "heating-tower-exfret-3-copy",
++                    dupe_number = 3,
++                    prerequisites = { "planet-discovery-gleba-exfret-3-copy" },
++                    research_trigger = {
++                        type = "mine-entity",
++                        entities = { "copper-stromatolite" },
++                    },
++                },
++            },
++        },
++    }
++end
++
++local all_versions = {
++    [1] = { "heating-tower" },
++    [2] = { "heating-tower-exfret-2-copy" },
++    [3] = { "heating-tower-exfret-3-copy" },
++}
++
++-- pick_versions: the new planet's copy number first, keeping the research in that copy's tree
++reset_data()
++local picked = freezing.pick_versions({
++    aquilo = "fulgora-exfret-2-copy",
++    ["aquilo-exfret-3-copy"] = "fulgora-exfret-3-copy",
++}, all_versions)
++check(picked["aquilo"] == 2, "a move to a copy 2 takes version 2, not its old planet's version 1")
++check(picked["aquilo-exfret-3-copy"] == 3, "a move to a copy 3 takes version 3")
++
++-- pick_versions: a version is taken once; the second move to a copy 2 falls back to its old planet's number
++picked = freezing.pick_versions({
++    aquilo = "fulgora-exfret-2-copy",
++    ["aquilo-exfret-3-copy"] = "vulcanus-exfret-2-copy",
++}, all_versions)
++check(picked["aquilo"] == 2, "the first move by name takes the version both new planets have")
++check(picked["aquilo-exfret-3-copy"] == 3, "the second falls back to its old planet's version")
++
++-- pick_versions: when both rules are taken, the lowest version left
++picked = freezing.pick_versions({
++    aquilo = "gleba-exfret-3-copy",
++    ["aquilo-exfret-3-copy"] = "vulcanus-exfret-3-copy",
++}, all_versions)
++check(picked["aquilo"] == 3, "a move to Gleba's copy 3 takes version 3, Gleba copy 3's own")
++check(picked["aquilo-exfret-3-copy"] == 1, "with its new and old numbers taken, the lowest version left")
++
++-- pick_versions: without copies there's one version, which the first move by name takes, and the other takes none
++picked = freezing.pick_versions({
++    aquilo = "vulcanus",
++    ["aquilo-exfret-2-copy"] = "fulgora",
++}, {
++    [1] = { "heating-tower" },
++})
++check(picked["aquilo"] == 1, "the only version goes to the first move by name")
++check(picked["aquilo-exfret-2-copy"] == nil, "a move with no version left takes none")
++
++-- move_editing_research_of: a planet that doesn't freeze blames the move whose research edits have its copy number
++reset_data()
++freezing.last = {
++    map = {
++        aquilo = "fulgora-exfret-2-copy",
++        ["aquilo-exfret-3-copy"] = "vulcanus",
++    },
++    old_frozen = {},
++    tech_edits = {
++        {
++            tech = "heating-tower-exfret-2-copy",
++            move = "aquilo",
++        },
++        {
++            tech = "heating-tower",
++            move = "aquilo-exfret-3-copy",
++        },
++    },
++}
++check(freezing.move_editing_research_of(gutils.key("planet", "nauvis-exfret-2-copy")) == "aquilo", "a copy 2 blames the move that edited version 2")
++check(freezing.move_editing_research_of(gutils.key("planet", "gleba")) == "aquilo-exfret-3-copy", "an original blames the move that edited the originals")
++check(freezing.move_editing_research_of(gutils.key("planet", "gleba-exfret-3-copy")) == nil, "nothing edited version 3, so a copy 3 can't blame a move")
++check(freezing.move_editing_research_of(gutils.key("surface", "space-platform")) == "aquilo-exfret-3-copy", "a room that isn't a planet copy counts as number 1")
++
++-- revert_move: the move's planets and research go back, and the other move stays
++reset_data()
++data.raw.planet["aquilo"].entities_require_heating = true
++data.raw.planet["aquilo-exfret-3-copy"].entities_require_heating = true
++freezing.last = {
++    map = {
++        aquilo = "fulgora-exfret-2-copy",
++        ["aquilo-exfret-3-copy"] = "vulcanus",
++    },
++    old_frozen = {
++        aquilo = true,
++        ["aquilo-exfret-3-copy"] = true,
++        ["fulgora-exfret-2-copy"] = false,
++        vulcanus = false,
++    },
++    tech_edits = {
++        {
++            tech = "heating-tower-exfret-2-copy",
++            prerequisites = { "planet-discovery-gleba-exfret-2-copy" },
++            research_trigger = {
++                type = "mine-entity",
++                entities = { "copper-stromatolite" },
++            },
++            move = "aquilo",
++        },
++        {
++            tech = "heating-tower",
++            prerequisites = { "planet-discovery-gleba" },
++            research_trigger = {
++                type = "mine-entity",
++                entities = { "copper-stromatolite" },
++            },
++            move = "aquilo-exfret-3-copy",
++        },
++    },
++}
++-- The moves as freezing.execute would have left them
++data.raw.planet["aquilo"].entities_require_heating = nil
++data.raw.planet["aquilo-exfret-3-copy"].entities_require_heating = nil
++data.raw.planet["fulgora-exfret-2-copy"].entities_require_heating = true
++data.raw.planet["vulcanus"].entities_require_heating = true
++data.raw.technology["heating-tower-exfret-2-copy"].prerequisites = { "planet-discovery-fulgora-exfret-2-copy" }
++data.raw.technology["heating-tower-exfret-2-copy"].research_trigger.entities = { "big-fulgora-rock" }
++data.raw.technology["heating-tower"].prerequisites = { "planet-discovery-vulcanus" }
++data.raw.technology["heating-tower"].research_trigger.entities = { "big-volcanic-rock" }
++freezing.revert_move("aquilo")
++check(data.raw.planet["aquilo"].entities_require_heating == true, "the move's old planet freezes again")
++check(data.raw.planet["fulgora-exfret-2-copy"].entities_require_heating == nil, "the move's new planet is warm again")
++check(data.raw.technology["heating-tower-exfret-2-copy"].prerequisites[1] == "planet-discovery-gleba-exfret-2-copy", "the move's research gets its prerequisite back")
++check(data.raw.technology["heating-tower-exfret-2-copy"].research_trigger.entities[1] == "copper-stromatolite", "the move's research gets its trigger back")
++check(data.raw.planet["vulcanus"].entities_require_heating == true, "the other move's new planet still freezes")
++check(data.raw.technology["heating-tower"].prerequisites[1] == "planet-discovery-vulcanus", "the other move's research stays moved")
++check(freezing.last.map["aquilo"] == nil and freezing.last.map["aquilo-exfret-3-copy"] == "vulcanus", "only the other move is left in the map")
++check(#freezing.last.tech_edits == 1 and freezing.last.tech_edits[1].move == "aquilo-exfret-3-copy", "only the other move's research edits are left")
++
++-- net_moves: a move goes from the planet that stops freezing, past planets that freeze before and after
++-- Planet i gets planet order[i]'s freezing: Aquilo gets its copy 2's, Fulgora's copy 2 gets Aquilo's, Aquilo's copy 2 gets Gleba's (none) and Gleba gets Fulgora copy 2's (none)
++local planets = { "aquilo", "aquilo-exfret-2-copy", "fulgora-exfret-2-copy", "gleba" }
++local frozen = { true, true, false, false }
++local moves = freezing.net_moves(planets, frozen, { 2, 4, 1, 3 })
++check(moves["aquilo-exfret-2-copy"] == "fulgora-exfret-2-copy", "the move starts at Aquilo's copy 2, which stops freezing, not at Aquilo, which only passes freezing along")
++check(moves["aquilo"] == nil, "Aquilo freezes before and after, so no move starts there")
++local num_moves = 0
++for _, _ in pairs(moves) do
++    num_moves = num_moves + 1
++end
++check(num_moves == 1, "one planet stops freezing and one starts, so there's one move")
++
++-- net_moves: without planets passing freezing along, each frozen planet's freezing goes straight to a warm one
++moves = freezing.net_moves(planets, frozen, { 3, 4, 1, 2 })
++check(moves["aquilo"] == "fulgora-exfret-2-copy" and moves["aquilo-exfret-2-copy"] == "gleba", "two frozen planets give their freezing to two warm ones")
++
++-- net_moves with revert_move: putting the move back freezes the planet that lost its freezing, so the frozen count stays
++reset_data()
++data.raw.planet["aquilo"].entities_require_heating = true
++data.raw.planet["aquilo-exfret-2-copy"].entities_require_heating = true
++local order = { 2, 4, 1, 3 }
++local old_frozen = {}
++for i, name in pairs(planets) do
++    old_frozen[name] = frozen[i]
++end
++for i, name in pairs(planets) do
++    data.raw.planet[name].entities_require_heating = frozen[order[i]] or nil
++end
++freezing.last = {
++    map = freezing.net_moves(planets, frozen, order),
++    old_frozen = old_frozen,
++    tech_edits = {},
++}
++freezing.revert_move("aquilo-exfret-2-copy")
++local num_frozen = 0
++for _, name in pairs(planets) do
++    if data.raw.planet[name].entities_require_heating then
++        num_frozen = num_frozen + 1
++    end
++end
++check(num_frozen == 2, "putting the only move back leaves as many frozen planets as before the moves")
++check(data.raw.planet["aquilo-exfret-2-copy"].entities_require_heating == true and data.raw.planet["fulgora-exfret-2-copy"].entities_require_heating == nil, "Aquilo's copy 2 freezes again and Fulgora's copy 2 doesn't")
++
++print("test-freezing: " .. num_checks .. " checks passed")
+diff --git a/randomizations/planetary/execute.lua b/randomizations/planetary/execute.lua
+index a0d0c8f..9567a59 100644
+--- a/randomizations/planetary/execute.lua
++++ b/randomizations/planetary/execute.lua
+@@ -832,16 +832,49 @@ local function move_freezing()
+ end
+ 
+ -- Moves freezing with the technologies for heating (freezing.lua)
+--- A planet that stops freezing only gains warmth, so whatever fails is on a planet that now freezes, and keeping the old planet frozen as well wouldn't help: the stage is undone instead
++-- Each move stands alone (user, 2026-10-01): a move that made a planet lose something goes back by itself (freezing.revert_move), and the others stay
++-- A planet that stops freezing only gains warmth, so a failure is pinned on the move whose new frozen planet it's on, or else on the move whose heating research edits have its planet's copy number (freezing.move_editing_research_of)
++-- A failure pinned on no move can follow from one that is (like a planet copy losing what another copy's science gave it), so each round puts back the moves failures are pinned on and checks again; a round with only failures pinned on no move undoes the stage
+ local function run_freezing(logic, state)
+     if next(move_freezing()) == nil then
+         return nil
+     end
+-    state.after = planetary_check.sort(logic)
+-    if not planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK freezing") then
+-        return "a planet that freezes now lost something it must keep (see PLANETCHECK freezing in the log)"
++    local any_back = false
++    while true do
++        state.after = planetary_check.sort(logic)
++        local passes, failures = planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK freezing")
++        if passes then
++            if any_back then
++                log("Planetary freezing: kept " .. freezing.describe())
++            end
++            return nil
++        end
++        local old_planet_of = freezing.inverse(freezing.last.map)
++        -- Old planet of a failing move --> names of the rooms it made lose something --> true
++        local failing_rooms = {}
++        for _, failure in pairs(failures) do
++            local room = failure.context ~= nil and top.context_room(failure.context) or nil
++            if room ~= nil then
++                local old_planet = old_planet_of[gutils.deconstruct(room).name] or freezing.move_editing_research_of(room)
++                if old_planet ~= nil then
++                    failing_rooms[old_planet] = failing_rooms[old_planet] or {}
++                    failing_rooms[old_planet][gutils.deconstruct(room).name] = true
++                end
++            end
++        end
++        if next(failing_rooms) == nil then
++            return "a planet lost something it must keep that no single move explains (see PLANETCHECK freezing in the log)"
++        end
++        for _, old_planet in pairs(sorted_keys(failing_rooms)) do
++            log("Planetary freezing: " .. old_planet .. " --> " .. freezing.last.map[old_planet] .. " goes back by itself, since " .. table.concat(sorted_keys(failing_rooms[old_planet]), ", ") .. " lost something it must keep")
++            freezing.revert_move(old_planet)
++        end
++        any_back = true
++        lutils.bootstrap_heat_rooms = freezing.new_frozen_rooms()
++        if next(freezing.last.map) == nil then
++            return "every move made a planet lose something it must keep (see PLANETCHECK freezing in the log)"
++        end
+     end
+-    return nil
+ end
+ 
+ -- How many different assignments a careful run tries for ocean swaps before undoing them: a failed ocean swap is rare, so rolling again usually works

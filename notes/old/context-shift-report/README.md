@@ -1,5 +1,7 @@
 # Contexts that move: report
 
+Moved to notes/old/ on 2026-10-01: superposed mode, which this report is the theory of, is off and retired from the plans (its code stays until it's removed). The current planetary approach is in notes/planetary-approach.md.
+
 A theory of references, debts and repairs for multipass randomization with planetary context shifts (26 September 2026).
 
 - `main.pdf`: the compiled report.

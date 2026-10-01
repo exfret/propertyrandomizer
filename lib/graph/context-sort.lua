@@ -780,7 +780,7 @@ top.home_sets = function(graph)
 end
 
 -- Home sets both given home sets agree on: each room's home set is the rooms in both (a room only one of them has keeps that one's)
--- A smaller home set grants less (see discover_home_rooms), so after a change to the game (like a planetary one) that may change which rooms discoveries need, this is the careful choice (notes/context-shift-report, the remark on home sets)
+-- A smaller home set grants less (see discover_home_rooms), so after a change to the game (like a planetary one) that may change which rooms discoveries need, this is the careful choice (notes/old/context-shift-report, the remark on home sets)
 -- Returns home sets like top.home_sets does
 top.intersect_home_sets = function(a, b)
     local needs_of_room = {}

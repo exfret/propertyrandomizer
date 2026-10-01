@@ -1,4 +1,4 @@
--- Settlement (see notes/context-shift-report): after the rest of randomization, fixes whatever the finished game still owes from a shift superposed on it (lib/graph/superpose.lua)
+-- Settlement (see notes/old/context-shift-report): after the rest of randomization, fixes whatever the finished game still owes from a shift superposed on it (lib/graph/superpose.lua)
 -- The owed goals' solvency-first witnesses (a staged sort of the game, then its debt edges behind a gate) name the debt edges still needed
 -- Settlers, one per kind of shifted feature, offer fixes for the debt edges they own, cheapest first (the ladder: repair, duplicate, addition, revert)
 -- Each round applies the next fix of every debt edge on the witnesses, then checks the game again, until nothing is owed or no fix is left

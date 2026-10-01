@@ -12,7 +12,7 @@
 -- Promising something that uses such an edge before that recipe is resolved pins Y to it, and recipe randomization keeps pinned ingredients (vanilla ingredients contain every pin, so the fallback still works)
 -- Mechanics that don't need derived recycling are promised first, so pins only come from ones that really do
 --
--- Debt mode (params.debt, see notes/context-shift-report): the graph is superposed with an older world's (lib/graph/superpose.lua), like the game before a planetary change
+-- Debt mode (params.debt, see notes/old/context-shift-report): the graph is superposed with an older world's (lib/graph/superpose.lua), like the game before a planetary change
 -- The older world's own edges are debt edges: they keep its goals reachable, so promotion can start before anything pays for them, but the game doesn't have them
 -- A pebble is *solvent* if it has a backing without debt edges, and solvent promises are a second tier (is_solvent_promised) kept the same way: each has a solvent backing of solvent promises with strictly lower rank
 -- No choice may make a solvent pebble in a required context insolvent (the no-new-insolvency rule), so the goals promised without a solvent backing (owed) never grow, and whatever the choices pay for stays paid

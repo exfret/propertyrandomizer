@@ -2,10 +2,10 @@
 -- Where: a staged sort (lib/graph/staged-sort.lua) of the game the moves left, in which every slot a handler claims (and every technology's research trigger) can be emptied behind a gate
 -- The gates open from the least to the most invasive kind of change (STAGES), so the failing goals' earliest-provider witnesses empty a slot only where nothing reached before its gate works
 -- What: each slot a witness empties gets a filler the handler accepts (its validate), had without any repair both where the witness needed it and wherever the slot's dependent is had now (a filler that breaks the dependent elsewhere isn't a repair)
--- The filler that took the old one's place on that planet in the swaps comes first (like the fluid now in lava's ocean slot), then one most like the old filler, and nothing is random
+-- The filler that took the old one's place on that planet in the swaps comes first (like the ore that took a lost ore's place), then one most like the old filler, and nothing is random
 -- Then the fixes are applied (the handlers' own reflect, or directly for ingredients, science packs, triggers and prerequisites), the game is checked again, fixes that broke other goals are undone, and what still fails gets another round, with the slots no filler fits closed
 -- The slots of handlers without a fix yet (entity slots, spoiling, first pass's identity moves) and the planetary stages' own repairs open last, so the log says which goals only they could fix
--- Runs with the startup setting propertyrandomizer-planetary-fix-pass (config.planetary_fix_pass, off by default) for each planetary stage it can repair: the stage moves without its own repairs, this repairs it, and if it can't repair everything the stage is undone and runs the old way (run_fix_first in randomizations/planetary/execute.lua)
+-- Runs with the startup setting propertyrandomizer-planetary-fix-pass (config.planetary_fix_pass, off by default) for resource swaps and lightning and freezing moves (ocean swaps keep their scaffolds): the stage moves without its own repairs, this repairs it, and if it can't repair everything the stage is undone and runs the old way (run_fix_first in randomizations/planetary/execute.lua)
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
@@ -408,6 +408,11 @@ end
 
 -- Material costs of the game the moves left (flow costs, as item ingredients randomization uses them), found once a run from its first sort
 -- The fix pass runs before prepare_world derives the game's raw costs (data-final-fixes.lua), so it prices raw materials the same way (graph_cost.build_costs) without setting the game's cost options; costs a compat file set come first, as there
+-- It prices once per load, in the game before the planetary moves (params.before; recipes come from data.raw, which the moves themselves don't change): prices only tell which fillers are close in value to what they replace, and pricing every moved game again cost 1-12 s a stage, while a resource swap's game left many materials without a price
+local priced = {
+    before = nil,
+    costs = nil,
+}
 local function material_costs(params, game)
     local raw_costs = table.deepcopy(randomization_info.options.cost.default_cost_table)
     local built = graph_cost.build_costs(game.graph, top.sort(game.graph), gutils.key("planet", constants.starting_planet), game.sort_info, params.logic.contexts)
@@ -1148,8 +1153,12 @@ fix_pass.run = function(params)
         log("FIXPASS start: nothing to repair")
         return failures
     end
-    params.material_to_cost = material_costs(params, current)
-    log("FIXPASS priced " .. #sorted_keys(params.material_to_cost) .. " materials")
+    if priced.before ~= params.before then
+        priced.before = params.before
+        priced.costs = material_costs(params, params.before)
+        log("FIXPASS priced " .. #sorted_keys(priced.costs) .. " materials in the game before the moves")
+    end
+    params.material_to_cost = priced.costs
     log("FIXPASS start: " .. #failures .. " failing goals")
     local applied = {}
     for round = 1, MAX_ROUNDS do
@@ -1388,6 +1397,11 @@ fix_pass.run = function(params)
         end
         log("FIXPASS round " .. round .. " done: " .. #previous_failures .. " --> " .. #failures .. " failing goals, " .. num_kept .. " fixes kept")
         if num_kept == 0 and #round_applied == 0 then
+            break
+        end
+        -- A round that leaves as many goals lost ends the pass: a later round almost never helped then (1 of 66 such rounds in the test logs, 2026-10-01), and on the user's seed six of them took 9 minutes of freezing's fix pass
+        if #failures >= #previous_failures then
+            log("FIXPASS stops: round " .. round .. " made no progress")
             break
         end
     end
