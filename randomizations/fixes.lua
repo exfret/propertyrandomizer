@@ -1143,6 +1143,21 @@ randomizations.add_old_versions = function()
 
                 copy.hidden_in_factoriopedia = true
                 item_copy.hidden_in_factoriopedia = true
+                -- Recipe and resource tooltips leave the old version out of their "made in" and "mined by" lists
+                copy.flags = copy.flags or {}
+                local hiding_flags = {
+                    "not-in-made-in",
+                    "not-in-mined-by",
+                }
+                for _, hiding_flag in pairs(hiding_flags) do
+                    local has_flag = false
+                    for _, flag in pairs(copy.flags) do
+                        has_flag = has_flag or flag == hiding_flag
+                    end
+                    if not has_flag then
+                        table.insert(copy.flags, hiding_flag)
+                    end
+                end
                 data:extend({
                     copy,
                     item_copy,
