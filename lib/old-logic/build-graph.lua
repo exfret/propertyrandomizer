@@ -1,6 +1,7 @@
 local collision_mask_util = require("__core__/lualib/collision-mask-util")
 local constants = require("helper-tables/constants")
 local dying_spawns = require("lib/old-logic/dying-spawns")
+local wild = require("lib/wild-entities")
 
 local build_graph = {}
 
@@ -397,6 +398,11 @@ local function check_prototype_on_surface(surface, prototype)
     -- TODO: Ask again if there are any other default ways for entities or tiles to show up other than autoplace?
     if surface.type == "planet" then
         local planet = surface.prototype
+
+        -- An entity the planet keeps off with a placement override isn't there (like originals on planet copies, lib/wild-entities.lua)
+        if type_of_autoplace == "entity" and wild.never_placed(planet, prototype.name) then
+            return false
+        end
 
         if planet.map_gen_settings ~= nil then
             local map_gen_settings = planet.map_gen_settings

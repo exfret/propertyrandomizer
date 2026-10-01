@@ -6,6 +6,7 @@ local categories = require("helper-tables/categories")
 local constants = require("helper-tables/constants")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
+local wild = require(lib_name .. "/wild-entities")
 
 local lutils = {}
 
@@ -143,6 +144,11 @@ lutils.check_in_room = function(room, prot)
     if room.type == "planet" then
         local planet = data.raw.planet[room.name]
 
+        -- An entity the planet keeps off with a placement override isn't there, whatever its settings and sliders say (like originals on planet copies, lib/wild-entities.lua)
+        if not get_all and type_of_autoplace == "entity" and wild.never_placed(planet, prot.name) then
+            return false
+        end
+
         if planet.map_gen_settings ~= nil then
             local map_gen_settings = planet.map_gen_settings
 
@@ -193,6 +199,14 @@ lutils.check_in_room = function(room, prot)
                         if prot.autoplace and prot.autoplace.control == control then
                             return true
                         end
+                    end
+                end
+            end
+
+            if get_all and type_of_autoplace == "entity" then
+                for prot_name, _ in pairs(results) do
+                    if wild.never_placed(planet, prot_name) then
+                        results[prot_name] = nil
                     end
                 end
             end

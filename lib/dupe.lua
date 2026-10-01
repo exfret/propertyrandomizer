@@ -600,6 +600,24 @@ dupe.tile = function(tile, dupe_number)
     return new_tile
 end
 
+-- Clones an entity found in the wild (a tree, a rock) under a dupe name for a planet copy (lib/dupe-planets.lua), so the copy has wild entities of its own for entity randomization to move (lib/wild-entities.lua)
+-- To the player it's the same entity: the original's name, look, deconstruction planner entry, Factoriopedia page and ambient sounds
+-- It generates only where a planet's map gen lists it or its slider places it, never as an unlisted default (AutoplaceSettings.treat_missing_as_default); lib/dupe-planets.lua keeps it off the other planets with its slider
+dupe.wild_entity = function(entity, dupe_number)
+    local new_entity = dupe.prototype(entity, dupe_number)
+    new_entity.localised_name = locale_utils.find_localised_name(entity)
+    new_entity.localised_description = locale_utils.find_localised_description(entity)
+    new_entity.deconstruction_alternative = entity.deconstruction_alternative or entity.name
+    new_entity.factoriopedia_alternative = entity.factoriopedia_alternative or entity.name
+    -- Like the game's own variants (tree-02 plays tree-01's), so a forest of both doesn't play the sounds twice
+    if entity.ambient_sounds ~= nil then
+        new_entity.ambient_sounds = nil
+        new_entity.ambient_sounds_group = entity.name
+    end
+    new_entity.autoplace.default_enabled = false
+    return new_entity
+end
+
 dupe.entity = function(entity, dupe_number)
     local new_entity = dupe.prototype(entity, dupe_number)
     -- Recolored sprites where they exist; the number badge on the entity graphics is only for entities without them

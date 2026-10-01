@@ -18,6 +18,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local locale = require("lib/locale")
 local rng = require("lib/random/rng")
+local wild = require("lib/wild-entities")
 local material_costs = require("lib/cost/material-costs/sa")
 local common = require("randomizations/graph/unified/handler-helpers/entity")
 local military_rebalance = require("randomizations/graph/unified/handler-helpers/military")
@@ -134,21 +135,13 @@ local identity_of_position
 local function identity_at(position)
     return identity_of_position[position] or position
 end
--- Autoplaced entities whose autoplace stays put, found from data in spoof: resources and cliffs, which are placed their own ways, and planted entities, whose autoplace tile_restriction is what agricultural tower plots use (space-age/prototypes/entity/plants.lua)
-local fixed_autoplace
+-- Autoplaced entities whose autoplace stays put (wild.kept_in_place, found in spoof): resources, cliffs, planted entities, and ones a research trigger has you mine
+local kept_in_place
 
--- Autoplaced entities whose slot can go to another entity, and that can take another's
--- An entity has one autoplace, so only ones found in the wild in exactly one room can move (their spec goes where they go)
--- Only ones placed for the neutral force (the default, AutoplaceSpecification.force): the player's are ours (see entity-own in lib/logic/concrete.lua), and enemies (like spawners and worms) wait for spawn slots
--- Ones mining which unlocks a technology might not show up anymore once moved
+-- Autoplaced entities whose slot can go to another entity, and that can take another's: movable wild entities (lib/wild-entities.lua)
+-- An entity has one autoplace, so only ones found in the wild in exactly one room can move (their spec goes where they go); planet copies have clones of their original's (lib/dupe-planets.lua), so those are too
 local function claimable_autoplace(prototype)
-    if prototype == nil or prototype.hidden or prototype.autoplace == nil then
-        return false
-    end
-    if fixed_autoplace[prototype.name] ~= nil or excluded_entity_types[prototype.type] ~= nil or (prototype.autoplace.force or "neutral") ~= "neutral" then
-        return false
-    end
-    if lookups.entities_with_mine_tech_unlocks[prototype.name] ~= nil then
+    if not wild.movable(prototype, kept_in_place) or excluded_entity_types[prototype.type] ~= nil then
         return false
     end
     return autoplace_room_counts[prototype.name] == 1
@@ -248,7 +241,6 @@ end
 
 entity.initialize = function()
     autoplace_room_counts = {}
-    fixed_autoplace = {}
     from_space = {}
     identity_of_position = {}
 end
@@ -336,22 +328,7 @@ entity.spoof = function(graph)
         end
     end
 
-    -- Resources are what logic mines with a resource category, cliffs are named in planets' cliff_settings, and planted entities are some item's plant_result
-    for _, edge in pairs(graph.edges) do
-        if graph.nodes[edge.start].type == "resource-category" and graph.nodes[edge.stop].type == "entity-mine" then
-            fixed_autoplace[graph.nodes[edge.stop].name] = true
-        end
-    end
-    for _, planet in pairs(data.raw.planet or {}) do
-        if planet.map_gen_settings ~= nil and planet.map_gen_settings.cliff_settings ~= nil and planet.map_gen_settings.cliff_settings.name ~= nil then
-            fixed_autoplace[planet.map_gen_settings.cliff_settings.name] = true
-        end
-    end
-    for _, item in pairs(dutils.get_all_prots("item")) do
-        if item.plant_result ~= nil then
-            fixed_autoplace[item.plant_result] = true
-        end
-    end
+    kept_in_place = wild.kept_in_place()
 
     -- Count each entity's autoplace rooms, and keep first pass from splitting the autoplace slots this handler matches
     local autoplace_edge_keys = {}
@@ -2038,11 +2015,13 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     end
     for entity_name, _ in pairs(moved) do
         dutils.get_prot("entity", entity_name).autoplace = nil
-        for planet_name, _ in pairs(data.raw.planet) do
+        for planet_name, planet in pairs(data.raw.planet) do
             local settings = planet_entity_settings(data.raw, planet_name)
             if settings ~= nil then
                 settings[entity_name] = nil
             end
+            -- Its placement overrides go with it (like the ones keeping an original off planet copies, lib/wild-entities.lua)
+            wild.set_overrides(planet, entity_name, {})
         end
     end
     for entity_name, base_key in pairs(moved) do
@@ -2056,6 +2035,13 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             local starting_settings = planet_entity_settings(unified_starting_data_raw, planet_name)
             if starting_settings ~= nil and starting_settings[base.entity] ~= nil then
                 planet_entity_settings(data.raw, planet_name)[entity_name] = table.deepcopy(starting_settings[base.entity])
+            end
+            -- And the slot's entity's placement overrides on every planet, so it's kept off wherever that entity was (a planet copy's clone off the other planets with its slider, see lib/dupe-planets.lua)
+            for other_name, other in pairs(data.raw.planet) do
+                local starting_planet = unified_starting_data_raw.planet[other_name]
+                if starting_planet ~= nil then
+                    wild.set_overrides(other, entity_name, wild.overrides(starting_planet, base.entity))
+                end
             end
         end
     end

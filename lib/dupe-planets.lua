@@ -2,6 +2,7 @@
 -- A copy of every planet for each dupe number its icon has a recolored copy for (dev/dupe-planets.txt, made by dev/make-dupe-graphics.py: numbers 2 to 9, the original being 1), up to the setting propertyrandomizer-dupe-count (dupe.highest_number: two copies by default), so planetary randomization has more planets to make different
 -- A copy is the planet prototype again under a new name: the same map generation (from its own seed, since the game seeds a planet by its name), surface properties, pollutant, lightning and freezing. With it come:
 --   * ocean tiles of its own: clones of its original's handwritten ocean family (randomizations/planetary/oceans.lua), so an ocean swap can give it another ocean than its original's
+--   * wild entities of its own: clones of the entities found in the wild on its original that entity randomization could move (lib/wild-entities.lua: trees, rocks, ruins, but not resources or enemies), since it only moves an entity found on one planet; to the player they're the same entities
 --   * space connections: each connection of the original again, ending at the copy; where both ends have copies with the same number, one between the copies too
 --   * discovery: a copy of each technology discovering the original, discovering the copy; the starting planet, which nothing discovers, gets one modeled on the cheapest discovery technology
 --   * science: copies of the planet's own science packs that have recolored icons (dev/dupe-items.txt, with no number badge), named after the copy, locked to the copy while the originals stay locked to their planet (lib/surface-sets.lua properties, through randomizations/planetary/locks.lua); every lab takes the copies
@@ -19,8 +20,10 @@ local dupe = require("lib/dupe")
 local locale_utils = require("lib/locale")
 local lu = require("lib/lookup/init")
 local surface_sets = require("lib/surface-sets")
+local wild = require("lib/wild-entities")
 local top = require("lib/graph/context-sort")
 local new_logic = require("lib/logic/init")
+local lutils = require("lib/logic/logic-utils")
 local locks = require("randomizations/planetary/locks")
 local oceans = require("randomizations/planetary/oceans")
 local planet_names = require("lib/planet-names")
@@ -207,6 +210,91 @@ local function copy_tiles(planet, copy, number)
     oceans.families[copy.name] = new_family
     table.insert(oceans.planet_order, copy.name)
     return num_cloned
+end
+
+-- The lightning rules naming an entity (like Fulgora's, which make lightning strike the bigger ruins first) name its clone on the copy too
+local function follow_lightning_rules(copy, entity_name, clone_name)
+    local lightning = copy.lightning_properties
+    if lightning == nil then
+        return
+    end
+    local rule_lists = {
+        lightning.priority_rules or {},
+        lightning.exemption_rules or {},
+    }
+    for _, rules in pairs(rule_lists) do
+        local added = {}
+        for _, rule in pairs(rules) do
+            if rule.type == "id" and rule.string == entity_name then
+                local clone_rule = table.deepcopy(rule)
+                clone_rule.string = clone_name
+                table.insert(added, clone_rule)
+            end
+        end
+        for _, rule in pairs(added) do
+            table.insert(rules, rule)
+        end
+    end
+end
+
+-- Clones of the movable wild entities found on the original (wild.movable) for the copy, so each is found in the wild on one planet and entity randomization can move it
+-- The copy places the clones as it placed the originals: listed in its settings where they were, or through the same slider
+-- The originals are kept off the copy, since its settings and sliders would still place them (keep_clones_home then keeps the clones off the other planets with their sliders)
+-- Returns how many entities were cloned
+-- Dupe number --> original entity name --> its clone with that number (planets sharing a wild entity share its clones)
+local entity_clones = {}
+-- Clone name --> the set of planet copies it's found on
+local clone_homes = {}
+dupe_planets.copy_wild_entities = function(planet, copy, number, kept)
+    entity_clones[number] = entity_clones[number] or {}
+    local entity_settings = ((copy.map_gen_settings or {}).autoplace_settings or {}).entity
+    local entities = dutils.get_all_prots("entity")
+    local room = {
+        type = "planet",
+        name = planet.name,
+    }
+    local num_cloned = 0
+    for _, name in pairs(sorted_keys(entities)) do
+        local entity = entities[name]
+        -- Clones made for an earlier planet aren't kept home yet, so they could look found here
+        if clone_homes[name] == nil and wild.movable(entity, kept) and lutils.check_in_room(room, entity) then
+            local clone = entity_clones[number][name]
+            if clone == nil then
+                clone = dupe.wild_entity(entity, number)
+                entity_clones[number][name] = clone
+                num_cloned = num_cloned + 1
+            end
+            clone_homes[clone.name] = clone_homes[clone.name] or {}
+            clone_homes[clone.name][copy.name] = true
+            if entity_settings ~= nil and entity_settings.settings ~= nil and entity_settings.settings[name] ~= nil then
+                entity_settings.settings[clone.name] = entity_settings.settings[name]
+                entity_settings.settings[name] = nil
+            end
+            wild.keep_off(copy, name)
+            follow_lightning_rules(copy, name, clone.name)
+        end
+    end
+    return num_cloned
+end
+
+-- A clone placed by a slider (AutoplaceSpecification.control) would show up on every planet with that slider: its original's, the other copies, and other planets sharing the slider
+-- So it's kept off every one of those but its own copies
+-- Returns how many times a clone was kept off a planet
+dupe_planets.keep_clones_home = function()
+    local num_kept_off = 0
+    for _, clone_name in pairs(sorted_keys(clone_homes)) do
+        local control = dutils.get_prot("entity", clone_name).autoplace.control
+        if control ~= nil then
+            for _, other in pairs(sorted_prototypes("planet")) do
+                local controls = (other.map_gen_settings or {}).autoplace_controls
+                if clone_homes[clone_name][other.name] == nil and controls ~= nil and controls[control] ~= nil then
+                    wild.keep_off(other, clone_name)
+                    num_kept_off = num_kept_off + 1
+                end
+            end
+        end
+    end
+    return num_kept_off
 end
 
 -- Copies of the space connections ending at copied planets: each connection again per copied end, and one between two copies with the same dupe number where both ends have one
@@ -831,8 +919,10 @@ dupe_planets.execute = function()
     local names = {}
     local num_copies = 0
     local num_tiles = 0
+    local num_wild = 0
     local num_discovery = 0
     local num_packs = 0
+    local kept = wild.kept_in_place()
     for _, planet in pairs(planets) do
         table.insert(names, planet.name .. " x" .. #numbers_of[planet.name])
         for _, number in pairs(numbers_of[planet.name]) do
@@ -842,10 +932,12 @@ dupe_planets.execute = function()
             discovery_copies[number] = discovery_copies[number] or {}
             num_copies = num_copies + 1
             num_tiles = num_tiles + copy_tiles(planet, copy, number)
+            num_wild = num_wild + dupe_planets.copy_wild_entities(planet, copy, number, kept)
             num_discovery = num_discovery + copy_discovery(planet, copy, number, discovery, model, discovery_copies[number])
             num_packs = num_packs + copy_packs(planet, copy, number, room_keys, packs, fixes)
         end
     end
+    local num_wild_kept_off = dupe_planets.keep_clones_home()
     local num_connections = copy_connections(copies)
     local numbers = sorted_keys(copies)
     for _, number in pairs(numbers) do
@@ -950,7 +1042,7 @@ dupe_planets.execute = function()
         end
     end
 
-    log("Planet copies: " .. num_copies .. " copies of " .. #planets .. " planets (" .. table.concat(names, ", ") .. "), " .. num_tiles .. " ocean tiles, " .. num_connections .. " connections, " .. num_discovery .. " discovery technologies, " .. num_packs .. " science packs (" .. #fixes .. " locks), " .. #sorted_keys(copied) .. " parallel technologies (" .. #sorted_keys(chain) .. " on discovery chains, " .. #moves .. " pack unlocks moved to them, " .. num_unreachable_copies .. " unreachable), " .. #flips .. " science packs split, " .. #infinite_flips .. " in infinite research, " .. #additions .. " added to " .. #sorted_keys(joined) .. " endgame technologies")
+    log("Planet copies: " .. num_copies .. " copies of " .. #planets .. " planets (" .. table.concat(names, ", ") .. "), " .. num_tiles .. " ocean tiles, " .. num_wild .. " wild entities (kept off " .. num_wild_kept_off .. " other planets with their sliders), " .. num_connections .. " connections, " .. num_discovery .. " discovery technologies, " .. num_packs .. " science packs (" .. #fixes .. " locks), " .. #sorted_keys(copied) .. " parallel technologies (" .. #sorted_keys(chain) .. " on discovery chains, " .. #moves .. " pack unlocks moved to them, " .. num_unreachable_copies .. " unreachable), " .. #flips .. " science packs split, " .. #infinite_flips .. " in infinite research, " .. #additions .. " added to " .. #sorted_keys(joined) .. " endgame technologies")
 end
 
 return dupe_planets

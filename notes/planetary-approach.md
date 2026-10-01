@@ -95,6 +95,7 @@ A finite delivered start is fine when the planet can then make the thing itself 
 - A planet and its copies are one family (`surface_sets.family_of`). No surface condition can tell them apart, so planet-locked recipes and locks count by family.
 - Copy n has its own science packs, a parallel technology tree for them, and its own discovery chain.
 - Duplicate n of a planet-locked building lives on planet copy n, and the original on the original planets (per-copy home locks). Buildings every planet accepts, like the heating tower, stay usable everywhere.
+- Copy n has its own wild entities: clones of the trees, rocks, ruins and other movable wild entities of its original (`lib/wild-entities.lua`; not resources, cliffs, planted entities, enemies, or ones a research trigger has you mine). Entity randomization only moves an entity found in the wild on one planet, so before this (2026-10-01) planet copies stopped every autoplace swap. A clone looks the same to the player and is placed the way its original was, listed or by the same slider. The original is kept off the copy, and a slider clone off the other planets with its slider, by a probability override in the planet's map gen (`entity:<name>:probability` named to a constant 0 expression), which the logic's room check honors. An entity taking another's wild spot takes its placement overrides along with its autoplace.
 
 ## 9. Settings and tests
 
