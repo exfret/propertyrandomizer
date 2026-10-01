@@ -219,6 +219,44 @@ test("a planet-locked recipe keeps every context it had, so it can't take an ing
     assert(not has_automatable(plain.required_contexts(r)))
 end)
 
+test("a recipe promised only in a later context keeps its earliest one too, where its product first comes from (like a moved lock's recipe, promised on its new planet)", function()
+    local graph = build_graph(false)
+    local probe = promotion.new({ graph = graph })
+    local rank_a = probe.rank(r, "A")
+    local rank_b = probe.rank(r, "B")
+    assert(rank_a ~= nil and rank_b ~= nil, "the toy recipe needs both contexts")
+    local early = rank_a < rank_b and "A" or "B"
+    local late = early == "A" and "B" or "A"
+    -- Promised only in the later context, the recipe keeps the earlier one as well, so whatever needs its product there without a promise of its own (like the recipe recycling it) stays reachable
+    local prom = promotion.new({
+        graph = graph,
+        planet_locked = {
+            [r] = {
+                [late] = true,
+            },
+        },
+    })
+    assert(#prom.promise_mechanics() == 0)
+    local contexts = prom.required_contexts(r)
+    table.sort(contexts)
+    assert(#contexts == 2 and contexts[1] == "A" and contexts[2] == "B", "a recipe promised late lost its earliest context")
+    -- So an ingredient only the later context has can't replace its vanilla one
+    assert(not prom.candidate_ok(r, early == "A" and y or x, contexts))
+    assert(prom.candidate_ok(r, z, contexts))
+    -- Promised in its earliest context, it needs nothing more
+    local early_prom = promotion.new({
+        graph = graph,
+        planet_locked = {
+            [r] = {
+                [early] = true,
+            },
+        },
+    })
+    assert(#early_prom.promise_mechanics() == 0)
+    local early_contexts = early_prom.required_contexts(r)
+    assert(#early_contexts == 1 and early_contexts[1] == early)
+end)
+
 -- A generic handler head: mechanic m needs whatever feeds its cut head, whose vanilla base comes from item z
 -- Items x and z can both be gotten in both rooms, so only what their bases' connections gain or lose tells them apart
 -- x_abilities and z_abilities are what each base keeps from its original edge, like a slot whose item can't be automated

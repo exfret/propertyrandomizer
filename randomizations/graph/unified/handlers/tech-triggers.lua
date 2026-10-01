@@ -1,4 +1,4 @@
--- Research triggers (prototype, 2026-09-30): technologies researched by a trigger trade triggers
+-- Research triggers (2026-09-30, on with the unified randomizations in development): technologies researched by a trigger trade triggers
 -- A technology's trigger is one slot, the edge from its technology-trigger node (an OR over what meets the trigger, lib/logic/concrete.lua) into the technology, and its bases are the trigger technologies' trigger nodes
 -- So a technology takes another's trigger as it is (craft this item, mine these entities, launch this item...)
 -- A technology forgets its room once researched (context-sort.lua), so the generic shuffle's per-context check doesn't fit it: the technology is had on the platform while no trigger can be met there
@@ -20,6 +20,8 @@ tech_triggers.stay_chance = 0.5
 local old_triggers
 
 tech_triggers.initialize = function()
+    -- Which technologies have each technology's old trigger after reflect, for checks comparing the final game with the model, or nil if it didn't run
+    UNIFIED_TRIGGER_TAKERS = nil
     old_triggers = {}
     for _, tech in pairs(data.raw.technology) do
         if tech.research_trigger ~= nil then
@@ -122,15 +124,25 @@ tech_triggers.custom_prereq_search = function(params)
     return true
 end
 
+-- Also sets UNIFIED_TRIGGER_TAKERS: technology name --> sorted names of the technologies whose trigger is now its old one (empty if none took it), for each technology whose trigger was a slot
+-- A technology-trigger node is named after its technology, so in the model it's the old trigger and in the final game the new one (see the promised pebbles in skeleton/check.lua)
 tech_triggers.reflect = function(graph, head_to_base, head_to_handler)
+    UNIFIED_TRIGGER_TAKERS = {}
     for head_key, base_key in pairs(head_to_base) do
         if head_to_handler[head_key].id == "tech_triggers" then
-            local tech = data.raw.technology[gutils.get_owner(graph, graph.nodes[head_key]).name]
+            local tech_name = gutils.get_owner(graph, graph.nodes[head_key]).name
+            local tech = data.raw.technology[tech_name]
             local source = gutils.get_owner(graph, graph.nodes[base_key]).name
+            UNIFIED_TRIGGER_TAKERS[tech_name] = UNIFIED_TRIGGER_TAKERS[tech_name] or {}
             if tech ~= nil and old_triggers[source] ~= nil then
                 tech.research_trigger = table.deepcopy(old_triggers[source])
+                UNIFIED_TRIGGER_TAKERS[source] = UNIFIED_TRIGGER_TAKERS[source] or {}
+                table.insert(UNIFIED_TRIGGER_TAKERS[source], tech_name)
             end
         end
+    end
+    for _, takers in pairs(UNIFIED_TRIGGER_TAKERS) do
+        table.sort(takers)
     end
 end
 

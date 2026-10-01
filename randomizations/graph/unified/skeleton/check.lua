@@ -3,6 +3,7 @@
 -- Output goes to the log with the prefix MECHCHECK (or the given label)
 -- The verdict says whether the game is safe to hand out: unified randomization retries attempts that fail it, and a game that still fails it loads with a warning in the randomizer panel (a softlock must never be silent, and a startup error would make them reset their settings)
 
+local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local furnace_selection = require("lib/furnace-selection")
@@ -115,6 +116,17 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
     -- Promised pebbles missing from the final game show where promotion's model and the reflected game disagree
     -- Item-derived nodes (item, item-craft, item-launch, entity-build-item, ...) are skipped since first pass renames items: the model keys them by position, the final game by the item now at that position
     -- Nodes named after fluids (fluid, fluid-temperature, fluid-create, ..., and mining-fluid bases) are skipped for the same reason, since first pass renames fluids too (see lib/item-fluid.lua)
+    -- A technology-trigger node is named after its technology, and research trigger randomization trades triggers (handlers/tech-triggers.lua): the model's node is a technology's old trigger, which in the final game is the node of each technology that took it (UNIFIED_TRIGGER_TAKERS), so it's compared at each of those, and nowhere if none did
+    local function final_promised_keys(node_key, node)
+        if node.type ~= "technology-trigger" or UNIFIED_TRIGGER_TAKERS == nil or UNIFIED_TRIGGER_TAKERS[node.name] == nil then
+            return { node_key }
+        end
+        local keys = {}
+        for _, taker in pairs(UNIFIED_TRIGGER_TAKERS[node.name]) do
+            table.insert(keys, gutils.key("technology-trigger", taker))
+        end
+        return keys
+    end
     local num_hard_missing = 0
     if UNIFIED_PROMISED_PEBBLES ~= nil then
         local num_compared = 0
@@ -123,21 +135,30 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
             local node = graph.nodes[pebble.node_key]
             local named_after_fluid = config.item_fluids and (string.sub(node ~= nil and node.type or "", 1, 5) == "fluid" or (node ~= nil and node.type == "mining-fluid"))
             if node ~= nil and string.find(node.type, "item", 1, true) == nil and not named_after_fluid then
-                num_compared = num_compared + 1
-                local final_contexts = final_sort_info.node_to_context_inds[pebble.node_key] or {}
-                if final_contexts[pebble.context] == nil then
-                    table.insert(mismatches, pebble)
-                    if not only_isolatability_lost(pebble.context, function(other)
-                        return final_contexts[other] ~= nil
-                    end) then
-                        num_hard_missing = num_hard_missing + 1
+                for _, final_node_key in pairs(final_promised_keys(pebble.node_key, node)) do
+                    num_compared = num_compared + 1
+                    local final_contexts = final_sort_info.node_to_context_inds[final_node_key] or {}
+                    if final_contexts[pebble.context] == nil then
+                        table.insert(mismatches, {
+                            node_key = final_node_key,
+                            model_key = pebble.node_key,
+                            context = pebble.context,
+                            rank = pebble.rank,
+                        })
+                        if not only_isolatability_lost(pebble.context, function(other)
+                            return final_contexts[other] ~= nil
+                        end) then
+                            num_hard_missing = num_hard_missing + 1
+                        end
                     end
                 end
             end
         end
         log_check("promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches .. " (" .. num_hard_missing .. " beyond isolatability)")
         for i = 1, math.min(20, #mismatches) do
-            log_check("promised but missing: " .. mismatches[i].node_key .. " @ " .. mismatches[i].context .. " (model rank " .. mismatches[i].rank .. ")")
+            local mismatch = mismatches[i]
+            local model_note = mismatch.model_key ~= mismatch.node_key and ("; the model's " .. mismatch.model_key) or ""
+            log_check("promised but missing: " .. mismatch.node_key .. " @ " .. mismatch.context .. " (model rank " .. mismatch.rank .. model_note .. ")")
         end
     end
 

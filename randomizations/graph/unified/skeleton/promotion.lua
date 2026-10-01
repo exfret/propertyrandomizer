@@ -883,14 +883,17 @@ promotion.new = function(params)
     -- Earliest context in which the recipe can currently be established with its current ingredients, or nil
     -- Contexts that ask for no abilities come first, so anchoring a recipe keeps it (and its products) usable by as much as possible
     -- In debt mode, contexts the recipe is solvent in come before all others, so anchoring it doesn't add to the debt; with solvent_only, they're the only ones
-    local function earliest_establishable_context(recipe_key, solvent_only)
+    -- With before_ind, only contexts ranked before it count
+    local function earliest_establishable_context(recipe_key, solvent_only, before_ind)
         local entries = {}
         for context, ind in pairs(nci[recipe_key] or {}) do
-            table.insert(entries, {
-                context = context,
-                ind = ind,
-                weakest = is_weakest_context(context),
-            })
+            if before_ind == nil or ind < before_ind then
+                table.insert(entries, {
+                    context = context,
+                    ind = ind,
+                    weakest = is_weakest_context(context),
+                })
+            end
         end
         table.sort(entries, function(a, b)
             if a.weakest ~= b.weakest then
@@ -968,28 +971,47 @@ promotion.new = function(params)
     end
 
     -- In debt mode, a recipe whose promises are all owed also keeps a context it's solvent in, if it has one, so the game itself keeps it reachable
+    -- A recipe promised only in contexts after its earliest one (like a moved lock's recipe, promised on its new planet) keeps that earliest context too, as a recipe without promises does
+    -- Its products' earliest pebbles rest on that context, and so does whatever else needs them without a promise of its own yet, like the recipe recycling its item: giving it up left such recipes reachable nowhere at their ranks
     state.required_contexts = function(recipe_key)
         local contexts = {}
+        local is_required = {}
+        local function require_context(context)
+            if is_required[context] == nil then
+                is_required[context] = true
+                table.insert(contexts, context)
+            end
+        end
         local is_solvent = false
+        local first_promised_ind
         for context, ind in pairs(nci[recipe_key] or {}) do
             if state.is_promised[ind] then
-                table.insert(contexts, context)
+                require_context(context)
                 if state.is_solvent_promised[ind] then
                     is_solvent = true
+                end
+                if first_promised_ind == nil or ind < first_promised_ind then
+                    first_promised_ind = ind
                 end
             end
         end
         if #contexts == 0 then
             local anchor = earliest_establishable_context(recipe_key)
             if anchor ~= nil then
-                table.insert(contexts, anchor)
+                require_context(anchor)
             else
                 log_recipe_prereqs(recipe_key)
             end
-        elseif debt ~= nil and not is_solvent then
-            local anchor = earliest_establishable_context(recipe_key, true)
-            if anchor ~= nil and not state.is_promised[nci[recipe_key][anchor]] then
-                table.insert(contexts, anchor)
+            return contexts
+        end
+        local anchor = earliest_establishable_context(recipe_key, false, first_promised_ind)
+        if anchor ~= nil then
+            require_context(anchor)
+        end
+        if debt ~= nil and not is_solvent then
+            local solvent_anchor = earliest_establishable_context(recipe_key, true)
+            if solvent_anchor ~= nil and not state.is_promised[nci[recipe_key][solvent_anchor]] then
+                require_context(solvent_anchor)
             end
         end
         return contexts

@@ -19,9 +19,10 @@
 local SWAP_START_WITH = nil
 
 -- Whether the rest of randomization keeps the recipe goals that moved with planetary changes (protection.transported_recipe_contexts), like a moved lock's recipe staying automatable on its new planet
--- Off: on seeds 1-2 (all planetary stages on) every unified attempt then failed, each time on a recycling recipe of a moved lock's item becoming unreachable (like electromagnetic-plant-recycling), while without it all three seeds passed; not yet root-caused
--- Retested 2026-09-30 on sa/preview seeds 1-3: no PLANETCHECK final failures with it (1, 2 and 2 without), but on seed 1 promotion still ended 7 of 8 unified attempts with such a recycling recipe unreachable (the moved item's pebble can't be established before the recycling recipe's rank), which tripled the load; the per-attempt planetary check retries the lost goals instead
-local PROTECT_TRANSPORTED = false
+-- Without it, unified changed a moved lock's recipe freely (it isn't planet-locked when its lock has two planets), so attempts kept losing those goals and were retried; putting the lock back after the attempt didn't help, since the recipe was broken on its old planet too
+-- It used to make attempts fail on a moved item's recycling recipe becoming unreachable (like electromagnetic-plant-recycling): promised only on its new planet, the recipe gave up its earliest context, so its item's early pebbles broke and the recycling recipe was left reachable nowhere at its ranks
+-- On since 2026-10-01, once such a recipe kept its earliest context too (state.required_contexts in randomizations/graph/unified/skeleton/promotion.lua): 12 of 12 unified-suite runs passed on their first attempt with no planetary losses
+local PROTECT_TRANSPORTED = true
 
 -- Whether discovery technologies follow the star map the connection graph draws (discovery.lua, run in draw_map_first)
 -- Off: it works (sa/dupes-preview seeds 1-2 passed MECHCHECK, 2026-09-30) but every planet gets a home set of its own, and the lock stage and unified's attempts got so much slower that loads took about 5 times as long (seed 2: 38 instead of 7.5 minutes)

@@ -45,6 +45,7 @@ data = {
 }
 
 local protection = require("randomizations/graph/unified/skeleton/protection")
+local bootstrap = require("lib/logic/bootstrap")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 
@@ -347,6 +348,58 @@ test("what justifies a bootstrap grant the graph keeps is kept: heat isolatable 
         node_to_context_inds = nci,
     })
     assert(next(locked) == nil, "a dropped grant's justification is kept")
+end)
+
+test("a model with orands (gutils.make_orands, like first pass's and monotone matching's) finds the same grants in the same rooms, so it keeps the same justifications", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local function node(node_type, name, op)
+        return gutils.key(gutils.add_node(graph, node_type, name, {
+            op = op,
+        }))
+    end
+    local room = node("room", "planet: ice", "OR")
+    local warmth_bootstrap = node("warmth-bootstrap", "planet: ice", "AND")
+    local warmth = node("warmth", "", "OR")
+    local heat = node("energy-source-heat", "", "OR")
+    local bootstrap_rooms = node("entity-own-bootstrap-rooms", "heater", "OR")
+    local item = node("entity-build-item", "heater", "OR")
+    gutils.add_edge(graph, warmth_bootstrap, warmth, {
+        bootstrap_warmth = true,
+    })
+    gutils.add_edge(graph, heat, warmth)
+    gutils.add_edge(graph, room, bootstrap_rooms)
+    local function rooms_by_grant()
+        local rooms = {}
+        local num = 0
+        for _, justification in pairs(bootstrap.justifications(graph)) do
+            rooms[justification.name] = justification.room
+            num = num + 1
+        end
+        return rooms, num
+    end
+    local rooms_before, num_before = rooms_by_grant()
+    gutils.make_orands(graph)
+    assert(graph.orand_to_child ~= nil and next(graph.orand_to_child) ~= nil, "the graph has no orands to test with")
+    local rooms_after, num_after = rooms_by_grant()
+    assert(num_before == 2 and num_after == 2, "the grants found differ with orands")
+    assert(rooms_before.heater == "planet: ice" and rooms_after.heater == "planet: ice", "a pair's room is the orand's name, not its child's")
+    assert(rooms_before.warmth == "planet: ice" and rooms_after.warmth == "planet: ice", "warmth's grant is lost behind its orand")
+    local locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = {
+            [heat] = {
+                ["planet: ice | 11"] = 1,
+            },
+            [item] = {
+                ["planet: ice | 10"] = 2,
+            },
+        },
+    })
+    assert((locked[heat] or {})["planet: ice | 11"], "heat keeping itself going isn't kept in a model with orands")
+    assert((locked[item] or {})["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept in a model with orands")
 end)
 
 test("a context without isolatability keeps its other abilities, in its own room or a new one (goal transport)", function()

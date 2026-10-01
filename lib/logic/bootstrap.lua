@@ -15,10 +15,27 @@ local top = require("lib/graph/context-sort")
 
 local bootstrap = {}
 
+-- The edge that an edge into an OR node stands for: itself, or in a graph with orands (gutils.make_orands, like unified's models) the edge from the orand's child (the original start) into the orand, which keeps the original edge's fields
+local function original_edge(graph, edge_key)
+    local edge = graph.edges[edge_key]
+    local child_key = (graph.orand_to_child or {})[edge.start]
+    if child_key == nil or child_key == edge.start then
+        return edge
+    end
+    return graph.edges[gutils.ekey({
+        start = child_key,
+        stop = edge.start,
+    })] or {
+        start = child_key,
+        stop = edge.stop,
+    }
+end
+
 -- The grants in graph (the candidates before pruning, the kept ones after) with what justifies each, as a list sorted by edge key of
 -- { edge_key = the grant's edge, room = its room key, name = the building or "warmth", node_key = the node that must have a context in the room with every ability in ability_inds }
 --   * a bootstrapped building: its item (entity-build-item) isolatable in the room
 --   * a warmed room: heat (energy-source-heat) isolatable and automatable there
+-- The graph may have orands, whose grant edges come from an orand standing for the original edge
 bootstrap.justifications = function(graph)
     local justifications = {}
     for _, node in pairs(graph.nodes) do
@@ -26,7 +43,7 @@ bootstrap.justifications = function(graph)
             for edge_key, _ in pairs(node.pre or {}) do
                 table.insert(justifications, {
                     edge_key = edge_key,
-                    room = graph.nodes[graph.edges[edge_key].start].name,
+                    room = graph.nodes[original_edge(graph, edge_key).start].name,
                     name = node.name,
                     node_key = gutils.key("entity-build-item", node.name),
                     ability_inds = { top.ISOLATABILITY },
@@ -36,7 +53,7 @@ bootstrap.justifications = function(graph)
     end
     local warmth = graph.nodes[gutils.key("warmth", "")]
     for edge_key, _ in pairs((warmth or {}).pre or {}) do
-        local edge = graph.edges[edge_key]
+        local edge = original_edge(graph, edge_key)
         if edge.bootstrap_warmth then
             table.insert(justifications, {
                 edge_key = edge_key,
@@ -116,11 +133,23 @@ bootstrap.prune = function(logic, home_sets)
             break
         end
     end
-    local kept_names = {}
+    -- Per room, sorted (candidates are sorted by edge key, which starts with the room only for some grants)
+    local names_by_room = {}
+    local rooms = {}
     for _, candidate in pairs(candidates) do
-        table.insert(kept_names, candidate.name .. " @ " .. candidate.room)
+        if names_by_room[candidate.room] == nil then
+            names_by_room[candidate.room] = {}
+            table.insert(rooms, candidate.room)
+        end
+        table.insert(names_by_room[candidate.room], candidate.name)
     end
-    log("Bootstrap infrastructure: " .. num_sorts .. " sorts; delivered buildings counted as local: " .. (#kept_names > 0 and table.concat(kept_names, ", ") or "none"))
+    table.sort(rooms)
+    local parts = {}
+    for _, room in pairs(rooms) do
+        table.sort(names_by_room[room])
+        table.insert(parts, room .. " (" .. #names_by_room[room] .. "): " .. table.concat(names_by_room[room], ", "))
+    end
+    log("Bootstrap infrastructure: " .. num_sorts .. " sorts; delivered buildings counted as local: " .. (#parts > 0 and table.concat(parts, "; ") or "none"))
     return num_sorts
 end
 

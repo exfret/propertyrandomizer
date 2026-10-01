@@ -4,12 +4,14 @@
 -- That way the planet lightning moves to can protect its buildings (lightning-safe, see lib/logic/abstract.lua) and use its power
 -- Lightning power (logic nodes built with planetary_feature = "lightning") follows lightning: on its new planet it must be automatable, imports allowed (check.transport)
 -- Every planet still must be safe from lightning and make electricity where it could (rule 3 of the planetary check), so a planet losing lightning needs other power, or else keeps its lightning as well (lightning.keep_old)
+-- Other power may start from delivered buildings the planet can then make itself (user, 2026-09-30): the logic counts operating them there as local (lightning.lost_rooms, lib/logic/bootstrap.lua), like Fulgora starting from a recycler and solar panels, whose scrap then makes more of both
 
 local constants = require("helper-tables/constants")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
 local locks = require("randomizations/planetary/locks")
+local lutils = require("lib/logic/logic-utils")
 
 local lightning = {}
 
@@ -300,6 +302,23 @@ lightning.revert = function()
         add_unlock(data.raw.technology[unlock.from], unlock.recipe)
     end
 end
+
+-- The planets the last move left without the lightning they had, as room key --> true, in the game as it is now (none after lightning.keep_old or lightning.revert, or once the game is put back)
+-- The logic lets them start from delivered buildings they can then make themselves (lutils.lightning_lost_rooms, lib/logic/bootstrap.lua), since lightning was their power
+lightning.lost_rooms = function()
+    local rooms = {}
+    if lightning.last == nil then
+        return rooms
+    end
+    for name, _ in pairs(lightning.last.old_properties) do
+        local planet = data.raw.planet[name]
+        if planet ~= nil and planet.lightning_properties == nil then
+            rooms[planet_room(name)] = true
+        end
+    end
+    return rooms
+end
+lutils.lightning_lost_rooms = lightning.lost_rooms
 
 -- One line for the log
 lightning.describe = function()

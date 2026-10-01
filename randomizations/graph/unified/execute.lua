@@ -92,8 +92,8 @@ if config.dev_unified then
         ["mining-fluid-required"] = true,
         ["recipe-ingredients"] = true,
         ["spoiling"] = is_spoiling_on,
-        -- Research triggers (handlers/tech-triggers.lua): technologies trade triggers; a work in progress that comes with the planetary fix pass for now (config.planetary_fix_pass)
-        ["tech-triggers"] = config.planetary_fix_pass,
+        -- Research triggers (handlers/tech-triggers.lua): technologies trade triggers
+        ["tech-triggers"] = true,
     }
 end
 -- Entity randomization (handlers/entity.lua) is behind its own startup setting

@@ -254,16 +254,31 @@ lutils.lightning_endangered = function(entity)
 end
 
 -- Rooms where operating a delivered building may count as local, if the room can then make the building itself (see notes/bootstrap-infrastructure.txt and lib/logic/bootstrap.lua, which prunes them)
--- Only heat sources (categories.heat_producers) on the planets in lutils.bootstrap_heat_rooms, set by a planetary change that makes planets freeze (randomizations/planetary/freezing.lua): elsewhere, like vanilla Aquilo, it adds no contexts, and each logic build then skips the extra sorts
+-- Only heat sources (categories.heat_producers) on the planets in lutils.bootstrap_heat_rooms, and any building on the planets lutils.lightning_lost_rooms names: elsewhere, like vanilla Aquilo, it adds no contexts, and each logic build then skips the extra sorts
+-- The heat rooms are set by a planetary change that makes planets freeze (randomizations/planetary/freezing.lua)
 lutils.bootstrap_heat_rooms = {}
+
+-- The planets a planetary change left without the lightning they had, as room key --> true; none unless randomizations/planetary/lightning.lua sets this to its own function
+-- Lightning was their power, so any building may be delivered to start them again (user, 2026-09-30), like a recycler and solar panels on Fulgora, whose scrap then makes more of both
+-- It's a function of the game as it is, so it stays right when a stage puts the game back
+lutils.lightning_lost_rooms = function()
+    return {}
+end
 
 -- The bootstrap rooms for an entity, as a sorted list of room keys
 lutils.bootstrap_rooms = function(entity)
-    local rooms = {}
+    local is_room = {}
     if categories.heat_producers[entity.type] then
         for room_key, _ in pairs(lutils.bootstrap_heat_rooms) do
-            table.insert(rooms, room_key)
+            is_room[room_key] = true
         end
+    end
+    for room_key, _ in pairs(lutils.lightning_lost_rooms()) do
+        is_room[room_key] = true
+    end
+    local rooms = {}
+    for room_key, _ in pairs(is_room) do
+        table.insert(rooms, room_key)
     end
     table.sort(rooms)
     return rooms
