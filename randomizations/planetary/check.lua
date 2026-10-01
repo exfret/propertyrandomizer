@@ -3,6 +3,7 @@
 --   1. Every recipe that was reachable stays reachable somewhere.
 --   2. Recipes locked to one planet by surface conditions (its science pack, pentapod eggs, soils, the foundry...) keep every context they had there (isolatable and automatable included), as themselves or as a variant. The rest of randomization keeps them too (protection.planet_locked_recipe_contexts).
 --      Except a spare version of a duplicated building (check.spare_building_recipes): another version of it is automatable somewhere and nothing else takes it.
+--      Goals the stages lost that way stay given up once their changes are final (check.given_up), so the checks after the rest of randomization don't count them again.
 --   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building and electricity also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
 --      Other isolatability (like another planet's science or steam power) may be lost; that's the gameplay change.
 --   4. The starting planet's science packs (the lab inputs it could make before) keep every context they had there, isolatable and automatable included: the start makes its own science (every planet does, the user's rule), and its resources take part in the swaps.
@@ -207,6 +208,10 @@ check.moved_features = {}
 -- Every consumer of the goals (check.required_failures, check.transported_goals for superposed mode, and so first pass and promotion) reads them through check.transported_context, so they all agree
 check.transport = {}
 
+-- Rule 2's goals the stages lost as spare versions of duplicated buildings, as node key --> context --> true, set by check.give_up_spare once their changes are final
+-- They're no longer goals after that (check.planet_locked_goals): the rest of randomization starts from a game without them, and its item randomization can give the recipe another product, so the spare rule would see no building there and every attempt would fail on a loss no attempt can undo
+check.given_up = {}
+
 -- The context a goal of node_key in context must be kept in after planetary changes (itself, unless check.transport moves its room)
 check.transported_context = function(node_key, context)
     local entry = check.transport[node_key]
@@ -224,14 +229,17 @@ check.transported_context = function(node_key, context)
     return protection.without_isolatability(context, new_room)
 end
 
--- Rule 2's goals: planet-locked recipes of the game before planetary changes (before, a sort from check.sort) keep every context they had on their planet, transported where their lock moved
+-- Rule 2's goals: planet-locked recipes of the game before planetary changes (before, a sort from check.sort) keep every context they had on their planet, transported where their lock moved, except what the stages gave up (check.given_up)
 -- Returns node key --> context --> true
 check.planet_locked_goals = function(before)
     local goals = {}
     for node_key, contexts in pairs(before.planet_locked or protection.planet_locked_recipe_contexts(before.graph, before.sort_info)) do
         goals[node_key] = {}
         for context, _ in pairs(contexts) do
-            goals[node_key][check.transported_context(node_key, context)] = true
+            local goal = check.transported_context(node_key, context)
+            if (check.given_up[node_key] or {})[goal] == nil then
+                goals[node_key][goal] = true
+            end
         end
     end
     return goals
@@ -354,6 +362,56 @@ check.spare_building_recipes = function(after)
     return spare
 end
 
+-- Rule 2's goals (check.planet_locked_goals) the game checked (after, a sort from check.sort) doesn't keep, as a list of { node_key, context, keys }, where keys are the recipe's and its variants' node keys (variants_of), any of which keeps the goal
+local function lost_planet_locked_goals(before, after, variants_of)
+    local after_contexts = after.sort_info.node_to_context_inds
+    local lost = {}
+    for node_key, contexts in pairs(check.planet_locked_goals(before)) do
+        local keys = {
+            node_key,
+        }
+        for _, variant_name in pairs((variants_of or {})[before.graph.nodes[node_key].name] or {}) do
+            table.insert(keys, gutils.key("recipe", variant_name))
+        end
+        for context, _ in pairs(contexts) do
+            local works = false
+            for _, key in pairs(keys) do
+                if top.provides_context(after_contexts[key] or {}, context) then
+                    works = true
+                end
+            end
+            if not works then
+                table.insert(lost, {
+                    node_key = node_key,
+                    context = context,
+                    keys = keys,
+                })
+            end
+        end
+    end
+    return lost
+end
+
+-- Gives up rule 2's goals the game after the planetary stages (after, a sort from check.sort) lost as spare versions of duplicated buildings (check.given_up)
+-- Call it once their changes are final: from then on, the rest of randomization is held only to the goals its starting game kept
+-- Returns the goals given up, as sorted texts for the log
+check.give_up_spare = function(before, after, variants_of)
+    check.given_up = {}
+    local spare = check.spare_building_recipes(after)
+    local given_up = {}
+    local texts = {}
+    for _, goal in pairs(lost_planet_locked_goals(before, after, variants_of)) do
+        if spare[goal.node_key] ~= nil then
+            given_up[goal.node_key] = given_up[goal.node_key] or {}
+            given_up[goal.node_key][goal.context] = true
+            table.insert(texts, "planet-locked " .. goal.node_key .. " @ " .. goal.context)
+        end
+    end
+    check.given_up = given_up
+    table.sort(texts)
+    return texts
+end
+
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
@@ -389,29 +447,16 @@ check.required_failures = function(before, after, variants_of)
     -- A spare version of a duplicated building (check.spare_building_recipes) loses its goals without failing; they're only logged (check.last_spare_goals)
     local spare = check.spare_building_recipes(after)
     local spare_goals = {}
-    for node_key, contexts in pairs(check.planet_locked_goals(before)) do
-        local keys = {
-            node_key,
-        }
-        for _, variant_name in pairs((variants_of or {})[before.graph.nodes[node_key].name] or {}) do
-            table.insert(keys, gutils.key("recipe", variant_name))
-        end
-        for context, _ in pairs(contexts) do
-            local works = false
-            for _, key in pairs(keys) do
-                if top.provides_context(after_contexts[key] or {}, context) then
-                    works = true
-                end
-            end
-            if not works and spare[node_key] ~= nil then
-                table.insert(spare_goals, "planet-locked " .. node_key .. " @ " .. context)
-            elseif not works then
-                table.insert(failures, {
-                    text = "planet-locked " .. node_key .. " @ " .. context,
-                    keys = keys,
-                    context = context,
-                })
-            end
+    for _, goal in pairs(lost_planet_locked_goals(before, after, variants_of)) do
+        local text = "planet-locked " .. goal.node_key .. " @ " .. goal.context
+        if spare[goal.node_key] ~= nil then
+            table.insert(spare_goals, text)
+        else
+            table.insert(failures, {
+                text = text,
+                keys = goal.keys,
+                context = goal.context,
+            })
         end
     end
     table.sort(spare_goals)

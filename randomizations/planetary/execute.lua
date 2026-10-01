@@ -1386,6 +1386,14 @@ local function finish(state, old_raw)
             sort = state.before,
             variants_of = state.variants_of,
         }
+        -- Goals the stages lost as spare versions of duplicated buildings stay given up, since the rest of randomization starts without them (planetary_check.given_up)
+        if state.after ~= nil then
+            local given_up = planetary_check.give_up_spare(state.before, state.after, state.variants_of)
+            log("Planetary: " .. #given_up .. " goals of duplicated buildings another version covers were given up, so later checks don't ask for them")
+            for i = 1, math.min(#given_up, 12) do
+                log("Planetary: given up " .. given_up[i])
+            end
+        end
         -- The rest of randomization keeps the recipe goals that moved with the changes, like a moved lock's recipe staying automatable on its new planet (protection.transported_recipe_contexts; see PROTECT_TRANSPORTED)
         if PROTECT_TRANSPORTED then
             local goals = planetary_check.planet_locked_goals(state.before)
@@ -1855,6 +1863,7 @@ end
 planetary.reset = function()
     planetary_check.moved_features = {}
     planetary_check.transport = {}
+    planetary_check.given_up = {}
     planetary_check.home_sets = nil
     locks.moved = {}
     rewards.moved = {}

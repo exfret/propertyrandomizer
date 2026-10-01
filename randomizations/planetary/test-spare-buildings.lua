@@ -169,4 +169,110 @@ spare = check.spare_building_recipes(after)
 check_that(spare["recipe: digger"] ~= nil, "the original is spare while a copy is automatable")
 check_that(spare["recipe: " .. COPY_2] == nil, "copy 2 isn't spare while no other version is automatable")
 
+-- Goals the planetary stages lost as spare stay given up once their changes are final (check.give_up_spare), whatever the recipe makes when a later check runs
+-- Item randomization gives a building's recipe another product, so the spare rule alone would count the same loss again in every attempt after the stages, and no attempt can undo it
+data.raw.recipe.drill_kit = nil
+data.raw.recipe[generated.recipe.name] = nil
+-- A sort of a game with these recipe and item contexts
+local function game(recipe_contexts, item_contexts)
+    local sorted = sorted_with(item_contexts)
+    sorted.graph = {
+        nodes = {},
+    }
+    for recipe_name, contexts in pairs(recipe_contexts) do
+        local node_key = "recipe: " .. recipe_name
+        sorted.graph.nodes[node_key] = {
+            type = "recipe",
+            name = recipe_name,
+        }
+        sorted.sort_info.node_to_context_inds[node_key] = {}
+        for _, context in pairs(contexts) do
+            sorted.sort_info.node_to_context_inds[node_key][context] = 1
+        end
+    end
+    return sorted
+end
+-- Before planetary changes: the original and copy 2 locked to their own planets, and the loner too
+local before = game({
+    digger = {
+        "planet: alpha | 11",
+        "planet: alpha | 01",
+    },
+    [COPY_2] = {
+        "planet: beta | 11",
+    },
+    loner = {
+        "planet: alpha | 11",
+        "planet: alpha | 01",
+    },
+}, {})
+before.planet_locked = {
+    ["recipe: digger"] = {
+        ["planet: alpha | 11"] = true,
+        ["planet: alpha | 01"] = true,
+    },
+    ["recipe: " .. COPY_2] = {
+        ["planet: beta | 11"] = true,
+    },
+    ["recipe: loner"] = {
+        ["planet: alpha | 11"] = true,
+        ["planet: alpha | 01"] = true,
+    },
+}
+-- After the stages: the original and the loner lost their isolatable context, and copy 2 stays automatable on its planet
+local after_stages = game({
+    digger = {
+        "planet: alpha | 01",
+    },
+    [COPY_2] = {
+        "planet: beta | 11",
+    },
+    loner = {
+        "planet: alpha | 01",
+    },
+}, {
+    [COPY_2] = {
+        "planet: beta | 11",
+    },
+})
+check.given_up = {}
+local given_up = check.give_up_spare(before, after_stages)
+check_that(#given_up == 1 and check.given_up["recipe: digger"]["planet: alpha | 11"] ~= nil, "the stages give up the original's lost goal, since copy 2 covers it")
+check_that(check.given_up["recipe: loner"] == nil, "a lost goal of a building without copies isn't given up")
+
+-- An attempt after them, with item randomization: the original's recipe makes cogs now, and copy 2's recipe lost its planet too and makes cogs as well
+data.raw.recipe.digger = makes("digger", "cog")
+data.raw.recipe[COPY_2] = makes(COPY_2, "cog")
+local attempt = game({
+    digger = {
+        "planet: alpha | 01",
+    },
+    [COPY_2] = {
+        "planet: beta | 01",
+    },
+    loner = {
+        "planet: alpha | 01",
+    },
+}, {
+    [COPY_2] = {
+        "planet: beta | 01",
+    },
+})
+local function failed(failures, text)
+    for _, failure in pairs(failures) do
+        if failure.text == text then
+            return true
+        end
+    end
+    return false
+end
+local failures = check.required_failures(before, attempt)
+check_that(not failed(failures, "planet-locked recipe: digger @ planet: alpha | 11"), "a goal the stages gave up isn't lost again in an attempt, whatever its recipe makes now")
+check_that(failed(failures, "planet-locked recipe: " .. COPY_2 .. " @ planet: beta | 11"), "a goal the attempt lost itself still counts by what its recipe makes now")
+check_that(failed(failures, "planet-locked recipe: loner @ planet: alpha | 11"), "a goal the stages lost without a spare version still fails")
+-- Without what the stages gave up, the spare rule alone no longer sees a building in the original's recipe
+check.given_up = {}
+failures = check.required_failures(before, attempt)
+check_that(failed(failures, "planet-locked recipe: digger @ planet: alpha | 11"), "without check.given_up, the attempt would lose the original's goal again")
+
 print("test-spare-buildings: " .. num_checks .. " checks passed")
