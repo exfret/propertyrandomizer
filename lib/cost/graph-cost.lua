@@ -70,6 +70,16 @@ graph_cost.automatable_by_room = function(graph, complex_sort_info)
     return automatable
 end
 
+-- What each room has and makes (lib/cost/context-costs.lua) and the starting resources of a sorted graph, without setting anything
+-- Its raw_costs are what derive_cost_options puts in the default cost table
+graph_cost.build_costs = function(graph, sort_info, starting_context, complex_sort_info, contexts)
+    local starting = graph_cost.starting_resources(graph, sort_info, starting_context)
+    -- Slot costs price the player's own time (hand mining, say) dearly, so materials only gotten by hand aren't cheap
+    local prices = graph_cost.compute_for_sort(graph, sort_info, nil, true)
+    -- With the game's costs tracking the major resources
+    return context_costs.build(graph, sort_info, prices, starting_context, contexts, true, starting, graph_cost.automatable_by_room(graph, complex_sort_info)), starting
+end
+
 -- Fills randomization_info.options.cost from all reachable raw material prices
 -- (default_cost_table) and major resources (major_raw_resources). A price says
 -- nothing about automation; callers use the separate per-room eligibility table.
@@ -86,14 +96,11 @@ graph_cost.derive_cost_options = function(graph, sort_info, starting_context, co
     for i = #major, 1, -1 do
         major[i] = nil
     end
-    for _, id in pairs(graph_cost.starting_resources(graph, sort_info, starting_context)) do
+    local built, starting = graph_cost.build_costs(graph, sort_info, starting_context, complex_sort_info, contexts)
+    for _, id in pairs(starting) do
         table.insert(major, id)
     end
-
-    -- Slot costs price the player's own time (hand mining, say) dearly, so materials only gotten by hand aren't cheap
-    local prices = graph_cost.compute_for_sort(graph, sort_info, nil, true)
-    -- What each room has and makes, which recipe randomization prices with (lib/cost/context-costs.lua), with the game's costs tracking the major resources
-    context_costs.current = context_costs.build(graph, sort_info, prices, starting_context, contexts, true, major, graph_cost.automatable_by_room(graph, complex_sort_info))
+    context_costs.current = built
     for id, cost in pairs(context_costs.current.raw_costs) do
         if cost_options.default_cost_table[id] == nil then
             cost_options.default_cost_table[id] = cost

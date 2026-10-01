@@ -63,6 +63,7 @@ function abstract.build(lu, extra_params)
                 mechanic = true,
                 keep_planetary_isolatability = true,
                 keep_isolatability = true,
+                rocket_goal = "launch",
             })
             ----------------------------------------
             -- Can we launch from this specific planet?
@@ -80,6 +81,7 @@ function abstract.build(lu, extra_params)
                 mechanic = true,
                 keep_planetary_isolatability = true,
                 keep_isolatability = true,
+                rocket_goal = "platform",
             })
             ----------------------------------------
             -- Can we create an instance of this space surface room via launch?
@@ -96,6 +98,7 @@ function abstract.build(lu, extra_params)
                 mechanic = true,
                 keep_planetary_isolatability = true,
                 keep_isolatability = true,
+                rocket_goal = "platform",
             })
             ----------------------------------------
             -- Can we get a starter pack that creates this space surface?
@@ -534,13 +537,30 @@ function abstract.build(lu, extra_params)
     end
     add_edge("energy-source-heat", "")
     -- Bootstrap (see notes/bootstrap-infrastructure.txt): a room that freezes counts as warm if heat, once started by hand there, keeps itself going without hand-feeding
-    -- Candidates are the rooms lutils.bootstrap_heat_rooms names (planets a planetary change made freeze); lib/logic/bootstrap.lua prunes the rooms where that doesn't hold
+    -- Candidates are the rooms lutils.bootstrap_heat_rooms names (planets a planetary change made freeze), each through its warmth-bootstrap node below; lib/logic/bootstrap.lua prunes the rooms where heat doesn't then keep itself going
+    local warmth_bootstrap_rooms = {}
     for room_key, _ in pairs(lutils.bootstrap_heat_rooms) do
         if data.raw.planet[gutils.deconstruct(room_key).name] ~= nil and data.raw.planet[gutils.deconstruct(room_key).name].entities_require_heating then
-            add_edge("room", room_key, {
+            table.insert(warmth_bootstrap_rooms, room_key)
+            add_edge("warmth-bootstrap", room_key, {
                 bootstrap_warmth = true,
             })
         end
+    end
+    table.sort(warmth_bootstrap_rooms)
+
+    for _, room_key in pairs(warmth_bootstrap_rooms) do
+        ----------------------------------------
+        add_node("warmth-bootstrap", "AND", nil, room_key, { canonical = "warmth" })
+        ----------------------------------------
+        -- Does heat started by hand warm this room? An isolatable context of heat in the room (hand-fed is fine) warms it, automatably too
+        -- Heat has that context before any grant only if it can be started there without warmth, so the graph itself says so, and randomization's model sees it when it changes what heat needs
+        -- Whether heat then keeps itself going is the one condition lib/logic/bootstrap.lua checks when it prunes
+
+        add_edge("room", room_key)
+        add_edge("energy-source-heat", "", {
+            abilities = { [2] = true },
+        })
     end
 
     ----------------------------------------
@@ -614,6 +634,7 @@ function abstract.build(lu, extra_params)
         mechanic = true,
         keep_planetary_isolatability = true,
         keep_isolatability = true,
+        rocket_goal = "platform",
     })
     ----------------------------------------
     -- Can we create any space platform?
@@ -630,6 +651,7 @@ function abstract.build(lu, extra_params)
         mechanic = true,
         keep_planetary_isolatability = true,
         keep_isolatability = true,
+        rocket_goal = "launch",
     })
     ----------------------------------------
     -- Can we use any rocket silo for launching?
@@ -646,6 +668,7 @@ function abstract.build(lu, extra_params)
         mechanic = true,
         keep_planetary_isolatability = true,
         keep_isolatability = true,
+        rocket_goal = "platform",
     })
     ----------------------------------------
     -- Can we operate some cargo landing pad?
@@ -660,6 +683,7 @@ function abstract.build(lu, extra_params)
         mechanic = true,
         keep_planetary_isolatability = true,
         keep_isolatability = true,
+        rocket_goal = "launch",
     })
     ----------------------------------------
     -- Can we launch something into space?

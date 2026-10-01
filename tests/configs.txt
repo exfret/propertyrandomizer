@@ -41,6 +41,7 @@ skip planetary-rewards
 skip planetary-rewards-rehome
 skip planetary-rewards-only
 skip planetary-superposed
+skip planetary-fix-pass
 skip planetary-connections
 # The duplicates setting is being worked on too; its graphics (graphics/dupes/, made by dev/make-dupe-graphics.py) are generated and not in git, so it's only tested by the dupes config below
 skip dupes
@@ -109,3 +110,7 @@ config overrides-toggles settings overrides=belt_speed;!crafting_machine_speed
 config overrides-set settings overrides=RESET:[entity=inserter].NUMERICAL;SET:[entity=inserter].rotation_speed=(X+Y)/2
 # Malformed overrides should only add warnings
 config overrides-malformed settings overrides=RESET:inserter;SET:[entity=inserter];NOT_AN_INSTRUCTION:x;not_a_randomization
+# The planetary fix pass (the setting is skipped above): each stage repaired by the fix pass first and the old way if that isn't enough; oceans and resources, then with lightning and freezing moved too (Fulgora's power and frozen Gleba's heat may come from planet copies), then the preview's stages (its locks run the old way)
+config fix-pass unified seeds=1,2 dev-unified=true planetary-fix-pass=true planetary-oceans=true planetary-resources=true
+config fix-pass-climate unified seeds=1,2 dev-unified=true planetary-fix-pass=true planetary-oceans=true planetary-resources=true planetary-lightning=true planetary-freezing=true
+config fix-pass-preview unified seeds=1,2 unified-preview=true dev-unified=false planetary-fix-pass=true

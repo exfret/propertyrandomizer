@@ -1,6 +1,6 @@
 # Planet feature moves, with duplicated planets
 
-Plan written 2026-09-29 for the request: move things like Vulcanus giving big mining drills, Gleba having a spoiling theme and Aquilo's lithium processing chain, mixed in with duplicated planets, in ways superposed randomization can repair. Nothing below is implemented yet. It builds on the planetary stages in `randomizations/planetary/` and on superposed mode (`notes/context-shift-report`, `lib/graph/settlement.lua`).
+Plan written 2026-09-29 for the request: move things like Vulcanus giving big mining drills, Gleba having a spoiling theme and Aquilo's lithium processing chain, mixed in with duplicated planets, in ways superposed randomization can repair. Superposed mode is off for now (user, 2026-09-30); section 10 says how the moves work without it. Nothing below is implemented yet. It builds on the planetary stages in `randomizations/planetary/` and on superposed mode (`notes/context-shift-report`, `lib/graph/settlement.lua`).
 
 ## 1. The idea
 
@@ -168,7 +168,7 @@ G. **Presentation**: a description line "Moved from [planet=vulcanus]" on moved 
 H. **Measurement**: load time with one and two copies on a quiet machine; per-seed counts of leftovers, rungs used and reverts.
 
 Dependencies and risks:
-- `PROTECT_TRANSPORTED` in `execute.lua` is off and not root-caused (recycling recipes of moved locks' items became unreachable under it). Feature goals are protected through promotion's owed goals in superposed mode only; in normal mode PLANETCHECK final just logs. Root-causing it is worth doing before rewards go on by default.
+- `PROTECT_TRANSPORTED` in `execute.lua` is off and not root-caused (recycling recipes of moved locks' items became unreachable under it). Feature goals are protected through promotion's owed goals in superposed mode only. In normal mode an attempt that loses them is retried (PLANETCHECK attempt, at most twice per load), and PLANETCHECK final warns in the panel (section 10). Root-causing it is worth doing before rewards go on by default.
 - Unified's recipe-tech-unlocks handler is off and the rebuild makes it moot (section 2), so a moved reward's unlock isn't re-randomized; the rebuilt technology keeps the trigger the move gave it.
 - Mods that reference vanilla planets by name won't know the copies; the copies only carry what data derives.
 
@@ -190,3 +190,37 @@ Optional planet-specific ores are another feature the user wants (2026-09-29): a
 4. Resolved 2026-09-29 (user): one copy of each planet for now (changed from two copies in all, for load time); their discovery technologies parallel to the original's with no other prerequisites.
 5. Resolved 2026-09-29: no unlock pin is needed, the tech-unlock handler is off and the rebuild copies the moved trigger (section 2).
 6. The spoiling theme's shape: rank-matched times onto the target's chain items with the delivery rule above, or a smaller version that only moves which planet's science pack spoils.
+
+## 10. Without superposed mode (user, 2026-09-30)
+
+Superposed mode is off for now (user, 2026-09-30). The user's own load with the copies owed about 13,600 goals on each of three unified attempts, settled none, and then undid every planetary change. Its code stays, but nothing below needs it. Feature moves work the way the ocean, resource and lock stages already do: the planetary stage repairs its own changes before unified runs, and unified keeps what the repaired game can do.
+
+**Principle.** A move is kept only if the game after it, with its up-front repairs, passes the stage's check (`check.required`, rules 1-4) before unified runs. Repairs are fixes, not content, so they may be edits superposition couldn't hold as debt: ingredients, categories, triggers, prerequisites. Unified then randomizes the repaired recipes like any other while keeping what it protects (planet-locked recipe contexts per family, mechanic contexts), so no repair survives as a 1:1 substitution; the ocean scaffolds showed this on 2026-09-26. What an attempt still loses is caught twice, both outside superposed mode. PLANETCHECK attempt retries the attempt, at most twice per load (`planetary.check_attempt`, data-final-fixes.lua). PLANETCHECK final fails the final check and warns in the randomizer panel.
+
+**What changes in the plan above:**
+- Anchors (section 3): the "into OR?" column no longer matters. Triggers, prerequisites and ingredients can be edited in place as repairs. The technology-trigger OR node stays, since it only adds routes.
+- Settlers (section 7), the debt shape audit (section 6), promotion's debt paying and `sort_for_deps` (D7) are superposed only and parked. Their normal-mode counterpart is each stage's own ladder before unified: repair, then send the whole bundle back (the user's "revert rather than share"). There are no additions for bundles: no extra patches, no widened locks.
+- Pins (D5) aren't needed while every revert happens before unified. They come back only if a revert-and-reroll after an attempt is added.
+- Retire plus variant (D2) existed because an in-place ingredient swap wasn't expressible as debt. Now a moved member whose lock accepts only the target can be edited in place; the user prefers editing originals in place (2026-09-26). Variants stay where the original has to keep working elsewhere as it is: companions (D4b) and fuel variants (D6).
+- In-place edits go by the exact planet, not the family (`check.specific_to_room` / `only_on_room`, as the resource edits do since 2026-09-30), so a copy's move never edits what its original still needs.
+
+**Rewards.** 2e's normal-mode path (rewards.lua, `options.rehome`, notes in D8-D10). Bundles move as they do now, and the old planet's own goals are re-homed up front (`rehome_home_recipes`). Recipes on the proofs of its isolatable rule-2 and rule-3 goals that only the leaving machines craft take the closest-depth category the old planet crafts on its own. This is the up-front form of "recipe category randomization pays for the planet's science": the re-homed category is the fallback, and unified's recipe-category handler may still change it while keeping the promised contexts. If the lock stage's check still fails, the bundle goes back whole. Status (2e, 2026-09-30 evening): written, being tested with new configs `rewards` and `rewards-foundry`. Open: Aquilo's cryogenic science trigger finds no old-planet counterpart, so it stays as before.
+
+**Chains (replaces the debt parts of E).** A chain move is a mode of the resource stage, repaired before unified:
+1. Move: the root's autoplace goes to the target's same-kind slot (the resource stage's slot move) and the members' locks go with it (`locks.move`). Chain technologies keep their triggers and trade the home's discovery prerequisite for the target's. Technologies that stay home but trigger on chain products get a home counterpart (the picker `retie_dependent_triggers` uses).
+2. Target repairs: a member recipe whose ingredients from outside the chain the target can't get takes target substitutes in place; its lock moved, so nothing else uses it. Consumers that aren't locked need nothing, since they import.
+3. Home repairs: the home's isolatable rule-2 and rule-3 goals whose proofs pass through chain products get home substitutes in place. They are chosen like `rehome_home_recipes`, but for ingredients: the closest-depth product the home makes without the chain's recipes, keeping the furnace rule. This is the same edit the resource stage already makes when a planet's slot changes.
+4. Check: the resource stage's own check. A chain that still fails goes back whole (user, 2026-09-30: reversion over extra patches).
+The user's other decisions for E stand: the starting Nauvis never changes, though a Nauvis copy may; Gleba's chain is its agriculture, with a seed blacklist in item randomization; whole family resource sets are permuted among Vulcanus, Fulgora and Aquilo.
+
+**What unified can still lose.** Each of these now shows up as PLANETCHECK attempt failures and retries:
+- Transported goals of moved locks and bundles aren't protected (`PROTECT_TRANSPORTED` is false in execute.lua), so a moved soil lock can lose `fulgora | 01`. 2e will retest it on a scratch copy. Its recorded failure (moved items' recycling recipes unreachable) may have been the stale-recycling bug fixed on 2026-09-30.
+- Rocket building and electricity keep their isolatability through planetary changes, but unified doesn't protect it. The dupes seed that lost 40 goals had lost Fulgora's rocket building this way.
+- The tech tree rebuild runs after the attempt check, so what it loses only reaches PLANETCHECK final: a warning, no retry.
+
+**Order of work:**
+1. Measure PLANETCHECK attempt and final on preview, dupes-preview and the user's settings without superposed: retries per load, what fails, load time.
+2. Test rewards re-homing (2e).
+3. Retest `PROTECT_TRANSPORTED`, and turn it on if it holds (2e).
+4. Chains: the dry run (E step 1), then the move with target and home repairs, then the permutation.
+5. Theme (F) and presentation (G) are unchanged.

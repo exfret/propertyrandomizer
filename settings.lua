@@ -410,6 +410,14 @@ data:extend({
         order = "f-h[planetary-superposed]",
     },
     {
+        -- Work in progress (randomizations/planetary/fix-pass.lua): the planetary changes repaired by a fix pass with unified's handlers instead of their own repairs
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-planetary-fix-pass",
+        default_value = false,
+        order = "f-i[planetary-fix-pass]",
+    },
+    {
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-icon",

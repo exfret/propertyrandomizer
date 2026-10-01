@@ -117,6 +117,22 @@ end
 -- export
 build_graph.surfaces = surfaces
 
+-- Reads the surfaces' properties from data.raw again, in place (others hold the table as build_graph.surfaces)
+-- For the planetary fix pass (data-final-fixes.lua), whose planetary stages change planets after this loaded with unified randomization; the stages don't add or remove surfaces
+build_graph.read_surfaces = function()
+    for _, surface in pairs(surfaces) do
+        local prototype = surface.type == "planet" and data.raw.planet[surface.name] or (data.raw.surface or {})[surface.name]
+        if prototype ~= nil then
+            surface.prototype.surface_properties = prototype.surface_properties
+            if surface.type == "planet" then
+                surface.prototype.map_gen_settings = prototype.map_gen_settings
+                surface.prototype.lightning_properties = prototype.lightning_properties
+                surface.prototype.entities_require_heating = prototype.entities_require_heating
+            end
+        end
+    end
+end
+
 -- Get recipe categories
 
 local function recipe_to_num_fluids(recipe)

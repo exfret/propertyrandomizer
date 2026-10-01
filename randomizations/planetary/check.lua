@@ -11,6 +11,7 @@
 -- All output goes to the log with the prefix PLANETCHECK
 
 local constants = require("helper-tables/constants")
+local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local surface_sets = require("lib/surface-sets")
@@ -240,6 +241,62 @@ check.is_retired = function(recipe_name)
     return false
 end
 
+-- Whether rocket building may use machines delivered once (rule 3 below): set by randomizations/planetary/execute.lua with the planetary fix pass (config.planetary_fix_pass), a work in progress; otherwise rocket building stays strictly isolatable
+check.rocket_machines_importable = false
+
+-- Whether recipe categories are left out of rule 3 (set with the planetary fix pass too): a category is had wherever a machine of it runs, which the recipes and machines that are goals themselves already ask for (the user, 2026-09-30: "Recipe categories btw probably don't need to be mechanics if that's causing issues")
+-- The fix pass doesn't repair them, so with them in, a stage it repaired would still fail every later check
+check.skip_recipe_categories = false
+
+-- Room keys of the planets one space connection away from the starting planet, as the connection graph is now (the soft rocket goals' planets, the user 2026-09-30)
+check.near_start_rooms = function()
+    local near = {}
+    local start = constants.starting_planet
+    for _, connection in pairs(data.raw["space-connection"] or {}) do
+        local other
+        if connection.from == start then
+            other = connection.to
+        elseif connection.to == start then
+            other = connection.from
+        end
+        if other ~= nil and (data.raw.planet or {})[other] ~= nil then
+            near[gutils.key("planet", other)] = true
+        end
+    end
+    return near
+end
+
+-- A sort's contexts in the game with a delivered machine counting as local where it runs, on planets too (the space surface rule, entity-own-space in lib/logic/concrete.lua, without its space-surface condition for machines), as node key --> context --> rank
+-- Machines are what crafts or mines: entities with crafting categories (crafting machines, rocket silos) or resource categories (mining drills)
+-- It's still only operating the machine that counts, so mining a delivered machine back doesn't make it local
+-- For the hard rocket goals: machines may be imported once, the rocket's ingredients are made on the planet (the user, 2026-09-30: broadened from rocket silos to the machines); sorted once per game, when one of them fails the strict check
+check.imported_contexts = function(after)
+    if after.imported_nci == nil then
+        local graph = table.deepcopy(after.graph)
+        local to_remove = {}
+        for _, node in pairs(graph.nodes) do
+            local prototype = node.type == "entity-own-space" and dutils.get_prot("entity", node.name) or nil
+            if prototype ~= nil and (prototype.crafting_categories ~= nil or prototype.resource_categories ~= nil) then
+                for pre, _ in pairs(node.pre) do
+                    if graph.nodes[graph.edges[pre].start].type == "space-surface" then
+                        table.insert(to_remove, pre)
+                    end
+                end
+            end
+        end
+        for _, edge_key in pairs(to_remove) do
+            gutils.remove_edge(graph, edge_key)
+        end
+        check.num_sorts = check.num_sorts + 1
+        after.imported_nci = top.sort(graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = check.home_sets,
+        }).node_to_context_inds
+    end
+    return after.imported_nci
+end
+
 -- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
@@ -298,11 +355,27 @@ check.required_failures = function(before, after, variants_of)
 
     -- 3. Mechanics keep what protection.planetary_kept_context says
     -- A mechanic node the game no longer has can't be needed (like a fluid-count variant of a recipe category once no recipe has those fluids), and neither can one that's no longer a mechanic there (like an item that was a burnt result until randomization moved it), so those are skipped, as the mechanic context check does
+    -- With check.rocket_machines_importable, rocket building (nodes built with rocket_goal) is kept as the user asked (2026-09-30): the hard goal is that a planet makes the rocket's ingredients itself, while its machines may be delivered once (check.imported_contexts)
+    -- Platform creation and landing pads (rocket_goal "platform") then keep only their rooms and automatability as a hard goal, and the strict version of every rocket goal is a soft goal for planets one hop from the starting planet (check.last_soft_failures), logged and never a failure
+    local soft = {}
+    local near = check.rocket_machines_importable and check.near_start_rooms() or {}
     for node_key, kept_contexts in pairs(check.transported_mechanic_goals(before)) do
         local after_node = after.graph.nodes[node_key]
-        if after_node ~= nil and after_node.mechanic then
+        if after_node ~= nil and after_node.mechanic and not (check.skip_recipe_categories and after_node.type == "recipe-category") then
             for kept, _ in pairs(kept_contexts) do
-                if not top.provides_context(after_contexts[node_key] or {}, kept) then
+                local strict_ok = top.provides_context(after_contexts[node_key] or {}, kept)
+                local hard_ok = strict_ok
+                if check.rocket_machines_importable and after_node.rocket_goal ~= nil and is_isolatable(kept) and top.context_home(kept) == nil then
+                    if not strict_ok and near[top.context_room(kept)] ~= nil then
+                        table.insert(soft, "rocket " .. node_key .. " @ " .. kept)
+                    end
+                    if not strict_ok and after_node.rocket_goal == "launch" then
+                        hard_ok = top.provides_context(check.imported_contexts(after)[node_key] or {}, kept)
+                    elseif not strict_ok then
+                        hard_ok = top.provides_context(after_contexts[node_key] or {}, protection.without_isolatability(kept))
+                    end
+                end
+                if not hard_ok then
                     table.insert(failures, {
                         text = "mechanic " .. node_key .. " @ " .. kept,
                         keys = {
@@ -314,6 +387,8 @@ check.required_failures = function(before, after, variants_of)
             end
         end
     end
+    table.sort(soft)
+    check.last_soft_failures = soft
     -- 4. The starting planet's science packs keep every context they had there
     for node_key, contexts in pairs(check.start_science_goals(before)) do
         for context, _ in pairs(contexts) do
@@ -399,6 +474,13 @@ check.required = function(before, after, variants_of, is_quiet, label)
         log(label .. ": " .. #texts .. " failures")
         for _, text in pairs(texts) do
             log(label .. " failure: " .. text)
+        end
+        -- Soft goals (strict rocket building on planets next to the start) are only logged
+        if #(check.last_soft_failures or {}) > 0 then
+            log(label .. " soft: " .. #check.last_soft_failures .. " rocket building goals of planets next to the start lost (not failures)")
+            for i = 1, math.min(#check.last_soft_failures, 12) do
+                log(label .. " soft: " .. check.last_soft_failures[i])
+            end
         end
     end
     return #failures == 0, failures

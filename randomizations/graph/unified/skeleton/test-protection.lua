@@ -7,6 +7,7 @@ local constants = { keep_isolatability = false }
 package.loaded["helper-tables/constants"] = constants
 package.loaded["lib/graph/context-sort"] = {
     ISOLATABILITY = 1,
+    AUTOMATABILITY = 2,
     context_abilities = function(context)
         return string.match(context, " | (.*)$")
     end,
@@ -45,6 +46,7 @@ data = {
 
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local dutils = require("lib/data-utils")
+local gutils = require("lib/graph/graph-utils")
 
 local num_passed = 0
 local function test(name, fn)
@@ -281,6 +283,70 @@ test("recipe contexts a planetary change carried over are kept too, but only whe
     assert(locked["recipe: moved"]["planet: ice | 01"] == nil, "a carried-over context the sort doesn't have is kept")
     assert(locked["recipe: moved"]["planet: rock | 01"] == nil, "a recipe on two planets without surface conditions is locked")
     data.raw.recipe = nil
+end)
+
+test("what justifies a bootstrap grant the graph keeps is kept: heat isolatable and automatable in the warmed room, a bootstrapped building's item isolatable in its room", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+    }
+    local function node(node_type, name)
+        local node_key = gutils.key(node_type, name)
+        graph.nodes[node_key] = {
+            type = node_type,
+            name = name,
+            pre = {},
+        }
+        return node_key
+    end
+    local function edge(edge_key, start, stop, extra)
+        graph.edges[edge_key] = extra or {}
+        graph.edges[edge_key].start = start
+        graph.edges[edge_key].stop = stop
+        graph.nodes[stop].pre[edge_key] = true
+    end
+    local room = node("room", "planet: ice")
+    local warmth_bootstrap = node("warmth-bootstrap", "planet: ice")
+    local warmth = node("warmth", "")
+    local heat = node("energy-source-heat", "")
+    local bootstrap_rooms = node("entity-own-bootstrap-rooms", "heater")
+    local item = node("entity-build-item", "heater")
+    edge("grant", warmth_bootstrap, warmth, {
+        bootstrap_warmth = true,
+    })
+    -- Heat warming a room the usual way isn't a grant
+    edge("heat", heat, warmth)
+    edge("pair", room, bootstrap_rooms)
+    local nci = {
+        [heat] = {
+            ["planet: ice | 11"] = 1,
+            ["planet: ice | 10"] = 2,
+            ["planet: rock | 11"] = 3,
+            ["planet: ice | 11 @ home1"] = 4,
+        },
+        [item] = {
+            ["planet: ice | 10"] = 5,
+            ["planet: ice | 01"] = 6,
+            ["planet: rock | 11"] = 7,
+        },
+    }
+    local locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    assert(locked[heat]["planet: ice | 11"], "heat keeping itself going in the warmed room isn't kept")
+    assert(locked[heat]["planet: ice | 10"] == nil, "heat that's only hand-fed doesn't justify warmth")
+    assert(locked[heat]["planet: rock | 11"] == nil, "only the warmed room's heat justifies its grant")
+    assert(locked[heat]["planet: ice | 11 @ home1"] == nil, "home contexts aren't kept for their own sake")
+    assert(locked[item]["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept")
+    assert(locked[item]["planet: ice | 01"] == nil, "an item that isn't isolatable doesn't justify a pair")
+    assert(locked[item]["planet: rock | 11"] == nil, "only the pair's room justifies it")
+    -- Once pruning drops the grants, nothing is kept for them
+    graph.nodes[warmth].pre["grant"] = nil
+    graph.nodes[bootstrap_rooms].pre["pair"] = nil
+    locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    assert(next(locked) == nil, "a dropped grant's justification is kept")
 end)
 
 test("a context without isolatability keeps its other abilities, in its own room or a new one (goal transport)", function()

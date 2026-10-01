@@ -24,6 +24,7 @@ local SWAP_START_WITH = nil
 local PROTECT_TRANSPORTED = false
 
 local gutils = require("lib/graph/graph-utils")
+local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
 local top = require("lib/graph/context-sort")
@@ -714,13 +715,13 @@ local function run_locks(logic, state)
     return nil
 end
 
--- Moves lightning with what builds lightning attractors (lightning.lua); lightning power's goals follow it (check.transport)
--- If a planet then loses something it must keep (like electricity from its own resources, which lightning was), each planet that gave lightning away keeps it as well (an addition)
-local function run_lightning(logic, state)
+-- Moves lightning (lightning.lua), its goals following it (and the attractor recipes' locks, which lightning.execute moved), without any repair
+-- Returns the planets that gave their lightning away, old planet --> new planet (empty if none did)
+local function move_lightning(state)
     local map = lightning.execute("planetary-lightning")
     if next(map) == nil then
         log("Planetary lightning: no planet gave its lightning away")
-        return nil
+        return map
     end
     planetary_check.moved_features["lightning"] = true
     for node_key, entry in pairs(lightning.transport(state.before.graph, map)) do
@@ -730,6 +731,16 @@ local function run_lightning(logic, state)
         planetary_check.transport[node_key] = entry
     end
     log("Planetary lightning: " .. lightning.describe())
+    return map
+end
+
+-- Moves lightning with what builds lightning attractors (lightning.lua); lightning power's goals follow it (check.transport)
+-- If a planet then loses something it must keep (like electricity from its own resources, which lightning was), each planet that gave lightning away keeps it as well (an addition)
+local function run_lightning(logic, state)
+    local map = move_lightning(state)
+    if next(map) == nil then
+        return nil
+    end
 
     local after = planetary_check.sort(logic)
     local failures = planetary_check.required_failures(state.before, after, state.variants_of)
@@ -777,18 +788,26 @@ local function run_connections(logic, state)
     return nil
 end
 
--- Moves freezing with the technologies for heating (freezing.lua)
--- A planet that stops freezing only gains warmth, so whatever fails is on a planet that now freezes, and keeping the old planet frozen as well wouldn't help: the stage is undone instead
-local function run_freezing(logic, state)
+-- Moves freezing (freezing.lua) without any repair; returns the planets that gave their freezing away (empty if none did)
+local function move_freezing()
     local map = freezing.execute("planetary-freezing")
     if next(map) == nil then
         log("Planetary freezing: no planet gave its freezing away")
-        return nil
+        return map
     end
     planetary_check.moved_features["freezing"] = true
     log("Planetary freezing: " .. freezing.describe())
     -- A heat source delivered to a planet that now freezes counts as local there if the planet can then make more (lib/logic/bootstrap.lua)
     lutils.bootstrap_heat_rooms = freezing.new_frozen_rooms()
+    return map
+end
+
+-- Moves freezing with the technologies for heating (freezing.lua)
+-- A planet that stops freezing only gains warmth, so whatever fails is on a planet that now freezes, and keeping the old planet frozen as well wouldn't help: the stage is undone instead
+local function run_freezing(logic, state)
+    if next(move_freezing()) == nil then
+        return nil
+    end
     state.after = planetary_check.sort(logic)
     if not planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK freezing") then
         return "a planet that freezes now lost something it must keep (see PLANETCHECK freezing in the log)"
@@ -837,8 +856,108 @@ local function run_stage(what, stage, logic, state, can_retry)
     return true, false
 end
 
+-- The planetary fix pass (config.planetary_fix_pass, randomizations/planetary/fix-pass.lua): what took each planet's old things' places in the stages' moves, planet --> old node key --> new node key, which the fix pass repairs with first (like the fluid now in lava's ocean)
+planetary.replacements = {}
+
+local function add_replacement(planet_name, old_key, new_key)
+    planetary.replacements[planet_name] = planetary.replacements[planet_name] or {}
+    planetary.replacements[planet_name][old_key] = new_key
+end
+
+-- Swaps oceans without the root repairs (scaffolds.lua), for the fix pass to repair first; returns a problem, or nil
+local function move_oceans(logic, state, old_raw)
+    planetary_check.moved_features["oceans"] = true
+    local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
+    for planet_name, family in pairs(assignment) do
+        local old_fluid = oceans.families[planet_name].fluid
+        local new_fluid = oceans.families[family].fluid
+        if old_fluid ~= new_fluid then
+            add_replacement(planet_name, gutils.key("fluid", old_fluid), gutils.key("fluid", new_fluid))
+        end
+    end
+    local tile_problems = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
+    if #tile_problems > 0 then
+        return "tile collision changed (" .. table.concat(tile_problems, "; ") .. ")"
+    end
+    return nil
+end
+
+-- Swaps resources without the recipe and trigger edits, planet variants and extra patches that follow the swap (swap_resources, run_resources), for the fix pass to repair first; returns nil
+local function move_resources()
+    planetary_check.moved_features["resources"] = true
+    local slots, assignment, lost = resources.execute("planetary-resources")
+    -- What took each lost resource's place: its mined product for ingredients, the resource itself for mining triggers
+    for planet_name, subs in pairs(resources.substitutions(slots, assignment, lost)) do
+        for _, sub in pairs(subs) do
+            add_replacement(planet_name, gutils.key(sub.from.type, sub.from.name), gutils.key(sub.to.type, sub.to.name))
+        end
+    end
+    for planet_name, reps in pairs(resources.replacements(slots, assignment, lost)) do
+        for lost_name, new_name in pairs(reps) do
+            add_replacement(planet_name, gutils.key("entity-mine", lost_name), gutils.key("entity-mine", new_name))
+        end
+    end
+    return nil
+end
+
+-- Runs a stage fix pass first (config.planetary_fix_pass; the user, 2026-09-30: "try fixes through prereq shuffle methods first and then the old way")
+-- The stage's move without its own repairs (move, returning a problem or nil), then fix (the fix pass, returning how many goals are still lost); the game is clean before each stage, so what's lost is this stage's
+-- If the fix pass can't repair everything (or errors), the stage is undone and runs the old way (old_way: the stage with its own repairs, which undoes it in turn if those aren't enough)
+-- The random streams are put back too, so the old way repairs the same move the fix pass couldn't
+local function run_fix_first(what, move, old_way, logic, state, fix)
+    local old_raw = table.deepcopy(data.raw)
+    local old_streams = table.deepcopy(rng.prgs)
+    local saved = {
+        variants_of = table.deepcopy(state.variants_of),
+        moved_features = table.deepcopy(planetary_check.moved_features),
+        goal_transport = table.deepcopy(planetary_check.transport),
+        locks_moved = table.deepcopy(locks.moved),
+        locks_fixed = table.deepcopy(locks.fixed),
+        bootstrap_heat_rooms = lutils.bootstrap_heat_rooms,
+        replacements = table.deepcopy(planetary.replacements),
+    }
+    local is_ok, result = pcall(function()
+        local problem = move(logic, state, old_raw)
+        if problem ~= nil then
+            return problem
+        end
+        log("Planetary " .. what .. ": moved without their own repairs, so the fix pass repairs them first")
+        return fix(state)
+    end)
+    if is_ok and result == 0 then
+        log("Planetary " .. what .. ": the fix pass repaired them")
+        state.after = nil
+        return
+    end
+    data.raw = old_raw
+    state.variants_of = saved.variants_of
+    planetary_check.moved_features = saved.moved_features
+    planetary_check.transport = saved.goal_transport
+    locks.moved = saved.locks_moved
+    locks.fixed = saved.locks_fixed
+    lutils.bootstrap_heat_rooms = saved.bootstrap_heat_rooms
+    planetary.replacements = saved.replacements
+    for stream_key, _ in pairs(rng.prgs) do
+        rng.prgs[stream_key] = nil
+    end
+    for stream_key, stream in pairs(old_streams) do
+        rng.prgs[stream_key] = stream
+    end
+    local reason
+    if not is_ok then
+        reason = "the fix pass stopped on an error (" .. tostring(result) .. ")"
+    elseif type(result) == "string" then
+        reason = result
+    else
+        reason = "the fix pass left " .. result .. " goals lost"
+    end
+    log("Planetary " .. what .. ": " .. reason .. ", so they're undone and run the old way")
+    old_way()
+end
+
 -- Runs every stage that's on; with careful, each stage checks its own result (see state above)
-local function run_stages(logic, state, careful)
+-- With fix (the planetary fix pass, see run_fix_first), the stages it can repair run fix pass first and then the old way; the connection graph and locks run the old way
+local function run_stages(logic, state, careful, fix)
     state.careful = careful
     if config.planetary_connections then
         local problem = old_graph_problem() or connections.problem()
@@ -855,29 +974,53 @@ local function run_stages(logic, state, careful)
         if problem ~= nil then
             warn("ocean swaps", "were skipped, since " .. problem .. ".")
         else
-            -- Only a careful run checks the swap itself, so only it can tell that an assignment failed and roll a new one
-            local num_tries = careful and OCEAN_TRIES or 1
-            for try = 1, num_tries do
-                local is_done, should_retry = run_stage("ocean swaps", run_oceans, logic, state, try < num_tries)
-                if is_done then
-                    break
+            local function old_way()
+                -- Only a careful run checks the swap itself, so only it can tell that an assignment failed and roll a new one
+                local num_tries = careful and OCEAN_TRIES or 1
+                for try = 1, num_tries do
+                    local is_done, should_retry = run_stage("ocean swaps", run_oceans, logic, state, try < num_tries)
+                    if is_done then
+                        break
+                    end
+                    scaffolds.kept = {}
+                    if not should_retry then
+                        break
+                    end
                 end
-                scaffolds.kept = {}
-                if not should_retry then
-                    break
-                end
+            end
+            if fix ~= nil then
+                run_fix_first("ocean swaps", move_oceans, old_way, logic, state, fix)
+            else
+                old_way()
             end
         end
     end
     if config.planetary_resources then
-        run_stage("resource swaps", run_resources, logic, state)
+        local function old_way()
+            run_stage("resource swaps", run_resources, logic, state)
+        end
+        if fix ~= nil then
+            run_fix_first("resource swaps", move_resources, old_way, logic, state, fix)
+        else
+            old_way()
+        end
     end
     if config.planetary_lightning then
         local problem = old_graph_problem() or lightning.problem()
         if problem ~= nil then
             warn("lightning moves", "were skipped, since " .. problem .. ".")
         else
-            run_stage("lightning moves", run_lightning, logic, state)
+            local function old_way()
+                run_stage("lightning moves", run_lightning, logic, state)
+            end
+            if fix ~= nil then
+                run_fix_first("lightning moves", function(_, stage_state)
+                    move_lightning(stage_state)
+                    return nil
+                end, old_way, logic, state, fix)
+            else
+                old_way()
+            end
         end
     end
     if config.planetary_freezing then
@@ -885,7 +1028,17 @@ local function run_stages(logic, state, careful)
         if problem ~= nil then
             warn("freezing moves", "were skipped, since " .. problem .. ".")
         else
-            run_stage("freezing moves", run_freezing, logic, state)
+            local function old_way()
+                run_stage("freezing moves", run_freezing, logic, state)
+            end
+            if fix ~= nil then
+                run_fix_first("freezing moves", function()
+                    move_freezing()
+                    return nil
+                end, old_way, logic, state, fix)
+            else
+                old_way()
+            end
         end
     end
     if config.planetary_locks or config.planetary_rewards then
@@ -1003,6 +1156,10 @@ local function run_superposed(logic, state)
         if next(map) ~= nil then
             planetary_check.moved_features["lightning"] = true
             for node_key, entry in pairs(lightning.transport(state.before.graph, map)) do
+                planetary_check.transport[node_key] = entry
+            end
+            -- The attractor recipes' locks moved with lightning (locks.move), so their goals follow them to the new planet, as run_lightning does
+            for node_key, entry in pairs(locks.transport()) do
                 planetary_check.transport[node_key] = entry
             end
             log("Planetary lightning: " .. lightning.describe())
@@ -1138,77 +1295,8 @@ local function recheck_home_sets(state)
     return planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK home sets")
 end
 
--- logic is the logic module (lib/logic/init), rebuilt from data.raw for each check
-planetary.execute = function(logic)
-    local state = {
-        variants_of = {},
-    }
-    -- The first sort sets the home sets every later one uses
-    planetary_check.home_sets = nil
-    planetary_check.num_sorts = 0
-    -- In superposed mode the connection graph is drawn before the game before the changes is sorted, so it's part of that reference world (see draw_connections_first)
-    if (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
-        draw_connections_first()
-    end
-    local is_ok = pcall(function()
-        state.before = planetary_check.sort(logic)
-    end)
-    if not is_ok then
-        warn("changes", "were skipped, since the logic couldn't be sorted.")
-        return
-    end
-
-    -- Planet rewards first log every bundle of the game before any change (rewards.lua), then the reward bundles move with the lock stage (move_locks)
-    if config.planetary_rewards then
-        local is_logged, problem = pcall(rewards.log, state.before)
-        if not is_logged then
-            log("Planet rewards: the dry run stopped on an error: " .. tostring(problem))
-        end
-    end
-    if not (config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections) and SWAP_START_WITH == nil then
-        log("Planetary: " .. planetary_check.num_sorts .. " sorts (no stage that changes the game is on)")
-        return
-    end
-
-    if config.planetary_superposed or SWAP_START_WITH ~= nil then
-        -- An error in any stage undoes them all here too (the normal path's run_stage undoes each stage on its own), so the game still loads
-        local old_raw = table.deepcopy(data.raw)
-        local is_run, problem = pcall(run_superposed, logic, state)
-        if not is_run then
-            data.raw = old_raw
-            planetary.reset()
-            warn("changes", "were undone, since of an error: " .. tostring(problem) .. ".")
-            return
-        end
-        planetary.before = {
-            sort = state.before,
-            variants_of = state.variants_of,
-        }
-        log("Planetary: " .. planetary_check.num_sorts .. " sorts")
-        return
-    end
-
-    local old_raw = table.deepcopy(data.raw)
-    run_stages(logic, state, false)
-    if state.after == nil then
-        local is_sorted, passes = pcall(function()
-            state.after = planetary_check.sort(logic)
-            return planetary_check.required(state.before, state.after, state.variants_of, true)
-        end)
-        if not (is_sorted and passes) then
-            log("Planetary: the changes together didn't pass, so running each stage again with its own check")
-            data.raw = old_raw
-            state.variants_of = {}
-            state.after = nil
-            planetary_check.moved_features = {}
-            planetary_check.transport = {}
-            locks.moved = {}
-            rewards.moved = {}
-            lutils.bootstrap_heat_rooms = {}
-            scaffolds.kept = {}
-            run_stages(logic, state, true)
-        end
-    end
+-- What the end of planetary.execute does once the stages ran (and planetary.run_pending, with the fix pass): the home sets checked again if the changes moved them (undoing everything back to old_raw if they fail with them), the final planetary check, and the game before the changes kept for the checks after randomization
+local function finish(state, old_raw)
     if state.after ~= nil and next(planetary_check.moved_features) ~= nil then
         local original_home_sets = planetary_check.home_sets
         local is_ok, passes = pcall(recheck_home_sets, state)
@@ -1251,8 +1339,117 @@ planetary.execute = function(logic)
     end
 end
 
+-- logic is the logic module (lib/logic/init), rebuilt from data.raw for each check
+planetary.execute = function(logic)
+    local state = {
+        variants_of = {},
+    }
+    -- The first sort sets the home sets every later one uses
+    planetary_check.home_sets = nil
+    planetary_check.num_sorts = 0
+    -- With the fix pass, a planet may build rockets with machines delivered once, and recipe categories aren't goals of their own (the planetary check's rule 3)
+    planetary_check.rocket_machines_importable = config.planetary_fix_pass == true
+    planetary_check.skip_recipe_categories = config.planetary_fix_pass == true
+    -- In superposed mode the connection graph is drawn before the game before the changes is sorted, so it's part of that reference world (see draw_connections_first)
+    if (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
+        draw_connections_first()
+    end
+    local is_ok = pcall(function()
+        state.before = planetary_check.sort(logic)
+    end)
+    if not is_ok then
+        warn("changes", "were skipped, since the logic couldn't be sorted.")
+        return
+    end
+
+    -- Planet rewards first log every bundle of the game before any change (rewards.lua), then the reward bundles move with the lock stage (move_locks)
+    if config.planetary_rewards then
+        local is_logged, problem = pcall(rewards.log, state.before)
+        if not is_logged then
+            log("Planet rewards: the dry run stopped on an error: " .. tostring(problem))
+        end
+    end
+    if not (config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections) and SWAP_START_WITH == nil then
+        log("Planetary: " .. planetary_check.num_sorts .. " sorts (no stage that changes the game is on)")
+        return
+    end
+
+    if config.planetary_superposed or SWAP_START_WITH ~= nil then
+        -- An error in any stage undoes them all here too (the normal path's run_stage undoes each stage on its own), so the game still loads
+        local old_raw = table.deepcopy(data.raw)
+        local is_run, problem = pcall(run_superposed, logic, state)
+        if not is_run then
+            data.raw = old_raw
+            planetary.reset()
+            warn("changes", "were undone, since of an error: " .. tostring(problem) .. ".")
+            return
+        end
+        planetary.before = {
+            sort = state.before,
+            variants_of = state.variants_of,
+        }
+        log("Planetary: " .. planetary_check.num_sorts .. " sorts")
+        return
+    end
+
+    -- With the planetary fix pass, the stages wait until unified randomization is loaded, since the fix pass repairs with its handlers: data-final-fixes.lua runs them with planetary.run_pending
+    if config.planetary_fix_pass then
+        planetary.pending = {
+            logic = logic,
+            state = state,
+        }
+        log("Planetary: " .. planetary_check.num_sorts .. " sorts so far; the stages wait for the fix pass")
+        return
+    end
+
+    local old_raw = table.deepcopy(data.raw)
+    run_stages(logic, state, false)
+    if state.after == nil then
+        local is_sorted, passes = pcall(function()
+            state.after = planetary_check.sort(logic)
+            return planetary_check.required(state.before, state.after, state.variants_of, true)
+        end)
+        if not (is_sorted and passes) then
+            log("Planetary: the changes together didn't pass, so running each stage again with its own check")
+            data.raw = old_raw
+            state.variants_of = {}
+            state.after = nil
+            planetary_check.moved_features = {}
+            planetary_check.transport = {}
+            locks.moved = {}
+            rewards.moved = {}
+            lutils.bootstrap_heat_rooms = {}
+            scaffolds.kept = {}
+            run_stages(logic, state, true)
+        end
+    end
+    finish(state, old_raw)
+end
+
 -- The game before planetary changes (its sort, and the scaffold variants that count as its recipes), kept for check_final while any stage's changes are in the game
 planetary.before = nil
+
+-- The stages planetary.execute left waiting for the fix pass (config.planetary_fix_pass), as { logic, state }, or nil
+planetary.pending = nil
+
+-- Runs the waiting stages once unified randomization is loaded (data-final-fixes.lua): each one the fix pass can repair runs fix pass first and then the old way (run_fix_first), and each checks its own result, as in a careful run
+-- fix is the fix pass: a function of the stage state returning how many goals are still lost
+planetary.run_pending = function(fix)
+    local pending = planetary.pending
+    planetary.pending = nil
+    if pending == nil then
+        return
+    end
+    local logic = pending.logic
+    local state = pending.state
+    local old_raw = table.deepcopy(data.raw)
+    run_stages(logic, state, true, fix)
+    -- A stage the fix pass repaired leaves no sort of its result behind
+    if state.after == nil and next(planetary_check.moved_features) ~= nil then
+        state.after = planetary_check.sort(logic)
+    end
+    finish(state, old_raw)
+end
 
 -- The home sets planetary's goals were made with (check.home_sets) while any stage's changes are in the game, for the rest of randomization's sorts, or nil
 -- They're the game's before the changes, narrowed by recheck_home_sets if the changes moved which rooms discoveries need
@@ -1536,8 +1733,8 @@ planetary.settle = function(logic)
 end
 
 -- Checks the finished game (graph, after all randomization) against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK final)
--- In superposed mode those goals are what the changes promised to keep, so whatever is still lost fails the check (returns false) and is warned about in the randomizer panel
--- Otherwise it's only logged, since later randomization doesn't protect everything the stages kept (like a widened lock's goals on its new planet)
+-- Those goals are what the changes promised to keep, so whatever is still lost fails the check (returns false) and is warned about in the randomizer panel: in superposed mode after settling what the rest of randomization left, otherwise after retrying attempts that lost some (planetary.check_attempt)
+-- Later randomization doesn't protect everything the stages kept (like rocket building's isolatability on a planet), and the stages after unified's attempts aren't retried, so this can fail even when every attempt passed
 planetary.check_final = function(graph)
     if planetary.before == nil then
         return true
@@ -1551,11 +1748,37 @@ planetary.check_final = function(graph)
         }),
     }
     local passes, failures = planetary_check.required(planetary.before.sort, after, planetary.before.variants_of, false, "PLANETCHECK final")
-    if passes or planetary.superposed == nil then
+    if passes then
         return true
     end
-    warn("changes", "couldn't keep " .. #failures .. " things planets could do before them, even after settling what the rest of randomization left (see PLANETCHECK final in the log).")
+    if planetary.superposed ~= nil then
+        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them, even after settling what the rest of randomization left (see PLANETCHECK final in the log).")
+    else
+        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them (see PLANETCHECK final in the log).")
+    end
     return false
+end
+
+-- Checks the game an attempt of the rest of randomization built against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK attempt)
+-- The attempt's logic graph comes with sort_info, its sort with room/ability and home contexts, which is only redone if its home sets aren't the stages' own
+-- Outside superposed mode (where planetary.settle does this) the stages repaired their changes before the rest of randomization ran, so an attempt that loses what they kept is retried like one that fails UNIFIEDCHECK (see data-final-fixes.lua)
+-- Returns how many goals the attempt lost (0 in superposed mode or without planetary changes)
+planetary.check_attempt = function(graph, sort_info)
+    if planetary.before == nil or planetary.superposed ~= nil then
+        return 0
+    end
+    if sort_info.home_sets ~= planetary_check.home_sets then
+        sort_info = top.sort(graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = planetary_check.home_sets,
+        })
+    end
+    local _, failures = planetary_check.required(planetary.before.sort, {
+        graph = graph,
+        sort_info = sort_info,
+    }, planetary.before.variants_of, false, "PLANETCHECK attempt")
+    return #failures
 end
 
 -- Undoes every stage's bookkeeping, so the changes can be rolled again on the game before them (planetary.reroll)
@@ -1572,6 +1795,8 @@ planetary.reset = function()
     protection.transported_recipe_contexts = {}
     planetary.superposed = nil
     planetary.before = nil
+    planetary.replacements = {}
+    planetary.pending = nil
 end
 
 -- Rolls the changes again for another attempt of the rest of randomization in superposed mode (see data-final-fixes.lua); data.raw must be the game before any planetary change again

@@ -760,6 +760,7 @@ function concrete.build(lu, extra_params)
                 mechanic = true,
                 keep_planetary_isolatability = true,
                 keep_isolatability = true,
+                rocket_goal = "launch",
             })
             ----------------------------------------
             -- Can we use this rocket silo for launching?
@@ -1675,6 +1676,7 @@ function concrete.build(lu, extra_params)
                     mechanic = true,
                     keep_planetary_isolatability = is_rocket_building or nil,
                     keep_isolatability = is_rocket_building or nil,
+                    rocket_goal = is_rocket_building and "launch" or nil,
                 })
                 ----------------------------------------
                 -- Can we craft recipes in this spoofed category?

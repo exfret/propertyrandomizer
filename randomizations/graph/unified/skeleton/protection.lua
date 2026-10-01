@@ -4,6 +4,7 @@
 -- Used by promotion (what it promises), monotone matching (its hard set), first pass's gate and the mechanic context check, and in its planetary form by the planetary check (randomizations/planetary/check.lua)
 
 local constants = require("helper-tables/constants")
+local bootstrap = require("lib/logic/bootstrap")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local surface_sets = require("lib/surface-sets")
@@ -56,6 +57,7 @@ protection.transported_recipe_contexts = {}
 -- Recipes locked to one planet by their surface conditions keep every context they have there, isolatable and automatable included, through all randomization, planetary changes included
 -- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform); a planet and its copies count as one planet (surface_sets.family_of), since no condition can tell them apart
 -- Contexts in protection.transported_recipe_contexts that the sort has are kept too
+-- So are the contexts that justify a bootstrap grant the graph keeps (bootstrap.justifications in lib/logic/bootstrap.lua, like heat keeping itself going on a planet that freezes): the logic checks those when it's built, not in the graph, so a model of the graph counts the grant as fixed while a change could make the next build drop it
 -- The graph and sort_info are a logic graph and a complex sort of it, and prototypes come from data.raw, so call this while data.raw is the game that was sorted
 -- Home contexts aren't kept for their own sake, as for planetary_kept_context below
 -- Returns node key --> context --> true
@@ -95,6 +97,14 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
             if (sort_info.node_to_context_inds[node_key] or {})[context] ~= nil then
                 locked[node_key] = locked[node_key] or {}
                 locked[node_key][context] = true
+            end
+        end
+    end
+    for _, justification in pairs(bootstrap.justifications(graph)) do
+        for context, _ in pairs(sort_info.node_to_context_inds[justification.node_key] or {}) do
+            if bootstrap.justifies(context, justification.room, justification.ability_inds) then
+                locked[justification.node_key] = locked[justification.node_key] or {}
+                locked[justification.node_key][context] = true
             end
         end
     end

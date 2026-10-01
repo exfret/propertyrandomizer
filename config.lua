@@ -124,6 +124,12 @@ config.dev_unified = features.dev_unified
 -- Whether the planetary stages that are on run in superposed mode (randomizations/planetary/execute.lua): the game before them stays in the logic as debt for unified randomization to pay, and what's still owed is settled after each of its attempts
 -- Only with the unified randomizations in development, which are what pays and settles the debt; without them the stages repair their own changes as usual
 config.planetary_superposed = config.dev_unified and settings.startup["propertyrandomizer-planetary-superposed"].value
+-- The planetary fix pass (randomizations/planetary/fix-pass.lua), a work in progress, off by default (user, 2026-09-30: wanted it in the checkout to test): each planetary stage it can repair (oceans, resources, lightning, freezing) moves without its own repairs, then a deterministic pass repairs what it broke by changing what unified's handlers change, planet copies allowed; if that isn't enough, the stage is undone and runs the old way, with its own repairs (the user: "try fixes through prereq shuffle methods first and then the old way")
+-- It also brings the research trigger handler (randomizations/graph/unified/handlers/tech-triggers.lua), and the planetary check's rocket rule with delivered machines and without recipe categories as goals (randomizations/planetary/check.lua)
+-- Only with the unified randomizations in development, whose handlers it uses, and never with superposed mode
+config.planetary_fix_pass = config.dev_unified and not config.planetary_superposed and settings.startup["propertyrandomizer-planetary-fix-pass"].value
+-- Whether the fix pass may give a shared recipe a planet variant (a copy) when nothing fits everywhere (user, 2026-09-30: "Copies are fine for now I suppose, but keep track of how many")
+config.fixpass_variants = true
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
 -- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
 config.item_fluids = config.dev_unified

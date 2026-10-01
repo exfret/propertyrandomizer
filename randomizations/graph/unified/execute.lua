@@ -74,6 +74,7 @@ if config.dev_unified then
         ["item"] = true,
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
+        ["tech-triggers"] = true,
     }
 
     ITEM_ENABLED = true
@@ -91,6 +92,8 @@ if config.dev_unified then
         ["mining-fluid-required"] = true,
         ["recipe-ingredients"] = true,
         ["spoiling"] = is_spoiling_on,
+        -- Research triggers (handlers/tech-triggers.lua): technologies trade triggers; a work in progress that comes with the planetary fix pass for now (config.planetary_fix_pass)
+        ["tech-triggers"] = config.planetary_fix_pass,
     }
 end
 -- Entity randomization (handlers/entity.lua) is behind its own startup setting
@@ -129,6 +132,7 @@ local available_handlers = {
     ["spoiling"] = require("randomizations/graph/unified/handlers/spoiling"),
     ["tech-prereqs"] = require("randomizations/graph/unified/handlers/tech-prereqs"),
     ["tech-science-packs"] = require("randomizations/graph/unified/handlers/tech-science-packs"),
+    ["tech-triggers"] = require("randomizations/graph/unified/handlers/tech-triggers"),
 }
 local handlers = {}
 for _, handler_id in pairs(handler_ids) do
@@ -896,10 +900,12 @@ unified.execute = function()
     changes = {}
     -- Entity randomization reflects before item randomization, which copies item names and icons into recipes (see handlers.md)
     -- Spoiling does too, since it writes spoil results as positions, which item randomization renames to the items first pass put there
+    -- Research triggers too, since item randomization rewrites a craft-item trigger to the item first pass put at its position, reading the trigger the technology has when it reflects
     local reflect_first = {
         "recipe-ingredients-first-pass",
         "entity",
         "spoiling",
+        "tech-triggers",
     }
     local reflects_first = {}
     for _, handler_id in pairs(reflect_first) do
@@ -982,6 +988,116 @@ unified.execute = function()
 
     return {
         first_pass_info = first_pass_info,
+    }
+end
+
+-- Fix pass (prototype, randomizations/planetary/fix-pass.lua): the slots the named handlers claim in the game as it is, for repairs rather than randomization
+-- Same graph preparation and claiming as unified.execute (logic built from data.raw, spoofs, orands, then every claimed edge subdivided into a base and a head), without preprocessing data.raw or shuffling anything
+-- handler_keys: handler keys as in available_handlers (dashes); options.ignore_blacklists: claim edges the randomization blacklists leave out too (the fix pass keeps their spirit itself)
+-- Returns { graph (subdivided), dep_to_heads, head_to_handler, handler_to_bases (handler id --> base keys), handlers (key --> handler), blacklisted (handler id --> { pre, dep }) }
+unified.claim_slots = function(handler_keys, options)
+    options = options or {}
+    local chosen = {}
+    for _, handler_key in pairs(handler_keys) do
+        local handler = available_handlers[handler_key]
+        if handler ~= nil then
+            for prop, val in pairs(default_handler) do
+                if handler[prop] == nil and not default_handler.required[prop] then
+                    handler[prop] = val
+                end
+            end
+            chosen[handler_key] = handler
+        end
+    end
+    for _, handler in pairs(chosen) do
+        handler.initialize()
+    end
+    logic.build(true)
+    local spoofed_graph = table.deepcopy(logic.graph)
+    for _, handler in pairs(chosen) do
+        handler.spoof(spoofed_graph)
+    end
+    gutils.make_orands(spoofed_graph)
+    local order = top.sort(spoofed_graph)
+    local subdiv_graph = table.deepcopy(spoofed_graph)
+    -- The randomization blacklists, set aside while claiming when they're ignored (a handler's own claim may read them too), and kept for the fix pass
+    local blacklisted = {}
+    local saved_options = {}
+    for handler_key, _ in pairs(chosen) do
+        local opts = randomization_info.options.unified[handler_key] or {
+            blacklisted_pre = {},
+            blacklisted_dep = {},
+        }
+        blacklisted[chosen[handler_key].id] = {
+            pre = opts.blacklisted_pre or {},
+            dep = opts.blacklisted_dep or {},
+        }
+        if options.ignore_blacklists then
+            saved_options[handler_key] = randomization_info.options.unified[handler_key]
+            randomization_info.options.unified[handler_key] = {
+                blacklisted_pre = {},
+                blacklisted_dep = {},
+            }
+        end
+    end
+    local dep_to_heads = {}
+    local head_to_handler = {}
+    local handler_to_bases = {}
+    for _, handler in pairs(chosen) do
+        handler_to_bases[handler.id] = {}
+    end
+    local seen = {}
+    for _, pebble in pairs(order.sorted) do
+        local node_key = pebble.node_key
+        local node = subdiv_graph.nodes[node_key]
+        if node ~= nil and node.op == "AND" and node.type ~= "base" and not seen[node_key] then
+            seen[node_key] = true
+            dep_to_heads[node_key] = {}
+            local subdivide_info = {}
+            for pre, _ in pairs(node.pre) do
+                local prereq_node = gutils.prenode(subdiv_graph, pre)
+                local orand_parent = subdiv_graph.nodes[subdiv_graph.orand_to_parent[node_key]]
+                local claimed_by
+                for handler_key, handler in pairs(chosen) do
+                    local ok, num_copies = pcall(handler.claim, subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
+                    if not ok then
+                        num_copies = false
+                    end
+                    if num_copies and not options.ignore_blacklists then
+                        local opts = randomization_info.options.unified[handler_key] or {}
+                        if (opts.blacklisted_pre or {})[key(prereq_node)] or (opts.blacklisted_dep or {})[key(orand_parent)] then
+                            num_copies = false
+                        end
+                    end
+                    if num_copies and claimed_by == nil then
+                        claimed_by = handler_key
+                        table.insert(subdivide_info, {
+                            edge_key = pre,
+                            handler = handler,
+                        })
+                    end
+                end
+            end
+            for _, info in pairs(subdivide_info) do
+                local conns = gutils.subdivide_base_head(subdiv_graph, info.edge_key)
+                table.insert(dep_to_heads[node_key], key(conns.head))
+                head_to_handler[key(conns.head)] = info.handler
+                table.insert(handler_to_bases[info.handler.id], key(conns.base))
+            end
+        end
+    end
+    for handler_key, saved in pairs(saved_options) do
+        randomization_info.options.unified[handler_key] = saved
+    end
+    -- Heads that start detached (spoofed slots nothing fills yet, like an item that could be made to place an entity) aren't routes of the game, as in unified's pool graph
+    gutils.detach_starting_heads(subdiv_graph)
+    return {
+        graph = subdiv_graph,
+        dep_to_heads = dep_to_heads,
+        head_to_handler = head_to_handler,
+        handler_to_bases = handler_to_bases,
+        handlers = chosen,
+        blacklisted = blacklisted,
     }
 end
 
