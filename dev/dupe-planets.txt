@@ -1,12 +1,15 @@
 # Planets whose copies get recolored graphics (dev/make-dupe-graphics.py), in the line format of dev/dupe-entities.txt:
 #   name rotate dupes=D2 tints=D,D,...                  every pixel's hue turned by D2 degrees (a whole other world, not a painted part)
-# dupes= gives one rotation per copy; lib/dupe-planets.lua copies a planet iff its icon has a recolor for that copy.
+# dupes= gives the first copies' rotations; copies past the list (up to dupe 9) take the tints= angles left, each the farthest
+# from the original and the copies before it. lib/dupe-planets.lua copies a planet iff its icon has a recolor for that copy.
 # tints= gives the rotations lib/planet-tints.lua picks from at random for every planet but the starting one, originals and
 # copies alike (a copy's dupes= look is then replaced). 30 and 330 degrees are left out: they look too much like the original.
 # What gets recolored: the planet's icon, its star map icon, and the icons of the technologies discovering it.
 # The copy's science packs are listed in dev/dupe-items.txt (they're copied with the planet, never on their own).
 # Check a line with: dev/make-dupe-graphics.py --dump ... --preview DIR --only NAME
-# Two copies per planet (dupe numbers 2 and 3), chosen so the ten copies differ from every original and from each other.
+# The first two copies per planet (dupe numbers 2 and 3) were chosen so the ten copies differ from every original and from each other.
+# Up to eight copies per planet need more rotations than look clearly apart (30 degrees still looks alike), so past the third
+# copy two versions of a planet can look close.
 # Second copies: Nauvis with red seas and blue land, green lava on Vulcanus, a blue Gleba, a pale green Fulgora with pink
 # lightning, and an olive Aquilo. Third copies: Nauvis with purple seas and green land, blue lava on Vulcanus, a pink-red Gleba,
 # a blue-violet Fulgora, and a purple Aquilo

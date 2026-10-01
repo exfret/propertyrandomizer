@@ -154,4 +154,29 @@ test("any other item copy keeps its number badges", function()
     assert(has_badge(recipe_copy.icons) and recipe_copy.icons[#recipe_copy.icons].shift[1] == -7)
 end)
 
+test("the dupe numbers made follow the setting, as far as the recolored graphics and the number badges go", function()
+    local manifest = package.loaded["lib/dupe-graphics-manifest"]
+    manifest.max_dupe = 9
+    config = {
+        num_dupes = 2,
+    }
+    -- The default: copies 2 and 3
+    assert(dupe.highest_number() == 3)
+    config.num_dupes = 1
+    assert(dupe.highest_number() == 2)
+    config.num_dupes = 8
+    assert(dupe.highest_number() == 9)
+    -- Every number up to the highest has its badge
+    local badge = dupe.number_badge(9, 1, {
+        0,
+        0,
+    })
+    assert(dupe.max_icon_number == 9 and string.find(badge.icon, "number_nine.png", 1, true) ~= nil)
+    -- Graphics made for fewer dupes than the setting asks for cap it
+    manifest.max_dupe = 3
+    assert(dupe.highest_number() == 3)
+    manifest.max_dupe = nil
+    config = nil
+end)
+
 print(num_passed .. " tests passed")

@@ -95,6 +95,21 @@
     - Superposed mode (planetary-superposed, off): off for now (user, 2026-09-30); its code stays
     - Known: in the preview the cryogenic plant and fusion reactor go home when resource swaps and random lock moves break the big mining drill chain (another session is prototyping a generic repair pass after the planetary moves); PROTECT_TRANSPORTED stays off (with it, promotion restarts unified attempts on moved items' recycling recipes, 7 of 8 on preview seed 1); in the preview, planet-locked recipes other stages made (a railway bundle) move as rewards too, not examined
 
+ * WORK IN PROGRESS (2026-10-01): up to 8 duplicates (setting propertyrandomizer-dupe-count, 1-8, default 2; dupe numbers 2 up to count + 1, capped by lib/dupe-graphics-manifest.lua's max_dupe and the number badges via dupe.highest_number in lib/dupe.lua)
+    - Untested in game at any count past 2 (user, 2026-10-01: testing it would take prohibitively long); expect longer loads and more failed attempts
+    - Graphics for dupes 4-9 are generated (graphics/dupes/4..9, 522 MB for all of 2-9), but only good enough for now (user: "The graphics don't need to be perfect right now"). Colors past each line's hand-picked two are filled by dev/make-dupe-graphics.py from MUTED_PALETTE/VIVID_PALETTE (an asterisk in --list marks them). To improve later if needed:
+        - Modules are the tightest (their colors must avoid the other kinds' red, green, blue and white): the 8th and 9th versions can fall back to colors close to the original or a relative (speed module 8 teal, next to its own blue; productivity 9 maroon)
+        - Dark and pale shades (forest, dark teal, maroon, brown, mint, pink) next to their bright colors read apart side by side but not always alone; on some machines orange and brown look alike (assembling machine 3)
+        - Planets past copy 3 take the remaining tints= angles, so two versions of a planet can be only 30 degrees of hue apart
+        - The locomotive's filled orange (dupe 4) sits next to its red runtime color (the generator now avoids a train's default color, but at only 25 degrees)
+        - Check lines with dev/make-dupe-graphics.py --dump ... --preview DIR --only NAME; regenerate one line by deleting its graphics/dupes/<n> sheets and running with --skip-existing --only NAME
+    - Made count-proof (2026-10-01): the lock stage's surface properties grow a round of 8 at a time when a plan runs out (surface_sets.plan_growing; resources.exclude_originals' sets cross each other with many copies), the star map fan widens when one orbit's copies need more arc (connections.lua fan_span), the panel's per-room table scrolls. None of these change anything at 2 duplicates
+    - Seen in a code sweep with more copies, not changed:
+        - freezing.lua:169-211: each newly frozen planet overwrites the heating technology's prerequisite (the last by name wins), and freezing.revert restores edits in order; already wrong with 2+ newly frozen planets, more copies of Aquilo stack more edits
+        - The endgame join (lib/dupe-planets.lua join_endgame) makes research taking every planet's packs take all 9 versions of each copied pack (about 1,200 ingredient additions at 8 duplicates against 296 at 2); infinite research picks the original 1 time in 9
+        - Pack copies have no number badge, so 8 copies of a pack are told apart by color alone (the left half still shows whose copy it is)
+        - scaffolds.MAX_CONVERSIONS stays 1 per game, so with more planets more of them get their own ocean back (with the panel warning)
+
  * TO INVESTIGATE (2026-10-01, pinned by the user as not critical): Gleba lost isolatability after unified randomization in the user's 00:57 load
     - Log saved as notes/logs/2026-10-01-gleba-isolatability.log (their factorio-current.log; gitignored like every *.log). The load: the preview, two copies per planet, every planetary stage, the fix pass; planetary-rewards was on then and is off in their mod-settings.dat now; seed 0 (b2 reproduced it)
     - Unified attempt 1 passed (UNIFIEDCHECK ok, PLANETCHECK attempt 0 failures at 2531 s). By MECHCHECK at 2609 s Gleba had lost isolatable contexts, and PLANETCHECK final failed 9 goals, so the panel warns "couldn't keep 9 things planets could do before them"

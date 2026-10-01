@@ -46,6 +46,8 @@ skip planetary-fix-pass
 skip planetary-connections
 # The duplicates setting is being worked on too; its graphics (graphics/dupes/, made by dev/make-dupe-graphics.py) are generated and not in git, so it's only tested by the dupes config below
 skip dupes
+# How many duplicates (does nothing without dupes); counts past 2 need graphics/dupes/4 and up, and loads with them take much longer
+skip dupe-count
 skip unified-entity
 skip unified-entity-biters
 # Only does something with biters in entity randomization (on in the preview configs below), and it's on by default

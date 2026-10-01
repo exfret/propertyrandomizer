@@ -161,6 +161,29 @@ do
     check_plan(plan, requests, rooms)
 end
 
+-- A growing pool (plan_growing, many planet copies) realizes every set with rooms, adding rounds of properties named after the first round's
+do
+    -- Each copy's version of a lock: its own planets plus a shared space platform, so only two fit one property
+    local many_rooms = {
+        "surface: p",
+    }
+    local requests = {}
+    for copy = 1, 9 do
+        table.insert(many_rooms, "planet: a" .. copy)
+        table.insert(many_rooms, "planet: b" .. copy)
+        table.insert(requests, request("copy" .. copy, "planet: a" .. copy, "planet: b" .. copy, "surface: p"))
+    end
+    table.insert(requests, request("nowhere"))
+    local pool = {
+        surface_sets.POOL[1],
+        surface_sets.POOL[2],
+    }
+    local plan = surface_sets.plan_growing(requests, many_rooms, pool)
+    check(#plan.unrealized == 1 and plan.unrealized[1] == "nowhere", "a growing pool left " .. #plan.unrealized .. " sets unrealized")
+    check_plan(plan, requests, many_rooms)
+    check(#pool > 2 and pool[3].name == surface_sets.POOL[1].name .. "-2" and pool[3].base == surface_sets.POOL[1].name and pool[3].round == 2, "the pool's second round isn't named after its first")
+end
+
 -- Plans depend only on their inputs
 do
     local requests = {

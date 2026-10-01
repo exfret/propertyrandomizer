@@ -1,5 +1,5 @@
 -- Planet copies (setting propertyrandomizer-dupes; run from data-final-fixes.lua before the other duplicates)
--- A copy of every planet for each dupe number its icon has a recolored copy for (dev/dupe-planets.txt, made by dev/make-dupe-graphics.py: two, numbers 2 and 3, the original being 1), so planetary randomization has more planets to make different
+-- A copy of every planet for each dupe number its icon has a recolored copy for (dev/dupe-planets.txt, made by dev/make-dupe-graphics.py: numbers 2 to 9, the original being 1), up to the setting propertyrandomizer-dupe-count (dupe.highest_number: two copies by default), so planetary randomization has more planets to make different
 -- A copy is the planet prototype again under a new name: the same map generation (from its own seed, since the game seeds a planet by its name), surface properties, pollutant, lightning and freezing. With it come:
 --   * ocean tiles of its own: clones of its original's handwritten ocean family (randomizations/planetary/oceans.lua), so an ocean swap can give it another ocean than its original's
 --   * space connections: each connection of the original again, ending at the copy; where both ends have copies with the same number, one between the copies too
@@ -799,7 +799,7 @@ dupe_planets.execute = function()
     for _, planet in pairs(sorted_prototypes("planet")) do
         if planet.hidden ~= true and (discovery[planet.name] ~= nil or model ~= nil) then
             local numbers = {}
-            for number = 2, dupe.max_icon_number do
+            for number = 2, dupe.highest_number() do
                 if dupe.item_has_recolor(planet, number) then
                     table.insert(numbers, number)
                 end

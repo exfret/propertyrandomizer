@@ -19,11 +19,16 @@
 #
 # Items (dev/dupe-items.txt: modules, fuels, guns, ammo, armor, equipment items) go through the same rule with their icons,
 # their belt pictures, the icons of the recipes that make them, the grid sprite of the equipment they place and, for an
-# armor, the character's animation sheets for it (lib/dupe.lua copies those animations for the armor's dupe). How many
-# dupes a thing gets is its line's dupes= list (one color, one dupe; without the list, every number up to --dupes).
+# armor, the character's animation sheets for it (lib/dupe.lua copies those animations for the armor's dupe).
+# Every line gets dupe numbers 2 up to --dupes (9, as far as the number badges go; the setting propertyrandomizer-dupe-count
+# picks how many of them a game uses). The first colors are the line's own dupes= list, hand-picked; the rest are filled
+# from a palette (MUTED_PALETTE, or VIVID_PALETTE for a palette=vivid line) in its order, skipping colors whose hue is near
+# the paint's or an avoid= hue and colors that would look too much like the paint or an earlier dupe (CIEDE2000 under
+# MIN_COLOR_DISTANCE on a masked mid-grey pixel); when too few are left, the ones farthest from the rest are taken.
 #
 # Planets (dev/dupe-planets.txt) are copied whole by lib/dupe-planets.lua, so their line uses the rotate mode: every pixel's
 # hue turned by the given degrees, on the planet's icon, its star map icon and the image of the technology discovering it.
+# Rotations past the line's dupes= list come from its tints= angles, each the farthest from the original and the copies before it.
 # A planet copy's science packs are item lines like any other (they're only copied along with their planet).
 # An item line's split=side colors only the right half of the mask (by area, in each mip level of an icon sheet), so the left
 # half keeps the original's color: a science pack copy shows its original's color and its own side by side (split=layer
@@ -43,9 +48,11 @@
 # Generate them before a release: dev/release-files.py ships the folder even though git ignores it.
 #
 # Usage:
-#   dev/make-dupe-graphics.py --dump PATH/data-raw-dump.json [--dupes 3] [--entities dev/dupe-entities.txt]
+#   dev/make-dupe-graphics.py --dump PATH/data-raw-dump.json [--dupes 9] [--entities dev/dupe-entities.txt]
 #       [--items dev/dupe-items.txt] [--planets dev/dupe-planets.txt] [--jobs 4] [--only NAME ...] [--preview DIR] [--list]
+#       [--skip-existing]
 #   The dump should come from a run with the dupes off and the mods whose entities are listed (Space Age for the full list).
+#   --skip-existing leaves sheets already on disk as they are (to add dupe numbers without rewriting the others).
 #   --preview writes one image per entity (icon and main sheets: original, then each dupe) to look the settings over.
 #   --inspect writes one image per entity with the mask itself drawn (magenta over grey) next to the original and dupe 2,
 #       at double size, to see where the tint lands; use it when tuning a line of dev/dupe-entities.txt.
@@ -61,6 +68,7 @@ import sys
 import numpy as np
 from PIL import Image
 from scipy.ndimage import gaussian_filter, uniform_filter
+from skimage.color import deltaE_ciede2000, rgb2lab
 from skimage.filters import apply_hysteresis_threshold
 from skimage.morphology import binary_closing, disk, remove_small_holes, remove_small_objects
 
@@ -78,8 +86,39 @@ STRENGTH = 0.7
 DUPE_SATURATION = 0.55
 # The brightness-preserving scaling of a color stops here, so light pixels don't clip to neon
 MAX_GAIN = 1.15
-# Dupe colors when a line gives none: the two of these farthest from the paint hue (none is a blue: that reads as frozen)
-PALETTE_HUES = (355.0, 30.0, 50.0, 130.0, 185.0)
+# The highest dupe number: the number badges (graphics/number_*.png, lib/dupe.lua) go up to nine
+MAX_DUPE = 9
+# The colors a line's dupes past its own dupes= list are filled from, in order of preference, as (hue, saturation, brightness):
+# brightness scales the masked pixels' own (1 keeps it, under 1 is a darker shade, over 1 a paler one)
+# Muted: the five colors the hand-picked dupes use (red, orange, yellow, green, teal), lime, white and graphite (no hue: a
+# painted machine's panels go silver or black), then darker shades (brown, maroon, olive, forest, dark teal) and paler ones
+# (pink, peach, mint, cream); never a blue (a blue machine reads as frozen) or a purple (user, 2026-09-29: "replace the purple")
+MUTED_PALETTE = (
+    (355.0, 0.55, 1.0), (30.0, 0.55, 1.0), (50.0, 0.55, 1.0), (130.0, 0.55, 1.0), (185.0, 0.55, 1.0), (85.0, 0.55, 1.0),
+    (0.0, 0.0, 1.3), (0.0, 0.0, 0.5),
+    (28.0, 0.6, 0.6), (355.0, 0.6, 0.6), (58.0, 0.6, 0.6), (135.0, 0.55, 0.6), (185.0, 0.55, 0.6),
+    (350.0, 0.3, 1.2), (28.0, 0.35, 1.2), (140.0, 0.3, 1.2), (55.0, 0.3, 1.2),
+)
+# Vivid (palette=vivid, the science pack copies): strong colors all around the wheel, spread out in that order, then
+# darker shades (dark red, dark green, navy, brown) and paler ones (pink, pale cyan, pale yellow, lavender)
+VIVID_PALETTE = (
+    (0.0, 0.85, 1.0), (190.0, 0.85, 1.0), (55.0, 0.85, 1.0), (270.0, 0.75, 1.0), (130.0, 0.8, 1.0), (330.0, 0.7, 1.0),
+    (30.0, 0.9, 1.0), (215.0, 0.85, 1.0), (90.0, 0.85, 1.0), (300.0, 0.75, 1.0), (160.0, 0.8, 1.0), (240.0, 0.8, 1.0),
+    (0.0, 0.85, 0.55), (130.0, 0.8, 0.55), (240.0, 0.8, 0.55), (30.0, 0.9, 0.55),
+    (0.0, 0.4, 1.2), (190.0, 0.4, 1.2), (55.0, 0.4, 1.2), (270.0, 0.35, 1.2),
+)
+PALETTES = {"muted": MUTED_PALETTE, "vivid": VIVID_PALETTE}
+# A palette color is skipped when its hue is within PAINT_HUE_GAP degrees of the paint's (paint mode: the original's own
+# look) or AVOID_HUE_GAP of an avoid= hue (a relative's); a color with no hue is skipped on a grey line, whose paint has none
+# either, and white (graphite) on a line with avoid=white (black)
+PAINT_HUE_GAP = 35.0
+AVOID_HUE_GAP = 25.0
+# A palette color is skipped when it looks less different than this (CIEDE2000) from the paint, an avoid= color or an
+# earlier dupe of the line, judged on a masked mid-grey pixel (MID_GREY) at the line's strength
+MIN_COLOR_DISTANCE = 12.0
+MID_GREY = 0.55
+# The avoid= words for the palette's colors with no hue: white (a shade over 1) and black (under 1)
+ACHROMATIC_AVOIDS = {"white": (0.0, 0.0, 1.3), "black": (0.0, 0.0, 0.5)}
 # Mask parameters and their defaults (see dev/dupe-entities.txt)
 PAINT_DEFAULTS = {"half": 25.0, "sat": 0.35, "val": 0.3, "low": None, "min": 40.0, "hole": 800.0, "smax": 0.18, "vmax": 0.97, "win": 9.0, "dens": 0.5, "close": 2.0, "strength": None}
 # Feathering of the mask edge, in pixels
@@ -113,7 +152,8 @@ NOT_ENTITY_TYPES = {"item", "recipe", "technology", "item-with-entity-data", "am
 
 
 def parse_list(path, kind):
-    """name -> {"kind": "entity"/"item", "mode": "paint"/"grey"/"whole", "hues": [..], "dupes": [(hue, sat)..], "tints": [degrees..], mask parameters} in file order"""
+    """name -> {"kind": "entity"/"item", "mode": "paint"/"grey"/"whole", "hues": [..], "dupes": [(hue, sat, brightness)..], "avoid": [hue..],
+    "palette": "muted"/"vivid", "tints": [degrees..], mask parameters} in file order"""
     entries = {}
     with open(path) as f:
         for number, line in enumerate(f, 1):
@@ -127,6 +167,8 @@ def parse_list(path, kind):
             params["mode"] = "paint"
             params["hues"] = []
             params["dupes"] = []
+            params["avoid"] = []
+            params["palette"] = "muted"
             params["tints"] = []
             params["split"] = None
             for part in parts[1:]:
@@ -138,8 +180,12 @@ def parse_list(path, kind):
                     params["hues"] = [float(v) for v in value.split(",")]
                 elif key == "dupes":
                     for token in value.split(","):
-                        hue, _, sat = token.partition("/")
-                        params["dupes"].append((float(hue), float(sat) if sat else DUPE_SATURATION))
+                        hue, sat, brightness = (token.split("/") + ["", ""])[:3]
+                        params["dupes"].append((float(hue), float(sat) if sat else DUPE_SATURATION, float(brightness) if brightness else 1.0))
+                elif key == "avoid":
+                    params["avoid"] = [v if v in ACHROMATIC_AVOIDS else float(v) for v in value.split(",")]
+                elif key == "palette" and value in PALETTES:
+                    params["palette"] = value
                 elif key == "tints":
                     params["tints"] = [int(v) for v in value.split(",")]
                 elif key == "split" and value in SPLITS:
@@ -147,7 +193,9 @@ def parse_list(path, kind):
                 elif key in PAINT_DEFAULTS and value != "":
                     params[key] = float(value)
                 else:
-                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S],H[/S], tints=D[,D2], split=side|layer, or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
+                    sys.exit(f"{path}:{number}: expected whole, grey, rotate, hue=H[,H2], dupes=H[/S[/B]],..., avoid=H|{'|'.join(ACHROMATIC_AVOIDS)}[,...], palette={'|'.join(PALETTES)}, tints=D[,D2], split=side|layer, or a mask parameter ({', '.join(PAINT_DEFAULTS)}), not {part}")
+            if len(params["dupes"]) > MAX_DUPE - 1:
+                sys.exit(f"{path}:{number}: {name} lists {len(params['dupes'])} dupes, but the number badges only go up to {MAX_DUPE} (dupes 2 to {MAX_DUPE})")
             if params["mode"] == "paint" and not params["hues"]:
                 sys.exit(f"{path}:{number}: {name} needs hue= (or whole)")
             if params["mode"] == "rotate" and not params["dupes"]:
@@ -365,6 +413,24 @@ def gather_planet(raw, name, protected):
 GATHERERS = {"entity": gather_entity, "item": gather_item, "planet": gather_planet}
 
 
+def runtime_color_hue(raw, name):
+    """The hue of the color the game tints an entity's runtime mask with by default (a train's color), when it's a clear color, else None:
+    the recolored parts sit around that mask, so a filled dupe color keeps away from it (else a red locomotive's plates in red look like the original)"""
+    entity = find_entity(raw, name)
+    color = entity.get("color") if entity is not None else None
+    if isinstance(color, dict):
+        rgb = [color.get(c, 0) for c in ("r", "g", "b")]
+    elif isinstance(color, list) and len(color) >= 3:
+        rgb = color[:3]
+    else:
+        return None
+    rgb = np.array(rgb, dtype=np.float32)
+    if rgb.max() > 1:
+        rgb = rgb / 255
+    h, s, v = rgb_to_hsv(rgb[None, :])
+    return float(h[0]) if s[0] >= 0.3 and v[0] >= 0.2 else None
+
+
 def gather(raw, entries):
     """(name -> set of original filenames (sheets and icons), filename -> protected rectangles)"""
     per_name = {}
@@ -414,8 +480,9 @@ def luminance(rgb):
     return 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
 
 
-def colorize(rgba, color, weight, strength=STRENGTH):
-    """Each pixel becomes its brightness times the color, by weight (0..1 per pixel) and strength"""
+def colorize(rgba, color, weight, strength=STRENGTH, brightness=1.0):
+    """Each pixel becomes its brightness times the color, by weight (0..1 per pixel) and strength; then brightness (a shade)
+    scales the whole masked pixel, the part kept from the original too, so a dark or pale shade reads apart from its color"""
     tint = np.array(color, dtype=np.float32)
     # Scale the color so a grey keeps its brightness, but not so far that light pixels clip to neon
     tint = tint / max(float(luminance(tint)), 1e-6)
@@ -424,6 +491,8 @@ def colorize(rgba, color, weight, strength=STRENGTH):
     w = (weight * strength)[..., None]
     out = rgba.copy()
     out[..., :3] = rgba[..., :3] * (1 - w) + colored * w
+    if brightness != 1.0:
+        out[..., :3] = np.clip(out[..., :3] * (1 + (brightness - 1) * weight[..., None]), 0, 1)
     return out
 
 
@@ -463,38 +532,104 @@ def paint_mask(rgba, params):
     return np.clip(weight, 0, 1) * (rgba[..., 3] > 0)
 
 
-def base_hue(params):
-    return params["hues"][0] if params["hues"] else 30.0
-
-
 def hue_distance(a, b):
     return abs(((a - b + 180) % 360) - 180)
 
 
-def dupe_colors(params, dupe_numbers):
-    """dupe number -> (hue, saturation): the line's own list, else the palette hues farthest from the paint hue"""
-    chosen = list(params["dupes"])
-    if len(chosen) < len(dupe_numbers):
-        origin = base_hue(params)
-        for hue in sorted(PALETTE_HUES, key=lambda h: -min([hue_distance(h, origin)] + [hue_distance(h, c[0]) for c in chosen])):
-            if len(chosen) >= len(dupe_numbers):
-                break
-            if all(hue_distance(hue, c[0]) >= 40 for c in chosen):
-                chosen.append((hue, DUPE_SATURATION))
-    return {n: chosen[i] for i, n in enumerate(dupe_numbers)}
-
-
-def entry_numbers(params, default_numbers):
-    """The dupe numbers a line gets: one per color in its dupes= list, else the default"""
-    if params["dupes"]:
-        return list(range(2, 2 + len(params["dupes"])))
-    return list(default_numbers)
-
-
 def dupe_color(color):
-    hue, sat = color
+    hue, sat = color[0], color[1]
     rgb = hsv_to_rgb(np.array([hue], dtype=np.float32), np.array([sat], dtype=np.float32), np.array([1.0], dtype=np.float32))[0]
     return tuple(float(c) for c in rgb)
+
+
+def appearance(color, strength):
+    """What a masked mid-grey pixel becomes in this dupe color, as CIELAB, to tell colors apart"""
+    grey = np.full((1, 1, 4), MID_GREY, dtype=np.float32)
+    grey[..., 3] = 1
+    rgb = colorize(grey, dupe_color(color), np.ones((1, 1), dtype=np.float32), strength, color[2])[..., :3]
+    return rgb2lab(rgb.astype(np.float64))[0, 0]
+
+
+def paint_appearance(params, palette):
+    """The paint's look as CIELAB, judged like a dupe color in it (paint mode: its hue at the palette's usual saturation; grey mode: a mid grey), or None"""
+    if params["mode"] == "paint":
+        return appearance((params["hues"][0], palette[0][1], 1.0), params["strength"])
+    if params["mode"] == "grey":
+        return rgb2lab(np.full((1, 1, 3), MID_GREY, dtype=np.float64))[0, 0]
+    return None
+
+
+def color_distance(lab, others):
+    """How different the color looks (CIEDE2000) from the closest of the others"""
+    if not others:
+        return math.inf
+    return min(float(deltaE_ciede2000(lab, other)) for other in others)
+
+
+def rotation_fill(params, count):
+    """A planet line's rotations: its dupes= list, then its tints= angles (else every 30 degrees but the original's neighbors), each the farthest from the original and the ones before"""
+    chosen = [color[0] for color in params["dupes"]][:count]
+    candidates = [float(d) for d in params["tints"]] or [float(d) for d in range(60, 301, 30)]
+    while len(chosen) < count:
+        left = [d for d in candidates if d not in chosen]
+        if not left:
+            sys.exit(f"a planet line has {len(chosen)} rotations for {count} dupes and no tints= angles left to fill with")
+        chosen.append(max(left, key=lambda d: min(hue_distance(d, other) for other in [0.0] + chosen)))
+    return [(degrees, 0.0, 1.0) for degrees in chosen]
+
+
+def palette_fill(params, count):
+    """A line's colors: its dupes= list, then the palette's colors in order that keep away from the paint's and the avoid= hues
+    and look different enough from the paint, the avoid= colors and the colors before (MIN_COLOR_DISTANCE); when too few
+    are left, the ones farthest from all of those (allowed ones first)"""
+    palette = PALETTES[params["palette"]]
+    strength = params["strength"]
+    chosen = list(params["dupes"])[:count]
+    avoided_hues = [hue for hue in params["avoid"] if hue not in ACHROMATIC_AVOIDS]
+    paint_hues = list(params["hues"]) if params["mode"] == "paint" else []
+    avoided_shades = [ACHROMATIC_AVOIDS[word] for word in params["avoid"] if word in ACHROMATIC_AVOIDS]
+    paint = paint_appearance(params, palette)
+    # What the dupes should look different from: the paint, the avoided colors, and each dupe chosen
+    seen = [paint] if paint is not None else []
+    seen += [appearance((hue, palette[0][1], 1.0), strength) for hue in avoided_hues] + [appearance(shade, strength) for shade in avoided_shades]
+    seen += [appearance(color, strength) for color in chosen]
+
+    def allowed(color):
+        if color[1] == 0:
+            return params["mode"] != "grey" and all((color[2] >= 1) != (shade[2] >= 1) for shade in avoided_shades)
+        return all(hue_distance(color[0], hue) >= PAINT_HUE_GAP for hue in paint_hues) and all(hue_distance(color[0], hue) >= AVOID_HUE_GAP for hue in avoided_hues)
+
+    left = [color for color in palette if color not in chosen and allowed(color)]
+    for color in list(left):
+        if len(chosen) >= count:
+            break
+        lab = appearance(color, strength)
+        if color_distance(lab, seen) >= MIN_COLOR_DISTANCE:
+            chosen.append(color)
+            seen.append(lab)
+            left.remove(color)
+    while len(chosen) < count:
+        if not left:
+            left = [color for color in palette if color not in chosen]
+        color = max(left, key=lambda c: color_distance(appearance(c, strength), seen))
+        chosen.append(color)
+        seen.append(appearance(color, strength))
+        left.remove(color)
+    return chosen
+
+
+def dupe_colors(params, dupe_numbers):
+    """dupe number -> (hue, saturation, brightness) (for a planet, the rotation in degrees first): see the top of the file"""
+    if params["mode"] == "rotate":
+        colors = rotation_fill(params, len(dupe_numbers))
+    else:
+        colors = palette_fill(params, len(dupe_numbers))
+    return {n: colors[i] for i, n in enumerate(dupe_numbers)}
+
+
+def entry_numbers(params, highest):
+    """The dupe numbers a line gets: 2 up to the highest (--dupes), or further if its dupes= list is longer"""
+    return list(range(2, max(highest, 1 + len(params["dupes"])) + 1))
 
 
 def hue_rotate(rgba, degrees):
@@ -550,7 +685,7 @@ def recolor(rgba, params, color, weight=None):
         weight = paint_mask(rgba, params)
     if params["split"] is not None:
         weight = split_weight(weight, params["split"])
-    return colorize(rgba, dupe_color(color), weight, params["strength"])
+    return colorize(rgba, dupe_color(color), weight, params["strength"], color[2])
 
 
 def load_rgba(path):
@@ -572,19 +707,29 @@ def save_sheet(rgba, out_path):
 
 
 def process(job):
-    filename, params, colors, rects = job
+    filename, params, colors, rects, skip_existing = job
     mod, rest = resolve(filename)
+    out_paths = {n: os.path.join(OUT_DIR, str(n), mod, rest) for n in colors}
+    tint_paths = {degrees: os.path.join(OUT_DIR, TINT_FOLDER.format(degrees), mod, rest) for degrees in params["tints"]}
+    if skip_existing and all(os.path.exists(path) for path in list(out_paths.values()) + list(tint_paths.values())):
+        return filename, [os.path.getsize(path) for path in list(out_paths.values()) + list(tint_paths.values())]
     rgba = load_rgba(source_path(filename))
     weight = paint_mask(rgba, params) if params["mode"] in ("paint", "grey") else None
     written = []
     for n, color in sorted(colors.items()):
+        if skip_existing and os.path.exists(out_paths[n]):
+            written.append(os.path.getsize(out_paths[n]))
+            continue
         out = recolor(rgba, params, color, weight)
         for x, y, w, h in rects:
             out[y:y + h, x:x + w] = rgba[y:y + h, x:x + w]
-        written.append(save_sheet(out, os.path.join(OUT_DIR, str(n), mod, rest)))
+        written.append(save_sheet(out, out_paths[n]))
     # A planet's tints (see the header): the whole image turned by each angle
-    for degrees in params["tints"]:
-        written.append(save_sheet(hue_rotate(rgba, degrees), os.path.join(OUT_DIR, TINT_FOLDER.format(degrees), mod, rest)))
+    for degrees, path in tint_paths.items():
+        if skip_existing and os.path.exists(path):
+            written.append(os.path.getsize(path))
+            continue
+        written.append(save_sheet(hue_rotate(rgba, degrees), path))
     return filename, written
 
 
@@ -716,13 +861,16 @@ def main():
     parser.add_argument("--entities", default=os.path.join(REPO, "dev", "dupe-entities.txt"))
     parser.add_argument("--items", default=os.path.join(REPO, "dev", "dupe-items.txt"))
     parser.add_argument("--planets", default=os.path.join(REPO, "dev", "dupe-planets.txt"))
-    parser.add_argument("--dupes", type=int, default=3, help="highest dupe number (2..N) for a line without dupes=; a line with dupes= gets one dupe per color")
+    parser.add_argument("--dupes", type=int, default=MAX_DUPE, help=f"highest dupe number (every line gets 2..N, its own dupes= colors first; at most {MAX_DUPE})")
+    parser.add_argument("--skip-existing", action="store_true", help="leave sheets already on disk as they are (to add dupe numbers without rewriting the others)")
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--only", action="append", help="only these entities, items or planets (no manifest rewrite)")
     parser.add_argument("--preview", help="write a preview image per entity or item to this folder instead of generating")
     parser.add_argument("--inspect", help="write a mask inspection image per entity or item to this folder instead of generating")
     parser.add_argument("--list", action="store_true", help="print the sheets per entity or item and exit")
     args = parser.parse_args()
+    if not 2 <= args.dupes <= MAX_DUPE:
+        sys.exit(f"--dupes must be between 2 and {MAX_DUPE} (the number badges go up to {MAX_DUPE})")
 
     entries = parse_list(args.entities, "entity")
     for path, kind in ((args.items, "item"), (args.planets, "planet")):
@@ -735,19 +883,26 @@ def main():
     with open(args.dump) as f:
         raw = json.load(f)
     per_name, protected = gather(raw, entries)
+    for name, params in entries.items():
+        hue = runtime_color_hue(raw, name) if params["kind"] == "entity" else None
+        if hue is not None:
+            params["avoid"] = params["avoid"] + [hue]
 
-    default_numbers = list(range(2, args.dupes + 1))
     owner = {}
     highest = {}
     colors = {}
     for name, files in per_name.items():
         params = entries[name]
-        numbers = entry_numbers(params, default_numbers)
+        numbers = entry_numbers(params, args.dupes)
         present = sorted(f for f in files if source_path(f))
         missing = sorted(f for f in files if not source_path(f))
         size = sum(os.path.getsize(source_path(f)) for f in present)
         colors[name] = dupe_colors(params, numbers)
-        print(f"{name} ({params['kind']}, {params['mode']}, dupes " + ", ".join(f"{n}: {c[0]:.0f}/{c[1]:.2f}" for n, c in sorted(colors[name].items())) + (", tints " + ",".join(str(d) for d in params["tints"]) if params["tints"] else "") + f"): {len(present)} files, {size / 1e6:.1f} MB" + (f", missing {len(missing)}" if missing else ""))
+        described = []
+        for n, c in sorted(colors[name].items()):
+            text = f"{c[0]:.0f}" if params["mode"] == "rotate" else f"{c[0]:.0f}/{c[1]:.2f}" + (f"/{c[2]:.2f}" if c[2] != 1.0 else "")
+            described.append(f"{n}: {text}" + ("" if n - 2 < len(params["dupes"]) else "*"))
+        print(f"{name} ({params['kind']}, {params['mode']}, dupes " + ", ".join(described) + (", tints " + ",".join(str(d) for d in params["tints"]) if params["tints"] else "") + f"): {len(present)} files, {size / 1e6:.1f} MB" + (f", missing {len(missing)}" if missing else ""))
         if args.list:
             for f in present:
                 print("   ", f, "(protected " + str(protected[f]) + ")" if f in protected else "")
@@ -774,7 +929,7 @@ def main():
         print("inspections in", args.inspect)
         return
 
-    jobs = [(f, entries[owner[f]], colors[owner[f]], protected.get(f, [])) for f in sorted(owner)]
+    jobs = [(f, entries[owner[f]], colors[owner[f]], protected.get(f, []), args.skip_existing) for f in sorted(owner)]
     total = 0
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
         for i, (filename, sizes) in enumerate(pool.map(process, jobs), 1):

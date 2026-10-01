@@ -331,7 +331,7 @@ locks.realize = function()
             end
         end
     end
-    local plan = surface_sets.plan(requests, surface_sets.room_keys(), surface_sets.POOL)
+    local plan = surface_sets.plan_growing(requests, surface_sets.room_keys(), surface_sets.POOL)
     surface_sets.apply_properties(plan, surface_sets.POOL)
     local unrealized = {}
     for _, id in pairs(plan.unrealized) do

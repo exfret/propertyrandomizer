@@ -63,6 +63,16 @@ data:extend({
     },
     {
         setting_type = "startup",
+        type = "int-setting",
+        -- How many copies of each duplicated thing the duplicates setting adds (dupe numbers 2 up to this plus 1; the original is 1): the recolored graphics (dev/make-dupe-graphics.py) and the number badges (graphics/number_*.png) go up to dupe 9
+        name = "propertyrandomizer-dupe-count",
+        default_value = 2,
+        minimum_value = 1,
+        maximum_value = 8,
+        order = "b-za[dupe-count]",
+    },
+    {
+        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-logistic",
         allowed_values = {

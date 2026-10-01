@@ -31,6 +31,11 @@ local dupe_number_to_filename = {
 }
 dupe.max_icon_number = #dupe_number_to_filename
 
+-- The highest dupe number made (the original is 1): one more than the setting's number of duplicates (config.num_dupes), as far as the recolored graphics shipped with the mod (dev/make-dupe-graphics.py) and the number badges go
+dupe.highest_number = function()
+    return math.min(1 + config.num_dupes, dupe_graphics.max_dupe, dupe.max_icon_number)
+end
+
 -- Number badge layer for the top right of a recipe icon (items put theirs on the top left so the two don't overlap)
 dupe.recipe_number_icon = function(number)
     return {
@@ -1149,8 +1154,8 @@ end
 -- Create the duplicates: the entities and items with recolored graphics
 -- The technology and resource duplication functions above are older work that isn't wired in yet
 dupe.execute = function()
-    -- The dupe numbers come with the recolor sets shipped with the mod (dev/make-dupe-graphics.py): a thing gets dupe n when its icon has a recolor for n
-    local num_dupes = dupe_graphics.max_dupe
+    -- The dupe numbers come with the recolor sets shipped with the mod (dev/make-dupe-graphics.py), up to the setting's count (dupe.highest_number): a thing gets dupe n when its icon has a recolor for n
+    local num_dupes = dupe.highest_number()
 
     -- Entities: the ones with recolored graphics, whatever their type (the list lives in dev/dupe-entities.txt)
     -- Found first, since duplicating adds prototypes to the tables being read

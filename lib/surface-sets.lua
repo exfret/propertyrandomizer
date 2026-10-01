@@ -348,18 +348,84 @@ surface_sets.clear = function(pool)
     end
 end
 
+-- Adds another round of properties to the pool: each property of the first round again, named after it with the round's number, and shown by its name and unit with the number added (apply_properties)
+-- Many sets that cross each other (many planet copies: each copy's version of a lock is its own set) can need more properties than the first round has
+surface_sets.extend_pool = function(pool)
+    local num_base = 0
+    for _, entry in pairs(pool) do
+        if entry.base == nil then
+            num_base = num_base + 1
+        end
+    end
+    local round = math.floor(#pool / num_base) + 1
+    for i = 1, num_base do
+        table.insert(pool, {
+            name = pool[i].name .. "-" .. round,
+            step = pool[i].step,
+            base = pool[i].name,
+            round = round,
+        })
+    end
+end
+
+-- surface_sets.plan, with the pool extended a round at a time (extend_pool) while a set with rooms is left unrealized, so every such set gets its condition however many planets there are
+-- The first properties are planned as the first round alone would plan them, since the planning goes request by request in a fixed order and takes the first property that fits
+surface_sets.plan_growing = function(requests, room_keys, pool)
+    local all_rooms = {}
+    for _, room in pairs(room_keys) do
+        all_rooms[room] = true
+    end
+    local has_rooms = {}
+    for _, request in pairs(requests) do
+        for room, _ in pairs(request.rooms) do
+            if all_rooms[room] ~= nil then
+                has_rooms[request.id] = true
+            end
+        end
+    end
+    while true do
+        local plan = surface_sets.plan(requests, room_keys, pool)
+        local num_left = 0
+        for _, id in pairs(plan.unrealized) do
+            if has_rooms[id] ~= nil then
+                num_left = num_left + 1
+            end
+        end
+        -- A new property always takes the first set that's left, so each round realizes at least one more
+        if num_left == 0 then
+            return plan
+        end
+        surface_sets.extend_pool(pool)
+    end
+end
+
 -- Puts a plan (from surface_sets.plan) in the game: after clearing the pool's properties, adds the ones the plan uses and their room values
 -- Conditions are the caller's to set, since the caller knows which prototype each request is
 surface_sets.apply_properties = function(plan, pool)
     surface_sets.clear(pool)
+    local entry_of = {}
+    for _, entry in pairs(pool) do
+        entry_of[entry.name] = entry
+    end
     for i, property in pairs(plan.properties) do
+        local entry = entry_of[property.name] or {}
+        local prototype = {
+            type = "surface-property",
+            name = property.name,
+            default_value = 0,
+            order = "z[propertyrandomizer]-" .. string.format("%02d", i),
+        }
+        -- A later round's property reads as its first-round namesake with the round's number (the locale has only the first round)
+        if entry.base ~= nil then
+            prototype.localised_name = {
+                "",
+                {"surface-property-name." .. entry.base},
+                " " .. entry.round,
+            }
+            prototype.localised_unit_key = "surface-property-unit." .. entry.base
+        end
         data:extend({
-            {
-                type = "surface-property",
-                name = property.name,
-                default_value = 0,
-                order = "z[propertyrandomizer]-" .. string.format("%02d", i),
-            },
+            prototype,
         })
         for room_key, value in pairs(property.values) do
             local prototype = surface_sets.room_prototype(room_key)

@@ -2,25 +2,28 @@
 #   name hue=H[,H2] dupes=C2,C3 [mask parameters]      paint of the given hue is the mask
 #   name grey dupes=C2,C3 [val=V] [smax=S] [...]       the light unsaturated parts are the mask
 #   name whole dupes=C2,C3                              the whole sprite, only a fallback
-# dupes= gives the dupes' colors and how many there are (one color, one dupe). What gets recolored: the item's icon and
+# dupes= gives the first dupes' colors (H, H/S or H/S/B); the rest up to dupe 9 are filled from the generator's palette
+# as in dev/dupe-entities.txt, away from the paint's and any avoid= hues (palette=vivid: the strong colors all around the
+# wheel instead of the muted ones). What gets recolored: the item's icon and
 # belt pictures, the icons of the recipes that make it, the grid sprite of the equipment it places and, for an armor, the
 # character's animation sheets for it (lib/dupe.lua copies the animations for the armor's dupe).
 # Check a line with: dev/make-dupe-graphics.py --dump ... --inspect DIR --only NAME
 #
 # Modules: the body plate is the paint, the bulbs keep their own color where it differs. Each kind's dupes stay away from
 # the other kinds' colors (speed blue, productivity red, efficiency green, quality white), so no blue, red or green body
-speed-module hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
-speed-module-2 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
-speed-module-3 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50
-productivity-module hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
-productivity-module-2 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
-productivity-module-3 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50
-efficiency-module hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
-efficiency-module-2 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
-efficiency-module-3 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185
-quality-module grey val=0.45 smax=0.2 dupes=185,30
-quality-module-2 grey val=0.45 smax=0.2 dupes=185,30
-quality-module-3 grey val=0.45 smax=0.2 dupes=185,30
+# (avoid= keeps the filled dupes off them too: hues, and white for the quality module's white)
+speed-module hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50 avoid=12,120,white
+speed-module-2 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50 avoid=12,120,white
+speed-module-3 hue=215 half=20 sat=0.3 val=0.2 strength=1 dupes=30,50 avoid=12,120,white
+productivity-module hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50 avoid=120,215,white
+productivity-module-2 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50 avoid=120,215,white
+productivity-module-3 hue=12 half=20 sat=0.3 val=0.2 strength=1 dupes=185,50 avoid=120,215,white
+efficiency-module hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185 avoid=12,215,white
+efficiency-module-2 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185 avoid=12,215,white
+efficiency-module-3 hue=120 half=25 sat=0.3 val=0.2 strength=1 dupes=30,185 avoid=12,215,white
+quality-module grey val=0.45 smax=0.2 dupes=185,30 avoid=12,120,215
+quality-module-2 grey val=0.45 smax=0.2 dupes=185,30 avoid=12,120,215
+quality-module-3 grey val=0.45 smax=0.2 dupes=185,30 avoid=12,120,215
 # Fuels: the two cells are green and cyan already, so their dupes are warm, the fusion cell's second a pale gold.
 # A saturated part (cells, module bodies, solar cells) takes the color at full strength: a partial blend of two opposite colors is grey
 nutrients grey val=0.35 smax=0.15 min=150 dupes=130,355
@@ -53,10 +56,13 @@ toolbelt-equipment hue=25 half=20 sat=0.3 dupes=130,185
 # lightness. Runners-up for a slot: pale mint 140/0.35, pale lavender 270/0.3
 # split=side (user, 2026-09-30): each copy colors only the right half of the liquid, so the left half keeps the original's
 # color and a copy reads as its original's color beside its own
-metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 split=side dupes=159/0.8,0/0.9
-agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=105/0.8,195/0.85
-electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=290/0.8,48/0.85
-cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 split=side dupes=355/0.85,128/0.8
-military-science-pack grey val=0.35 smax=0.3 split=side dupes=25/0.8,85/0.8
-production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 split=side dupes=236/0.8,165/0.85
-utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 split=side dupes=318/0.6,28/0.9
+# Copies 4 to 9 (the fourth to ninth planet copies) are filled from the vivid palette: only kept apart from their own pack's
+# color and its other copies, since with up to 56 copies of 7 packs no color stays free of every other pack; the left half
+# still tells whose copy it is
+metallurgic-science-pack hue=25 half=25 sat=0.35 val=0.2 strength=1 split=side palette=vivid dupes=159/0.8,0/0.9
+agricultural-science-pack hue=75 half=30 sat=0.3 val=0.2 strength=1 split=side palette=vivid dupes=105/0.8,195/0.85
+electromagnetic-science-pack hue=320 half=30 sat=0.3 val=0.2 strength=1 split=side palette=vivid dupes=290/0.8,48/0.85
+cryogenic-science-pack hue=230 half=30 sat=0.25 val=0.2 strength=1 split=side palette=vivid dupes=355/0.85,128/0.8
+military-science-pack grey val=0.35 smax=0.3 split=side palette=vivid dupes=25/0.8,85/0.8
+production-science-pack hue=280 half=30 sat=0.3 val=0.2 strength=1 split=side palette=vivid dupes=236/0.8,165/0.85
+utility-science-pack hue=50 half=25 sat=0.35 val=0.2 strength=1 split=side palette=vivid dupes=318/0.6,28/0.9

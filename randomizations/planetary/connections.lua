@@ -24,6 +24,9 @@ local LAYOUT_SWAPS = 60
 local LAYOUT_PASSES = 1
 local LAYOUT_SPOTS = 8
 local MIN_GAP = 4
+-- The fan's widest span (turns), unless one orbit needs more: an orbit's locations (a planet and its duplicates' copies share one) get SPAN_ROOM map units of arc each, since the fan places locations in walk order rather than by orbit (fan_span)
+local MAX_SPAN = 0.6
+local SPAN_ROOM = 1.5 * MIN_GAP
 local ROUTE_GAP = 2.5
 -- How far a route's arc bulges from the straight line between its ends, as a share of that line's length (a random share between these per route), how many straight pieces an arc is taken as when drawn routes are compared, and from how many random starts the arcs' sides are chosen
 local BEND_MIN = 0.08
@@ -479,7 +482,23 @@ local function walk_order(nodes, edges, key)
     return order
 end
 
--- New orientations for every location but the starting planet: the best of LAYOUT_TRIES layouts, each spreading the locations evenly (with jitter) over a fan around the current layout's middle (a quarter turn for seven locations, wider for more) in the order of a random depth-first walk, then improved by LAYOUT_SWAPS place swaps
+-- How wide a fan the locations are spread over (turns): a quarter turn for seven locations, wider for more, up to MAX_SPAN, or as wide as the most crowded orbit needs for SPAN_ROOM per location (many planet copies on one orbit), up to a whole turn
+local function fan_span(nodes)
+    local per_orbit = {}
+    for _, node in pairs(nodes) do
+        local orbit = distance(node)
+        if orbit > 0 then
+            per_orbit[orbit] = (per_orbit[orbit] or 0) + 1
+        end
+    end
+    local widest = MAX_SPAN
+    for orbit, count in pairs(per_orbit) do
+        widest = math.max(widest, math.min(1, count * SPAN_ROOM / (2 * math.pi * orbit)))
+    end
+    return math.min(widest, math.max(0.25, 0.25 * #nodes / 7))
+end
+
+-- New orientations for every location but the starting planet: the best of LAYOUT_TRIES layouts, each spreading the locations evenly (with jitter) over a fan around the current layout's middle (fan_span) in the order of a random depth-first walk, then improved by LAYOUT_SWAPS place swaps
 -- Returns orientation per node and the cost of the layout
 local function layout(nodes, edges, key)
     local start = constants.starting_planet
@@ -506,7 +525,7 @@ local function layout(nodes, edges, key)
         cos_sum = cos_sum + math.cos(current * 2 * math.pi)
     end
     local center = math.atan2(sin_sum, cos_sum) / (2 * math.pi)
-    local span = math.min(0.6, math.max(0.25, 0.25 * #nodes / 7))
+    local span = fan_span(nodes)
     local lo = center - span / 2
     local start_orientation = (location(start) or {}).orientation or 0
     local best = nil

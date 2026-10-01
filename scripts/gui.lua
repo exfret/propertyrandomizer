@@ -544,7 +544,10 @@ local function show_contexts_panel(player, node)
     inside.add({type = "label", caption = "Where this can be had, and how. Hover a square for details."})
 
     local ability_strs = ordered_ability_strs()
-    local table_elt = inside.add({type = "table", style = "bordered_table", column_count = 1 + #ability_strs})
+    -- One row per room, so with many planet copies (the dupe count setting) the table scrolls rather than running off the screen
+    local table_scroll = inside.add({type = "scroll-pane", vertical_scroll_policy = "auto", horizontal_scroll_policy = "never"})
+    table_scroll.style.maximal_height = 600
+    local table_elt = table_scroll.add({type = "table", style = "bordered_table", column_count = 1 + #ability_strs})
     table_elt.style.top_margin = 8
     table_elt.add({type = "label", style = "bold_label", caption = "Room"})
     for _, ability_str in pairs(ability_strs) do

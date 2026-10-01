@@ -22,6 +22,8 @@ config.seed = 23 + settings.startup["propertyrandomizer-seed"].value
 if settings.startup["propertyrandomizer-dupes"].value then
     config.dupes = true
 end
+-- How many copies of each duplicated building, item and planet the duplicates add (lib/dupe.lua, lib/dupe-planets.lua): dupe numbers 2 up to this plus 1
+config.num_dupes = settings.startup["propertyrandomizer-dupe-count"].value
 -- Whether the finished data.raw is written to the log at the end of loading (data-final-fixes.lua)
 config.dump_data_raw = settings.startup["propertyrandomizer-dump-data-raw"].value
 if settings.startup["propertyrandomizer-test-unit"].value then
