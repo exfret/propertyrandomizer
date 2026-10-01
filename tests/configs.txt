@@ -97,6 +97,8 @@ config dupes settings dupes=true
 config planetary-resources settings seeds=1,2 planetary-resources=true
 # Resource swaps with the planet copies: recipes a planet shares with its copy follow its swap through planet variants, so few extra patches are needed
 config dupes-resources settings seeds=1,2 dupes=true planetary-resources=true
+# Ocean swaps with the planet copies: a copy generates only the tiles it lists (its original's ocean tiles used to show through its clones), and shorelines follow the swapped looks
+config dupes-oceans settings dupes=true planetary-oceans=true
 # A new random connection graph (the setting is skipped above), alone and with the planet copies
 config planetary-connections settings planetary-connections=true
 config dupes-connections settings dupes=true planetary-connections=true

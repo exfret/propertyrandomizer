@@ -182,6 +182,8 @@ local function copy_tiles(planet, copy, number)
     if family == nil or tile_settings == nil then
         return 0
     end
+    -- Only the tiles the copy lists generate there: the original's ocean tiles would otherwise generate as defaults (AutoplaceSettings.treat_missing_as_default, which reads true in game on planets that don't set it), with the same probabilities as their clones
+    map_gen_settings.autoplace_settings.tile.treat_missing_as_default = false
     local new_family = {
         fluid = family.fluid,
     }

@@ -1,6 +1,6 @@
 -- Planetary ocean swaps (vanilla Space Age only for now)
 -- Each planet's ocean is a slot: its ocean tiles keep their names, where they generate, collision, which tiles landfill/foundation/ice platforms/soils go on, neighbor rules, pollution absorption, and walking and vehicle speed.
--- Each planet's family of ocean tiles is a traveler: its look and the fluid offshore pumps get from it.
+-- Each planet's family of ocean tiles is a traveler: its look (shorelines included, see oceans.follow_looks_in_transitions) and the fluid offshore pumps get from it.
 -- Ocean tiles drawn as water only get looks drawn as water, so no ocean looks like land.
 -- A permutation moves travelers onto slots by reskinning the slot tiles, so map gen keeps its vanilla shape and every slot keeps its own rules.
 -- Planets whose ocean fluid changed get scaffolding recipes (randomizations/planetary/scaffolds.lua) so their progression still works from local resources.
@@ -211,6 +211,45 @@ local function argmax_expression(candidates)
     return expression
 end
 
+-- A shoreline is drawn by the tile on the other side of it (the land), from its transitions to the tiles their to_tiles list, like Vulcanus ground's glowing edge to lava.
+-- So shorelines belong with the look: each restyled tile (look_of: tile name --> the traveler tile whose look it shows) ends up listed in exactly the to_tiles lists that held its look before, and other names stay as they were.
+-- A list is often shared by many tiles (like the game's water_tile_type_names), so each one is rewritten once, in place, from what it held before.
+oceans.follow_looks_in_transitions = function(tiles, look_of)
+    local restyled = {}
+    for tile_name, _ in pairs(look_of) do
+        table.insert(restyled, tile_name)
+    end
+    table.sort(restyled)
+    local done = {}
+    for _, tile in pairs(tiles) do
+        for _, transition in pairs(tile.transitions or {}) do
+            local names = transition.to_tiles
+            if type(names) == "table" and done[names] == nil then
+                done[names] = true
+                local listed = {}
+                local kept = {}
+                for _, name in pairs(names) do
+                    listed[name] = true
+                    if look_of[name] == nil then
+                        table.insert(kept, name)
+                    end
+                end
+                for _, tile_name in pairs(restyled) do
+                    if listed[look_of[tile_name]] ~= nil then
+                        table.insert(kept, tile_name)
+                    end
+                end
+                for i = #names, 1, -1 do
+                    names[i] = nil
+                end
+                for i, name in pairs(kept) do
+                    names[i] = name
+                end
+            end
+        end
+    end
+end
+
 oceans.apply = function(assignment)
     local tiles = data.raw.tile
 
@@ -298,6 +337,8 @@ oceans.apply = function(assignment)
     -- A slot tile showing several looks is split into clones, one per extra look
     -- Each point of the slot's footprint goes to the look whose own home-planet probability is highest there, so the outline comes from the slot's planet and the texture from the traveler's
     local clones_of = {}
+    -- Slot tile or clone --> the traveler tile whose look it shows
+    local look_of = {}
     for _, slot_planet in pairs(oceans.planet_order) do
         local tile_settings = data.raw.planet[slot_planet].map_gen_settings.autoplace_settings.tile.settings
         for _, depth in pairs(depths) do
@@ -326,8 +367,10 @@ oceans.apply = function(assignment)
                             local clone = table.deepcopy(original[slot_tile])
                             clone.name = "propertyrandomizer-" .. slot_tile .. "-" .. look
                             clone.hidden_in_factoriopedia = true
+                            -- Only where its slot planet lists it: other planets let unlisted tiles generate (AutoplaceSettings.treat_missing_as_default), and a planet copy has the same footprint
                             clone.autoplace = {
                                 probability_expression = probability,
+                                default_enabled = false,
                             }
                             reskin(clone, look)
                             data:extend({
@@ -335,15 +378,18 @@ oceans.apply = function(assignment)
                             })
                             tile_settings[clone.name] = {}
                             table.insert(clones_of[slot_tile], clone.name)
+                            look_of[clone.name] = look
                         end
                     end
                 end
                 reskin(tiles[slot_tile], looks[1])
+                look_of[slot_tile] = looks[1]
             end
         end
     end
 
-    -- Clones follow every name-based rule their slot tile is in: tile placement (landfill, foundation, ice platform, soils), neighbor rules, transitions and autoplace tile restrictions
+    -- Clones follow every name-based rule their slot tile is in: tile placement (landfill, foundation, ice platform, soils), neighbor rules and autoplace tile restrictions
+    -- Transitions follow the look instead (oceans.follow_looks_in_transitions below)
     local function add_clones(names)
         if names == nil then
             return
@@ -367,9 +413,6 @@ oceans.apply = function(assignment)
     end
     for _, tile in pairs(tiles) do
         add_clones(tile.allowed_neighbors)
-        for _, transition in pairs(tile.transitions or {}) do
-            add_clones(transition.to_tiles)
-        end
     end
     for _, group in pairs(data.raw) do
         for _, prototype in pairs(group) do
@@ -378,6 +421,7 @@ oceans.apply = function(assignment)
             end
         end
     end
+    oceans.follow_looks_in_transitions(tiles, look_of)
 
     -- Clone tile --> the slot tile it was cloned from, so checks can hold clones to their slot tile's rules
     local clone_to_slot = {}

@@ -554,6 +554,10 @@ dupe.tile = function(tile, dupe_number)
     local new_tile = dupe.prototype(tile, dupe_number)
     new_tile.localised_name = locale_utils.find_localised_name(tile)
     new_tile.hidden_in_factoriopedia = true
+    -- A clone generates only where a planet's map gen lists it: with its original's probability, it would otherwise compete with the original on every planet that lets unlisted tiles generate (AutoplaceSettings.treat_missing_as_default)
+    if new_tile.autoplace ~= nil then
+        new_tile.autoplace.default_enabled = false
+    end
     local function follow(names)
         if type(names) ~= "table" then
             return
