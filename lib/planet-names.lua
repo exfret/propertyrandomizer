@@ -18,6 +18,23 @@ local VANILLA_PARTS = {
     "Vul-can-us",
     "Aqui-l-o",
 }
+-- Text filters for generated names, compared in lowercase; these are not prototype names.
+local BLOCKED_NAME_PATTERNS = {
+    "^vulb",
+    "^vulv",
+    "anus",
+}
+
+local function blocked_name(name)
+    local lower = string.lower(name)
+    for _, pattern in pairs(BLOCKED_NAME_PATTERNS) do
+        if string.find(lower, pattern) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
 -- The fields of a prototype holding localised strings that can name a planet
 local STRING_FIELDS = {
     "localised_name",
@@ -177,7 +194,7 @@ planet_names.execute = function()
     for _, mix in pairs(all_mixes()) do
         if kept[string.lower(mix.name)] ~= nil then
             table.insert(in_use, mix.parts)
-        elseif not mix.vanilla then
+        elseif not mix.vanilla and not blocked_name(mix.name) then
             table.insert(unused, mix)
         end
     end
