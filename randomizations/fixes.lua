@@ -13,6 +13,7 @@ local recycling_sources_lib = require("lib/logic/recycling-sources")
 local crafter_slots = require("lib/crafter-slots")
 -- The recipes a rebuilt tech's prerequisites come from
 local witness_recipes = require("lib/logic/witness-recipes")
+local technology_abilities = require("lib/technology-abilities")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -338,6 +339,17 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
+    local rebuilt_recipes = {}
+    for recipe_name, _ in pairs(recipe_to_prev) do
+        if gets_tech(recipe_name) then
+            rebuilt_recipes[recipe_name] = true
+        end
+    end
+    local recipe_abilities = technology_abilities.bundle(data.raw.technology, rebuilt_recipes)
+    if mods["space-age"] and mods["quality"] then
+        technology_abilities.bundle_quality(data.raw.technology, rebuilt_recipes, data.raw, recipe_abilities)
+    end
+
     for _, tech in pairs(data.raw.technology) do
         local new_effects = {}
         for _, effect in pairs(tech.effects or {}) do
@@ -391,6 +403,9 @@ randomizations.rebuild_tech_tree = function()
                     },
                 },
             }
+            for _, effect in pairs(recipe_abilities[recipe_name] or {}) do
+                table.insert(new_tech.effects, effect)
+            end
             -- A recipe no tech unlocks at all gets no tech and stays disabled, as it was (enabling it would hand the player something the game never gave)
             if recipe_to_unit[recipe_name] ~= nil then
                 new_tech.unit = recipe_to_unit[recipe_name]
