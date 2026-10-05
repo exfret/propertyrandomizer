@@ -280,15 +280,15 @@ test("once every mix is given, a planet keeps its name", function()
     for _, prototype in pairs(data.raw.planet) do
         if prototype.localised_name ~= nil then
             local lower = string.lower(prototype.localised_name)
-            assert(string.sub(lower, 1, 4) ~= "vulb", prototype.localised_name .. " has a blocked prefix")
-            assert(string.sub(lower, 1, 4) ~= "vulv", prototype.localised_name .. " has a blocked prefix")
+            assert(string.find(lower, "vulva", 1, true) == nil, prototype.localised_name .. " contains blocked text")
             assert(seen[prototype.localised_name] == nil, prototype.localised_name .. " given twice")
             seen[prototype.localised_name] = true
             num_named = num_named + 1
         end
     end
-    -- 125 mixes, less 5 vanilla names and 10 blocked prefixes.
-    assert(num_named == 110, num_named .. " planets named")
+    -- 125 mixes, less 5 vanilla names and the one blocked name.
+    assert(num_named == 119, num_named .. " planets named")
+    assert(seen.Vulbo == true and seen.Vulvis == true, "other vulb/vulv names remain available")
     assert(planet_names.name(planet("late")) == nil)
 end)
 

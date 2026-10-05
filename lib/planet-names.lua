@@ -20,8 +20,7 @@ local VANILLA_PARTS = {
 }
 -- Text filters for generated names, compared in lowercase; these are not prototype names.
 local BLOCKED_NAME_PATTERNS = {
-    "^vulb",
-    "^vulv",
+    "vulva",
 }
 
 local function blocked_name(name)
