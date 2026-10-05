@@ -32,19 +32,32 @@ encounters.positive_finite = function(value)
     return type(value) == "number" and value > 0 and value < math.huge
 end
 
--- The reference workload/timing never changes with difficulty.
--- No Cap removes terrestrial benchmarks; asteroid checks retain the normal, finite allowance.
-encounters.policy = function(options)
+-- Temporary route calibration explicitly requested by the user on 2026-10-05.
+-- These longer clearing allowances compensate for the current conservative combat model.
+-- The reference ship, collection distance and ten seconds of arrivals remain fixed.
+local route_clear_seconds = {
+    ["gleba-aquilo"] = 60,
+    ["fulgora-aquilo"] = 60,
+    ["aquilo-solar-system-edge"] = 60,
+    ["solar-system-edge-shattered-planet"] = 120,
+}
+
+-- No Cap removes terrestrial benchmarks; asteroid checks retain their finite default allowances.
+encounters.policy = function(options, definition)
     options = options or {}
     local difficulty = options.difficulty or "normal"
     assert(difficulty == "normal" or difficulty == "no-cap", "Unknown combat difficulty")
     local multiplier = options.time_multiplier or 1
-    assert(encounters.positive_finite(multiplier) and encounters.positive_finite(10 * multiplier), "Invalid combat time multiplier")
+    local clear_seconds = 20
+    if definition ~= nil and definition.kind == "asteroid-route" then
+        clear_seconds = route_clear_seconds[definition.source] or clear_seconds
+    end
+    assert(encounters.positive_finite(multiplier) and encounters.positive_finite(clear_seconds * multiplier), "Invalid combat time multiplier")
     return {
         difficulty = difficulty,
         check_enemies = difficulty ~= "no-cap",
         baseline_seconds = 10,
-        clear_seconds = difficulty == "no-cap" and 10 or 10 * multiplier,
+        clear_seconds = difficulty == "no-cap" and clear_seconds or clear_seconds * multiplier,
         turret_count = 10,
         manual_count = 1,
     }
@@ -91,7 +104,7 @@ end
 -- Unknown targets remain in the roster and invalidate it; dropping them would understate difficulty.
 local function describe_targets(definition, entities)
     definition.targets_complete = true
-    definition.workload_calibrated = #definition.targets > 0
+    definition.workload_calibrated = #definition.targets > 0 and definition.calibration_valid ~= false
     for _, target in pairs(definition.targets) do
         local entity = entities[target.entity]
         if entity == nil then
@@ -119,7 +132,7 @@ encounters.collect = function(lu, options)
     local definitions = {}
     local entities = lu.entities or {}
     local function append(definition)
-        definition.policy = copy(policy)
+        definition.policy = encounters.policy(options, definition)
         describe_targets(definition, entities)
         table.insert(definitions, definition)
     end
@@ -198,6 +211,14 @@ encounters.collect = function(lu, options)
     for _, connection_name in pairs(sorted_keys(options.connections or {})) do
         local connection = options.connections[connection_name]
         local targets_by_name = {}
+        local function target_of(name)
+            targets_by_name[name] = targets_by_name[name] or {
+                entity = name,
+                spawn_curves = {},
+                endpoint_spawns = {},
+            }
+            return targets_by_name[name]
+        end
         -- Probability and asteroid speed are retained as inputs, not interpreted as asteroids/second.
         -- A later rate adapter must supply calibrated counts.
         -- https://lua-api.factorio.com/latest/types/SpaceConnectionAsteroidSpawnDefinition.html
@@ -210,24 +231,92 @@ encounters.collect = function(lu, options)
                     positive = positive or (point.probability or 0) > 0
                 end
                 if name ~= nil and positive then
-                    targets_by_name[name] = targets_by_name[name] or {
-                        entity = name,
-                        spawn_curves = {},
-                    }
-                    table.insert(targets_by_name[name].spawn_curves, copy(points))
+                    table.insert(target_of(name).spawn_curves, copy(points))
                 end
             end
         end
+        -- Endpoint definitions also contribute to routes within their location's influence.
+        -- https://lua-api.factorio.com/latest/prototypes/SpaceLocationPrototype.html#asteroid_spawn_influence
+        local function add_endpoint(location_name)
+            local location = (options.locations or {})[location_name]
+            if location == nil then
+                return
+            end
+            local influence = location.asteroid_spawn_influence or 0.1
+            if not encounters.positive_finite(influence) then
+                return
+            end
+            for _, spawn in pairs(location.asteroid_spawn_definitions or {}) do
+                if (spawn.type or "entity") == "entity" and spawn.asteroid ~= nil and encounters.positive_finite(spawn.probability) then
+                    table.insert(target_of(spawn.asteroid).endpoint_spawns, {
+                        location = location_name,
+                        influence = influence,
+                        definition = copy(spawn),
+                    })
+                end
+            end
+        end
+        add_endpoint(connection.from)
+        add_endpoint(connection.to)
+
+        local counts
+        local calibration
+        local calibration_reason
+        if options.asteroid_counts ~= nil then
+            local detail
+            counts, detail = options.asteroid_counts(connection)
+            if type(detail) == "table" then
+                calibration = copy(detail)
+            elseif type(detail) == "string" then
+                calibration_reason = detail
+            end
+            if counts ~= nil then
+                if type(counts) ~= "table" then
+                    calibration_reason = "invalid-asteroid-counts"
+                    counts = nil
+                else
+                    for name, amount in pairs(counts) do
+                        if type(name) ~= "string" or name == "" or (amount ~= 0 and not encounters.positive_finite(amount)) then
+                            calibration_reason = "invalid-asteroid-counts"
+                            counts = nil
+                            break
+                        end
+                    end
+                end
+            end
+            if counts == nil then
+                calibration_reason = calibration_reason or "missing-asteroid-counts"
+            end
+        else
+            calibration_reason = "missing-asteroid-calibration"
+        end
+        -- An adapter may know additional targets; retain them even when it cannot find their prototypes.
+        for name, amount in pairs(counts or {}) do
+            if amount > 0 then
+                target_of(name)
+            end
+        end
         local targets = {}
-        local counts = options.asteroid_counts and options.asteroid_counts(connection)
         local actual_size = 0
+        local complete = counts ~= nil
         for _, name in pairs(sorted_keys(targets_by_name)) do
             local target = targets_by_name[name]
-            if counts ~= nil and encounters.positive_finite(counts[name]) then
-                target.amount = math.ceil(counts[name])
-                actual_size = actual_size + target.amount
+            local amount = counts and counts[name]
+            -- Only an explicit, validated zero removes a known target from the workload.
+            if amount ~= 0 then
+                if amount ~= nil then
+                    target.amount = math.max(1, math.ceil(amount - 2e-15 * math.max(1, amount)))
+                    actual_size = actual_size + target.amount
+                else
+                    complete = false
+                    calibration_reason = calibration_reason or "missing-target-count"
+                end
+                table.insert(targets, target)
             end
-            table.insert(targets, target)
+        end
+        if not encounters.positive_finite(actual_size) then
+            complete = false
+            calibration_reason = calibration_reason or "invalid-total-count"
         end
         if #targets > 0 then
             append({
@@ -238,8 +327,11 @@ encounters.collect = function(lu, options)
                 kind = "asteroid-route",
                 source = connection_name,
                 anchor = gutils.key("space-surface", ""),
-                actual_size = counts ~= nil and actual_size or nil,
+                actual_size = complete and actual_size or nil,
                 targets = targets,
+                calibration = calibration,
+                calibration_reason = calibration_reason,
+                calibration_valid = complete,
             })
         end
     end

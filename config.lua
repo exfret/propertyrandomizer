@@ -137,6 +137,9 @@ config.item_percent_randomized = settings.startup["propertyrandomizer-item-perce
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 -- Whether the unified randomizations still in development run (see settings.lua): in the unified preview, or when the test helper explicitly enables the dev setting
 config.dev_unified = features.dev_unified
+config.damage_type_randomization = features.damage_types
+config.military_difficulty = settings.startup["propertyrandomizer-military-difficulty"].value
+config.military_time_multiplier = settings.startup["propertyrandomizer-military-clear-time"].value / 20
 -- Whether the planetary stages that are on run in superposed mode (randomizations/planetary/execute.lua): the game before them stays in the logic as debt for unified randomization to pay, and what's still owed is settled after each of its attempts
 -- Only with the unified randomizations in development, which are what pays and settles the debt; without them the stages repair their own changes as usual
 config.planetary_superposed = config.dev_unified and settings.startup["propertyrandomizer-planetary-superposed"].value

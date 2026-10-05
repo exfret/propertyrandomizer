@@ -1,6 +1,25 @@
 -- Run from the mod root: lua lib/test-resistance-experiment-flag.lua
 local flags = require("helper-tables/experimental-flags")
 assert(flags.military_resistances == false, "The parked experiment must default to off")
+settings = {startup = {}}
+for _, name in pairs({
+    "propertyrandomizer-unified-preview",
+    "propertyrandomizer-dev-unified",
+    "propertyrandomizer-unified-damage-types",
+}) do
+    settings.startup[name] = {value = true}
+end
+local features = require("helper-tables/feature-flags")
+assert(features.damage_types == false, "Preview and startup settings cannot enable the parked graph handler")
+flags.military_resistances = true
+package.loaded["helper-tables/feature-flags"] = nil
+features = require("helper-tables/feature-flags")
+assert(features.damage_types == true, "Enabling both flags should enable the graph handler")
+settings.startup["propertyrandomizer-unified-damage-types"].value = false
+package.loaded["helper-tables/feature-flags"] = nil
+features = require("helper-tables/feature-flags")
+assert(features.damage_types == false, "The startup switch must also be enabled")
+flags.military_resistances = false
 local spec = require("helper-tables/spec")
 assert(spec.resistances == nil, "Military More must not schedule the parked magnitude pass")
 

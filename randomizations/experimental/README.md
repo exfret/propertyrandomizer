@@ -5,6 +5,7 @@ This source flag is independent of the unified preview, Military More and damage
 
 With the flag off:
 
+- The graph damage-type handler and automatic encounter scoring are disabled even if preview and their startup setting are enabled.
 - Numerical samplers and affected entity, item, equipment, energy and trigger routines use their pre-experiment implementations.
 - The numerical resistance pass is absent from the randomization spec.
 - The resistance helper returns no candidates or groups and refuses mutation attempts before evaluating callbacks. This also disables resistance permutations when called by the graph damage-type handler.

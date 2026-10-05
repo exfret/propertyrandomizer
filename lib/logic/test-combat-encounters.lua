@@ -13,7 +13,21 @@ function table.deepcopy(value)
 end
 function log(message) end
 serpent = { block = tostring }
-package.loaded["lib/random/rng"] = { int = function(_, maximum) return maximum end }
+local rng_state = 1
+local rng = {}
+rng.int = function(_, maximum)
+    rng_state = (rng_state * 48271) % 2147483647
+    return rng_state % maximum + 1
+end
+rng.value = function(rng_key) return rng.int(rng_key, 1000000) / 1000000 end
+rng.shuffle = function(rng_key, values)
+    for i = #values, 2, -1 do
+        local j = rng.int(rng_key, i)
+        values[i], values[j] = values[j], values[i]
+    end
+end
+rng.key = function(value) return value.id end
+package.loaded["lib/random/rng"] = rng
 package.loaded["lib/data-utils"] = { get_prot = function() return nil end }
 local logic = {
     contexts = {},
@@ -25,10 +39,12 @@ package.loaded["lib/logic/init"] = logic
 
 local model = require("lib/combat-encounters")
 local encounters = require("lib/logic/combat-encounters")
+local counters = require("lib/logic/combat-counters")
 local builder = require("lib/logic/builder")
 local setup = require("lib/logic/graph-setup")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 
 local key = gutils.key
 local passed = 0
@@ -37,6 +53,20 @@ local function test(name, run)
     passed = passed + 1
     print("ok - " .. name)
 end
+
+test("disabled combat randomization does not prepare the expensive scorer", function()
+    local previous_config, prepare = config, counters.prepare
+    config = {damage_type_randomization = false}
+    counters.prepare = function() error("Disabled combat scorer ran") end
+    local supplied, diagnostics = encounters.prepare({}, {
+        connections = {},
+        locations = {},
+        definitions = {},
+    })
+    counters.prepare, config = prepare, previous_config
+    assert(supplied.counter_provider == nil and diagnostics == nil)
+    assert(supplied.reference_ship == nil and supplied.asteroid_counts == nil)
+end)
 
 local function equal(left, right)
     if type(left) ~= "table" or type(right) ~= "table" then
@@ -54,6 +84,166 @@ local function equal(left, right)
     end
     return true
 end
+
+local function collection_fixture()
+    return {
+        from = "test-start-location",
+        to = "test-collection-location",
+        length = 1000,
+    }, {
+        ["test-start-location"] = { fly_condition = false },
+        ["test-collection-location"] = { fly_condition = true },
+    }
+end
+
+test("collection windows follow the first distance toward the flying endpoint", function()
+    local connection, locations = collection_fixture()
+    local lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0 and upper == 0.25 and endpoint == connection.to)
+end)
+
+test("reversed collection connections use the corresponding normalized window", function()
+    local connection, locations = collection_fixture()
+    connection.from, connection.to = connection.to, connection.from
+    local lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0.75 and upper == 1 and endpoint == connection.from)
+end)
+
+test("ordinary and ambiguous collection routes retain their full windows", function()
+    local connection, locations = collection_fixture()
+    locations[connection.to].fly_condition = false
+    local lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0 and upper == 1 and endpoint == nil)
+    locations[connection.from].fly_condition = true
+    locations[connection.to].fly_condition = true
+    lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0 and upper == 1 and endpoint == nil)
+    lower, upper, endpoint = encounters.collection_window(connection, {}, 250)
+    assert(lower == 0 and upper == 1 and endpoint == nil)
+end)
+
+test("an unspecified collection distance retains the full route", function()
+    local connection, locations = collection_fixture()
+    local lower, upper, endpoint = encounters.collection_window(connection, locations)
+    assert(lower == 0 and upper == 1 and endpoint == nil)
+end)
+
+test("collection windows clamp to a short route and use the default length when absent", function()
+    local connection, locations = collection_fixture()
+    connection.length = 100
+    local lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0 and upper == 1 and endpoint == connection.to)
+    connection.from, connection.to = connection.to, connection.from
+    lower, upper, endpoint = encounters.collection_window(connection, locations, 250)
+    assert(lower == 0 and upper == 1 and endpoint == connection.from)
+    connection.length = nil
+    lower, upper, endpoint = encounters.collection_window(connection, locations, 150)
+    assert(lower == 0.75 and upper == 1 and endpoint == connection.from)
+end)
+
+test("collection windows reject invalid distances and relevant route lengths", function()
+    local connection, locations = collection_fixture()
+    local invalid = {
+        0,
+        -1,
+        math.huge,
+        -math.huge,
+        0 / 0,
+        "250",
+        false,
+    }
+    for _, value in pairs(invalid) do
+        local lower, reason = encounters.collection_window(connection, locations, value)
+        assert(lower == nil and reason == "invalid-collection-distance")
+        connection.length = value
+        lower, reason = encounters.collection_window(connection, locations, 250)
+        assert(lower == nil and reason == "invalid-collection-route-length")
+        connection.length = 1000
+    end
+end)
+
+local function prepared_collection_fixture(distance, ordinary)
+    local connection, locations = collection_fixture()
+    connection.length = 400000
+    connection.asteroid_spawn_definitions = {
+        {
+            asteroid = "test-window-target",
+            spawn_points = {
+                {
+                    distance = 0,
+                    probability = 0,
+                    speed = 0.01,
+                },
+                {
+                    distance = 1,
+                    probability = 10,
+                    speed = 0.01,
+                },
+            },
+        },
+    }
+    locations[connection.to].fly_condition = not ordinary
+    local previous_config = config
+    config = {damage_type_randomization = true}
+    encounters.reset()
+    local supplied = encounters.prepare({}, {
+        definitions = {},
+        connections = {connection},
+        locations = locations,
+        collection_distance_km = distance,
+        counter_provider = function() return {} end,
+        reference_ship = {
+            population = "all-spawns-in-expanded-platform-area",
+            speed_km_per_second = 60,
+            width_tiles = 1,
+            height_tiles = 1,
+            spawning_rate = 1024 / 720,
+            spawning_offset = {
+                {
+                    0,
+                    0,
+                },
+                {
+                    0,
+                    0,
+                },
+            },
+        },
+    })
+    config = previous_config
+    encounters.reset()
+    return supplied, connection
+end
+
+test("enabled encounter preparation applies its default collection trip to actual counts", function()
+    local supplied, connection = prepared_collection_fixture()
+    assert(supplied.score_counters == true and supplied.collection_distance_km == 100000)
+    local counts, metadata = supplied.asteroid_counts(connection)
+    assert(counts["test-window-target"] == 25)
+    assert(metadata.duration_seconds == 10)
+    assert(metadata.route_distance_min == 0 and metadata.route_distance_max == 0.25)
+    assert(metadata.collection_endpoint == connection.to and metadata.collection_distance_km == 100000)
+    assert(metadata.peak_distances["test-window-target"] == 0.25)
+end)
+
+test("explicit collection distances override the enabled preparation default", function()
+    local supplied, connection = prepared_collection_fixture(50000)
+    assert(supplied.collection_distance_km == 50000)
+    local counts, metadata = supplied.asteroid_counts(connection)
+    assert(counts["test-window-target"] == 13)
+    assert(metadata.route_distance_min == 0 and metadata.route_distance_max == 0.125)
+    assert(metadata.expected_counts["test-window-target"] == 12.5)
+    assert(metadata.collection_endpoint == connection.to and metadata.collection_distance_km == 50000)
+end)
+
+test("enabled preparation keeps ordinary connections at their full-route workload", function()
+    local supplied, connection = prepared_collection_fixture(nil, true)
+    assert(supplied.collection_distance_km == 100000)
+    local counts, metadata = supplied.asteroid_counts(connection)
+    assert(counts["test-window-target"] == 100)
+    assert(metadata.route_distance_min == 0 and metadata.route_distance_max == 1)
+    assert(metadata.collection_endpoint == nil and metadata.collection_distance_km == nil)
+end)
 
 local HOME = "planet: test-home"
 local AWAY = "planet: test-away"
@@ -160,17 +350,17 @@ test("the normal policy fixes deployment and clearing time independently of rost
     local policy = model.policy()
     assert(policy.difficulty == "normal")
     assert(policy.check_enemies)
-    assert(policy.baseline_seconds == 10 and policy.clear_seconds == 10)
+    assert(policy.baseline_seconds == 10 and policy.clear_seconds == 20)
     assert(policy.turret_count == 10 and policy.manual_count == 1)
-    local harder = model.policy({ time_multiplier = 2 })
-    assert(harder.baseline_seconds == 10 and harder.clear_seconds == 20)
-    assert(harder.turret_count == 10 and harder.manual_count == 1)
+    local relaxed = model.policy({ time_multiplier = 2 })
+    assert(relaxed.baseline_seconds == 10 and relaxed.clear_seconds == 40)
+    assert(relaxed.turret_count == 10 and relaxed.manual_count == 1)
 end)
 
 test("No Cap disables terrestrial requirements while preserving the asteroid time budget", function()
     local policy = model.policy({ difficulty = "no-cap" })
     assert(not policy.check_enemies)
-    assert(policy.baseline_seconds == 10 and policy.clear_seconds == 10)
+    assert(policy.baseline_seconds == 10 and policy.clear_seconds == 20)
 end)
 
 test("duplicate spawn entries are summed before ceiling and zero weights stay absent", function()
@@ -397,24 +587,277 @@ test("asteroid rates remain inputs until a count adapter calibrates every target
     assert(definitions[1].actual_size == 7 and definitions[1].targets[1].amount == 7)
 end)
 
+local function asteroid_fixture()
+    local lu, options = collection_fixture()
+    local connection = {
+        name = "test-route",
+        from = "test-origin",
+        to = "test-destination",
+        asteroid_spawn_definitions = {},
+    }
+    options.difficulty = "no-cap"
+    options.connections = { [connection.name] = connection }
+    options.locations = {
+        [connection.from] = {
+            asteroid_spawn_definitions = {
+                {
+                    asteroid = "test-target",
+                    probability = 0.1,
+                    speed = 0.02,
+                },
+            },
+        },
+        [connection.to] = {},
+    }
+    return lu, options, connection
+end
+
+-- Temporary route exceptions explicitly authorized by the user; ordinary route fixtures remain at 20 seconds.
+local route_cutoffs = {
+    ["gleba-aquilo"] = 60,
+    ["fulgora-aquilo"] = 60,
+    ["aquilo-solar-system-edge"] = 60,
+    ["solar-system-edge-shattered-planet"] = 120,
+    ["test-route"] = 20,
+}
+
+local function route_definition(source)
+    local encounter = definition("asteroid-route")
+    encounter.source = source
+    encounter.room = nil
+    encounter.anchor = key("space-surface", "")
+    encounter.policy = nil
+    return encounter
+end
+
+test("temporary route cutoffs scale normally without changing other encounter kinds", function()
+    for source, seconds in pairs(route_cutoffs) do
+        local encounter = route_definition(source)
+        local policy = model.policy(nil, encounter)
+        assert(policy.clear_seconds == seconds and policy.baseline_seconds == 10)
+        policy = model.policy({time_multiplier = 2}, encounter)
+        assert(policy.clear_seconds == 2 * seconds and policy.baseline_seconds == 10)
+        encounter.kind = "spawn-group"
+        assert(model.policy(nil, encounter).clear_seconds == 20)
+        encounter.kind = "territory"
+        assert(model.policy({time_multiplier = 2}, encounter).clear_seconds == 40)
+    end
+end)
+
+test("collection attaches the appropriate route policy while preserving calibrated counts", function()
+    for source, seconds in pairs(route_cutoffs) do
+        local lu, options, connection = asteroid_fixture()
+        lu.entities["test-spawner"] = nil
+        connection.name = source
+        options.connections = {[source] = connection}
+        options.difficulty = "normal"
+        options.asteroid_counts = function() return {["test-target"] = 7} end
+        local definitions = model.collect(lu, options)
+        assert(#definitions == 1)
+        local encounter = definitions[1]
+        assert(encounter.source == source and encounter.policy.clear_seconds == seconds)
+        assert(encounter.policy.baseline_seconds == 10 and encounter.actual_size == 7)
+        options.time_multiplier = 2
+        definitions = model.collect(lu, options)
+        assert(definitions[1].policy.clear_seconds == 2 * seconds)
+        assert(equal(definitions[1].targets, encounter.targets))
+    end
+end)
+
+test("route graph counters pass at their cutoff and fail immediately above it", function()
+    for source, seconds in pairs(route_cutoffs) do
+        local encounter = route_definition(source)
+        local graph, sorted = with_counter(counter("turret", seconds), encounter)
+        assert(reachable(sorted, encounter.name, SPACE, "01"))
+        local node = graph.nodes[key("combat-encounter", encounter.name)]
+        assert(node.encounter.policy.clear_seconds == seconds and node.evaluation.accepted == 1)
+        graph, sorted = with_counter(counter("turret", seconds + 0.001), encounter)
+        assert(not reachable(sorted, encounter.name, SPACE, "01"))
+        node = graph.nodes[key("combat-encounter", encounter.name)]
+        assert(node.evaluation.accepted == 0 and #node.evaluation.rejected == 1)
+    end
+end)
+
+test("graph difficulty overrides rebuild route policies without changing reference rosters", function()
+    for source, seconds in pairs(route_cutoffs) do
+        local encounter = route_definition(source)
+        encounter.policy = model.policy({time_multiplier = 0.5}, encounter)
+        encounter.calibration = {
+            duration_seconds = 10,
+            route_distance_min = 0,
+            route_distance_max = 0.25,
+        }
+        local original = table.deepcopy(encounter)
+        local graph, sorted = with_counter(counter("turret", 2 * seconds), encounter, {time_multiplier = 2})
+        assert(reachable(sorted, encounter.name, SPACE, "01"))
+        local rebuilt = graph.nodes[key("combat-encounter", encounter.name)].encounter
+        assert(rebuilt.policy.clear_seconds == 2 * seconds and rebuilt.policy.baseline_seconds == 10)
+        assert(equal(rebuilt.targets, original.targets) and equal(rebuilt.calibration, original.calibration))
+        assert(rebuilt.actual_size == original.actual_size and equal(encounter, original))
+    end
+end)
+
+test("No Cap retains finite route exceptions regardless of multiplier and keeps their rosters", function()
+    for source, seconds in pairs(route_cutoffs) do
+        local encounter = route_definition(source)
+        encounter.policy = model.policy({time_multiplier = 2}, encounter)
+        local original = table.deepcopy(encounter)
+        local options = {
+            difficulty = "no-cap",
+            time_multiplier = 10,
+        }
+        local graph, sorted = with_counter(counter("turret", seconds), encounter, options)
+        assert(reachable(sorted, encounter.name, SPACE, "01"))
+        local rebuilt = graph.nodes[key("combat-encounter", encounter.name)].encounter
+        assert(rebuilt.policy.clear_seconds == seconds and rebuilt.policy.baseline_seconds == 10)
+        assert(rebuilt.policy.check_enemies == false and equal(rebuilt.targets, original.targets))
+        assert(equal(encounter, original))
+        graph, sorted = with_counter(counter("turret", seconds + 0.001), encounter, options)
+        assert(not reachable(sorted, encounter.name, SPACE, "01"))
+    end
+end)
+
+test("an existing definition policy remains authoritative without a difficulty override", function()
+    local encounter = route_definition("aquilo-solar-system-edge")
+    encounter.policy = model.policy({time_multiplier = 0.5}, encounter)
+    local graph, sorted = with_counter(counter("turret", 30), encounter)
+    assert(reachable(sorted, encounter.name, SPACE, "01"))
+    assert(graph.nodes[key("combat-encounter", encounter.name)].encounter.policy.clear_seconds == 30)
+    graph, sorted = with_counter(counter("turret", 30.001), encounter)
+    assert(not reachable(sorted, encounter.name, SPACE, "01"))
+end)
+
+test("endpoint-only positive targets remain unscored when no calibration exists", function()
+    local lu, options, connection = asteroid_fixture()
+    local definitions = model.collect(lu, options)
+    assert(#definitions == 1 and #definitions[1].targets == 1)
+    local target = definitions[1].targets[1]
+    assert(target.entity == "test-target" and target.amount == nil)
+    assert(target.endpoint_spawns[1].location == connection.from)
+    assert(target.endpoint_spawns[1].influence == 0.1)
+    assert(definitions[1].calibration_reason == "missing-asteroid-calibration")
+    assert(not definitions[1].workload_calibrated)
+    options.locations[connection.from].asteroid_spawn_influence = 0
+    assert(#model.collect(lu, options) == 0)
+end)
+
+test("calibration can introduce additional targets and retains independent metadata", function()
+    local lu, options = asteroid_fixture()
+    lu.entities["test-extra"] = {
+        name = "test-extra",
+        max_health = 200,
+    }
+    local metadata = {
+        approximation = true,
+        speed_km_per_second = 100,
+        expected_counts = { ["test-extra"] = 2.5 },
+    }
+    options.asteroid_counts = function()
+        return {
+            ["test-target"] = 2,
+            ["test-extra"] = 3,
+        }, metadata
+    end
+    local encounter = model.collect(lu, options)[1]
+    assert(encounter.workload_calibrated and encounter.targets_complete)
+    assert(encounter.actual_size == 5 and #encounter.targets == 2)
+    assert(encounter.targets[1].entity == "test-extra" and encounter.targets[1].amount == 3)
+    assert(encounter.calibration.approximation)
+    assert(encounter.calibration.speed_km_per_second == 100)
+    metadata.expected_counts["test-extra"] = 20
+    assert(encounter.calibration.expected_counts["test-extra"] == 2.5)
+    lu.entities["test-extra"] = nil
+    encounter = model.collect(lu, options)[1]
+    assert(not encounter.targets_complete and #encounter.targets == 2)
+end)
+
+test("an explicit zero removes a target but absent counts never do", function()
+    local lu, options = asteroid_fixture()
+    lu.entities["test-extra"] = {
+        name = "test-extra",
+        max_health = 200,
+    }
+    options.asteroid_counts = function()
+        return {
+            ["test-target"] = 0,
+            ["test-extra"] = 2,
+        }
+    end
+    local encounter = model.collect(lu, options)[1]
+    assert(encounter.workload_calibrated and encounter.actual_size == 2)
+    assert(#encounter.targets == 1 and encounter.targets[1].entity == "test-extra")
+    options.asteroid_counts = function() return { ["test-extra"] = 2 } end
+    encounter = model.collect(lu, options)[1]
+    assert(not encounter.workload_calibrated and encounter.actual_size == nil)
+    assert(#encounter.targets == 2 and encounter.targets[2].amount == nil)
+    assert(encounter.calibration_reason == "missing-target-count")
+    options.asteroid_counts = function() return { ["test-target"] = 0 } end
+    assert(#model.collect(lu, options) == 0)
+end)
+
+test("failed and invalid calibration cannot certify a smaller asteroid workload", function()
+    local lu, options = asteroid_fixture()
+    options.asteroid_counts = function() return nil, "missing-reference-speed" end
+    local encounter = model.collect(lu, options)[1]
+    assert(encounter.calibration_reason == "missing-reference-speed")
+    assert(not encounter.workload_calibrated and #encounter.targets == 1)
+    for _, invalid in pairs({
+        -1,
+        math.huge,
+        0 / 0,
+        "unknown",
+    }) do
+        options.asteroid_counts = function() return { ["test-target"] = invalid } end
+        encounter = model.collect(lu, options)[1]
+        assert(not encounter.workload_calibrated and encounter.actual_size == nil)
+        assert(encounter.targets[1].amount == nil)
+        assert(encounter.calibration_reason == "invalid-asteroid-counts")
+    end
+    options.asteroid_counts = function() return false end
+    encounter = model.collect(lu, options)[1]
+    assert(not encounter.workload_calibrated and encounter.calibration_reason == "invalid-asteroid-counts")
+end)
+
+test("direct and endpoint membership merge into one calibrated target", function()
+    local lu, options, connection = asteroid_fixture()
+    connection.asteroid_spawn_definitions = {
+        {
+            asteroid = "test-target",
+            spawn_points = {
+                {
+                    distance = 0.5,
+                    probability = 0.2,
+                    speed = 0.02,
+                },
+            },
+        },
+    }
+    options.asteroid_counts = function() return { ["test-target"] = 4 } end
+    local encounter = model.collect(lu, options)[1]
+    assert(#encounter.targets == 1 and encounter.actual_size == 4)
+    assert(#encounter.targets[1].spawn_curves == 1)
+    assert(#encounter.targets[1].endpoint_spawns == 1)
+end)
+
 test("an anchor alone cannot satisfy an unscored encounter", function()
     local graph, sorted = build({ definition() })
     local node = graph.nodes[key("combat-encounter", "test-encounter")]
     assert(node.mechanic)
+    assert(node.important)
     assert(node.evaluation.status == "unscored")
     assert(not reachable(sorted, "test-encounter"))
     assert(not reachable(sorted, "test-encounter", HOME, "01"))
 end)
 
 test("a counter at the time limit preserves automatic and manual contexts on its own room", function()
-    local _, sorted = with_counter(counter("turret", 10))
+    local _, sorted = with_counter(counter("turret", 20))
     assert(reachable(sorted, "test-encounter"))
     assert(reachable(sorted, "test-encounter", HOME, "01"))
     assert(not reachable(sorted, "test-encounter", AWAY))
 end)
 
 test("manual counters never manufacture an automatic context from automated inputs", function()
-    local _, sorted = with_counter(counter("manual", 10))
+    local _, sorted = with_counter(counter("manual", 20))
     assert(reachable(sorted, "test-encounter"))
     assert(not reachable(sorted, "test-encounter", HOME, "01"))
     assert(not reachable(sorted, "test-encounter", HOME, "11"))
@@ -455,7 +898,7 @@ end)
 
 test("invalid times and deployments fail closed", function()
     local invalid = {
-        counter("turret", 10.001),
+        counter("turret", 20.001),
         counter("turret", 0),
         counter("turret", -1),
         counter("turret", math.huge),
@@ -537,6 +980,96 @@ test("No Cap also filters precollected terrestrial definitions and retains aster
     assert(reachable(sorted, asteroid.name, SPACE, "01"))
     assert(not reachable(sorted, asteroid.name))
     assert(not reachable(sorted, asteroid.name, AWAY, "01"))
+end)
+
+-- A small split graph, using the same matching entry point that first pass calls.
+local function matching_fixture(protect_encounter)
+    local graph = with_counter(counter())
+    data = { raw = {} }
+    data.raw.recipe = {}
+    local encounter = graph.nodes[key("combat-encounter", "test-encounter")]
+    encounter.mechanic = protect_encounter
+    encounter.important = protect_encounter
+    local function source(name, prerequisite)
+        local node = gutils.add_node(graph, "test-source", name, { op = "AND" })
+        if prerequisite ~= nil then
+            gutils.add_edge(graph, prerequisite, key(node))
+        end
+        return node
+    end
+    local early = source("test-early-slot", key("test-start", "test-start"))
+    local previous = key("test-start", "test-start")
+    for i = 1, 30 do
+        previous = key(source("test-later-step-" .. i, previous))
+    end
+    local late = source("test-late-slot", previous)
+    local filler = source("test-filler-trav")
+    local firepower = graph.nodes[FIREPOWER]
+    firepower.trav = true
+    firepower.old_slot = key(early)
+    early.old_trav = FIREPOWER
+    filler.trav = true
+    filler.old_slot = key(late)
+    late.old_trav = key(filler)
+    setup.build(logic)
+    return {
+        unconnected_graph = graph,
+        slot_keys = {
+            key(early),
+            key(late),
+        },
+        slot_to_base = {
+            [key(early)] = early,
+            [key(late)] = late,
+        },
+        trav_to_head = {
+            [FIREPOWER] = firepower,
+            [key(filler)] = filler,
+        },
+        pair_ok = function() return true end,
+        rounds = 1,
+    }
+end
+
+test("first pass's matching keeps an important encounter counter before a later available position", function()
+    local protected_cases = 0
+    for seed = 1, 10 do
+        local params = matching_fixture(true)
+        local initial_sort
+        local real_sort = top.sort
+        top.sort = function(graph, state, connection, options)
+            local sorted = real_sort(graph, state, connection, options)
+            if options ~= nil and options.complex_contexts == true then
+                initial_sort = initial_sort or sorted
+            end
+            return sorted
+        end
+        rng_state = seed
+        local ok, assignment = pcall(matching.run, params)
+        top.sort = real_sort
+        assert(ok, assignment)
+        assert(assignment ~= false)
+        local context = top.context_key(HOME, "01")
+        local early_rank = initial_sort.node_to_context_inds[FIREPOWER][context]
+        local later_rank = initial_sort.node_to_context_inds[params.slot_keys[2]][context]
+        if early_rank < later_rank then
+            protected_cases = protected_cases + 1
+            assert(assignment[params.slot_keys[1]] == FIREPOWER)
+            assert(assignment[params.slot_keys[2]] ~= FIREPOWER)
+        end
+    end
+    assert(protected_cases > 0, "the fixture must exercise a counter with an earlier original rank")
+
+    -- Without the encounter obligation both positions remain reachable, so the same matcher may exchange their identities.
+    local moved = false
+    for seed = 1, 10 do
+        local params = matching_fixture(false)
+        rng_state = seed
+        local assignment = matching.run(params)
+        assert(assignment ~= false)
+        moved = moved or assignment[params.slot_keys[2]] == FIREPOWER
+    end
+    assert(moved, "without the encounter obligation a later position must remain available")
 end)
 
 print(passed .. " tests passed")

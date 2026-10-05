@@ -191,10 +191,10 @@ logic.build = function(ignore_balance_nodes, extra_params)
         balance.build(lu)
     end
     balance_mechanics.build(lu)
-    -- Fixed encounter rosters and counter ports stay explicitly unscored without a numerical counter provider; existing asteroid guards remain.
-    -- extra_params.combat_encounters accepts difficulty="no-cap" to omit enemy benchmarks while retaining asteroids.
-    -- The player setting comes with the scorer.
-    logic.combat_encounters = combat_encounters.build(logic.graph, lu, extra_params.combat_encounters)
+    -- Important encounter goals use the usual first-pass protection. The damage-type handler enables scoring and numerical preservation.
+    -- Extra parameters can also enable scoring for diagnostics; unsupported workloads remain explicitly unscored.
+    -- Difficulty "no-cap" omits enemy benchmarks while retaining asteroid checks.
+    logic.combat_encounters, logic.combat_counters = combat_encounters.build(logic.graph, lu, extra_params.combat_encounters)
     -- Entity randomization needs some member of each bulk entity class to stay suppliable automatically
     if config.entity_randomization then
         entity_supply.build(lu)

@@ -114,7 +114,7 @@ stage.entity_resistance_groups = function()
 
             if entity.resistances ~= nil then
                 for _, resistance in pairs(entity.resistances) do
-                    if resistance.percentage ~= nil and resistance.percentage >= 100 then
+                    if resistance.percent ~= nil and resistance.percent >= 100 then
                         count = count + 1
                         immunities[count] = resistance.type
                         is_immune[resistance.type] = true
@@ -124,11 +124,7 @@ stage.entity_resistance_groups = function()
 
             -- Sort only the used portion
             if count > 1 then
-                table_sort(immunities, function(a, b)
-                    if a == nil then return false end
-                    if b == nil then return true end
-                    return a < b
-                end)
+                table.sort(immunities)
             end
 
             -- Build key from sorted immunities

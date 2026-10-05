@@ -78,6 +78,9 @@ pin dev-unified=false preview preview-with-graph preview-superposed preview-rewa
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 # The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development
 config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false operation-readiness=false
+# Parked combat experiment: enable military_resistances in source before restoring these profiles.
+# config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more operation-readiness=false
+# config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap operation-readiness=false
 # Paused operation dependency prototype (2026-10-05); preserve the profile for a future explicit restart.
 # config operation-preview unified seeds=1 unified-preview=true dev-unified=false operation-readiness=true
 # The preview in superposed mode (setting planetary-superposed): the planetary changes hand their debt to unified randomization and settle what's still owed after it

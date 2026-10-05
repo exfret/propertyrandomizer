@@ -89,6 +89,7 @@ if config.dev_unified == true then
 end
 
 local new_logic = require("lib/logic/init")
+local combat_encounters = require("lib/logic/combat-encounters")
 local graph_customization = require("lib/graph-customization")
 local prototype_exclusions = require("lib/prototype-exclusions")
 local randomization_spec = require("helper-tables/spec")
@@ -232,6 +233,7 @@ local init_sort_info
 local init_complex_sort_info
 -- Sorts the world the rest of randomization starts from (the game after planetary changes, which is data.raw now) and derives what depends on it
 local function prepare_world()
+    combat_encounters.reset()
     new_logic.build(true)
     -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
     -- With planetary changes in the game, they're the ones planetary's goals were made with

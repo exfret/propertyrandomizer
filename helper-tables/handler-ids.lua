@@ -1,4 +1,5 @@
 return { -- Finished unified randomizations
+    "damage-types",
     "tech-prereqs",
     "recipe-tech-unlocks",
     "spoiling",

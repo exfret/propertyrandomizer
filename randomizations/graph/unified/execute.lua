@@ -107,6 +107,11 @@ if config.entity_randomization then
     enabled["entity"] = true
 end
 
+if config.damage_type_randomization == true then
+    config.unified["damage-types"] = true
+    enabled["damage-types"] = true
+end
+
 -- for _, id in pairs(all_handler_ids) do
 for id, _ in pairs(config.unified) do
     if enabled[id] then--config.unified[id] then
@@ -123,6 +128,7 @@ end
 -- Load handlers
 local default_handler = require("randomizations/graph/unified/handlers/default")
 local available_handlers = {
+    ["damage-types"] = require("randomizations/graph/unified/handlers/damage-types"),
     ["entity"] = require("randomizations/graph/unified/handlers/entity"),
     ["entity-autoplace"] = require("randomizations/graph/unified/handlers/entity-autoplace"),
     ["entity-energy-source"] = require("randomizations/graph/unified/handlers/entity-energy-source"),
