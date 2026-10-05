@@ -336,9 +336,8 @@ local function copy_connections(copies)
                 copy.to = variant.to
                 copy.order = (connection.order or "") .. "-" .. variant.suffix .. "-" .. tostring(number)
                 copy.localised_name = {
-                    "",
+                    "propertyrandomizer-name.connection",
                     location_name(variant.from),
-                    " - ",
                     location_name(variant.to),
                 }
                 -- The connection's icons show its ends: an end's planet icon becomes the copy's where the end is a copy

@@ -310,12 +310,26 @@ function locale_utils.create_localised_description(prototype, factor, id, extra_
     if extra_params.variance ~= nil then
         mul_std = str_to_mul_std[extra_params.variance]
     end
+    if config ~= nil and config.numerical_variances ~= nil then
+        local variance = config.numerical_variances[id]
+        local overrides = config.numerical_overrides[id] or {}
+        -- A compound randomization can walk both a size and an aspect ratio with different built-in variances.
+        -- An explicit tooltip variance still describes its own walk unless variance itself is overridden.
+        if variance ~= nil and (overrides.variance ~= nil or extra_params.variance == nil) then
+            mul_std = str_to_mul_std[variance]
+        end
+    end
 
     -- Started to hit a recursion limit, how embarrassing
     local inner_localised_description = locale_utils.find_localised_description(prototype, {with_newline = true})
     local percentage = locale_utils.create_tooltip(factor, {flipped = flipped, round_more = round_more, mul_std = mul_std})
     local description = {"propertyrandomizer-tooltip." .. id}
-    local addon_text = addons .. "[/color]"
+    local addon_text
+    if type(addons) == "table" then
+        addon_text = {"", addons, "[/color]"}
+    else
+        addon_text = addons .. "[/color]"
+    end
     if inner_localised_description[1] == "" and #inner_localised_description <= 17 then
         prototype.localised_description = { "" }
         for i = 2, #inner_localised_description do

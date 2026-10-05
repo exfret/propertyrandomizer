@@ -10,6 +10,7 @@
 -- Each route is then drawn as a gentle arc between its ends rather than a straight line: a circle's arc (a space connection's "arc" shape around the circle's center as its origin) bulging by a random share of the route's length, to whichever side makes the drawn routes cross and graze locations the least.
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 
 local connections = {}
@@ -179,10 +180,10 @@ end
 -- Why the graph can't be drawn now, or nil if it can
 connections.problem = function()
     if connections.nothing_to_do() then
-        return "there are no space connections"
+        return localised_text.reason("no-connections", "there are no space connections")
     end
     if location(constants.starting_planet) == nil then
-        return "there's no starting planet to connect from"
+        return localised_text.reason("no-start-connection", "there's no starting planet to connect from")
     end
     return nil
 end
@@ -338,9 +339,8 @@ local function new_connection(edge, template)
     connection.from = from
     connection.to = to
     connection.localised_name = {
-        "",
+        "propertyrandomizer-name.connection",
         location_name(from),
-        " - ",
         location_name(to),
     }
     -- The template's icons show its ends' icons; the new connection shows its own ends'

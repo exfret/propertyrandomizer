@@ -8,6 +8,7 @@
 -- A planet copy's packs need copies of its original's discovery chain for this (lib/dupe-planets.lua), or taking a planet's copy's packs would wait on the planet's own discovery
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local dupe = require("lib/dupe")
@@ -355,10 +356,10 @@ end
 -- Why discovery can't follow the star map now, or nil if it can
 discovery.problem = function()
     if next(data.raw["space-connection"] or {}) == nil then
-        return "there are no space connections"
+        return localised_text.reason("no-connections", "there are no space connections")
     end
     if (data.raw.planet or {})[constants.starting_planet] == nil then
-        return "there's no starting planet"
+        return localised_text.reason("no-start", "there's no starting planet")
     end
     return nil
 end

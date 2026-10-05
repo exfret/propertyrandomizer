@@ -350,7 +350,7 @@ rebalance.apply = function()
                     scale_health(unit, health_factor)
                     scale_damage(unit, damage_factor)
                     local change = "health x" .. string.format("%.3g", health_factor) .. ", damage x" .. string.format("%.3g", damage_factor)
-                    add_description_line(unit, "Military rebalance: " .. change .. ", since it spawns away from its home planet.")
+                    add_description_line(unit, {"propertyrandomizer-description.military-rebalance", string.format("%.3g", health_factor), string.format("%.3g", damage_factor)})
                     log("Military rebalance: " .. unit_name .. " " .. change .. " (health " .. old_health .. " -> " .. unit.max_health .. "), spawning in " .. table.concat(slot_names, ", ") .. " away from " .. home_spawner .. " (evolution " .. string.format("%.2f", home_evolution) .. ")")
                 end
                 if health_factor ~= 1 or next(new_costs) ~= nil then

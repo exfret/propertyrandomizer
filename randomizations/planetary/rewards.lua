@@ -1505,9 +1505,8 @@ local function edit_tech(before, bundle, target_room, renamed, excluded, avoid, 
         copy.name = reward_copy_name(source.name)
         copy.effects = own_effects
         copy.localised_name = {
-            "",
+            "propertyrandomizer-name.planet-variant",
             locale_utils.find_localised_name(source),
-            " (",
             {
                 "?",
                 {
@@ -1515,7 +1514,6 @@ local function edit_tech(before, bundle, target_room, renamed, excluded, avoid, 
                 },
                 target_name,
             },
-            ")",
         }
         copy.prerequisites = table.deepcopy(source.prerequisites)
         split = {

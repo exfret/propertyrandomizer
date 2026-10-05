@@ -16,11 +16,12 @@ local function ensure_randomizer_button(player)
     local button_flow = mod_gui.get_button_flow(player)
 
     if button_flow["randomizer-main-open"] == nil then
-        button_flow.add({type = "button", name = "randomizer-main-open", caption = "Randomizer Panel", style = mod_gui.button_style})
+        button_flow.add({type = "button", name = "randomizer-main-open", caption = {"propertyrandomizer-gui.panel-title"}, style = mod_gui.button_style})
     end
 end
 
 local function load_dep_graph()
+    storage.explorer_translations = nil
     for data, _ in pairs(prototypes.item["propertyrandomizer-graph"].get_entity_type_filters(defines.selection_mode.select)) do
         local _, graph = serpent.load(data)
         storage.graph = graph
@@ -183,7 +184,7 @@ script.on_init(function(event)
 end)
 
 script.on_configuration_changed(function(event)
-    game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Mod configuration was changed; keep in mind that updates may break pre-existing runs.\nYou can sync the exact versions of mods by Ctrl + Left Click on the \"Sync mods\" button on the top right when selecting a save to load.\nIf you need any help, message exfret on discord or on the mod's website - mods.factorio.com/mod/propertyrandomizer")
+    game.print({"propertyrandomizer-message.configuration-changed"})
 
     load_dep_graph()
 
@@ -244,21 +245,21 @@ events.on_event("return-to-starting-planet", function(event)
     if all_empty then
         -- 5 seconds to press again
         if storage.player_ind_to_last_return_attempt_ticks[event.player_index] == nil or event.tick - storage.player_ind_to_last_return_attempt_ticks[event.player_index] > 5 * 60 then
-            game.players[event.player_index].print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Respawn key sequence entered. Enter again within 5 seconds to confirm.")
+            game.players[event.player_index].print({"propertyrandomizer-message.return-confirm", "5"})
         else
             game.players[event.player_index].teleport(game.surfaces[constants.starting_planet].find_non_colliding_position("character", {0, 0}, 0, 1), constants.starting_planet)
         end
 
         storage.player_ind_to_last_return_attempt_ticks[event.player_index] = event.tick
     else
-        game.players[event.player_index].print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Respawn key sequence entered, but your inventory was not empty. Empty your inventory and try again.")
+        game.players[event.player_index].print({"propertyrandomizer-message.return-inventory"})
     end
 end)
 
 events.on_event(defines.events.on_cargo_pod_finished_descending, function(event)
     if event.player_index ~= nil and not storage.printed_change_surface_message then
         storage.printed_change_surface_message = true
-        game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] To prevent softlocks, you can use the respawn key sequence (by default, CTRL + SHIFT + R) to return home at any time. You must have an empty inventory.")
+        game.print({"propertyrandomizer-message.return-help"})
     end
 end)
 
@@ -313,7 +314,7 @@ end)
 script.on_nth_tick(1, function(event)
     if event.tick == 10 then
         -- Tell them about the randomizer panel
-        game.print("[img=item.propertyrandomizer-gear] [color=red]exfret's Randomizer:[/color] Make sure to open the randomizer panel (use the button in the top left, or press CTRL + P) for important information!")
+        game.print({"propertyrandomizer-message.panel-help"})
     end
 end)
 

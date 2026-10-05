@@ -29,6 +29,7 @@ local PROTECT_TRANSPORTED = true
 local DISCOVERY_FOLLOWS_MAP = false
 
 local gutils = require("lib/graph/graph-utils")
+local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
@@ -65,9 +66,9 @@ local function sorted_keys(tbl)
 end
 
 -- what is the stage's name, like "ocean swaps"
-local function warn(what, message)
+local function warn(what, message, localised)
     log("Planetary " .. what .. ": " .. message)
-    table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Planetary " .. what .. " " .. message)
+    table.insert(randomization_info.warnings, {"propertyrandomizer-warning.planetary", {"propertyrandomizer-stage." .. what}, localised})
 end
 
 -- Each stage returns nil if it worked, or else why it has to be undone
@@ -106,15 +107,18 @@ local function run_oceans(logic, state, old_raw)
     end
     if #put_back > 0 then
         local labels = {}
+        local localised_labels = {}
         for _, planet_name in pairs(put_back) do
             table.insert(labels, planet_label(planet_name))
+            local planet = data.raw.planet[planet_name]
+            table.insert(localised_labels, {"", "[img=space-location." .. planet_name .. "] ", planet.localised_name or {"space-location-name." .. planet_name}})
         end
-        warn("ocean swaps", "left " .. table.concat(labels, ", ") .. " their own oceans, since each would have needed a recipe making its old ocean's fluid from its new one, and a game gets " .. scaffolds.MAX_CONVERSIONS .. " at most.")
+        warn("ocean swaps", "left " .. table.concat(labels, ", ") .. " their own oceans, since each would have needed a recipe making its old ocean's fluid from its new one, and a game gets " .. scaffolds.MAX_CONVERSIONS .. " at most.", localised_text.get("propertyrandomizer-warning.ocean-conversion-limit", localised_text.join(localised_labels, ", "), scaffolds.MAX_CONVERSIONS))
     end
     -- Tile collision staying exactly as it was is part of how the swap works, so a difference means something unexpected happened
-    local tile_problems = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
+    local tile_problems, tile_messages = planetary_check.tiles_unchanged(old_raw, clone_to_slot)
     if #tile_problems > 0 then
-        return "tile collision changed (" .. table.concat(tile_problems, "; ") .. ")"
+        return localised_text.reason("tile-collision", "tile collision changed (" .. table.concat(tile_problems, "; ") .. ")", localised_text.join(tile_messages, "; "))
     end
     state.variants_of = variants_of
     if not state.careful then
@@ -123,7 +127,7 @@ local function run_oceans(logic, state, old_raw)
     end
     state.after = after or planetary_check.sort(logic)
     if not planetary_check.required(state.before, state.after, state.variants_of) then
-        return "a planet lost something it must keep (see PLANETCHECK in the log)"
+        return localised_text.reason("planet-lost", "a planet lost something it must keep (see PLANETCHECK in the log)")
     end
     return nil
 end
@@ -144,7 +148,7 @@ local function run_enemy_stage(feature, move)
         end
         state.after = planetary_check.sort(logic)
         if not planetary_check.required(state.before, state.after, state.variants_of) then
-            return "a planet lost something it must keep (see PLANETCHECK in the log)"
+            return localised_text.reason("planet-lost", "a planet lost something it must keep (see PLANETCHECK in the log)")
         end
         return nil
     end
@@ -456,7 +460,7 @@ local function run_resources(logic, state)
             variants = {}
             state.after = planetary_check.sort(logic)
             if not planetary_check.required(state.before, state.after, state.variants_of) then
-                return "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)"
+                return localised_text.reason("planet-lost-patches", "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)")
             end
         end
     end
@@ -467,7 +471,7 @@ end
 -- Why a stage built on the current logic can't run, or nil: the old graph randomizations (config.graph: technology, recipe, recipe tech unlocks, item) reason with the old logic (lib/old-logic), which knows nothing of lightning safety, the heating bootstrap or moved planet locks, so they can't keep what these stages need
 local function old_graph_problem()
     if next(config.graph or {}) ~= nil then
-        return "the old technology, recipe or item randomizations are on, and they can't keep what these changes need"
+        return localised_text.reason("old-graph", "the old technology, recipe or item randomizations are on, and they can't keep what these changes need")
     end
     return nil
 end
@@ -761,7 +765,7 @@ local function run_locks(logic, state)
         locks.realize()
         state.after = planetary_check.sort(logic)
         if not planetary_check.required(state.before, state.after, state.variants_of) then
-            return "a planet lost something it must keep even with every lock accepting its old planets again (see PLANETCHECK in the log)"
+            return localised_text.reason("planet-lost-locks", "a planet lost something it must keep even with every lock accepting its old planets again (see PLANETCHECK in the log)")
         end
     end
     log_locks()
@@ -823,7 +827,7 @@ local function run_lightning(logic, state)
     log("Planetary lightning: planets that gave their lightning away keep it as well")
     state.after = planetary_check.sort(logic)
     if not planetary_check.required(state.before, state.after, state.variants_of) then
-        return "a planet lost something it must keep even with lightning staying where it was as well (see PLANETCHECK in the log)"
+        return localised_text.reason("planet-lost-lightning", "a planet lost something it must keep even with lightning staying where it was as well (see PLANETCHECK in the log)")
     end
     return nil
 end
@@ -837,7 +841,7 @@ local function run_connections(logic, state)
     end
     state.after = planetary_check.sort(logic)
     if not planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK connections") then
-        return "a planet lost something it must keep with the new connections (see PLANETCHECK in the log)"
+        return localised_text.reason("planet-lost-connections", "a planet lost something it must keep with the new connections (see PLANETCHECK in the log)")
     end
     return nil
 end
@@ -872,7 +876,7 @@ local function run_discovery(logic, state)
     end
     table.sort(lost)
     if #lost > 0 then
-        return "a discovery waited on itself, leaving " .. #lost .. " recipes and technologies out of reach (" .. table.concat(lost, ", ", 1, math.min(#lost, 10)) .. ")"
+        return localised_text.reason("discovery-cycle", "a discovery waited on itself, leaving " .. #lost .. " recipes and technologies out of reach (" .. table.concat(lost, ", ", 1, math.min(#lost, 10)) .. ")", #lost, table.concat(lost, ", ", 1, math.min(#lost, 10)))
     end
     state.after = nil
     return nil
@@ -900,7 +904,7 @@ local function run_freezing(logic, state)
     end
     state.after = planetary_check.sort(logic)
     if not planetary_check.required(state.before, state.after, state.variants_of, false, "PLANETCHECK freezing") then
-        return "a planet that freezes now lost something it must keep (see PLANETCHECK freezing in the log)"
+        return localised_text.reason("planet-lost-freezing", "a planet that freezes now lost something it must keep (see PLANETCHECK freezing in the log)")
     end
     return nil
 end
@@ -925,7 +929,7 @@ local function run_stage(what, stage, logic, state, can_retry)
     local old_bootstrap_heat_rooms = lutils.bootstrap_heat_rooms
     local is_ok, reason = pcall(stage, logic, state, old_raw)
     if not is_ok then
-        reason = "of an error: " .. tostring(reason)
+        reason = localised_text.reason("error", "of an error: " .. tostring(reason), tostring(reason))
     end
     if reason ~= nil then
         data.raw = old_raw
@@ -937,10 +941,10 @@ local function run_stage(what, stage, logic, state, can_retry)
         rewards.moved = old_rewards
         lutils.bootstrap_heat_rooms = old_bootstrap_heat_rooms
         if can_retry and is_ok then
-            log("Planetary " .. what .. ": rolling again, since " .. reason)
+            log("Planetary " .. what .. ": rolling again, since " .. localised_text.diagnostic(reason))
             return false, true
         end
-        warn(what, "were undone, since " .. reason .. ".")
+        warn(what, "were undone, since " .. localised_text.diagnostic(reason) .. ".", localised_text.get("propertyrandomizer-warning.planetary-undone", localised_text.message(reason)))
         return false, false
     end
     return true, false
@@ -1018,8 +1022,8 @@ local function run_fix_first(what, move, old_way, logic, state, fix)
     local reason
     if not is_ok then
         reason = "the fix pass stopped on an error (" .. tostring(result) .. ")"
-    elseif type(result) == "string" then
-        reason = result
+    elseif type(result) == "string" or type(result) == "table" then
+        reason = localised_text.diagnostic(result)
     else
         reason = "the fix pass left " .. result .. " goals lost"
     end
@@ -1037,7 +1041,7 @@ local function run_stages(logic, state, careful, fix)
         if connections.nothing_to_do() then
             log("Planetary connections: no space connections to draw again")
         elseif problem ~= nil then
-            warn("connection graph", "was skipped, since " .. problem .. ".")
+            warn("connection graph", "was skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped", localised_text.message(problem)))
         else
             run_stage("connection graph", run_connections, logic, state)
         end
@@ -1045,7 +1049,7 @@ local function run_stages(logic, state, careful, fix)
     if config.planetary_oceans then
         local problem = oceans.problem()
         if problem ~= nil then
-            warn("ocean swaps", "were skipped, since " .. problem .. ".")
+            warn("ocean swaps", "were skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(problem)))
         else
             local function old_way()
                 -- Only a careful run checks the swap itself, so only it can tell that an assignment failed and roll a new one
@@ -1078,7 +1082,7 @@ local function run_stages(logic, state, careful, fix)
     if config.planetary_lightning then
         local problem = old_graph_problem() or lightning.problem()
         if problem ~= nil then
-            warn("lightning moves", "were skipped, since " .. problem .. ".")
+            warn("lightning moves", "were skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(problem)))
         else
             local function old_way()
                 run_stage("lightning moves", run_lightning, logic, state)
@@ -1096,7 +1100,7 @@ local function run_stages(logic, state, careful, fix)
     if config.planetary_freezing then
         local problem = old_graph_problem() or freezing.problem()
         if problem ~= nil then
-            warn("freezing moves", "were skipped, since " .. problem .. ".")
+            warn("freezing moves", "were skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(problem)))
         else
             local function old_way()
                 run_stage("freezing moves", run_freezing, logic, state)
@@ -1120,7 +1124,7 @@ local function run_stages(logic, state, careful, fix)
     if config.planetary_locks or config.planetary_rewards then
         local what = config.planetary_locks and "planet locks" or "planet rewards"
         if old_graph_problem() ~= nil then
-            warn(what, "were skipped, since " .. old_graph_problem() .. ".")
+            warn(what, "were skipped, since " .. localised_text.diagnostic(old_graph_problem()) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(old_graph_problem())))
         else
             run_stage(what, run_locks, logic, state)
         end
@@ -1138,7 +1142,7 @@ local function draw_map_first(logic, state)
     end
     local problem = old_graph_problem() or connections.problem()
     if problem ~= nil then
-        warn("connection graph", "was skipped, since " .. problem .. ".")
+        warn("connection graph", "was skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped", localised_text.message(problem)))
         return
     end
     state.careful = true
@@ -1149,7 +1153,7 @@ local function draw_map_first(logic, state)
     if DISCOVERY_FOLLOWS_MAP then
         local discovery_problem = discovery.problem()
         if discovery_problem ~= nil then
-            warn("discovery technologies", "were skipped, since " .. discovery_problem .. ".")
+            warn("discovery technologies", "were skipped, since " .. localised_text.diagnostic(discovery_problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(discovery_problem)))
         else
             run_stage("discovery technologies", run_discovery, logic, state)
         end
@@ -1172,7 +1176,7 @@ local function swap_start(state)
     local start = data.raw.planet[start_name]
     local other = data.raw.planet[other_name]
     if start == nil or other == nil or start_name == other_name then
-        warn("start swap", "was skipped, since there's no other planet " .. other_name .. " to swap the start with.")
+        warn("start swap", "was skipped, since there's no other planet " .. other_name .. " to swap the start with.", localised_text.get("propertyrandomizer-warning.start-swap-missing", other_name))
         return
     end
     data.raw.planet[start_name] = table.deepcopy(other)
@@ -1223,7 +1227,7 @@ local function draw_connections_first()
     end
     local problem = old_graph_problem() or connections.problem()
     if problem ~= nil then
-        warn("connection graph", "was skipped, since " .. problem .. ".")
+        warn("connection graph", "was skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped", localised_text.message(problem)))
         return
     end
     local old_raw = table.deepcopy(data.raw)
@@ -1232,7 +1236,7 @@ local function draw_connections_first()
         log("Planetary connections: " .. result)
     else
         data.raw = old_raw
-        warn("connection graph", "was undone, since of an error: " .. tostring(result) .. ".")
+        warn("connection graph", "was undone, since of an error: " .. tostring(result) .. ".", localised_text.get("propertyrandomizer-warning.planetary-error", tostring(result)))
     end
 end
 
@@ -1243,7 +1247,7 @@ local function run_superposed(logic, state)
     if config.planetary_oceans then
         local problem = oceans.problem()
         if problem ~= nil then
-            warn("ocean swaps", "were skipped, since " .. problem .. ".")
+            warn("ocean swaps", "were skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(problem)))
         else
             planetary_check.moved_features["oceans"] = true
             local old_raw = table.deepcopy(data.raw)
@@ -1419,7 +1423,7 @@ local function finish(state, old_raw)
             rewards.moved = {}
             lutils.bootstrap_heat_rooms = {}
             scaffolds.kept = {}
-            warn("changes", "were undone, since " .. (is_ok and "they changed which planets discoveries need, and fail with the home sets both games agree on (see PLANETCHECK home sets in the log)" or "of an error: " .. tostring(passes)) .. ".")
+            warn("changes", "were undone, since " .. (is_ok and "they changed which planets discoveries need, and fail with the home sets both games agree on (see PLANETCHECK home sets in the log)" or "of an error: " .. tostring(passes)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-undone", (is_ok and {"propertyrandomizer-reason.discovery-home-sets"} or localised_text.get("propertyrandomizer-reason.error", tostring(passes)))))
         end
     end
     if state.after ~= nil then
@@ -1476,14 +1480,14 @@ planetary.execute = function(logic)
         state.before = planetary_check.sort(logic)
     end)
     if not is_ok then
-        warn("changes", "were skipped, since the logic couldn't be sorted.")
+        warn("changes", "were skipped, since the logic couldn't be sorted.", localised_text.get("propertyrandomizer-warning.planetary-unsorted"))
         return
     end
     -- Outside superposed mode the star map comes first, and the rest is checked against the game it makes (see draw_map_first)
     if not (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
         local is_drawn, problem = pcall(draw_map_first, logic, state)
         if not is_drawn then
-            warn("changes", "were skipped, since of an error: " .. tostring(problem) .. ".")
+            warn("changes", "were skipped, since of an error: " .. tostring(localised_text.diagnostic(problem)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-error", tostring(localised_text.message(problem))))
             return
         end
     end
@@ -1507,7 +1511,7 @@ planetary.execute = function(logic)
         if not is_run then
             data.raw = old_raw
             planetary.reset()
-            warn("changes", "were undone, since of an error: " .. tostring(problem) .. ".")
+            warn("changes", "were undone, since of an error: " .. tostring(localised_text.diagnostic(problem)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-undone-error", tostring(localised_text.message(problem))))
             return
         end
         planetary.before = {
@@ -1878,9 +1882,9 @@ planetary.check_final = function(graph)
         return true
     end
     if planetary.superposed ~= nil then
-        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them, even after settling what the rest of randomization left (see PLANETCHECK final in the log).")
+        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them, even after settling what the rest of randomization left (see PLANETCHECK final in the log).", localised_text.get("propertyrandomizer-warning.planetary-lost-after-settlement", #failures))
     else
-        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them (see PLANETCHECK final in the log).")
+        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them (see PLANETCHECK final in the log).", localised_text.get("propertyrandomizer-warning.planetary-lost", #failures))
     end
     return false
 end
@@ -1936,7 +1940,7 @@ end
 -- Undoes the changes for the rest of the attempts (data.raw must be the game before any planetary change again), with a warning in the randomizer panel, after num_attempts attempts of the rest of randomization couldn't keep what they owed
 planetary.undo = function(num_attempts)
     planetary.reset()
-    warn("changes", "were undone, since " .. num_attempts .. " attempts of the rest of randomization couldn't keep what planets could do before them.")
+    warn("changes", "were undone, since " .. num_attempts .. " attempts of the rest of randomization couldn't keep what planets could do before them.", localised_text.get("propertyrandomizer-warning.planetary-retries", num_attempts))
 end
 
 return planetary

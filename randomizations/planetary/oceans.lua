@@ -6,6 +6,7 @@
 -- Planets whose ocean fluid changed get scaffolding recipes (randomizations/planetary/scaffolds.lua) so their progression still works from local resources.
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 
 local oceans = {}
@@ -125,17 +126,17 @@ oceans.problem = function()
     for _, planet_name in pairs(oceans.planet_order) do
         local planet = data.raw.planet[planet_name]
         if planet == nil or planet.map_gen_settings == nil or planet.map_gen_settings.autoplace_settings == nil or planet.map_gen_settings.autoplace_settings.tile == nil then
-            return "planet " .. planet_name .. " is missing or has no tile autoplace settings"
+            return localised_text.reason("planet-autoplace-missing", "planet " .. planet_name .. " is missing or has no tile autoplace settings", planet_name)
         end
         local tile_settings = planet.map_gen_settings.autoplace_settings.tile.settings or {}
         for _, depth in pairs(depths) do
             for _, tile_name in pairs(oceans.families[planet_name][depth]) do
                 local tile = data.raw.tile[tile_name]
                 if tile == nil or tile.autoplace == nil or tile_settings[tile_name] == nil or tile.fluid ~= oceans.families[planet_name].fluid then
-                    return "ocean tile " .. tile_name .. " isn't set up like vanilla on " .. planet_name
+                    return localised_text.reason("ocean-layout", "ocean tile " .. tile_name .. " isn't set up like vanilla on " .. planet_name, tile_name, planet_name)
                 end
                 if tile.autoplace.local_expressions ~= nil then
-                    return "ocean tile " .. tile_name .. " has autoplace local expressions, which ocean swaps don't handle"
+                    return localised_text.reason("ocean-expressions", "ocean tile " .. tile_name .. " has autoplace local expressions, which ocean swaps don't handle", tile_name)
                 end
             end
         end

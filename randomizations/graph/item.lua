@@ -1027,7 +1027,7 @@ randomizations.item_new = function(id)
         if old_item.name == "coal" then
             -- TODO: Need to do something special if this is the only non-chemical fuel for something...
             if #dutils.fuel_categories(item_prototype) == 0 then
-                item_prototype.localised_description = {"", locale_utils.find_localised_description(item_prototype), "\n[color=green](Combustible)[/color]"}
+                item_prototype.localised_description = {"", locale_utils.find_localised_description(item_prototype), {"propertyrandomizer-status.combustible-green"}}
             end
 
             if not dutils.has_fuel_category(item_prototype, "chemical") then
@@ -1036,7 +1036,7 @@ randomizations.item_new = function(id)
             elseif util.parse_energy(item_prototype.fuel_value) < 1000000 then
                 item_prototype.fuel_value = "1MJ"
             end
-            -- item_prototype.localised_name = {"", locale_utils.find_localised_name(item_prototype), "\n[color=red](Burnable)[/color]"}
+            -- item_prototype.localised_name = {"", locale_utils.find_localised_name(item_prototype), {"propertyrandomizer-status.burnable-red"}}
         end
     end
     for _, change in pairs(changes) do

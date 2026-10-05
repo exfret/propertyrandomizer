@@ -1,13 +1,14 @@
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local fleish = require("lib/random/fleishman")
+local tuning = require("lib/random/tuning")
 
 local randnum = {}
 
 -- TODO: blacklists
 -- TODO: check for incorrect params
 
-randnum.fill_in_defaults = function(params)
+randnum.fill_in_defaults = function(params, skip_tuning)
     -- Check for incorrect params
     local is_allowed_param = {
         id = true,
@@ -44,6 +45,11 @@ randnum.fill_in_defaults = function(params)
         probability_scale = true,
         -- For automatically determining absolute boundaries
         data_type = true,
+        -- Effective per-randomization settings, carried through probability transforms.
+        tuning_bias = true,
+        tuning_bias_idx = true,
+        tuning_chaos = true,
+        tuning_chaos_range = true,
     }
     for k, _ in pairs(params) do
         if not is_allowed_param[k] then
@@ -70,22 +76,31 @@ randnum.fill_in_defaults = function(params)
 
     params.val = params.tbl[params.property]
 
+    local overrides = {}
+    if config.numerical_overrides ~= nil and params.id ~= nil then
+        overrides = config.numerical_overrides[params.id] or {}
+    end
+    if skip_tuning ~= true then
+        for field, _ in pairs(tuning.parameters) do
+            if field ~= "bias" and field ~= "chaos" and overrides[field] ~= nil then
+                params[field] = overrides[field]
+            end
+        end
+        params.tuning_bias = constants.bias_string_to_num[overrides.bias] or config.bias
+        params.tuning_bias_idx = constants.bias_string_to_idx[overrides.bias] or config.bias_idx
+        params.tuning_chaos = constants.chaos_string_to_num[overrides.chaos] or config.chaos
+        params.tuning_chaos_range = constants.chaos_string_to_range_num[overrides.chaos] or config.chaos_range
+    end
+
     -- Set defaults for tuning
-    local defaults = {
-        abs_min = "none",
-        abs_max = "none",
-        range = "same",
-        range_min = "same",
-        range_max = "same",
-        variance = "same",
-        bias = 0,
-        dir = 1,
-        rounding = "normal"
-    }
+    local defaults = tuning.defaults
     for key, default_val in pairs(defaults) do
         if params[key] == nil then
             params[key] = default_val
         end
+    end
+    if params.rounding == nil then
+        params.rounding = tuning.default_rounding
     end
     if params.variance == "same" then
         params.variance = params.range
@@ -99,34 +114,21 @@ randnum.fill_in_defaults = function(params)
     end
 
     -- Fill in for min/max factors
-    local str_to_cap = {
-        very_small = {1.2, 1.5},
-        small = {1.4, 2},
-        medium = {1.75, 2.5},
-        big = {2.25, 4},
-        very_big = {3, 10},
-        none = {0, constants.reasonably_large_number}
-    }
+    local str_to_cap = tuning.range_caps
     local min_key = "range_min"
     if params.range_min == "same" then
         min_key = "range"
     end
-    params.soft_min = 1 / (str_to_cap[params[min_key]][1] * config.chaos_range) * params.val
-    params.hard_min = 1 / (str_to_cap[params[min_key]][2] * config.chaos_range) * params.val
+    params.soft_min = 1 / (str_to_cap[params[min_key]][1] * params.tuning_chaos_range) * params.val
+    params.hard_min = 1 / (str_to_cap[params[min_key]][2] * params.tuning_chaos_range) * params.val
     local max_key = "range_max"
     if params.range_max == "same" then
         max_key = "range"
     end
-    params.soft_max = (str_to_cap[params[max_key]][1] * config.chaos_range) * params.val
-    params.hard_max = (str_to_cap[params[max_key]][2] * config.chaos_range) * params.val
+    params.soft_max = (str_to_cap[params[max_key]][1] * params.tuning_chaos_range) * params.val
+    params.hard_max = (str_to_cap[params[max_key]][2] * params.tuning_chaos_range) * params.val
 
-    local str_to_step_size = {
-        very_small = 1.5,
-        small = 2.5,
-        medium = 5,
-        big = 10,
-        very_big = 20
-    }
+    local str_to_step_size = tuning.step_sizes
     params.step_size = str_to_step_size[params.variance or "medium"]
     
     local str_to_mul_std = constants.str_to_mul_std
@@ -134,7 +136,11 @@ randnum.fill_in_defaults = function(params)
 
     -- Returns either negative or positive the split bias
     local real_split_bias = constants.split_bias * (2 * rng.range(params.key, 0, 1) - 1)
-    params.real_bias = 0.5 + params.bias + real_split_bias + config.bias
+    params.real_bias = 0.5 + params.bias + real_split_bias + params.tuning_bias
+
+    if config.numerical_variances ~= nil and params.id ~= nil and (overrides.range ~= nil or overrides.variance ~= nil) then
+        config.numerical_variances[params.id] = params.variance
+    end
 
     local str_to_abs_boundaries = {
         effect_value = { -300, 300 },
@@ -332,9 +338,9 @@ end
 -- (?) bias
 -- (?) dir - whether higher values make things "better" (+1) or "worse" (-1)
 -- (?) rounding
-randnum.rand = function(params)
+randnum.rand = function(params, skip_tuning)
     -- Fill in and compute values for params that are needed for randomization
-    local valid = randnum.fill_in_defaults(params)
+    local valid = randnum.fill_in_defaults(params, skip_tuning)
 
     -- If the value is not valid to be randomized, just return back the same value
     if not valid then
@@ -343,7 +349,7 @@ randnum.rand = function(params)
     local tbl, property, key = params.tbl, params.property, params.key
     local real_bias, dir, step_size = params.real_bias, params.dir, params.step_size
     local val, soft_min, hard_min, soft_max, hard_max = params.val, params.soft_min, params.hard_min, params.soft_max, params.hard_max
-    local mul_std, bias_idx, chaos_val = params.mul_std, config.bias_idx, config.chaos
+    local mul_std, bias_idx, chaos_val = params.mul_std, params.tuning_bias_idx, params.tuning_chaos
 
     -- exfret's Homebrewed random walk algorithm
     if config.numerical_algorithm == "exfret-random-walk" then
@@ -369,7 +375,7 @@ randnum.rand = function(params)
                     forces = -1 + (hard_max - val) / (hard_max - soft_max)
                 end
 
-                val = val + constants.step_size_modifier * val * config.chaos * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
+                val = val + constants.step_size_modifier * val * chaos_val * (step_size / (constants.num_rolls * constants.steps_per_roll)) * (sign + forces)
 
                 -- Reset t_val if it passed hard_max or hard_min due to too high forces
                 if val > hard_max then

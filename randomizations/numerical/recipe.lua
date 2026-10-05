@@ -59,6 +59,7 @@ randomizations.recipe_ingredients_numerical = function(id)
                 local old_production = old_amount - ignored_by_stats
                 if old_production > 0 then
                     local new_production = randomize({
+                        id = id,
                         key = key,
                         dummy = old_production,
                         abs_min = 1,
@@ -160,6 +161,7 @@ randomizations.recipe_results_numerical = function(id)
                     local old_production = old_amount - ignored_by_stats
                     if old_production > 0 then
                         local new_production = randomize({
+                            id = id,
                             key = key,
                             dummy = old_production,
                             abs_min = 1,

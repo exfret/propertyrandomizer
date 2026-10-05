@@ -6,6 +6,7 @@
 -- A planet that stops freezing only gains warmth, so what a move can break is on the new frozen planet; if it breaks something, the move is undone
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
@@ -45,10 +46,10 @@ freezing.problem = function()
         end
     end
     if num_frozen == 0 then
-        return "no planet but the starting planet freezes"
+        return localised_text.reason("no-freezing", "no planet but the starting planet freezes")
     end
     if num_warm == 0 then
-        return "every planet but the starting planet freezes"
+        return localised_text.reason("all-freezing", "every planet but the starting planet freezes")
     end
     return nil
 end

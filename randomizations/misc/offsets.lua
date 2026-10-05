@@ -51,6 +51,7 @@ randomizations.inserter_offsets = function(id)
             -- Max arm length is 16. margin is to make sure rounding doesn't exceed limits.
             local margin = math.sqrt(0.5) + 0.01
             local new_arm_length = randnum.rand({
+                id = id,
                 key = key,
                 dummy = old_arm_length,
                 abs_min = margin,
@@ -64,6 +65,7 @@ randomizations.inserter_offsets = function(id)
             if randomize_stretch then
                 -- carefully make sure the stretch factor doesn't make the insert position go past limits
                 stretch_factor = randnum.rand({
+                    id = id,
                     key = key,
                     dummy = 1,
                     abs_min = (margin) / new_arm_length,
@@ -93,7 +95,7 @@ randomizations.inserter_offsets = function(id)
                     new_insert_x, new_insert_y = round(rotated_insert_vector[1]), round(rotated_insert_vector[2])
                 end
                 if new_pickup_x ~= 0 or new_insert_x ~= -new_pickup_x or new_insert_y ~= -new_pickup_y then
-                    inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n[color=red](Offset)[/color]"}
+                    inserter.localised_description = {"", locale_utils.find_localised_description(inserter), {"propertyrandomizer-status.offset-red"}}
                 end
             end
 
@@ -102,7 +104,7 @@ randomizations.inserter_offsets = function(id)
             new_arm_length = math.max(pickup_distance, insert_distance)
             
             if randomize_stretch and math.abs(pickup_distance - insert_distance) > 0.5 then
-                inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n[color=red](Stretchy)[/color]"}
+                inserter.localised_description = {"", locale_utils.find_localised_description(inserter), {"propertyrandomizer-status.stretchy-red"}}
             end
             locale_utils.create_localised_description(inserter, new_arm_length / old_arm_length, id)
             
@@ -207,7 +209,7 @@ randomizations.mining_drill_offsets = function(id)
                     new_place_vector[axis] = new_place_vector[axis] - 0.2 * direction[axis]
                 end
                 if new_place_vector[1] ~= old_place_vector[1] or new_place_vector[2] ~= old_place_vector[2] then
-                    mining_drill.localised_description = {"", locale_utils.find_localised_description(mining_drill), "\n[color=red](Misaligned)[/color]"}
+                    mining_drill.localised_description = {"", locale_utils.find_localised_description(mining_drill), {"propertyrandomizer-status.misaligned-red"}}
                 end
                 mining_drill.vector_to_place_result = new_place_vector
             end

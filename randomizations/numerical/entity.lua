@@ -123,6 +123,7 @@ local damage_randomization = function (prototype, parents, structs, is_enemy, id
     local changed = false
     local rng_key = rng.key({ id = id, prototype = prototype })
     local factor = randomize({
+        id = id,
         key = rng_key,
         dummy = 1,
         rounding = "none",
@@ -154,6 +155,7 @@ local effect_radius_randomization = function (prototype, parents, structs, is_en
     local changed = false
     local rng_key = rng.key({ id = id, prototype = prototype })
     local factor = randomize({
+        id = id,
         key = rng_key,
         dummy = 1,
         rounding = "none",
@@ -458,6 +460,7 @@ randomizations.asteroid_yields = function (id)
                         dir = 1
                     end
                     local new_count = randomize({
+                        id = id,
                         key = rng_key,
                         dummy = #offsets,
                         variance = "medium",
@@ -594,14 +597,14 @@ randomizations.base_effect = function (id)
         end
 
         if gained_positive_effect then
-            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Base effect)[/color]"}
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.base-effect-green"}}
         elseif gained_negative_effect then
-            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Base effect)[/color]"}
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.base-effect-red"}}
         end
         if lost_positive_effect then
-            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Missing base effect)[/color]"}
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.missing-base-effect-red"}}
         elseif lost_negative_effect then
-            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Missing base effect)[/color]"}
+            entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.missing-base-effect-green"}}
         end
         if factor ~= -1 then
             locale_utils.create_localised_description(entity, factor, id, { flipped = dir < 0 })
@@ -683,35 +686,31 @@ randomizations.beam_width = function(id)
 end
 
 randomizations.belt_speed = function(id)
-    local belts = {}
-    local old_speeds = {}
+    local speed_to_new_speed = {}
     for belt_class, _ in pairs(categories.belts) do
         for _, belt in pairs(data.raw[belt_class]) do
-            table.insert(old_speeds, belt.speed)
-            table.insert(belts, belt)
-            -- Multiply belt speed by 256 so that it rounds correctly
-            belt.speed = belt.speed * 256
+            local old_speed = belt.speed
+            if speed_to_new_speed[old_speed] == nil then
+                -- Randomize once per original speed, in units of 1/256 for rounding.
+                speed_to_new_speed[old_speed] = randomize({
+                    id = id,
+                    key = rng.key({
+                        linked = true,
+                        id = id,
+                        tier = old_speed,
+                    }),
+                    dummy = old_speed * 256,
+                    range_min = "small",
+                    range_max = "big",
+                    bias = 0.05,
+                    rounding = "pure_discrete",
+                    abs_min = 1,
+                }) / 256
+            end
+
+            belt.speed = speed_to_new_speed[old_speed]
+            locale_utils.create_localised_description(belt, belt.speed / old_speed, id)
         end
-    end
-
-    for _, prototype in pairs(belts) do
-        randomize({
-            id = id,
-            prototype = prototype,
-            property = "speed",
-            range_min = "small",
-            range_max = "big",
-            bias = 0.05,
-            rounding = "pure_discrete",
-            abs_min = 1,
-        })
-    end
-
-    -- Undo earlier multiplication by 256
-    for ind, belt in pairs(belts) do
-        belt.speed = belt.speed / 256
-
-        locale_utils.create_localised_description(belt, belt.speed / old_speeds[ind], id)
     end
 end
 
@@ -993,6 +992,7 @@ randomizations.combat_robot_damage = function (id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = robot })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -1518,11 +1518,11 @@ randomizations.inserter_filter = function(id)
         local flip = randbool.rand_bias_chaos(rng.key({id = id, prototype = inserter, property = "filter_count"}), flip_p, dir)
         if flip then
             has_filter = has_filter ~= flip
-            local description = "[color=red](Broken filter)[/color]"
+            local description = {"propertyrandomizer-status.broken-filter"}
             if has_filter then
-                description = "[color=green](Filter installed)[/color]"
+                description = {"propertyrandomizer-status.filter-installed"}
             end
-            inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n" .. description}
+            inserter.localised_description = {"", locale_utils.find_localised_description(inserter), "\n", description}
         end
 
         if has_filter then
@@ -1705,6 +1705,7 @@ randomizations.landmine_damage = function(id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = landmine })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -1732,6 +1733,7 @@ randomizations.landmine_effect_radius = function(id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = landmine })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -2065,6 +2067,7 @@ randomizations.machine_pollution = function(id)
                             local randomized = false
                             local rng_key = rng.key({id = id, prototype = entity})
                             local positive_factor = randomize({
+                                id = id,
                                 key = rng_key,
                                 dummy = 1,
                                 range = "small",
@@ -2072,6 +2075,7 @@ randomizations.machine_pollution = function(id)
                                 rounding = "none",
                             })
                             local negative_factor = randomize({
+                                id = id,
                                 key = rng_key,
                                 dummy = 1,
                                 range = "small",
@@ -2268,6 +2272,7 @@ randomizations.mining_results = function(id)
                             local diff = product.amount_max - product.amount_min
                             if diff > 0 then
                                 diff = randomize({
+                                    id = id,
                                     key = rng_key,
                                     dummy = diff,
                                     rounding = "discrete",
@@ -2445,7 +2450,7 @@ randomizations.module_slots = function(id)
                             entity.effect_receiver.uses_module_effects = false
                             entity.effect_receiver.uses_beacon_effects = false
                             entity.module_slots = 0
-                            entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Module incompatible)[/color]"}
+                            entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.module-incompatible-red"}}
                         else
                             local old_module_slots = entity.module_slots
 
@@ -2478,7 +2483,7 @@ randomizations.module_slots = function(id)
                             data_type = "uint16",
                         })
                         entity.allowed_effects = get_allowed_effects(entity)
-                        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=green](Module slots)[/color]"}
+                        entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.module-slots-green"}}
                     end
                 end
             end
@@ -2572,6 +2577,7 @@ randomizations.plant_harvest_pollution = function (id)
             local randomized = false
             local rng_key = rng.key({id = id, prototype = plant})
             local factor = randomize({
+                id = id,
                 key = rng_key,
                 dummy = 1,
                 dir = -1,
@@ -2605,6 +2611,7 @@ randomizations.projectile_cluster_size = function (id)
 
         local rng_key = rng.key({ id = id, prototype = projectile })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "big",
@@ -2680,6 +2687,7 @@ randomizations.projectile_projectile_count = function (id)
 
         local rng_key = rng.key({ id = id, prototype = projectile })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "big",
@@ -2834,7 +2842,7 @@ randomizations.resistances = function(id)
         table.insert(damage_type_names, name)
     end
     local apply_resistance_description = function (entity)
-        entity.localised_description = {"", locale_utils.find_localised_description(entity), "\n[color=red](Random damage resistances)[/color]"}
+        entity.localised_description = {"", locale_utils.find_localised_description(entity), {"propertyrandomizer-status.random-damage-resistances-red"}}
     end
 
     -- In a cruel twist of fate, some entities share a reference to the same resistances table
@@ -2870,6 +2878,7 @@ randomizations.resistances = function(id)
                             if resistance.decrease ~= nil and resistance.decrease > 0 then
                                 old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
                                 randomize({
+                                    id = id,
                                     key = key,
                                     prototype = entity,
                                     tbl = resistance,
@@ -2882,6 +2891,7 @@ randomizations.resistances = function(id)
                             if resistance.percent ~= nil and resistance.percent > 0 then
                                 old_p_resistance_sum = old_p_resistance_sum + resistance.percent
                                 resistance.percent = randprob.rand({
+                                    id = id,
                                     key = key,
                                     prototype = entity,
                                     tbl = resistance,
@@ -3307,6 +3317,7 @@ randomizations.spider_unit_projectile_range = function(id)
         trigger_utils.gather_spider_unit_structs(structs, spider, true)
         local rng_key = rng.key({ id = id, prototype = spider })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "medium",
@@ -3339,6 +3350,7 @@ randomizations.spider_unit_yields = function (id)
             if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
                 local offsets = trigger_effect.offsets
                 local new_count = randomize({
+                    id = id,
                     key = rng_key,
                     dummy = #offsets,
                     variance = "medium",
@@ -3418,6 +3430,7 @@ randomizations.sticker_healing = function (id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = sticker })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -3472,6 +3485,7 @@ randomizations.sticker_movement_speed = function (id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = sticker })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -3861,6 +3875,7 @@ randomizations.unit_damage = function(id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = unit })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",
@@ -3923,7 +3938,7 @@ randomizations.unit_pollution_to_join_attack = function(id)
                                 rounding = "discrete_float"
                             })
 
-                            locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = " (" .. pollutant_id .. ")"})
+                            locale_utils.create_localised_description(unit, unit.absorptions_to_join_attack[pollutant_id] / pollutant_amount, id, {addons = {"propertyrandomizer-description.pollutant", {"?", {"airborne-pollutant-name." .. pollutant_id}, pollutant_id}}})
                         end
                     end
                 end
@@ -4030,6 +4045,7 @@ randomizations.unit_spawner_yields = function (id)
             if trigger_effect.offsets ~= nil and trigger_effect.type == "create-entity" then
                 local offsets = trigger_effect.offsets
                 local new_count = randomize({
+                    id = id,
                     key = rng_key,
                     dummy = #offsets,
                     variance = "medium",

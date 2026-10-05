@@ -30,6 +30,7 @@ randomizations.equipment_grid_sizes = function(id)
 
                 local key = rng.key({id = id, prototype = grid_owner})
                 local new_grid_size = randomize({
+                    id = id,
                     key = key,
                     dummy = old_grid_size,
                     rounding = "none",
@@ -38,6 +39,7 @@ randomizations.equipment_grid_sizes = function(id)
                 })
 
                 local new_aspect_ratio = randomize({
+                    id = id,
                     key = key,
                     dummy = old_aspect_ratio,
                     rounding = "none",

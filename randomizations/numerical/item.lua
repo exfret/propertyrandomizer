@@ -70,6 +70,7 @@ randomizations.ammo_damage = function(id)
         trigger_utils.gather_ammo_structs(structs, ammo, true)
         local rng_key = rng.key({ id = id, prototype = ammo })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "medium",
@@ -119,6 +120,7 @@ randomizations.ammo_projectile_count = function(id)
         trigger_utils.gather_ammo_structs(structs, ammo, true)
         local rng_key = rng.key({ id = id, prototype = ammo })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "big",
@@ -148,6 +150,7 @@ randomizations.ammo_projectile_range = function(id)
         trigger_utils.gather_ammo_structs(structs, ammo, true)
         local rng_key = rng.key({ id = id, prototype = ammo })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "big",
@@ -247,6 +250,7 @@ randomizations.armor_resistances = function(id)
                 if resistance.decrease ~= nil and resistance.decrease > 0 then
                     old_flat_resistance_sum = old_flat_resistance_sum + resistance.decrease
                     randomize({
+                        id = id,
                         key = key,
                         prototype = armor,
                         tbl = resistance,
@@ -258,6 +262,7 @@ randomizations.armor_resistances = function(id)
                 if resistance.percent ~= nil and resistance.percent > 0 then
                     old_p_resistance_sum = old_p_resistance_sum + resistance.percent
                     resistance.percent = randprob.rand({
+                        id = id,
                         key = key,
                         prototype = armor,
                         tbl = resistance,
@@ -269,7 +274,7 @@ randomizations.armor_resistances = function(id)
                 end
             end
             if old_flat_resistance_sum + old_p_resistance_sum > 0 then
-                armor.localised_description = {"", locale_utils.find_localised_description(armor), "\n[color=red](Changed resistance)[/color]"}
+                armor.localised_description = {"", locale_utils.find_localised_description(armor), {"propertyrandomizer-status.changed-resistance-red"}}
             end
         end
     end
@@ -306,6 +311,7 @@ randomizations.capsule_healing = function(id)
         trigger_utils.gather_capsule_structs(structs, capsule, true)
         local rng_key = rng.key({ id = id, prototype = capsule })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             variance = "big",
@@ -712,7 +718,7 @@ randomizations.module_effects = function(id)
         -- Assuming at most 1 module per tier in each category
         module_categories[module.category][module.tier] = module
 
-        module.localised_description = {"", locale_utils.find_localised_description(module), "\n[color=red](Reconfigured)[/color]"}
+        module.localised_description = {"", locale_utils.find_localised_description(module), {"propertyrandomizer-status.reconfigured-red"}}
     end
 
     -- Prepare shuffled effect lists
@@ -921,11 +927,11 @@ randomizations.spoil_spawn = function (id)
         end
         local now_spawns = item.spoil_to_trigger_result ~= nil
         if had_spawn and not now_spawns then
-            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Neutralized)[/color]"}
+            item.localised_description = {"", locale_utils.find_localised_description(item), {"propertyrandomizer-status.neutralized-green"}}
         elseif not had_spawn and now_spawns then
-            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Infested)[/color]"}
+            item.localised_description = {"", locale_utils.find_localised_description(item), {"propertyrandomizer-status.infested-red"}}
         elseif changed then
-            item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Mutated spoil result)[/color]"}
+            item.localised_description = {"", locale_utils.find_localised_description(item), {"propertyrandomizer-status.mutated-spoil-result-red"}}
         end
     end
 end

@@ -104,15 +104,15 @@ randomizations.item_fuels = function(id)
 
                         item.fuel_categories = {"chemical"}
                         item._nonreactive = nil
-                        -- item.localised_name = {"", locale_utils.find_localised_name(item), "\n[color=red](Burnable)[/color]"}
+                        -- item.localised_name = {"", locale_utils.find_localised_name(item), {"propertyrandomizer-status.burnable-red"}}
                     end
                     if #dutils.fuel_categories(item) == 0 and item._nonreactive then
-                        item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=red](Not combustible)[/color]"}
+                        item.localised_description = {"", locale_utils.find_localised_description(item), {"propertyrandomizer-status.not-combustible-red"}}
                         item._nonreactive = nil
                     end
                 end
                 if dutils.has_fuel_category(item, "chemical") then
-                    item.localised_description = {"", locale_utils.find_localised_description(item), "\n[color=green](Combustible)[/color]"}
+                    item.localised_description = {"", locale_utils.find_localised_description(item), {"propertyrandomizer-status.combustible-green"}}
                 end
             end
         end

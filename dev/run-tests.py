@@ -492,6 +492,28 @@ def snapshot(dest, ref, staged, source_dir):
         copy_file(src, dst)
 
 
+def run_localisation_checks(mod_dir):
+    # Check the same snapshot as Factorio, including when --staged or --ref is used.
+    # Older refs and stripped releases may not include development-only tests.
+    python = os.path.join(REPO, ".venv", "release", "bin", "python")
+    if not os.path.isfile(python):
+        python = sys.executable
+    commands = []
+    for name in ("dev/check-localisation.py", "dev/test-localisation.py"):
+        path = os.path.join(mod_dir, name)
+        if os.path.isfile(path):
+            commands.append([python, path])
+    for name in ("lib/test-localisation.lua", "lib/test-customization.lua", "scripts/test-customizer.lua", "scripts/test-explorer-localisation.lua"):
+        if os.path.isfile(os.path.join(mod_dir, name)):
+            commands.append([shutil.which("lua"), name])
+    for command in commands:
+        result = subprocess.run(command, cwd=mod_dir, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise SystemExit("Localisation regression checks failed:\n" + result.stdout + result.stderr)
+    if commands:
+        print("Localisation regression checks passed (" + str(len(commands)) + " commands)", flush=True)
+
+
 def load_settings(mod_dir):
     lua = shutil.which("lua")
     if lua is None:
@@ -1016,6 +1038,7 @@ def main(argv):
     if len(runs) == 0:
         shutil.rmtree(root, ignore_errors=True)
         raise SystemExit("no runs match")
+    run_localisation_checks(snapshot_dir)
     try:
         find_links(modsets, runs, version)
     except SystemExit:

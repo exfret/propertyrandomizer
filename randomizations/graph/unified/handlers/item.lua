@@ -783,7 +783,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                 if position.type == "item" and identity.type == "item" and dutils.replacement_gets_fuel(slot_item.name) then
                     local description = locale_utils.find_localised_description(trav_item)
                     if dutils.give_replacement_fuel(trav_item) then
-                        trav_item.localised_description = {"", description, "\n[color=green](Combustible)[/color]"}
+                        trav_item.localised_description = {"", description, {"propertyrandomizer-status.combustible-green"}}
                     end
 
                     -- TODO: Figure out a better way to do this
@@ -838,7 +838,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             suffix = " " .. old_suffix
                         end
                     end
-                    drill.localised_name = {"", locale_utils.find_localised_name(new_item), " mine", suffix}
+                    drill.localised_name = {"propertyrandomizer-name.mine", locale_utils.find_localised_name(new_item), suffix}
                 end
             end
         end

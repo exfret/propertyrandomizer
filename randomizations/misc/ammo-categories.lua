@@ -60,9 +60,9 @@ randomizations.ammo_categories = function(id)
 
     -- Add stuff to descriptions
     for _, ammo in pairs(ammos) do
-        ammo.localised_description = {"", locale_utils.find_localised_description(ammo), "\n[color=red](Creative weapon specification)[/color]"}
+        ammo.localised_description = {"", locale_utils.find_localised_description(ammo), {"propertyrandomizer-status.creative-weapon-specification-red"}}
     end
     for _, ammo_user in pairs(ammo_users) do
-        ammo_user.localised_description = {"", locale_utils.find_localised_description(ammo_user), "\n[color=red](Creative ammo specification)[/color]"}
+        ammo_user.localised_description = {"", locale_utils.find_localised_description(ammo_user), {"propertyrandomizer-status.creative-ammo-specification-red"}}
     end
 end

@@ -418,9 +418,9 @@ surface_sets.apply_properties = function(plan, pool)
         -- A later round's property reads as its first-round namesake with the round's number (the locale has only the first round)
         if entry.base ~= nil then
             prototype.localised_name = {
-                "",
+                "propertyrandomizer-name.numbered",
                 {"surface-property-name." .. entry.base},
-                " " .. entry.round,
+                tostring(entry.round),
             }
             prototype.localised_unit_key = "surface-property-unit." .. entry.base
         end

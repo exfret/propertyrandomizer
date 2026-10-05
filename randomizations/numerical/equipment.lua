@@ -35,6 +35,7 @@ randomizations.equipment_active_defense_effect_radius = function (id)
         local changed = false
         local rng_key = rng.key({ id = id, prototype = equipment })
         local factor = randomize({
+            id = id,
             key = rng_key,
             dummy = 1,
             rounding = "none",

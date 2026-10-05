@@ -468,8 +468,6 @@ data:extend({
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-locale",
-        localised_name = "Names",
-        localised_description = "Shuffles the names of everything in the game. Why?",
         default_value = false,
         order = "g-d[locale]",
     },

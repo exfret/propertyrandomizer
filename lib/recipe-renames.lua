@@ -58,7 +58,7 @@ recipe_renames.apply = function(renamed, old_recipes, rng_key)
         local product = item_fluid.prot(renamed[recipe_name])
         local recipe_icons = icons_of(product)
         if (num_named_after[product_key] or 0) >= 2 then
-            recipe.localised_name = {"", constants.funny_recipe_prefixes[rng.int(rng_key, #constants.funny_recipe_prefixes)], " ", locale_utils.find_localised_name(product)}
+            recipe.localised_name = {"propertyrandomizer-recipe-prefix." .. constants.funny_recipe_prefixes[rng.int(rng_key, #constants.funny_recipe_prefixes)], locale_utils.find_localised_name(product)}
             num_numbered[product_key] = (num_numbered[product_key] or 0) + 1
             -- Only single digit badges exist, so any past that keep the plain product icon
             if num_numbered[product_key] <= dupe.max_icon_number then

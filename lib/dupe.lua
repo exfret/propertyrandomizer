@@ -193,6 +193,7 @@ dupe.prototype = function(prototype, extra_info)
     new_prototype.name = new_prototype.name .. "-exfret-" .. suffix_addon .. "-copy"
     new_prototype.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(prototype), suffix_addon}
     -- For help in localisation later
+    new_prototype.localised_description = locale_utils.find_localised_description(prototype)
     new_prototype.orig_name = prototype.name
     if type(extra_info) == "table" then
         new_prototype.suffix = extra_info.suffix

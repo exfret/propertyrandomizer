@@ -21,6 +21,8 @@
 --      - Tooltips for node types, op?, helpful info
 
 local locale = require("lib/locale")
+local localised_text = require("lib/localised-text")
+local explorer_localisation = require("scripts/explorer-localisation")
 local cutils = require("lib/cost/cost-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
@@ -73,64 +75,120 @@ local function add_derandomizer_amount_caption(element)
         color = "red"
     end
     if script.active_mods["pyalternativeenergy"] then
-        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]Number of derandomizations used: " .. tostring(-storage.num_derandomizations) .. "[/color]"})
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = {"propertyrandomizer-gui.derandomizations-used", color, tostring(-storage.num_derandomizations)}})
     else
-        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = "[color=" .. color .. "]You currently have this many derandomizations left: " .. tostring(storage.num_derandomizations) .. "[/color]"})
-        local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = "Number techs until next derandomization: " .. tostring(storage.techs_until_derandomization)})
+        local explorer_derandomizer_amount_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-amount", caption = {"propertyrandomizer-gui.derandomizations-left", color, tostring(storage.num_derandomizations)}})
+        local explorer_derandomizer_left_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-left", caption = {"propertyrandomizer-gui.derandomization-next", tostring(storage.techs_until_derandomization)}})
     end
 end
 
 local function reset_derandomizer(element)
-    local explorer_derandomizer_prot_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "Select a prototype for derandomization."})
+    local explorer_derandomizer_prot_caption = element.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.select-derandomizer"}})
     add_derandomizer_amount_caption(element)
+end
+
+local get_node_type_caption
+local get_node_caption
+
+local function node_type_name(node_type)
+    return {"?", {"propertyrandomizer-node-name." .. node_type}, node_type}
 end
 
 -- Graph selectors keep keys in tags so filtered captions never become node identities.
 -- General node intentionally includes the full graph, even nodes omitted from prerequisite rows.
-local function refresh_node_choices(selector, refresh_types)
+local function refresh_node_choices(selector, refresh_types, preserve_selection)
     local mechanics = selector.tags.mechanics
+    local player = game.players[selector.player_index]
     local type_choice = selector["randomizer-explorer-node-type"]
+    local selected_type
+    if type_choice ~= nil and type_choice.selected_index > 0 then
+        selected_type = (type_choice.tags.keys or {})[type_choice.selected_index]
+    end
     if refresh_types == true and type_choice ~= nil then
         local types = {}
         local seen = {}
-        local query = string.lower(selector["randomizer-explorer-type-search"].text)
+        local query = selector["randomizer-explorer-type-search"].text
         for _, node in pairs(storage.graph.nodes) do
-            if not seen[node.type] and string.find(string.lower(node.type), query, 1, true) then
+            if not seen[node.type] then
                 seen[node.type] = true
-                table.insert(types, node.type)
+                local caption = node_type_name(node.type)
+                local translated = explorer_localisation.value(player, "type:" .. node.type, caption, node.type)
+                if explorer_localisation.matches(query, translated, node.type) then
+                    table.insert(types, {
+                        key = node.type,
+                        caption = caption,
+                        translated = translated,
+                    })
+                end
             end
         end
-        table.sort(types)
-        type_choice.items = types
-        type_choice.selected_index = #types > 0 and 1 or 0
+        table.sort(types, function(a, b)
+            return a.translated < b.translated or (a.translated == b.translated and a.key < b.key)
+        end)
+        local items, keys = {}, {}
+        local selected = 0
+        for index, choice in pairs(types) do
+            table.insert(items, choice.caption)
+            table.insert(keys, choice.key)
+            if choice.key == selected_type then
+                selected = index
+            end
+        end
+        type_choice.items = items
+        type_choice.tags = {keys = keys}
+        type_choice.selected_index = selected > 0 and selected or (#keys > 0 and 1 or 0)
+        selected_type = keys[type_choice.selected_index]
     end
-    local selected_type
-    if type_choice ~= nil and type_choice.selected_index > 0 then
-        selected_type = type_choice.items[type_choice.selected_index]
-    end
-    local query = string.lower(selector["randomizer-explorer-node-search"].text)
+    local query = selector["randomizer-explorer-node-search"].text
     local choices = {}
     for key, node in pairs(storage.graph.nodes) do
         if (mechanics == true and node.class == "balance-mechanics") or (mechanics == false and node.type == selected_type) then
-            local caption = mechanics == true and string.gsub(node.type, "^balance%-mechanics%-", "") .. (node.name ~= "" and ": " .. node.name or "") or node.name
-            if string.find(string.lower(caption), query, 1, true) then
+            local caption
+            if node.prot ~= nil then
+                caption = {"propertyrandomizer-gui.node-caption", get_node_type_caption(node), get_node_caption(node)}
+                local prot_key = gutils.deconstruct(node.prot)
+                for class, members in pairs(defines.prototypes) do
+                    if members[prot_key.type] ~= nil then
+                        local lookup = prototypes[string.gsub(class, "-", "_")]
+                        local prot = lookup ~= nil and lookup[prot_key.name] or nil
+                        if prot ~= nil then
+                            caption = {"propertyrandomizer-gui.node-caption", get_node_type_caption(node), prot.localised_name}
+                        end
+                        break
+                    end
+                end
+            elseif mechanics == true then
+                caption = {"propertyrandomizer-gui.mechanic-caption", node_type_name(node.type), node.name}
+            else
+                caption = node.name ~= "" and node.name or {"propertyrandomizer-gui.unnamed"}
+            end
+            local translated = explorer_localisation.value(player, "node:" .. key, caption, node.name)
+            if explorer_localisation.matches(query, translated, node.name .. " " .. node.type) then
                 table.insert(choices, {
                     key = key,
-                    caption = caption ~= "" and caption or "(unnamed)",
+                    caption = caption,
+                    translated = translated,
                 })
             end
         end
     end
-    table.sort(choices, function(a, b) return a.caption < b.caption or (a.caption == b.caption and a.key < b.key) end)
+    table.sort(choices, function(a, b)
+        return a.translated < b.translated or (a.translated == b.translated and a.key < b.key)
+    end)
+    local names = selector["randomizer-explorer-node-name"]
+    local previous = preserve_selection and (names.tags.keys or {})[names.selected_index] or nil
     local items, keys = {}, {}
-    for _, choice in pairs(choices) do
+    local selected = 0
+    for index, choice in pairs(choices) do
         table.insert(items, choice.caption)
         table.insert(keys, choice.key)
+        if choice.key == previous then
+            selected = index
+        end
     end
-    local names = selector["randomizer-explorer-node-name"]
     names.items = items
     names.tags = {keys = keys}
-    names.selected_index = 0
+    names.selected_index = selected
 end
 
 local function add_node_selector(parent, mechanics)
@@ -143,12 +201,12 @@ local function add_node_selector(parent, mechanics)
     if mechanics == false then
         selector.add({
             type = "label",
-            caption = "Node type",
+            caption = {"propertyrandomizer-gui.node-type"},
         })
         selector.add({
             type = "textfield",
             name = "randomizer-explorer-type-search",
-            tooltip = "Search node types",
+            tooltip = {"propertyrandomizer-gui.type-search"},
         })
         selector.add({
             type = "drop-down",
@@ -158,12 +216,12 @@ local function add_node_selector(parent, mechanics)
     end
     selector.add({
         type = "label",
-        caption = mechanics == true and "Balance mechanic" or "Node name",
+        caption = mechanics == true and {"propertyrandomizer-gui.mechanic"} or {"propertyrandomizer-gui.node-name"},
     })
     selector.add({
         type = "textfield",
         name = "randomizer-explorer-node-search",
-        tooltip = mechanics == true and "Search balance mechanics" or "Search node names",
+        tooltip = mechanics == true and {"propertyrandomizer-gui.mechanic-search"} or {"propertyrandomizer-gui.node-search"},
     })
     selector.add({
         type = "drop-down",
@@ -210,7 +268,7 @@ local function update_explorer_choice(player_index, explorer_type_choice)
 end
 
 -- Fraction of the screen the main panel takes up in each direction
-local MAIN_PANEL_FRAC = 0.5
+local MAIN_PANEL_FRAC = 0.6
 -- The frame's content padding plus the tab content's padding, left and right (see frame and tabbed_pane in core's style.lua)
 local MAIN_PANEL_PADDING = 8 + 8 + 12 + 12
 
@@ -220,6 +278,10 @@ local function size_main_panel(player, main_frame)
     local tabbed_pane = main_frame["randomizer-main-tabbed-pane"]
     -- Labels are single line by default, and a long one widens the whole tabbed pane past the frame, so wrap them at the panel's width
     local inner_width = common.screen_size(player).width * MAIN_PANEL_FRAC - MAIN_PANEL_PADDING
+    local customizer_flow = tabbed_pane["randomizer-customizer-flow"]
+    if customizer_flow ~= nil then
+        customizer.resize(customizer_flow, inner_width, common.screen_size(player).height * MAIN_PANEL_FRAC)
+    end
     for _, child in pairs(tabbed_pane["randomizer-home-flow"].children) do
         if child.type == "label" then
             child.style.single_line = false
@@ -251,6 +313,9 @@ local function toggle_randomizer_panel(event)
         --gui["randomizer-main-panel"].destroy()
         gui["randomizer-main-panel"].visible = not gui["randomizer-main-panel"].visible
         if gui["randomizer-main-panel"].visible then
+            -- Add the new tab to panels that were already saved before this update.
+            customizer.create(gui["randomizer-main-panel"]["randomizer-main-tabbed-pane"], event.player_index)
+            size_main_panel(player, gui["randomizer-main-panel"])
             player.opened = gui["randomizer-main-panel"]
             gui["randomizer-main-panel"].force_auto_center()
         else
@@ -265,58 +330,58 @@ local function toggle_randomizer_panel(event)
     local main_frame = gui.add({type = "frame", name = "randomizer-main-panel", direction = "vertical"})
     local title_flow = main_frame.add({type = "flow", name = "randomizer-main-title-flow", direction = "horizontal"})
     title_flow.drag_target = main_frame
-    local title_label = title_flow.add({type = "label", caption = "Randomizer Panel", style = "frame_title"})
+    local title_label = title_flow.add({type = "label", caption = {"propertyrandomizer-gui.panel-title"}, style = "frame_title"})
     title_label.drag_target = main_frame
     local drag_space = title_flow.add({type = "empty-widget", style = "draggable_space_header"})
     drag_space.style.horizontally_stretchable = true
     drag_space.style.height = 24
     drag_space.drag_target = main_frame
-    title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
+    title_flow.add({type = "sprite-button", name = "randomizer-main-close", sprite = "utility/close", style = "frame_action_button", tooltip = {"propertyrandomizer-gui.close"}})
     player.opened = main_frame
     local main_tabbed_pane = main_frame.add({type = "tabbed-pane", name = "randomizer-main-tabbed-pane"})
     main_tabbed_pane.style.horizontally_stretchable = true
     main_tabbed_pane.style.vertically_stretchable = true
 
-    local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = "Home"})
+    local home_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-home-tab", caption = {"propertyrandomizer-gui.home"}})
     local home_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-home-flow", direction = "vertical"})
     home_flow.style.horizontally_stretchable = true
     home_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(home_tab, home_flow)
-    local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = "Welcome to the randomizer panel!"})
+    local home_flow_caption = home_flow.add({type = "label", name = "randomizer-home-flow-caption", caption = {"propertyrandomizer-gui.welcome"}})
     local reachability_text
     local reachable = prototypes.mod_data["propertyrandomizer-reachability-data"].data["reachable"]
     local total = prototypes.mod_data["propertyrandomizer-reachability-data"].data["total"]
     if reachable < total then
-        reachability_text = "[color=red]Potential softlock found: Only " .. tostring(reachable) .. "/" .. tostring(total) .. " science packs seem reachable. Differences between the old and new logic can cause false alarms, so this may not be a real softlock.[/color]"
+        reachability_text = {"propertyrandomizer-gui.science-unreachable", tostring(reachable), tostring(total)}
     elseif prototypes.mod_data["propertyrandomizer-reachability-data"].data["check_ok"] == false then
         -- The mechanic context check (skeleton/check.lua) found something a player needs lost, like a recipe no longer reachable
-        reachability_text = "[color=red]Potential softlock found: the checker reports that randomization lost something the original game had. Differences between the old and new logic can cause false alarms, so this may not be a real softlock (MECHCHECK lines in the log have details).[/color]"
+        reachability_text = {"propertyrandomizer-gui.mechanic-check-failed"}
     else
-        reachability_text = "[color=green]No critical softlocks discovered. All " .. tostring(total) .. " science packs seem reachable.[/color]"
+        reachability_text = {"propertyrandomizer-gui.science-reachable", tostring(total)}
     end
     local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
     -- What randomization warned about at startup (randomization_info.warnings, smuggled by data-final-fixes.lua), without the chat-style prefix each one starts with
     for data, _ in pairs(prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)) do
         local _, warnings = serpent.load(data)
         for ind, warning in pairs(warnings or {}) do
+            local message = warning
             if type(warning) == "string" then
-                local message = string.gsub(warning, "^%[img=item%.propertyrandomizer%-gear%] %[color=[^%]]*%]exfret's Randomizer:%[/color%] ", "")
-                home_flow.add({type = "label", name = "randomizer-home-flow-startup-warning-" .. ind, caption = "[color=orange]Warning:[/color] " .. message})
+                message = string.gsub(warning, "^%[img=item%.propertyrandomizer%-gear%] %[color=[^%]]*%]exfret's Randomizer:%[/color%] ", "")
             end
+            home_flow.add({type = "label", name = "randomizer-home-flow-startup-warning-" .. ind, caption = {"propertyrandomizer-gui.warning", message}})
         end
         break
     end
     if settings.startup["propertyrandomizer-seed"].value == 0 then
-        local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = "[color=orange]Warning:[/color] You are on the default seed. If this is unintended, see mod settings for customization."})
-        local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = "Note that some randomizations like recipes are off by default due to slow load times."})
-        local home_default_seed_warning_caption_3 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-3", caption = "Also consider turning on prototype caching for faster load times on future game startups (ctrl + shift + click settings, click \"The Rest\", then search for prototype caching)."})
+        local home_default_seed_warning_caption = home_flow.add({type = "label", name = "randomizer-home-flow-warning", caption = {"propertyrandomizer-gui.default-seed"}})
+        local home_default_seed_warning_caption_2 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-2", caption = {"propertyrandomizer-gui.default-disabled"}})
+        local home_default_seed_warning_caption_3 = home_flow.add({type = "label", name = "randomizer-home-flow-warning-3", caption = {"propertyrandomizer-gui.prototype-caching"}})
     end
-    local home_flow_tip_sync = home_flow.add({type = "label", name = "randomizer-home-flow-tip-1", caption = "[color=yellow]Tip:[/color] Randomizers don't play well with mod updates. CTRL + Click the sync mods button in the loading screen for a save to sync the exact same version."})
+    local home_flow_tip_sync = home_flow.add({type = "label", name = "randomizer-home-flow-tip-1", caption = {"propertyrandomizer-gui.sync-tip"}})
 
-    --local customizer_tab = customizer.create(main_tabbed_pane, event.player_index)
     --local derandomizer_tab = derandomizer.create(main_tabbed_pane, event.player_index)
 
-    local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = "Explorer"})
+    local explorer_tab = main_tabbed_pane.add({type = "tab", name = "randomizer-explorer-tab", caption = {"propertyrandomizer-gui.explorer"}})
     local explorer_flow = main_tabbed_pane.add({type = "flow", name = "randomizer-explorer-flow", direction = "vertical"})
     explorer_flow.style.horizontally_stretchable = true
     explorer_flow.style.vertically_stretchable = true
@@ -324,14 +389,14 @@ local function toggle_randomizer_panel(event)
     local explorer_intro = explorer_flow.add({
         type = "label",
         name = "randomizer-explorer-intro",
-        caption = "Select something to see what's needed to get it. Choose a category, then a prototype, balance mechanic, or graph node. Search fields filter the node type and name lists.",
+        caption = {"propertyrandomizer-gui.explorer-intro"},
     })
     explorer_flow.add({
         type = "checkbox",
         name = "randomizer-explorer-show-hidden",
-        caption = "Show hidden nodes",
+        caption = {"propertyrandomizer-gui.show-hidden"},
         state = storage.explorer_show_hidden ~= nil and storage.explorer_show_hidden[event.player_index] == true,
-        tooltip = "Show all prerequisite nodes, including hidden prototypes, Original copies, and normally folded or duplicate rows.",
+        tooltip = {"propertyrandomizer-gui.show-hidden-help"},
     })
     local explorer_flow_main = explorer_flow.add({type = "flow", name = "randomizer-explorer-flow-main", direction = "horizontal"})
     explorer_flow_main.style.horizontally_stretchable = true
@@ -343,15 +408,15 @@ local function toggle_randomizer_panel(event)
         name = "randomizer-explorer-type-choice",
         selected_index = 1,
         items = {
-            "Entity",
-            "Fluid",
-            "Item",
-            "Recipe",
-            "Technology",
-            "Tile",
-            "Asteroid Chunk",
-            "Mechanics",
-            "General node",
+            {"propertyrandomizer-gui.entity"},
+            {"propertyrandomizer-gui.fluid"},
+            {"propertyrandomizer-gui.item"},
+            {"propertyrandomizer-gui.recipe"},
+            {"propertyrandomizer-gui.technology"},
+            {"propertyrandomizer-gui.tile"},
+            {"propertyrandomizer-gui.asteroid-chunk"},
+            {"propertyrandomizer-gui.mechanics"},
+            {"propertyrandomizer-gui.general-node"},
         },
     })
     explorer_type_choice.style.width = 220
@@ -363,6 +428,7 @@ local function toggle_randomizer_panel(event)
     explorer_dropdowns_scroll.style.vertically_stretchable = true
     local explorer_dropdowns = explorer_dropdowns_scroll.add({type = "flow", name = "randomizer-explorer-dropdowns", direction = "vertical"})
 
+    customizer.create(main_tabbed_pane, event.player_index)
     size_main_panel(player, main_frame)
     main_frame.force_auto_center()
 end
@@ -383,8 +449,9 @@ events.on_event("randomizer-panel", function(event)
 end)
 
 events.on_event(defines.events.on_gui_selection_state_changed, function(event)
-    customizer.update_selector(event)
-    customizer.update_configuration_event(event)
+    if customizer.on_selection_changed(event) then
+        return
+    end
 
     if event.element.name == "randomizer-explorer-node-type" then
         refresh_node_choices(event.element.parent, false)
@@ -406,6 +473,9 @@ events.on_event(defines.events.on_gui_selection_state_changed, function(event)
 end)
 
 events.on_event(defines.events.on_gui_text_changed, function(event)
+    if customizer.on_text_changed(event) then
+        return
+    end
     if event.element.name == "randomizer-explorer-type-search" or event.element.name == "randomizer-explorer-node-search" then
         refresh_node_choices(event.element.parent, event.element.name == "randomizer-explorer-type-search")
         select_graph_node(event, nil)
@@ -426,93 +496,14 @@ local function decon_to_prot(deconstructed)
     return {prot = prot, control_top_level_name = control_top_level_name, top_level_class = top_level_class}
 end
 
-local type_to_localised = {
-    ["deliver"] = "Ability to deliver from space",
-    ["energy-source-burner"] = "Fuel",
-    ["energy-source-electric"] = "Electricity",
-    ["energy-source-electric-distribution"] = "Distribution",
-    ["energy-source-electric-production"] = "Production",
-    ["energy-source-electric-production-lightning"] = "Lightning!",
-    ["energy-source-electric-production-lightning-capture"] = "Capture it",
-    ["entity"] = "",
-    ["entity-build"] = "Build: ",
-    ["entity-build-surface-condition"] = "Valid conditions for: ",
-    ["entity-build-tile"] = "Tile to place: ",
-    ["entity-collision-group"] = "Valid tiles",
-    ["entity-harvest"] = "Harvest: ",
-    ["entity-kill"] = "Kill: ",
-    ["entity-mine"] = "Mine: ",
-    ["entity-operate"] = "Operate: ",
-    ["entity-own"] = "Own: ",
-    -- Normally skipped through (scripts/explorer-rows.lua), but shown when it has several ways
-    ["entity-own-operable"] = "Own: ",
-    ["entity-rocket-silo"] = "Rocket building: ",
-    ["fluid"] = "",
-    ["fluid-craft"] = "Craft: ",
-    ["fluid-create"] = "Create: ",
-    ["fluid-create-temperature"] = "Create: ",
-    ["fluid-hold"] = "Hold: ",
-    ["fluid-temperature"] = "Fluid: ",
-    ["fluid-temperature-range"] = "Fluid: ",
-    ["item"] = "",
-    ["item-burn"] = "Burn: ",
-    ["item-craft"] = "Craft: ",
-    ["item-launch"] = "Launch: ",
-    ["launch"] = "Ability to launch sh**",
-    ["planet"] = "A planet",
-    ["recipe"] = "",
-    ["recipe-category"] = "Crafting category: ",
-    ["rocket-silo"] = "Any rocket silo",
-    ["recipe-tech-unlock"] = "Recipe unlock",
-    ["recipe-unlock"] = "Recipe unlock",
-    ["room"] = "Location: ",
-    ["room-create-platform"] = "Platform creation: ",
-    ["room-launch"] = "Launch from: ",
-    ["science-pack-set-lab"] = "Lab",
-    ["science-pack-set-science"] = "Science packs",
-    ["space-connection"] = "Space connection: ",
-    ["space-connection-enter"] = "Enter connection",
-    ["space-location"] = "Orbit: ",
-    ["space-location-reachable"] = "Ability to dock at: ",
-    ["space-location-spaceship"] = "Spaceship at: ",
-    ["space-platform-unlock"] = "Tech unlock to create platforms",
-    ["space-surface"] = "Any space platform",
-    ["spaceship"] = "Spaceship",
-    ["starting-character"] = "Your initial fleshy form with which you can perform actions.",
-    ["starting-planet"] = "Starting planet",
-    ["technology"] = "",
-    ["technology-trigger"] = "Research trigger: ",
-    ["tile"] = "",
-    ["tile-build"] = "Build: ",
-    ["tile-build-item-place-as-tile"] = "Build: ",
-    ["tile-collision-group"] = "Tile group",
-    ["tile-mine"] = "Mine: ",
-    ["warmth"] = "Heat",
-}
-local node_type_to_tooltip = {
-    ["entity-build-surface-condition"] = "A surface with valid conditions to build this entity on it.",
-    ["entity-collision-group"] = "Tiles to build the entity on that it does not collide with.",
-    ["entity-own"] = "Built, captured or otherwise made yours, not found in the wild.",
-    ["entity-own-operable"] = "Built, captured or otherwise made yours, not found in the wild.",
-    ["fluid-hold"] = "Ability to hold fluid in some sort of pipe that supports it.",
-    ["recipe-category"] = "The ability to craft recipes of this category.",
-    ["room"] = "A planet or space platform.",
-    ["science-pack-set-lab"] = "A lab that can hold all the science packs.",
-    ["science-pack-set-science"] = "The science packs themselves.",
-    ["spaceship"] = "A space platform that can travel.",
-    ["starting-character"] = "You.",
-    ["starting-planet"] = "You started here.",
-    ["technology-trigger"] = "What researching this technology takes: mining, crafting, building or launching something.",
-    ["tile-build-item-place-as-tile"] = "Requires the item and tile to put it on.",
-    ["tile-collision-group"] = "Groups tiles having the same collision properties.",
-    ["warmth"] = "Access to a warm surface or to heat.",
-}
 
-local function get_node_type_caption(node)
+
+
+get_node_type_caption = function(node)
     if node.class == "balance-mechanics" then
-        return string.gsub(node.type, "^balance%-mechanics%-", "") .. ": "
+        return {"propertyrandomizer-gui.type-prefix", node_type_name(node.type)}
     end
-    return type_to_localised[node.type] or string.upper(string.sub(node.type, 1, 1)) .. string.sub(node.type, 2, -1) .. ": "
+    return {"?", {"propertyrandomizer-node-type." .. node.type}, {"propertyrandomizer-gui.type-prefix", node_type_name(node.type)}}
 end
 
 local dont_print_name_types = {
@@ -525,7 +516,7 @@ local dont_print_name_types = {
     ["tile-collision-group"] = true,
 }
 
-local function get_node_caption(node)
+get_node_caption = function(node)
     local graph = storage.graph
 
     if dont_print_name_types[node.type] then
@@ -545,7 +536,7 @@ local function get_node_caption(node)
                 end
             end
         end
-        return get_node_caption(two_locations[1]) .. "-" .. get_node_caption(two_locations[2])
+        return {"propertyrandomizer-name.connection", get_node_caption(two_locations[1]), get_node_caption(two_locations[2])}
     end
 
     if node.prot == nil then
@@ -558,7 +549,7 @@ local function get_node_caption(node)
         if node.type == "fluid-temperature" then
             log(deconstructed.name)
             local temp_decon = gutils.deconstruct(node.name)
-            return "[" .. prot_info.top_level_class .. "=" .. temp_decon.type .. "] (" .. temp_decon.name .. "°C)"
+            return {"propertyrandomizer-gui.fluid-temperature", "[" .. prot_info.top_level_class .. "=" .. temp_decon.type .. "]", temp_decon.name}
         end
         return "[" .. prot_info.top_level_class .. "=" .. deconstructed.name .. "]"
     else
@@ -571,22 +562,22 @@ end
 
 -- Same order and colors as the reachability buttons in expand_prereq_dropdown
 local reach_levels = {
-    {sort = "tech", color = "green", caption = "Now", tooltip = "Reachable with the technologies you've already researched."},
-    {sort = "science_pack", color = "yellow", caption = "With your science", tooltip = "Reachable by researching with science packs you've already made."},
-    {sort = "full", color = "red", caption = "Later", tooltip = "Reachable, but only after making science packs you haven't made yet."},
-    {color = "pink", caption = "Never", tooltip = "Not reachable in the randomizer's logic."},
+    {sort = "tech", color = "green", caption = {"propertyrandomizer-gui.now"}, tooltip = {"propertyrandomizer-gui.now-help"}},
+    {sort = "science_pack", color = "yellow", caption = {"propertyrandomizer-gui.with-science"}, tooltip = {"propertyrandomizer-gui.with-science-help"}},
+    {sort = "full", color = "red", caption = {"propertyrandomizer-gui.later"}, tooltip = {"propertyrandomizer-gui.later-help"}},
+    {color = "pink", caption = {"propertyrandomizer-gui.never"}, tooltip = {"propertyrandomizer-gui.never-help"}},
 }
 
 local ability_names = {
-    [top.ISOLATABILITY] = "Isolated",
-    [top.AUTOMATABILITY] = "Automated",
+    [top.ISOLATABILITY] = {"propertyrandomizer-gui.isolated"},
+    [top.AUTOMATABILITY] = {"propertyrandomizer-gui.automated"},
 }
 local ability_tooltips = {
-    [top.ISOLATABILITY] = "Made in this room without shipping anything in from other rooms (technologies researched by the time you get here still count).",
-    [top.AUTOMATABILITY] = "Can be automated, not just handcrafted or taken from non-resource entities.",
+    [top.ISOLATABILITY] = {"propertyrandomizer-gui.isolated-help"},
+    [top.AUTOMATABILITY] = {"propertyrandomizer-gui.automated-help"},
 }
 
--- Ability strings with fewer abilities first, so "Reachable" leads and "Isolated + Automated" ends
+-- Ability strings with fewer abilities first, so {"propertyrandomizer-gui.reachable"} leads and "Isolated + Automated" ends
 local function ordered_ability_strs()
     local strs = {}
     for _, ability_str in pairs(top.ability_strs) do
@@ -605,22 +596,21 @@ local function ordered_ability_strs()
 end
 
 local function ability_str_caption(ability_str)
-    local caption = ""
-    local tooltip = ""
+    local captions = {}
+    local tooltips = {}
     for ability, name in pairs(ability_names) do
         if string.sub(ability_str, ability, ability) == "1" then
-            if caption ~= "" then
-                caption = caption .. " + "
-                tooltip = tooltip .. "\n"
-            end
-            caption = caption .. name
-            tooltip = tooltip .. "[font=default-semibold]" .. name .. ":[/font] " .. ability_tooltips[ability]
+            table.insert(captions, name)
+            table.insert(tooltips, {"propertyrandomizer-gui.ability-help", name, ability_tooltips[ability]})
         end
     end
-    if caption == "" then
-        return {caption = "Reachable", tooltip = "Can be had in this room at all."}
+    if #captions == 0 then
+        return {caption = {"propertyrandomizer-gui.reachable"}, tooltip = {"propertyrandomizer-gui.reachable-help"}}
     end
-    return {caption = caption, tooltip = tooltip}
+    return {
+        caption = localised_text.join(captions, {"propertyrandomizer-gui.ability-separator"}),
+        tooltip = localised_text.join(tooltips, "\n"),
+    }
 end
 
 -- Room keys are prototype keys of planets and surfaces (see logic.contexts)
@@ -670,13 +660,12 @@ local function show_contexts_panel(player, node)
     local frame = gui.add({type = "frame", name = "randomizer-contexts-panel", direction = "vertical"})
     local title_flow = frame.add({type = "flow", direction = "horizontal"})
     title_flow.drag_target = frame
-    local title_caption = {"", get_node_type_caption(node), get_node_caption(node)}
+    local title_caption = {"propertyrandomizer-gui.node-title", get_node_type_caption(node), get_node_caption(node), ""}
     -- The node caption is just an icon for prototypes, so spell out the name too
     if node.prot ~= nil then
         local prot_info = decon_to_prot(gutils.deconstruct(node.prot))
         if is_elem_type[prot_info.top_level_class] then
-            table.insert(title_caption, " ")
-            table.insert(title_caption, prot_info.prot.localised_name)
+            title_caption[4] = prot_info.prot.localised_name
         end
     end
     local title_label = title_flow.add({type = "label", caption = title_caption, style = "frame_title"})
@@ -685,10 +674,10 @@ local function show_contexts_panel(player, node)
     drag_space.style.horizontally_stretchable = true
     drag_space.style.height = 24
     drag_space.drag_target = frame
-    title_flow.add({type = "sprite-button", name = "randomizer-contexts-close", sprite = "utility/close", style = "frame_action_button", tooltip = "Close"})
+    title_flow.add({type = "sprite-button", name = "randomizer-contexts-close", sprite = "utility/close", style = "frame_action_button", tooltip = {"propertyrandomizer-gui.close"}})
 
     local inside = frame.add({type = "frame", style = "inside_shallow_frame_with_padding", direction = "vertical"})
-    inside.add({type = "label", caption = "Where this can be had, and how. Hover a square for details."})
+    inside.add({type = "label", caption = {"propertyrandomizer-gui.contexts-intro"}})
 
     local ability_strs = ordered_ability_strs()
     -- One row per room, so with many planet copies (the dupe count setting) the table scrolls rather than running off the screen
@@ -696,7 +685,7 @@ local function show_contexts_panel(player, node)
     table_scroll.style.maximal_height = 600
     local table_elt = table_scroll.add({type = "table", style = "bordered_table", column_count = 1 + #ability_strs})
     table_elt.style.top_margin = 8
-    table_elt.add({type = "label", style = "bold_label", caption = "Room"})
+    table_elt.add({type = "label", style = "bold_label", caption = {"propertyrandomizer-gui.room"}})
     for _, ability_str in pairs(ability_strs) do
         local info = ability_str_caption(ability_str)
         local header = table_elt.add({type = "label", style = "bold_label", caption = info.caption, tooltip = info.tooltip})
@@ -743,7 +732,7 @@ local function show_contexts_panel(player, node)
             local cell = table_elt.add({type = "flow", direction = "horizontal"})
             cell.style.horizontally_stretchable = true
             cell.style.horizontal_align = "center"
-            add_level_square(cell, level, {"", "[font=default-semibold]", info.localised_name, ", ", ability_str_caption(ability_str).caption, ":[/font] ", level.tooltip})
+            add_level_square(cell, level, {"propertyrandomizer-gui.context-help", info.localised_name, ability_str_caption(ability_str).caption, level.tooltip})
         end
     end
 
@@ -801,7 +790,7 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
     elseif next(storage.sort_info.node_to_context_inds[gutils.key(new_node)]) ~= nil then
         style_to_use = "randomizer_slot_button_red"
     end
-    local reachability_button = description.add({type = "button", name = new_name .. "-randomizer-explorer-contexts-button", style = style_to_use, tooltip = "Click to see where this can be had in each room."})
+    local reachability_button = description.add({type = "button", name = new_name .. "-randomizer-explorer-contexts-button", style = style_to_use, tooltip = {"propertyrandomizer-gui.contexts-help"}})
     local description_label_amount
     if amount ~= nil then
         -- Ignore recipe nodes since their amounts might cause confusion
@@ -819,14 +808,14 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
             end
         end
         if not dont_print then
-            description_label_amount = description.add({type = "label", style = "bold_label", caption = tostring(math.floor(10000 * amount) / 10000) .. "x "})
+            description_label_amount = description.add({type = "label", style = "bold_label", caption = {"propertyrandomizer-gui.quantity", tostring(math.floor(10000 * amount) / 10000)}})
         end
         storage.gui_element_to_amount = storage.gui_element_to_amount or {}
         storage.gui_element_to_amount[player_index] = storage.gui_element_to_amount[player_index] or {}
         storage.gui_element_to_amount[player_index][new_name] = amount
     end
     local description_label_type = description.add({type = "label", caption = get_node_type_caption(new_node)})
-    description_label_type.tooltip = node_type_to_tooltip[new_node.type]
+    description_label_type.tooltip = {"?", {"propertyrandomizer-node-help." .. new_node.type}, ""}
     local description_label_name = description.add({type = "label", name = new_name .. "-randomizer-explorer-description-name", caption = get_node_caption(new_node)})
     description_label_name.style.rich_text_setting = defines.rich_text_setting.highlight
     if new_node.prot ~= nil then
@@ -843,6 +832,9 @@ local function expand_prereq_dropdown(gui_elt_flow_down, player_index, new_node,
 end
 
 events.on_event(defines.events.on_gui_click, function(event)
+    if customizer.on_click(event) then
+        return
+    end
     if string.find(event.element.name, "randomizer%-explorer%-description%-name") ~= nil then
         local hor_flow = event.element.parent.parent.parent
         local prot_node = storage.gui_element_to_node[event.player_index][hor_flow.name]
@@ -1099,30 +1091,30 @@ events.on_event(defines.events.on_gui_elem_changed, function(event)
 
             explorer_derandomizer.clear()
             if storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] then
-                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]You already acquired the derandomized version of this.[/color]"})
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomized"}})
             elseif can_be_derandomized(prot_choice) then
                 if prot_choice.elem_type == "item" and next(storage.tech_sort_info.node_to_context_inds[gutils.key("item", prot_choice.elem_value)]) == nil then
-                    explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]Items must be accessible before you can derandomize them.[/color]"})
+                    explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomizer-inaccessible"}})
                 else
-                    local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=green]This prototype can be derandomized![/color]"})
+                    local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.derandomizable"}})
                     if prot_choice.elem_type == "entity" then
-                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to reset its stats."})
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-entity"}})
                     elseif prot_choice.elem_type == "recipe" then
-                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to reset crafting time and restore these recipe categories:"})
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-recipe"}})
                         for _, cat in pairs(prototypes.recipe["derandomized-" .. prot_choice.elem_type .. "--" .. prot_choice.elem_value].categories) do
-                            explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-" .. cat, caption = "    " .. cat})
+                            explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-" .. cat, caption = {"propertyrandomizer-gui.recipe-category", {"?", {"recipe-category-name." .. cat}, cat}}})
                         end
                     elseif prot_choice.elem_type == "item" then
-                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = "Derandomize to get access to a handcrafting recipe to make this for free."})
-                        local explorer_derandomizer_prot_caption_desc_2 = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-2", caption = "(Not really 'derandomizing' but whatever)."})
+                        local explorer_derandomizer_prot_caption_desc = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc", caption = {"propertyrandomizer-gui.derandomize-item"}})
+                        local explorer_derandomizer_prot_caption_desc_2 = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot-desc-2", caption = {"propertyrandomizer-gui.derandomize-aside"}})
                     end
                 end
             else
-                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = "[color=red]This prototype is not derandomizable.[/color]"})
+                local explorer_derandomizer_prot_caption = explorer_derandomizer.add({type = "label", name = "randomizer-explorer-derandomizer-prot", caption = {"propertyrandomizer-gui.not-derandomizable"}})
             end
             add_derandomizer_amount_caption(explorer_derandomizer)
             if not storage.already_derandomized[prot_choice.elem_type .. "--" .. prot_choice.elem_value] and can_be_derandomized(prot_choice) and (storage.num_derandomizations > 0 or script.active_mods["pyalternativeenergy"]) then
-                local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = "Derandomize!"})
+                local explorer_derandomizer_button = explorer_derandomizer.add({type = "button", name = "randomizer-explorer-derandomizer-button", caption = {"propertyrandomizer-gui.derandomize"}})
             end
 
             -- Refer to the operate entity node if there are more requirements to operation than just having the entity
@@ -1194,4 +1186,32 @@ events.on_event(defines.events.on_gui_checked_state_changed, function(event)
             expand_node_dropdown(event, node)
         end
     end
+end)
+
+
+events.on_event(defines.events.on_string_translated, explorer_localisation.on_translated)
+
+events.on_event(defines.events.on_tick, function(event)
+    if event.tick % 30 ~= 0 then
+        return
+    end
+    local dirty = storage.explorer_translation_dirty or {}
+    storage.explorer_translation_dirty = {}
+    for player_index, _ in pairs(dirty) do
+        customizer.refresh_translations(player_index)
+        local player = game.players[player_index]
+        local panel = player ~= nil and player.gui.screen["randomizer-main-panel"] or nil
+        if panel ~= nil then
+            local explorer = panel["randomizer-main-tabbed-pane"]["randomizer-explorer-flow"]
+            local choices = explorer["randomizer-explorer-flow-main"]["randomizer-explorer-flow-left"]["randomizer-explorer-flow-choice"]
+            local selector = choices["randomizer-explorer-node-selector"]
+            if selector ~= nil then
+                refresh_node_choices(selector, true, true)
+            end
+        end
+    end
+end)
+
+events.on_event(defines.events.on_player_locale_changed, function(event)
+    explorer_localisation.invalidate(event.player_index)
 end)

@@ -1,6 +1,8 @@
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local features = require("helper-tables/feature-flags")
 local spec = require("helper-tables/spec")
+local customization = require("lib/customization")
 
 config = {}
 
@@ -86,14 +88,18 @@ if config.unified_preview then
     config.only_randomize_science_recipes = nil
     if next(config.graph) ~= nil then
         local turned_off = {}
+        local turned_off_labels = {}
         for key, _ in pairs(config.graph) do
             table.insert(turned_off, (string.gsub(key, "_", " ")))
         end
         table.sort(turned_off)
+        for _, name in pairs(turned_off) do
+            table.insert(turned_off_labels, {"mod-setting-name.propertyrandomizer-" .. string.gsub(name, " ", "-")})
+        end
         config.graph = {}
         local message = "The unified preview isn't compatible with the old graph randomizations, so it turned off these: " .. table.concat(turned_off, ", ") .. "."
         log(message)
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] " .. message)
+        table.insert(randomization_info.warnings, {"propertyrandomizer-warning.preview-incompatible", localised_text.join(turned_off_labels, ", ")})
     end
 end
 -- Whether entity randomization is on, which logic needs to know before randomization (for its supply mechanics, see lib/logic/entity-supply.lua)
@@ -201,20 +207,20 @@ local function parse_property(prop_spec, data_raw_to_use)
     local prot_start = string.find(prop_spec, "%[")
     local prot_end = string.find(prop_spec, "%]")
     if prot_start == nil or prot_end == nil then
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Override params that (should) include prototype not formatted with [ or ] like ...[top-level-class=prot-name]... (no spaces), and so was skipped: " .. prop_spec)
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-brackets", prop_spec))
         return false
     end
     local prot_spec = string.sub(prop_spec, prot_start + 1, prot_end - 1)
     local equals_sep = string.find(prot_spec, "=")
     if equals_sep == nil then
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Override params that (should) include prototype not formatted with = like ...[top-level-class=prot-name]... (no spaces), and so was skipped: " .. prop_spec)
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-equals", prop_spec))
         return false
     end
     local top_class_name = string.sub(prot_spec, 1, equals_sep - 1)
     local prot_name = string.sub(prot_spec, equals_sep + 1, -1)
     -- Find the prototype
     if defines.prototypes[top_class_name] == nil then
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] " ..  top_class_name .. " is not a valid top-level class name; override skipped.")
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-class", top_class_name))
         return false
     end
     local prot
@@ -225,7 +231,7 @@ local function parse_property(prop_spec, data_raw_to_use)
         end
     end
     if prot == nil then
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] There is no prototype with top level class " .. top_class_name .. " and name " .. prot_name .. "; override skipped.")
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-prototype", top_class_name, prot_name))
         return false
     end
     local prop_part = string.sub(prop_spec, prot_end + 1, -1)
@@ -247,7 +253,7 @@ local function parse_property(prop_spec, data_raw_to_use)
     local last_prop
     for prop_key in string.gmatch(prop_part, "([^.]+)") do
         if type(curr_tbl) ~= "table" then
-            table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Attempt was made to index into non table value with override containing following property spec, so that override was skipped: " .. prop_spec)
+            table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-non-table", prop_spec))
             return false
         end
 
@@ -256,7 +262,7 @@ local function parse_property(prop_spec, data_raw_to_use)
         last_prop = tonumber(prop_key) or prop_key
     end
     if last_tbl == nil then
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] No properties specified in following property spec, so that override was skipped: " .. prop_spec)
+        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-no-properties", prop_spec))
         return false
     end
     return {
@@ -371,50 +377,22 @@ local function parse_value(val_spec, old_val, new_val)
     return parsed_tbl
 end
 
--- Overrides
-for override in string.gmatch(settings.startup["propertyrandomizer-overrides"].value, "([^;]+)") do
-    local split_ind = string.find(override, ":")
-    local instr
-    local params
-    if split_ind == nil then
-        -- Allow backward compat
-        if string.sub(override, 1, 1) == "!" then
-            instr = "OFF"
-            params = string.sub(override, 2, -1)
-        else
-            instr = "ON"
-            params = override
+-- Compile setting-group and individual overrides once.
+-- Each field inherits independently; individual entries win regardless of instruction order.
+config.customization = customization.parse(settings.startup["propertyrandomizer-overrides"].value)
+config.numerical_overrides = {}
+config.numerical_variances = {}
+for index, message in pairs(config.customization.warnings) do
+    log(message)
+    table.insert(randomization_info.warnings, config.customization.localised_warnings[index] or message)
+end
+for _, order_group in pairs(randomizations_to_perform) do
+    for id, _ in pairs(order_group) do
+        local overrides = customization.resolve(config.customization, id)
+        config.numerical_overrides[id] = overrides
+        if overrides.enabled ~= nil then
+            order_group[id] = overrides.enabled
         end
-    end
-
-    instr = instr or string.sub(override, 1, split_ind - 1)
-    params = params or string.sub(override, split_ind + 1, -1)
-    if instr == "OFF" then
-        if spec[params] ~= nil then
-            for _, order_group in pairs(randomizations_to_perform) do
-                if order_group[params] ~= nil then
-                    order_group[params] = false
-                end
-            end
-        else
-            table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Unrecognized/invalid randomization on an override so it was skipped: " .. params)
-        end
-    elseif instr == "ON" then
-        if spec[params] ~= nil then
-            for _, order_group in pairs(randomizations_to_perform) do
-                if order_group[params] ~= nil then
-                    order_group[params] = true
-                end
-            end
-        else
-            table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Unrecognized/invalid randomization on an override so it was skipped: " .. params)
-        end
-    elseif instr == "RESET" then
-        -- Everything for this done later
-    elseif instr == "SET" then
-        -- Everything for this done later
-    else
-        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Unrecognized instruction " .. instr .. " in following override, so it was skipped: " .. override)
     end
 end
 
@@ -463,12 +441,12 @@ do_overrides_postfixes = function()
             elseif instr == "SET" then
                 local bracket_pos = string.find(params, "%]")
                 if bracket_pos == nil then
-                    table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Override params that (should) include prototype not formatted with [ or ] like ...[top-level-class=prot-name]... (no spaces), and so was skipped: " .. params)
+                    table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-brackets", params))
                 else
                     local prop_val_spec = string.sub(params, bracket_pos + 1, -1)
                     local equals_pos = string.find(prop_val_spec, "=")
                     if equals_pos == nil then
-                        table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Override assignment params not formatted with = like ...prop-spec=new-val; (no spaces), and so was skipped: " .. params)
+                        table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-assignment", params))
                     else
                         -- Need to re-include the prototype part
                         local prop_spec = string.sub(params, 1, bracket_pos) .. string.sub(prop_val_spec, 1, equals_pos - 1)
@@ -488,7 +466,7 @@ do_overrides_postfixes = function()
                             else
                                 local expr_val = parse_value(val_spec, old_prop_info.tbl[old_prop_info.prop], new_prop_info.tbl[new_prop_info.prop])
                                 if expr_val == nil or expr_val == false then
-                                    table.insert(randomization_info.warnings, "[img=item.propertyrandomizer-gear] [color=yellow]exfret's Randomizer:[/color] Expression not valid, so override containing it was skipped: " .. val_spec)
+                                    table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.override-expression", val_spec))
                                 else
                                     new_prop_info.tbl[new_prop_info.prop] = expr_val
                                 end

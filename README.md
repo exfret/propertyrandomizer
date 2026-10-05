@@ -52,7 +52,7 @@ The easiest way to install the mod is through Factorio's in-game mod browser. Th
 
 Configuration is available through changing the mod settings in-game. A seed controls deterministic generation, while category, chaos, bias, and advanced override settings control what may change and how aggressively.
 
-The advanced override language can enable or disable individual randomizations and reset or replace specific prototype properties after randomization. **See OVERRIDES.md for override documentation.**
+Open the Randomizer Panel's **Customizer** tab to build a numerical override string using group or individual controls, then copy it into the **Custom overrides** startup setting. It supports inheritance, search, import, and per-player drafts. The advanced override language can also reset or replace specific prototype properties after randomization. **See OVERRIDES.md for override documentation.**
 
 ## Repository map
 

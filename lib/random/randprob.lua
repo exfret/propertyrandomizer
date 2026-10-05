@@ -48,7 +48,9 @@ randprob.rand = function(params)
     params.property = nil
     local rounding = params.rounding
     params.rounding = "none"
-    local factor = randnum.rand(params)
+    -- Tuning was resolved on the original value.
+    -- Preserve it while randomizing the temporary odds multiplier, including its forced rounding mode.
+    local factor = randnum.rand(params, true)
 
     -- Scale odds with factor
     local new_p = randprob.scale_odds(p, factor)

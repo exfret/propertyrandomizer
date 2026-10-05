@@ -17,6 +17,7 @@ randomizations.tile_pollution_absorption = function (id)
         else
             local rng_key = rng.key({ id = id, prototype = tile })
             local factor = randomize({
+                id = id,
                 key = rng_key,
                 dummy = 1,
                 rounding = "none",

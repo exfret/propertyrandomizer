@@ -1097,8 +1097,8 @@ randomizations.add_old_versions = function()
             if old_item ~= nil then
                 local copy = table.deepcopy(entity)
                 copy.name = "old-" .. entity.name
-                copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
-                copy.localised_description = "Just like old."
+                copy.localised_name = {"propertyrandomizer-name.original", locale_utils.find_localised_name(entity)}
+                copy.localised_description = {"propertyrandomizer-description.original"}
                 -- Entity randomization can have the entity found in the wild (salvage), but its old version is only ever built
                 copy.autoplace = nil
                 local old_data_item
@@ -1109,8 +1109,8 @@ randomizations.add_old_versions = function()
                 end
                 local item_copy = table.deepcopy(old_item)
                 item_copy.name = copy.name
-                item_copy.localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"}
-                item_copy.localised_description = "Just like old."
+                item_copy.localised_name = {"propertyrandomizer-name.original", locale_utils.find_localised_name(entity)}
+                item_copy.localised_description = {"propertyrandomizer-description.original"}
                 if item_copy.place_result == entity.name then
                     item_copy.place_result = copy.name
                 end
@@ -1205,7 +1205,7 @@ randomizations.add_old_versions = function()
                     {
                         type = "recipe",
                         name = "derandomized-" .. "entity" .. "--" .. entity.name, -- We can't use gutils.key because colons aren't allowed
-                        localised_name = {"", locale_utils.find_localised_name(entity), " [color=154,61,0](Original!)[/color]"},
+                        localised_name = {"propertyrandomizer-name.original", locale_utils.find_localised_name(entity)},
                         ingredients = {{type = "item", name = placer_name, amount = 1}},
                         results = {{type = "item", name = item_copy.name, amount = 1}},
                         main_product = item_copy.name,
@@ -1225,7 +1225,7 @@ randomizations.add_old_versions = function()
         for _, recipe in pairs(old_data_raw_for_derandomization.recipe) do
             local copy = table.deepcopy(recipe)
             copy.name = "derandomized-" .. "recipe" .. "--" .. recipe.name
-            copy.localised_name = {"", locale_utils.find_localised_name(recipe), " [color=254,20,101](Old Recipe)[/color]"}
+            copy.localised_name = {"propertyrandomizer-name.old-recipe", locale_utils.find_localised_name(recipe)}
             copy.enabled = false
             -- Apply tint
             if copy.icons ~= nil then
@@ -1278,7 +1278,7 @@ randomizations.add_old_versions = function()
                 local new_recipe = {
                     type = "recipe",
                     name = "derandomized-" .. "item" .. "--" .. item.name,
-                    localised_name = {"", locale_utils.find_localised_name(item), " [color=61,154,0](Free!)[/color]"},
+                    localised_name = {"propertyrandomizer-name.free", locale_utils.find_localised_name(item)},
                     icons = icons,
                     ingredients = {},
                     results = {{type = "item", name = item.name, amount = 1}},

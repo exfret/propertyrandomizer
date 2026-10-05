@@ -11,21 +11,21 @@ data:extend({
         type = "custom-input",
         name = "return-to-starting-planet",
         key_sequence = "CONTROL + SHIFT + R",
-        localised_name = "Return Home"
+        localised_name = {"controls.return-to-starting-planet"},
     },
     -- Key sequence for randomizer info panel
     {
         type = "custom-input",
         name = "randomizer-panel",
         key_sequence = "CONTROL + P",
-        localised_name = "Open Randomizer Panel"
+        localised_name = {"controls.randomizer-panel"},
     },
     -- Special item for images
     {
         type = "item",
         name = "propertyrandomizer-gear",
-        localised_name = "exfret's randomizer",
-        localised_description = "FUN!",
+        localised_name = {"item-name.propertyrandomizer-gear"},
+        localised_description = {"item-description.propertyrandomizer-gear"},
         stack_size = 23,
         icon = "__propertyrandomizer__/graphics/gear-icon.png",
         icon_size = 127,

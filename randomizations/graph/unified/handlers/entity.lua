@@ -17,6 +17,7 @@ local acquisition = require("lib/logic/acquisition")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local locale = require("lib/locale")
+local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 local wild = require("lib/wild-entities")
 local material_costs = require("lib/cost/material-costs/sa")
@@ -1669,7 +1670,7 @@ end
 -- A spoof placer's description: the entity it now places (rich text shows its icon), then the item's own description
 -- randomizations.fixes later puts the entity's own description (with any stat changes) in front
 local function places_description(old_item, entity_prot)
-    local places = {"", "Places [entity=" .. entity_prot.name .. "] ", locale.find_localised_name(entity_prot)}
+    local places = {"propertyrandomizer-entity.places", "[entity=" .. entity_prot.name .. "]", locale.find_localised_name(entity_prot)}
     if old_item.localised_description ~= nil then
         return {"", places, "\n", table.deepcopy(old_item.localised_description)}
     end
@@ -1698,20 +1699,20 @@ end
 
 -- A salvaged entity's description: where to find it
 local function salvage_description(entity_prot)
-    return {"", "Mined from [entity=" .. entity_prot.name .. "] ", locale.find_localised_name(entity_prot), " found in the wild."}
+    return {"propertyrandomizer-entity.wild-salvage", "[entity=" .. entity_prot.name .. "]", locale.find_localised_name(entity_prot)}
 end
 
 -- How a trigger slot's base makes its entity, as rich text: using a capsule, firing ammo, or capturing a spawner
 local function made_by_description(graph, base)
     local owner_name = gutils.get_owner(graph, base).name
     if base.acq_kind == "capture" then
-        return {"", "capturing [entity=" .. owner_name .. "] ", locale.find_localised_name(dutils.get_prot("entity", owner_name))}
+        return {"propertyrandomizer-entity.capturing", "[entity=" .. owner_name .. "]", locale.find_localised_name(dutils.get_prot("entity", owner_name))}
     end
-    local verb = "using "
+    local verb = "using"
     if base.acq_kind == "ammo" then
-        verb = "firing "
+        verb = "firing"
     end
-    return {"", verb .. "[item=" .. owner_name .. "] ", locale.find_localised_name(dutils.get_prot("item", owner_name))}
+    return {"propertyrandomizer-entity." .. verb, "[item=" .. owner_name .. "]", locale.find_localised_name(dutils.get_prot("item", owner_name))}
 end
 
 -- A prototype's description with a line in front, leaving out its own description if it has none rather than show a missing key
@@ -1906,8 +1907,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             common.set_placed_entity(item, entity_prot)
             common.set_icon_layers(item, "", common.icon_layers(entity_prot, ""))
             common.set_icon_layers(item, "dark_background_", nil)
-            item.localised_name = {"", locale.find_localised_name(entity_prot), " (Friendly)"}
-            item.localised_description = {"", "Places a friendly [entity=" .. entity_name .. "] ", locale.find_localised_name(entity_prot), "."}
+            item.localised_name = {"propertyrandomizer-entity.friendly-name", locale.find_localised_name(entity_prot)}
+            item.localised_description = {"propertyrandomizer-entity.friendly-places", "[entity=" .. entity_name .. "]", locale.find_localised_name(entity_prot)}
         elseif common.placed_entity_name(old_item) ~= entity_name then
             -- Other items take on the look of their new entity's own item (icons, name, stack size, place in menus); items that still place their own entity are left alone
             common.set_placed_entity(item, entity_prot)
@@ -1950,26 +1951,26 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             local now_from
             if carried[last_entity.name] ~= nil then
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now carried by biters)")
-                now_from = {"", " is now carried by biters; kill one for an item that places it."}
+                now_from = {"propertyrandomizer-entity.source-carried"}
             elseif salvaged[last_entity.name] ~= nil then
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now salvaged from the wild)")
-                now_from = {"", " is now found in the wild; mine one for an item that places it."}
+                now_from = {"propertyrandomizer-entity.source-wild"}
             elseif triggered[last_entity.name] ~= nil then
                 local base = graph.nodes[triggered[last_entity.name]]
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now made by " .. trigger_action(graph, base) .. ")")
-                now_from = {"", " is now made by ", made_by_description(graph, base), "; mine one for an item that places it."}
+                now_from = {"propertyrandomizer-entity.source-made", made_by_description(graph, base)}
             elseif hatched[last_entity.name] ~= nil then
                 local egg = dutils.get_prot("item", gutils.get_owner(graph, graph.nodes[hatched[last_entity.name]]).name)
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now carried by biters hatching from " .. egg.name .. ")")
-                now_from = {"", " is now carried by biters hatching from [item=" .. egg.name .. "] ", locale.find_localised_name(egg), "; kill one for an item that places it."}
+                now_from = {"propertyrandomizer-entity.source-hatched", "[item=" .. egg.name .. "]", locale.find_localised_name(egg)}
             elseif wrecked[last_entity.name] ~= nil then
                 local dying = dutils.get_prot("entity", gutils.get_owner(graph, graph.nodes[wrecked[last_entity.name]]).name)
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now left as a wreck by " .. dying.name .. ")")
-                now_from = {"", " is now left as a wreck by [entity=" .. dying.name .. "] ", locale.find_localised_name(dying), " when it dies; mine it for an item that places it."}
+                now_from = {"propertyrandomizer-entity.source-wreck", "[entity=" .. dying.name .. "]", locale.find_localised_name(dying)}
             else
                 local spoof_placer = dutils.get_prot("item", placer_of(last_head_key))
                 log("Entity randomization: " .. old_item_name .. " places nothing now, and looks like a darkened " .. look.name .. " (" .. last_entity.name .. " is now placed by " .. spoof_placer.name .. ")")
-                now_from = {"", " is now placed with [item=" .. spoof_placer.name .. "] ", locale.find_localised_name(spoof_placer), "."}
+                now_from = {"propertyrandomizer-entity.source-placed", "[item=" .. spoof_placer.name .. "]", locale.find_localised_name(spoof_placer)}
             end
             for _, prefix in pairs(common.item_icon_prefixes) do
                 local layers = common.icon_layers(look, prefix)
@@ -1978,8 +1979,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 end
                 common.set_icon_layers(vestige, prefix, layers)
             end
-            vestige.localised_name = {"", table.deepcopy(look.localised_name) or last_entity_name, " (Vestige)"}
-            vestige.localised_description = {"", "No longer places anything. [entity=" .. last_entity.name .. "] ", last_entity_name, now_from}
+            vestige.localised_name = {"propertyrandomizer-entity.vestige-name", table.deepcopy(look.localised_name) or last_entity_name}
+            vestige.localised_description = {"propertyrandomizer-entity.vestige", "[entity=" .. last_entity.name .. "]", last_entity_name, now_from}
             vestige_was[old_item_name] = {
                 entity = last_entity.name,
                 entity_name = last_entity_name,
@@ -2074,7 +2075,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     -- A built entity made by a trigger slot is ours where it's made, and is mined for a salvage item to place it anywhere else
     for entity_name, base_key in pairs(triggered) do
         local entity_prot = dutils.get_prot("entity", entity_name)
-        local salvage = add_salvage_item(entity_name, {"", "Mined from [entity=" .. entity_name .. "] ", locale.find_localised_name(entity_prot), " made by ", made_by_description(graph, graph.nodes[base_key]), "."})
+        local salvage = add_salvage_item(entity_name, {"propertyrandomizer-entity.made-salvage", "[entity=" .. entity_name .. "]", locale.find_localised_name(entity_prot), made_by_description(graph, graph.nodes[base_key])})
         log("Entity randomization: " .. entity_name .. " is made by " .. trigger_action(graph, graph.nodes[base_key]) .. ", and mined for " .. salvage.name)
     end
 
@@ -2107,7 +2108,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         looted.name = "propertyrandomizer-looted-" .. entity_name
         common.set_placed_entity(looted, entity_prot)
         looted.localised_name = looted.localised_name or locale.find_localised_name(entity_prot)
-        looted.localised_description = {"", "Dropped by [entity=" .. carrier.name .. "] ", locale.find_localised_name(entity_prot), " carriers."}
+        looted.localised_description = {"propertyrandomizer-entity.carrier-drop", "[entity=" .. carrier.name .. "]", locale.find_localised_name(entity_prot)}
         -- It looks like the entity shrunk to the unit's size
         local sprite = common.entity_sprite(entity_prot, common.box_size(carrier))
         carrier.run_animation = {
@@ -2122,8 +2123,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         }
         carrier.alternative_attacking_frame_sequence = nil
         common.set_icon_layers(carrier, "", common.icon_layers(entity_prot, ""))
-        carrier.localised_name = {"", locale.find_localised_name(entity_prot), " (Carrier)"}
-        carrier.localised_description = {"", "Drops [item=" .. looted.name .. "] when killed."}
+        carrier.localised_name = {"propertyrandomizer-entity.carrier-name", locale.find_localised_name(entity_prot)}
+        carrier.localised_description = {"propertyrandomizer-entity.carrier-loot", "[item=" .. looted.name .. "]"}
         -- Tougher carriers drop more, cheap and bulk items more (acquisition.loot_amount)
         local tier = demand_tier_of(entity_name)
         local amount = acquisition.loot_amount(carrier.max_health or 1, item_cost(old_item_name), tier, looted.stack_size)
@@ -2167,10 +2168,10 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local dying_name = gutils.get_owner(graph, base).name
         local entity_prot = dutils.get_prot("entity", entity_name)
         local wreck_name = "propertyrandomizer-wreck-" .. entity_name
-        local salvage = add_salvage_item(entity_name, {"", "Mined from [entity=" .. wreck_name .. "] wrecks, which [entity=" .. dying_name .. "] ", locale.find_localised_name(dutils.get_prot("entity", dying_name)), " leaves behind when it dies."})
+        local salvage = add_salvage_item(entity_name, {"propertyrandomizer-entity.wreck-salvage", "[entity=" .. wreck_name .. "]", "[entity=" .. dying_name .. "]", locale.find_localised_name(dutils.get_prot("entity", dying_name))})
         local wreck = common.wreck_of(entity_prot, wreck_name, salvage.name, starting_item(entity_to_old_items[entity_name][1]))
-        wreck.localised_name = {"", locale.find_localised_name(entity_prot), " (Wreck)"}
-        wreck.localised_description = {"", "Mine it for [item=" .. salvage.name .. "] ", locale.find_localised_name(salvage), "."}
+        wreck.localised_name = {"propertyrandomizer-entity.wreck-name", locale.find_localised_name(entity_prot)}
+        wreck.localised_description = {"propertyrandomizer-entity.mine-salvage", "[item=" .. salvage.name .. "]", locale.find_localised_name(salvage)}
         data:extend({
             wreck,
         })
@@ -2194,7 +2195,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local made_before = head_entity_name(graph, graph.nodes[base.old_head])
         if occupant ~= made_before then
             local occupant_prot = dutils.get_prot("entity", occupant)
-            local occupant_line = {"", "[entity=" .. occupant .. "] ", locale.find_localised_name(occupant_prot), "."}
+            local occupant_line = {"propertyrandomizer-entity.occupant", "[entity=" .. occupant .. "]", locale.find_localised_name(occupant_prot)}
             if base.trigger_spoof ~= nil then
                 -- A capsule thrown for an effect makes this where it's thrown instead (below)
                 maker_occupants[owner_name] = {
@@ -2207,7 +2208,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             elseif base.acq_kind == "capture" then
                 local spawner = dutils.get_prot("entity", owner_name)
                 spawner.captured_spawner_entity = occupant
-                spawner.localised_description = with_description_line(spawner, "entity-description", {"", "Capturing it makes ", occupant_line})
+                spawner.localised_description = with_description_line(spawner, "entity-description", {"propertyrandomizer-entity.capture-makes", occupant_line})
             else
                 local holder_key = base.acq_kind .. ":" .. owner_name
                 if holder_retargets[holder_key] == nil then
@@ -2255,12 +2256,12 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
     -- How a holder's description says what it makes now
     local function makes_lead(kind)
         if kind == "spoil" then
-            return "Spoils into "
+            return "spoils"
         end
         if kind == "dying" then
-            return "Leaves behind when it dies: "
+            return "dying"
         end
-        return "Makes "
+        return "makes"
     end
     for _, holder_key in pairs(retargeted_holders) do
         local retarget = holder_retargets[holder_key]
@@ -2277,13 +2278,11 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         if #copies > 0 then
             data:extend(copies)
         end
-        local lines = {""}
-        for ind, line in pairs(retarget.lines) do
-            if ind > 1 then
-                table.insert(lines, "\n")
-            end
-            table.insert(lines, {"", makes_lead(retarget.kind), line})
+        local parts = {}
+        for _, line in pairs(retarget.lines) do
+            table.insert(parts, {"propertyrandomizer-entity." .. makes_lead(retarget.kind), line})
         end
+        local lines = localised_text.join(parts, "\n")
         local description_key = "item-description"
         if retarget.kind == "dying" then
             description_key = "entity-description"
@@ -2345,7 +2344,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 },
             },
         }
-        mark_item(capsule, {"", "Makes ", maker.line}, look_of(maker.occupant))
+        mark_item(capsule, {"propertyrandomizer-entity.makes", maker.line}, look_of(maker.occupant))
         log("Entity randomization: using " .. capsule_name .. " makes " .. maker.occupant .. " in place of its effect")
     end
 
@@ -2429,7 +2428,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         local capsule = dutils.get_prot("item", capsule_name)
         local from = starting_item(from_name)
         capsule.capsule_action = table.deepcopy(from.capsule_action)
-        mark_item(capsule, {"", "Does what [item=" .. from_name .. "] ", locale.find_localised_name(from), " did."}, from)
+        mark_item(capsule, {"propertyrandomizer-entity.effect", "[item=" .. from_name .. "]", locale.find_localised_name(from)}, from)
         log("Entity randomization: using " .. capsule_name .. " does what " .. from_name .. " did")
     end
     -- Cliffs name the capsule that explodes them, and the game won't load a cliff whose capsule no longer does, so they follow the effect (or forget it, when a Vestige took it)
@@ -2450,7 +2449,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             local set_off = {
                 type = "explosion",
                 name = effect_name,
-                localised_name = {"", locale.find_localised_name(from), " (Set off)"},
+                localised_name = {"propertyrandomizer-entity.set-off-name", locale.find_localised_name(from)},
                 flags = {
                     "placeable-player",
                     "not-on-map",
@@ -2467,7 +2466,7 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         end
         vestige_place_changes[vestige_name].new_val = effect_name
         local was = vestige_was[vestige_name]
-        dutils.get_prot("item", vestige_name).localised_description = {"", "No longer places [entity=" .. was.entity .. "] ", was.entity_name, was.now_from, "\nPlacing it does what [item=" .. from_name .. "] ", locale.find_localised_name(from), " did where it was thrown."}
+        dutils.get_prot("item", vestige_name).localised_description = {"propertyrandomizer-entity.vestige-effect", "[entity=" .. was.entity .. "]", was.entity_name, was.now_from, "[item=" .. from_name .. "]", locale.find_localised_name(from)}
         log("Entity randomization: placing " .. vestige_name .. " does what " .. from_name .. " did")
     end
 

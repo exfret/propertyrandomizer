@@ -667,6 +667,7 @@ local spec = {
     -- Also randomizes heat connections (helps with pipe connections not overlapping)
     fluid_box_locations = {
         category = "numerical",
+        tuning = false, -- Chooses connection locations without a numerical walk.
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"
@@ -1019,6 +1020,7 @@ local spec = {
     },
     map_colors = {
         category = "numerical",
+        tuning = false, -- Draws colors directly from the RNG without a numerical walk.
         setting = {
             name = "propertyrandomizer-misc",
             val = "more"

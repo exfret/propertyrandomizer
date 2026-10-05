@@ -79,6 +79,7 @@ randomizations.asteroid_spawns = function (id)
                             dir = 1
                         end
                         factor = randnum.rand({
+                            id = id,
                             key = rng_key,
                             dummy = 1,
                             variance = "medium",

@@ -13,6 +13,7 @@
 -- All output goes to the log with the prefix PLANETCHECK
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
@@ -179,6 +180,7 @@ end
 -- Returns a list of problems, empty if there are none
 check.tiles_unchanged = function(old_raw, clone_to_slot)
     local problems = {}
+    local messages = {}
     for tile_name, tile in pairs(data.raw.tile) do
         local source = old_raw.tile[tile_name]
         if source == nil and clone_to_slot[tile_name] ~= nil then
@@ -186,16 +188,19 @@ check.tiles_unchanged = function(old_raw, clone_to_slot)
         end
         if source == nil then
             table.insert(problems, "new tile " .. tile_name .. " isn't a clone of an existing tile")
+            table.insert(messages, localised_text.get("propertyrandomizer-reason.tile-not-clone", tile_name))
         else
             if not deep_equal(tile.collision_mask, source.collision_mask) then
                 table.insert(problems, "tile " .. tile_name .. " has different collision than " .. source.name)
+            table.insert(messages, localised_text.get("propertyrandomizer-reason.tile-collision-mismatch", tile_name, source.name))
             end
             if (tile.fluid == nil) ~= (source.fluid == nil) then
                 table.insert(problems, "tile " .. tile_name .. (tile.fluid == nil and " lost its fluid" or " gained a fluid"))
+                table.insert(messages, localised_text.get(tile.fluid == nil and "propertyrandomizer-reason.tile-lost-fluid" or "propertyrandomizer-reason.tile-gained-fluid", tile_name))
             end
         end
     end
-    return problems
+    return problems, messages
 end
 
 -- Features (planetary_feature names declared on logic nodes) that a planetary stage moves, so their nodes' rooms are expected to change

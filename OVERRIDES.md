@@ -16,6 +16,56 @@ New instructions are all of the form `INSTR:PARAMS`, where `INSTR` is an "instru
 2. `OFF:PARAMS` where `PARAMS` is a randomization to *not* do. This is just the same as typing `!PARAMS`.
 3. `RESET:PARAMS` where `PARAMS` is a prototype property (see section below on prototype properties). This resets the prototype property to its original (pre-randomization) value after the randomization process.
 4. `SET:PARAMS` where `PARAMS` is a set statement for a prototype property (see section below on expressions). This sets a prototype property to a specific value.
+5. `PARAM:TARGET.PARAMETER=VALUE` changes numerical tuning before randomization. The target can be an individual randomization or a setting group (see below).
+6. `INHERIT:TARGET` clears all toggle and parameter overrides previously specified for that target, restoring its fallback configuration.
+
+## Numerical Tuning and Setting Groups
+
+The existing `propertyrandomizer-overrides` startup setting accepts these instructions. You can build them with the **Customizer** tab in the Randomizer Panel, beside Home and Explorer:
+
+1. Choose **Setting groups** or **Individual randomizations**. Search names, or filter individuals by their setting group.
+2. Set the on/off choice and the tuning fields you want to override. **Inherit** removes that field's override; hover over a choice for its meaning and fallback. Individual choices win per field.
+3. Use **Select string**, copy the generated text, and paste it into **Custom overrides** in the mod startup settings for your next setup.
+
+Drafts are stored separately for each player. **Import / reload a string** accepts a pasted override string or reloads the current startup string. Invalid numerical imports leave the draft intact. Existing `SET` and `RESET` instructions keep their relative order; unrecognized instructions in an initially loaded startup string are preserved with a warning. **Reset this target** removes one target's overrides, while **Clear numerical overrides** removes all numerical choices and preserves those other instructions.
+
+An individual target is an active numerical randomization ID from `helper-tables/spec.lua`, such as `belt_speed`. A group target starts with `setting/` and uses the exact startup setting name, such as `setting/propertyrandomizer-logistic`. Group membership is derived from the spec's setting references, including randomizations above the currently selected setting level. Entries whose setting is `none` have no group and can still be targeted individually.
+
+`ON` and `OFF` work with either target. A group toggle enables or disables every numerical randomization tied to that setting. Changing a tuning parameter does **not** enable a randomization.
+
+```text
+OFF:setting/propertyrandomizer-logistic;ON:belt_speed
+```
+
+For each field independently, an individual override wins over a setting-group override regardless of their order in the string. Missing fields fall back to the group, then the randomization's built-in tuning and global settings. When the same field is repeated at the same scope, the last valid instruction wins. For example:
+
+```text
+PARAM:belt_speed.variance=big;PARAM:setting/propertyrandomizer-logistic.range=small;PARAM:setting/propertyrandomizer-logistic.variance=very_small
+```
+
+Belt speed gets `range=small` and `variance=big`; other enabled members of the logistics group get `range=small` and `variance=very_small`.
+
+| Parameter | Allowed values | Meaning |
+| --- | --- | --- |
+| `range` | `very_small`, `small`, `medium`, `big`, `very_big`, `same` | Overall relative range. |
+| `range_min`, `range_max` | Same values as `range` | Separate lower and upper ranges. `same` uses the effective overall range. |
+| `variance` | Same values as `range` | Walk variability. `same` uses the effective range. |
+| `bias` | `worst`, `worse`, `default`, `better`, `best` | Replaces the global bias setting for this randomization, retaining its implementation-specific adjustment and direction. |
+| `chaos` | `light`, `less`, `default`, `more`, `ultimate` | Replaces the global chaos setting for this randomization, including its effect on relative ranges. |
+
+If both `range` and `variance` resolve to `same`, they use `medium`. Unspecified asymmetric ranges retain the implementation's defaults; use `range_min=same` or `range_max=same` to make that side follow your overall range.
+
+Use `PARAM:TARGET.PARAMETER=inherit` to remove just that field at that scope. This differs from `same`: `inherit` falls back to the less specific configuration, while `same` links related parameters within the effective configuration. `INHERIT:TARGET` removes all fields at that scope, including its toggle. These instructions act on earlier entries in the same string.
+
+```text
+PARAM:setting/propertyrandomizer-logistic.variance=small;PARAM:belt_speed.variance=big;PARAM:belt_speed.variance=inherit
+```
+
+Belt speed inherits `variance=small` again. For bias and chaos, `default` explicitly selects the existing default preset; omit the override or use `inherit` to follow the fallback setting.
+
+Absolute limits, rounding, RNG identity, data types, and better/worse directions remain implementation-controlled. Some numerical randomizations apply tuning to intermediate multipliers rather than final properties. Only named tuning levels are supported in this pass. Overrides for graph, unified, and miscellaneous-category entries are not supported by this numerical backend; use their startup settings. Unknown targets, unsupported parameters, and invalid values produce warnings and are skipped, without discarding later valid instructions. `SET` and `RESET` retain their separate post-randomization behavior.
+
+Some entries in the numerical category choose locations or colors directly instead of using a numerical walk. They support toggle overrides, but expose no tuning controls and ignore group tuning. Beacon-profile tuning applies to the noisy profile's numerical multiplier; it does not change the choice of profile family.
 
 ## Prototype Properties
 
@@ -39,7 +89,7 @@ You can also include a Lua table where an expression would go in order to set a 
 
 ## Limitations
 
-Currently, randomization parameters are not yet configurable. Additionally, nothing can be excluded before randomization begins, meaning this is not useful for the prevention of startup crashes during the randomization process. Still, I hope this is a useful feature for future debugging and dealing with softlocks.
+Numerical parameters listed above and numerical toggles are configurable before randomization. Prototype-property `SET` and `RESET` instructions still run afterward; they do not exclude individual prototypes from randomization.
 
 ## Risks
 

@@ -7,6 +7,7 @@
 -- Other power may start from delivered buildings the planet can then make itself (user, 2026-09-30): the logic counts operating them there as local (lightning.lost_rooms, lib/logic/bootstrap.lua), like Fulgora starting from a recycler and solar panels, whose scrap then makes more of both
 
 local constants = require("helper-tables/constants")
+local localised_text = require("lib/localised-text")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
@@ -52,10 +53,10 @@ lightning.problem = function()
         end
     end
     if num_with == 0 then
-        return "no planet but the starting planet has lightning"
+        return localised_text.reason("no-lightning", "no planet but the starting planet has lightning")
     end
     if num_without == 0 then
-        return "every planet but the starting planet has lightning"
+        return localised_text.reason("all-lightning", "every planet but the starting planet has lightning")
     end
     return nil
 end

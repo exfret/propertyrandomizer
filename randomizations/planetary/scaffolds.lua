@@ -118,11 +118,9 @@ scaffolds.variant_name = function(recipe, planet_name)
         planet_label = planet.localised_name
     end
     return {
-        "",
+        "propertyrandomizer-name.planet-variant",
         recipe_display_name(recipe),
-        " (",
         planet_label,
-        ")",
     }
 end
 
@@ -170,7 +168,7 @@ local function conversion_recipe(old_fluid, new_fluid, planet_name)
     local conversion = {
         type = "recipe",
         name = scaffolds.planet_variant_name(new_fluid .. "-to-" .. old_fluid, planet_name),
-        localised_name = { "", { "fluid-name." .. old_fluid }, " from ", { "fluid-name." .. new_fluid } },
+        localised_name = {"propertyrandomizer-name.fluid-conversion", {"fluid-name." .. old_fluid}, {"fluid-name." .. new_fluid}},
         categories = { "chemistry" },
         subgroup = "fluid-recipes",
         enabled = false,

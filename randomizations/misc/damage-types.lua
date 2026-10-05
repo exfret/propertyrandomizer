@@ -10,7 +10,7 @@ for name, _ in pairs(data.raw["damage-type"]) do
 end
 
 local add_damage_type_description = function (prototype, new_val)
-    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), "\n[color=red](Damage type augmented to " .. new_val .. ")[/color]"}
+    prototype.localised_description = {"", locale_utils.find_localised_description(prototype), {"propertyrandomizer-description.damage-type", {"?", {"damage-type-name." .. new_val}, new_val}}}
 end
 
 local damage_type_randomization = function (prototype, parents, structs, id)
