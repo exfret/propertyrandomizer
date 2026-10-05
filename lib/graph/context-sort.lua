@@ -1361,12 +1361,26 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             if not context_info.complex then
                 return true
             end
-            for _, outgoing in pairs(node_transmit(context_info, curr_node, incoming)) do
-                if outgoing == curr_context then
+            -- Test membership directly: constructing every outgoing context here repeats the room expansion for every candidate of every witness.
+            local context_type = logic.type_info[curr_node.type].context
+            local home = context_info.home[incoming]
+            if home ~= context_info.home[curr_context] then
+                return false
+            end
+            if context_type == true then
+                if home ~= nil then
                     return true
                 end
+                local abilities = context_info.abilities[incoming]
+                if has_ability(abilities, ISOLATABILITY) then
+                    return incoming == curr_context
+                end
+                return abilities == context_info.abilities[curr_context]
+            elseif type(context_type) == "string" then
+                return context_info.room[curr_context] == curr_node.name
+                    and (home == nil or context_info.home_rooms[home][curr_node.name] ~= nil)
             end
-            return false
+            return incoming == curr_context
         end
 
         local discovery_preinds
