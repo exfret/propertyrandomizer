@@ -626,6 +626,12 @@ if config.planet_tints then
     planet_tints.execute()
 end
 
+-- Whole environmental ambience and planet music profiles, once every copy exists, with the name/tint identity gate and starting-planet policy.
+local planet_sounds = require("lib/planet-sounds")
+if config.planet_names == true then
+    planet_sounds.execute()
+end
+
 -- What the randomization did, in the log as RESULT lines (lib/result-summary.lua): how the finished game differs from the one before any randomization
 log("Logging what the randomization did")
 result_summary.log(pre_planetary_raw or old_data_raw, data.raw, {
