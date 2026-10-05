@@ -11,6 +11,7 @@ local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 local acquisition = require(lib_name .. "/logic/acquisition")
+local rail_requirements = require(lib_name .. "/logic/rail-requirements")
 local military_variants = require("lib/military-variants")
 
 local prots = dutils.prots
@@ -165,6 +166,14 @@ function concrete.build(lu, extra_params)
     ----------------------------------------------------------------------
 
     set_class("entity")
+    set_prot(nil)
+    local rail_groups, entity_rail_groups = rail_requirements.groups(lu.entities, lu.buildables)
+    for group, rails in pairs(rail_groups) do
+        add_node("entity-build-rail-group", "OR", nil, group)
+        for _, rail_name in pairs(rails) do
+            add_edge("entity-build", rail_name)
+        end
+    end
 
     for _, entity in pairs(lu.entities) do
         set_prot(entity)
@@ -345,14 +354,8 @@ function concrete.build(lu, extra_params)
                 ----------------------------------------
                 -- Can we build a rail to put this rolling stock on?
 
-                -- TODO: I was testing on every rail for every rolling stock, but this is inefficient; I should be testing on groups of rails. Otherwise, we'd get too many edges.
-                add_edge("satisfied", "")
-
-                --[[for rail_class, _ in pairs(categories.rail) do
-                    for _, rail in pairs(prots(rail_class)) do
-                        add_edge("entity", rail.name)
-                    end
-                end]]
+                -- Compatible rolling stock shares an OR group, so duplicates do not multiply all rail edges.
+                add_edge("entity-build-rail-group", entity_rail_groups[entity.name])
             end
 
             ----------------------------------------

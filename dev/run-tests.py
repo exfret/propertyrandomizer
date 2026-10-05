@@ -8,6 +8,8 @@
 #   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
 #   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, randomizations/planetary/scaffolds.lua)
 #   - resource swaps left at most half an extra patch per planet they work on (PLANETCHECK extra patches, randomizations/planetary/resources.lua)
+#   - when operation readiness is audited, no building arrives before its operation inputs
+# Resource-patch limit and operation-readiness violations fail even work-in-progress suites.
 #   - the new map runs some ticks without errors (the control stage)
 # Configs matching an oldlogic line in tests/configs.txt (for now, old item randomization) are judged by the old logic's check of the built game (OLDLOGICCHECK) instead of the two reachability checks
 # Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (randomizations/planetary/check.lua)
@@ -96,6 +98,7 @@ PAIRWISE_CANDIDATES = 30
 FAILURE_GUIDANCE = (
     "Some failing seeds and configs are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable."
     " But a seed whose MECHCHECK verdict FAILED (an unreachable recipe, or a mechanic context lost beyond isolatability) is a softlock, which is never acceptable on any seed: fix the model that allowed it."
+    " Resource-patch limits and operation-readiness gaps are hard failures, including in work-in-progress suites."
     " Don't overfit on making every run pass. Look into a failure when your change could have caused it (compare with --ref HEAD if unsure), and fix it only at its root cause."
     " Don't add hotfixes or special cases to get a run through: a patch that quietly breaks something else is worse than a failing run."
 )
@@ -110,6 +113,7 @@ MAX_CONVERSIONS = 1
 EXTRA_PATCHES = re.compile(r"PLANETCHECK extra patches: (\d+) on (\d+) planets:? ?([^\r\n]*)")
 # The user's limit (2026-10-01): half an extra patch per planet, so 7 for the 15 planets of two copies each
 MAX_EXTRA_PATCHES_PER_PLANET = 0.5
+OPERATION_CHECK = re.compile(r"OPERATIONCHECK checked (\d+) building items; (\d+) precede operation readiness")
 SETTING_LINE = re.compile(r"PRTEST setting (\S+) = (.*)$", re.MULTILINE)
 REACHABILITY = re.compile(r"PRTEST reachability (\d+) of (\d+)")
 OLD_LOGIC_CHECK = re.compile(r"OLDLOGICCHECK science packs reachable (\d+) of (\d+)(?:; lost (.*))?")
@@ -709,6 +713,21 @@ def check_extra_patches(text):
     return problems
 
 
+def check_operation_readiness(text):
+    checks = OPERATION_CHECK.findall(text)
+    if checks and int(checks[-1][1]) > 0:
+        return ["operation readiness: " + checks[-1][1] + " of " + checks[-1][0] + " building items precede their operation inputs"]
+    return []
+
+
+def check_hard_limits(text):
+    return check_extra_patches(text) + check_operation_readiness(text)
+
+
+def counted_failure(result, test_file):
+    return not result["ok"] and (bool(result.get("hard_problems")) or result["run"].config.suite not in test_file.wip)
+
+
 def check_verdict(text):
     # The last verdict is the end-of-load one; unified randomization also logs one per attempt, under another label
     verdicts = VERDICT.findall(text)
@@ -801,6 +820,7 @@ def run_one(run, ctx):
     base_args = [FACTORIO, "-c", config_path, "--mod-directory", mods_dir]
     save = os.path.join(run_dir, "save.zip")
     problems = []
+    hard_problems = []
     science_cost_summary = ""
     create_log = os.path.join(run_dir, "create.log")
     # Instrument Mode loads the profiler before every mod's data stage, and the profiler needs the full Lua debug library to sample
@@ -816,7 +836,8 @@ def run_one(run, ctx):
     else:
         problems.extend(check_settings(text, run, ctx))
         problems.extend(check_conversions(text))
-        problems.extend(check_extra_patches(text))
+        hard_problems = check_hard_limits(text)
+        problems.extend(hard_problems)
         reported = dict(SETTING_LINE.findall(text))
         if reported.get(PREFIX + "recipe") == "true" and reported.get(PREFIX + "test-unit") != "true" and "science-cost" not in run.config.nocheck:
             cost_problems, science_cost_summary = check_science_costs(text)
@@ -856,7 +877,7 @@ def run_one(run, ctx):
     shutil.rmtree(data_dir, ignore_errors=True)
     if len(problems) == 0 and os.path.exists(save):
         os.remove(save)
-    return {"run": run, "ok": len(problems) == 0, "problems": problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash}
+    return {"run": run, "ok": len(problems) == 0, "problems": problems, "hard_problems": hard_problems, "dir": run_dir, "seconds": time.time() - start, "science_costs": science_cost_summary, "dump_hash": dump_hash}
 
 
 def run_one_safely(run, ctx):
@@ -904,7 +925,7 @@ def summarize(results, test_file, elapsed):
     for suite in suites:
         in_suite = [result for result in results if result["run"].config.suite == suite]
         passed = sum(1 for result in in_suite if result["ok"])
-        label = suite + (" (work in progress, not counted)" if suite in test_file.wip else "")
+        label = suite + (" (work in progress; hard limits still enforced)" if suite in test_file.wip else "")
         lines.append(label + ": " + str(passed) + " of " + str(len(in_suite)) + " passed")
     cost_results = [result for result in results if result.get("science_costs")]
     if cost_results:
@@ -917,12 +938,12 @@ def summarize(results, test_file, elapsed):
         lines.append("Failures:")
         for result in failures:
             run = result["run"]
-            wip = " [wip]" if run.config.suite in test_file.wip else ""
+            wip = " [hard failure]" if result.get("hard_problems") else (" [wip]" if run.config.suite in test_file.wip else "")
             lines.append("  " + run.name + wip + " (" + run.config.describe() + ")")
             for problem in result["problems"]:
                 lines.append("      " + problem)
             lines.append("      logs in " + result["dir"])
-    counted = [result for result in failures if result["run"].config.suite not in test_file.wip]
+    counted = [result for result in failures if counted_failure(result, test_file)]
     lines.append("")
     if len(counted) == 0:
         lines.append("ALL TESTS PASSED in " + duration(elapsed) + (" (work-in-progress failures above)" if len(failures) > 0 else ""))
@@ -1070,7 +1091,7 @@ def main(argv):
             run = result["run"]
             if result["ok"]:
                 status = "ok  "
-            elif run.config.suite in test_file.wip:
+            elif not counted_failure(result, test_file):
                 status = "wip-FAIL"
             else:
                 status = "FAIL"
