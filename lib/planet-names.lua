@@ -22,7 +22,6 @@ local VANILLA_PARTS = {
 local BLOCKED_NAME_PATTERNS = {
     "^vulb",
     "^vulv",
-    "anus",
 }
 
 local function blocked_name(name)
