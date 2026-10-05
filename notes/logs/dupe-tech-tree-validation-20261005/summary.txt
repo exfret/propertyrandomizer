@@ -1,0 +1,14 @@
+settings: 2 of 2 passed
+unified (work in progress; hard limits still enforced): 0 of 2 passed
+
+Failures:
+  sa/dupes-preview@1 [wip] (seed=1 unified-preview=true dupes=true)
+      map creation failed (exit timeout after 45 minutes)
+      data.raw dump failed (exit -9)
+      logs in /var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/propertyrandomizer-run-tests/run-20261005-125503-anxnnf1a/runs/sa--dupes-preview@1
+  sa/dupes-preview@2 [wip] (seed=2 unified-preview=true dupes=true)
+      map creation failed (exit timeout after 45 minutes)
+      data.raw dump failed (exit -9)
+      logs in /var/folders/g1/mv1c5tvx42v1974c7d004hf40000gn/T/propertyrandomizer-run-tests/run-20261005-125503-anxnnf1a/runs/sa--dupes-preview@2
+
+ALL TESTS PASSED in 51m18s (work-in-progress failures above)

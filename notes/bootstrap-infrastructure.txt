@@ -11,7 +11,7 @@ What logic does now
    That leaked: mining a delivered foundry back gave a "local" foundry item, and recycling it gave "local" tungsten carbide.
    Vanilla had 276 such fake platform contexts: foundries, processing units, superconductors, nutrients-fuelled organic crafting, and more.
  * Plants harvested by agricultural towers are automatable, like resources mined by drills (entity-harvest). That alone makes Gleba's iron loop isolatable and automatable.
-   Off for now (AUTOMATABLE_PLANT_HARVESTING in lib/logic/concrete.lua, 2026-09-27): the new Gleba | 11 hard pebbles are lost in every monotone matching round with "added 0 needs", so first pass moved nothing. Turn it back on once refinement handles it.
+   Enabled in lib/logic/concrete.lua. The first-pass regression was fixed in 02120cb (2026-09-29): the spoiling handler excludes its spoil edges from first pass, with coverage in lib/logic/test-spoiling.lua.
 
 The general rule, not implemented
 Let a building's operation in a planet R count as local when R can then make the building itself.

@@ -120,7 +120,7 @@ config dupes-oceans-biomes settings seeds=1 logistic=none production=none milita
 config planetary-connections settings planetary-connections=true
 config dupes-connections settings dupes=true planetary-connections=true
 # Duplicates with the unified preview, planetary changes included (planet copies are made for them); the unified suite is wip
-config dupes-preview unified seeds=1,2 unified-preview=true dev-unified=false dupes=true operation-readiness=false
+config dupes-preview unified seeds=1,2 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=false
 # config operation-dupes-preview unified seeds=0 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=true
 # Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
 # Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost

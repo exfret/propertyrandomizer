@@ -1,0 +1,227 @@
+-- Item intermediates for duplicated production chains, derived from recipe ingredients.
+-- Fluids, resource products, furnace products and items with placement/spoilage behavior remain shared.
+local dutils = require("lib/data-utils")
+local dupe = require("lib/dupe")
+local furnace_selection = require("lib/furnace-selection")
+
+local intermediates = {}
+
+local function sorted_keys(set)
+    local keys = {}
+    for key, _ in pairs(set) do
+        table.insert(keys, key)
+    end
+    table.sort(keys)
+    return keys
+end
+
+-- Copies already made for buildings, science and other items are reused.
+local function item_copies(items)
+    local copies = {}
+    for _, name in pairs(sorted_keys(items)) do
+        local item = items[name]
+        if type(item.dupe_number) == "number" and item.orig_name ~= nil then
+            copies[item.dupe_number] = copies[item.dupe_number] or {}
+            copies[item.dupe_number][item.orig_name] = item.name
+        end
+    end
+    return copies
+end
+
+intermediates.plan = function(items, recipes, resources, copies, lab_inputs, furnace_pools)
+    local mined = {}
+    for _, resource in pairs(resources) do
+        local minable = resource.minable or {}
+        if minable.result ~= nil then
+            mined[minable.result] = true
+        end
+        for _, result in pairs(minable.results or {}) do
+            if result.type == nil or result.type == "item" then
+                mined[result.name] = true
+            end
+        end
+    end
+    local producers = {}
+    local automatic = {}
+    for _, name in pairs(sorted_keys(recipes)) do
+        local recipe = recipes[name]
+        if recipe.orig_name == nil and recipe.hidden ~= true then
+            local product = recipe.main_product
+            if product == nil and #(recipe.results or {}) == 1 then
+                product = recipe.results[1].name
+            end
+            for _, result in pairs(recipe.results or {}) do
+                if result.name == product and (result.type == nil or result.type == "item") then
+                    producers[product] = producers[product] or {}
+                    table.insert(producers[product], recipe)
+                    if #furnace_selection.pools_for(furnace_pools or {}, furnace_selection.recipe_categories(recipe)) > 0 then
+                        automatic[product] = true
+                    end
+                end
+            end
+        end
+    end
+    local planned = {}
+    for _, number in pairs(sorted_keys(copies)) do
+        local selected = {}
+        local visited = {}
+        local function visit(name)
+            if visited[name] ~= nil then
+                return
+            end
+            visited[name] = true
+            local item = items[name]
+            if copies[number][name] == nil then
+                if item == nil or item.hidden == true or mined[name] ~= nil or automatic[name] ~= nil or lab_inputs[name] ~= nil or producers[name] == nil
+                    or (item.place_result ~= nil and item.place_result ~= "") or item.place_as_equipment_result ~= nil
+                    or item.place_as_tile ~= nil or item.plant_result ~= nil or (item.spoil_ticks or 0) > 0 then
+                    return
+                end
+                selected[name] = true
+            end
+            for _, recipe in pairs(producers[name] or {}) do
+                for _, ingredient in pairs(recipe.ingredients or {}) do
+                    if ingredient.type == nil or ingredient.type == "item" then
+                        visit(ingredient.name)
+                    end
+                end
+            end
+        end
+        for _, name in pairs(sorted_keys(recipes)) do
+            local recipe = recipes[name]
+            if recipe.dupe_number == number then
+                for _, ingredient in pairs(recipe.ingredients or {}) do
+                    if ingredient.type == nil or ingredient.type == "item" then
+                        visit(ingredient.name)
+                    end
+                end
+            end
+        end
+        planned[number] = selected
+    end
+    return planned
+end
+
+local function replace_item(filter, copies)
+    if type(filter) == "string" then
+        return copies[filter] or filter
+    elseif type(filter) == "table" then
+        filter.name = copies[filter.name] or filter.name
+    end
+    return filter
+end
+
+-- Keep copied prerequisites that lead to real unlocks; discard empty research dead ends.
+intermediates.prune = function(technologies, trees)
+    local candidates = {}
+    for _, tree in pairs(trees) do
+        for _, technology in pairs(tree) do
+            candidates[technology.name] = true
+        end
+    end
+    local kept = {}
+    local function keep(name)
+        if kept[name] ~= nil then
+            return
+        end
+        kept[name] = true
+        for _, prerequisite in pairs((technologies[name] or {}).prerequisites or {}) do
+            keep(prerequisite)
+        end
+    end
+    for name, technology in pairs(technologies) do
+        if candidates[name] == nil or next(technology.effects or {}) ~= nil then
+            keep(name)
+        end
+    end
+    local removed = 0
+    for _, tree in pairs(trees) do
+        for original, technology in pairs(tree) do
+            if kept[technology.name] == nil then
+                technologies[technology.name] = nil
+                tree[original] = nil
+                removed = removed + 1
+            end
+        end
+    end
+    return removed
+end
+
+intermediates.execute = function()
+    if next(dupe.technology_copies) == nil then
+        return
+    end
+    local items = dutils.get_all_prots("item")
+    local entities = dutils.get_all_prots("entity")
+    local copies = item_copies(items)
+    local planned = intermediates.plan(items, data.raw.recipe, data.raw.resource or {}, copies, dutils.lab_inputs(), furnace_selection.pools())
+    local count = 0
+    for _, number in pairs(sorted_keys(planned)) do
+        for _, name in pairs(sorted_keys(planned[number])) do
+            local copy = dupe.item(items[name], number)
+            -- These items need no recolor assets. A badge distinguishes their shared sprites.
+            copy.icons = table.deepcopy(dupe.get_recipe_icons(items[name]))
+            table.insert(copy.icons, dupe.recipe_number_icon(number))
+            copy.icon = nil
+            if copy.pictures ~= nil then
+                copy.pictures = nil
+            end
+            for _, recipe in pairs(dupe.item_recipes(copy)) do
+                table.insert(recipe.icons, dupe.recipe_number_icon(number))
+            end
+            copies[number][name] = copy.name
+            count = count + 1
+        end
+    end
+    local recipe_copies = {}
+    for _, recipe in pairs(data.raw.recipe) do
+        local number = recipe.dupe_number
+        if type(number) == "number" and recipe.orig_name ~= nil then
+            recipe_copies[number] = recipe_copies[number] or {}
+            recipe_copies[number][recipe.orig_name] = recipe.name
+            for _, ingredient in pairs(recipe.ingredients or {}) do
+                if ingredient.type == nil or ingredient.type == "item" then
+                    ingredient.name = (copies[number] or {})[ingredient.name] or ingredient.name
+                end
+            end
+        end
+    end
+    local entity_copies = {}
+    for _, entity in pairs(entities) do
+        if type(entity.dupe_number) == "number" and entity.orig_name ~= nil then
+            entity_copies[entity.dupe_number] = entity_copies[entity.dupe_number] or {}
+            entity_copies[entity.dupe_number][entity.orig_name] = entity.name
+        end
+    end
+    for number, technologies in pairs(dupe.technology_copies) do
+        for _, technology in pairs(technologies) do
+            local trigger = technology.research_trigger
+            if trigger ~= nil then
+                if trigger.item ~= nil then
+                    trigger.item = replace_item(trigger.item, copies[number] or {})
+                end
+                for index, entity in pairs(trigger.entities or {}) do
+                    trigger.entities[index] = (entity_copies[number] or {})[entity] or entity
+                end
+            end
+            local effects = {}
+            local unlocked = {}
+            for _, effect in pairs(technology.effects or {}) do
+                if effect.type == "unlock-recipe" then
+                    effect.recipe = (recipe_copies[number] or {})[effect.recipe] or effect.recipe
+                    if unlocked[effect.recipe] == nil then
+                        table.insert(effects, effect)
+                        unlocked[effect.recipe] = true
+                    end
+                else
+                    table.insert(effects, effect)
+                end
+            end
+            technology.effects = effects
+        end
+    end
+    local removed = intermediates.prune(data.raw.technology, dupe.technology_copies)
+    log("Planet copies: " .. count .. " item intermediates added to the parallel production chains; " .. removed .. " empty research dead ends removed")
+end
+
+return intermediates
