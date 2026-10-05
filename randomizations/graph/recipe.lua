@@ -17,6 +17,7 @@ local rng = require("lib/random/rng")
 local context_costs = require("lib/cost/context-costs")
 local dutils = require("lib/data-utils")
 local furnace_selection = require("lib/furnace-selection")
+local prototype_exclusions = require("lib/graph-customization")
 
 local DO_SURFACE_PRESERVATION = true
 local gutils = require("lib/graph/graph-utils")
@@ -33,6 +34,7 @@ end
 
 local function is_blacklisted_ing(material)
     return recipe_blacklists().blacklisted_pre[gutils.key(material.type, material.name)] ~= nil
+        or prototype_exclusions.excluded("recipe_ingredients", material)
 end
 
 local function is_unrandomized_ing(ing, is_result_of_this_recipe)
@@ -250,7 +252,8 @@ randomizations.recipe_ingredients = function(id)
                     end
                 end
 
-                if cost_calculable and has_ings and not sensitive_recipes[dependent_node.recipe] then
+                if cost_calculable and has_ings and sensitive_recipes[dependent_node.recipe] ~= true
+                    and not prototype_exclusions.excluded("recipe_ingredients", data.raw.recipe[dependent_node.recipe]) then
                     table.insert(sorted_dependents, dependent_node)
 
                     for _, prereq in pairs(dependent_node.prereqs) do

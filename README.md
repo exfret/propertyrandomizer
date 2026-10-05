@@ -52,7 +52,7 @@ The easiest way to install the mod is through Factorio's in-game mod browser. Th
 
 Configuration is available through changing the mod settings in-game. A seed controls deterministic generation, while category, chaos, bias, and advanced override settings control what may change and how aggressively.
 
-Open the Randomizer Panel's **Customizer** tab to build a numerical override string using group or individual controls, then copy it into the **Custom overrides** startup setting. It supports inheritance, search, import, and per-player drafts. The advanced override language can also reset or replace specific prototype properties after randomization. **See OVERRIDES.md for override documentation.**
+Open the Randomizer Panel's **Customizer** tab to build an override string using numerical group/individual controls, unified graph controls, or a separate prototype-exclusion section, then copy it into the **Custom overrides** startup setting. It supports inheritance, search, import, and per-player drafts. The advanced override language can also reset or replace specific prototype properties after randomization. **See OVERRIDES.md for override documentation.**
 
 Use **Claim neutral entities** in the shortcut bar to select natural ruins or randomized salvage and take ownership. You can then use them or mark them for robot deconstruction. Map generation starts these entities as neutral; the tool leaves enemies and other players' entities alone.
 

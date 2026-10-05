@@ -63,6 +63,8 @@ local is_elem_type = {
     ["space-location"] = true,
 }
 
+customizer.set_selector_types(selected_ind_to_elem_type)
+
 local function can_be_derandomized(element)
     if prototypes.recipe["derandomized-" .. element.elem_type .. "--" .. element.elem_value] ~= nil then
         return true
@@ -1077,6 +1079,7 @@ select_graph_node = function(event, key)
 end
 
 events.on_event(defines.events.on_gui_elem_changed, function(event)
+    if customizer.on_elem_changed(event) then return end
     local graph = storage.graph
 
     if event.element.name == "randomizer-explorer-prot-choice" then

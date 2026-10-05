@@ -80,6 +80,15 @@ test("the count draw is the mod's walk, more ingredients being the worse directi
     assert(#randnum_calls == 1, "a cap of 1 needs no draw")
 end)
 
+test("preserving ingredient count clamps to machinery capacity without drawing", function()
+    local original_calls = #randnum_calls
+    local preserve = { count_range = "preserve" }
+    assert(recipe_shape.draw_count("k", 3, 8, preserve) == 3)
+    assert(recipe_shape.draw_count("k", 5, 2, preserve) == 2)
+    assert(recipe_shape.draw_count("k", 0, 8, preserve) == 1)
+    assert(#randnum_calls == original_calls)
+end)
+
 test("kept ingredients always fit the plan", function()
     local plan = plan_with({
         vanilla = { count = 4, num_fluids = 1 },

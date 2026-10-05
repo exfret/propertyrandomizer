@@ -126,6 +126,9 @@ end
 
 -- A new count for a recipe with this many ingredients, by the mod's walk (more ingredients are the worse direction), within 1 .. count_max
 recipe_shape.draw_count = function(rng_key, count, count_max, chances)
+    if chances.count_range == "preserve" then
+        return clamp(count, 1, count_max)
+    end
     if count_max <= 1 then
         return 1
     end

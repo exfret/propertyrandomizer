@@ -16,8 +16,10 @@ New instructions are all of the form `INSTR:PARAMS`, where `INSTR` is an "instru
 2. `OFF:PARAMS` where `PARAMS` is a randomization to *not* do. This is just the same as typing `!PARAMS`.
 3. `RESET:PARAMS` where `PARAMS` is a prototype property (see section below on prototype properties). This resets the prototype property to its original (pre-randomization) value after the randomization process.
 4. `SET:PARAMS` where `PARAMS` is a set statement for a prototype property (see section below on expressions). This sets a prototype property to a specific value.
-5. `PARAM:TARGET.PARAMETER=VALUE` changes numerical tuning before randomization. The target can be an individual randomization or a setting group (see below).
-6. `INHERIT:TARGET` clears all toggle and parameter overrides previously specified for that target, restoring its fallback configuration.
+5. `PARAM:TARGET.PARAMETER=VALUE` changes numerical or supported unified graph tuning before randomization. The target can be an individual randomization or a setting group (see below).
+6. `INHERIT:TARGET` clears all toggle and parameter overrides previously specified for that target, restoring its fallback configuration. Graph targets also clear their exclusions.
+7. `EXCLUDE:SCOPE:SELECTOR` excludes a prototype/type/group/subgroup from all normal randomizers, graph randomizers, numerical randomizers, or one randomization.
+8. `INCLUDE:SCOPE:SELECTOR` removes that exact rule from its scope. Other matching rules continue to apply.
 
 ## Numerical Tuning and Setting Groups
 
@@ -27,7 +29,7 @@ The existing `propertyrandomizer-overrides` startup setting accepts these instru
 2. Set the on/off choice and the tuning fields you want to override. **Inherit** removes that field's override; hover over a choice for its meaning and fallback. Individual choices win per field.
 3. Use **Select string**, copy the generated text, and paste it into **Custom overrides** in the mod startup settings for your next setup.
 
-Drafts are stored separately for each player. **Import / reload a string** accepts a pasted override string or reloads the current startup string. Invalid numerical imports leave the draft intact. Existing `SET` and `RESET` instructions keep their relative order; unrecognized instructions in an initially loaded startup string are preserved with a warning. **Reset this target** removes one target's overrides, while **Clear numerical overrides** removes all numerical choices and preserves those other instructions.
+Drafts are stored separately for each player. **Import / reload a string** accepts a pasted override string or reloads the current startup string. Invalid customization imports leave the draft intact. Existing `SET` and `RESET` instructions keep their relative order; unrecognized instructions in an initially loaded startup string are preserved with a warning. **Reset this target** removes one target's overrides, while **Clear customization overrides** removes numerical and graph choices/exclusions and preserves those other instructions.
 
 An individual target is an active numerical randomization ID from `helper-tables/spec.lua`, such as `belt_speed`. A group target starts with `setting/` and uses the exact startup setting name, such as `setting/propertyrandomizer-logistic`. Group membership is derived from the spec's setting references, including randomizations above the currently selected setting level. Entries whose setting is `none` have no group and can still be targeted individually.
 
@@ -67,6 +69,57 @@ Absolute limits, rounding, RNG identity, data types, and better/worse directions
 
 Some entries in the numerical category choose locations or colors directly instead of using a numerical walk. They support toggle overrides, but expose no tuning controls and ignore group tuning. Beacon-profile tuning applies to the noisy profile's numerical multiplier; it does not change the choice of profile family.
 
+## Unified Graph Controls
+
+Choose **Unified graph randomizations** in the Customizer scope dropdown. **All graph randomizations** supplies defaults for each supported field; a handler's own value wins independently of instruction order. These controls customize active unified handlers and do not turn them on. Item cost similarity is unchanged. The older graph algorithms, planetary stages and technology-tree rebuild are separate from these controls.
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| `amount` | Whole percentages from `0` to `100` | Select this share of eligible targets to attempt changing. The editor offers 0, 25, 50, 75 and 100. Selection is stable across retries; actual changes can be fewer. |
+| `keep_category` | Whole percentages from `0` to `100` | Chance of trying the original crafting category first. A preference with fallback, not a guarantee of a particular machine. Recipe-category handler only. |
+| `ingredient_count` | `preserve`, `very_small`, `small`, `medium`, `big`, `very_big` | Variation in distinct recipe ingredient count. Shapes remain bounded by available crafters and may fall back. Recipe-ingredients handler only. |
+| `fluids` | `preserve`, `less`, `default`, `more` | Preference for recipe shapes to gain or lose fluid ingredients. `preserve` prevents shape-driven fluid changes; item/fluid swaps are separate. Recipe-ingredients handler only. |
+| `resource_balance` | `on`, `off` | Include or omit the existing raw-resource-distribution score. Estimated aggregate cost is still considered. Recipe-ingredients handler only. |
+
+```text
+PARAM:graph/all.amount=50;PARAM:graph/recipe-ingredients.amount=75;PARAM:graph/recipe-category.keep_category=100;PARAM:graph/recipe-ingredients.ingredient_count=preserve;PARAM:graph/recipe-ingredients.fluids=less;PARAM:graph/recipe-ingredients.resource_balance=off
+```
+
+Supported targets are `graph/all`, `graph/item`, `graph/recipe-ingredients`, `graph/recipe-category`, `graph/entity`, `graph/entity-energy-source`, `graph/mining-fluid-required`, `graph/mining-results`, `graph/spoiling` and `graph/tech-triggers`. Unsupported parameters are rejected. `PARAM:graph/TARGET.FIELD=inherit` restores the field's fallback.
+
+## Prototype Exclusions
+
+Choose **Prototype exclusions** in the Customizer scope dropdown. This is independent of numerical and graph parameter controls. Select a scope on the left, then choose an individual prototype, concrete type, group or subgroup and add it. The individual prototype picker uses the same native selectors as the Explorer for its supported classes; other classes use searchable catalogue choices. Existing `EXCLUDE:graph/...` strings remain supported and appear in this section.
+
+| Scope | What it excludes |
+| --- | --- |
+| `all` | All normal graph, numerical and cosmetic randomizers |
+| `graph/all` | Unified and older graph randomizers |
+| `numerical/all` | Every randomization in the numerical category, including its direct edits |
+| `graph/HANDLER` | One unified handler, such as `graph/entity` or `graph/recipe-ingredients` |
+| `randomization/ID` | One spec randomization, such as `randomization/belt_speed`, `randomization/recipe_ingredients` (older recipe randomization) or `randomization/icons` |
+
+Rules combine across scopes. An individual rule adds to broader rules; `INCLUDE` removes an exact rule rather than overriding a different broad rule. **Clear exclusions for this scope** removes only that scope's rules. Parameter resets in the editor leave exclusions intact. **Clear customization overrides** clears numerical/graph parameters and all exclusion rules while preserving explicit `SET`, `RESET` and unrecognized instructions. The legacy `INHERIT:graph/HANDLER` instruction still clears that handler's parameters and exclusions.
+
+Selectors are:
+
+- `prototype/CLASS/NAME`: a specific prototype, with either its top-level class or concrete prototype type.
+- `type/TYPE`: every prototype of this concrete type.
+- `group/NAME`: prototypes belonging to this existing group.
+- `subgroup/NAME`: prototypes belonging to this existing subgroup.
+
+```text
+EXCLUDE:all:prototype/entity/assembling-machine-1;EXCLUDE:graph/all:group/logistics;EXCLUDE:numerical/all:type/inserter;EXCLUDE:randomization/belt_speed:type/transport-belt;EXCLUDE:graph/recipe-ingredients:prototype/recipe/iron-gear-wheel
+```
+
+The catalogue comes from loaded prototypes and their type/group/subgroup metadata before normal graph randomization. Scope membership stays tied to that metadata even when an earlier permitted pass moves a prototype to another group. Recipes inherit a singular/main product's subgroup when they do not declare one, following `RecipePrototype.main_product` in the installed prototype API. Entities without a declared subgroup are grouped with their placing items. A valid selector that matches no loaded prototypes produces a panel warning.
+
+Graph exclusions remove candidates before claiming/matching, preserving material references and placing relationships where needed. Numerical/cosmetic exclusions preserve matching prototypes from immediately before each affected pass, including direct writes that bypass the numerical helper. Indirect numerical edits to a shared child are skipped when an affected parent is excluded, so shared children can also stay unchanged for other parents. Earlier allowed graph changes are retained by a numerical-only exclusion.
+
+Exclusions concern the selected prototypes and normal randomization passes. They do not freeze upstream production chains, planetary transformations, technology-tree rebuilding, required repairs/fixes, recycling regeneration or explicit `SET`/`RESET` instructions.
+
+Graph-parameter validation configurations in `tests/configs.txt` start with duplicates and numerical categories off. The standalone-exclusion configurations also exercise numerical and older graph passes; compare retries, elapsed time, identity changes, recipe shape fallbacks and final `MECHCHECK` verdicts. `GRAPHCUSTOM` log lines report selection counts per handler.
+
 ## Prototype Properties
 
 To select a prototype property, you first need to type the prototype. Luckily, Factorio already has a built-in method for this. It goes `[top-level-class=prototype-name]`. You might not know what the top level class/prototype name of a thing is (or even what that means), but no fear! If you have something pipetted, you can open chat and click it to paste a string in exactly this format. You can also google "Factorio rich text" for more information. Beware that there is a difference between, say, the *entity* inserter, the *item* inserter, and the *recipe* inserter. From the engine's perspective, these are different things. Here's an overview of the biggest top-level classes:
@@ -89,7 +142,7 @@ You can also include a Lua table where an expression would go in order to set a 
 
 ## Limitations
 
-Numerical parameters listed above and numerical toggles are configurable before randomization. Prototype-property `SET` and `RESET` instructions still run afterward; they do not exclude individual prototypes from randomization.
+Numerical parameters/toggles, supported unified graph controls and prototype exclusion scopes are configurable before randomization. Prototype-property `SET` and `RESET` instructions still run afterward; use `EXCLUDE` to exclude normal randomization passes.
 
 ## Risks
 

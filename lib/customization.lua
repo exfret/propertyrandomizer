@@ -2,6 +2,8 @@
 local spec = require("helper-tables/spec")
 local localised_text = require("lib/localised-text")
 local tuning = require("lib/random/tuning")
+local graph_tuning = require("lib/graph-tuning")
+local prototype_exclusions = require("lib/prototype-exclusions")
 
 local customization = {}
 
@@ -39,10 +41,43 @@ local function target_info(state, target)
     return state.randomizations, target
 end
 
+local function parse_graph(state, instruction, target)
+    local field, value
+    local warning
+    if instruction == "PARAM" then
+        target, field, value = string.match(target, "^([^.=]+)%.([%w_]+)=([^=]+)$")
+        if target == nil or not graph_tuning.valid_value(field, value) and value ~= "inherit" then
+            warning = "Invalid graph parameter"
+        end
+    elseif instruction ~= "INHERIT" then
+        warning = "Graph controls use PARAM, EXCLUDE, INCLUDE or INHERIT"
+    end
+    if not graph_tuning.valid_target(target) and not (instruction == "INHERIT" and prototype_exclusions.valid_scope(target)) then
+        warning = "Unknown graph randomization target"
+    end
+    local id = target ~= nil and string.match(target, "^graph/(.+)$") or nil
+    if field ~= nil and (graph_tuning.parameters[field] == nil or not graph_tuning.supports(id, field)) then
+        warning = "Unsupported graph parameter for this target"
+    end
+    if warning ~= nil then
+        return warning
+    end
+    if instruction == "INHERIT" then
+        state.graph[id] = nil
+        state.exclusions[id] = nil
+    else
+        state.graph[id] = state.graph[id] or {}
+        state.graph[id][field] = value ~= "inherit" and value or nil
+    end
+end
+
 customization.parse = function(text)
     local state = {
         settings = {},
         randomizations = {},
+        graph = {},
+        exclusions = {},
+        prototype_exclusions = {},
         warnings = {},
         localised_warnings = {},
         postfixes = {},
@@ -61,6 +96,35 @@ customization.parse = function(text)
         -- Prototype post-processing stays in config.lua, after randomization.
         if instruction == "SET" or instruction == "RESET" then
             table.insert(state.postfixes, raw)
+        elseif instruction == "EXCLUDE" or instruction == "INCLUDE" then
+            local scope, selector = string.match(target, "^([^:]+):(.+)$")
+            if not prototype_exclusions.valid_scope(scope) or not graph_tuning.valid_selector(selector) then
+                table.insert(state.warnings, "Invalid prototype exclusion; override skipped: " .. raw)
+                table.insert(state.localised_warnings, {
+                    "propertyrandomizer-warning.exclusion-override",
+                    raw,
+                })
+                table.insert(state.unrecognized, raw)
+            else
+                local entries = state.prototype_exclusions
+                local graph = string.match(scope, "^graph/(.+)$")
+                if graph ~= nil then
+                    entries = state.exclusions
+                    scope = graph
+                end
+                entries[scope] = entries[scope] or {}
+                entries[scope][selector] = instruction == "EXCLUDE" and true or nil
+            end
+        elseif string.sub(target, 1, 6) == "graph/" then
+            local warning = parse_graph(state, instruction, target)
+            if warning ~= nil then
+                table.insert(state.warnings, warning .. "; override skipped: " .. raw)
+                table.insert(state.localised_warnings, {
+                    "propertyrandomizer-warning.graph-override",
+                    raw,
+                })
+                table.insert(state.unrecognized, raw)
+            end
         else
             local parameter, value
             local warning
@@ -139,7 +203,7 @@ end
 customization.serialize = function(state)
     local instructions = {}
     local parameters = tuning.parameter_order
-    local function emit(entries, prefix)
+    local function emit(entries, prefix, fields_to_emit)
         local names = {}
         for name, _ in pairs(entries) do
             table.insert(names, name)
@@ -151,7 +215,7 @@ customization.serialize = function(state)
             if fields.enabled ~= nil then
                 table.insert(instructions, (fields.enabled == true and "ON:" or "OFF:") .. target)
             end
-            for _, field in pairs(parameters) do
+            for _, field in pairs(fields_to_emit or parameters) do
                 if fields[field] ~= nil then
                     table.insert(instructions, "PARAM:" .. target .. "." .. field .. "=" .. fields[field])
                 end
@@ -160,6 +224,26 @@ customization.serialize = function(state)
     end
     emit(state.settings, "setting/")
     emit(state.randomizations, "")
+    emit(state.graph or {}, "graph/", graph_tuning.parameter_order)
+    local exclusions = {}
+    for id, selectors in pairs(state.exclusions or {}) do
+        for selector, enabled in pairs(selectors) do
+            if enabled == true then
+                table.insert(exclusions, "EXCLUDE:graph/" .. id .. ":" .. selector)
+            end
+        end
+    end
+    for scope, selectors in pairs(state.prototype_exclusions or {}) do
+        for selector, enabled in pairs(selectors) do
+            if enabled == true then
+                table.insert(exclusions, "EXCLUDE:" .. scope .. ":" .. selector)
+            end
+        end
+    end
+    table.sort(exclusions)
+    for _, instruction in pairs(exclusions) do
+        table.insert(instructions, instruction)
+    end
     for _, raw in pairs(state.postfixes or {}) do
         table.insert(instructions, raw)
     end

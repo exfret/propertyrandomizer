@@ -146,3 +146,17 @@ config mining-drill-offsets-preview unified seeds=1 unified-preview=true dev-uni
 
 # Wild-entity mixing with planet copies, without unrelated planetary or numerical changes.
 config entity-autoplace-mixing unified seeds=1,2 unified-entity=true dupes=true logistic=none production=none military=none misc=none
+
+# Fast graph-customizer comparisons deliberately omit duplicates and numerical noise.
+config graph-customizer-baseline unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none
+config graph-customizer-zero unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=0
+config graph-customizer-light unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=25;PARAM:graph/recipe-category.keep_category=100;PARAM:graph/recipe-ingredients.ingredient_count=preserve;PARAM:graph/recipe-ingredients.fluids=preserve;EXCLUDE:graph/all:type/assembling-machine
+config graph-customizer-fluid unified seeds=1 dev-unified=true dupes=false logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=75;PARAM:graph/recipe-category.keep_category=0;PARAM:graph/recipe-ingredients.ingredient_count=very_big;PARAM:graph/recipe-ingredients.fluids=more;PARAM:graph/recipe-ingredients.resource_balance=off
+config graph-customizer-exclusions unified seeds=1,2 dev-unified=true dupes=false unified-entity=true unified-entity-biters=true logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=50;PARAM:graph/entity.amount=100;EXCLUDE:graph/all:group/logistics;EXCLUDE:graph/all:subgroup/inserter;EXCLUDE:graph/all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/entity:prototype/entity/assembling-machine-1
+config graph-customizer-less unified seeds=1 dev-unified=true dupes=false unified-entity=true logistic=none production=none military=none misc=none overrides=PARAM:graph/all.amount=50;PARAM:graph/item.amount=0;PARAM:graph/entity.amount=100;PARAM:graph/recipe-category.keep_category=75;PARAM:graph/recipe-ingredients.ingredient_count=small;PARAM:graph/recipe-ingredients.fluids=less;EXCLUDE:graph/all:group/logistics;EXCLUDE:graph/all:prototype/recipe/iron-gear-wheel
+
+# Standalone exclusion scopes: numerical-only, one numerical pass, all graph, and all normal passes.
+config exclusions-numerical unified seeds=1 dev-unified=true dupes=false logistic=more production=more military=more misc=more overrides=EXCLUDE:numerical/all:type/inserter;EXCLUDE:randomization/belt_speed:type/transport-belt
+config exclusions-all unified seeds=1 dev-unified=true dupes=false unified-entity=true logistic=more production=more military=more misc=more overrides=EXCLUDE:all:group/logistics;EXCLUDE:all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:type/assembling-machine
+config exclusions-legacy settings seeds=1 dupes=false recipe=true recipe-tech-unlock=true technology=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:prototype/technology/logistics;EXCLUDE:randomization/recipe_ingredients:prototype/recipe/copper-cable
+config exclusions-legacy-item settings seeds=1 dupes=false item=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:group/logistics;EXCLUDE:randomization/items:prototype/item/iron-plate

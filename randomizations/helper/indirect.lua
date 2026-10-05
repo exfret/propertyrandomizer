@@ -1,4 +1,5 @@
 local trigger_utils = require("lib/trigger")
+local prototype_exclusions = require("lib/prototype-exclusions")
 
 local export = {}
 
@@ -38,9 +39,11 @@ export.iterate_child_prototypes = function (child_type, func)
 
         local friendly = 0
         local enemy = 0
+        local protected = false
 
         for _, parent in pairs(parents) do
             if parent_types[parent.type] ~= nil then
+                if prototype_exclusions.active_excluded(parent) then protected = true end
                 affected_parents[#affected_parents+1] = parent
                 if enemy_types[parent.type] then
                     enemy = enemy + 1
@@ -50,7 +53,7 @@ export.iterate_child_prototypes = function (child_type, func)
             end
         end
 
-        if #affected_parents > 0 then
+        if #affected_parents > 0 and not protected and not prototype_exclusions.active_excluded(data.raw[child_type][prototype_name]) then
             local entity = data.raw[child_type][prototype_name]
             local structs = {}
             local gather_func = trigger_utils.type_to_gather_struct_func[child_type]

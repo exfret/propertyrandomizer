@@ -2,6 +2,8 @@
 local customization = require("lib/customization")
 local spec = require("helper-tables/spec")
 local tuning = require("lib/random/tuning")
+local graph_tuning = require("lib/graph-tuning")
+local prototype_exclusions = require("lib/prototype-exclusions")
 local constants = require("helper-tables/constants")
 
 local model = {}
@@ -18,6 +20,11 @@ model.new = function(text)
 end
 
 local function target_entries(draft, target)
+    local graph = string.match(target, "^graph/(.+)$")
+    if graph ~= nil then
+        draft.configuration.graph = draft.configuration.graph or {}
+        return draft.configuration.graph, graph
+    end
     local setting = string.match(target, "^setting/(.+)$")
     if setting ~= nil then
         return draft.configuration.settings, setting
@@ -31,7 +38,11 @@ model.fields = function(draft, target)
 end
 
 model.set = function(draft, target, field, value)
-    if field == "enabled" then
+    local graph = graph_tuning.valid_target(target)
+    if graph == true then
+        assert(field ~= "enabled" and graph_tuning.supports(string.sub(target, 7), field))
+        assert(value == nil or graph_tuning.valid_value(field, value))
+    elseif field == "enabled" then
         assert(value == nil or type(value) == "boolean")
     else
         assert(value == nil or tuning.valid_value(field, value))
@@ -48,6 +59,9 @@ model.reset = function(draft, target)
     if target == nil then
         draft.configuration.settings = {}
         draft.configuration.randomizations = {}
+        draft.configuration.graph = {}
+        draft.configuration.exclusions = {}
+        draft.configuration.prototype_exclusions = {}
     else
         local entries, name = target_entries(draft, target)
         entries[name] = nil
@@ -76,7 +90,30 @@ model.targets = function(draft, translated_name)
             or string.find(string.gsub(string.lower(id), "_", " "), query, 1, true) ~= nil
             or string.find(string.lower(translated), query, 1, true) ~= nil
     end
-    if draft.scope == "settings" then
+    if draft.scope == "exclusions" then
+        for _, scope in pairs({
+            "all",
+            "numerical/all",
+            "graph/all",
+        }) do
+            if matches(scope) then table.insert(targets, scope) end
+        end
+        for id, _ in pairs(prototype_exclusions.graph_targets) do
+            if matches("graph/" .. id) then table.insert(targets, "graph/" .. id) end
+        end
+        for id, info in pairs(spec) do
+            if info.category ~= "unified" and matches("randomization/" .. id) then table.insert(targets, "randomization/" .. id) end
+        end
+    elseif draft.scope == "graph" then
+        for id, _ in pairs(graph_tuning.targets) do
+            if matches(id) then
+                table.insert(targets, "graph/" .. id)
+            end
+        end
+        if matches("all") then
+            table.insert(targets, "graph/all")
+        end
+    elseif draft.scope == "settings" then
         for name, _ in pairs(customization.groups) do
             if matches(name) then
                 table.insert(targets, "setting/" .. name)
@@ -97,6 +134,12 @@ end
 -- The inherited value comes from the group or the currently loaded startup settings.
 -- Built-in range and variance can differ between properties within one randomization.
 model.inherited = function(draft, target, field, startup)
+    if graph_tuning.valid_target(target) then
+        if target ~= "graph/all" and ((draft.configuration.graph or {}).all or {})[field] ~= nil then
+            return draft.configuration.graph.all[field], "graph"
+        end
+        return graph_tuning.default(field), "builtin"
+    end
     local setting = string.match(target, "^setting/(.+)$")
     if setting == nil then
         local info = spec[target]
@@ -118,6 +161,32 @@ model.inherited = function(draft, target, field, startup)
         return startup["propertyrandomizer-" .. field].value, "startup"
     end
     return nil, field == "enabled" and "startup" or "builtin"
+end
+
+model.exclude = function(draft, target, selector, enabled)
+    assert(prototype_exclusions.valid_scope(target) and graph_tuning.valid_selector(selector))
+    local graph = string.match(target, "^graph/(.+)$")
+    local key = graph ~= nil and "exclusions" or "prototype_exclusions"
+    local id = graph or target
+    draft.configuration[key] = draft.configuration[key] or {}
+    draft.configuration[key][id] = draft.configuration[key][id] or {}
+    draft.configuration[key][id][selector] = enabled == true and true or nil
+end
+
+model.exclusions = function(draft, scope)
+    local graph = string.match(scope or "", "^graph/(.+)$")
+    return graph ~= nil and ((draft.configuration.exclusions or {})[graph] or {})
+        or ((draft.configuration.prototype_exclusions or {})[scope] or {})
+end
+
+model.reset_exclusions = function(draft, scope)
+    assert(prototype_exclusions.valid_scope(scope))
+    local graph = string.match(scope, "^graph/(.+)$")
+    if graph ~= nil then
+        (draft.configuration.exclusions or {})[graph] = nil
+    else
+        (draft.configuration.prototype_exclusions or {})[scope] = nil
+    end
 end
 
 return model

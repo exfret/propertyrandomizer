@@ -1,6 +1,7 @@
 local build_graph = require("lib/old-logic/build-graph")
 local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
+local prototype_exclusions = require("lib/graph-customization")
 
 randomizations.recipe_tech_unlock = function(id)
     local sort_info = top_sort.sort(dep_graph)
@@ -15,7 +16,16 @@ randomizations.recipe_tech_unlock = function(id)
     -- Add technologies an extra time to the pool
     local added_to_pool_extra = {}
     for _, node in pairs(graph_sort) do
+        local protected = node.type == "recipe-tech-unlock" and prototype_exclusions.excluded("recipe_unlocks", {
+            type = "recipe",
+            name = node.name,
+        })
         if node.type == "recipe-tech-unlock" then
+            for _, prereq in pairs(node.prereqs) do
+                if prereq.type == "technology" and prototype_exclusions.excluded("recipe_unlocks", prereq) then protected = true end
+            end
+        end
+        if node.type == "recipe-tech-unlock" and not protected then
             table.insert(unlock_sort, node)
             local prev_num_prereqs_for_this_node = 0
             for _, prereq in pairs(node.prereqs) do
@@ -108,7 +118,7 @@ randomizations.recipe_tech_unlock = function(id)
         if technology.effects ~= nil then
             local new_effects = {}
             for _, effect in pairs(technology.effects) do
-                if effect.type ~= "unlock-recipe" then
+                if effect.type ~= "unlock-recipe" or unlock_node_to_new_prereqs[effect.recipe] == nil then
                     table.insert(new_effects, effect)
                 end
             end

@@ -31,6 +31,8 @@ local function log_info(level, info)
 end
 
 local constants = require("helper-tables/constants")
+local graph_customization = require("lib/graph-customization")
+local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
@@ -164,6 +166,15 @@ local function planetary_debt()
 end
 
 unified.execute = function()
+    graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
+    config.graph_exclusion_warnings = config.graph_exclusion_warnings or {}
+    for _, selector in pairs(graph_customization.unmatched()) do
+        if config.graph_exclusion_warnings[selector] == nil then
+            config.graph_exclusion_warnings[selector] = true
+            table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.graph-exclusion-empty", selector))
+            log("Graph exclusion matches no loaded prototypes: " .. selector)
+        end
+    end
     for _, handler in pairs(handlers) do
         handler.initialize()
     end
@@ -184,7 +195,12 @@ unified.execute = function()
 
     if REMOVE_TECH_PREREQS then
         for _, tech in pairs(data.raw.technology) do
-            tech.prerequisites = {}
+            if not graph_customization.excluded("tech-prereqs", {
+                type = "technology",
+                name = tech.name,
+            }) then
+                tech.prerequisites = {}
+            end
         end
     end
 
@@ -192,6 +208,7 @@ unified.execute = function()
     logic.build(true)
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
+    graph_customization.protect_references(init_graph)
     test_graph_invariants.test(init_graph)
 
     local spoofed_graph = table.deepcopy(init_graph)
@@ -263,7 +280,10 @@ unified.execute = function()
                     local claimed_by
 
                     for handler_id, handler in pairs(handlers) do
-                        local num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
+                        local num_copies
+                        if graph_customization.selected(handler_id, orand_parent) and not graph_customization.excluded(handler_id, prereq_node) then
+                            num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
+                        end
                         -- Make sure this connection isn't blacklisted for this handler
                         if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
                             num_copies = false
@@ -758,7 +778,11 @@ unified.execute = function()
                 -- A head that rolls under its handler's stay_chance tries the bases that keep its old connection (the handler's stays) first among the paying bases and among the rest, so paying bases still go first
                 local stay_stats
                 local tries_to_stay = false
-                if head_to_handler[head_key].stay_chance > 0 then
+                local stay_chance = head_to_handler[head_key].stay_chance
+                if handler_id == "recipe-category" then
+                    stay_chance = (tonumber(graph_customization.fields(handler_id).keep_category) or stay_chance * 100) / 100
+                end
+                if stay_chance > 0 then
                     handler_to_stay_stats[handler_id] = handler_to_stay_stats[handler_id] or {
                         heads = 0,
                         tried = 0,
@@ -767,7 +791,7 @@ unified.execute = function()
                     }
                     stay_stats = handler_to_stay_stats[handler_id]
                     stay_stats.heads = stay_stats.heads + 1
-                    tries_to_stay = rng.value(rng.key({id = "unified-stay"})) < head_to_handler[head_key].stay_chance
+                    tries_to_stay = rng.value(rng.key({id = "unified-stay"})) < stay_chance
                 end
                 if tries_to_stay then
                     stay_stats.tried = stay_stats.tried + 1
@@ -977,6 +1001,15 @@ unified.execute = function()
         data.raw.planet.nauvis.name = "nauvis"
         data.raw.planet.vulcanus = old_nauvis
         data.raw.planet.vulcanus.name = "vulcanus"
+    end
+
+    for _, line in pairs(graph_customization.report()) do
+        log(line)
+    end
+    local customization_failures = graph_customization.check_material_renames(UNIFIED_MATERIAL_RENAMES)
+    if #customization_failures > 0 then
+        log("Graph customization lost fixed material identities: " .. table.concat(customization_failures, ", "))
+        return false
     end
 
     return {

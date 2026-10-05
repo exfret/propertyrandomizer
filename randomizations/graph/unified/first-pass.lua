@@ -20,6 +20,7 @@ local FORM_SWAP_MAX = 8
 local FORM_SWAP_BATCH = 4
 
 local constants = require("helper-tables/constants")
+local graph_customization = require("lib/graph-customization")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
@@ -577,6 +578,10 @@ first_pass.execute = function(params)
             if entity_verdict ~= nil then
                 return entity_verdict
             end
+        end
+        local original = split_graph.nodes[trav.old_slot]
+        if key(slot) ~= trav.old_slot and (not graph_customization.selected("item", slot) or not graph_customization.selected("item", original)) then
+            return false
         end
         return pair_ok(slot, trav)
     end

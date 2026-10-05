@@ -84,6 +84,9 @@ if config.planetary_biomes == true then
 end
 
 local new_logic = require("lib/logic/init")
+local graph_customization = require("lib/graph-customization")
+local prototype_exclusions = require("lib/prototype-exclusions")
+local randomization_spec = require("helper-tables/spec")
 local landing_lightning = require("scripts/landing-lightning")
 
 local unified_info
@@ -91,6 +94,11 @@ local function smuggle_info()
     log("Smuggling control info")
     claim_tool.prepare(data.raw, defines.prototypes.entity)
     data:extend({
+        {
+            type = "mod-data",
+            name = "propertyrandomizer-customizer-catalog",
+            data = {entries = graph_customization.catalog(old_data_raw or data.raw, defines.prototypes)},
+        },
         {
             type = "mod-data",
             name = "propertyrandomizer-landing-lightning",
@@ -381,6 +389,27 @@ require("randomizations/master")
 
 log("Applying graph-based randomizations")
 
+local exclusion_catalog = graph_customization.catalog(old_data_raw or data.raw, defines.prototypes)
+prototype_exclusions.initialize(config.customization, data.raw, defines.prototypes, old_data_raw)
+config.graph_exclusion_warnings = config.graph_exclusion_warnings or {}
+for _, selector in pairs(prototype_exclusions.unmatched(config.customization, exclusion_catalog)) do
+    if config.graph_exclusion_warnings[selector] == nil then
+        config.graph_exclusion_warnings[selector] = true
+        table.insert(randomization_info.warnings, {
+            "propertyrandomizer-warning.graph-exclusion-empty",
+            selector,
+        })
+        log("Prototype exclusion matches no loaded prototypes: " .. selector)
+    end
+end
+if config.graph.item == true or config.graph.recipe == true or config.graph.technology == true or config.graph.recipe_tech_unlock == true then
+    graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed, exclusion_catalog)
+    if config.graph.item == true then
+        new_logic.build()
+        graph_customization.protect_references(new_logic.graph, "items")
+    end
+end
+
 -- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild)
 if config.tech_tree_rebuild then
     randomizations.rebuild_tech_tree()
@@ -518,7 +547,8 @@ log("Applying numerical/misc randomizations")
 for _, order_group in pairs(randomizations_to_perform) do
     for id, to_perform in pairs(order_group) do
         if to_perform then
-            randomizations[id](id)
+            local category = randomization_spec[id].category
+            prototype_exclusions.run(id, category, function() randomizations[id](id) end)
         end
     end
 end
@@ -533,22 +563,26 @@ randomizations.fix_recycling_names()
 log("Applying extra randomizations")
 
 if config.misc.icon then
-    randomizations.all_icons("all_icons")
+    prototype_exclusions.run("all_icons", "misc", function() randomizations.all_icons("all_icons") end)
 end
 if config.misc.sound then
-    randomizations.all_sounds("all_sounds")
+    prototype_exclusions.run("all_sounds", "misc", function() randomizations.all_sounds("all_sounds") end)
 end
 if config.misc.gui then
-    randomizations.group_order("group_order")
-    randomizations.recipe_order("recipe_order")
-    randomizations.recipe_subgroup("recipe_subgroup")
-    randomizations.subgroup_group("subgroup_group")
+    for _, id in pairs({
+        "group_order",
+        "recipe_order",
+        "recipe_subgroup",
+        "subgroup_group",
+    }) do
+        prototype_exclusions.run(id, "misc", function() randomizations[id](id) end)
+    end
 end
 if config.misc.locale then
-    randomizations.all_names("all_names")
+    prototype_exclusions.run("all_names", "misc", function() randomizations.all_names("all_names") end)
 end
 if config.misc.colors ~= "no" then
-    randomizations.colors("colors")
+    prototype_exclusions.run("colors", "misc", function() randomizations.colors("colors") end)
 end
 
 log("Done applying extra randomizations")

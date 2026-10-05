@@ -12,6 +12,8 @@ local function gui_element(definition, parent)
         items = definition.items or {},
         selected_index = definition.selected_index or 0,
         text = definition.text or "",
+        elem_type = definition.elem_type,
+        elem_value = definition.elem_value,
         caption = definition.caption or "",
         tooltip = definition.tooltip,
         valid = true,
@@ -20,6 +22,9 @@ local function gui_element(definition, parent)
     }
     element.add = function(child_definition)
         assert(element.valid, "cannot add to a destroyed element")
+        if child_definition.type == "choose-elem-button" then
+            assert(child_definition.elem_value == nil, "installed LuaGuiElement.add API sets initial prototype by class or via the elem_value attribute")
+        end
         if child_definition.name ~= nil then
             assert(element[child_definition.name] == nil, "duplicate GUI name: " .. child_definition.name)
         end
@@ -399,4 +404,127 @@ assert(storage.customizer_drafts[2].target == nil, "locale change discards trans
 assert(not pcall(locale_catalogue.validate, "English regression"))
 assert(not pcall(locale_catalogue.validate, {"propertyrandomizer-customizer.missing"}))
 assert(not pcall(locale_catalogue.validate, {"propertyrandomizer-customizer.summary"}))
+
+prototypes.mod_data["propertyrandomizer-customizer-catalog"] = {
+    data = {
+        entries = {
+            {
+                kind = "widget",
+                class = "entity",
+                name = "fixture-building",
+                subgroup = "fixture-subgroup",
+                group = "fixture-group",
+                caption = {
+                    "propertyrandomizer-customizer.identifier",
+                    "Fixture building",
+                },
+            },
+            {
+                kind = "component",
+                class = "fixture-component",
+                name = "fixture-component",
+                subgroup = "fixture-subgroup",
+                group = "fixture-group",
+                caption = {
+                    "propertyrandomizer-customizer.identifier",
+                    "Fixture component",
+                },
+            },
+        },
+    },
+}
+select(1, "randomizer-customizer-scope", 3)
+assert(storage.customizer_drafts[1].scope == "graph")
+assert(storage.customizer_drafts[1].target == "graph/all")
+local graph_targets = find(panel(1), "randomizer-customizer-targets").tags.targets
+for _, graph_target in pairs(graph_targets) do
+    target(1, graph_target)
+    locale_catalogue.gui(find(panel(1), "randomizer-customizer-flow"))
+end
+target(1, "graph/all")
+assert(find(panel(1), "randomizer-customizer-field-enabled") == nil)
+select(1, "randomizer-customizer-field-amount", 3)
+assert(customization.parse(exported(1)).graph.all.amount == "25")
+assert(find(panel(1), "randomizer-customizer-exclusion-search") == nil, "graph parameters do not embed prototype exclusions")
+select(1, "randomizer-customizer-scope", 4)
+target(1, "graph/all")
+local prototype_choice = find(panel(1), "randomizer-customizer-prototype-choice")
+assert(prototype_choice.elem_type == "entity", "use the Explorer's native prototype picker")
+prototype_choice.elem_value = "fixture-building"
+handlers[defines.events.on_gui_elem_changed]({
+    player_index = 1,
+    element = prototype_choice,
+})
+assert(storage.customizer_drafts[1].exclusion_value == "fixture-building")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).exclusions.all["prototype/entity/fixture-building"])
+assert(find(panel(1), "randomizer-customizer-prototype-choice").elem_value == "fixture-building", "rebuilding retains the native selection")
+select(1, "randomizer-customizer-exclusion-kind", 3)
+local exclusion_search = find(panel(1), "randomizer-customizer-exclusion-search")
+write(1, exclusion_search.name, "fixture-group")
+assert(exclusion_search.valid and find(panel(1), exclusion_search.name) == exclusion_search, "typing must preserve the search element and caret")
+customizer.refresh_translations(1)
+assert(exclusion_search.valid and find(panel(1), exclusion_search.name) == exclusion_search, "translations must preserve the exclusion search element")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).exclusions.all["group/fixture-group"])
+select(1, "randomizer-customizer-exclusion-kind", 4)
+write(1, "randomizer-customizer-exclusion-search", "fixture-subgroup")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).exclusions.all["subgroup/fixture-subgroup"])
+target(1, "all")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).prototype_exclusions.all["subgroup/fixture-subgroup"])
+target(1, "numerical/all")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).prototype_exclusions["numerical/all"]["subgroup/fixture-subgroup"])
+target(1, "randomization/belt_speed")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).prototype_exclusions["randomization/belt_speed"]["subgroup/fixture-subgroup"])
+select(1, "randomizer-customizer-exclusion-kind", 1)
+local class_choices = find(panel(1), "randomizer-customizer-exclusion-class")
+for index, class in pairs(class_choices.tags.values) do
+    if class == "fixture-component" then
+        select(1, class_choices.name, index)
+        break
+    end
+end
+assert(find(panel(1), "randomizer-customizer-prototype-choice") == nil, "other prototype classes use the catalogue selector")
+write(1, "randomizer-customizer-exclusion-search", "fixture-component")
+click(1, "randomizer-customizer-exclude-selected")
+assert(customization.parse(exported(1)).prototype_exclusions["randomization/belt_speed"]["prototype/component/fixture-component"])
+target(1, "graph/all")
+click(1, "randomizer-customizer-clear-scope-exclusions")
+local after_scope_clear = customization.parse(exported(1))
+assert(after_scope_clear.exclusions.all == nil)
+assert(after_scope_clear.graph.all.amount == "25", "clearing exclusions retains graph parameters")
+assert(after_scope_clear.prototype_exclusions["numerical/all"]["subgroup/fixture-subgroup"], "clearing a scope retains other scopes")
+locale_catalogue.gui(find(panel(1), "randomizer-customizer-flow"))
+select(1, "randomizer-customizer-scope", 3)
+write(1, "randomizer-customizer-search", "recipe-ingredients")
+assert(find(panel(1), "randomizer-customizer-field-keep_category") == nil)
+select(1, "randomizer-customizer-field-ingredient_count", 2)
+select(1, "randomizer-customizer-field-resource_balance", 3)
+assert(customization.parse(exported(1)).graph["recipe-ingredients"].ingredient_count == "preserve")
+assert(customization.parse(exported(1)).graph["recipe-ingredients"].resource_balance == "off")
+locale_catalogue.gui(panel(1))
+click(1, "randomizer-customizer-reset-target")
+assert(customization.parse(exported(1)).graph["recipe-ingredients"] == nil)
+write(1, "randomizer-customizer-search", "entity")
+assert(find(panel(1), "randomizer-customizer-field-ingredient_count") == nil)
+click(1, "randomizer-customizer-clear")
+assert(next(customization.parse(exported(1)).graph) == nil and next(customization.parse(exported(1)).exclusions) == nil)
+write(1, "randomizer-customizer-search", "Zutaten")
+assert(storage.customizer_drafts[1].target == nil)
+for id, request in pairs(translation_requests) do
+    if request.player_index == 1 and request.caption[1] == "propertyrandomizer-customizer.graph-recipe-ingredients" then
+        handlers[defines.events.on_string_translated]({
+            player_index = 1,
+            id = id,
+            translated = true,
+            result = "Zutaten",
+        })
+    end
+end
+handlers[defines.events.on_tick]({tick = 120})
+assert(storage.customizer_drafts[1].target == "graph/recipe-ingredients", "translated graph captions must be searchable")
 print("ok - customizer events, all target/value locales, import errors, translated search and persistence")

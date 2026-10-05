@@ -3,10 +3,17 @@ local customization = require("lib/customization")
 local localised_text = require("lib/localised-text")
 local translations = require("scripts/explorer-localisation")
 local tuning = require("lib/random/tuning")
+local graph_tuning = require("lib/graph-tuning")
 local spec = require("helper-tables/spec")
 local model = require("scripts/customizer-model")
 
 local customizer = {}
+local prototype_selector_types = {}
+
+-- The Explorer supplies its already-supported native picker types.
+customizer.set_selector_types = function(types)
+    prototype_selector_types = types
+end
 
 local function draft_for(player_index)
     storage.customizer_drafts = storage.customizer_drafts or {}
@@ -37,6 +44,26 @@ local function text(key, ...)
 end
 
 local function target_caption(target)
+    if target == "all" then return text("exclude-all") end
+    if target == "numerical/all" then return text("exclude-numerical") end
+    local individual = string.match(target, "^randomization/(.+)$")
+    if individual ~= nil then
+        return {
+            "?",
+            {"propertyrandomizer-randomization-name." .. individual},
+            text("identifier", individual),
+        }
+    end
+    local graph = string.match(target, "^graph/(.+)$")
+    if graph ~= nil then
+        if graph == "all" or graph_tuning.targets[graph] == true then return text("graph-" .. graph) end
+        return {
+            "?",
+            text("graph-" .. graph),
+            {"mod-setting-name.propertyrandomizer-unified-" .. graph},
+            text("identifier", graph),
+        }
+    end
     local setting = string.match(target, "^setting/(.+)$")
     if setting ~= nil then
         return {"mod-setting-name." .. setting}
@@ -49,6 +76,8 @@ local function value_caption(field, value)
         return text("builtin")
     elseif field == "enabled" then
         return text(value == true and "on" or "off")
+    elseif field == "amount" or field == "keep_category" then
+        return text("percentage", value)
     elseif value == "same" then
         return text(field == "range" and "match-variance" or "match-range")
     end
@@ -95,7 +124,22 @@ local function render_output(root, draft)
             individuals = individuals + 1
         end
     end
-    content["randomizer-customizer-summary"].caption = text("summary", groups, individuals, #draft.configuration.postfixes)
+    local graphs, exclusions = 0, 0
+    for _, fields in pairs(draft.configuration.graph or {}) do
+        if next(fields) ~= nil then graphs = graphs + 1 end
+    end
+    for _, selectors in pairs(draft.configuration.exclusions or {}) do
+        for _, _ in pairs(selectors) do exclusions = exclusions + 1 end
+    end
+    for _, selectors in pairs(draft.configuration.prototype_exclusions or {}) do
+        for _, _ in pairs(selectors) do exclusions = exclusions + 1 end
+    end
+    content["randomizer-customizer-summary"].caption = {
+        "",
+        text("summary", groups, individuals, #draft.configuration.postfixes),
+        "\n",
+        text("graph-summary", graphs, exclusions),
+    }
     local status = content["randomizer-customizer-status"]
     -- Upgrade saved import statuses from before the detailed warnings were localized.
     if type(draft.message) == "table" and type(draft.message[2]) == "table"
@@ -110,6 +154,214 @@ local function render_output(root, draft)
     warnings.caption = text("preserved-warning", #draft.configuration.unrecognized)
 end
 
+local function refresh_exclusion_choices(editor, draft)
+    if editor["randomizer-customizer-prototype-choice"] ~= nil then
+        local list = editor["randomizer-customizer-exclusion-choices"]
+        list.items = {}
+        list.tags = {
+            action = "exclusion-choice",
+            values = {},
+        }
+        list.selected_index = 0
+        editor["randomizer-customizer-exclusion-matches"].caption = text("exclusion-matches", 0)
+        return
+    end
+    local player = game.players[editor.player_index]
+    local metadata = prototypes ~= nil and prototypes.mod_data ~= nil and prototypes.mod_data["propertyrandomizer-customizer-catalog"] or nil
+    local catalog = metadata ~= nil and metadata.data.entries or {}
+    local kind = draft.exclusion_kind or "prototype"
+    local query = string.lower(draft.exclusion_query or "")
+    local choices = {}
+    local seen = {}
+    for _, entry in pairs(catalog) do
+        local name = kind == "prototype" and entry.name or kind == "type" and entry.kind or entry[kind]
+        if name ~= nil and (kind ~= "prototype" or draft.exclusion_class == nil or entry.class == draft.exclusion_class) then
+            local selector = kind == "prototype" and "prototype/" .. entry.kind .. "/" .. name or kind .. "/" .. name
+            local caption = kind == "prototype" and (entry.caption or {
+                "?",
+                {entry.class .. "-name." .. name},
+                text("identifier", name),
+            }) or text("identifier", name)
+            local translated = query ~= "" and translations.value(player, "customizer-exclusion:" .. selector, caption, name) or name
+            if seen[selector] == nil and (string.find(string.lower(selector), query, 1, true) ~= nil or string.find(string.lower(translated), query, 1, true) ~= nil) then
+                seen[selector] = true
+                local display_caption = caption
+                if kind == "prototype" then
+                    display_caption = text("prototype-choice", caption, entry.kind)
+                end
+                table.insert(choices, {
+                    selector = selector,
+                    caption = display_caption,
+                })
+            end
+        end
+    end
+    table.sort(choices, function(a, b) return a.selector < b.selector end)
+    local values, captions = {}, {}
+    for index, choice in pairs(choices) do
+        if index <= 200 then
+            table.insert(values, choice.selector)
+            table.insert(captions, choice.caption)
+        end
+    end
+    local list = editor["randomizer-customizer-exclusion-choices"]
+    local old_selector = list.tags.values ~= nil and list.tags.values[list.selected_index] or nil
+    list.items = captions
+    list.tags = {
+        action = "exclusion-choice",
+        values = values,
+    }
+    list.selected_index = #values > 0 and 1 or 0
+    for index, selector in pairs(values) do
+        if selector == old_selector then list.selected_index = index end
+    end
+    editor["randomizer-customizer-exclusion-matches"].caption = text("exclusion-matches", #choices)
+end
+
+local function render_exclusions(editor, draft, width)
+    local heading = label(editor, text("exclusions"))
+    heading.tooltip = text("exclusions-help")
+    local kinds = {
+        "prototype",
+        "type",
+        "group",
+        "subgroup",
+    }
+    local items = {}
+    local selected = 1
+    for index, kind in pairs(kinds) do
+        table.insert(items, text("exclude-" .. kind))
+        if draft.exclusion_kind == kind then selected = index end
+    end
+    editor.add({
+        type = "drop-down",
+        name = "randomizer-customizer-exclusion-kind",
+        items = items,
+        selected_index = selected,
+        tags = {
+            action = "exclusion-kind",
+            values = kinds,
+        },
+    })
+    local metadata = prototypes ~= nil and prototypes.mod_data ~= nil and prototypes.mod_data["propertyrandomizer-customizer-catalog"] or nil
+    local catalog = metadata ~= nil and metadata.data.entries or {}
+    local classes, captions, seen = {}, {}, {}
+    for _, class in pairs(prototype_selector_types) do
+        seen[class] = true
+        table.insert(classes, class)
+    end
+    local extra = {}
+    for _, entry in pairs(catalog) do
+        if seen[entry.class] == nil then
+            seen[entry.class] = true
+            table.insert(extra, entry.class)
+        end
+    end
+    table.sort(extra)
+    for _, class in pairs(extra) do table.insert(classes, class) end
+    local class_index = 1
+    for index, class in pairs(classes) do
+        table.insert(captions, {
+            "?",
+            {"propertyrandomizer-gui." .. class},
+            text("identifier", class),
+        })
+        if draft.exclusion_class == class then class_index = index end
+    end
+    draft.exclusion_class = classes[class_index]
+    local class_choice = editor.add({
+        type = "drop-down",
+        name = "randomizer-customizer-exclusion-class",
+        items = captions,
+        selected_index = #classes > 0 and class_index or 0,
+        visible = (draft.exclusion_kind or "prototype") == "prototype",
+        tags = {
+            action = "exclusion-class",
+            values = classes,
+        },
+    })
+    class_choice.tooltip = text("exclusion-class")
+    local native = false
+    for _, class in pairs(prototype_selector_types) do
+        if class == draft.exclusion_class then native = true end
+    end
+    native = native and (draft.exclusion_kind or "prototype") == "prototype"
+    if native then
+        local lookup = prototypes[string.gsub(draft.exclusion_class, "-", "_")]
+        if lookup ~= nil and draft.exclusion_value ~= nil and lookup[draft.exclusion_value] == nil then
+            draft.exclusion_value = nil
+        end
+        local choice = editor.add({
+            type = "choose-elem-button",
+            name = "randomizer-customizer-prototype-choice",
+            elem_type = draft.exclusion_class,
+            tags = {action = "exclusion-prototype"},
+        })
+        choice.elem_value = draft.exclusion_value
+    end
+    local search = editor.add({
+        type = "textfield",
+        name = "randomizer-customizer-exclusion-search",
+        text = draft.exclusion_query or "",
+        tooltip = text("exclusion-search"),
+        visible = not native,
+        tags = {action = "exclusion-search"},
+    })
+    search.style.width = math.max(120, width - 24)
+    local list = editor.add({
+        type = "list-box",
+        name = "randomizer-customizer-exclusion-choices",
+        items = {},
+        visible = not native,
+        tags = {
+            action = "exclusion-choice",
+            values = {},
+        },
+    })
+    list.style.width = math.max(120, width - 24)
+    list.style.height = 120
+    local note = label(editor, "", "randomizer-customizer-exclusion-matches")
+    refresh_exclusion_choices(editor, draft)
+    note.style.single_line = false
+    note.style.maximal_width = width
+    note.visible = not native
+    button(editor, "exclude-selected")
+    local selected_exclusions = {}
+    for selector, _ in pairs(model.exclusions(draft, draft.target)) do
+        table.insert(selected_exclusions, selector)
+    end
+    table.sort(selected_exclusions)
+    for _, selector in pairs(selected_exclusions) do
+        local row = flow(editor, nil, "horizontal")
+        local caption = label(row, text("identifier", selector))
+        caption.style.single_line = false
+        caption.style.maximal_width = math.max(100, width - 100)
+        row.add({
+            type = "button",
+            caption = text("remove-exclusion"),
+            tags = {
+                action = "remove-exclusion",
+                selector = selector,
+                scope = draft.target,
+            },
+        })
+    end
+    if draft.target ~= "all" then
+        local inherited = 0
+        for _, _ in pairs((draft.configuration.prototype_exclusions or {}).all or {}) do inherited = inherited + 1 end
+        local individual = string.match(draft.target, "^randomization/(.+)$")
+        local category = individual ~= nil and spec[individual].category or nil
+        if category == "numerical" then
+            for _, _ in pairs((draft.configuration.prototype_exclusions or {})["numerical/all"] or {}) do inherited = inherited + 1 end
+        end
+        if category == "graph" or draft.target ~= "graph/all" and string.sub(draft.target, 1, 6) == "graph/" then
+            for _, _ in pairs((draft.configuration.exclusions or {}).all or {}) do inherited = inherited + 1 end
+        end
+        if inherited > 0 then label(editor, text("inherited-exclusions", inherited)) end
+    end
+    button(editor, "clear-scope-exclusions")
+end
+
 local function render_editor(root, draft)
     local editor = content_for(root)["randomizer-customizer-main"]["randomizer-customizer-editor"]
     editor.clear()
@@ -118,12 +370,23 @@ local function render_editor(root, draft)
         label(editor, text("no-results"))
         return
     end
+    if draft.scope == "exclusions" then
+        label(editor, target_caption(draft.target))
+        local description = label(editor, text("exclusions-description"))
+        description.style.single_line = false
+        description.style.maximal_width = editor_width
+        render_exclusions(editor, draft, editor_width)
+        return
+    end
     local title = label(editor, target_caption(draft.target))
     title.style.single_line = false
     title.style.maximal_width = editor_width
     local setting = string.match(draft.target, "^setting/(.+)$")
     local caption
-    if setting ~= nil then
+    local graph = string.match(draft.target, "^graph/(.+)$")
+    if graph ~= nil then
+        caption = text("graph-description")
+    elseif setting ~= nil then
         caption = text("group-description", #customization.groups[setting])
     else
         caption = {
@@ -144,10 +407,18 @@ local function render_editor(root, draft)
     local function add_choice(field, values)
         local field_label = label(controls, text("field-" .. field))
         field_label.style.width = 130
+        field_label.style.single_line = false
         field_label.tooltip = text("help-" .. field)
         local items = {text("inherit")}
         local selected = 1
-        for index, value in pairs(values) do
+        local choices = {}
+        for _, value in pairs(values) do table.insert(choices, value) end
+        if fields[field] ~= nil then
+            local found = false
+            for _, value in pairs(choices) do if value == fields[field] then found = true end end
+            if not found then table.insert(choices, fields[field]) end
+        end
+        for index, value in pairs(choices) do
             table.insert(items, value_caption(field, value))
             if fields[field] == value then
                 selected = index + 1
@@ -167,6 +438,7 @@ local function render_editor(root, draft)
                 action = "field",
                 target = draft.target,
                 field = field,
+                values = choices,
             },
             tooltip = {
                 "",
@@ -177,28 +449,41 @@ local function render_editor(root, draft)
         })
         choice.style.width = math.max(120, editor_width - 160)
     end
-    add_choice("enabled", {
-        false,
-        true,
-    })
-    if setting ~= nil or spec[draft.target].tuning ~= false then
-        for _, field in pairs(tuning.parameter_order) do
-            add_choice(field, tuning.parameters[field].values)
+    if graph ~= nil then
+        for _, field in pairs(graph_tuning.parameter_order) do
+            if graph_tuning.supports(graph, field) then
+                add_choice(field, graph_tuning.parameters[field].values)
+            end
         end
+        label(editor, text("exclusions-separate"))
     else
-        local note = label(editor, text("toggle-only"))
-        note.style.single_line = false
-        note.style.maximal_width = editor_width
+        add_choice("enabled", {
+            false,
+            true,
+        })
+        if setting ~= nil or spec[draft.target].tuning ~= false then
+            for _, field in pairs(tuning.parameter_order) do
+                add_choice(field, tuning.parameters[field].values)
+            end
+        else
+            local note = label(editor, text("toggle-only"))
+            note.style.single_line = false
+            note.style.maximal_width = editor_width
+        end
     end
     button(editor, "reset-target", nil, "reset-target-tooltip")
 end
 
 local function render_targets(root, draft)
+    local inheritance = content_for(root)["randomizer-customizer-inheritance"]
+    if inheritance ~= nil then
+        inheritance.caption = text(draft.scope == "exclusions" and "exclusion-inheritance" or "inheritance")
+    end
     local selectors = content_for(root)["randomizer-customizer-main"]["randomizer-customizer-selectors"]
     selectors["randomizer-customizer-group-filter"].visible = draft.scope == "randomizations"
     local player = game.players[root.player_index]
     local targets = model.targets(draft, function(id)
-        local target = draft.scope == "settings" and "setting/" .. id or id
+        local target = draft.scope == "settings" and "setting/" .. id or draft.scope == "graph" and "graph/" .. id or id
         return translations.value(player, "customizer:" .. target, target_caption(target), id)
     end)
     local items = {}
@@ -292,7 +577,7 @@ customizer.create = function(pane, player_index)
     scroll.style.vertically_stretchable = true
     local content = flow(scroll, "randomizer-customizer-content")
     label(content, text("intro"))
-    label(content, text("inheritance"))
+    label(content, text("inheritance"), "randomizer-customizer-inheritance")
     local main = flow(content, "randomizer-customizer-main", "horizontal")
     local selectors = flow(main, "randomizer-customizer-selectors")
     selectors.add({
@@ -301,8 +586,10 @@ customizer.create = function(pane, player_index)
         items = {
             text("groups"),
             text("individuals"),
+            text("graphs"),
+            text("prototype-exclusions"),
         },
-        selected_index = draft.scope == "settings" and 1 or 2,
+        selected_index = draft.scope == "settings" and 1 or draft.scope == "graph" and 3 or draft.scope == "exclusions" and 4 or 2,
         tags = {action = "scope"},
     })
     local group_names = {}
@@ -391,7 +678,7 @@ customizer.on_selection_changed = function(event)
     local tags = event.element.tags
     local index = event.element.selected_index
     if tags.action == "scope" then
-        draft.scope = index == 1 and "settings" or "randomizations"
+        draft.scope = index == 1 and "settings" or index == 3 and "graph" or index == 4 and "exclusions" or "randomizations"
         draft.target = nil
         draft.query = ""
         content_for(root)["randomizer-customizer-main"]["randomizer-customizer-selectors"]["randomizer-customizer-search"].text = ""
@@ -402,13 +689,20 @@ customizer.on_selection_changed = function(event)
     elseif tags.action == "target" then
         draft.target = tags.targets[index]
         render_editor(root, draft)
+    elseif tags.action == "exclusion-kind" then
+        draft.exclusion_kind = tags.values[index]
+        render_editor(root, draft)
+    elseif tags.action == "exclusion-class" then
+        draft.exclusion_class = tags.values[index]
+        draft.exclusion_value = nil
+        render_editor(root, draft)
     elseif tags.action == "field" then
         local value
         if index > 1 then
             if tags.field == "enabled" then
                 value = index == 3
             else
-                value = tuning.parameters[tags.field].values[index - 1]
+                value = (tags.values or tuning.parameters[tags.field].values)[index - 1]
             end
         end
         model.set(draft, tags.target, tags.field, value)
@@ -428,6 +722,9 @@ customizer.on_text_changed = function(event)
     if event.element.tags.action == "search" then
         draft.query = event.element.text
         render_targets(root, draft)
+    elseif event.element.tags.action == "exclusion-search" then
+        draft.exclusion_query = event.element.text
+        refresh_exclusion_choices(event.element.parent, draft)
     elseif event.element.tags.action == "import-text" then
         draft.import_text = event.element.text
     end
@@ -442,7 +739,27 @@ customizer.on_click = function(event)
     local draft = draft_for(event.player_index)
     local content = content_for(root)
     local action = event.element.tags.action
-    if action == "select-string" then
+    if action == "exclude-selected" then
+        local editor = content["randomizer-customizer-main"]["randomizer-customizer-editor"]
+        local choices = editor["randomizer-customizer-exclusion-choices"]
+        local selector = choices.tags.values[choices.selected_index]
+        local prototype_choice = editor["randomizer-customizer-prototype-choice"]
+        if prototype_choice ~= nil then
+            selector = prototype_choice.elem_value ~= nil and "prototype/" .. prototype_choice.elem_type .. "/" .. prototype_choice.elem_value or nil
+            draft.exclusion_value = prototype_choice.elem_value
+        end
+        if selector ~= nil then model.exclude(draft, draft.target, selector, true) end
+        render_editor(root, draft)
+        render_output(root, draft)
+    elseif action == "remove-exclusion" then
+        model.exclude(draft, event.element.tags.scope or draft.target, event.element.tags.selector, false)
+        render_editor(root, draft)
+        render_output(root, draft)
+    elseif action == "clear-scope-exclusions" then
+        model.reset_exclusions(draft, draft.target)
+        render_editor(root, draft)
+        render_output(root, draft)
+    elseif action == "select-string" then
         content["randomizer-customizer-output"].focus()
         content["randomizer-customizer-output"].select_all()
     elseif action == "toggle-import" then
@@ -477,6 +794,15 @@ customizer.on_click = function(event)
 end
 
 -- Captions translate directly; refresh filtering when asynchronous search text arrives.
+customizer.on_elem_changed = function(event)
+    local root = root_for(event.element)
+    if root == nil then return false end
+    if event.element.tags.action == "exclusion-prototype" then
+        draft_for(event.player_index).exclusion_value = event.element.elem_value
+    end
+    return true
+end
+
 customizer.refresh_translations = function(player_index)
     local player = game.players[player_index]
     local panel = player ~= nil and player.gui.screen["randomizer-main-panel"] or nil
@@ -486,6 +812,11 @@ customizer.refresh_translations = function(player_index)
         local draft = draft_for(player_index)
         if draft.query ~= "" then
             render_targets(root, draft)
+        elseif draft.scope == "exclusions" then
+            local editor = content_for(root)["randomizer-customizer-main"]["randomizer-customizer-editor"]
+            if editor["randomizer-customizer-exclusion-choices"] ~= nil then
+                refresh_exclusion_choices(editor, draft)
+            end
         end
     end
 end

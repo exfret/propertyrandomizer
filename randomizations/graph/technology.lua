@@ -3,6 +3,7 @@ local constants = require("helper-tables/constants")
 local build_graph = require("lib/old-logic/build-graph")
 local top_sort = require("lib/old-logic/top-sort")
 local rng = require("lib/random/rng")
+local prototype_exclusions = require("lib/graph-customization")
 
 randomizations.technology_tree_insnipping = function(id, dont_apply)
     log("Starting technology randomization")
@@ -24,7 +25,7 @@ randomizations.technology_tree_insnipping = function(id, dont_apply)
     local tech_sort = {}
     local blacklist = {}
     for _, node in pairs(graph_sort) do
-        if node.type == "technology" then
+        if node.type == "technology" and not prototype_exclusions.excluded("technology_prerequisites", node) then
             table.insert(tech_sort, node)
 
             for _, prereq in pairs(node.prereqs) do

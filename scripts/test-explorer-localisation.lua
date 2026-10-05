@@ -154,6 +154,8 @@ prototypes = {
 
 -- Keep this test focused on the main panel and selectors; the customizer owns its own tests.
 package.loaded["scripts/customizer"] = {
+    set_selector_types = function() end,
+    on_elem_changed = function() return false end,
     create = function() end,
     resize = function() end,
     refresh_translations = function() end,

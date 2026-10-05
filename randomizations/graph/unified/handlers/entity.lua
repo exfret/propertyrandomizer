@@ -13,6 +13,7 @@
 
 local categories = require("helper-tables/categories")
 local constants = require("helper-tables/constants")
+local graph_customization = require("lib/graph-customization")
 local acquisition = require("lib/logic/acquisition")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
@@ -224,6 +225,12 @@ end
 -- Whether a capsule is thrown for an effect: its use is aimed at a spot (its attack has a range), where it does something other than make an entity with health, like a grenade exploding or a poison cloud
 -- Capsules used on yourself (like fish) have no range, and ones making entities with health (like combat robots) are trigger slots
 local function effect_capsule(item)
+    if item ~= nil and not graph_customization.selected("entity", {
+        type = "item",
+        name = item.name,
+    }) then
+        return false
+    end
     if item == nil or item.hidden or item.parameter or item.capsule_action == nil then
         return false
     end

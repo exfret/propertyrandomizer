@@ -9,6 +9,7 @@ local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local recycling_sources = require("lib/logic/recycling-sources")
 local recipe_renames = require("lib/recipe-renames")
+local prototype_exclusions = require("lib/graph-customization")
 
 local function get_primary_icon(prot)
     if prot.icon ~= nil then
@@ -146,7 +147,8 @@ randomizations.item_new = function(id)
                     end
                     -- Check appropriate stackability, not a science pack (so as to not disrupt progression entirely), and that it's not otherwise not supposed to be randomized
                     -- Also don't include things with plant result (I thought of some situations where they really shouldn't be item randomized)
-                    if stackable and item_prototype.plant_result == nil and not is_science_pack[item_prototype.name] and not dont_randomize_item[item_prototype.name] then
+                    if stackable and item_prototype.plant_result == nil and is_science_pack[item_prototype.name] ~= true and dont_randomize_item[item_prototype.name] ~= true
+                        and not prototype_exclusions.excluded("items", item_prototype) then
                         -- Some randomness to determine whether to randomize it (always randomize raw resources)
                         -- Note: No longer always randomizes raw resources
                         if --[[raw_resource_items[item_prototype.name] or]] rng.value(rng.key({id = id})) <= config.item_percent_randomized then                        

@@ -15,6 +15,7 @@ local furnace_selection = require("lib/furnace-selection")
 local context_costs = require("lib/cost/context-costs")
 local staged_recipes = require("lib/cost/staged-recipes")
 local recipe_shape = require("lib/recipe-shape")
+local graph_customization = require("lib/graph-customization")
 local item_fluid = require("lib/item-fluid")
 local rng = require("lib/random/rng")
 local categories = require("helper-tables/categories")
@@ -162,6 +163,9 @@ local function is_unrandomized_ing(ind, is_result_of_this_recipe, recipe)
     -- If this is special in any way, don't randomize
 
     local ing = recipe.ingredients[ind]
+    if graph_customization.excluded("recipe-ingredients", ing) then
+        return true
+    end
 
     if current_pins[key(ing)] ~= nil then
         return true
@@ -281,7 +285,7 @@ recipe_ingredients.before_heads = function(params)
                 caps = crafter_caps(recipe, num_results),
                 delta = delta,
                 furnace = #furnace_selection.pools_for(pools, furnace_selection.recipe_categories(recipe)) > 0,
-                chances = constants.recipe_shape,
+                chances = graph_customization.shape(),
                 rng_key = rng.key({
                     id = "recipe-shapes",
                     prototype = recipe,
@@ -836,7 +840,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                         is_fluid_index = is_fluid_index,
                         slot_forms = forms,
                         fluid_amount_cap = fluid_amount_cap,
-                        dont_preserve_resource_costs = dont_preserve_resource_costs,
+                        dont_preserve_resource_costs = graph_customization.fields("recipe-ingredients").resource_balance == "off",
                         starting_planet_reachable = starting_planet_reachable,
                         novelty = novelty_in(context, tier_name),
                     })
@@ -1119,7 +1123,8 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
     end
 
     -- Final check to remove duplicate ingredients
-    for _, recipe in pairs(data.raw.recipe) do
+    for recipe_name, _ in pairs(dependent_to_new_ings) do
+        local recipe = data.raw.recipe[recipe_name]
         if recipe.ingredients ~= nil then
             local already_seen = {}
             for i = #recipe.ingredients, 1, -1 do
@@ -1133,7 +1138,8 @@ recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
     -- Now go through and make ingredient amounts 1 if thing isn't stackable
-    for _, recipe in pairs(data.raw.recipe) do
+    for recipe_name, _ in pairs(dependent_to_new_ings) do
+        local recipe = data.raw.recipe[recipe_name]
         if recipe.ingredients ~= nil then
             for _, ing in pairs(recipe.ingredients) do
                 if ing.type == "item" then
