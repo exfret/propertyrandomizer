@@ -3,9 +3,12 @@
 
 A temporary test helper places a belt and then a receiving chest at each solid
 mining drill's output in all four directions, and checks that mining fills it.
-Prototype names, resources, fuels, and terrain are derived from loaded data.
+Checks that item offsets actually change, both with and without the extra fluid
+ports used by preview preparation. Names, resources, fuels, and terrain are derived.
 Run: python3 dev/test-mining-drill-offsets.py
+Full preview dispatch check: python3 dev/test-mining-drill-offsets.py --preview
 """
+import argparse
 import importlib.util
 from pathlib import Path
 import shutil
@@ -15,6 +18,66 @@ REPO = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location("run_tests", REPO / "dev/run-tests.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
+
+BASELINE = r'''
+local fluid_ports = require("__propertyrandomizer__/lib/fluid-ports")
+if OFFSET_TEST_MIXED_PORTS then
+    fluid_ports.fit_mining_drills(true)
+end
+local baseline = {}
+for name, drill in pairs(data.raw["mining-drill"]) do
+    local vector = drill.vector_to_place_result
+    local x, y = vector.x or vector[1], vector.y or vector[2]
+    if x ~= 0 or y ~= 0 then
+        baseline[name] = {x = x, y = y}
+    end
+end
+data:extend({{
+    type = "mod-data",
+    name = "propertyrandomizer-offset-test-baseline",
+    data = baseline,
+}})
+'''
+
+CHECK_CHANGES = r'''
+local checked = 0
+for name, original in pairs(data.raw["mod-data"]["propertyrandomizer-offset-test-baseline"].data) do
+    local drill = data.raw["mining-drill"][name]
+    assert(drill ~= nil, "Missing drill " .. name)
+    local vector = drill.vector_to_place_result
+    local x, y = vector.x or vector[1], vector.y or vector[2]
+    assert(x ~= original.x or y ~= original.y, "Item offset was not randomized for " .. name)
+    checked = checked + 1
+end
+assert(checked > 0, "No item offsets compared against baseline")
+log("OFFSETTEST changed all " .. checked .. " item offsets")
+'''
+
+PREVIEW_CHECK = r'''
+local randomize_offsets = randomizations.mining_drill_offsets
+randomizations.mining_drill_offsets = function(id)
+    local before = {}
+    for name, drill in pairs(data.raw["mining-drill"]) do
+        local vector = drill.vector_to_place_result
+        local x, y = vector.x or vector[1], vector.y or vector[2]
+        if drill.output_fluid_box ~= nil and (x ~= 0 or y ~= 0) then
+            before[name] = {x = x, y = y, fluid_box = drill.output_fluid_box}
+        end
+    end
+    randomize_offsets(id)
+    local changed = 0
+    for name, original in pairs(before) do
+        local drill = data.raw["mining-drill"][name]
+        assert(drill.output_fluid_box == original.fluid_box, "Changed fluid output connections for " .. name)
+        local vector = drill.vector_to_place_result
+        if (vector.x or vector[1]) ~= original.x or (vector.y or vector[2]) ~= original.y then
+            changed = changed + 1
+        end
+    end
+    assert(changed > 0, "Preview skipped every mixed-output drill's item offset")
+    log("OFFSETTEST preview changed " .. changed .. " mixed-output item offsets")
+end
+'''
 
 PROBE = r'''
 local function small_receiver(kind)
@@ -148,28 +211,73 @@ end)
 '''
 
 
+def run_preview():
+    original_snapshot = runner.snapshot
+    original_run_one = runner.run_one
+
+    def snapshot_with_check(dest, ref, staged, source_dir):
+        original_snapshot(dest, ref, staged, source_dir)
+        with (Path(dest) / "randomizations/misc/offsets.lua").open("a") as offsets:
+            offsets.write(PREVIEW_CHECK)
+
+    def checked_run_one(run, ctx):
+        result = original_run_one(run, ctx)
+        create_log = Path(result["dir"]) / "create.log"
+        if "OFFSETTEST preview changed " not in create_log.read_text():
+            problem = "preview offset change check did not pass"
+            result["problems"].append(problem)
+            result["hard_problems"].append(problem)
+            result["ok"] = False
+        return result
+
+    runner.snapshot = snapshot_with_check
+    runner.run_one = checked_run_one
+    return runner.main([
+        "unified", "--only", "/mining-drill-offsets-preview@", "--modset", "base",
+        "--modset", "sa", "--jobs", "2",
+    ])
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preview", action="store_true", help="check offset changes during full unified preview")
+    args = parser.parse_args()
+    if args.preview:
+        return run_preview()
     original_run_one = runner.run_one
 
     def checked_run_one(run, ctx):
         result = original_run_one(run, ctx)
         control_log = Path(result["dir"]) / "control.log"
+        create_log = Path(result["dir"]) / "create.log"
+        if result["ok"] and "OFFSETTEST changed all " not in create_log.read_text():
+            result["problems"].append("offset change check did not run")
+            result["ok"] = False
         if result["ok"] and "OFFSETTEST mined into all " not in control_log.read_text():
             result["problems"].append("mining output check did not run")
             result["ok"] = False
         return result
 
     runner.run_one = checked_run_one
-    with tempfile.TemporaryDirectory(prefix="propertyrandomizer-offset-test-") as tmp:
-        helper = Path(tmp) / runner.HELPER_NAME
-        shutil.copytree(runner.HELPER_MOD, helper)
-        with (helper / "control.lua").open("a") as control:
-            control.write(PROBE)
-        runner.HELPER_MOD = str(helper)
-        return runner.main([
-            "settings", "--only", "mining-drill-offsets", "--modset", "base",
-            "--modset", "sa", "--jobs", "2",
-        ])
+    original_helper = runner.HELPER_MOD
+    outcome = 0
+    for mixed_ports in (False, True):
+        print("Testing item offsets with " + ("preview-style fluid ports" if mixed_ports else "original ports"), flush=True)
+        with tempfile.TemporaryDirectory(prefix="propertyrandomizer-offset-test-") as tmp:
+            helper = Path(tmp) / runner.HELPER_NAME
+            shutil.copytree(original_helper, helper)
+            with (helper / "control.lua").open("a") as control:
+                control.write(PROBE)
+            with (helper / "data-updates.lua").open("a") as data_updates:
+                data_updates.write(BASELINE.replace("OFFSET_TEST_MIXED_PORTS", "true" if mixed_ports else "false"))
+            with (helper / "data-final-fixes.lua").open("a") as data_final:
+                data_final.write(CHECK_CHANGES)
+            runner.HELPER_MOD = str(helper)
+            outcome |= runner.main([
+                "settings", "--only", "mining-drill-offsets", "--modset", "base",
+                "--modset", "sa", "--jobs", "2",
+            ])
+    return outcome
 
 
 if __name__ == "__main__":

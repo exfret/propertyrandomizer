@@ -155,8 +155,8 @@ randomizations.mining_drill_offsets = function(id)
                 off_grid = true
             end
         end
-        -- Leave fluid outputs and unsupported placement geometry as they were.
-        if mining_drill.output_fluid_box == nil and box ~= nil and not off_grid
+        -- Item offsets are independent of fluid output boxes, including ports added by preview preparation.
+        if box ~= nil and not off_grid
         and (box.orientation or box[3] or 0) == 0 then
             local left_top = coords(box.left_top or box[1])
             local right_bottom = coords(box.right_bottom or box[2])

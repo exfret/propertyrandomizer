@@ -74,6 +74,15 @@ end
 -- The old minimum radius shrinks this to {-0.5, -0.3}, inside its collision box.
 verify(fixture(-0.7, -0.7, 0.7, 0.7, -0.35, -1.3))
 
+-- Preview preparation gives item-producing drills an output fluid box too.
+local mixed = fixture(-0.7, -0.7, 0.7, 0.7, -0.35, -1.3)
+mixed.output_fluid_box = {}
+local original_vector = mixed.vector_to_place_result
+local original_fluid_box = mixed.output_fluid_box
+verify(mixed)
+assert(mixed.vector_to_place_result ~= original_vector, "a fluid output box must not suppress item offset randomization")
+assert(mixed.output_fluid_box == original_fluid_box, "item offsets must preserve fluid output connections")
+
 -- Cover odd/even and rectangular footprints, non-north outputs, angular extremes, and extensions that shrink to zero or stretch well beyond the drill.
 for width = 1, 8 do
     for height = 1, 8 do
