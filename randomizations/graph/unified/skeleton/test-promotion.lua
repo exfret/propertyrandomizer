@@ -432,6 +432,37 @@ test("rewiring a promised head to a base whose connection loses automatability i
     }, false))
 end)
 
+test("a trial validator can refuse a rewire without changing the graph or its promises", function()
+    local prom, contexts = promoted_head_graph(nil)
+    prom.resolve_head(head_m, base_z, contexts)
+    local promised = prom.num_promised
+    local changes = {
+        {
+            node_key = head_m,
+            remove = { base_z },
+            add = base_x,
+        },
+    }
+    local called = false
+    assert(not prom.try_rewires(changes, true, function(graph)
+        called = true
+        assert(graph.edges[gutils.ekey({
+            start = base_x,
+            stop = head_m,
+        })] ~= nil)
+        assert(graph.edges[gutils.ekey({
+            start = base_z,
+            stop = head_m,
+        })] == nil)
+        return false
+    end))
+    assert(called)
+    assert(prom.num_promised == promised)
+    assert(prom.pre_keys_of(head_m)[1] == base_z)
+    assert(prom.try_rewires(changes, true))
+    assert(prom.pre_keys_of(head_m)[1] == base_x)
+end)
+
 test("a head can be detached only if nothing promised needs it, and a refused detach changes nothing", function()
     local prom, contexts = promoted_head_graph(nil)
     prom.resolve_head(head_m, base_z, contexts)

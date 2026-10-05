@@ -1324,7 +1324,8 @@ promotion.new = function(params)
     -- A detached head is unreachable, like an entity no longer found in the wild; only a head that's detached can have no base
     -- With should_commit, a successful rewire is kept and the new backings are promised; otherwise (or on failure) everything is reverted
     -- This is for choices that aren't recipe ingredients or generic handler heads, like first pass's slot/trav assignments
-    state.try_rewires = function(changes, should_commit)
+    -- validate(graph), when supplied, checks the complete trial before anything is committed; refusal uses the same rollback as a failed promise.
+    state.try_rewires = function(changes, should_commit, validate)
         local removed_edges = {}
         local added_edges = {}
         -- Detached state of each rewired head before this rewire, to restore on revert
@@ -1390,6 +1391,9 @@ promotion.new = function(params)
             end
         end
 
+        if ok and validate ~= nil then
+            ok = validate(graph)
+        end
         if ok and should_commit then
             for _, ind in pairs(unpromised) do
                 commit(ind)
