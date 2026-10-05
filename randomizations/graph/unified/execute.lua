@@ -106,7 +106,6 @@ if config.entity_randomization then
     config.unified["entity"] = true
     enabled["entity"] = true
 end
-
 if config.damage_type_randomization == true then
     config.unified["damage-types"] = true
     enabled["damage-types"] = true
@@ -184,18 +183,41 @@ unified.prepare_first_pass = function()
     end
 end
 
-unified.execute = function()
-    graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
-    config.graph_exclusion_warnings = config.graph_exclusion_warnings or {}
-    for _, selector in pairs(graph_customization.unmatched()) do
-        if config.graph_exclusion_warnings[selector] == nil then
-            config.graph_exclusion_warnings[selector] = true
-            table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.graph-exclusion-empty", selector))
-            log("Graph exclusion matches no loaded prototypes: " .. selector)
+-- Repair mode uses the same prerequisite chooser before first pass, only at unpaid requirements.
+unified.execute = function(options)
+    options = options or {}
+    local repair_only = options.repair_only == true
+    local do_first_pass = DO_FIRST_PASS and not repair_only
+    local handlers = handlers
+    local handler_ids = handler_ids
+    local debt = options.debt or planetary_debt()
+    if repair_only then
+        assert(USE_PROMOTION and debt ~= nil, "Prerequisite repairs need promotion and the previous game's requirements")
+        handlers = {}
+        handler_ids = options.handler_keys
+        for _, handler_id in pairs(handler_ids) do
+            local handler = assert(available_handlers[handler_id])
+            for prop, val in pairs(default_handler) do
+                if handler[prop] == nil and default_handler.required[prop] == nil then
+                    handler[prop] = val
+                end
+            end
+            handlers[handler_id] = handler
+        end
+    end
+    if not repair_only then
+        graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
+        config.graph_exclusion_warnings = config.graph_exclusion_warnings or {}
+        for _, selector in pairs(graph_customization.unmatched()) do
+            if config.graph_exclusion_warnings[selector] == nil then
+                config.graph_exclusion_warnings[selector] = true
+                table.insert(randomization_info.warnings, localised_text.get("propertyrandomizer-warning.graph-exclusion-empty", selector))
+                log("Graph exclusion matches no loaded prototypes: " .. selector)
+            end
         end
     end
     for _, handler in pairs(handlers) do
-        handler.initialize()
+        handler.initialize({ repair_only = repair_only })
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -208,11 +230,13 @@ unified.execute = function()
     unified_starting_data_raw = table.deepcopy(data.raw)
 
     -- data.raw preprocessing if necessary
-    for _, handler in pairs(handlers) do
-        handler.preprocess()
+    if not repair_only then
+        for _, handler in pairs(handlers) do
+            handler.preprocess()
+        end
     end
 
-    if REMOVE_TECH_PREREQS then
+    if REMOVE_TECH_PREREQS and not repair_only then
         for _, tech in pairs(data.raw.technology) do
             if not graph_customization.excluded("tech-prereqs", {
                 type = "technology",
@@ -227,7 +251,9 @@ unified.execute = function()
     logic.build()
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
-    graph_customization.protect_references(init_graph)
+    if not repair_only then
+        graph_customization.protect_references(init_graph)
+    end
     test_graph_invariants.test(init_graph)
 
     local spoofed_graph = table.deepcopy(init_graph)
@@ -235,7 +261,7 @@ unified.execute = function()
     for _, handler in pairs(handlers) do
         handler.spoof(spoofed_graph)
     end
-    if DO_FIRST_PASS then
+    if do_first_pass then
         first_pass.spoof(spoofed_graph)
     end
     test_graph_invariants.test(spoofed_graph)
@@ -251,9 +277,9 @@ unified.execute = function()
     -- The dependents to randomize come from a sort that includes planetary changes' debt when there is one (superposed mode): a recipe only the debt reaches (a planet's science pack once its machine moved away) has no pebble in the game's own sort, and a recipe with no pebble here was never randomized, so nothing could ever re-home it; promotion then keeps it owed and the settlement sends the machine home
     -- The debt edges live only in this copy: the claimed heads and bases come from subdiv_graph, the game's graph
     local sort_for_deps = sort_for_claiming
-    if planetary_debt() ~= nil then
+    if debt ~= nil then
         local deps_graph = table.deepcopy(spoofed_graph)
-        local added = superpose.add_debt(deps_graph, planetary_debt())
+        local added = superpose.add_debt(deps_graph, debt)
         if #added > 0 then
             sort_for_deps = top.sort(deps_graph, nil, nil, { choose_randomly = true })
             log("Claiming: " .. #added .. " debt edges added for the dependents to randomize; " .. #sort_for_deps.sorted .. " pebbles with them, " .. #sort_for_claiming.sorted .. " without")
@@ -303,14 +329,14 @@ unified.execute = function()
 
                     for handler_id, handler in pairs(handlers) do
                         local num_copies
-                        if graph_customization.selected(handler_id, orand_parent) and not graph_customization.excluded(handler_id, prereq_node) then
+                        if repair_only or (graph_customization.selected(handler_id, orand_parent) and not graph_customization.excluded(handler_id, prereq_node)) then
                             num_copies = handler.claim(subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
                         end
                         -- Make sure this connection isn't blacklisted for this handler
-                        if randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] then
+                        if not repair_only and randomization_info.options.unified[handler_id].blacklisted_pre[key(prereq_node)] == true then
                             num_copies = false
                         end
-                        if randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] then
+                        if not repair_only and randomization_info.options.unified[handler_id].blacklisted_dep[key(orand_parent)] == true then
                             num_copies = false
                         end
 
@@ -405,7 +431,7 @@ unified.execute = function()
 
     local first_pass_info
     local old_sorted_deps
-    if DO_FIRST_PASS then
+    if do_first_pass then
         -- NOTE: This switch code is out of date
         local function switch_vulcanus_nauvis(graph)
             local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
@@ -461,7 +487,7 @@ unified.execute = function()
         first_pass_info = first_pass.execute({
             spoofed_graph = spoofed_graph_to_pass,
             subdiv_graph = subdiv_graph_to_pass,
-            debt = planetary_debt(),
+            debt = debt,
             -- With constants.entity_first_pass, entity randomization's slots are first pass positions (see first_pass_rules in handlers/entity.lua)
             entity_rules = constants.entity_first_pass and handlers["entity"] ~= nil and handlers["entity"].first_pass_rules or nil,
         })
@@ -554,7 +580,7 @@ unified.execute = function()
 
     -- TEST: Make sure each head is after its corresponding base
     -- TODO: Make this check compatible with first pass
-    if not DO_FIRST_PASS then
+    if not do_first_pass and not repair_only then
         for _, dep in pairs(sorted_deps) do
             for _, head_key in pairs(dep_to_heads[dep]) do
                 local head = subdiv_graph.nodes[head_key]
@@ -582,7 +608,7 @@ unified.execute = function()
     local random_graph = table.deepcopy(cut_graph)
     -- First pass's fluid counts on recipes and resources (fluid_delta, see item_fluid.rewire_form_change) are on its graph, while handlers' validate gets this one, so they're carried over
     -- Without this, the recipe-category handler saw no fluid on a recipe whose kept ingredient's position took a fluid identity, and moved it to hand crafting (base seed 1, 2026-09-30: copper plates' recipe, which the game then couldn't craft anywhere)
-    if DO_FIRST_PASS then
+    if do_first_pass then
         for node_key, node in pairs(first_pass_info.graph.nodes) do
             if node.fluid_delta ~= nil and random_graph.nodes[node_key] ~= nil then
                 random_graph.nodes[node_key].fluid_delta = table.deepcopy(node.fluid_delta)
@@ -604,7 +630,7 @@ unified.execute = function()
     -- Choices some handlers make up front, before promotion ranks anything, like which resources need a mining fluid (see choose_up_front in handlers/default.lua)
     -- Promotion then starts from these choices, and the shuffle below leaves their heads alone
     local up_front = {}
-    if DO_FIRST_PASS and USE_PROMOTION then
+    if do_first_pass and USE_PROMOTION then
         local split_graph = first_pass_info.graph
         local false_key = key("false", "")
         assert(split_graph.nodes[false_key] ~= nil, "first pass's graph has no false node")
@@ -671,12 +697,12 @@ unified.execute = function()
     local prom
     if USE_PROMOTION then
         prom = promotion.new({
-            graph = (DO_FIRST_PASS and first_pass_info.graph) or random_graph,
+            graph = (do_first_pass and first_pass_info.graph) or random_graph,
             -- Starting from the choices made up front
             head_to_base = up_front,
             pool_sort_info = sort_for_pool,
             complex = PROMOTION_COMPLEX_CONTEXTS,
-            debt = planetary_debt(),
+            debt = debt,
             -- Contexts recipes locked to one planet keep, from first pass's sort of the game before randomization
             planet_locked = (first_pass_info or {}).planet_locked,
             -- A head's handler says what connecting a base to it gains or loses (e.g. entity randomization's pairing table)
@@ -696,14 +722,14 @@ unified.execute = function()
     end
 
     -- Decisions handlers make for every dependent before any head is randomized, like the shapes recipes take (see handlers/default.lua, before_heads)
-    for _, handler_id in pairs(handler_ids) do
+    for _, handler_id in pairs(repair_only and {} or handler_ids) do
         handlers[handler_id].before_heads({
             random_graph = random_graph,
             promotion = prom,
             sorted_deps = sorted_deps,
             split_graph = (first_pass_info or {}).graph,
             trav_to_slot = (first_pass_info or {}).trav_to_slot,
-            do_first_pass = DO_FIRST_PASS,
+            do_first_pass = do_first_pass,
         })
     end
 
@@ -725,7 +751,7 @@ unified.execute = function()
     local function get_context_reachable(base, head)
         local ignore_nil_contexts = head_to_handler[key(head)].ignore_nil_contexts
 
-        if not DO_FIRST_PASS then
+        if not do_first_pass then
             return all_contexts_reachable(key(base), key(head), ignore_nil_contexts)
         else
             local base_owner = gutils.get_owner(random_graph, base)
@@ -746,7 +772,7 @@ unified.execute = function()
     for dep_ind, dep in pairs(sorted_deps) do
         if #dep_to_heads[dep] > 0 then
             local context_str = ""
-            if DO_FIRST_PASS then
+            if do_first_pass then
                 context_str = old_sorted_deps[dep_ind]
             end
             log("\nRandomizing " .. dep .. " (" .. context_str .. ")")
@@ -775,7 +801,14 @@ unified.execute = function()
             local handler_id = head_to_handler[head_key].id
             local shuffled_prereqs = handler_to_shuffled_prereqs[handler_id]
 
-            if up_front[head_key] ~= nil then
+            local repair_contexts = {}
+            if repair_only and head_to_handler[head_key].custom_prereq_search == false and required_contexts ~= nil then
+                repair_contexts = prom.head_boundary_contexts(head_key, required_contexts)
+            end
+            if repair_only and head_to_handler[head_key].custom_prereq_search == false and #repair_contexts == 0 then
+                -- Satisfied prerequisites remain exactly as they are.
+                head_to_base[head_key] = head.old_base
+            elseif up_front[head_key] ~= nil then
                 -- Chosen up front, which promotion started from
                 log("Chosen up front: " .. key(gutils.get_owner(random_graph, random_graph.nodes[up_front[head_key]])))
             elseif head_to_handler[head_key].custom_prereq_search ~= false then
@@ -801,7 +834,7 @@ unified.execute = function()
                 local stay_stats
                 local tries_to_stay = false
                 local stay_chance = head_to_handler[head_key].stay_chance
-                if handler_id == "recipe-category" then
+                if not repair_only and handler_id == "recipe-category" then
                     stay_chance = (tonumber(graph_customization.fields(handler_id).keep_category) or stay_chance * 100) / 100
                 end
                 if stay_chance > 0 then
@@ -856,6 +889,9 @@ unified.execute = function()
                         is_context_reachable = get_context_reachable(base, head)
                     end
 
+                    if repair_only then
+                        is_context_reachable = is_context_reachable and prom.head_pays(head_key, base_key, repair_contexts)
+                    end
                     if not handler_to_used_prereq_inds[handler_id][ind] and is_context_reachable then
                         -- Have head's handler validate this base
 
@@ -914,18 +950,29 @@ unified.execute = function()
     end
     for _, handler in pairs(handlers) do
         if handler.custom_prereq_search ~= false then
+            local search_deps = sorted_deps
+            if repair_only then
+                search_deps = {}
+                for _, dep in pairs(sorted_deps) do
+                    local contexts = prom.required_contexts(dep)
+                    if #prom.recipe_boundary_contexts(dep, contexts) > 0 then
+                        table.insert(search_deps, dep)
+                    end
+                end
+            end
             local search_result = handler.custom_prereq_search({
                 random_graph = random_graph,
                 -- Generic handlers' choices, which aren't added as edges to random_graph
                 head_to_base = head_to_base,
                 promotion = prom,
                 split_graph = (first_pass_info or {}).graph,
-                sorted_deps = sorted_deps,
+                sorted_deps = search_deps,
+                repair_only = repair_only,
                 shuffled_prereqs = handler_to_shuffled_prereqs[handler.id],
                 sort_for_pool = sort_for_pool,
                 trav_to_slot = (first_pass_info or {}).trav_to_slot,
                 slot_to_trav = (first_pass_info or {}).slot_to_trav,
-                do_first_pass = DO_FIRST_PASS,
+                do_first_pass = do_first_pass,
                 mechanics_sets_to_ordered = (first_pass_info or {}).mechanics_sets_to_ordered,
                 mechanics_sets_to_nodes = (first_pass_info or {}).mechanics_sets_to_nodes,
                 trav_to_mechanics_key = (first_pass_info or {}).trav_to_mechanics_key,
@@ -948,6 +995,14 @@ unified.execute = function()
     log_info(2, "REFLECT")
     ----------------------------------------------------------------------------------------------------
 
+    if repair_only then
+        -- Reflection can have side effects even for an unchanged base (e.g. energy sources).
+        for head_key, base_key in pairs(head_to_base) do
+            if base_key == random_graph.nodes[head_key].old_base then
+                head_to_base[head_key] = nil
+            end
+        end
+    end
     changes = {}
     -- Entity randomization reflects before item randomization, which copies item names and icons into recipes (see handlers.md)
     -- Spoiling does too, since it writes spoil results as positions, which item randomization renames to the items first pass put there
@@ -1022,17 +1077,19 @@ unified.execute = function()
     for _, handler in pairs(handlers) do
         handler.after_changes()
     end
-    for _, handler_id in pairs(handler_ids) do
-        if handlers[handler_id].after_reflection({
-            random_graph = random_graph,
-            split_graph = (first_pass_info or {}).graph,
-            promotion = prom,
-        }) == false then
-            return false
+    if not repair_only then
+        for _, handler_id in pairs(handler_ids) do
+            if handlers[handler_id].after_reflection({
+                random_graph = random_graph,
+                split_graph = (first_pass_info or {}).graph,
+                promotion = prom,
+            }) == false then
+                return false
+            end
         end
-    end
-    if prom ~= nil then
-        UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
+        if prom ~= nil then
+            UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
+        end
     end
 
     if SWITCH_PLANETS then
@@ -1043,127 +1100,18 @@ unified.execute = function()
         data.raw.planet.vulcanus.name = "vulcanus"
     end
 
-    for _, line in pairs(graph_customization.report()) do
-        log(line)
+    if not repair_only then
+        for _, line in pairs(graph_customization.report()) do
+            log(line)
+        end
+        local customization_failures = graph_customization.check_material_renames(UNIFIED_MATERIAL_RENAMES)
+        if #customization_failures > 0 then
+            log("Graph customization lost fixed material identities: " .. table.concat(customization_failures, ", "))
+            return false
+        end
     end
-    local customization_failures = graph_customization.check_material_renames(UNIFIED_MATERIAL_RENAMES)
-    if #customization_failures > 0 then
-        log("Graph customization lost fixed material identities: " .. table.concat(customization_failures, ", "))
-        return false
-    end
-
     return {
         first_pass_info = first_pass_info,
-    }
-end
-
--- Fix pass (prototype, randomizations/planetary/fix-pass.lua): the slots the named handlers claim in the game as it is, for repairs rather than randomization
--- Same graph preparation and claiming as unified.execute (logic built from data.raw, spoofs, orands, then every claimed edge subdivided into a base and a head), without preprocessing data.raw or shuffling anything
--- handler_keys: handler keys as in available_handlers (dashes); options.ignore_blacklists: claim edges the randomization blacklists leave out too (the fix pass keeps their spirit itself)
--- Returns { graph (subdivided), dep_to_heads, head_to_handler, handler_to_bases (handler id --> base keys), handlers (key --> handler), blacklisted (handler id --> { pre, dep }) }
-unified.claim_slots = function(handler_keys, options)
-    options = options or {}
-    local chosen = {}
-    for _, handler_key in pairs(handler_keys) do
-        local handler = available_handlers[handler_key]
-        if handler ~= nil then
-            for prop, val in pairs(default_handler) do
-                if handler[prop] == nil and not default_handler.required[prop] then
-                    handler[prop] = val
-                end
-            end
-            chosen[handler_key] = handler
-        end
-    end
-    for _, handler in pairs(chosen) do
-        handler.initialize()
-    end
-    logic.build()
-    local spoofed_graph = table.deepcopy(logic.graph)
-    for _, handler in pairs(chosen) do
-        handler.spoof(spoofed_graph)
-    end
-    gutils.make_orands(spoofed_graph)
-    local order = top.sort(spoofed_graph)
-    local subdiv_graph = table.deepcopy(spoofed_graph)
-    -- The randomization blacklists, set aside while claiming when they're ignored (a handler's own claim may read them too), and kept for the fix pass
-    local blacklisted = {}
-    local saved_options = {}
-    for handler_key, _ in pairs(chosen) do
-        local opts = randomization_info.options.unified[handler_key] or {
-            blacklisted_pre = {},
-            blacklisted_dep = {},
-        }
-        blacklisted[chosen[handler_key].id] = {
-            pre = opts.blacklisted_pre or {},
-            dep = opts.blacklisted_dep or {},
-        }
-        if options.ignore_blacklists then
-            saved_options[handler_key] = randomization_info.options.unified[handler_key]
-            randomization_info.options.unified[handler_key] = {
-                blacklisted_pre = {},
-                blacklisted_dep = {},
-            }
-        end
-    end
-    local dep_to_heads = {}
-    local head_to_handler = {}
-    local handler_to_bases = {}
-    for _, handler in pairs(chosen) do
-        handler_to_bases[handler.id] = {}
-    end
-    local seen = {}
-    for _, pebble in pairs(order.sorted) do
-        local node_key = pebble.node_key
-        local node = subdiv_graph.nodes[node_key]
-        if node ~= nil and node.op == "AND" and node.type ~= "base" and not seen[node_key] then
-            seen[node_key] = true
-            dep_to_heads[node_key] = {}
-            local subdivide_info = {}
-            for pre, _ in pairs(node.pre) do
-                local prereq_node = gutils.prenode(subdiv_graph, pre)
-                local orand_parent = subdiv_graph.nodes[subdiv_graph.orand_to_parent[node_key]]
-                local claimed_by
-                for handler_key, handler in pairs(chosen) do
-                    local ok, num_copies = pcall(handler.claim, subdiv_graph, prereq_node, orand_parent, subdiv_graph.edges[pre])
-                    if not ok then
-                        num_copies = false
-                    end
-                    if num_copies and not options.ignore_blacklists then
-                        local opts = randomization_info.options.unified[handler_key] or {}
-                        if (opts.blacklisted_pre or {})[key(prereq_node)] or (opts.blacklisted_dep or {})[key(orand_parent)] then
-                            num_copies = false
-                        end
-                    end
-                    if num_copies and claimed_by == nil then
-                        claimed_by = handler_key
-                        table.insert(subdivide_info, {
-                            edge_key = pre,
-                            handler = handler,
-                        })
-                    end
-                end
-            end
-            for _, info in pairs(subdivide_info) do
-                local conns = gutils.subdivide_base_head(subdiv_graph, info.edge_key)
-                table.insert(dep_to_heads[node_key], key(conns.head))
-                head_to_handler[key(conns.head)] = info.handler
-                table.insert(handler_to_bases[info.handler.id], key(conns.base))
-            end
-        end
-    end
-    for handler_key, saved in pairs(saved_options) do
-        randomization_info.options.unified[handler_key] = saved
-    end
-    -- Heads that start detached (spoofed slots nothing fills yet, like an item that could be made to place an entity) aren't routes of the game, as in unified's pool graph
-    gutils.detach_starting_heads(subdiv_graph)
-    return {
-        graph = subdiv_graph,
-        dep_to_heads = dep_to_heads,
-        head_to_handler = head_to_handler,
-        handler_to_bases = handler_to_bases,
-        handlers = chosen,
-        blacklisted = blacklisted,
     }
 end
 

@@ -90,11 +90,11 @@ end
 
 local new_logic = require("lib/logic/init")
 local combat_encounters = require("lib/logic/combat-encounters")
+
 local graph_customization = require("lib/graph-customization")
 local prototype_exclusions = require("lib/prototype-exclusions")
 local randomization_spec = require("helper-tables/spec")
 local landing_lightning = require("scripts/landing-lightning")
-
 local unified_info
 local function smuggle_info()
     log("Smuggling control info")
@@ -199,17 +199,18 @@ local unified = require("randomizations/graph/unified/execute")
 -- Loaded with unified randomization (its recipe-ingredients handler prices with the old logic)
 local old_build_graph = require("lib/old-logic/build-graph")
 
--- The planetary fix pass (config.planetary_fix_pass, a work in progress): the planetary stages waited for unified's handlers, which the fix pass repairs with (randomizations/planetary/fix-pass.lua)
--- They run now, one at a time, each repaired by the fix pass first and the old way if that isn't enough (run_fix_first in randomizations/planetary/execute.lua)
+-- Planetary stages waited for unified's prerequisite chooser.
+-- Specialized repairs run first; only remaining failures need extra prerequisite choices, still before unified first pass.
 if planetary.pending ~= nil then
     planetary.run_pending(function(state)
-        return #fix_pass.run({
+        local failures, after = fix_pass.run({
             logic = new_logic,
             unified = unified,
             before = state.before,
             variants_of = state.variants_of,
-            replacements = planetary.replacements,
+            after = state.after,
         })
+        return #failures, after
     end)
     -- The rest of randomization starts from the changed game: recycling follows its recipes, the old logic reads the planets again (it loaded before the stages ran), and unified keeps what this game can do
     recycling.regenerate(pre_planetary_raw)

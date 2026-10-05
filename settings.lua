@@ -470,7 +470,7 @@ data:extend({
         order = "f-h[planetary-superposed]",
     },
     {
-        -- Work in progress (randomizations/planetary/fix-pass.lua): the planetary changes repaired by a fix pass with unified's handlers instead of their own repairs
+        -- Work in progress (randomizations/planetary/fix-pass.lua): choose prerequisites for failures left after the specialized planetary repairs.
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-planetary-fix-pass",

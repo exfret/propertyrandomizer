@@ -62,10 +62,12 @@ With the fix pass on, two rules relax. Rocket building may use machines delivere
 - **Enemies** (work in progress, user, 2026-10-01: a quick shuffle). Demolisher territories (`map_gen_settings.territory_settings`) go to random planets other than the start, one per planet. The start's enemies come with their map gen slider (`enemy-base`), so each copy's slider goes to a random planet other than the start and other than planets with another pollutant (Gleba). A planet that gets biters gets the start's pollutant if it has none. The start keeps its own biters, since its captured spawners make biter eggs. Capturing a spawner is then a goal only on the start (the capture-spawner node's `planetary_feature = "biters"` with `feature_stays_on_start`). There are no repairs and no fix pass: a stage that still loses something is undone on its own.
 
 **The planetary fix pass** (setting `propertyrandomizer-planetary-fix-pass`, `randomizations/planetary/fix-pass.lua`; work in progress, off by default):
-- It covers resource swaps, lightning and freezing. The stage first moves without its own repairs. The fix pass then repairs it by changing what unified's handlers change: recipe ingredients and categories, energy sources, science packs, research triggers and prerequisites. It prefers what replaced the old thing on that planet, and makes a planet copy of a shared recipe when nothing fits everywhere.
-- If it can't repair everything, the stage is undone with its random streams rewound, and runs the old way with its own repairs (`run_fix_first`).
+- It covers resource swaps, lightning and freezing. Each stage moves and completes its specialized repairs first. Only remaining required failures invoke unified's prerequisite chooser, with first pass disabled (user, 2026-10-05).
+- It can change recipe ingredients and categories, energy sources, mining fluids and research triggers. Satisfied prerequisites stay unchanged. Promotion requires replacements to have an actual backing before their dependent, so a borrowed old-world route cannot justify a circular replacement.
+- It makes no repair plans or additional recipe variants. If required failures remain, the existing stage check undoes that planetary change.
 - Ocean swaps always use their scaffolds (user, 2026-10-01). Scaffolds are a few targeted variants made in seconds, while the fix pass made broader changes, took much longer, and still left goals.
-- It prices materials once per load, on the game before the moves, and stops after a round that makes no progress (2026-10-01).
+- Fix pass ignores the ordinary randomization pass's blacklists, customization exclusions and cost targets (user, 2026-10-05). Its ingredient chooser changes missing inputs directly, including raw resources; it keeps prerequisites that already have actual backing and checks replacements through promotion. Generated recycling follows the edited source recipes rather than being edited independently. `dev/test-fix-pass.py` exercises remaining failures using a temporary resource-swap fixture and rejects any newly lost goals.
+- Each choice is checked in the actual rebuilt graph. If requirements remain and goals or availability improved, another choice uses refreshed ranks, so it can select prerequisites made available by the previous choices. Seed 1 of the resource-swap fixture went from 83 required failures to 7, then 0 (2026-10-05); its test requires zero remaining failures.
 
 ## 5. What unified keeps
 
@@ -116,5 +118,4 @@ A finite delivered start is fine when the planet can then make the thing itself 
   - Moves onto Fulgora's family always go back, since heat can't be started there without power. So did a Gleba copy whose ocean became heavy oil. A failed move could try another target instead.
 - Load time on large games (two copies per planet, 17 locations): the rewards draw took about 20 minutes on the user's seed.
 - Rocket building and electricity keep their isolatability through the stages, but unified doesn't protect it.
-- Mixing the fix pass with the stages' own repairs more generally (user, 2026-10-01: "in the future a more mixed combination might be good").
 - Removing superposed mode's code: next week, after more use.

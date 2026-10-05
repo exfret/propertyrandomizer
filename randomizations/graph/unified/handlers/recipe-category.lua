@@ -36,7 +36,9 @@ local claimed_recipes
 local claimed_category
 -- Category node name --> its crafting categories as one sorted string (see stays)
 local cats_keys
-recipe_category.initialize = function()
+local repair_only
+recipe_category.initialize = function(options)
+    repair_only = options ~= nil and options.repair_only == true
     pools = furnace_selection.pools()
     taken = nil
     reserved = nil
@@ -90,7 +92,7 @@ recipe_category.claim = function(graph, prereq, dep, edge)
         end
         if not (lu.fixed_recipes[dep.name] ~= nil and next(lu.fixed_recipes[dep.name]) ~= nil) then
             local recipe_prot = lu.recipes[dep.name]
-            if not recipe_prot.hidden then
+            if repair_only or recipe_prot.hidden ~= true then
                 claimed_recipes[dep.name] = true
                 if claimed_category[prereq.name] then
                     return 0

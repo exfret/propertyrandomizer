@@ -88,7 +88,12 @@ tech_triggers.custom_prereq_search = function(params)
     local num_moved = 0
     for _, head_key in pairs(heads) do
         local head = graph.nodes[head_key]
+        local required_contexts = params.repair_only and prom.required_contexts(head_key) or {}
+        local paying_contexts = params.repair_only and prom.recipe_boundary_contexts(head_key, required_contexts) or {}
         local order = table.deepcopy(base_list)
+        if params.repair_only == true and #paying_contexts == 0 then
+            order = {}
+        end
         rng.shuffle(key, order)
         if rng.value(key) < tech_triggers.stay_chance then
             num_tried = num_tried + 1
@@ -102,7 +107,8 @@ tech_triggers.custom_prereq_search = function(params)
         end
         local chosen
         for _, base_key in pairs(order) do
-            if tech_triggers.validate(graph, graph.nodes[base_key], head) and rewire(head_key, base_key, true) then
+            local pays = not params.repair_only or (prom.head_candidate_ok(head_key, base_key, required_contexts) and prom.head_pays(head_key, base_key, paying_contexts))
+            if pays == true and tech_triggers.validate(graph, graph.nodes[base_key], head) and rewire(head_key, base_key, true) then
                 chosen = base_key
                 break
             end

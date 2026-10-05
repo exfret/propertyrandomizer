@@ -16,6 +16,7 @@ local context_costs = require("lib/cost/context-costs")
 local staged_recipes = require("lib/cost/staged-recipes")
 local recipe_shape = require("lib/recipe-shape")
 local graph_customization = require("lib/graph-customization")
+local prerequisite_ingredients = require("randomizations/graph/unified/handler-helpers/prerequisite-ingredients")
 local item_fluid = require("lib/item-fluid")
 local rng = require("lib/random/rng")
 local categories = require("helper-tables/categories")
@@ -46,11 +47,13 @@ local ingredient_uses
 local fluid_use_median
 local fluid_amount_cap
 local shape_stats
+local repair_only
 local container_fluids
 local function is_container_fluid(recipe, ingredient)
     return ingredient.type == "fluid" and (container_fluids or {})[recipe.name] == ingredient.name
 end
-recipe_ingredients.initialize = function()
+recipe_ingredients.initialize = function(options)
+    repair_only = options ~= nil and options.repair_only == true
     already_duped = {}
     claimed_recipes = {}
     ingredient_uses = nil
@@ -62,7 +65,7 @@ recipe_ingredients.initialize = function()
         container_fluids[container.fill] = container.held
     end
     recipe_shape.reset()
-    if config.recipe_shapes then
+    if config.recipe_shapes == true or repair_only then
         ingredient_uses = recipe_shape.ingredient_uses(data.raw.recipe, key, item_fluid.is_recycling_recipe)
         local fluid_uses = {}
         for material_key, uses in pairs(ingredient_uses) do
@@ -96,7 +99,7 @@ end
 -- Recipe shapes (config.recipe_shapes): a fluid no recipe takes (the thruster fuels and fusion plasma in vanilla) gets a spoofed slot fed by its temperature-range node at a temperature it's made at, whose claimed edge puts entries for it in the pool like any ingredient edge (see claim)
 -- The slot is a spoof, so it's never a dependent to randomize, first pass doesn't count it as a recipe taking the fluid (lib/item-fluid.lua only counts recipes), and the search makes the ingredient up with no temperature bounds (custom_prereq_search), which the single-temperature node models pessimistically
 recipe_ingredients.spoof = function(graph)
-    if not config.recipe_shapes then
+    if config.recipe_shapes ~= true and not repair_only then
         return
     end
     logic.type_info[FLUID_SLOT_TYPE] = logic.type_info[FLUID_SLOT_TYPE] or {
@@ -142,15 +145,15 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
         if is_container_fluid(recipe, prereq) then
             return false
         end
-        if recipe.hidden then
+        if (recipe.hidden == true and not repair_only) or (repair_only and item_fluid.regenerated_recycling(recipe)) then
             return false
         end
         -- Having a cost doesn't decide what's randomized (automatability does, through promotion's contexts); a recipe without a vanilla cost keeps its ingredients when processed
         -- Need to check this here due to doing custom prereq search
-        if randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(prereq)] then
+        if not repair_only and randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(prereq)] == true then
             return false
         end
-        if randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key(dep)] then
+        if not repair_only and randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key(dep)] == true then
             return false
         end
 
@@ -340,6 +343,13 @@ end
 
 -- Attempt with usual cost analysis
 recipe_ingredients.custom_prereq_search = function(params)
+    if params.repair_only == true then
+        dependent_to_new_ings = prerequisite_ingredients.choose(params)
+        local prom = params.promotion
+        local unreachable = prom.anchor_remaining_recipes()
+        UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
+        return #unreachable == 0
+    end
     local random_graph = params.random_graph
     local sorted_deps = params.sorted_deps
     local shuffled_prereqs = params.shuffled_prereqs
@@ -605,6 +615,7 @@ recipe_ingredients.custom_prereq_search = function(params)
                     log("Promotion: " .. dep .. " was already unreachable before recipe randomization")
                 end
             end
+            local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.recipe_boundary_contexts(dep, required_contexts) or {}
             local dependent_recipe = data.raw.recipe[node.name]
             assert(dependent_recipe ~= nil)
             -- Ignore the heads etc., just find good ings via search
@@ -870,7 +881,6 @@ recipe_ingredients.custom_prereq_search = function(params)
                     })
                 end
                 -- At a chunk boundary (debt mode: the recipe owes something only through its ingredients, see skeleton/promotion.lua), first search among ingredients that pay for it
-                local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.recipe_boundary_contexts(dep, required_contexts) or {}
                 local paying_info = {
                     prereq_list = {},
                     prereq_inds = {},
