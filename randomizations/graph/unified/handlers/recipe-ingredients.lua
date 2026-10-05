@@ -25,6 +25,9 @@ local key = gutils.key
 -- Recipe shapes: the spoofed slot a fluid no recipe takes gets, so it has pool entries too (see spoof)
 local FLUID_SLOT_TYPE = "recipe-shape-fluid-slot"
 
+-- Reprice imports lazily once per batch of recipe decisions. Local costs still update after every recipe (including its generated reverse recipes).
+local IMPORT_BATCH_SIZE = 16
+
 local recipe_ingredients = {}
 
 recipe_ingredients.id = "recipe_ingredients"
@@ -435,6 +438,7 @@ recipe_ingredients.custom_prereq_search = function(params)
     -- Original prices stay fixed across retries and supply initial quotes for imports whose source recipes have not been processed.
     local full_sets = context_costs.set_views(context_costs.game_set(rooms, major_raw_resources), major_raw_resources)
     local function staged_sets(set_params)
+        set_params.batch_imports = true
         set_params.track_resources = major_raw_resources
         set_params.updated_contexts = judged_contexts
         set_params.imports_from = full_sets.set
@@ -555,6 +559,10 @@ recipe_ingredients.custom_prereq_search = function(params)
     for _, dep in pairs(sorted_deps) do
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
+            if num_processed % IMPORT_BATCH_SIZE == 0 then
+                vanilla_sets.set:invalidate_imports()
+                randomized_sets.set:invalidate_imports()
+            end
             log("Processing " .. node.name)
             current_pins = prom ~= nil and prom.pins_for(dep) or {}
             local required_contexts

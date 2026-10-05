@@ -397,6 +397,40 @@ test("a staged set refreshes imports only when a full tier is read, pricing as i
     assert(next(lazy.stale_rooms) == nil)
 end)
 
+test("batched imports keep old quotes and bills while local recipes update, then refresh unread rooms lazily", function()
+    local info = world()
+    local original = game_set(info, {"item-gem"})
+    local overrides = context_costs.data_overrides()
+    overrides["cut-gem"] = {"blacklisted"}
+    local set = context_costs.new_set(info, {
+        ing_overrides = overrides,
+        item_recipe_maps = flow_cost.construct_item_recipe_maps(),
+        track_resources = {"item-gem"},
+        imports_from = original,
+        dynamic_imports = true,
+        batch_imports = true,
+    })
+    local imported = set:view("A", "full").material_to_cost
+    local imported_bill = set:resource_view("A", "item-gem", "full").material_to_cost
+    set:invalidate_imports()
+    assert(near(imported["item-jewel"], 2.045))
+
+    overrides["cut-gem"] = {entry("gem", 20)}
+    set:update("cut-gem")
+    assert(near(set:view("B", "local").material_to_cost["item-jewel"], 40.045))
+    assert(near(set:resource_view("B", "item-gem", "local").material_to_cost["item-jewel"], 20))
+    assert(near(imported["item-jewel"], 2.045))
+    assert(near(imported_bill["item-jewel"], 1))
+    assert(set.stale_rooms.A == nil)
+
+    set:invalidate_imports()
+    assert(near(imported["item-jewel"], 40.045))
+    assert(near(imported_bill["item-jewel"], 20))
+    assert(set.stale_rooms.A == nil and set.stale_rooms.B == true)
+    assert(near(set:view("B", "full").material_to_cost["item-jewel"], 40.045))
+    assert(next(set.stale_rooms) == nil)
+end)
+
 test("local novelty uses local production rather than imported resource shares", function()
     local info = world()
     local set = game_set(info)

@@ -769,4 +769,32 @@ test("a room's home set also has the rooms its route needs, not just its discove
     assert(rooms[HOME] ~= nil and rooms[via] ~= nil and rooms[far] == nil)
 end)
 
+test("batched witnesses equal separate witnesses with complex and home contexts", function()
+    -- Matching's failed-proposal diagnostics need the union, including paths through room emitters, forgetters and discovery backings.
+    for seed = 1, 10 do
+        local graph = toy_graph()
+        rng_state = seed
+        local sort_info = top.sort(graph, nil, nil, {
+            choose_randomly = true,
+            complex_contexts = true,
+            home_contexts = true,
+        })
+        local goals = {}
+        local separate = {}
+        for ind = #sort_info.sorted, 1, -7 do
+            table.insert(goals, ind)
+            for witness, _ in pairs(top.path(graph, { ind }, sort_info).in_path) do
+                separate[witness] = true
+            end
+        end
+        local batched = top.path(graph, goals, sort_info).in_path
+        for ind, _ in pairs(separate) do
+            assert(batched[ind], "batch lost witness " .. ind .. " at seed " .. seed)
+        end
+        for ind, _ in pairs(batched) do
+            assert(separate[ind], "batch added witness " .. ind .. " at seed " .. seed)
+        end
+    end
+end)
+
 print(tostring(num_passed) .. " tests passed")

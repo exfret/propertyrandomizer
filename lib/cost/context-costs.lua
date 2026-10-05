@@ -169,6 +169,7 @@ end
 -- params.find_sources (optional): whether its rounds also find where each room's imports come from, into info.import_from (the game's set does, in build)
 -- params.updated_contexts (optional): context --> true for the rooms updates keep up to date (the ones costs are read in); the rest stay as first priced, as import sources
 -- params.dynamic_imports (optional): update every source room, and refresh a room's changed import quotes before its full tier is next read (see Set:cost_and_tier).
+-- params.batch_imports (optional): the caller starts each batch with invalidate_imports(); updates still price recipes immediately, but don't invalidate import quotes within the batch.
 -- params.recipe_prototypes (optional): a staged recipe table, including regenerated reverse outputs, without changing data.raw.
 local Set = {}
 Set.__index = Set
@@ -414,12 +415,16 @@ function Set:update(recipe_name)
             end
         end
     end
-    if self.params.dynamic_imports == true then
-        -- Any room's quotes may have changed; each room is refreshed when its full tier is next read (see Set:cost_and_tier)
-        self.stale_rooms = self.stale_rooms or {}
-        for _, context in pairs(self.info.contexts) do
-            self.stale_rooms[context] = true
-        end
+    if self.params.dynamic_imports == true and self.params.batch_imports ~= true then
+        self:invalidate_imports()
+    end
+end
+
+-- Make each room refresh on its next full-tier read. Batch callers allow older quotes between these boundaries; unread rooms stay pending.
+function Set:invalidate_imports()
+    self.stale_rooms = self.stale_rooms or {}
+    for _, context in pairs(self.info.contexts) do
+        self.stale_rooms[context] = true
     end
 end
 

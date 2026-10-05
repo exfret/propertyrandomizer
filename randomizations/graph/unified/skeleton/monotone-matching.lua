@@ -707,7 +707,7 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
     return slot_match
 end
 
--- How many lost pebbles blocked_travs looks at: the earliest ones (in the previous sort) are the roots of the loss, and the rest follow from them, while each witness costs a path search (a proposal once lost thousands and took minutes)
+-- How many lost pebbles blocked_travs looks at: the earliest ones (in the previous sort) are the roots of the loss, and the rest follow from them
 local BLOCKED_PEBBLES_LIMIT = 300
 
 -- Trav pebbles on the witnesses (in the previous graph) of the lost pebbles that are missing from the new sort
@@ -724,14 +724,14 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
     if #earliest > BLOCKED_PEBBLES_LIMIT then
         log("Monotone matching: witnesses of the " .. BLOCKED_PEBBLES_LIMIT .. " earliest of " .. #earliest .. " lost pebbles")
     end
-    for n, ind in pairs(earliest) do
-        if n <= BLOCKED_PEBBLES_LIMIT then
-            for i, _ in pairs(top.path(graph, { ind }, sort_info).in_path) do
-                local q = sort_info.sorted[i]
-                if graph.nodes[q.node_key].trav == true and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
-                    blocked[q.node_key .. " @ " .. q.context] = q
-                end
-            end
+    for n = #earliest, BLOCKED_PEBBLES_LIMIT + 1, -1 do
+        earliest[n] = nil
+    end
+    -- Only the union of the witnesses matters. Trace them together so shared prerequisites are visited once (top.path picks the same backing regardless of the other goals).
+    for i, _ in pairs(top.path(graph, earliest, sort_info).in_path) do
+        local q = sort_info.sorted[i]
+        if graph.nodes[q.node_key].trav == true and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
+            blocked[q.node_key .. " @ " .. q.context] = q
         end
     end
     return blocked
