@@ -85,11 +85,104 @@ local function reset_derandomizer(element)
     add_derandomizer_amount_caption(element)
 end
 
+-- Graph selectors keep keys in tags so filtered captions never become node identities.
+-- General node intentionally includes the full graph, even nodes omitted from prerequisite rows.
+local function refresh_node_choices(selector, refresh_types)
+    local mechanics = selector.tags.mechanics
+    local type_choice = selector["randomizer-explorer-node-type"]
+    if refresh_types == true and type_choice ~= nil then
+        local types = {}
+        local seen = {}
+        local query = string.lower(selector["randomizer-explorer-type-search"].text)
+        for _, node in pairs(storage.graph.nodes) do
+            if not seen[node.type] and string.find(string.lower(node.type), query, 1, true) then
+                seen[node.type] = true
+                table.insert(types, node.type)
+            end
+        end
+        table.sort(types)
+        type_choice.items = types
+        type_choice.selected_index = #types > 0 and 1 or 0
+    end
+    local selected_type
+    if type_choice ~= nil and type_choice.selected_index > 0 then
+        selected_type = type_choice.items[type_choice.selected_index]
+    end
+    local query = string.lower(selector["randomizer-explorer-node-search"].text)
+    local choices = {}
+    for key, node in pairs(storage.graph.nodes) do
+        if (mechanics == true and node.class == "balance-mechanics") or (mechanics == false and node.type == selected_type) then
+            local caption = mechanics == true and string.gsub(node.type, "^balance%-mechanics%-", "") .. (node.name ~= "" and ": " .. node.name or "") or node.name
+            if string.find(string.lower(caption), query, 1, true) then
+                table.insert(choices, {
+                    key = key,
+                    caption = caption ~= "" and caption or "(unnamed)",
+                })
+            end
+        end
+    end
+    table.sort(choices, function(a, b) return a.caption < b.caption or (a.caption == b.caption and a.key < b.key) end)
+    local items, keys = {}, {}
+    for _, choice in pairs(choices) do
+        table.insert(items, choice.caption)
+        table.insert(keys, choice.key)
+    end
+    local names = selector["randomizer-explorer-node-name"]
+    names.items = items
+    names.tags = {keys = keys}
+    names.selected_index = 0
+end
+
+local function add_node_selector(parent, mechanics)
+    local selector = parent.add({
+        type = "flow",
+        name = "randomizer-explorer-node-selector",
+        direction = "vertical",
+        tags = {mechanics = mechanics},
+    })
+    if mechanics == false then
+        selector.add({
+            type = "label",
+            caption = "Node type",
+        })
+        selector.add({
+            type = "textfield",
+            name = "randomizer-explorer-type-search",
+            tooltip = "Search node types",
+        })
+        selector.add({
+            type = "drop-down",
+            name = "randomizer-explorer-node-type",
+            items = {},
+        })
+    end
+    selector.add({
+        type = "label",
+        caption = mechanics == true and "Balance mechanic" or "Node name",
+    })
+    selector.add({
+        type = "textfield",
+        name = "randomizer-explorer-node-search",
+        tooltip = mechanics == true and "Search balance mechanics" or "Search node names",
+    })
+    selector.add({
+        type = "drop-down",
+        name = "randomizer-explorer-node-name",
+        items = {},
+    })
+    for _, child in pairs(selector.children) do
+        child.style.width = 220
+    end
+    refresh_node_choices(selector, true)
+end
+
+local select_graph_node
+
 local function update_explorer_choice(player_index, explorer_type_choice)
     local explorer_flow_choice = explorer_type_choice.parent
     -- Choosing the same thing shouldn't reset things
     if storage.explorer_prot_choice ~= nil then
-        if storage.explorer_prot_choice[player_index] == explorer_type_choice.selected_index then
+        if storage.explorer_prot_choice[player_index] == explorer_type_choice.selected_index and (explorer_flow_choice["randomizer-explorer-prot-choice"] ~= nil or explorer_flow_choice["randomizer-explorer-node-selector"] ~= nil) then
             -- Return false to signal that nothing should change to outer function
             return false
         end
@@ -98,8 +191,19 @@ local function update_explorer_choice(player_index, explorer_type_choice)
     if explorer_flow_choice["randomizer-explorer-prot-choice"] ~= nil then
         explorer_flow_choice["randomizer-explorer-prot-choice"].destroy()
     end
-    explorer_elem_type = selected_ind_to_elem_type[explorer_type_choice.selected_index]
-    local explorer_prot_choice = explorer_flow_choice.add({type = "choose-elem-button", name = "randomizer-explorer-prot-choice", elem_type = explorer_elem_type})
+    if explorer_flow_choice["randomizer-explorer-node-selector"] ~= nil then
+        explorer_flow_choice["randomizer-explorer-node-selector"].destroy()
+    end
+    local explorer_elem_type = selected_ind_to_elem_type[explorer_type_choice.selected_index]
+    if explorer_elem_type ~= nil then
+        explorer_flow_choice.add({
+            type = "choose-elem-button",
+            name = "randomizer-explorer-prot-choice",
+            elem_type = explorer_elem_type,
+        })
+    else
+        add_node_selector(explorer_flow_choice, explorer_type_choice.selected_index == #selected_ind_to_elem_type + 1)
+    end
     storage.explorer_prot_choice = storage.explorer_prot_choice or {}
     storage.explorer_prot_choice[player_index] = explorer_type_choice.selected_index
     return true
@@ -126,7 +230,8 @@ local function size_main_panel(player, main_frame)
     explorer_intro.style.single_line = false
     explorer_intro.style.maximal_width = inner_width
     local explorer_flow_left = tabbed_pane["randomizer-explorer-flow"]["randomizer-explorer-flow-main"]["randomizer-explorer-flow-left"]
-    explorer_flow_left.style.maximal_width = common.screen_size(player).width / 6
+    -- Leave room for the category list and the searchable selector side by side.
+    explorer_flow_left.style.maximal_width = math.max(common.screen_size(player).width / 6, 448)
 end
 
 -- E and Escape close player.opened, which works like Factory Planner's main and modal dialogs.
@@ -216,13 +321,40 @@ local function toggle_randomizer_panel(event)
     explorer_flow.style.horizontally_stretchable = true
     explorer_flow.style.vertically_stretchable = true
     main_tabbed_pane.add_tab(explorer_tab, explorer_flow)
-    local explorer_intro = explorer_flow.add({type = "label", name = "randomizer-explorer-intro", caption = "Select something to see what's needed to get it. Use the list to select the general class, and click on the square for the exact choice."})
+    local explorer_intro = explorer_flow.add({
+        type = "label",
+        name = "randomizer-explorer-intro",
+        caption = "Select something to see what's needed to get it. Choose a category, then a prototype, balance mechanic, or graph node. Search fields filter the node type and name lists.",
+    })
+    explorer_flow.add({
+        type = "checkbox",
+        name = "randomizer-explorer-show-hidden",
+        caption = "Show hidden nodes",
+        state = storage.explorer_show_hidden ~= nil and storage.explorer_show_hidden[event.player_index] == true,
+        tooltip = "Show all prerequisite nodes, including hidden prototypes, Original copies, and normally folded or duplicate rows.",
+    })
     local explorer_flow_main = explorer_flow.add({type = "flow", name = "randomizer-explorer-flow-main", direction = "horizontal"})
     explorer_flow_main.style.horizontally_stretchable = true
     explorer_flow_main.style.vertically_stretchable = true
     local explorer_flow_left = explorer_flow_main.add({type = "flow", name = "randomizer-explorer-flow-left", direction = "vertical"})
     local explorer_flow_choice = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-flow-choice", direction = "horizontal"})
-    local explorer_type_choice = explorer_flow_choice.add({type = "list-box", name = "randomizer-explorer-type-choice", selected_index = 1, items = {"Entity", "Fluid", "Item", "Recipe", "Technology", "Tile", "Asteroid Chunk"}})
+    local explorer_type_choice = explorer_flow_choice.add({
+        type = "list-box",
+        name = "randomizer-explorer-type-choice",
+        selected_index = 1,
+        items = {
+            "Entity",
+            "Fluid",
+            "Item",
+            "Recipe",
+            "Technology",
+            "Tile",
+            "Asteroid Chunk",
+            "Mechanics",
+            "General node",
+        },
+    })
+    explorer_type_choice.style.width = 220
     update_explorer_choice(event.player_index, explorer_type_choice)
     local explorer_derandomizer = explorer_flow_left.add({type = "flow", name = "randomizer-explorer-derandomizer", direction = "vertical"})
     reset_derandomizer(explorer_derandomizer)
@@ -254,7 +386,12 @@ events.on_event(defines.events.on_gui_selection_state_changed, function(event)
     customizer.update_selector(event)
     customizer.update_configuration_event(event)
 
-    if string.find(event.element.name, "randomizer%-explorer") then
+    if event.element.name == "randomizer-explorer-node-type" then
+        refresh_node_choices(event.element.parent, false)
+        select_graph_node(event, nil)
+    elseif event.element.name == "randomizer-explorer-node-name" then
+        select_graph_node(event, event.element.tags.keys[event.element.selected_index])
+    elseif event.element.name == "randomizer-explorer-type-choice" then
         local should_update = update_explorer_choice(event.player_index, event.element)
         if should_update ~= false then
             -- Also clear the dropdowns
@@ -265,6 +402,13 @@ events.on_event(defines.events.on_gui_selection_state_changed, function(event)
             explorer_derandomizer.clear()
             reset_derandomizer(explorer_derandomizer)
         end
+    end
+end)
+
+events.on_event(defines.events.on_gui_text_changed, function(event)
+    if event.element.name == "randomizer-explorer-type-search" or event.element.name == "randomizer-explorer-node-search" then
+        refresh_node_choices(event.element.parent, event.element.name == "randomizer-explorer-type-search")
+        select_graph_node(event, nil)
     end
 end)
 
@@ -365,6 +509,9 @@ local node_type_to_tooltip = {
 }
 
 local function get_node_type_caption(node)
+    if node.class == "balance-mechanics" then
+        return string.gsub(node.type, "^balance%-mechanics%-", "") .. ": "
+    end
     return type_to_localised[node.type] or string.upper(string.sub(node.type, 1, 1)) .. string.sub(node.type, 2, -1) .. ": "
 end
 
@@ -809,14 +956,28 @@ local function recipe_amount_factor(curr_node, prenode)
     return 1
 end
 
-local function get_node_leaves(node)
+local function get_node_leaves(node, show_hidden)
+    if show_hidden == true then
+        local leaves, amounts = {}, {}
+        for pre, _ in pairs(node.pre) do
+            local edge = storage.graph.edges[pre]
+            local prenode = storage.graph.nodes[edge.start]
+            table.insert(leaves, prenode)
+            amounts[edge.start] = edge.inds ~= nil and recipe_amount_factor(node, prenode) or 1
+        end
+        return {
+            leaves = leaves,
+            node_to_amount_modifier = amounts,
+        }
+    end
     return explorer_rows.leaves(storage.graph, node, recipe_amount_factor)
 end
 
 local function expand_node_dropdown(event, node)
     local graph = storage.graph
 
-    local leaf_info = get_node_leaves(node)
+    local show_hidden = storage.explorer_show_hidden ~= nil and storage.explorer_show_hidden[event.player_index] == true
+    local leaf_info = get_node_leaves(node, show_hidden)
     local leaves = leaf_info.leaves
     local node_to_amount_modifier = leaf_info.node_to_amount_modifier
 
@@ -839,7 +1000,8 @@ local function expand_node_dropdown(event, node)
         local is_hidden = false
         if leaf.prot ~= nil then
             local prot = decon_to_prot(gutils.deconstruct(leaf.prot)).prot
-            if prot.hidden then
+            -- add_old_versions names its Original copies old-<entity name> (randomizations/fixes.lua).
+            if prot.hidden == true or string.sub(prot.name, 1, 4) == "old-" then
                 is_hidden = true
             end
         end
@@ -852,10 +1014,12 @@ local function expand_node_dropdown(event, node)
             ["resistance-group"] = true,
             ["warmth"] = true,
             ["false"] = true,
+            ["fluid-hold"] = true,
+            ["lightning-safe"] = true,
         }
-        if not is_confusing_node_type[leaf.type] and string.find(leaf.name, "derandomized") == nil then
-            if not is_hidden then
-                if not already_has_rep[leaf_to_concat[gutils.key(leaf)]] then
+        if show_hidden or (not is_confusing_node_type[leaf.type] and string.find(leaf.name, "derandomized") == nil and string.sub(leaf.name, 1, 4) ~= "old-") then
+            if show_hidden or not is_hidden then
+                if show_hidden or not already_has_rep[leaf_to_concat[gutils.key(leaf)]] then
                     already_has_rep[leaf_to_concat[gutils.key(leaf)]] = true
                     -- Remove the -checkbox
                     local non_checkbox_name = string.sub(event.element.name, 1, -10)
@@ -887,6 +1051,36 @@ local function expand_node_dropdown(event, node)
                 end
             end
         end
+    end
+end
+
+select_graph_node = function(event, key)
+    local left = event.element.parent.parent.parent
+    local dropdowns = left.parent["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+    dropdowns.clear()
+    local derandomizer_flow = left["randomizer-explorer-derandomizer"]
+    derandomizer_flow.clear()
+    reset_derandomizer(derandomizer_flow)
+    local node = key and storage.graph.nodes[key]
+    if node == nil then
+        return
+    end
+    local root = dropdowns.add({
+        type = "flow",
+        name = "randomizer-explorer-dropdowns-root",
+        direction = "horizontal",
+    })
+    local amount
+    if node.type == "recipe" or node.type == "item" or node.type == "fluid" then
+        amount = 1
+    end
+    local checkbox = expand_prereq_dropdown(root, event.player_index, node, {amount = amount})
+    if checkbox ~= nil then
+        checkbox.state = true
+        expand_node_dropdown({
+            player_index = event.player_index,
+            element = checkbox,
+        }, node)
     end
 end
 
@@ -966,6 +1160,29 @@ end)
 
 events.on_event(defines.events.on_gui_checked_state_changed, function(event)
     local graph = storage.graph
+
+    if event.element.name == "randomizer-explorer-show-hidden" then
+        storage.explorer_show_hidden = storage.explorer_show_hidden or {}
+        storage.explorer_show_hidden[event.player_index] = event.element.state
+        local dropdowns = event.element.parent["randomizer-explorer-flow-main"]["randomizer-explorer-dropdowns-scroll"]["randomizer-explorer-dropdowns"]
+        local root = dropdowns["randomizer-explorer-dropdowns-root"]
+        if root ~= nil and root.children[1] ~= nil then
+            local row_name = root.children[1].name
+            local node = storage.gui_element_to_node[event.player_index][row_name]
+            local amounts = storage.gui_element_to_amount and storage.gui_element_to_amount[event.player_index]
+            local amount = amounts and amounts[row_name]
+            root.clear()
+            local checkbox = expand_prereq_dropdown(root, event.player_index, node, {amount = amount})
+            if checkbox ~= nil then
+                checkbox.state = true
+                expand_node_dropdown({
+                    player_index = event.player_index,
+                    element = checkbox,
+                }, node)
+            end
+        end
+        return
+    end
 
     if string.find(event.element.name, "randomizer%-explorer%-dropdowns") ~= nil then
         local non_checkbox_name = string.sub(event.element.name, 1, -10)

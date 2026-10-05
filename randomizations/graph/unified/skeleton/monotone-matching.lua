@@ -728,7 +728,7 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
         if n <= BLOCKED_PEBBLES_LIMIT then
             for i, _ in pairs(top.path(graph, { ind }, sort_info).in_path) do
                 local q = sort_info.sorted[i]
-                if graph.nodes[q.node_key].trav and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
+                if graph.nodes[q.node_key].trav == true and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
                     blocked[q.node_key .. " @ " .. q.context] = q
                 end
             end
