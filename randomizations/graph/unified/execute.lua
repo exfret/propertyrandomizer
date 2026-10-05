@@ -35,6 +35,7 @@ local rng = require("lib/random/rng")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
+local recycling = require("lib/recycling")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
 local logic = require("lib/logic/init")
@@ -940,7 +941,6 @@ unified.execute = function()
                 end
                 -- If we have to raise it from 2/3 or below and this is in the ingredients, this is an expensive ingredient, so give some of it back
                 if change.ingredients and change.prop == "amount" and change.tbl[change.prop] <= 2 / 3 then
-                    -- Note: This case doesn't appear to ever happen since we only ever use multipliers larger than 1
                     local recipe_name_to_use = change.recipe.name
                     if handlers["recipe-ingredients-first-pass"] ~= nil then
                         recipe_name_to_use = random_graph.nodes[handlers["recipe-ingredients-first-pass"].trav_to_slot[gutils.key("recipe", make_trav_name(change.recipe.name))]].name
@@ -950,14 +950,7 @@ unified.execute = function()
                     local cost_over_reasonable = (3 / 2) / change.tbl[change.prop]
                     -- You "should" only pay up to the cost_reasonable, which would correspond to 1 / cost_over_reasonable amount of the 1 thing, so you get 1 minus this amount back
                     local amount_back = 1 - 1 / cost_over_reasonable
-                    -- Make sure this isn't a weird recipe
-                    if recipe_to_use.results ~= nil and #recipe_to_use.results > 0 then
-                        -- Make sure main product is kept
-                        if #recipe_to_use.results == 1 then
-                            recipe_to_use.main_product = recipe_to_use.results[1].name
-                        end
-                        table.insert(recipe_to_use.results, {type = "item", name = change.tbl.name, amount = 1, independent_probability = amount_back})
-                    end
+                    recycling.add_item_refund(old_data_raw, recipe_to_use, change.tbl.name, amount_back)
                 end
                 change.tbl[change.prop] = math.max(1, math.floor(0.5 + change.tbl[change.prop]))
                 if not dutils.is_stackable(item) then

@@ -13,8 +13,19 @@ package.loaded["lib/logic/init"] = logic
 package.loaded["lib/random/rng"] = {}
 package.loaded["lib/furnace-selection"] = { new_collisions = function() return {} end }
 package.loaded["lib/item-fluid"] = {}
+local locked_contexts = {}
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {
-    planet_locked_recipe_contexts = function() return {} end,
+    planet_locked_recipe_contexts = function() return locked_contexts end,
+    protects_isolatability = function(node) return node.keep_isolatability == true end,
+    is_isolatable_context = function(context)
+        return string.find(context, " | 1", 1, true) ~= nil
+    end,
+    kept_part = function(node, context)
+        if node.keep_isolatability == true then
+            return context
+        end
+        return string.gsub(context, " | [01]", " | ?")
+    end,
 }
 
 local gutils = require("lib/graph/graph-utils")
@@ -101,6 +112,89 @@ test("an attempt audited after unlock repair fails when a readiness gap remains"
     local graph, sorted = fixture(false)
     local verdict = check.run(graph, sorted, sorted, "UNIFIEDCHECK", true)
     assert(not verdict.ok and verdict.operation_failures == 1)
+end)
+
+local function isolation_fixture(kind, protected)
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local node = gutils.add_node(graph, kind, "test-local-goal", {
+        op = "OR",
+        mechanic = kind ~= "recipe",
+        keep_isolatability = protected,
+    })
+    local node_key = gutils.key(node)
+    local before = { node_to_context_inds = { [node_key] = { ["test-room | 11"] = 1 } } }
+    local after = { node_to_context_inds = { [node_key] = { ["test-room | 01"] = 1 } } }
+    return graph, before, after, node_key
+end
+
+test("an attempt losing a planet-locked recipe's isolatability fails", function()
+    local graph, before, after, node_key = isolation_fixture("recipe")
+    locked_contexts = { [node_key] = { ["test-room | 11"] = true } }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    locked_contexts = {}
+    assert(not verdict.ok and verdict.lost == 1)
+    assert(verdict.unreachable == 0)
+end)
+
+test("rocket launch isolatability fails even when imports preserve reachability", function()
+    local graph, before, after = isolation_fixture("launch", true)
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(not verdict.ok and verdict.lost == 1)
+    assert(verdict.unreachable == 0)
+end)
+
+test("science pack imports may preserve reachability without local production", function()
+    local graph, before, after = isolation_fixture("item", false)
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(verdict.ok and verdict.lost == 0)
+end)
+
+test("a promised planet-locked context cannot be excused as only isolatability", function()
+    local graph, before, after, node_key = isolation_fixture("recipe")
+    locked_contexts = { [node_key] = { ["test-room | 11"] = true } }
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = node_key,
+            context = "test-room | 11",
+            rank = 1,
+        },
+    }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    locked_contexts = {}
+    UNIFIED_PROMISED_PEBBLES = nil
+    assert(not verdict.ok and verdict.missing == 1)
+end)
+
+test("a promised protected mechanic context cannot be excused as only isolatability", function()
+    local graph, before, after, node_key = isolation_fixture("test-mechanic", true)
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = node_key,
+            context = "test-room | 11",
+            rank = 1,
+        },
+    }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    UNIFIED_PROMISED_PEBBLES = nil
+    assert(not verdict.ok and verdict.missing == 1)
+end)
+
+test("missing home backings do not fail when protected room contexts are kept", function()
+    local graph, before, _, node_key = isolation_fixture("test-mechanic", true)
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = node_key,
+            context = "test-room | 00 @ home1",
+            rank = 1,
+        },
+    }
+    local verdict = check.run(graph, before, before, "UNIFIEDCHECK")
+    UNIFIED_PROMISED_PEBBLES = nil
+    assert(verdict.ok and verdict.missing == 0)
 end)
 
 print(num_passed .. " checker tests passed")

@@ -14,7 +14,7 @@ local operation_requirements = require("lib/logic/operation-requirements")
 local check = {}
 
 -- Whether a node missing context in the final game only lost isolatability there: it still has the context's room and automatability (final_has(context) says whether the final game has a context)
--- Losing only isolatability means importing something, not a softlock, so it's logged but doesn't fail the check
+-- Losing only isolatability is allowed only when the goal doesn't protect it (see protection.lua).
 -- Home contexts only back isolatability, so losing one never fails the check either
 local function only_isolatability_lost(context, final_has)
     if top.context_home(context) ~= nil then
@@ -29,10 +29,10 @@ local function only_isolatability_lost(context, final_has)
 end
 
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
--- Only the protected part of each mechanic context counts (see protection.lua), and every context of a planet-locked recipe
+-- Only the protected part of each mechanic context counts (see protection.lua), and every context of a planet-locked recipe, including isolatability.
 -- The optional label replaces MECHCHECK in the log lines
 -- audit_operations also checks readiness during an attempt, after its real unlock changes have been applied.
--- Returns the verdict: { ok = whether every check passed, unreachable = number of recipes, lost = number of mechanic and planet-locked recipe contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by, operation_failures = number of buildings acquired before their operation inputs }
+-- Returns the verdict: { ok = whether every check passed, unreachable = number of recipes, lost = number of protected mechanic and planet-locked recipe contexts lost, missing = number of promised pebbles missing beyond allowed isolatability losses, furnace_collisions = number of ingredients some furnace can't pick a recipe by, operation_failures = number of buildings acquired before their operation inputs }
 check.run = function(graph, init_sort_info, final_sort_info, label, audit_operations)
     label = label or "MECHCHECK"
     local num_operation_failures = 0
@@ -66,7 +66,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
                     is_checked[kept] = true
                     num_checked = num_checked + 1
                     if final_kept[kept] == nil then
-                        if only_isolatability_lost(kept, function(other)
+                        if not protection.protects_isolatability(node) and only_isolatability_lost(kept, function(other)
                             return final_kept[other] ~= nil
                         end) then
                             table.insert(lost, node_key .. " @ " .. kept .. " (only isolatability)")
@@ -83,20 +83,15 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
     -- A recipe keeps its name and surface conditions, so the final graph and data.raw tell which were locked in the original sort
     local num_locked_checked = 0
     local num_locked_lost = 0
-    for node_key, contexts in pairs(protection.planet_locked_recipe_contexts(graph, init_sort_info)) do
+    local planet_locked = protection.planet_locked_recipe_contexts(graph, init_sort_info)
+    for node_key, contexts in pairs(planet_locked) do
         local final_contexts = final_sort_info.node_to_context_inds[node_key] or {}
         for context, _ in pairs(contexts) do
             num_locked_checked = num_locked_checked + 1
             if final_contexts[context] == nil then
                 num_locked_lost = num_locked_lost + 1
-                if only_isolatability_lost(context, function(other)
-                    return final_contexts[other] ~= nil
-                end) then
-                    table.insert(lost, "planet-locked " .. node_key .. " @ " .. context .. " (only isolatability)")
-                else
-                    table.insert(lost, "planet-locked " .. node_key .. " @ " .. context)
-                    num_hard_lost = num_hard_lost + 1
-                end
+                table.insert(lost, "planet-locked " .. node_key .. " @ " .. context)
+                num_hard_lost = num_hard_lost + 1
             end
         end
     end
@@ -151,7 +146,8 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
                             context = pebble.context,
                             rank = pebble.rank,
                         })
-                        if not only_isolatability_lost(pebble.context, function(other)
+                        local protects_isolatability = (planet_locked[final_node_key] or {})[pebble.context] ~= nil or (node.mechanic == true and protection.protects_isolatability(node) and top.context_home(pebble.context) == nil)
+                        if protects_isolatability == true or not only_isolatability_lost(pebble.context, function(other)
                             return final_contexts[other] ~= nil
                         end) then
                             num_hard_missing = num_hard_missing + 1
@@ -160,7 +156,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
                 end
             end
         end
-        log_check("promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches .. " (" .. num_hard_missing .. " beyond isolatability)")
+        log_check("promised pebbles compared " .. num_compared .. "; missing in final game " .. #mismatches .. " (" .. num_hard_missing .. " protected losses)")
         for i = 1, math.min(20, #mismatches) do
             local mismatch = mismatches[i]
             local model_note = mismatch.model_key ~= mismatch.node_key and ("; the model's " .. mismatch.model_key) or ""
@@ -190,7 +186,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
     end
 
     table.sort(lost)
-    log_check("checked " .. num_checked .. " mechanic contexts; lost " .. #lost .. " (" .. num_hard_lost .. " beyond isolatability)")
+    log_check("checked " .. num_checked .. " mechanic contexts; lost " .. #lost .. " (" .. num_hard_lost .. " protected losses)")
     if #lost > 0 or #lost_recipes > 0 then
         -- Earliest nodes (by original sort) that became unreachable everywhere; the first few are likely the root cause
         local newly_unreachable = {}
@@ -260,7 +256,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
         furnace_collisions = #furnace_collisions,
         operation_failures = num_operation_failures,
     }
-    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", furnace collisions " .. verdict.furnace_collisions .. ", operation failures " .. verdict.operation_failures .. ", not counting isolatability)")
+    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", furnace collisions " .. verdict.furnace_collisions .. ", operation failures " .. verdict.operation_failures .. ", not counting unprotected isolatability)")
     return verdict
 end
 

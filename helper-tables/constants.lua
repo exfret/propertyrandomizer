@@ -119,7 +119,7 @@ local constants = {
     -- A fix to try: match items first, then entities with the item assignment fixed
     entity_first_pass = false,
     -- Whether graph randomization must keep every mechanic isolatable wherever it was (rooms and automatability are always kept)
-    -- When off, only nodes built with keep_isolatability = true (like science packs) keep it
+    -- When off, only nodes built with keep_isolatability = true (like rocket launching) keep it
     -- See randomizations/graph/unified/skeleton/protection.lua for how this is applied
     keep_isolatability = false,
 

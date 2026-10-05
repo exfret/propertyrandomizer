@@ -1294,8 +1294,7 @@ function concrete.build(lu, extra_params)
         add_node("item", "OR", nil, item.name, {
             item = item.name,
             mechanic = should_be_mechanic,
-            -- Science packs keep their isolatable contexts (see skeleton/protection.lua)
-            keep_isolatability = is_science_pack or nil,
+            -- Lab inputs keep reachability and automatability; their production needn't be local to every planet.
             cost = constants.cost.per_item_cost,
         })
         ----------------------------------------

@@ -170,6 +170,43 @@ test("a recipe with several item results isn't reversed", function()
     assert(raw.recipe["circuit-recycling"].results[1].name == "circuit")
 end)
 
+test("ingredient rounding refunds preserve a modeled recycling source after item swaps", function()
+    local old_raw = game(base_recipes(), item_names)
+    local raw = randomize(old_raw)
+    local swap = {
+        gear = "cable",
+        cable = "gear",
+    }
+    for _, recipe in pairs(raw.recipe) do
+        for _, list in pairs({
+            recipe.ingredients or {},
+            recipe.results or {},
+        }) do
+            for _, material in pairs(list) do
+                material.name = swap[material.name] or material.name
+            end
+        end
+    end
+    raw.recipe.gear.ingredients = {
+        entry("gear", 1),
+        entry("plate", 2),
+    }
+    assert(not recycling.add_item_refund(old_raw, raw.recipe.gear, "gear", 0.6))
+    recycling.regenerate(old_raw)
+    local reverse = results_of(raw.recipe["gear-recycling"])
+    assert(reverse.plate ~= nil and reverse.gear ~= nil)
+    assert(reverse.cable == nil)
+end)
+
+test("ingredient rounding still refunds recipes without a modeled recycling source", function()
+    local old_raw = game(base_recipes(), item_names)
+    local raw = randomize(old_raw)
+    local recipe = raw.recipe.junk
+    assert(recycling.add_item_refund(old_raw, recipe, "plate", 0.6))
+    assert(recipe.main_product == "gear")
+    assert(results_of(recipe).plate.independent_probability == 0.6)
+end)
+
 test("recycling follows what a recipe makes now, under the name of its new item", function()
     local old_raw = game(base_recipes(), item_names)
     local raw = randomize(old_raw)

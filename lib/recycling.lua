@@ -352,6 +352,30 @@ recycling.vanilla = function(raw)
     return info
 end
 
+-- Rounding an item ingredient up can refund part of it as a product.
+-- A second item product makes a source ineligible for reversal (reverse_recipe), losing the recycling outputs promotion modeled and pinned.
+-- Keep that source's shape.
+recycling.add_item_refund = function(original_raw, recipe, item_name, probability)
+    for _, entry in pairs(recycling.vanilla(original_raw)) do
+        if entry.reversed ~= nil and entry.source == recipe.name then
+            return false
+        end
+    end
+    if recipe.results == nil or #recipe.results == 0 then
+        return false
+    end
+    if #recipe.results == 1 then
+        recipe.main_product = recipe.results[1].name
+    end
+    table.insert(recipe.results, {
+        type = "item",
+        name = item_name,
+        amount = 1,
+        independent_probability = probability,
+    })
+    return true
+end
+
 -- The recycling recipes the recycler generated, as recipe name --> true: the recycler's from before randomization in old_raw (whatever randomization did to them since, like renaming what they recycle), and ones regeneration made in raw
 -- Hand-written recycling recipes, like scrap recycling, aren't among them
 recycling.generated_names = function(raw, old_raw)

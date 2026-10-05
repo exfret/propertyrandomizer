@@ -119,10 +119,10 @@ test("lib/logic declares protection on exactly the intended node types", functio
     local declared = declared_protection()
     assert(declared["group-starter-ammo"] == "true")
     assert(declared["balance-gun-turret"] == "true")
-    assert(declared["science-pack-set-science"] == "true")
-    assert(declared["science-pack-set-lab"] == "true")
-    -- Items are protected exactly when they're lab inputs
-    assert(declared["item"] == "is_science_pack or nil")
+    -- Science production and labs may depend on imports; planet-locked recipe goals are checked separately.
+    assert(declared["science-pack-set-science"] == nil)
+    assert(declared["science-pack-set-lab"] == nil)
+    assert(declared["item"] == nil)
     -- Rocket building (logic node types from lib/logic/abstract.lua and concrete.lua): a planet that could build and launch rockets from its own resources still can
     assert(declared["room-launch"] == "true")
     assert(declared["room-create-platform"] == "true")
@@ -138,7 +138,7 @@ test("lib/logic declares protection on exactly the intended node types", functio
     for _, _ in pairs(declared) do
         num_declared = num_declared + 1
     end
-    assert(num_declared == 14, "unexpected keep_isolatability declarations")
+    assert(num_declared == 11, "unexpected keep_isolatability declarations")
 end)
 
 test("balance starter ammo isn't protected (the unified pipeline doesn't build balance.lua; group-starter-ammo is the starter ammo mechanic)", function()
