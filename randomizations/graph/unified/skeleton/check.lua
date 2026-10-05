@@ -117,7 +117,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
     -- Promised pebbles missing from the final game show where promotion's model and the reflected game disagree
     -- Item-derived nodes (item, item-craft, item-launch, entity-build-item, ...) are skipped since first pass renames items: the model keys them by position, the final game by the item now at that position
     -- Nodes named after fluids (fluid, fluid-temperature, fluid-create, ..., and mining-fluid bases) are skipped for the same reason, since first pass renames fluids too (see lib/item-fluid.lua)
-    -- A technology-trigger node is named after its technology, and research trigger randomization trades triggers (handlers/tech-triggers.lua): the model's node is a technology's old trigger, which in the final game is the node of each technology that took it (UNIFIED_TRIGGER_TAKERS), so it's compared at each of those, and nowhere if none did
+    -- Trigger promises follow the technologies carrying that research method, including copies made by the tree rebuild (lib/technology-trigger-promises.lua).
     local function final_promised_keys(node_key, node)
         if node.type ~= "technology-trigger" or UNIFIED_TRIGGER_TAKERS == nil or UNIFIED_TRIGGER_TAKERS[node.name] == nil then
             return { node_key }
@@ -134,6 +134,13 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
         local mismatches = {}
         for _, pebble in pairs(UNIFIED_PROMISED_PEBBLES) do
             local node = graph.nodes[pebble.node_key]
+            if node == nil then
+                local model_node = gutils.deconstruct(pebble.node_key)
+                -- Hiding the original technology removes its node from the final graph, but its copied triggers still owe the model's promises.
+                if model_node.type == "technology-trigger" then
+                    node = model_node
+                end
+            end
             local named_after_fluid = config.item_fluids and (string.sub(node ~= nil and node.type or "", 1, 5) == "fluid" or (node ~= nil and node.type == "mining-fluid"))
             if node ~= nil and string.find(node.type, "item", 1, true) == nil and not named_after_fluid then
                 for _, final_node_key in pairs(final_promised_keys(pebble.node_key, node)) do

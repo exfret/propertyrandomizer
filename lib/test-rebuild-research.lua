@@ -91,6 +91,7 @@ recipe("test-target-recipe")
 tech("test-material-tech", "test-material-recipe")
 tech("test-copied-tech", "test-target-recipe", true)
 tech("test-alternate-tech", "test-target-recipe")
+UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-tech" } }
 
 logic.build = function()
     local graph = {
@@ -130,4 +131,7 @@ assert(rebuilt.research_trigger.item == "test-trigger-material")
 assert(rebuilt.research_trigger.count == 630)
 assert(#rebuilt.prerequisites == 1)
 assert(rebuilt.prerequisites[1] == "exfret-rebuilt-test-material-recipe-suffix")
+assert(data.raw.technology["test-copied-tech"].hidden == true)
+assert(#UNIFIED_TRIGGER_TAKERS["test-original-trigger"] == 1)
+assert(UNIFIED_TRIGGER_TAKERS["test-original-trigger"][1] == rebuilt.name)
 print("ok - rebuilt trigger technology requires its crafting recipe despite an earlier alternate unlock")

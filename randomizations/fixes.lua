@@ -17,6 +17,7 @@ local technology_abilities = require("lib/technology-abilities")
 local operation_unlocks = require("lib/logic/operation-unlocks")
 local technology_prerequisites = require("lib/technology-prerequisites")
 local rebuild_unlocks = require("lib/rebuild-unlocks")
+local trigger_promises = require("lib/technology-trigger-promises")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -375,9 +376,7 @@ randomizations.rebuild_tech_tree = function()
             needed_tech_to_prev[node.name] = prev_recipes_of(ind)
         end
     end
-
-    -- The recipe witness may have used a different unlock from the technology whose research descriptor we copied.
-    -- Include that descriptor's own witness too, including crafting/mining/etc. needed for research triggers.
+    -- Preserve the research method actually copied, including its crafting/mining triggers.
     local research_recipes = {}
     for recipe_name, _ in pairs(recipe_to_prev) do
         if gets_tech(recipe_name) then
@@ -430,6 +429,7 @@ randomizations.rebuild_tech_tree = function()
 
     local new_techs_with_unit = {}
     local is_new_tech = {}
+    local copied_trigger_sources = {}
     for recipe_name, prev_recipes in pairs(recipe_to_prev) do
         local recipe = data.raw.recipe[recipe_name]
 
@@ -471,6 +471,7 @@ randomizations.rebuild_tech_tree = function()
                 new_tech.unit = recipe_to_unit[recipe_name]
             elseif recipe_to_research_trigger[recipe_name] ~= nil then
                 new_tech.research_trigger = recipe_to_research_trigger[recipe_name]
+                copied_trigger_sources[new_tech.name] = recipe_to_source_tech[recipe_name]
             end
             if new_tech.unit ~= nil or new_tech.research_trigger ~= nil then
                 data:extend({
@@ -580,6 +581,7 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     technology_prerequisites.reduce(data.raw.technology)
+    trigger_promises.rebuild(data.raw.technology, copied_trigger_sources)
     if config.operation_readiness == true then
         operation_unlocks.run()
     end

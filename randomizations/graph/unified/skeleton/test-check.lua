@@ -198,4 +198,83 @@ test("missing home backings do not fail when protected room contexts are kept", 
     assert(verdict.ok and verdict.missing == 0)
 end)
 
+test("trigger promises survive removal of the model's original technology", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local original = gutils.key("technology-trigger", "test-original-trigger")
+    local copied = gutils.key(gutils.add_node(graph, "technology-trigger", "test-copied-trigger", { op = "OR" }))
+    UNIFIED_TRIGGER_TAKERS = { ["test-original-trigger"] = { "test-copied-trigger" } }
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = original,
+            context = "test-room | 00",
+            rank = 1,
+        },
+    }
+    local before = { node_to_context_inds = {} }
+    local after = { node_to_context_inds = { [copied] = { ["test-room | 00"] = 1 } } }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(verdict.ok and verdict.missing == 0)
+    after.node_to_context_inds[copied] = nil
+    verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(not verdict.ok and verdict.missing == 1)
+    UNIFIED_TRIGGER_TAKERS = nil
+    UNIFIED_PROMISED_PEBBLES = nil
+end)
+
+test("every copied trigger owes the promised context", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local original = gutils.key(gutils.add_node(graph, "technology-trigger", "test-original-trigger", { op = "OR" }))
+    local ready = gutils.key(gutils.add_node(graph, "technology-trigger", "test-ready-trigger", { op = "OR" }))
+    gutils.add_node(graph, "technology-trigger", "test-blocked-trigger", { op = "OR" })
+    UNIFIED_TRIGGER_TAKERS = {
+        ["test-original-trigger"] = {
+            "test-ready-trigger",
+            "test-blocked-trigger",
+        },
+    }
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = original,
+            context = "test-room | 00",
+            rank = 1,
+        },
+    }
+    local before = { node_to_context_inds = {} }
+    local after = { node_to_context_inds = {} }
+    after.node_to_context_inds[ready] = { ["test-room | 00"] = 1 }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(not verdict.ok and verdict.missing == 1)
+    UNIFIED_TRIGGER_TAKERS = nil
+    UNIFIED_PROMISED_PEBBLES = nil
+end)
+
+test("an unused trigger has no final carrier to check", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    UNIFIED_TRIGGER_TAKERS = { ["test-unused-trigger"] = {} }
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = gutils.key("technology-trigger", "test-unused-trigger"),
+            context = "test-room | 00",
+            rank = 1,
+        },
+    }
+    local sorted = { node_to_context_inds = {} }
+    local verdict = check.run(graph, sorted, sorted, "UNIFIEDCHECK")
+    assert(verdict.ok and verdict.missing == 0)
+    UNIFIED_TRIGGER_TAKERS = nil
+    UNIFIED_PROMISED_PEBBLES = nil
+end)
+
 print(num_passed .. " checker tests passed")
