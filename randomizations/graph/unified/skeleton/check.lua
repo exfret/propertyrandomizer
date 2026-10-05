@@ -101,7 +101,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
     local lost_recipes = {}
     for node_key, init_context_inds in pairs(init_sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
-        if node ~= nil and node.type == "recipe" and next(init_context_inds) ~= nil then
+        if node ~= nil and node.type == "recipe" and next(init_context_inds) ~= nil and (data.raw.recipe[node.name] or {}).recycling_origin == nil then
             num_recipes = num_recipes + 1
             if next(final_sort_info.node_to_context_inds[node_key] or {}) == nil then
                 table.insert(lost_recipes, node_key)

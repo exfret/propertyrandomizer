@@ -3,6 +3,8 @@
 -- The functions below follow those two files step by step, reading from a given prototype table (data.raw, or old_data_raw for what the recycler generated before randomization)
 -- Recycling recipes the recycler didn't generate (like scrap recycling, which is written by hand) are left alone
 
+local surface_sets = require("lib/surface-sets")
+
 local recycling = {}
 
 local recycling_category = "recycling"
@@ -237,6 +239,9 @@ end
 -- Whether recipe has the shape the recycler gives every recipe it generates (named after its one item ingredient, only in the recycling category, hidden, and not unlocking its results), which hand-written ones like scrap recycling don't
 -- Regeneration numbers the name when another item's recycling has it ("<item>-recycling-2"), so a numbered name counts too; otherwise the next call wouldn't see the recipe as its own and would make another one for the same item
 recycling.looks_generated = function(recipe)
+    if recipe.recycling_origin ~= nil then
+        return true
+    end
     if recipe.hidden ~= true or recipe.unlock_results ~= false then
         return false
     end
@@ -338,7 +343,7 @@ recycling.vanilla = function(raw)
     local info = {}
     for recycling_name, recipe in pairs(raw.recipe) do
         if recycling.looks_generated(recipe) then
-            local entry = generated[recycling_name] or {}
+            local entry = recipe.recycling_origin or generated[recycling_name] or {}
             info[recycling_name] = {
                 source = entry.source,
                 reversed = entry.reversed,
@@ -396,6 +401,12 @@ end
 -- Every generated recycling recipe is unlocked from the start
 recycling.regenerate = function(old_raw)
     local raw = data.raw
+    for _, recipe in pairs(raw.recipe) do
+        if recipe.recycling_origin ~= nil then
+            recycling.regenerate_planetary(old_raw)
+            return
+        end
+    end
     local vanilla = recycling.vanilla(old_raw)
     if next(vanilla) == nil then
         return
@@ -492,6 +503,261 @@ recycling.regenerate = function(old_raw)
             local recipe = generated[recycling_name].recipe
             recipe.enabled = true
             raw.recipe[recycling_name] = recipe
+        end
+    end
+end
+
+-- Candidates keep stable source identities through first pass; their accepted rooms change with the physical input.
+-- The same selector is used by the graph and final regeneration.
+recycling.planetary_scopes = function(raw, material_for, accepted)
+    local choices = {}
+    local scopes = {}
+    local reserved = {}
+    local ambiguities = {}
+    for _, name in pairs(sorted_keys(raw.recipe)) do
+        local recipe = raw.recipe[name]
+        local origin = recipe.recycling_origin
+        if origin ~= nil then
+            scopes[name] = {}
+            local input = material_for(recipe, "ingredients", recipe.ingredients[1])
+            if input ~= nil and input.type == "item" then
+                for room, _ in pairs(origin.available) do
+                    choices[room] = choices[room] or {}
+                    choices[room][input.name] = choices[room][input.name] or {}
+                    table.insert(choices[room][input.name], name)
+                end
+            end
+        elseif has_recycling_category(recipe) and #(recipe.ingredients or {}) == 1 then
+            local input = material_for(recipe, "ingredients", recipe.ingredients[1])
+            if input ~= nil and input.type == "item" then
+                for room, _ in pairs(accepted(recipe)) do
+                    reserved[room] = reserved[room] or {}
+                    reserved[room][input.name] = true
+                end
+            end
+        end
+    end
+    local function priority(name, item)
+        local origin = raw.recipe[name].recycling_origin
+        local prototype = get_prototype(raw, "item", item)
+        local seen = {}
+        while prototype ~= nil and prototype.orig_name ~= nil and seen[item] == nil do
+            seen[item] = true
+            item = prototype.orig_name
+            prototype = get_prototype(raw, "item", item)
+        end
+        return (origin.local_source == true and 8 or 0)
+            + (origin.base_name == item and 4 or 0)
+            + (origin.preferred == true and 2 or 0)
+            + (origin.source ~= nil and origin.reversed ~= nil and 1 or 0)
+    end
+    local function signature(name)
+        local result = {}
+        for _, entry in pairs(raw.recipe[name].results or {}) do
+            local material = material_for(raw.recipe[name], "results", entry)
+            if material ~= nil and material.type == "item" then
+                table.insert(result, material.name .. ":" .. tostring(entry.amount) .. ":" .. tostring(entry.extra_count_fraction))
+            end
+        end
+        table.sort(result)
+        return table.concat(result, ";")
+    end
+    local function ingredient_count(name)
+        return raw.recipe[name].recycling_origin.original_ingredient_count or math.huge
+    end
+    for room, items in pairs(choices) do
+        for item, names in pairs(items) do
+            table.sort(names, function(a, b)
+                local pa = priority(a, item)
+                local pb = priority(b, item)
+                if pa ~= pb then return pa > pb end
+                local ca, cb = ingredient_count(a), ingredient_count(b)
+                return ca < cb or (ca == cb and a < b)
+            end)
+            if (reserved[room] or {})[item] == nil then
+                scopes[names[1]][room] = true
+                local best = signature(names[1])
+                for i = 2, #names do
+                    if priority(names[i], item) == priority(names[1], item)
+                        and ingredient_count(names[i]) == ingredient_count(names[1]) and signature(names[i]) ~= best then
+                        table.insert(ambiguities, room .. " / " .. item .. ": " .. names[1] .. " or " .. names[i])
+                    end
+                end
+            end
+        end
+    end
+    table.sort(ambiguities)
+    return scopes, ambiguities
+end
+
+local recycling_pool = {}
+for i, entry in pairs(surface_sets.POOL) do
+    recycling_pool[i] = {
+        name = "propertyrandomizer-recycling-" .. i,
+        step = entry.step,
+    }
+end
+
+local function apply_scopes(scopes)
+    local requests = {}
+    for name, rooms in pairs(scopes) do
+        table.insert(requests, {
+            id = name,
+            rooms = rooms,
+        })
+    end
+    local plan = surface_sets.plan_growing(requests, surface_sets.room_keys(), recycling_pool)
+    surface_sets.apply_properties(plan, recycling_pool)
+    for i, property in pairs(plan.properties) do
+        local prototype = data.raw["surface-property"][property.name]
+        prototype.localised_name = { "propertyrandomizer-name.numbered", { "surface-property-name.propertyrandomizer-recycling-region" }, tostring(i) }
+        prototype.localised_unit_key = "surface-property-unit.propertyrandomizer-recycling-region"
+    end
+    -- An empty room set is intentionally unavailable; keep its prototype for later assignments.
+    local nowhere = "propertyrandomizer-recycling-unavailable"
+    data:extend({
+        {
+            type = "surface-property",
+            name = nowhere,
+            default_value = 0,
+        },
+    })
+    for name, rooms in pairs(scopes) do
+        local recipe = data.raw.recipe[name]
+        recipe.surface_conditions = plan.conditions[name] or { { property = nowhere, min = 1, max = 1 } }
+        recipe.recycling_rooms = table.deepcopy(rooms)
+    end
+end
+
+local function physical_entry(_, _, entry)
+    return entry
+end
+
+-- Prepare all local alternatives before the initial graph, including alternatives inactive until identities move.
+-- Existing global recycling remains a fallback outside the winning local recipe's rooms.
+recycling.prepare_planetary = function()
+    local raw = data.raw
+    local original = recycling.vanilla(raw)
+    if next(original) == nil then
+        return
+    end
+    for _, recipe in pairs(raw.recipe) do
+        if recipe.recycling_origin ~= nil then
+            return
+        end
+    end
+    local all_rooms = {}
+    for _, room in pairs(surface_sets.room_keys()) do
+        all_rooms[room] = true
+    end
+    local preferred = {}
+    for _, entry in pairs(original) do
+        if entry.source ~= nil then
+            preferred[entry.source] = true
+        end
+    end
+    local function origin(source, reversed, rooms, is_local)
+        -- Capture complexity before ingredient randomization, so graph selection and regeneration agree.
+        -- Count distinct materials, including fluids; quantities and duplicate rows do not add complexity.
+        local original_source = raw.recipe[source]
+        local ingredient_count = original_source ~= nil and 0 or nil
+        local materials = {}
+        for _, ingredient in pairs(original_source ~= nil and original_source.ingredients or {}) do
+            local key = (ingredient.type or "item") .. ":" .. ingredient.name
+            if materials[key] == nil then
+                materials[key] = true
+                ingredient_count = ingredient_count + 1
+            end
+        end
+        local base_name = source
+        local was_preferred = false
+        local seen = {}
+        while base_name ~= nil and seen[base_name] == nil do
+            seen[base_name] = true
+            was_preferred = was_preferred or preferred[base_name] == true
+            local ancestor = raw.recipe[base_name]
+            if ancestor == nil or ancestor.orig_name == nil then break end
+            base_name = ancestor.orig_name
+        end
+        return {
+            source = source,
+            reversed = reversed,
+            available = table.deepcopy(rooms),
+            local_source = is_local,
+            base_name = base_name,
+            preferred = was_preferred,
+            original_ingredient_count = ingredient_count,
+        }
+    end
+    local additions = {}
+    for _, name in pairs(sorted_keys(raw.recipe)) do
+        local source = raw.recipe[name]
+        if original[name] == nil and (source.dupe_number ~= nil or source.intermediate_planet ~= nil) then
+            local recipe, reversed = reverse_recipe(raw, source)
+            if recipe ~= nil then
+                recipe.name = "propertyrandomizer-local-recycling-" .. name
+                assert(raw.recipe[recipe.name] == nil, "Recycling variant name already exists: " .. recipe.name)
+                recipe.recycling_origin = origin(name, reversed, surface_sets.accepted(source), true)
+                recipe.enabled = true
+                additions[recipe.name] = recipe
+            end
+        end
+    end
+    if next(additions) == nil then
+        return
+    end
+    for name, entry in pairs(original) do
+        raw.recipe[name].recycling_origin = origin(entry.source, entry.reversed, all_rooms, false)
+    end
+    for name, recipe in pairs(additions) do
+        raw.recipe[name] = recipe
+    end
+    vanilla_cache = {}
+    apply_scopes(recycling.planetary_scopes(raw, physical_entry, surface_sets.accepted))
+end
+
+-- Keep every candidate's name and source; only its surface scope competes with other candidates.
+recycling.regenerate_planetary = function(old_raw)
+    local raw = data.raw
+    for _, name in pairs(sorted_keys(raw.recipe)) do
+        local previous = raw.recipe[name]
+        local origin = previous.recycling_origin
+        if origin ~= nil then
+            local source = raw.recipe[origin.source]
+            local recipe = source ~= nil and origin.reversed ~= nil and reverse_recipe(raw, source) or nil
+            if recipe == nil then
+                local input = previous.ingredients and previous.ingredients[1]
+                local item = input ~= nil and input.type == "item" and get_prototype(raw, "item", input.name) or nil
+                recipe = item ~= nil and self_recycling_recipe(raw, item) or nil
+            end
+            if recipe ~= nil then
+                recipe.name = name
+                recipe.recycling_origin = table.deepcopy(origin)
+                recipe.enabled = true
+                raw.recipe[name] = recipe
+            else
+                -- A fluid took this position; its candidate has no physical recycler input.
+                previous.results = {}
+                previous.recycling_origin.available = {}
+            end
+        end
+    end
+    local scopes, ambiguities = recycling.planetary_scopes(raw, physical_entry, surface_sets.accepted)
+    apply_scopes(scopes)
+    log("Planet recycling: " .. #ambiguities .. " equally ranked alternatives with different returns")
+    for i = 1, math.min(#ambiguities, 12) do
+        log("Planet recycling ambiguity: " .. ambiguities[i])
+    end
+    for _, technology in pairs(raw.technology or {}) do
+        local kept = {}
+        for _, effect in pairs(technology.effects or {}) do
+            local recipe = effect.type == "unlock-recipe" and raw.recipe[effect.recipe] or nil
+            if recipe == nil or recipe.recycling_origin == nil then
+                table.insert(kept, effect)
+            end
+        end
+        if technology.effects ~= nil then
+            technology.effects = kept
         end
     end
 end

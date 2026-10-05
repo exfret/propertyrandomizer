@@ -5,6 +5,8 @@ local recycling_sources = require("lib/logic/recycling-sources")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
+local mining_results = require("randomizations/graph/unified/handlers/mining-results")
+local local_slots = require("randomizations/graph/unified/handler-helpers/local-production-slots")
 local top = require("lib/graph/context-sort")
 
 local base_costs = require("lib/cost/material-costs/sa")
@@ -228,7 +230,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
     local identity_at = {}
     for slot_key, trav_key in pairs(slot_to_trav) do
         local slot = split_graph.nodes[slot_key]
-        if slot ~= nil then
+        if slot ~= nil and slot.production_slot == nil and (slot.mining_slot == nil or slot.mining_slot.primary == true) then
             local position = item_fluid.material_of_node(split_graph, slot)
             local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
             if position ~= nil and identity ~= nil then
@@ -237,7 +239,6 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
     -- First pass gated this assignment as reflection realizes it (see item_fluid.realized_assignment), so it's applied as it is
-    local reflected_positions = item_fluid.reflected_positions(identity_at)
     -- The new pairings, for reading a game's log (the old greedy first pass logged each one as it made it): each position that holds another identity now, with that identity
     -- Item randomization only runs among the unified randomizations still in development, so this only shows up in dev mode
     local moved_positions = {}
@@ -258,8 +259,82 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
     log("Item randomization: " .. #moved_positions .. " positions hold another identity")
+    for recipe_name, recipe in pairs(data.raw.recipe) do
+        for _, field in pairs({
+            "ingredients",
+            "results",
+        }) do
+            for _, entry in pairs(recipe[field] or {}) do
+                local position_key = local_slots.position(split_graph, recipe_name, entry, field)
+                local trav_key = position_key ~= nil and slot_to_trav[position_key] or nil
+                if trav_key ~= nil then
+                    local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+                    if identity.type ~= (entry.type or "item") then
+                        local multiplier = item_fluid.form_multiplier({
+                            split_graph = split_graph,
+                            trav_to_mechanics_key = trav_to_mechanics_key,
+                            mechanics_sets_to_nodes = mechanics_sets_to_nodes,
+                            mechanics_sets_to_ordered = mechanics_sets_to_ordered,
+                        }, position_key, trav_key, material_to_cost)
+                        local converted = item_fluid.retarget_entry(entry, identity, multiplier)
+                        if field == "ingredients" then converted.temperature = nil end
+                        local fields = {}
+                        for prop, _ in pairs(entry) do fields[prop] = true end
+                        for prop, _ in pairs(converted) do fields[prop] = true end
+                        for prop, _ in pairs(fields) do
+                            local amount = prop == "amount" or prop == "amount_min" or prop == "amount_max"
+                            if prop ~= "name" and (entry[prop] ~= converted[prop] or amount) then
+                                table.insert(changes, {
+                                    tbl = entry,
+                                    prop = prop,
+                                    new_val = amount and entry[prop] * multiplier or converted[prop],
+                                    is_ing_or_result = amount,
+                                    ingredients = field == "ingredients",
+                                    recipe = recipe,
+                                })
+                            end
+                        end
+                    end
+                    table.insert(changes, {
+                        tbl = entry,
+                        prop = "name",
+                        new_val = identity.name,
+                    })
+                    if identity.type == "fluid" and identity.name ~= entry.name then
+                        for _, temperature_key in pairs(item_fluid.FORM_ONLY_FIELDS.fluid) do
+                            if temperature_key == "temperature" or temperature_key == "minimum_temperature" or temperature_key == "maximum_temperature" then
+                                table.insert(changes, {
+                                    tbl = entry,
+                                    prop = temperature_key,
+                                    new_val = field == "results" and temperature_key == "temperature" and identity.temperature or nil,
+                                })
+                            end
+                        end
+                    end
+                    local main = dutils.recipe_main_product(recipe)
+                    if field == "results" and main ~= nil and main.type == entry.type and main.name == entry.name then
+                        if recipe.main_product == entry.name then
+                            table.insert(changes, {
+                                tbl = recipe,
+                                prop = "main_product",
+                                new_val = identity.name,
+                            })
+                        end
+                        renamed_recipes[recipe_name] = identity
+                    end
+                end
+                if entry.first_pass_position ~= nil then
+                    table.insert(changes, {
+                        tbl = entry,
+                        prop = "first_pass_position",
+                        new_val = nil,
+                    })
+                end
+            end
+        end
+    end
     UNIFIED_MATERIAL_RENAMES = {}
-    for trav_key, slot_key in pairs(trav_to_slot) do
+    for slot_key, trav_key in pairs(slot_to_trav) do
     --for head_key, base_key in pairs(head_to_base) do
         -- Since items are OR nodes, first pass actually deals with orands
         --[[local slot = split_graph.nodes[split_graph.orand_to_parent[slot_key] ]
@@ -274,18 +349,11 @@ item.reflect = function(graph, head_to_base, head_to_handler)
         local slot = split_graph.nodes[slot_key]
         local trav = split_graph.nodes[trav_key]
         -- Item and fluid positions, as {type, name}; others (entity positions) are the entity handler's
-        local position = slot ~= nil and item_fluid.material_of_node(split_graph, slot) or nil
+        local position = slot ~= nil and slot.production_slot == nil and (slot.mining_slot == nil or slot.mining_slot.primary == true) and item_fluid.material_of_node(split_graph, slot) or nil
         local identity = item_fluid.material_of_node(split_graph, trav)
         if position ~= nil and identity ~= nil then
-            -- Useless materials aren't swapped with each other, so a useless identity can be at a different position than the matching's (see item_fluid.realized_assignment, which first pass models too), or kept at its own
-            local reflected_position = reflected_positions[item_fluid.material_key(identity)]
-            if reflected_position == nil then
-                -- Don't actually do the switch in this case
-            else
-                if reflected_position ~= item_fluid.material_key(position) then
-                    log(identity.name .. " NOW WITH " .. position.name)
-                    position = gutils.deconstruct(reflected_position)
-                end
+            -- First pass already realized and gated these pairs. Apply every position separately, including repeated physical identities.
+            if item_fluid.reflects_pair(position, identity) then
                 -- The prototypes of the position's own material and of the identity, each in its own form
                 local slot_item = item_fluid.prot(position)
                 local trav_item = item_fluid.prot(identity)
@@ -383,7 +451,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                             if not (material_property == "ingredients" and dont_process_recipe_ings(recipe)) then
                                 if recipe[material_property] ~= nil then
                                     for _, ing_or_prod in pairs(recipe[material_property]) do
-                                        if ing_or_prod.type == position.type and ing_or_prod.name == position.name then
+                                        if ing_or_prod.type == position.type and ing_or_prod.name == position.name and local_slots.position(split_graph, recipe.name, ing_or_prod, material_property) == nil then
                                             table.insert(changes, {
                                                 tbl = ing_or_prod,
                                                 prop = "name",
@@ -440,8 +508,10 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                         -- Recycling recipes are named after what they recycle instead, and fixes.lua renames them after all item randomization
                         local main_product = dutils.recipe_main_product(recipe)
                         local fix_localised = main_product ~= nil and main_product.type == position.type and main_product.name == position.name
+                            and local_slots.position(split_graph, recipe.name, main_product, "results") == nil
                             and recycling_sources.named_after_ingredient(old_data_raw.recipe, recipe.name) == nil
-                        if recipe.main_product == position.name and main_product ~= nil and main_product.type == position.type then
+                        if recipe.main_product == position.name and main_product ~= nil and main_product.type == position.type
+                            and local_slots.position(split_graph, recipe.name, main_product, "results") == nil then
                             table.insert(changes, {
                                 tbl = recipe,
                                 prop = "main_product",
@@ -502,8 +572,8 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                         return math.min(65535, new_amount)
                                     end
                                     if entity.minable.results ~= nil then
-                                        for _, result in pairs(entity.minable.results) do
-                                            if (result.type or "item") == position.type and result.name == position.name then
+                                        for result_index, result in pairs(entity.minable.results) do
+                                            if (result.type or "item") == position.type and result.name == position.name and not mining_results.manages_result(entity.name, result_index) then
                                                 table.insert(changes, {
                                                     tbl = result,
                                                     prop = "name",
@@ -547,7 +617,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                                 has_result = true
                                             end
                                         end
-                                    elseif position.type == "item" and entity.minable.result == position.name then
+                                    elseif position.type == "item" and entity.minable.result == position.name and not mining_results.manages_result(entity.name, 1) then
                                         if changes_form then
                                             -- The single item result and its count (MinableProperties::result and count) become a results list holding the fluid
                                             table.insert(changes, {
@@ -848,6 +918,16 @@ end
 -- Renamed recipes take their new item's name and icon, with a prefix and a number badge where several share it (lib/recipe-renames.lua)
 item.after_changes = function()
     recipe_renames.apply(renamed_recipes, old_data_raw.recipe, rng.key({id = "unified-item"}))
+end
+
+item.after_reflection = function()
+    for _, recipe in pairs(data.raw.recipe) do
+        if not item_fluid.merge_fluid_ingredients(recipe) then
+            log("Item reflection: conflicting temperature requirements for a merged fluid in " .. recipe.name)
+            return false
+        end
+    end
+    return true
 end
 
 return item

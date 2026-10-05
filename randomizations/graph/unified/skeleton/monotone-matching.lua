@@ -18,6 +18,8 @@ local rng = require("lib/random/rng")
 local logic = require("lib/logic/init")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local superpose = require("lib/graph/superpose")
+local operation_requirements = require("lib/logic/operation-requirements")
+local weighted_matching = require("lib/graph/weighted-matching")
 
 local key = gutils.key
 
@@ -43,7 +45,8 @@ end
 
 -- Connect each slot to its assigned trav: slot base --> trav head, plus trav --> slot for items, since reflection makes them the same physical item (so the slot's consumers also get the trav's identity-based sources, like delivery and spoilage)
 -- A fluid position (a fluid-temperature node, an AND of being made and being held, see lib/logic/concrete.lua) gets the same back edge into its making (fluid-create-temperature): its consumers can then use the identity's own sources too, pumping and barrels for a fluid identity (lib/item-fluid.lua moves those to the identity) or delivery for an item identity, which is how a recipe locked to a planet that doesn't make the fluid still gets it there
--- Only when the trav is an OR node (an item, or a fluid with sources of its own): a fluid trav without them is an AND node fed by its head alone, so the edge would add nothing but a cycle through AND nodes, which needs derivation can't follow
+-- A fluid identity with independent mining sources needs this back edge too, even when its holding prerequisites make it an AND node.
+-- Otherwise only OR identities get it: an AND identity fed by its head alone would gain nothing but a cycle through AND nodes, which needs derivation cannot follow.
 -- The slot_to_base and trav_to_head connectors come from params, and params.connect_extra(graph, slot_key, trav_key) (optional) connects anything else that follows the pair
 local function connect(graph, params, assignment)
     for slot_key, trav_key in pairs(assignment) do
@@ -57,18 +60,21 @@ local function connect(graph, params, assignment)
         end
         gutils.add_edge(graph, connection.base or key(params.slot_to_base[slot_key]), key(params.trav_to_head[trav_key]), extra)
         if slot.type == "item" and slot.op == "OR" then
-            gutils.add_edge(graph, trav_key, slot_key)
-        elseif slot.type == "fluid-temperature" and graph.nodes[trav_key].op == "OR" then
+            gutils.add_edge(graph, trav_key, slot_key, { identity_supply = true })
+        elseif slot.type == "fluid-temperature" and (graph.nodes[trav_key].op == "OR" or graph.nodes[trav_key].shares_mining_identity == true) then
             for pre, _ in pairs(slot.pre) do
                 local prenode = gutils.prenode(graph, pre)
                 if prenode.type == "fluid-create-temperature" then
-                    gutils.add_edge(graph, trav_key, key(prenode))
+                    gutils.add_edge(graph, trav_key, key(prenode), { identity_supply = true })
                 end
             end
         end
         if params.connect_extra ~= nil then
-            params.connect_extra(graph, slot_key, trav_key)
+            params.connect_extra(graph, slot_key, trav_key, assignment)
         end
+    end
+    if params.connect_assignment ~= nil then
+        params.connect_assignment(graph, assignment)
     end
     return graph
 end
@@ -397,61 +403,215 @@ local function needs_from_proof(graph, sort_info, closure, support, assignment, 
 
     local requires_launchable = {}
     local genuine = {}
+    local identity_deadlines = {}
     local function is_genuine(q, trav_key)
         if genuine[q] ~= nil then
             return genuine[q]
         end
         genuine[q] = false
-        local result = false
+        local result = users[q] == nil
+        local deadline = result and q or nil
         for _, u in pairs(users[q] or {}) do
             local u_key = sorted[u].node_key
-            if u_key == slot_of[trav_key] then
+            local user = graph.nodes[u_key]
+            local edge = graph.edges[gutils.ekey({ start = sorted[q].node_key, stop = u_key })]
+            if user.slot == true then
+                -- A position consumes its newly assigned material, not this old identity.
+                -- position_needs proves its replacement's supply separately.
                 if is_delivered(q, trav_key) then
                     requires_launchable[u_key] = true
-                else
-                    result = true
                 end
-            elseif chain_of[u_key] == trav_key or u_key == trav_key then
+            elseif chain_of[u_key] == trav_key or u_key == trav_key or (edge ~= nil and edge.shared_identity == true) then
                 if is_genuine(u, trav_key) then
                     result = true
+                    deadline = math.min(deadline or math.huge, identity_deadlines[u])
                 end
             else
                 result = true
+                deadline = math.min(deadline or math.huge, u)
             end
         end
         genuine[q] = result
+        identity_deadlines[q] = deadline
         return result
     end
 
+    local function consumer_deadline(q, seen, craft_only)
+        if seen[q] then
+            return nil
+        end
+        seen[q] = true
+        local earliest
+        for _, user in pairs(users[q] or {}) do
+            local node = graph.nodes[sorted[user].node_key]
+            local deadline
+            if node.identity_connection ~= true and not (craft_only and (node.slot == true or node.craft_identity == true)) then
+                if node.type == "base" or node.type == "head" or node.type == "orand" then
+                    deadline = consumer_deadline(user, seen, craft_only)
+                else
+                    deadline = user
+                end
+            end
+            if deadline ~= nil and (earliest == nil or deadline < earliest) then
+                earliest = deadline
+            end
+        end
+        return earliest
+    end
+
     local needs = {}
+    local position_needs = {}
+    local craft_needs = {}
+    local craft_position_needs = {}
     for q, _ in pairs(closure) do
         local pebble = sorted[q]
         local node = graph.nodes[pebble.node_key]
+        if node.slot == true then
+            position_needs[pebble.node_key] = position_needs[pebble.node_key] or {}
+            -- The consumer's proof rank is the deadline, rather than the slot's first arrival.
+            -- A shared material can arrive by import long before this position can produce it.
+            local deadline = consumer_deadline(q, {})
+            if deadline ~= nil then
+                position_needs[pebble.node_key][pebble.context] = deadline
+            end
+        end
+        if node.craft_position ~= nil and graph.nodes[node.craft_position].production_slot == nil then
+            local deadline = consumer_deadline(q, {}, true)
+            if deadline ~= nil then
+                craft_position_needs[node.craft_position] = craft_position_needs[node.craft_position] or {}
+                craft_position_needs[node.craft_position][pebble.context] = deadline
+            end
+        end
+        if node.craft_identity == true then
+            for _, j in pairs(support[q] or {}) do
+                local edge = graph.edges[gutils.ekey({ start = sorted[j].node_key, stop = pebble.node_key })]
+                if edge ~= nil and edge.craft_supplier ~= nil then
+                    local supplier = edge.craft_supplier
+                    craft_needs[supplier] = craft_needs[supplier] or {}
+                    craft_needs[supplier][pebble.context] = math.min(craft_needs[supplier][pebble.context] or q, q)
+                end
+            end
+        end
         if node.trav and slot_of[pebble.node_key] ~= nil then
-            if is_genuine(q, pebble.node_key) and not is_delivered(q, pebble.node_key) then
+            local borrowed_identity = false
+            for _, j in pairs(support[q] or {}) do
+                local edge = graph.edges[gutils.ekey({
+                    start = sorted[j].node_key,
+                    stop = pebble.node_key,
+                })]
+                if edge ~= nil and edge.shared_identity == true then
+                    borrowed_identity = true
+                end
+            end
+            -- An alias reading another copy's supply adds no acquisition requirement of its own.
+            -- The producing copy on the same proof already records the material's requirement.
+            if not borrowed_identity and is_genuine(q, pebble.node_key) and not is_delivered(q, pebble.node_key) then
                 needs[pebble.node_key] = needs[pebble.node_key] or {}
-                needs[pebble.node_key][pebble.context] = true
+                needs[pebble.node_key][pebble.context] = identity_deadlines[q]
             end
         end
     end
-    return needs, requires_launchable
+    return needs, requires_launchable, position_needs, craft_needs, craft_position_needs
 end
 
 ----------------------------------------------------------------------------------------------------
 -- Matching
 ----------------------------------------------------------------------------------------------------
 
--- Whether a resource slot's trav makes the resource mine something new: an interesting trav (params.is_interesting) other than the slot's own identity
+-- Whether a resource slot mines something new: an interesting traveller whose physical material differs from the original (when is_new_resource_pair is supplied).
 -- Reflection keeps interesting travs where the matching puts them, but doesn't swap two useless items (ores count as useless), so a useless trav usually leaves the resource as it was
 local function is_new_resource_trav(params, slot_key, trav_key)
-    return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key)
+    return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key, slot_key) and (params.is_new_resource_pair == nil or params.is_new_resource_pair(slot_key, trav_key))
 end
 
--- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)
+local function native_production(graph, sort_info)
+    local nci = sort_info.node_to_context_inds
+    -- A position's current identity can supply its consumers, but that supply is replaced by a new pair.
+    -- Admission therefore uses native production ranks, retaining AND prerequisites such as fluid holding.
+    local production = {}
+    local function production_inds(slot_key)
+        if production[slot_key] ~= nil then
+            return production[slot_key]
+        end
+        local memo = {}
+        local function rank(node_key, context, force)
+            local node = graph.nodes[node_key]
+            if node.pre == nil then
+                return (nci[node_key] or {})[context]
+            end
+            local borrowed = false
+            for pre, _ in pairs(node.pre) do
+                if graph.edges[pre].identity_supply == true then
+                    borrowed = true
+                end
+            end
+            local channel = node.type == "orand" or node.type == "item-craft" or node.type == "fluid-create-temperature" or node.type == "fluid-craft-temperature"
+            if force ~= true and not borrowed and not channel then
+                return (nci[node_key] or {})[context]
+            end
+            memo[node_key] = memo[node_key] or {}
+            if memo[node_key][context] ~= nil then
+                return memo[node_key][context] or nil
+            end
+            memo[node_key][context] = false
+            local best
+            local count = 0
+            for pre, _ in pairs(node.pre) do
+                local edge = graph.edges[pre]
+                if edge.identity_supply ~= true then
+                    count = count + 1
+                    local found
+                    local sources = edge.abilities ~= nil and top.edge_source_contexts(sort_info, edge, context) or { context }
+                    for _, source in pairs(sources) do
+                        local candidate = rank(edge.start, source, false)
+                        if candidate ~= nil and (found == nil or candidate < found) then
+                            found = candidate
+                        end
+                    end
+                    if node.op == "AND" then
+                        if found == nil then
+                            return nil
+                        end
+                        best = math.max(best or 0, found)
+                    elseif found ~= nil and (best == nil or found < best) then
+                        best = found
+                    end
+                end
+            end
+            if count == 0 and node.op == "AND" then
+                best = (nci[node_key] or {})[context]
+            end
+            if best ~= nil then
+                memo[node_key][context] = best
+            end
+            return best
+        end
+        local ranks = {}
+        for context, _ in pairs(nci[slot_key] or {}) do
+            ranks[context] = rank(slot_key, context, true)
+        end
+        production[slot_key] = ranks
+        return ranks
+    end
+
+    return production_inds
+end
+
+-- Weighted perfect matching of travs to admissible slots, with seeded tie breaking
 -- With params.is_resource_slot, resource slots then get travs that make them mine something new (see is_new_resource_trav) wherever the matching allows it
 -- With wants (optional, trav key --> set of contexts), each trav a debt goal uses where the game doesn't have it then takes a slot the game has in all those contexts, wherever the matching allows it, which pays for that part of the debt (see matching.run)
 -- Returns the matching
-local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key, wants)
+local function random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng_key, wants, position_needs, shared_sources, craft_needs, craft_position_needs)
+    local operation_rules
+    if params.operations ~= nil then
+        operation_rules = operation_requirements.matching(graph, sort_info, params.operations)
+    end
+    local function operation_ok(slot_key, trav_key)
+        if operation_rules == nil then
+            return true
+        end
+        return (params.operation_rejected == nil or (params.operation_rejected[trav_key] or {})[slot_key] == nil) and operation_rules.allows(slot_key, trav_key)
+    end
     local current_slot = {}
     local slots = {}
     local travs = {}
@@ -464,7 +624,10 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
     table.sort(travs)
     local nci = sort_info.node_to_context_inds
 
+    local production_inds = native_production(graph, sort_info)
+
     local admissible = {}
+    local resource_options = {}
     for _, trav_key in pairs(travs) do
         local trav = graph.nodes[trav_key]
         admissible[trav_key] = {}
@@ -472,237 +635,168 @@ local function random_matching(params, graph, sort_info, needs, requires_launcha
             if slot_key ~= current_slot[trav_key] then
                 local slot = graph.nodes[slot_key]
                 -- Slots take travs of their own type, or of another type where params.cross_type_ok allows it (items and fluids trading positions, see lib/item-fluid.lua)
-                local is_admissible = (slot.type == trav.type or (params.cross_type_ok ~= nil and params.cross_type_ok(slot, trav))) and params.pair_ok(slot, trav)
+                local is_admissible = (slot.type == trav.type or (params.cross_type_ok ~= nil and params.cross_type_ok(slot, trav))) and params.pair_ok(slot, trav) and operation_ok(slot_key, trav_key)
+                local rejection = "compatibility"
                 if is_admissible and requires_launchable[slot_key] and not params.is_launchable(trav_key) then
                     is_admissible = false
                 end
                 if is_admissible then
                     -- Ranks are the connection's: its start (the slot unless the connection says otherwise) in any context that arrives in the need's through it
                     local connection = connection_of(params, slot_key, trav_key)
-                    local start_inds = nci[connection.base or slot_key] or {}
-                    for context, _ in pairs(needs[trav_key] or {}) do
-                        local slot_ind
+                    local start_inds = connection.base ~= nil and (nci[connection.base] or {}) or production_inds(slot_key)
+                    local function arrives_before(context, deadline)
                         local sources = { context }
                         if connection.abilities ~= nil then
                             sources = top.edge_source_contexts(sort_info, connection, context)
                         end
                         for _, source in pairs(sources) do
-                            if start_inds[source] ~= nil and (slot_ind == nil or start_inds[source] < slot_ind) then
-                                slot_ind = start_inds[source]
+                            if start_inds[source] ~= nil and deadline ~= nil and start_inds[source] < deadline then
+                                return true
                             end
                         end
-                        local trav_ind = (nci[trav_key] or {})[context]
-                        if slot_ind == nil or trav_ind == nil or slot_ind >= trav_ind then
+                        return false
+                    end
+                    for context, required in pairs(needs[trav_key] or {}) do
+                        local deadline = type(required) == "number" and required or (nci[trav_key] or {})[context]
+                        if operation_rules ~= nil then
+                            deadline = operation_rules.deadline(trav_key, context, deadline)
+                        end
+                        if not arrives_before(context, deadline) then
+                            rejection = "identity supply"
                             is_admissible = false
                             break
+                        end
+                    end
+                    if is_admissible then
+                        local craft_key = (graph.craft_positions or {})[slot_key]
+                        local craft_inds = craft_key ~= nil and production_inds(craft_key) or {}
+                        for context, deadline in pairs((craft_needs or {})[trav_key] or {}) do
+                            if craft_inds[context] == nil or craft_inds[context] >= deadline then
+                                rejection = "craft supply"
+                                is_admissible = false
+                                break
+                            end
+                        end
+                        if is_admissible then
+                            for context, deadline in pairs((craft_position_needs or {})[slot_key] or {}) do
+                                local shared_rank = ((shared_sources or {})[trav.craft_identity_key] or {})[context]
+                                local native_rank = craft_inds[context]
+                                if not (native_rank ~= nil and native_rank < deadline) and not (shared_rank ~= nil and shared_rank < deadline) then
+                                    rejection = "craft consumer"
+                                    is_admissible = false
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if is_admissible then
+                        for context, required in pairs((position_needs or {})[slot_key] or {}) do
+                            local deadline = type(required) == "number" and required or (nci[slot_key] or {})[context]
+                            local identity = trav.shared_identity_key
+                            local shared_rank = identity ~= nil and ((shared_sources or {})[identity] or {})[context] or nil
+                            -- A local recipe may use an imported copy of its new ingredient.
+                            -- Its source proof is included up front, so the matching must preserve that supply too.
+                            if not arrives_before(context, deadline) and not (shared_rank ~= nil and shared_rank < deadline) then
+                                rejection = "position consumer"
+                                is_admissible = false
+                                break
+                            end
                         end
                     end
                 end
                 if is_admissible then
                     table.insert(admissible[trav_key], slot_key)
                 end
-            end
-        end
-    end
-
-    -- Kuhn's algorithm around the prefilled pairs, which stay fixed; nil if some trav can't be matched
-    local function complete(prefilled)
-        local slot_match = {}
-        local is_fixed = {}
-        local is_matched = {}
-        for slot_key, trav_key in pairs(prefilled) do
-            slot_match[slot_key] = trav_key
-            is_fixed[slot_key] = true
-            is_matched[trav_key] = true
-        end
-        -- Lists of keys, so a plain copy is a deep one
-        local function copy_list(list)
-            local copy = {}
-            for i, value in pairs(list) do
-                copy[i] = value
-            end
-            return copy
-        end
-        local function try(trav_key, visited)
-            local candidates = copy_list(admissible[trav_key])
-            rng.shuffle(rng_key, candidates)
-            table.insert(candidates, current_slot[trav_key])
-            for _, slot_key in pairs(candidates) do
-                if not visited[slot_key] and not is_fixed[slot_key] then
-                    visited[slot_key] = true
-                    if slot_match[slot_key] == nil or try(slot_match[slot_key], visited) then
-                        slot_match[slot_key] = trav_key
-                        return true
-                    end
+                if params.is_resource_slot ~= nil and params.is_resource_slot(slot_key) and is_new_resource_trav(params, slot_key, trav_key) then
+                    local reason = is_admissible and "admitted" or rejection
+                    resource_options[slot_key] = resource_options[slot_key] or {}
+                    resource_options[slot_key][reason] = (resource_options[slot_key][reason] or 0) + 1
                 end
             end
-            return false
-        end
-        local order = copy_list(travs)
-        rng.shuffle(rng_key, order)
-        for _, trav_key in pairs(order) do
-            if not is_matched[trav_key] and not try(trav_key, {}) then
-                return nil
-            end
-        end
-        return slot_match
-    end
-
-    local resource_slots = {}
-    if params.is_resource_slot ~= nil then
-        for _, slot_key in pairs(slots) do
-            if params.is_resource_slot(slot_key) then
-                table.insert(resource_slots, slot_key)
-            end
         end
     end
 
-    -- Resource slots that already mine something new keep their travs, so later rounds never lose that (the current matching has all these pairs at once, so this can't fail)
-    local prefilled = {}
-    local is_taken = {}
-    for _, slot_key in pairs(resource_slots) do
-        if is_new_resource_trav(params, slot_key, assignment[slot_key]) then
-            prefilled[slot_key] = assignment[slot_key]
-            is_taken[assignment[slot_key]] = true
-        end
+    -- Optimize the complete assignment, rather than freezing greedy resource choices.
+    -- One more changed deposit outweighs all secondary preferences together.
+    -- Equally good resource counts retain existing changes and pay debt, then choose by seeded random edge weights.
+    -- Maximizing all moved identities would bias deposits toward identities whose only alternative is their current position.
+    rng.shuffle(rng_key, slots)
+    rng.shuffle(rng_key, travs)
+    local column_of = {}
+    for column, slot_key in pairs(slots) do
+        column_of[slot_key] = column
     end
-    -- Each other resource slot takes a random admissible new trav (see is_new_resource_trav) if a perfect matching still exists with it
-    -- Left to Kuhn's algorithm instead, resource slots would mostly get the early identities whose only other admissible slots they are
-    local admitted_travs = {}
-    for _, trav_key in pairs(travs) do
-        for _, slot_key in pairs(admissible[trav_key]) do
-            admitted_travs[slot_key] = admitted_travs[slot_key] or {}
-            table.insert(admitted_travs[slot_key], trav_key)
-        end
-    end
-    rng.shuffle(rng_key, resource_slots)
-    for _, slot_key in pairs(resource_slots) do
-        if prefilled[slot_key] == nil then
-            local candidates = {}
-            for _, trav_key in pairs(admitted_travs[slot_key] or {}) do
-                if not is_taken[trav_key] and is_new_resource_trav(params, slot_key, trav_key) then
-                    table.insert(candidates, trav_key)
-                end
+    local priority = 2 * #slots + 1
+    local costs = {}
+    local pays_debt = {}
+    local function score(slot_key, trav_key)
+        local value = rng.value(rng_key)
+        if params.is_resource_slot ~= nil and params.is_resource_slot(slot_key) and is_new_resource_trav(params, slot_key, trav_key) then
+            value = value * priority + priority * priority * priority
+            if assignment[slot_key] == trav_key then
+                value = value + priority * priority
             end
-            rng.shuffle(rng_key, candidates)
-            -- A few tries are enough: when the first fails, the rest usually do too (the slot's own trav can't move), and the repair below handles that
-            for i = 1, math.min(#candidates, 5) do
-                prefilled[slot_key] = candidates[i]
-                if complete(prefilled) ~= nil then
-                    is_taken[candidates[i]] = true
+        end
+        if wants ~= nil and wants[trav_key] ~= nil then
+            local pays = true
+            for context, _ in pairs(wants[trav_key]) do
+                if (nci[slot_key] or {})[context] == nil then
+                    pays = false
                     break
                 end
-                prefilled[slot_key] = nil
+            end
+            if pays then
+                value = value + priority * priority
+                pays_debt[trav_key] = pays_debt[trav_key] or {}
+                pays_debt[trav_key][slot_key] = true
             end
         end
+        return value
     end
-    -- Each trav a debt goal wants takes a random admissible slot the game has in every wanted context, if a perfect matching still exists with it
-    -- Travs placed that way stay put below
-    local is_paid = {}
-    local want_travs = {}
-    for trav_key, _ in pairs(wants or {}) do
-        if not is_taken[trav_key] then
-            table.insert(want_travs, trav_key)
-        end
-    end
-    table.sort(want_travs)
-    rng.shuffle(rng_key, want_travs)
-    for _, trav_key in pairs(want_travs) do
-        local candidates = {}
+    for row, trav_key in pairs(travs) do
+        local row_costs = {}
+        costs[row] = row_costs
         for _, slot_key in pairs(admissible[trav_key]) do
-            if prefilled[slot_key] == nil then
-                local pays = true
-                for context, _ in pairs(wants[trav_key]) do
-                    if (nci[slot_key] or {})[context] == nil then
-                        pays = false
-                        break
-                    end
-                end
-                if pays then
-                    table.insert(candidates, slot_key)
-                end
-            end
+            row_costs[column_of[slot_key]] = -score(slot_key, trav_key)
         end
-        rng.shuffle(rng_key, candidates)
-        for i = 1, math.min(#candidates, 5) do
-            prefilled[candidates[i]] = trav_key
-            if complete(prefilled) ~= nil then
-                is_taken[trav_key] = true
-                is_paid[trav_key] = true
-                break
-            end
-            prefilled[candidates[i]] = nil
+        local slot_key = current_slot[trav_key]
+        if operation_ok(slot_key, trav_key) then
+            row_costs[column_of[slot_key]] = -score(slot_key, trav_key)
         end
     end
+    local matched = weighted_matching.solve(costs, #slots)
+    if matched == nil then
+        for _, trav_key in pairs(travs) do
+            if #admissible[trav_key] == 0 and not operation_ok(current_slot[trav_key], trav_key) then
+                log("Operation matching: no candidate for " .. trav_key .. "; " .. operation_rules.describe(current_slot[trav_key], trav_key))
+            end
+        end
+        return nil
+    end
+    local slot_match = {}
     local num_paid = 0
-    for _, _ in pairs(is_paid) do
-        num_paid = num_paid + 1
-    end
-    if #want_travs > 0 then
-        log("Monotone matching: " .. num_paid .. " of " .. #want_travs .. " identities debt goals want now come from the game where they're wanted")
-    end
-
-    local slot_match = complete(prefilled)
-    if slot_match == nil then
-        error("Monotone matching failed although every prefilled pair was checked")
-    end
-
-    -- Then each resource slot still without a new trav gets one if some perfect matching allows it while every resource slot that mines something new keeps doing so
-    -- It searches breadth-first for a cycle of moves through the slot: the trav at a slot moves to a slot it's admissible for, and that slot's trav moves on, until one can move into the resource slot as a new trav
-    -- A resource slot that mines something new only takes travs that keep it so, which still lets a trav whose needs pin it to early slots move to another resource slot and free its own
-    local is_admissible = {}
-    for _, trav_key in pairs(travs) do
-        is_admissible[trav_key] = {
-            [current_slot[trav_key]] = true,
-        }
-        for _, slot_key in pairs(admissible[trav_key]) do
-            is_admissible[trav_key][slot_key] = true
-        end
-    end
-    local function keeps_resources_new(trav_key, slot_key)
-        return not params.is_resource_slot(slot_key) or not is_new_resource_trav(params, slot_key, slot_match[slot_key]) or is_new_resource_trav(params, slot_key, trav_key)
-    end
-    for _, resource_slot in pairs(resource_slots) do
-        if not is_new_resource_trav(params, resource_slot, slot_match[resource_slot]) then
-            -- Slot --> the slot whose trav moves into it
-            local prev = {
-                [resource_slot] = resource_slot,
-            }
-            local queue = { resource_slot }
-            local last
-            local i = 1
-            while i <= #queue and last == nil do
-                local trav_key = slot_match[queue[i]]
-                -- A trav that pays for debt doesn't move
-                local options = is_paid[trav_key] and {} or table.deepcopy(admissible[trav_key])
-                if not is_paid[trav_key] then
-                    table.insert(options, current_slot[trav_key])
-                end
-                rng.shuffle(rng_key, options)
-                for _, slot_key in pairs(options) do
-                    if prev[slot_key] == nil and keeps_resources_new(trav_key, slot_key) then
-                        prev[slot_key] = queue[i]
-                        local closing = slot_match[slot_key]
-                        if is_admissible[closing][resource_slot] and is_new_resource_trav(params, resource_slot, closing) and not is_paid[closing] then
-                            last = slot_key
-                            break
-                        end
-                        table.insert(queue, slot_key)
-                    end
-                end
-                i = i + 1
+    local num_wanted = 0
+    for column, row in pairs(matched) do
+        local slot_key = slots[column]
+        local trav_key = travs[row]
+        slot_match[slot_key] = trav_key
+        if params.is_resource_slot ~= nil and params.is_resource_slot(slot_key) and not is_new_resource_trav(params, slot_key, trav_key) then
+            local reasons = {}
+            for reason, count in pairs(resource_options[slot_key] or {}) do
+                table.insert(reasons, reason .. "=" .. count)
             end
-            if last ~= nil then
-                -- Each slot on the cycle takes the trav of the slot before it, and the resource slot takes the last slot's
-                local closing = slot_match[last]
-                local slot_key = last
-                while slot_key ~= resource_slot do
-                    slot_match[slot_key] = slot_match[prev[slot_key]]
-                    slot_key = prev[slot_key]
-                end
-                slot_match[resource_slot] = closing
+            table.sort(reasons)
+            log("Resource matching: unchanged " .. slot_key .. "; replacement candidates " .. table.concat(reasons, ", "))
+        end
+        if wants ~= nil and wants[trav_key] ~= nil then
+            num_wanted = num_wanted + 1
+            if (pays_debt[trav_key] or {})[slot_key] == true then
+                num_paid = num_paid + 1
             end
         end
+    end
+    if num_wanted > 0 then
+        log("Monotone matching: " .. num_paid .. " of " .. num_wanted .. " identities debt goals want now come from the game where they're wanted")
     end
     return slot_match
 end
@@ -738,7 +832,7 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
 end
 
 -- The matching the game will actually have: params.realize (optional) maps a matching to the one reflection realizes, which is what gets gated and returned
--- The result is still a perfect matching, and realizing the identity matching gives it back, so the "current matching always passes" argument still holds
+-- The result is still a perfect matching; operation readiness is checked after realizing it.
 local function realize(params, assignment)
     if params.realize == nil then
         return assignment
@@ -746,9 +840,28 @@ local function realize(params, assignment)
     return params.realize(assignment)
 end
 
+local function operation_failures(params, graph, sort_info, assignment)
+    if params.operations == nil then
+        return {}
+    end
+    local rules = operation_requirements.matching(graph, sort_info, params.operations)
+    local failed = {}
+    for slot_key, trav_key in pairs(assignment) do
+        if not rules.allows(slot_key, trav_key) then
+            table.insert(failed, {
+                slot = slot_key,
+                trav = trav_key,
+            })
+        end
+    end
+    table.sort(failed, function(a, b) return a.trav < b.trav end)
+    return failed
+end
+
 matching.connect = connect
 -- For tests (test-monotone-matching.lua)
 matching.random_matching = random_matching
+matching.needs_from_proof = needs_from_proof
 
 ----------------------------------------------------------------------------------------------------
 -- Debt goals
@@ -836,13 +949,15 @@ matching.superposed_sort = superposed_sort
 --   pair_ok(slot, trav): whether the trav can go in the slot (their costs fit, and item reflection's special rules allow it)
 --   cross_type_ok(slot, trav) (optional): whether a trav can go in a slot of another node type at all (pair_ok still has to allow it too); without it, slots only take travs of their own type
 --   rounds: how many rounds to iterate (each starts from the last round's matching)
+-- Optional operations maps each trav key to operation node keys that must be ready where the trav arrives.
 --   is_resource_slot(slot_key), is_interesting(trav_key) (optional): see random_matching
+--   is_new_resource_pair(slot_key, trav_key) (optional): distinguishes actual product changes from exchanging copies of the same material
 --   recipe_may_vanish(node_key) (optional): recipes the gate doesn't hold on to (see hard_pebbles)
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
 --   connection(slot_key, trav_key) (optional): where the connection of a slot/trav pair starts and what abilities it gains or loses (see connection_of)
 --   connect_extra(graph, slot_key, trav_key) (optional): connects anything else that follows a slot/trav pair (see connect)
 --   debt (optional): planetary changes superposed (see the debt goals above), whose goals only the debt reaches must stay reachable with it
--- Returns slot key --> trav key, and the debt goals it kept (nil without debt), for first pass's own gate
+-- Returns slot key --> trav key, and the debt goals it kept (nil without debt), for first pass's own gate; returns false when no operation-ready matching is found.
 matching.run = function(params)
     local assignment = {}
     local travs = {}
@@ -874,18 +989,86 @@ matching.run = function(params)
             is_launchable[trav_key] = true
         end
     end
+    for _, trav_key in pairs(travs) do
+        local shared = graph.nodes[trav_key].shared_identity_key
+        if shared ~= nil and is_launchable[shared] == true then
+            is_launchable[trav_key] = true
+        end
+    end
     params.is_launchable = function(trav_key)
         return is_launchable[trav_key] == true
     end
 
     for round = 1, params.rounds do
-        -- Recipe anchors are left to the gate (their needs would be too strict), but planet-locked recipes keep exact contexts, so they're proved like mechanics
-        local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(exact, sort_info))
+        params.operation_rejected = {}
+        -- Prove recipe anchors too, so a changed ingredient position keeps a backing before its consumers.
+        local goals = table.deepcopy(exact)
+        for _, pebble in pairs(recipes) do
+            table.insert(goals, pebble)
+        end
+        local closure, support, failed = make_prover(graph, sort_info).prove(goal_inds_of(goals, sort_info))
         if #failed > 0 then
             -- Those pebbles get no needs, so the gate is all that protects them this round
             log("Monotone matching: round " .. round .. " couldn't prove " .. #failed .. " hard pebbles in its own sort")
         end
-        local needs, requires_launchable = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
+        local needs, requires_launchable, position_needs, craft_needs, craft_position_needs = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
+        -- Before choosing pairs, prove the shared supplies that local consumers could use.
+        -- These are source obligations of this round, rather than refinements learned from a failed shuffle.
+        local source_goals = {}
+        local source_inds = {}
+        local nci = sort_info.node_to_context_inds
+        local production_inds = native_production(graph, sort_info)
+        for slot_key, contexts in pairs(position_needs) do
+            local slot = graph.nodes[slot_key]
+            if slot.production_slot ~= nil then
+                for _, trav_key in pairs(travs) do
+                    local trav = graph.nodes[trav_key]
+                    if trav.shared_identity_key ~= nil and params.pair_ok(slot, trav) then
+                        for context, deadline in pairs(contexts) do
+                            local ind = (nci[trav.shared_identity_key] or {})[context]
+                            local native_rank = production_inds(slot_key)[context]
+                            if not (native_rank ~= nil and native_rank < deadline) and ind ~= nil and ind < deadline and source_inds[ind] == nil then
+                                source_inds[ind] = true
+                                table.insert(source_goals, { node_key = trav.shared_identity_key, context = context })
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        for slot_key, contexts in pairs(craft_position_needs) do
+            local slot = graph.nodes[slot_key]
+            for _, trav_key in pairs(travs) do
+                local trav = graph.nodes[trav_key]
+                if trav.craft_identity_key ~= nil and params.pair_ok(slot, trav) then
+                    for context, deadline in pairs(contexts) do
+                        local ind = (nci[trav.craft_identity_key] or {})[context]
+                        local craft_key = (graph.craft_positions or {})[slot_key]
+                        local native_rank = craft_key ~= nil and production_inds(craft_key)[context] or nil
+                        if not (native_rank ~= nil and native_rank < deadline) and ind ~= nil and ind < deadline and source_inds[ind] == nil then
+                            source_inds[ind] = true
+                            table.insert(source_goals, { node_key = trav.craft_identity_key, context = context })
+                        end
+                    end
+                end
+            end
+        end
+        local shared_sources = {}
+        if #source_goals > 0 then
+            local all_goals = table.deepcopy(goals)
+            for _, goal in pairs(source_goals) do
+                table.insert(all_goals, goal)
+            end
+            closure, support = make_prover(graph, sort_info).prove(goal_inds_of(all_goals, sort_info))
+            needs, requires_launchable, position_needs, craft_needs, craft_position_needs = needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
+            for _, goal in pairs(source_goals) do
+                local ind = nci[goal.node_key][goal.context]
+                if closure[ind] then
+                    shared_sources[goal.node_key] = shared_sources[goal.node_key] or {}
+                    shared_sources[goal.node_key][goal.context] = ind
+                end
+            end
+        end
         -- Wants: travs whose identity a debt goal's proof (in the superposed graph) uses in a context the game doesn't have it in
         -- Putting such a trav in a slot the game has in that context pays for that part of the debt
         local wants
@@ -915,11 +1098,63 @@ matching.run = function(params)
         local kept_sup_graph
         local kept_sup_sort
         while true do
-            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }), wants)
+            new_assignment = random_matching(params, graph, sort_info, needs, requires_launchable, assignment, rng.key({ id = "monotone-matching-" .. round .. "-" .. num_refinements }), wants, position_needs, shared_sources, craft_needs, craft_position_needs)
+            if new_assignment == nil then
+                if #operation_failures(params, graph, sort_info, assignment) == 0 then
+                    new_assignment = assignment
+                    new_graph = graph
+                    new_sort = sort_info
+                    break
+                end
+                log("Operation matching: no complete assignment satisfies operation readiness in round " .. round)
+                return false
+            end
             new_assignment = realize(params, new_assignment)
             new_graph = connect(table.deepcopy(params.unconnected_graph), params, new_assignment)
             new_sort = complex_sort(new_graph)
-            local lost = lost_pebbles(exact, recipes, new_sort)
+            -- Candidate supplies are proved up front, but only supplies this assignment actually borrows are obligations of its final gate.
+            local used_sources = {}
+            local function borrow(identity, context)
+                if identity ~= nil and ((shared_sources or {})[identity] or {})[context] ~= nil then
+                    used_sources[identity] = used_sources[identity] or {}
+                    used_sources[identity][context] = true
+                end
+            end
+            for slot_key, trav_key in pairs(new_assignment) do
+                local trav = graph.nodes[trav_key]
+                for context, deadline in pairs(position_needs[slot_key] or {}) do
+                    local native = production_inds(slot_key)[context]
+                    if native == nil or native >= deadline then
+                        borrow(trav.shared_identity_key, context)
+                    end
+                end
+                local craft_key = (graph.craft_positions or {})[slot_key]
+                for context, deadline in pairs(craft_position_needs[slot_key] or {}) do
+                    local native = craft_key ~= nil and production_inds(craft_key)[context] or nil
+                    if native == nil or native >= deadline then
+                        borrow(trav.craft_identity_key, context)
+                    end
+                end
+            end
+            local source_exact = table.deepcopy(exact)
+            for _, goal in pairs(source_goals) do
+                if (used_sources[goal.node_key] or {})[goal.context] ~= nil then
+                    table.insert(source_exact, goal)
+                end
+            end
+            local lost = lost_pebbles(source_exact, recipes, new_sort)
+            local idle = operation_failures(params, new_graph, new_sort, new_assignment)
+            local num_rejected = 0
+            for _, pair in pairs(idle) do
+                params.operation_rejected[pair.trav] = params.operation_rejected[pair.trav] or {}
+                if params.operation_rejected[pair.trav][pair.slot] == nil then
+                    num_rejected = num_rejected + 1
+                end
+                params.operation_rejected[pair.trav][pair.slot] = true
+            end
+            if #idle > 0 then
+                log("Operation matching: " .. #idle .. " buildings precede their operation inputs; first " .. idle[1].trav .. " at " .. idle[1].slot)
+            end
             -- Debt goals are only checked once the game itself keeps everything, since that's the cheaper sort
             local lost_debt = {}
             local new_sup_graph
@@ -928,7 +1163,7 @@ matching.run = function(params)
                 new_sup_graph, new_sup_sort = superposed_sort(new_graph, params.debt)
                 lost_debt = matching.lost_debt_goals(debt_goals, new_sup_sort)
             end
-            if #lost == 0 and #lost_debt == 0 then
+            if #lost == 0 and #lost_debt == 0 and #idle == 0 then
                 kept_sup_graph = new_sup_graph
                 kept_sup_sort = new_sup_sort
                 break
@@ -949,13 +1184,21 @@ matching.run = function(params)
             end
             num_refinements = num_refinements + 1
             local example = lost[1] or lost_debt[1]
-            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles and " .. #lost_debt .. " debt goals (e.g. " .. example.node_key .. " @ " .. example.context .. "); added " .. num_added .. " needs")
-            if num_added == 0 or num_refinements >= 10 then
-                -- Nothing left to refine, so keep the previous matching (always valid)
-                new_assignment = assignment
-                new_graph = graph
-                new_sort = sort_info
-                break
+            if example ~= nil then
+                log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles and " .. #lost_debt .. " debt goals (e.g. " .. example.node_key .. " @ " .. example.context .. "); added " .. num_added .. " needs")
+            end
+            if (num_added == 0 and num_rejected == 0) or num_refinements >= 10 then
+                if #operation_failures(params, graph, sort_info, assignment) == 0 then
+                    -- Retain a validated placement only after refinements stop adding information or hit the limit.
+                    new_assignment = assignment
+                    new_graph = graph
+                    new_sort = sort_info
+                    break
+                elseif #idle == 0 or num_refinements >= 10 then
+                    log("Operation matching: the previous assignment isn't operation-ready either; retrying unified randomization")
+                    return false
+                end
+                -- An unready original placement cannot be retained; rejected pairs still give the next refinement new information.
             end
         end
         local num_moved = 0
@@ -1025,6 +1268,16 @@ matching.run = function(params)
             local trial_graph = connect(table.deepcopy(params.unconnected_graph), params, trial)
             local trial_sort = complex_sort(trial_graph)
             local lost = lost_pebbles(exact, recipes, trial_sort)
+            -- A failed reachability gate already rejects this trial, so its operation proofs cannot change the decision.
+            if #lost > 0 then
+                return lost
+            end
+            for _, pair in pairs(operation_failures(params, trial_graph, trial_sort, trial)) do
+                table.insert(lost, {
+                    node_key = pair.trav,
+                    context = "operation readiness",
+                })
+            end
             if #lost == 0 and debt_goals ~= nil then
                 local _, trial_sup_sort = superposed_sort(trial_graph, params.debt)
                 lost = matching.lost_debt_goals(debt_goals, trial_sup_sort)
@@ -1081,6 +1334,16 @@ matching.run = function(params)
             end
         end
         log("Monotone matching: " .. num_kept .. " form trades kept in " .. num_trials .. " trials (" .. #candidates .. " candidates)")
+    end
+    if params.is_resource_slot ~= nil then
+        local changed, total = 0, 0
+        for slot_key, trav_key in pairs(assignment) do
+            if params.is_resource_slot(slot_key) then
+                total = total + 1
+                if is_new_resource_trav(params, slot_key, trav_key) then changed = changed + 1 end
+            end
+        end
+        log("Resource matching: final assignment changes " .. changed .. " of " .. total .. " deposits, after form trades")
     end
     return assignment, debt_goals
 end

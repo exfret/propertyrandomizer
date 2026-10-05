@@ -356,4 +356,20 @@ test("a fluid's amount stops at the cap, an item's doesn't", function()
     assert(result.ings[1].amount <= 1000, "the search picked " .. result.ings[1].amount)
 end)
 
+test("ingredient search preserves the selected local position and explicit shared-position marker", function()
+    local pool = candidates(3)
+    pool[1].first_pass_position = "item: local-slot-a"
+    pool[2].first_pass_position = "item: local-slot-b"
+    pool[3].first_pass_position = false
+    local target = { aggregate_cost = 40, complexity_cost = 0, resource_costs = { ["item-ore"] = 10, ["item-coal"] = 30 } }
+    for i = 1, 20 do
+        local result = cost_lib.search_for_ings(pool, 2, target, costs_for({ 3, 0.7, 12.5 }), {})
+        assert(type(result) == "table")
+        for index, ingredient in pairs(result.ings) do
+            local original = pool[result.inds[index]]
+            assert(ingredient.first_pass_position == original.first_pass_position, "cost search dropped the modeled production position")
+        end
+    end
+end)
+
 print(num_passed .. " tests passed")

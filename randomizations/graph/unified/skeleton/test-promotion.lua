@@ -46,6 +46,7 @@ package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 local gutils = require("lib/graph/graph-utils")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local top = require("lib/graph/context-sort")
+local recycling_sources = require("lib/logic/recycling-sources")
 
 local key = gutils.key
 
@@ -117,6 +118,30 @@ local function test(name, fn)
     num_passed = num_passed + 1
     print("ok - " .. name)
 end
+
+test("recycling pins on local positions name the source's actual ingredient", function()
+    local graph = build_graph(false)
+    graph.nodes[z].production_slot = { material = { type = "item", name = "test-ore" } }
+    local mine = graph.nodes[key("mine", "z")]
+    for pre, _ in pairs(table.deepcopy(mine.pre)) do gutils.remove_edge(graph, pre) end
+    gutils.add_edge(graph, key("room", "A"), mine)
+    gutils.add_edge(graph, key("room", "B"), key("item", "p"))
+    package.loaded["lib/logic/state"].type_info["item-craft"] = {}
+    local reverse = gutils.add_node(graph, "recipe", "p-recycle", { op = "AND" })
+    local crafted = gutils.add_node(graph, "item-craft", "z", { op = "OR", mechanic = true })
+    gutils.add_edge(graph, key("item", "p"), reverse)
+    gutils.add_edge(graph, reverse, crafted)
+    gutils.add_edge(graph, crafted, z)
+    gutils.make_orands(graph)
+    local original_sources = recycling_sources.get
+    recycling_sources.get = function() return { ["p-recycle"] = "r" } end
+    local prom = promotion.new({ graph = graph })
+    assert(#prom.promise_mechanics() == 0)
+    local pins = prom.pins_for(r)
+    assert(pins[key("item", "test-ore")] == true)
+    assert(pins[z] == nil, "a synthetic position name cannot match a prototype ingredient")
+    recycling_sources.get = original_sources
+end)
 
 test("unpromised recipe gets exactly one anchor context", function()
     local prom = promotion.new({ graph = build_graph(false) })

@@ -77,6 +77,7 @@ if config.dev_unified then
         ["item"] = true,
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
+        ["mining-results"] = true,
         ["tech-triggers"] = true,
     }
 
@@ -93,6 +94,7 @@ if config.dev_unified then
         ["item"] = ITEM_ENABLED,
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
+        ["mining-results"] = true,
         ["recipe-ingredients"] = true,
         ["spoiling"] = is_spoiling_on,
         -- Research triggers (handlers/tech-triggers.lua): technologies trade triggers
@@ -128,6 +130,7 @@ local available_handlers = {
     ["item"] = require("randomizations/graph/unified/handlers/item"),
     ["item-ingredients"] = require("randomizations/graph/unified/handlers/item-ingredients"),
     ["mining-fluid-required"] = require("randomizations/graph/unified/handlers/mining-fluid-required"),
+    ["mining-results"] = require("randomizations/graph/unified/handlers/mining-results"),
     ["recipe-category"] = require("randomizations/graph/unified/handlers/recipe-category"),
     ["recipe-ingredients"] = require("randomizations/graph/unified/handlers/recipe-ingredients"),
     ["recipe-ingredients-first-pass"] = require("randomizations/graph/unified/handlers/recipe-ingredients-first-pass"),
@@ -163,6 +166,16 @@ local function planetary_debt()
         return planetary.superposed
     end
     return nil
+end
+
+-- Production variants are part of the starting world, before checks and first-pass matching.
+unified.prepare_first_pass = function()
+    if DO_FIRST_PASS and ITEM_ENABLED then
+        graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
+        -- Production preparation reads surface rooms before the initial world snapshot is built.
+        logic.build(true)
+        first_pass.prepare()
+    end
 end
 
 unified.execute = function()
@@ -215,6 +228,9 @@ unified.execute = function()
     -- Spoofing
     for _, handler in pairs(handlers) do
         handler.spoof(spoofed_graph)
+    end
+    if DO_FIRST_PASS then
+        first_pass.spoof(spoofed_graph)
     end
     test_graph_invariants.test(spoofed_graph)
     gutils.make_orands(spoofed_graph)
@@ -916,6 +932,10 @@ unified.execute = function()
     end
     if prom ~= nil then
         prom.log_debt("end")
+        -- Custom searches can promise new backings after the recipe search saved its snapshot, so the built-game audit must use the completed model.
+        UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
+    else
+        UNIFIED_PROMISED_PEBBLES = nil
     end
 
     ----------------------------------------------------------------------------------------------------
@@ -928,9 +948,11 @@ unified.execute = function()
     -- Research triggers too, since item randomization rewrites a craft-item trigger to the item first pass put at its position, reading the trigger the technology has when it reflects
     local reflect_first = {
         "recipe-ingredients-first-pass",
+        "recipe-ingredients",
         "entity",
         "spoiling",
         "tech-triggers",
+        "mining-results",
     }
     local reflects_first = {}
     for _, handler_id in pairs(reflect_first) do
@@ -993,6 +1015,18 @@ unified.execute = function()
     end
     for _, handler in pairs(handlers) do
         handler.after_changes()
+    end
+    for _, handler_id in pairs(handler_ids) do
+        if handlers[handler_id].after_reflection({
+            random_graph = random_graph,
+            split_graph = (first_pass_info or {}).graph,
+            promotion = prom,
+        }) == false then
+            return false
+        end
+    end
+    if prom ~= nil then
+        UNIFIED_PROMISED_PEBBLES = prom.promised_pebbles()
     end
 
     if SWITCH_PLANETS then

@@ -83,6 +83,11 @@ if config.planetary_biomes == true then
     biomes.capture()
 end
 
+local resource_variants = require("lib/resource-variants")
+if config.dev_unified == true then
+    resource_variants.execute()
+end
+
 local new_logic = require("lib/logic/init")
 local graph_customization = require("lib/graph-customization")
 local prototype_exclusions = require("lib/prototype-exclusions")
@@ -180,6 +185,10 @@ if config.planetary then
     planetary.execute(new_logic)
     recycling.regenerate(pre_planetary_raw)
 end
+-- A planetary repair may share a resource again; separate its final placements before unified models them.
+if config.dev_unified == true then
+    resource_variants.execute()
+end
 
 old_data_raw = table.deepcopy(data.raw)
 
@@ -203,9 +212,15 @@ if planetary.pending ~= nil then
     end)
     -- The rest of randomization starts from the changed game: recycling follows its recipes, the old logic reads the planets again (it loaded before the stages ran), and unified keeps what this game can do
     recycling.regenerate(pre_planetary_raw)
+    if config.dev_unified == true then
+        resource_variants.execute()
+    end
     old_build_graph.read_surfaces()
     old_data_raw = table.deepcopy(data.raw)
 end
+
+unified.prepare_first_pass()
+old_data_raw = table.deepcopy(data.raw)
 
 log("Initial reachability check")
 
@@ -347,6 +362,10 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
                 planetary.undo(i)
             end
             recycling.regenerate(pre_planetary_raw)
+            if config.dev_unified == true then
+                resource_variants.execute()
+            end
+            unified.prepare_first_pass()
             old_data_raw = table.deepcopy(data.raw)
             prepare_world()
         end

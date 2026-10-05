@@ -89,4 +89,10 @@ end
 default.after_changes = function()
 end
 
+-- Categorical prototype edits whose combined graph consequences need promotion after all reflection.
+-- Return false to retry this unified attempt. The same first-pass promises/ranks remain in force.
+default.after_reflection = function(params)
+    return true
+end
+
 return default

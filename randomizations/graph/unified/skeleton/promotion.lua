@@ -152,7 +152,9 @@ promotion.new = function(params)
                 if owner ~= nil then
                     table.insert(info.vanilla_owners, key(owner))
                     local material_key
-                    if owner.type == "fluid-temperature-range" then
+                    if owner.production_slot ~= nil then
+                        material_key = key(owner.production_slot.material)
+                    elseif owner.type == "fluid-temperature-range" then
                         material_key = key("fluid", gutils.deconstruct(owner.name).type)
                     else
                         material_key = key(owner)
@@ -199,7 +201,8 @@ promotion.new = function(params)
     end
     log("Promotion: " .. num_derived_edges .. " derived recycling edges")
 
-    -- recipe key --> material key --> true: ingredients a recipe must keep because a promise relies on its recycling returning them
+    -- recipe key --> ingredient position key --> true: ingredients a recipe must keep because a promise relies on its recycling returning them.
+    -- pins_for translates local positions to prototype material names for the ingredient editor.
     local pins = {}
     local num_pins = 0
     -- item-craft key --> list of recycling recipe keys that return it only because of a resolved recipe's new ingredients
@@ -1138,7 +1141,14 @@ promotion.new = function(params)
 
     -- Ingredients the recipe must keep because promised recycling relies on them, as material key --> true
     state.pins_for = function(recipe_key)
-        return pins[recipe_key] or {}
+        local materials = {}
+        for owner_key, _ in pairs(pins[recipe_key] or {}) do
+            local owner = graph.nodes[owner_key]
+            local material = owner ~= nil and owner.production_slot ~= nil and owner.production_slot.material or nil
+            -- The proof uses local position keys; the ingredient search reads prototype material names.
+            materials[material ~= nil and key(material) or owner_key] = true
+        end
+        return materials
     end
 
     -- Record new ingredients of a recipe randomized without required contexts, which still changes what its recycling returns

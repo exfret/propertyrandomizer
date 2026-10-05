@@ -1138,4 +1138,57 @@ test("a recipe's fluids are numbered to one fluid box each: ingredients from 1, 
     data.raw.recipe = nil
 end)
 
+test("independent positions sharing a fluid merge amounts, statistics and compatible temperatures", function()
+    local recipe = {
+        ingredients = {
+            { type = "fluid", name = "shared-fluid", amount = 10, minimum_temperature = 20, maximum_temperature = 100, ignored_by_stats = 2, fluidbox_index = 1 },
+            { type = "item", name = "test-item", amount = 1 },
+            { type = "fluid", name = "shared-fluid", amount = 30, minimum_temperature = 50, ignored_by_stats = 3, fluidbox_index = 2 },
+        },
+    }
+    assert(item_fluid.merge_fluid_ingredients(recipe))
+    assert(#recipe.ingredients == 2)
+    local fluid = recipe.ingredients[1]
+    assert(fluid.amount == 40 and fluid.ignored_by_stats == 5)
+    assert(fluid.minimum_temperature == 50 and fluid.maximum_temperature == 100)
+    assert(fluid.optional_fluidbox_indexes[1] == 2)
+    assert(item_fluid.merge_fluid_ingredients(recipe) and recipe.ingredients[1].amount == 40)
+end)
+
+test("incompatible duplicate fluid temperatures reject reflection without editing the recipe", function()
+    local ingredients = {
+        { type = "fluid", name = "shared-fluid", amount = 10, temperature = 20 },
+        { type = "fluid", name = "shared-fluid", amount = 30, temperature = 50 },
+    }
+    local recipe = { ingredients = ingredients }
+    assert(not item_fluid.merge_fluid_ingredients(recipe))
+    assert(recipe.ingredients == ingredients and ingredients[1].amount == 10)
+end)
+
+test("local form conversion scales amounts and strips fields of the old form", function()
+    local fluid = item_fluid.retarget_entry({ type = "item", name = "ore", amount = 3, extra_count_fraction = 0.5, percent_spoiled = 0.2 }, { type = "fluid", name = "brine", temperature = 45 }, 0.2)
+    assert(fluid.type == "fluid" and fluid.name == "brine" and fluid.amount == 0.6 and fluid.temperature == 45)
+    assert(fluid.extra_count_fraction == nil and fluid.percent_spoiled == nil)
+    local solid = item_fluid.retarget_entry({ type = "fluid", name = "brine", amount_min = 1.2, amount_max = 2.8, temperature = 45, fluidbox_index = 2 }, { type = "item", name = "ore" }, 2)
+    assert(solid.amount_min == 2 and solid.amount_max == 6 and solid.type == "item")
+    assert(solid.temperature == nil and solid.fluidbox_index == nil)
+end)
+
+test("local form amounts use the mechanic-ranked cost position", function()
+    local graph = {
+        nodes = {
+            source = { type = "fluid-temperature", name = "local", production_slot = { material = { type = "fluid", name = "brine" } } },
+            ranked = { type = "item", name = "ore" },
+        },
+    }
+    local params = {
+        split_graph = graph,
+        trav_to_mechanics_key = { identity = "mechanic" },
+        mechanics_sets_to_nodes = { mechanic = { identity = 1 } },
+        mechanics_sets_to_ordered = { mechanic = { "ranked" } },
+    }
+    assert(item_fluid.form_multiplier(params, "source", "identity", { ["fluid: brine"] = 2, ["item: ore"] = 8 }) == 0.25)
+    assert(item_fluid.form_multiplier(params, "source", "identity", {}) == 1)
+end)
+
 print(num_passed .. " tests passed")
