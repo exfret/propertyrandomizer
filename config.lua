@@ -77,6 +77,8 @@ config.technology_delinearization = settings.startup["propertyrandomizer-unified
 -- The unified preview turns on the new unified version: entity randomization with biters, the planetary changes other than lightning and freezing, the tech tree rebuild, and the unified randomizations still in development (config.dev_unified below)
 -- Their own settings are hidden for now (tests still set them one at a time), and so are lightning's and freezing's, which are off
 config.unified_preview = features.unified_preview
+-- Independent of preview so the same seed can be compared with operation placement, tech prerequisites and auditing disabled.
+config.operation_readiness = settings.startup["propertyrandomizer-operation-readiness"].value
 config.tech_tree_rebuild = config.unified_preview or settings.startup["propertyrandomizer-tech-tree-rebuild"].value
 -- It isn't made to work with the old graph randomizations (config.graph), so it turns off the ones that are on, and the randomizer panel says which
 if config.unified_preview then

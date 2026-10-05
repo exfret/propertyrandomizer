@@ -16,3 +16,6 @@ __pycache__/
 # Recolored duplicate graphics (dev/make-dupe-graphics.py): they're the game's own sprites, so they must never be committed to the public repo
 # Releases and test copies still include them (dev/release-files.py and dev/run-tests.py list this folder on purpose)
 graphics/dupes/
+
+# Local benchmark evidence copied from temporary and rotating game logs
+benchmark-logs/

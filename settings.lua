@@ -134,6 +134,14 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-operation-readiness",
+        -- Failed experiment, paused: reliability and loading-time goals were not met.
+        default_value = false,
+        order = "d-b[operation-readiness]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-technology",
         default_value = false,
         order = "d-c[technology]",

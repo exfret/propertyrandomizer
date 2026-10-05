@@ -14,6 +14,7 @@ local crafter_slots = require("lib/crafter-slots")
 -- The recipes a rebuilt tech's prerequisites come from
 local witness_recipes = require("lib/logic/witness-recipes")
 local technology_abilities = require("lib/technology-abilities")
+local operation_unlocks = require("lib/logic/operation-unlocks")
 local technology_prerequisites = require("lib/technology-prerequisites")
 
 randomizations.rebuild_tech_tree = function()
@@ -541,6 +542,9 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     technology_prerequisites.reduce(data.raw.technology)
+    if config.operation_readiness == true then
+        operation_unlocks.run()
+    end
 end
 
 -- Recycling recipes as the recycler would generate them from the game as it is now (see lib/recycling.lua)

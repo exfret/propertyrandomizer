@@ -202,6 +202,7 @@ prepare_world()
 -- Do unified randomizations first (skipped when no handler is on, see config.dev_unified)
 
 local unified_check = require("randomizations/graph/unified/skeleton/check")
+local operation_unlocks = require("lib/logic/operation-unlocks")
 -- How many times planetary changes in superposed mode are rolled again for a failed attempt before they're undone instead (see below)
 local PLANETARY_REROLLS = 2
 local num_planetary_rerolls = 0
@@ -246,12 +247,21 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         end
         -- Unified randomization's model can be wrong about the game it builds, so check the game itself (logic rebuilt from it) against the original
         -- An attempt that lost something a player needs fails like any other, so it's retried or errors instead of loading as a softlock
-        new_logic.build(true)
-        local attempt_sort_info = top.sort(new_logic.graph, nil, nil, {
-            complex_contexts = true,
-            home_contexts = true,
-        })
-        local verdict = unified_check.run(new_logic.graph, init_complex_sort_info, attempt_sort_info, "UNIFIEDCHECK")
+        local operation_result
+        if config.operation_readiness == true then
+            operation_result = operation_unlocks.run()
+        end
+        local attempt_sort_info
+        if operation_result ~= nil and operation_result.changed == 0 then
+            attempt_sort_info = operation_result.sorted
+        else
+            new_logic.build(true)
+            attempt_sort_info = top.sort(new_logic.graph, nil, nil, {
+                complex_contexts = true,
+                home_contexts = true,
+            })
+        end
+        local verdict = unified_check.run(new_logic.graph, init_complex_sort_info, attempt_sort_info, "UNIFIEDCHECK", config.operation_readiness)
         -- Outside superposed mode the planetary stages repaired their changes before unified randomization ran, so an attempt that loses what they kept is retried too, up to PLANETARY_LOSS_RETRIES times
         local num_lost_planetary = 0
         if config.planetary then

@@ -1289,14 +1289,22 @@ end
 -- This is taken mainly from top-sort.lua
 -- Creates a path of inds within sort_info.sorted starting from the goal and going backwards for how to get there
 -- goal_inds is a list of inds in sort_info.sorted of the pebbles we are hoping to achieve
+-- The immediate option returns only the backing of the first goal, without inspecting its parents.
 top.path = function(graph, goal_inds, sort_info, extra_params)
     local sorted = sort_info.sorted
     local node_to_context_inds = sort_info.node_to_context_inds
-    local context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
     extra_params = extra_params or {}
+    local context_info
+    if extra_params.immediate == true then
+        -- Operation layers request many direct backings of the same immutable sort.
+        sort_info.immediate_context_info = sort_info.immediate_context_info or build_context_info(sort_info.complex == true, sort_info.home_sets)
+        context_info = sort_info.immediate_context_info
+    else
+        context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
+    end
     local stop_if = extra_params.stop_if or function(pebble) return false end
     -- Only needed for the discovery rule, so found when first used
-    local room_discoverers
+    local room_discoverers = extra_params.immediate == true and sort_info.immediate_room_discoverers or nil
 
     local path = goal_inds
     -- Whether an index is in the path yet
@@ -1403,6 +1411,10 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             -- Then the path goes through the tech itself in an earlier context (a home context of the location with home contexts) and an earlier pebble of a tech that unlocks the location
             if earliest_context_ind == curr_ind and context_info.complex and curr_node.type == "technology" then
                 room_discoverers = room_discoverers or top.room_discoverers(graph)
+                if extra_params.immediate == true then
+                    -- Direct backings share the same immutable graph, so discovery queries share its graph-wide lookup too.
+                    sort_info.immediate_room_discoverers = room_discoverers
+                end
                 discovery_preinds = find_discovery_preinds(sort_info, room_discoverers, curr_node, outgoing_context, curr_ind)
             end
             -- If nothing was earlier, that's a contradiction
@@ -1429,6 +1441,9 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             end
         end
 
+        if extra_params.immediate == true then
+            break
+        end
         path_ind = path_ind + 1
     end
 

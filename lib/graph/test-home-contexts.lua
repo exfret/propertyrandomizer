@@ -797,4 +797,44 @@ test("batched witnesses equal separate witnesses with complex and home contexts"
     end
 end)
 
+test("immediate operation backings preserve context and discovery witnesses", function()
+    local graph = toy_graph()
+    local sorted = top.sort(graph, nil, nil, {
+        complex_contexts = true,
+        home_contexts = true,
+    })
+    for ind, _ in pairs(sorted.sorted) do
+        local full = top.path(graph, { ind }, sorted, { stop_if = function() return true end }).in_path
+        local immediate = top.path(graph, { ind }, sorted, { immediate = true }).in_path
+        for pre, _ in pairs(full) do
+            assert(immediate[pre], "missing direct witness " .. pre)
+        end
+        for pre, _ in pairs(immediate) do
+            assert(full[pre], "unexpected direct witness " .. pre)
+        end
+    end
+end)
+
+test("immediate discovery witnesses share their graph scan within each sort", function()
+    local graph = toy_graph()
+    local original = top.room_discoverers
+    local calls = 0
+    top.room_discoverers = function(g)
+        calls = calls + 1
+        return original(g)
+    end
+    for _ = 1, 2 do
+        local sorted = top.sort(graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+        })
+        calls = 0
+        for ind, _ in pairs(sorted.sorted) do
+            top.path(graph, { ind }, sorted, { immediate = true })
+        end
+        assert(calls == 1, "each new sort should scan discovery nodes once, not once per witness")
+    end
+    top.room_discoverers = original
+end)
+
 print(tostring(num_passed) .. " tests passed")

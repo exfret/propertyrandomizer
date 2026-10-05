@@ -9,6 +9,7 @@ local protection = require("randomizations/graph/unified/skeleton/protection")
 local furnace_selection = require("lib/furnace-selection")
 local item_fluid = require("lib/item-fluid")
 local logic = require("lib/logic/init")
+local operation_requirements = require("lib/logic/operation-requirements")
 
 local check = {}
 
@@ -30,9 +31,14 @@ end
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
 -- Only the protected part of each mechanic context counts (see protection.lua), and every context of a planet-locked recipe
 -- The optional label replaces MECHCHECK in the log lines
--- Returns the verdict: { ok = whether nothing a player needs was lost, unreachable = number of recipes, lost = number of mechanic and planet-locked recipe contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by }
-check.run = function(graph, init_sort_info, final_sort_info, label)
+-- audit_operations also checks readiness during an attempt, after its real unlock changes have been applied.
+-- Returns the verdict: { ok = whether every check passed, unreachable = number of recipes, lost = number of mechanic and planet-locked recipe contexts lost beyond isolatability, missing = number of promised pebbles missing beyond isolatability, furnace_collisions = number of ingredients some furnace can't pick a recipe by, operation_failures = number of buildings acquired before their operation inputs }
+check.run = function(graph, init_sort_info, final_sort_info, label, audit_operations)
     label = label or "MECHCHECK"
+    local num_operation_failures = 0
+    if config.operation_readiness == true and (label == "MECHCHECK" or audit_operations == true) and UNIFIED_MATERIAL_RENAMES ~= nil then
+        num_operation_failures = #operation_requirements.audit(graph, final_sort_info, "OPERATIONCHECK")
+    end
     local function log_check(message)
         log(label .. " " .. message)
     end
@@ -247,13 +253,14 @@ check.run = function(graph, init_sort_info, final_sort_info, label)
     end
 
     local verdict = {
-        ok = #lost_recipes == 0 and num_hard_lost == 0 and num_hard_missing == 0 and #furnace_collisions == 0,
+        ok = #lost_recipes == 0 and num_hard_lost == 0 and num_hard_missing == 0 and #furnace_collisions == 0 and num_operation_failures == 0,
         unreachable = #lost_recipes,
         lost = num_hard_lost,
         missing = num_hard_missing,
         furnace_collisions = #furnace_collisions,
+        operation_failures = num_operation_failures,
     }
-    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", furnace collisions " .. verdict.furnace_collisions .. ", not counting isolatability)")
+    log_check("verdict: " .. (verdict.ok and "ok" or "FAILED") .. " (unreachable recipes " .. verdict.unreachable .. ", lost contexts " .. verdict.lost .. ", missing promised pebbles " .. verdict.missing .. ", furnace collisions " .. verdict.furnace_collisions .. ", operation failures " .. verdict.operation_failures .. ", not counting isolatability)")
     return verdict
 end
 
