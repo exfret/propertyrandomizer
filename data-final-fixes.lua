@@ -69,6 +69,12 @@ if config.dupes then
     dupe_planet_locks.execute()
 end
 
+-- Freeze the original appearance donors after planet copies exist, before gameplay randomization edits them.
+local biomes = require("randomizations/planetary/biomes")
+if config.planetary_biomes == true then
+    biomes.capture()
+end
+
 local new_logic = require("lib/logic/init")
 
 local unified_info
@@ -630,6 +636,11 @@ end
 local planet_sounds = require("lib/planet-sounds")
 if config.planet_names == true then
     planet_sounds.execute()
+end
+
+-- Regional terrain appearances and decorative vegetation preserve the finished terrain and entity mechanics, after gameplay checks.
+if config.planetary_biomes == true then
+    biomes.execute()
 end
 
 -- What the randomization did, in the log as RESULT lines (lib/result-summary.lua): how the finished game differs from the one before any randomization

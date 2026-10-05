@@ -1,5 +1,7 @@
 -- Logs lines for dev/run-tests.py to read, all starting with PRTEST
 
+local biomes = require("biomes")
+
 -- The randomizer panel's softlock warning (scripts/gui.lua) reads this mod data, so the test reads the same numbers
 local function log_reachability()
     local reachability = prototypes.mod_data["propertyrandomizer-reachability-data"]
@@ -19,8 +21,9 @@ end
 
 -- Whether the randomizer changed planets in this game (its dupes, planetary or preview settings are on), so every planet's map generation is worth a look
 local function planets_changed()
+    local planetary_prefix = "propertyrandomizer-planetary-"
     for name, setting in pairs(settings.startup) do
-        if setting.value == true and (name == "propertyrandomizer-dupes" or name == "propertyrandomizer-unified-preview" or string.sub(name, 1, 26) == "propertyrandomizer-planeta") then
+        if setting.value == true and (name == "propertyrandomizer-dupes" or name == "propertyrandomizer-unified-preview" or string.sub(name, 1, #planetary_prefix) == planetary_prefix) then
             return true
         end
     end
@@ -28,9 +31,12 @@ local function planets_changed()
 end
 
 -- Generates one chunk on every planet, so a planet whose noise can't be evaluated (like an extra resource patch set with no patches, which crashed the game on arrival) fails the run here
-local function generate_planets()
+local function generate_planets(biomes_enabled)
     for name, planet in pairs(game.planets) do
         local surface = planet.create_surface()
+        if biomes_enabled == true then
+            biomes.prepare_surface(surface)
+        end
         surface.request_to_generate_chunks({
             0,
             0,
@@ -43,8 +49,13 @@ end
 script.on_init(function()
     log_settings()
     log_reachability()
+    local biome_setting = settings.startup["propertyrandomizer-planetary-biomes"]
+    local biomes_enabled = biome_setting ~= nil and biome_setting.value == true
     if planets_changed() then
-        generate_planets()
+        generate_planets(biomes_enabled)
+    end
+    if biomes_enabled == true then
+        biomes.check()
     end
 end)
 

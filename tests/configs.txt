@@ -36,6 +36,7 @@ skip unified-preview
 skip operation-readiness
 # Being worked on (visible for now only for that)
 skip planetary-oceans
+skip planetary-biomes
 skip planetary-resources
 skip planetary-lightning
 skip planetary-freezing
@@ -106,6 +107,10 @@ config planetary-resources settings seeds=1,2 planetary-resources=true
 config dupes-resources settings seeds=1,2 dupes=true planetary-resources=true
 # Ocean swaps with the planet copies: a copy generates only the tiles it lists (its original's ocean tiles used to show through its clones), and shorelines follow the swapped looks
 config dupes-oceans settings dupes=true planetary-oceans=true
+# Regional biome appearances in isolation, with and without planet copies; duplicate connections retain their usual behavior.
+config planetary-biomes settings seeds=1,2 logistic=none production=none military=none misc=none planetary-biomes=true
+config dupes-biomes settings seeds=1,2 logistic=none production=none military=none misc=none dupes=true planetary-biomes=true
+config dupes-oceans-biomes settings seeds=1 logistic=none production=none military=none misc=none dupes=true planetary-oceans=true planetary-biomes=true
 # A new random connection graph (the setting is skipped above), alone and with the planet copies
 config planetary-connections settings planetary-connections=true
 config dupes-connections settings dupes=true planetary-connections=true
