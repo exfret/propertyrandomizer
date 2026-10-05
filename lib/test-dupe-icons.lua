@@ -1,4 +1,4 @@
--- Plain-Lua regression tests for icons in lib/dupe.lua: technology icons made from recipe icons, and item copies' number badges (not loaded by the mod)
+-- Plain-Lua regression tests for icons in lib/dupe.lua: recipe numbering and copies without item badges (not loaded by the mod)
 -- Run from the mod root: lua lib/test-dupe-icons.lua
 -- The tech tree rebuild (randomizations/fixes.lua) gives each rebuilt technology its recipe's icons, and every layer has to grow with the first one, number badges too
 
@@ -103,6 +103,9 @@ local function fresh_data()
     package.loaded["lib/locale"].find_localised_name = function(prototype)
         return prototype.name
     end
+    package.loaded["lib/locale"].find_localised_description = function(prototype)
+        return prototype.localised_description
+    end
     data:extend({
         {
             type = "tool",
@@ -133,11 +136,9 @@ local function has_badge(icons)
     return false
 end
 
-test("a science pack copy (no_badge) has no number badge on its icon or its recipe's", function()
+test("an item copy has no number badge on its icon or its recipe's", function()
     fresh_data()
-    local copy = dupe.item(data.raw.tool.flask, 2, {
-        no_badge = true,
-    })
+    local copy = dupe.item(data.raw.tool.flask, 2)
     assert(copy.icons == nil and copy.icon == "flask.png")
     local recipe_copy = data.raw.recipe["flask-exfret-2-copy"]
     assert(recipe_copy ~= nil and recipe_copy.results[1].name == copy.name)
@@ -146,12 +147,79 @@ test("a science pack copy (no_badge) has no number badge on its icon or its reci
     assert(data.raw.tool.flask.icons == nil and data.raw.recipe.flask.icons == nil)
 end)
 
-test("any other item copy keeps its number badges", function()
+test("layered item and dark background icons keep their layers without duplicate badges", function()
     fresh_data()
-    local copy = dupe.item(data.raw.tool.flask, 2)
-    assert(has_badge(copy.icons) and copy.icons[#copy.icons].shift[1] == -7)
+    local original = data.raw.tool.flask
+    original.icon = nil
+    original.icons = {
+        {icon = "flask.png"},
+        {
+            icon = "overlay.png",
+            shift = {
+                -2,
+                1,
+            },
+        },
+    }
+    original.dark_background_icons = {{icon = "dark-flask.png"}}
+    local copy = dupe.item(original, 2)
+    assert(#copy.icons == 2 and not has_badge(copy.icons))
+    assert(copy.icons[2].icon == "overlay.png" and copy.icons[2].shift[1] == -2)
+    assert(#copy.dark_background_icons == 1 and not has_badge(copy.dark_background_icons))
     local recipe_copy = data.raw.recipe["flask-exfret-2-copy"]
-    assert(has_badge(recipe_copy.icons) and recipe_copy.icons[#recipe_copy.icons].shift[1] == -7)
+    assert(#recipe_copy.icons == 2 and not has_badge(recipe_copy.icons))
+    assert(#original.icons == 2 and #original.dark_background_icons == 1)
+end)
+
+test("a standalone recipe duplicate keeps its right corner badge", function()
+    fresh_data()
+    local copy = dupe.recipe(data.raw.recipe.flask, 2)
+    assert(#copy.icons == 2 and has_badge(copy.icons))
+    assert(copy.icons[2].shift[1] == 7 and copy.icons[2].shift[2] == -7)
+end)
+
+test("a technology copy keeps its layered icons without a duplicate badge", function()
+    fresh_data()
+    local original = {
+        type = "technology",
+        name = "research",
+        icons = {
+            {icon = "research.png"},
+            {icon = "overlay.png"},
+        },
+        prerequisites = {"earlier-research"},
+    }
+    local copy = dupe.technology(original, 2)
+    assert(#copy.icons == 2 and not has_badge(copy.icons))
+    assert(copy.prerequisites[1] == "earlier-research-exfret-2-copy")
+    assert(#original.icons == 2 and original.prerequisites[1] == "earlier-research")
+end)
+
+test("an entity copy keeps its layered icons without a duplicate badge", function()
+    fresh_data()
+    local original = {
+        type = "assembling-machine",
+        name = "machine",
+        icons = {
+            {icon = "machine.png"},
+            {icon = "overlay.png"},
+        },
+    }
+    local copy = dupe.entity(original, 2)
+    assert(#copy.icons == 2 and not has_badge(copy.icons))
+    assert(copy.icons[1].icon == "machine.png" and copy.icons[2].icon == "overlay.png")
+    assert(#original.icons == 2 and copy.icons ~= original.icons)
+end)
+
+test("a two digit badge keeps its size and position on a rebuilt technology", function()
+    local icons = {dupe.recipe_number_icon(20)}
+    local technology_icons = dupe.technology_icons(icons)
+    assert(string.find(technology_icons[1].icon, "number_20.png", 1, true) ~= nil)
+    assert(#technology_icons == 1 and technology_icons[1].shift[1] == 28)
+    for _, icon in pairs(technology_icons) do
+        assert(icon.scale == 4 / 6 and icon.shift[2] == -28)
+    end
+    assert(icons[1].shift[1] == 7)
 end)
 
 test("the dupe numbers made follow the setting, as far as the recolored graphics and the number badges go", function()
@@ -171,7 +239,7 @@ test("the dupe numbers made follow the setting, as far as the recolored graphics
         0,
         0,
     })
-    assert(dupe.max_icon_number == 9 and string.find(badge.icon, "number_nine.png", 1, true) ~= nil)
+    assert(dupe.max_icon_number == 99 and string.find(badge.icon, "number_nine.png", 1, true) ~= nil)
     -- Graphics made for fewer dupes than the setting asks for cap it
     manifest.max_dupe = 3
     assert(dupe.highest_number() == 3)

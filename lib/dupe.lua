@@ -29,17 +29,22 @@ local dupe_number_to_filename = {
     "number_eight.png",
     "number_nine.png",
 }
-dupe.max_icon_number = #dupe_number_to_filename
+-- dev/make-number-badges.py generates one badge per complete recipe number
+dupe.max_icon_number = 99
+
+local function number_filename(number)
+    return "__propertyrandomizer__/graphics/" .. (dupe_number_to_filename[number] or "number_" .. tostring(number) .. ".png")
+end
 
 -- The highest dupe number made (the original is 1): one more than the setting's number of duplicates (config.num_dupes), as far as the recolored graphics shipped with the mod (dev/make-dupe-graphics.py) and the number badges go
 dupe.highest_number = function()
     return math.min(1 + config.num_dupes, dupe_graphics.max_dupe, dupe.max_icon_number)
 end
 
--- Number badge layer for the top right of a recipe icon (items put theirs on the top left so the two don't overlap)
+-- A complete number in the top right of a recipe icon
 dupe.recipe_number_icon = function(number)
     return {
-        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[number],
+        icon = number_filename(number),
         icon_size = 120,
         scale = 1 / 6,
         shift = {7, -7},
@@ -49,7 +54,7 @@ end
 -- Number badge layer for an icon list (a 120 px badge), at the given scale and shift
 dupe.number_badge = function(number, scale, shift)
     return {
-        icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[number],
+        icon = number_filename(number),
         icon_size = 120,
         scale = scale,
         shift = shift,
@@ -347,9 +352,8 @@ dupe.recipe = function(recipe, extra_info)
     return new_recipe
 end
 
--- options (optional): no_badge leaves the number badge off the copy's icons and its recipes' (science packs, which their recolor alone tells apart)
-dupe.item = function(item, dupe_number, options)
-    options = options or {}
+-- Item copies and their recipes have no number badges
+dupe.item = function(item, dupe_number)
     local new_item = dupe.prototype(item, dupe_number)
     recolor_graphics(new_item, dupe_number)
 
@@ -357,13 +361,9 @@ dupe.item = function(item, dupe_number, options)
     for _, recipe in pairs(dupe.item_recipes(item)) do
         local new_recipe = dupe.recipe(recipe, dupe_number)
         recolor_graphics(new_recipe, dupe_number)
-        -- Named as the item's copy rather than as a recipe copy, with the number badge (which dupe.recipe put last) on the left like the item's
+        -- Named as the item's copy rather than as a recipe copy, without the badge dupe.recipe put last
         new_recipe.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(recipe), tostring(dupe_number)}
-        if options.no_badge == true then
-            table.remove(new_recipe.icons)
-        else
-            new_recipe.icons[#new_recipe.icons].shift[1] = -new_recipe.icons[#new_recipe.icons].shift[1]
-        end
+        table.remove(new_recipe.icons)
         for _, result in pairs(new_recipe.results) do
             if result.type == "item" and result.name == item.name then
                 result.name = new_item.name
@@ -372,29 +372,6 @@ dupe.item = function(item, dupe_number, options)
         -- A recipe with several results names its main product (like the cryogenic science pack's, which gives fluoroketone back)
         if new_recipe.main_product == item.name then
             new_recipe.main_product = new_item.name
-        end
-    end
-
-    for _, icon_prefix_type in pairs({"", "dark_background_"}) do
-        if options.no_badge ~= true and (new_item[icon_prefix_type .. "icon"] ~= nil or new_item[icon_prefix_type .. "icons"] ~= nil) then
-            local item_icons
-            if new_item[icon_prefix_type .. "icons"] == nil then
-                item_icons = {
-                    {
-                        icon = new_item[icon_prefix_type .. "icon"],
-                        icon_size = new_item[icon_prefix_type .. "icon_size"] or 64
-                    }
-                }
-            else
-                item_icons = new_item[icon_prefix_type .. "icons"]
-            end
-            table.insert(item_icons, {
-                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-                icon_size = 120,
-                scale = 1 / 6,
-                shift = {-7, -7}
-            })
-            new_item[icon_prefix_type .. "icons"] = item_icons
         end
     end
 
@@ -461,27 +438,6 @@ dupe.technology = function(tech, dupe_number)
         data.raw.technology[new_tech.name] = nil
         new_tech.name = prefix .. "-exfret-" .. tostring(dupe_number) .. "-copy-" .. suffix
         data.raw.technology[new_tech.name] = new_tech
-    end
-
-    if new_tech.icon ~= nil or new_tech.icons ~= nil then
-        local tech_icons
-        if new_tech.icons == nil then
-            tech_icons = {
-                {
-                    icon = new_tech.icon,
-                    icon_size = new_tech.icon_size or 64
-                }
-            }
-        else
-            tech_icons = new_tech.icons
-        end
-        new_tech.icons = tech_icons
-        table.insert(tech_icons, {
-            icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-            icon_size = 120,
-            scale = 1 / 3,
-            shift = {-40, -40}
-        })
     end
 
     local new_prerequisites = {}
@@ -652,31 +608,6 @@ dupe.entity = function(entity, dupe_number)
                 new_entity.minable.results[1].name = new_entity_item.name
             end
         end
-    end
-
-    if new_entity.icons ~= nil then
-        new_entity.icons = {
-            new_entity.icons,
-            {
-                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-                icon_size = 120,
-                scale = 1 / 4,
-                shift = {-10, -10}
-            }
-        }
-    elseif new_entity.icon ~= nil then
-        new_entity.icons = {
-            {
-                icon = new_entity.icon,
-                icon_size = new_entity.icon_size or 64
-            },
-            {
-                icon = "__propertyrandomizer__/graphics/" .. dupe_number_to_filename[dupe_number],
-                icon_size = 120,
-                scale = 1 / 4,
-                shift = {-10, -10}
-            }
-        }
     end
 
     -- TODO: Upgrades, pasteable entities, items with this as their plant result

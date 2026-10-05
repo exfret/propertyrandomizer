@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.7
 Date: ?
+  Changes:
+    - Duplicate icons no longer have a top left number badge; item randomization has new recipe badges for numbers 1 through 99
   Bugfixes:
     - Item randomization reflection of ammo creation was not properly modeled
     - Fluid box connections no longer share a corner tile facing different ways (the game only drew one of them in alt mode)

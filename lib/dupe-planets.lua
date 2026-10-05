@@ -34,12 +34,6 @@ local dupe_planets = {}
 local ORIENTATION_NUDGE = 0.035
 -- The share of the copied science packs in original technologies that become one of the copies instead (the split: roots of the tree's branches, see split)
 local SPLIT_SHARE = 1 / 3
--- Where a copied technology's number badge goes on its icon (like the other duplicates')
-local BADGE_SCALE = 1 / 3
-local BADGE_SHIFT = {
-    -40,
-    -40,
-}
 -- The depths an ocean family lists its tiles by (randomizations/planetary/oceans.lua)
 local DEPTHS = {
     "shallow",
@@ -383,10 +377,7 @@ local function copy_discovery(planet, copy, number, discovery, model, discovery_
                 "propertyrandomizer.planet_discovery",
                 copy.localised_name,
             }
-            if dupe.recolor_graphics(copy_tech, number) == 0 then
-                copy_tech.icons = table.deepcopy(icon_list(tech))
-                table.insert(copy_tech.icons, dupe.number_badge(number, BADGE_SCALE, BADGE_SHIFT))
-            end
+            dupe.recolor_graphics(copy_tech, number)
             num_added = num_added + 1
         end
         return num_added
@@ -433,10 +424,7 @@ local function copy_packs(planet, copy, number, room_keys, packs, fixes)
         if is_free and pack.hidden ~= true and dupe.item_has_recolor(pack, number) then
             local recipes = dupe.item_recipes(pack)
             if #recipes > 0 and owned_by(planet, recipes, room_keys) then
-                -- No number badge: a pack copy's color alone tells it apart from every other pack (dev/dupe-items.txt)
-                local new_pack = dupe.item(pack, number, {
-                    no_badge = true,
-                })
+                local new_pack = dupe.item(pack, number)
                 new_pack.default_import_location = copy.name
                 new_pack.localised_name = {
                     "propertyrandomizer.planet_pack",
@@ -590,7 +578,6 @@ local function parallel_tree(candidates, chain, packs, discovery_copies, number)
             end
         end
         copy.icons = table.deepcopy(icon_list(tech))
-        table.insert(copy.icons, dupe.number_badge(number, BADGE_SCALE, BADGE_SHIFT))
         copied[tech.name] = copy
         dupe.technology_copies[number][tech.name] = copy
         return copy

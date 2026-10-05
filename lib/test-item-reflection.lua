@@ -37,20 +37,14 @@ data = {
 local dutils = require("lib/data-utils")
 local recycling_sources = require("lib/logic/recycling-sources")
 
--- Stand-ins for the badge icons and the prefix roll, so the test needs no graphics or seed
-package.loaded["lib/dupe"] = {
-    max_icon_number = 9,
-    recipe_number_icon = function(number)
-        return {
-            icon = "badge-" .. number,
-        }
-    end,
-}
+-- The real number helpers, with stand-ins for the engine module and prefix roll
+package.loaded["resource-autoplace"] = {}
 package.loaded["lib/random/rng"] = {
     int = function(_, max)
         return 1
     end,
 }
+local dupe = require("lib/dupe")
 local constants = require("helper-tables/constants")
 local locale_utils = require("lib/locale")
 local recipe_renames = require("lib/recipe-renames")
@@ -331,15 +325,55 @@ test("a renamed recipe takes its new item's name, icon and place in the menus, a
     -- Three recipes are named after plates, so the renamed two get a prefix and badges 1 and 2 in name order, and the one that wasn't renamed is left alone
     for number, name in pairs({"breed", "cast"}) do
         local recipe = recipes[name]
-        assert(recipe.localised_name[2] == constants.funny_recipe_prefixes[1], name)
-        assert(recipe.localised_name[4][1] == locale_utils.find_localised_name(data.raw.item.plate)[1], name)
-        assert(recipe.icon == nil and #recipe.icons == 2 and recipe.icons[1].icon == "plate.png" and recipe.icons[2].icon == "badge-" .. number, name)
+        assert(recipe.localised_name[1] == "propertyrandomizer-recipe-prefix." .. constants.funny_recipe_prefixes[1], name)
+        assert(recipe.localised_name[2][1] == locale_utils.find_localised_name(data.raw.item.plate)[1], name)
+        assert(recipe.icon == nil and #recipe.icons == 2 and recipe.icons[1].icon == "plate.png" and recipe.icons[2].icon == dupe.recipe_number_icon(number).icon, name)
     end
     -- A renamed recipe is listed with its new item, so its own subgroup and order go
     assert(recipes.breed.subgroup == nil and recipes.breed.order == nil)
     assert(recipes.smelt.localised_name == nil and recipes.smelt.icons == nil)
     -- The item's own icons aren't shared with the recipes
     assert(#data.raw.item.plate.icons == 1)
+end)
+
+test("many renamed recipes use complete number badges on the right through 99", function()
+    data.raw.item.plate = {
+        type = "item",
+        name = "plate",
+        icon = "plate.png",
+    }
+    data.raw.recipe = {}
+    local renamed = {}
+    for number = 1, 100 do
+        local name = string.format("recipe-%03d", number)
+        data.raw.recipe[name] = {
+            type = "recipe",
+            name = name,
+            results = {
+                {
+                    type = "item",
+                    name = "plate",
+                    amount = 1,
+                },
+            },
+        }
+        renamed[name] = {
+            type = "item",
+            name = "plate",
+        }
+    end
+    recipe_renames.apply(renamed, {}, "key")
+    for number = 1, 99 do
+        local icons = data.raw.recipe[string.format("recipe-%03d", number)].icons
+        assert(#icons == 2, tostring(number))
+        assert(icons[1].icon == "plate.png")
+        local badge = icons[2]
+        assert(badge.icon == dupe.recipe_number_icon(number).icon)
+        assert(badge.shift[1] == 7 and badge.shift[2] == -7)
+    end
+    -- Larger numbers keep the product icon rather than reusing an earlier recipe's number
+    assert(#data.raw.recipe["recipe-100"].icons == 1)
+    assert(data.raw.item.plate.icons == nil)
 end)
 
 print(num_passed .. " tests passed")
