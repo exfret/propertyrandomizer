@@ -6,6 +6,7 @@ return { -- Finished unified randomizations
     "tech-science-packs",
     --"entity-operation-fluid",
     --"mining-fluid-required",
+    --"mining-results",
     --"entity-autoplace",
     --"recipe-ingredients",
     --"item-ingredients",

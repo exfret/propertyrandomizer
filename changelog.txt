@@ -3,14 +3,25 @@ Version: 0.5.7
 Date: ?
   Features:
     - (Unified preview) Independent resource products and local production on original and copied planets, including item/fluid swaps and planet-specific recycling
+    - Some performance improvements, probably also some performance improve-nots
+    - (Unified preview) Work on planetary duplicates and planetary randomizations
+    - Duplicate technology trees include early research and research triggers, with shared intermediate items made by planet-local recipe variants and more later research distributed across planet copies
+    - (Unified preview) Item randomization can move fluids as well
+    - (Unified preview) Spoiling handler to randomize spoilage
+    - (Unified preview) Recipe "shapes" randomized (number of distinct item and fluid ingredients can now change)
+    - Ability to search mechanics and arbitrary nodes in the randomizer panel
     - Customizer controls for unified graph selection amounts, recipe category preference, ingredient count variation, fluid preference and resource balance
     - Separate prototype exclusions with Explorer-style selectors and scopes for individual, graph, numerical or all normal randomizations
-    - Duplicate technology trees include early research and research triggers, with shared intermediate items made by planet-local recipe variants and more later research distributed across planet copies
+    - Customizer tab in randomizer panel for changing settings more easily
   Changes:
+    - Combat safeguards apply only to graph randomization; numerical military changes apply directly without combat checks or rollback
     - Duplicate icons no longer have a top left number badge; item randomization has new recipe badges for numbers 1 through 99
+    - Upgrade line preservation removed in favor of reduced complexity and independent randomizations
+    - (Unified preview) Recipe category randomization favors old category 50% of the time
   Bugfixes:
     - Item randomization reflection of ammo creation was not properly modeled
     - Fluid box connections no longer share a corner tile facing different ways (the game only drew one of them in alt mode)
+    - (Unified preview) Mining fluid randomization was not previously working on non-uranium ores
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.6
 Date: 2026.09.28

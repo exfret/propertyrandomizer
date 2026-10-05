@@ -126,33 +126,6 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
-        name = "propertyrandomizer-unified-damage-types",
-        default_value = false,
-        order = "e-aa[damage-types]",
-    },
-    {
-        setting_type = "startup",
-        type = "string-setting",
-        name = "propertyrandomizer-military-difficulty",
-        allowed_values = {
-            "normal",
-            "no-cap",
-        },
-        default_value = "normal",
-        order = "e-ab[military-difficulty]",
-    },
-    {
-        setting_type = "startup",
-        type = "double-setting",
-        name = "propertyrandomizer-military-clear-time",
-        default_value = 20,
-        minimum_value = 1,
-        maximum_value = 120,
-        order = "e-ac[military-clear-time]",
-    },
-    {
-        setting_type = "startup",
-        type = "bool-setting",
         name = "propertyrandomizer-unified-preview",
         -- The new unified version for players to try: the unified randomizations still in development, entity randomization, planetary changes other than lightning and freezing, and the tech tree rebuild (config.lua)
         default_value = false,
@@ -246,6 +219,33 @@ data:extend({
         default_value = true,
         order = "e-[unified]-a",
         hidden = true,
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-unified-damage-types",
+        default_value = false,
+        order = "e-aa[damage-types]",
+    },
+    {
+        setting_type = "startup",
+        type = "string-setting",
+        name = "propertyrandomizer-military-difficulty",
+        allowed_values = {
+            "normal",
+            "no-cap",
+        },
+        default_value = "normal",
+        order = "e-ab[military-difficulty]",
+    },
+    {
+        setting_type = "startup",
+        type = "double-setting",
+        name = "propertyrandomizer-military-clear-time",
+        default_value = 20,
+        minimum_value = 1,
+        maximum_value = 120,
+        order = "e-ac[military-clear-time]",
     },
     {
         setting_type = "startup",
