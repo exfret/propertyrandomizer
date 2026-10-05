@@ -1,7 +1,6 @@
 local lib_name = "lib"
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
-local lu = require(lib_name .. "/lookup/init")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -79,11 +78,14 @@ logic_group.build = function(graph, type_info)
     add_node("chemical-fuel", "OR", nil, nil, { mechanic = true })
     ----------------------------------------
     -- Can we get a chemical fuel without a burnt fuel result?
-    
-    local burnt = 0
-    local fcat_key = concat({"chemical", burnt})
-    for item_name, _ in pairs(lu.fcat_to_items[fcat_key]) do
-        add_edge("item", item_name)
+    -- Use the shared category node, where first pass keeps replacement fuel on the resource position.
+    -- Direct item edges would separately require the original fuel identities, even when the replacement provides that fuel.
+    local fcat_key = concat({
+        dutils.REPLACEMENT_FUEL_CATEGORY,
+        0,
+    })
+    if graph[key("fuel-category", fcat_key)] ~= nil then
+        add_edge("fuel-category", fcat_key)
     end
 
 end

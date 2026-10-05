@@ -21,6 +21,29 @@ local set_prot = builder.set_prot
 
 local abstract = {}
 
+-- Burner power uses the same fuel-category nodes as every other fuel requirement.
+-- Those nodes measure one MJ and let first pass model fuel granted to a resource position's replacement.
+abstract.build_burners = function(lu)
+    for fcat_combo, combo_info in pairs(lu.fcat_combos) do
+        add_node("energy-source-burner", "OR", nil, fcat_combo, {
+            canonical = "energy-source-burner",
+            mechanic = true,
+        })
+        for _, fuel_category in pairs(combo_info.fuel) do
+            -- Check fuels with burnt results only if combo_info.burnt == 1.
+            for burnable = 0, combo_info.burnt do
+                local fcat_key = concat({
+                    fuel_category,
+                    burnable,
+                })
+                if lu.fcat_to_items[fcat_key] ~= nil then
+                    add_edge("fuel-category", fcat_key, { amount = 1 })
+                end
+            end
+        end
+    end
+end
+
 function abstract.build(lu, extra_params)
     extra_params = extra_params or {}
 
@@ -162,25 +185,7 @@ function abstract.build(lu, extra_params)
     -- Can we power an entity that requires no power?
     -- Trivially satisfied (AND with no inputs).
 
-    for fcat_combo, combo_info in pairs(lu.fcat_combos) do
-        ----------------------------------------
-        add_node("energy-source-burner", "OR", nil, fcat_combo, { canonical = "energy-source-burner", mechanic = true })
-        ----------------------------------------
-        -- Can we power an entity with this burner energy source?
-
-        for _, fuel_category in pairs(combo_info.fuel) do
-            -- Check fuels with burnt results only if combo_info.burnt == 1
-            for burnable = 0, combo_info.burnt do
-                local items_for_fuel = lu.fcat_to_items[concat({fuel_category, burnable})]
-                if items_for_fuel ~= nil then
-                    for item_name, _ in pairs(items_for_fuel) do
-                        local item_prot = dutils.get_prot("item", item_name)
-                        add_edge("item", item_name, { amount = 1000000 / util.parse_energy(item_prot.fuel_value) })
-                    end
-                end
-            end
-        end
-    end
+    abstract.build_burners(lu)
 
     ----------------------------------------
     add_node("energy-source-electric", "AND", nil, "", {
