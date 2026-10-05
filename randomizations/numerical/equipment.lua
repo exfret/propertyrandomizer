@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("randomizations/experimental/numerical/equipment")
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local rng = require("lib/random/rng")
@@ -459,5 +461,11 @@ randomizations.equipment_solar_panel_production = function(id)
 
             locale_utils.create_localised_description(equipment, util.parse_energy(equipment.power) / old_power, id, { variance = "big" })
         end
+    end
+end
+
+if experimental_flags.military_resistances == true then
+    for name, randomize in pairs(military_experiment) do
+        randomizations[name] = randomize
     end
 end

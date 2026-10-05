@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("randomizations/experimental/helper/energy")
 local randnum = require("lib/random/randnum")
 local rng = require("lib/random/rng")
 
@@ -25,4 +27,10 @@ randomizations.energy = function(params)
     local new_energy_as_number = randomize(params)
 
     tbl_to_use[old_property] = new_energy_as_number .. suffix
+end
+
+if experimental_flags.military_resistances == true then
+    for name, randomize in pairs(military_experiment) do
+        randomizations[name] = randomize
+    end
 end

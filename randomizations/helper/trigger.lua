@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("randomizations/experimental/helper/trigger")
 local randnum = require("lib/random/randnum")
 
 local randomize = randnum.rand
@@ -120,4 +122,10 @@ randomizations.trigger = function(params, tbl, target)
     end
 
     return targets
+end
+
+if experimental_flags.military_resistances == true then
+    for name, randomize in pairs(military_experiment) do
+        randomizations[name] = randomize
+    end
 end

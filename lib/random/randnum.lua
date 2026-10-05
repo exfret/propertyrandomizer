@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("lib/random/experimental/randnum")
 local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local fleish = require("lib/random/fleishman")
@@ -414,6 +416,10 @@ randnum.rand = function(params, skip_tuning)
     -- Update with randomized value, and return this value
     tbl[property] = val
     return tbl[property]
+end
+
+if experimental_flags.military_resistances == true then
+    return military_experiment
 end
 
 return randnum

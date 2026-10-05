@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("randomizations/experimental/numerical/entity")
 local categories = require("helper-tables/categories")
 local randnum = require("lib/random/randnum")
 local randprob = require("lib/random/randprob")
@@ -1432,6 +1434,10 @@ randomizations.health_regeneration = function (id)
         ["plant"] = true,
     }
 
+    if experimental_flags.military_resistances == true then
+        return military_experiment.health_regeneration(id, enemy_classes, tree_classes)
+    end
+
     for entity_class, _ in pairs(defines.prototypes.entity) do
         if data.raw[entity_class] ~= nil then
             for _, entity in pairs(data.raw[entity_class]) do
@@ -1957,6 +1963,10 @@ randomizations.machine_energy_usage = function(id)
         ["rocket-silo"] = true,
         ["furnace"] = true,
     }
+
+    if experimental_flags.military_resistances == true then
+        return military_experiment.machine_energy_usage(id, crafting_machine_classes)
+    end
 
     for entity_class, energy_keys in pairs(categories.machine_energy_usage_keys) do
         if data.raw[entity_class] ~= nil then
@@ -3841,27 +3851,31 @@ end
 
 randomizations.unit_attack_speed = function(id)
     for _, unit_class in pairs({"unit", "spider-unit"}) do
-        if data.raw[unit_class] ~= nil then
-            for _, unit in pairs(data.raw[unit_class]) do
-                if unit.attack_parameters.cooldown ~= 0 and unit.attack_parameters.cooldown ~= nil then
-                    local old_attack_speed = 1 / unit.attack_parameters.cooldown
+        if experimental_flags.military_resistances == true then
+            military_experiment.unit_attack_speed(id, unit_class)
+        else
+            if data.raw[unit_class] ~= nil then
+                for _, unit in pairs(data.raw[unit_class]) do
+                    if unit.attack_parameters.cooldown ~= 0 and unit.attack_parameters.cooldown ~= nil then
+                        local old_attack_speed = 1 / unit.attack_parameters.cooldown
 
-                    -- To attacks per second
-                    unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
-                    randomize({
-                        id = id,
-                        prototype = unit,
-                        tbl = unit.attack_parameters,
-                        property = "cooldown",
-                        rounding = "discrete_float",
-                        range = "small",
-                        dir = -1
-                    })
-                    -- Back to ticks per attack
-                    unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
+                        -- To attacks per second
+                        unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
+                        randomize({
+                            id = id,
+                            prototype = unit,
+                            tbl = unit.attack_parameters,
+                            property = "cooldown",
+                            rounding = "discrete_float",
+                            range = "small",
+                            dir = -1,
+                        })
+                        -- Back to ticks per attack
+                        unit.attack_parameters.cooldown = 60 / unit.attack_parameters.cooldown
 
-                    local new_attack_speed = 1 / unit.attack_parameters.cooldown
-                    locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
+                        local new_attack_speed = 1 / unit.attack_parameters.cooldown
+                        locale_utils.create_localised_description(unit, new_attack_speed / old_attack_speed, id, {flipped = true})
+                    end
                 end
             end
         end
@@ -4287,5 +4301,11 @@ randomizations.worm_shooting_speed = function(id)
 
             locale_utils.create_localised_description(worm, factor, id, { flipped = true, variance = "medium" })
         end
+    end
+end
+
+if experimental_flags.military_resistances == true then
+    for name, randomize in pairs(military_experiment.randomizations) do
+        randomizations[name] = randomize
     end
 end

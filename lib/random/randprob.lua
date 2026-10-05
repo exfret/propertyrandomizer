@@ -1,3 +1,5 @@
+local experimental_flags = require("helper-tables/experimental-flags")
+local military_experiment = require("lib/random/experimental/randprob")
 local randnum = require("lib/random/randnum")
 
 local randprob = {}
@@ -78,6 +80,10 @@ randprob.rand = function(params)
 
     tbl[property] = new_p
     return new_p
+end
+
+if experimental_flags.military_resistances == true then
+    return military_experiment
 end
 
 return randprob
