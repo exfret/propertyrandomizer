@@ -717,6 +717,40 @@ end
 -- Units' placing slots start this way, since no item places them in vanilla
 local DETACHED = "detached"
 
+-- Prefer changes that show up in the landscape: another planet, another kind of entity, and another deconstruction entry (planet copies share their original's entry).
+-- These are preferences among admissible bases; they never relax the safety checks.
+local function autoplace_priority(graph, slot, base_key)
+    local base = graph.nodes[base_key]
+    if base.acq_kind ~= "autoplace" then
+        return 0
+    end
+    if slot.kind ~= "autoplace" then
+        return 0
+    end
+    local own_base = graph.nodes[slot.own_base_key]
+    local prototype = dutils.get_prot("entity", slot.identity)
+    local other = dutils.get_prot("entity", base.entity)
+    if (prototype.deconstruction_alternative or prototype.name) == (other.deconstruction_alternative or other.name) then
+        return 0
+    end
+    local priority = 1
+    local own_room = gutils.get_owner(graph, own_base).name
+    local other_room = gutils.get_owner(graph, base).name
+    if own_room ~= other_room then
+        priority = priority + 4
+    end
+    local own_planet = data.raw.planet[lookups.rooms[own_room].name]
+    local other_planet = data.raw.planet[lookups.rooms[other_room].name]
+    -- Crossing between copies of the same planet changes less than crossing between originals (dupe.prototype records orig_name).
+    if (own_planet.orig_name or own_planet.name) ~= (other_planet.orig_name or other_planet.name) then
+        priority = priority + 8
+    end
+    if prototype.type ~= other.type then
+        priority = priority + 2
+    end
+    return priority
+end
+
 -- Matches bases to heads one to one, which the generic search can't guarantee (its fallback can reuse a base).
 -- Taking bases greedily strands heads, since many (like assembling machines, needed isolated and automated on every planet) can only use their own base, and it's hard to tell ahead of time which.
 -- Instead this starts from every head keeping its own base (always valid, since promotion guarantees vanilla bases), takes a random matching of heads to admissible bases, and applies it a group at a time.
@@ -1026,13 +1060,29 @@ local function matched_search(params)
         can_detach[ind] = slot.friendly or (slot.kind ~= "build" and #contexts == 0)
     end
 
-    -- Random matching of slots to bases (Kuhn's algorithm with shuffled candidates and each slot's own base tried last, like monotone matching)
+    -- Random matching of slots to bases (Kuhn's algorithm with candidates shuffled within preference tiers and each slot's own base tried last)
     -- Every slot can keep its own base (or stay detached, for units' placing slots), so every slot always gets one, and a slot is only detached when its own base went to another slot
     local taker_of = {}
     local takes = {}
     local function try(ind, visited)
         local candidates = table.deepcopy(can_take[ind])
         rng.shuffle(rng_key, candidates)
+        if slots[ind].kind == "autoplace" then
+            -- Cache priorities and preserve the shuffle within a tier (table.sort isn't stable).
+            local ranked = {}
+            for order, base_key in pairs(candidates) do
+                ranked[base_key] = {
+                    priority = autoplace_priority(graph, slots[ind], base_key),
+                    order = order,
+                }
+            end
+            table.sort(candidates, function(left, right)
+                if ranked[left].priority ~= ranked[right].priority then
+                    return ranked[left].priority > ranked[right].priority
+                end
+                return ranked[left].order < ranked[right].order
+            end)
+        end
         if not slots[ind].friendly then
             table.insert(candidates, slots[ind].own_base_key)
         end
@@ -1265,6 +1315,44 @@ local function matched_search(params)
         end
     end
     log("Entity randomization: " .. counts.moved .. " of " .. #slots .. " slots changed; " .. counts.spoofs .. " to an item that placed nothing, " .. counts.salvaged .. " to salvage from the wild, " .. counts.carried .. " to biter carriers, " .. counts.hatched .. " to carriers hatching from eggs, " .. counts.triggered .. " to trigger slots, " .. counts.wrecked .. " to wrecks, " .. counts.friendly .. " friendly biters, " .. counts.detached .. " detached (" .. num_pairs .. " possible pairs)")
+
+    local wild_counts = {
+        total = 0,
+        moved = 0,
+        cross_planet = 0,
+        cross_original = 0,
+        kinds = 0,
+        equivalents = 0,
+    }
+    for _, slot in pairs(slots) do
+        if slot.kind == "autoplace" then
+            wild_counts.total = wild_counts.total + 1
+            if slot.base_key ~= slot.own_base_key and slot.base_key ~= DETACHED then
+                wild_counts.moved = wild_counts.moved + 1
+                local base = graph.nodes[slot.base_key]
+                local own_base = graph.nodes[slot.own_base_key]
+                local prototype = dutils.get_prot("entity", slot.identity)
+                local other = dutils.get_prot("entity", base.entity)
+                if gutils.get_owner(graph, own_base).name ~= gutils.get_owner(graph, base).name then
+                    wild_counts.cross_planet = wild_counts.cross_planet + 1
+                end
+                local own_room = lookups.rooms[gutils.get_owner(graph, own_base).name]
+                local other_room = lookups.rooms[gutils.get_owner(graph, base).name]
+                local own_planet = data.raw.planet[own_room.name]
+                local other_planet = data.raw.planet[other_room.name]
+                if (own_planet.orig_name or own_planet.name) ~= (other_planet.orig_name or other_planet.name) then
+                    wild_counts.cross_original = wild_counts.cross_original + 1
+                end
+                if prototype.type ~= other.type then
+                    wild_counts.kinds = wild_counts.kinds + 1
+                end
+                if (prototype.deconstruction_alternative or prototype.name) == (other.deconstruction_alternative or other.name) then
+                    wild_counts.equivalents = wild_counts.equivalents + 1
+                end
+            end
+        end
+    end
+    log("Entity autoplace: " .. wild_counts.moved .. " of " .. wild_counts.total .. " wild slots moved; " .. wild_counts.cross_planet .. " across planets (" .. wild_counts.cross_original .. " between different originals), " .. wild_counts.kinds .. " across entity types, " .. wild_counts.equivalents .. " equivalent entries; " .. counts.salvaged .. " buildings salvaged")
 
     return true
 end

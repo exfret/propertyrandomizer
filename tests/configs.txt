@@ -143,3 +143,6 @@ config customizer-numerical settings seeds=1 logistic=none production=none milit
 config customizer-misc settings seeds=1 logistic=none production=none military=none misc=none overrides=ON:inserter_offsets;ON:beacon_profiles;ON:equipment_shapes;ON:cliff_sizes;ON:spider_leg_sizes;ON:map_colors;PARAM:inserter_offsets.range=small;PARAM:inserter_offsets.variance=very_small;PARAM:setting/propertyrandomizer-misc.range=small;PARAM:setting/propertyrandomizer-misc.variance=very_small;PARAM:beacon_profiles.variance=small
 # Actual preview dispatch must also randomize item offsets on drills with added fluid ports.
 config mining-drill-offsets-preview unified seeds=1 unified-preview=true dev-unified=false logistic=none production=none military=none misc=none overrides=ON:mining_drill_offsets
+
+# Wild-entity mixing with planet copies, without unrelated planetary or numerical changes.
+config entity-autoplace-mixing unified seeds=1,2 unified-entity=true dupes=true logistic=none production=none military=none misc=none
