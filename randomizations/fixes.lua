@@ -77,9 +77,6 @@ randomizations.rebuild_tech_tree = function()
     logic.build(true)
     local graph = logic.graph
 
-    -- Note that the below can fail if the tech associated via recipe_to_unit is different from the one found in top.path
-    -- It might be useful to check this actually happens in the future
-
     -- Initial top sort for determining science packs for recipes
     -- Also determines recipes for science packs (i.e.- what recipe techs will be marked essential)
     local recipe_to_unit = {}
@@ -336,6 +333,29 @@ randomizations.rebuild_tech_tree = function()
             recipe_to_prev[node.name] = prev_recipes_of(ind)
         elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
             needed_tech_to_prev[node.name] = prev_recipes_of(ind)
+        end
+    end
+
+    -- The recipe witness may have used a different unlock from the technology whose research descriptor we copied.
+    -- Include that descriptor's own witness too, including crafting/mining/etc. needed for research triggers.
+    local research_recipes = {}
+    for recipe_name, _ in pairs(recipe_to_prev) do
+        if gets_tech(recipe_name) then
+            table.insert(research_recipes, recipe_name)
+        end
+    end
+    table.sort(research_recipes)
+    local research_requirements = {}
+    for _, recipe_name in pairs(research_recipes) do
+        local source = recipe_to_source_tech[recipe_name]
+        if research_requirements[source] == nil then
+            research_requirements[source] = witness_recipes.research(graph, no_tech_sort_info, source, gets_tech)
+        end
+        local requirements = research_requirements[source]
+        if requirements == nil or not witness_recipes.extend(recipe_to_prev, recipe_name, requirements, function(pre, target)
+            return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target])
+        end) then
+            log("Research tech: couldn't add research prerequisites for " .. recipe_name .. " without a missing witness, dependency cycle, or lost context")
         end
     end
 

@@ -151,4 +151,44 @@ test("only recipes that get a tech are returned", function()
     assert(names(recipes_needed_by("breed", all_get_tech)) == "eggs")
 end)
 
+test("copied research keeps its crafting witness when the recipe has another unlock path", function()
+    local graph = toy_graph()
+    local trigger_key = key("technology-trigger", "copied-research")
+    local tech_key = key("technology", "copied-research")
+    gutils.add_node(graph, "technology-trigger", "copied-research", { op = "OR" })
+    gutils.add_node(graph, "technology", "copied-research", { op = "AND" })
+    gutils.add_edge(graph, key("recipe", "make-fuel"), trigger_key)
+    gutils.add_edge(graph, trigger_key, tech_key)
+    for _, node in pairs(graph.nodes) do
+        logic.type_info[node.type] = logic.type_info[node.type] or {}
+    end
+    local sort_info = top.sort(graph)
+    -- Gear's ordinary witness only needs smelting. Its copied trigger also needs fuel.
+    assert(names(recipes_needed_by("gear")) == "smelt")
+    assert(names(witness_recipes.research(graph, sort_info, "copied-research", gets_tech)) == "make-fuel")
+    -- An enabled trigger-producing recipe must be traversed to its locked ingredients.
+    local function only_smelt(name)
+        return name == "smelt"
+    end
+    assert(names(witness_recipes.research(graph, sort_info, "copied-research", only_smelt)) == "smelt")
+    assert(witness_recipes.research(graph, sort_info, "unreachable-research", gets_tech) == nil)
+end)
+
+test("research prerequisites reject cycles and lost contexts without partially adding a witness", function()
+    local prerequisites = {
+        a = {},
+        b = { a = true },
+        c = {},
+    }
+    local function covers()
+        return true
+    end
+    assert(not witness_recipes.extend(prerequisites, "a", { b = true }, covers))
+    assert(next(prerequisites.a) == nil)
+    assert(not witness_recipes.extend(prerequisites, "a", { c = true }, function() return false end))
+    assert(next(prerequisites.a) == nil)
+    assert(witness_recipes.extend(prerequisites, "a", { c = true }, covers))
+    assert(prerequisites.a.c == true)
+end)
+
 print(num_passed .. " tests passed")
