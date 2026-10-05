@@ -16,6 +16,7 @@ local witness_recipes = require("lib/logic/witness-recipes")
 local technology_abilities = require("lib/technology-abilities")
 local operation_unlocks = require("lib/logic/operation-unlocks")
 local technology_prerequisites = require("lib/technology-prerequisites")
+local rebuild_unlocks = require("lib/rebuild-unlocks")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -211,6 +212,21 @@ randomizations.rebuild_tech_tree = function()
         end
     end
 
+    -- A second rebuild keeps the existing per-recipe technology as its primary source.
+    -- Otherwise that technology could be retained as an alternate and then overwritten below.
+    for recipe_name, _ in pairs(recipe_to_source_tech) do
+        local name = "exfret-rebuilt-" .. recipe_name .. "-suffix"
+        local technology = data.raw.technology[name]
+        for _, effect in pairs(technology and technology.effects or {}) do
+            if effect.type == "unlock-recipe" and effect.recipe == recipe_name then
+                recipe_to_source_tech[recipe_name] = name
+                recipe_to_unit[recipe_name] = table.deepcopy(technology.unit)
+                recipe_to_research_trigger[recipe_name] = table.deepcopy(technology.research_trigger)
+                break
+            end
+        end
+    end
+
     -- Remove all tech prereqs so that they are reachable, do a top sort, then use short path
     -- Since we're preserving tech research packs/triggers anyways, just keep those on
     for _, node in pairs(graph.nodes) do
@@ -290,19 +306,38 @@ randomizations.rebuild_tech_tree = function()
             home_contexts = true,
         })
     end
-    local function covers(prereq_tech_name, tech_name)
+    local function covers(prereq_tech_name, tech_name, prereq_recipe_name, recipe_name)
         if context_sort_info == nil then
             return true
         end
         local nci = context_sort_info.node_to_context_inds
         local prereq_contexts = nci[gutils.key("technology", prereq_tech_name)] or {}
-        for context, _ in pairs(nci[gutils.key("technology", tech_name)] or {}) do
+        local prereq_recipes = nci[gutils.key("recipe", prereq_recipe_name)] or {}
+        local target_recipes = recipe_name ~= nil and nci[gutils.key("recipe", recipe_name)] or {}
+        for context, ind in pairs(nci[gutils.key("technology", tech_name)] or {}) do
             if prereq_contexts[context] == nil then
+                return false
+            end
+            -- The witness may unlock this prerequisite through an alternate technology.
+            -- Substituting a later primary can create a cycle even though it has the same contexts.
+            -- A copied research method can legitimately arrive after an alternate recipe unlock.
+            local target_ind = math.max(target_recipes[context] or ind, ind)
+            if prereq_contexts[context] >= target_ind or (prereq_recipes[context] ~= nil and prereq_recipes[context] >= target_ind) then
                 return false
             end
         end
         return true
     end
+    -- Keep research paths supplying recipe contexts the primary source cannot supply.
+    -- Their technologies keep their research methods and receive the same context guards below.
+    local retained_unlocks = rebuild_unlocks.retained(data.raw.technology, recipe_to_source_tech, context_sort_info, graph)
+    local num_retained = 0
+    for _, recipes in pairs(retained_unlocks) do
+        for _, _ in pairs(recipes) do
+            num_retained = num_retained + 1
+        end
+    end
+    log("Tech tree rebuild: " .. num_retained .. " alternate recipe unlock paths kept to preserve contexts")
     local num_left_out = 0
 
     -- Whether a recipe gets a rebuilt tech below: it's locked, and a tech unlocking it has a unit or trigger to copy
@@ -318,6 +353,9 @@ randomizations.rebuild_tech_tree = function()
     -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
     -- A random prereq could need what the tech itself gives (like one of the discovered planet's science packs), which would make it unresearchable, and shifted worlds (randomizations/planetary) move which techs those are
     local function logic_needs(tech_node)
+        if retained_unlocks[tech_node.name] ~= nil then
+            return true
+        end
         for dep, _ in pairs(tech_node.dep) do
             local dep_type = graph.nodes[graph.edges[dep].stop].type
             if dep_type ~= "recipe-tech-unlock" and dep_type ~= "technology" then
@@ -355,7 +393,7 @@ randomizations.rebuild_tech_tree = function()
         end
         local requirements = research_requirements[source]
         if requirements == nil or not witness_recipes.extend(recipe_to_prev, recipe_name, requirements, function(pre, target)
-            return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target])
+            return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target], pre, target)
         end) then
             log("Research tech: couldn't add research prerequisites for " .. recipe_name .. " without a missing witness, dependency cycle, or lost context")
         end
@@ -375,11 +413,11 @@ randomizations.rebuild_tech_tree = function()
     for _, tech in pairs(data.raw.technology) do
         local new_effects = {}
         for _, effect in pairs(tech.effects or {}) do
-            if effect.type ~= "unlock-recipe" then
+            if effect.type ~= "unlock-recipe" or (retained_unlocks[tech.name] or {})[effect.recipe] ~= nil then
                 table.insert(new_effects, effect)
             end
         end
-        if (#new_effects == 0 or tech.name == "cliff-explosives" or tech.name == "construction-robotics" or tech.name == "logistic-robotics" or tech.name == "logistic-system" or tech.name == "bulk-inserter") and tech.name ~= "pyrrhic" then
+        if retained_unlocks[tech.name] == nil and (#new_effects == 0 or tech.name == "cliff-explosives" or tech.name == "construction-robotics" or tech.name == "logistic-robotics" or tech.name == "logistic-system" or tech.name == "bulk-inserter") and tech.name ~= "pyrrhic" then
             tech.hidden = true
             tech.hidden_in_factoriopedia = true
         end
@@ -400,7 +438,7 @@ randomizations.rebuild_tech_tree = function()
             -- Each of these gets a tech (see prev_recipes_of)
             for prev_recipe_name, _ in pairs(prev_recipes) do
                 -- Only if it can't take away a context (see covers); leaving one out only lets this tech be researched sooner
-                if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name]) then
+                if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name], prev_recipe_name, recipe_name) then
                     table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
                 else
                     num_left_out = num_left_out + 1
@@ -451,7 +489,7 @@ randomizations.rebuild_tech_tree = function()
                 for prev_recipe_name, _ in pairs(needed_tech_to_prev[tech.name]) do
                     if data.raw.technology["exfret-rebuilt-" .. prev_recipe_name .. "-suffix"] ~= nil then
                         -- Like the rebuilt techs, only if it can't take away a context (see covers)
-                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name) then
+                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name, prev_recipe_name) then
                             table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
                         else
                             num_left_out = num_left_out + 1
