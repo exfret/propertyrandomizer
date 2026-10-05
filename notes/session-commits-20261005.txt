@@ -1,0 +1,154 @@
+Recovered uncommitted changes: session and commit map
+October 5, 2026
+
+The changes were grouped from a frozen working-tree snapshot and available Codex and Claude session history. Chat attribution is stated where supported by the history. Some accumulated local edits could not be assigned to an exact session; those entries explicitly say so.
+
+0a475f04f61a  Exempt test fixtures from hardcoded-name approvals
+History: Allow hardcoded test fixtures (01a10db3-5d39-7601-8c43-85ca5c6feeb4)
+Files:
+  AGENTS.md
+  CLAUDE.md
+  dev/hardcoded-names.py
+
+1607dcd7eb3e  Replace legacy balance prerequisites with standalone mechanics
+History: Local edits; no exact originating chat found
+Files:
+  lib/logic/init.lua
+  lib/logic/balance-mechanics.lua
+  randomizations/graph/unified/skeleton/test-protection.lua
+  lib/dupe-planet-locks.lua
+  lib/dupe-planets.lua
+  lib/logic/operation-unlocks.lua
+  randomizations/graph/recipe.lua
+  randomizations/planetary/check.lua
+  lib/logic/balance.lua
+  data-final-fixes.lua
+  randomizations/fixes.lua
+  randomizations/graph/unified/execute.lua
+  randomizations/planetary/execute.lua
+
+c351ffd6dc58  Avoid expanding outgoing contexts during witness membership checks
+History: Local performance follow-up; exact originating chat unconfirmed
+Files:
+  lib/graph/context-sort.lua
+
+d23118cc7145  Model compatible rail placement and enforce readiness limits
+History: Operation-readiness and resource-limit follow-ups; exact originating turn unconfirmed
+Files:
+  lib/logic/concrete.lua
+  lib/logic/rail-requirements.lua
+  lib/logic/test-rail-requirements.lua
+  lib/logic/test-operation-requirements.lua
+  dev/run-tests.py
+  dev/test-hard-limits.py
+
+8b29ab308f65  Carry research-trigger promises through technology rebuilding
+History: Find why the latest run failed / trigger prerequisite follow-ups (01a10b91-1871-7101-85a2-fab81a42d47c and 01a10aa4-f55d-72c3-be03-9703ebc1afc7)
+Files:
+  randomizations/fixes.lua
+  lib/technology-trigger-promises.lua
+  lib/test-technology-trigger-promises.lua
+  lib/test-rebuild-research.lua
+  randomizations/graph/unified/skeleton/check.lua
+  randomizations/graph/unified/skeleton/test-check.lua
+
+c35eb43e9fba  Keep randomized capsule effects on thrown projectile impact
+History: Fix projectile entity randomization (01a10b34-3ce0-7f80-9cac-67a586fe4ddd)
+Files:
+  randomizations/graph/unified/handler-helpers/entity.lua
+  randomizations/graph/unified/handler-helpers/test-entity.lua
+  randomizations/graph/unified/handlers/entity.lua
+
+44fb6a1fcf44  Allow promotion rewires to validate complete trial graphs
+History: Residual validation helper from combat experimentation; exact originating turn unconfirmed
+Files:
+  randomizations/graph/unified/skeleton/promotion.lua
+  randomizations/graph/unified/skeleton/test-promotion.lua
+
+a8105d395c93  Reselect resource repair patches after fallback edits
+History: Resource-patch investigation described in Find why the latest run failed; repair follow-up
+Files:
+  randomizations/planetary/resource-repairs.lua
+  randomizations/planetary/test-resource-repairs.lua
+  randomizations/planetary/resources.lua
+  randomizations/planetary/test-resource-repair-controls.lua
+  randomizations/planetary/execute.lua
+
+29baa18b107c  Choose prerequisites only after specialized planetary repairs
+History: Investigate fix pass and lightning (01a10b41-8464-77f3-a19c-5bfa71af01c7)
+Files:
+  config.lua
+  data-final-fixes.lua
+  randomizations/graph/unified/execute.lua
+  randomizations/graph/unified/handler-helpers/prerequisite-ingredients.lua
+  randomizations/graph/unified/handler-helpers/test-prerequisite-ingredients.lua
+  randomizations/graph/unified/handlers/recipe-category.lua
+  randomizations/graph/unified/handlers/recipe-ingredients.lua
+  randomizations/graph/unified/handlers/tech-triggers.lua
+  randomizations/graph/unified/test-prerequisite-repair.lua
+  randomizations/planetary/execute.lua
+  randomizations/planetary/fix-pass.lua
+  dev/test-fix-pass.py
+  notes/planetary-approach.md
+  settings.lua
+  locale/en/locale.cfg
+  tests/configs.txt
+
+e2e0511af688  Archive duplicate-research evidence and retire obsolete work notes
+History: Fix Nauvis 1 tech unlocks (01a10ced-9f7b-74d3-9cea-37ba9d64f98b); Check tower automatability fix (01a10871-0746-7672-984c-8858a702e869)
+Files:
+  notes/bootstrap-infrastructure.txt
+  notes/wip.txt
+  notes/logs/dupe-tech-tree-validation-20261005/sa--dupe-tech-trees@1/config.ini
+  notes/logs/dupe-tech-tree-validation-20261005/sa--dupe-tech-trees@2/config.ini
+  notes/logs/dupe-tech-tree-validation-20261005/sa--dupes-preview@1/config.ini
+  notes/logs/dupe-tech-tree-validation-20261005/sa--dupes-preview@2/config.ini
+  notes/logs/dupe-tech-tree-validation-20261005/summary.txt
+  notes/logs/dupe-tech-tree-validation-20261005/tested-source/data-final-fixes.lua.txt
+  notes/logs/dupe-tech-tree-validation-20261005/tested-source/lib/dupe-intermediates.lua.txt
+  notes/logs/dupe-tech-tree-validation-20261005/tested-source/lib/dupe-planets.lua.txt
+  notes/logs/dupe-tech-tree-validation-20261005/tested-source/lib/dupe.lua.txt
+  tests/configs.txt
+
+59659ba5e495  Record release notes and organize settings and panel defaults
+History: Accumulated local release/UI housekeeping; exact attribution unavailable
+Files:
+  changelog.txt
+  notes/bugs.txt
+  scripts/gui.lua
+  settings.lua
+  locale/en/locale.cfg
+  helper-tables/handler-ids.lua
+  randomizations/graph/unified/handlers.md
+  tests/configs.txt
+
+800f4406c581  Limit generated planet-name filtering to the requested text
+History: User decision in Sort and commit uncommitted files
+Files:
+  lib/planet-names.lua
+  lib/test-planet-names.lua
+
+Corrections made while preparing these commits:
+  Removed an accidental second declaration of an existing electric-pole goal.
+  Added the RNG method required by the new operation-matching fixture.
+  Kept the narrower vulva filter at the user's request and updated the exhaustive name tests to permit other vulb/vulv names.
+
+Verification:
+  Every commit ran its normal pre-commit hook without bypassing it.
+  All eleven native pre-commit batches passed all ten configurations.
+  All 15 focused Lua regression suites passed after the preparation fixes.
+  Home-context and staged-sort regression suites also passed.
+  The style checker regression suite passed eight tests.
+  The hard-limit regression suite passed six tests.
+  Required style and require-placement audits passed; no unapproved hardcoded tables remain.
+
+The archived duplicate-research evidence in notes/logs/dupe-tech-tree-validation-20261005/summary.txt records preview timeouts. It is preserved as historical evidence, not described as successful validation. The normal pre-commit suite is not a replacement for those larger preview runs.
+
+Original working-file backup, original binary diff, focused test output, hook logs and detailed commit metadata:
+  /private/tmp/propertyrandomizer-uncommitted-20261005-192211
+
+Historical source snapshots were preserved byte-for-byte, including one trailing-space line in tested-source/data-final-fixes.lua.txt. Active code passed the whitespace and style checks.
+
+Fresh changes appeared in config.lua, settings.lua and locale/en/locale.cfg after the original snapshot. Those changes were excluded from this cleanup and left for the ongoing chat.
+
+The backup and hook paths above are local temporary files. This map is tracked so the commit-to-chat association remains available.
