@@ -41,6 +41,7 @@ local planetary_check = require("randomizations/planetary/check")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local oceans = require("randomizations/planetary/oceans")
 local resources = require("randomizations/planetary/resources")
+local resource_repairs = require("randomizations/planetary/resource-repairs")
 local scaffolds = require("randomizations/planetary/scaffolds")
 local locks = require("randomizations/planetary/locks")
 local lightning = require("randomizations/planetary/lightning")
@@ -326,73 +327,11 @@ local function run_resources(logic, state)
         for _, resource_name in pairs(sorted_keys(lost[planet_name])) do
             local repair = resources.repair(planet_name, resource_name)
             if repair ~= nil then
-                resources.add_repair(repair)
                 table.insert(repairs, repair)
             end
         end
     end
-    logic.build({
-        home_sets = planetary_check.home_sets,
-    })
-    local repair_of_edge = {}
-    local add = {}
-    for _, repair in pairs(repairs) do
-        local start = gutils.key("room-autoplace", gutils.key("planet", repair.planet_name))
-        local stop = gutils.key("entity", repair.resource_name)
-        for edge_key, edge in pairs(logic.graph.edges) do
-            if edge.start == start and edge.stop == stop and without.graph.edges[edge_key] == nil then
-                local extra = {}
-                for field, value in pairs(edge) do
-                    if field ~= "start" and field ~= "stop" and field ~= "object_type" then
-                        extra[field] = table.deepcopy(value)
-                    end
-                end
-                table.insert(add, {
-                    start = start,
-                    stop = stop,
-                    extra = extra,
-                    stage = "patch",
-                })
-                repair_of_edge[start .. " --> " .. stop] = repair
-            end
-        end
-    end
-    for _, repair in pairs(repairs) do
-        resources.remove_repair(repair)
-    end
-    local staged_sort = staged.sort({
-        graph = without.graph,
-        stages = {
-            "patch",
-        },
-        add = add,
-        extra = {
-            complex_contexts = true,
-            home_contexts = true,
-            home_sets = planetary_check.home_sets,
-        },
-    })
-    planetary_check.num_sorts = planetary_check.num_sorts + 1
-    local with_all = {
-        graph = staged_sort.graph,
-        sort_info = staged_sort.sort_info,
-    }
-    local used = {}
-    for _, gate in pairs(staged_sort.gates_on_witness(planetary_check.goal_inds(failures, with_all))) do
-        if gate.kind == "add" then
-            local repair = repair_of_edge[gate.start .. " --> " .. gate.stop]
-            if repair ~= nil then
-                used[repair] = true
-            end
-        end
-    end
-    local kept = {}
-    for _, repair in pairs(repairs) do
-        if used[repair] ~= nil then
-            resources.add_repair(repair)
-            table.insert(kept, repair)
-        end
-    end
+    local kept = resource_repairs.select(logic, state, repairs, without)
     local num_back
     excluded, num_back = exclude_originals(logic, state, variants)
     local function log_kept()
@@ -462,6 +401,20 @@ local function run_resources(logic, state)
             if not planetary_check.required(state.before, state.after, state.variants_of) then
                 return localised_text.reason("planet-lost-patches", "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)")
             end
+        end
+    end
+    -- The fallback changed recipes or triggers and temporarily restored every candidate.
+    -- Choose witnesses again in that final world instead of retaining the whole diagnostic set.
+    if kept == repairs then
+        for _, repair in pairs(repairs) do
+            resources.remove_repair(repair)
+        end
+        local final_without = planetary_check.sort(logic)
+        kept = resource_repairs.select(logic, state, repairs, final_without)
+        log("Planetary resources: reselected " .. #kept .. " of " .. #repairs .. " extra patches after fallback")
+        state.after = planetary_check.sort(logic)
+        if not planetary_check.required(state.before, state.after, state.variants_of) then
+            return localised_text.reason("planet-lost-patches", "a planet lost something it must keep after selecting its extra patches (see PLANETCHECK in the log)")
         end
     end
     log_kept()

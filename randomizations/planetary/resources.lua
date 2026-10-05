@@ -284,6 +284,7 @@ resources.repair = function(planet_name, resource_name)
         planet_name = planet_name,
         resource_name = resource_name,
         control = control,
+        control_hidden = control.hidden,
         settings = settings,
     }
 end
@@ -325,6 +326,8 @@ resources.add_repair = function(repair)
             },
         })
     end
+    -- Only repairs used by a planet belong in the map generation screen (AutoplaceControl.hidden).
+    data.raw[repair.control.type][repair.control.name].hidden = repair.control_hidden
     local map_gen_settings = data.raw.planet[repair.planet_name].map_gen_settings
     map_gen_settings.autoplace_controls = map_gen_settings.autoplace_controls or {}
     map_gen_settings.autoplace_controls[repair.control.name] = {}
@@ -332,6 +335,10 @@ resources.add_repair = function(repair)
 end
 
 resources.remove_repair = function(repair)
+    local control = (data.raw[repair.control.type] or {})[repair.control.name]
+    if control ~= nil then
+        control.hidden = true
+    end
     local map_gen_settings = data.raw.planet[repair.planet_name].map_gen_settings
     map_gen_settings.autoplace_controls[repair.control.name] = nil
     map_gen_settings.autoplace_settings.entity.settings[repair.resource_name] = nil
