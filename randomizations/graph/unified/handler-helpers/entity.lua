@@ -152,6 +152,58 @@ common.retarget_created_entities = function(trigger, retargets, copy_name)
     return num_rewritten, copies
 end
 
+-- Replaces a thrown capsule's effect on copies of the projectiles it sends, keeping the throw's deliveries and immediate effects (such as its sound)
+-- ProjectilePrototype::action runs on impact, and final_action is a separate impact trigger (2.1 prototype docs); both old impact effects are displaced
+-- Pass a copy of the ammo action; returns its replacement and the projectile copies for data:extend, or an instant replacement if it sends no projectile
+common.replace_thrown_effect = function(action, effect, copy_name)
+    local replacement = {
+        type = "direct",
+        action_delivery = {
+            type = "instant",
+            target_effects = {
+                effect,
+            },
+        },
+    }
+    local copies = {}
+    local copy_names = {}
+    local seen = {}
+    local function walk(object)
+        if seen[object] then
+            return
+        end
+        seen[object] = true
+        if object.projectile ~= nil then
+            local sent_name = object.projectile
+            if copy_names[sent_name] == nil then
+                local prototype = dutils.get_prot("entity", sent_name)
+                if prototype == nil then
+                    error("Entity randomization couldn't find thrown projectile " .. sent_name)
+                end
+                local copy = table.deepcopy(prototype)
+                copy.name = copy_name(sent_name)
+                copy.action = table.deepcopy(replacement)
+                copy.final_action = nil
+                copy_names[sent_name] = copy.name
+                table.insert(copies, copy)
+            end
+            object.projectile = copy_names[sent_name]
+        end
+        for _, value in pairs(object) do
+            if type(value) == "table" then
+                walk(value)
+            end
+        end
+    end
+    if action ~= nil then
+        walk(action)
+    end
+    if #copies == 0 then
+        return replacement, copies
+    end
+    return action, copies
+end
+
 -- Rewrites a create-entity effect to create entity_name instead, at a free spot near where it lands and never over space, since what it made before might have fit anywhere (like a flying robot)
 common.create_at_free_spot = function(effect, entity_name)
     effect.entity_name = entity_name

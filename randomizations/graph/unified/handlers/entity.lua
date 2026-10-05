@@ -2430,16 +2430,18 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             common.create_at_free_spot(effect, maker.occupant)
         end
         capsule.capsule_action = table.deepcopy(capsule.capsule_action)
-        capsule.capsule_action.attack_parameters.ammo_type.action = {
-            type = "direct",
-            action_delivery = {
-                type = "instant",
-                target_effects = {
-                    effect,
-                },
-            },
-        }
-        mark_item(capsule, {"propertyrandomizer-entity.makes", maker.line}, look_of(maker.occupant))
+        local ammo_type = capsule.capsule_action.attack_parameters.ammo_type
+        local action, copies = common.replace_thrown_effect(ammo_type.action, effect, function(name)
+            return "propertyrandomizer-maker-" .. capsule_name .. "-" .. name
+        end)
+        ammo_type.action = action
+        if #copies > 0 then
+            data:extend(copies)
+        end
+        mark_item(capsule, {
+            "propertyrandomizer-entity.makes",
+            maker.line,
+        }, look_of(maker.occupant))
         log("Entity randomization: using " .. capsule_name .. " makes " .. maker.occupant .. " in place of its effect")
     end
 

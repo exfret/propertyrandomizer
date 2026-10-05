@@ -627,6 +627,119 @@ local function retarget_to(entity_name)
     end
 end
 
+test("a thrown replacement creates its entity on a private projectile's impact", function()
+    reset_data()
+    local original = creating_projectile("test-thrown-effect", "test-explosion")
+    original.acceleration = 0.005
+    original.animation = {
+        filename = "test-thrown-effect.png",
+    }
+    original.final_action = original.action
+    table.insert(original.action.action_delivery.target_effects, {
+        type = "damage",
+        damage = {
+            amount = 35,
+            type = "test-damage",
+        },
+    })
+    data.raw.projectile = {
+        [original.name] = original,
+    }
+    local throw = throw_action(original.name)
+    local effect = {
+        type = "create-entity",
+        entity_name = "test-building",
+    }
+    common.create_as_building(effect, effect.entity_name)
+    local action, copies = common.replace_thrown_effect(throw.attack_parameters.ammo_type.action, effect, copy_name)
+    assert(action.type == "direct" and action.action_delivery.type == "projectile")
+    assert(action.action_delivery.projectile == "copy-of-test-thrown-effect")
+    assert(action.action_delivery.starting_speed == 0.3)
+    assert(#copies == 1)
+    local copy = copies[1]
+    assert(copy.acceleration == original.acceleration and copy.animation.filename == original.animation.filename)
+    assert(copy.final_action == nil)
+    local effects = copy.action.action_delivery.target_effects
+    assert(#effects == 1 and effects[1].entity_name == "test-building")
+    assert(effects[1].find_non_colliding_position and effects[1].abort_if_over_space)
+    assert(original.action.action_delivery.target_effects[1].entity_name == "test-explosion")
+    assert(#original.action.action_delivery.target_effects == 2 and original.final_action ~= nil)
+end)
+
+test("throw action and delivery arrays retain sounds and share one projectile copy", function()
+    reset_data()
+    local original = creating_projectile("test-thrown-effect", "test-explosion")
+    data.raw.projectile = {
+        [original.name] = original,
+    }
+    local delivery = throw_action(original.name).attack_parameters.ammo_type.action.action_delivery
+    local sound = {
+        type = "direct",
+        action_delivery = {
+            type = "instant",
+            target_effects = {
+                type = "play-sound",
+                sound = {
+                    filename = "test-throw.ogg",
+                },
+            },
+        },
+    }
+    local throw = {
+        {
+            type = "direct",
+            action_delivery = {
+                delivery,
+                table.deepcopy(delivery),
+            },
+        },
+        sound,
+    }
+    local action, copies = common.replace_thrown_effect(throw, {
+        type = "create-entity",
+        entity_name = "test-building",
+    }, copy_name)
+    assert(action == throw and action[2] == sound)
+    assert(#copies == 1)
+    for _, sent in pairs(action[1].action_delivery) do
+        assert(sent.type == "projectile" and sent.projectile == copies[1].name and sent.starting_speed == 0.3)
+    end
+end)
+
+test("replacing a projectile effect displaces its secondary projectiles too", function()
+    reset_data()
+    local original = creating_projectile("test-cluster", "test-explosion")
+    original.action = throw_action("test-secondary").attack_parameters.ammo_type.action
+    data.raw.projectile = {
+        [original.name] = original,
+        ["test-secondary"] = creating_projectile("test-secondary", "test-other-explosion"),
+    }
+    local throw = throw_action(original.name)
+    local _, copies = common.replace_thrown_effect(throw.attack_parameters.ammo_type.action, {
+        type = "create-entity",
+        entity_name = "test-building",
+    }, copy_name)
+    assert(#copies == 1)
+    assert(copies[1].action.action_delivery.type == "instant")
+    assert(copies[1].action.action_delivery.target_effects[1].entity_name == "test-building")
+    assert(original.action.action_delivery.projectile == "test-secondary")
+end)
+
+test("a capsule effect without a projectile still gets an instant replacement", function()
+    local effect = {
+        type = "create-entity",
+        entity_name = "test-building",
+    }
+    for _, old_action in pairs({
+        creating_projectile("test-effect", "test-explosion").action,
+        false,
+    }) do
+        local action, copies = common.replace_thrown_effect(old_action or nil, effect, copy_name)
+        assert(#copies == 0 and action.type == "direct" and action.action_delivery.type == "instant")
+        assert(action.action_delivery.target_effects[1].entity_name == "test-building")
+    end
+end)
+
 test("retargeting a thrown capsule rewrites a copy of its projectile, and the original stays", function()
     reset_data()
     data.raw.projectile = {
