@@ -216,7 +216,8 @@ military.damage_per_second = function(unit, prototype_of)
     return per_hit * 60 / attack.cooldown
 end
 
--- How much a unit's health or damage scales (the user's rule): enemies on the starting planet that aren't from it scale down, and the starting planet's own enemies scale up once they're only elsewhere; an enemy on both scales down, to be safe
+-- How much a unit's health or damage scales (the user's rule): enemies on the starting planet that aren't from it scale down, and the starting planet's own enemies scale up once they're only elsewhere.
+-- Downward factors apply to starting-planet copies and their offspring; originals elsewhere keep their strength (handler-helpers/military.lua).
 -- Strengths are enemies' mean health, or mean damage per second, for health and damage apart (mean_at) where the unit makes up most of its spawner (peak_of): home_strength at home, and slots its foreign spawners, each {strength = ..., on_start = whether that spawner is on the starting planet}
 -- home_on_start: whether one of its home spawners is on the starting planet; now_on_start: whether one of the spawners spawning it now is, home ones included
 -- Scaling down never goes above 1 and scaling up never below, and the slot asking for the least wins, so a unit is never stronger than its weakest place asks

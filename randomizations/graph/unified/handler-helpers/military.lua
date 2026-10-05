@@ -1,11 +1,16 @@
 -- The military rebalance in the game (config.military_rebalance; lib/military.lua has the rules), run once entity randomization has filled spawners' spawn slots (see entity.reflect)
 -- A spawner holding units from other spawners keeps their numbers down, and a unit spawned away from its home planet takes that planet's strength and a cost to join attacks in the pollutant its new spawner absorbs
 -- A unit's home spawners are the ones spawning it when unified randomization started, and a spawner's planets are where logic finds it autoplaced (lutils.check_in_room)
+-- Foreign enemies on the starting planet use weakened copies, including their spawned offspring; originals elsewhere retain their strength.
 
 local acquisition = require("lib/logic/acquisition")
+local common = require("randomizations/graph/unified/handler-helpers/entity")
 local dutils = require("lib/data-utils")
+local locale = require("lib/locale")
 local lutils = require("lib/logic/logic-utils")
 local military = require("lib/military")
+local variants = require("lib/military-variants")
+local wild = require("lib/wild-entities")
 
 local rebalance = {}
 
@@ -114,7 +119,115 @@ local function scale_damage(unit, factor)
     end
 end
 
+-- Each root gets its own family: offspring inherit its factors, even when another root or a direct spawn slot needs different factors for that same offspring.
+-- Trigger deliveries are copied too, so a strafer's projectiles hatch its copies.
+local function weakened_family(root, health_factor, damage_factor, start)
+    local names = {}
+    local reserved = {}
+    local copies = {}
+    local retargets = {}
+    local copy_unit
+    local function copy_name(name)
+        local stem = name .. "-propertyrandomizer-" .. start .. "-" .. root .. "-military-copy"
+        local candidate = stem
+        local suffix = 1
+        while dutils.get_prot("entity", candidate) ~= nil or reserved[candidate] ~= nil do
+            suffix = suffix + 1
+            candidate = stem .. "-" .. suffix
+        end
+        reserved[candidate] = true
+        return candidate
+    end
+    for name, entity in pairs(dutils.get_all_prots("entity")) do
+        if entity.attack_parameters ~= nil then
+            retargets[name] = function(effect)
+                effect.entity_name = copy_unit(name)
+            end
+        end
+    end
+    copy_unit = function(name)
+        if names[name] ~= nil then
+            return names[name]
+        end
+        local source = dutils.get_prot("entity", name)
+        local copy = table.deepcopy(source)
+        copy.name = copy_name(name)
+        names[name] = copy.name -- Before following death cycles or self-spawns.
+        variants.originals[copy.name] = name
+        copy.localised_name = locale.find_localised_name(source)
+        -- Preserve the original description's fallback before changing its name.
+        copy.localised_description = source.localised_description or {
+            "?",
+            {"entity-description." .. name},
+            "",
+        }
+        scale_health(copy, health_factor)
+        scale_damage(copy, damage_factor)
+        for pollutant, cost in pairs(copy.absorptions_to_join_attack or {}) do
+            if cost > 0 then
+                copy.absorptions_to_join_attack[pollutant] = military.round_cost(cost * health_factor)
+            end
+        end
+        add_description_line(copy, {
+            "propertyrandomizer-description.military-rebalance",
+            string.format("%.3g", health_factor),
+            string.format("%.3g", damage_factor),
+        })
+        local _, deliveries = common.retarget_created_entities(copy, retargets, copy_name)
+        for _, delivery in pairs(deliveries) do
+            table.insert(copies, delivery)
+        end
+        table.insert(copies, copy)
+        return copy.name
+    end
+    local root_name = copy_unit(root)
+    data:extend(copies)
+    return dutils.get_prot("entity", root_name)
+end
+
+-- Keep the original spawner on the starting planet (including capture triggers).
+-- If it is shared with other planets, those get an unchanged copy before its starting-planet result_units are redirected to weakened units.
+local function separate_spawner(spawner, planets, start)
+    local elsewhere = false
+    for planet, _ in pairs(planets) do
+        elsewhere = elsewhere or planet ~= start
+    end
+    if not elsewhere then
+        return
+    end
+    local copy = table.deepcopy(spawner)
+    local stem = spawner.name .. "-propertyrandomizer-away-from-" .. start .. "-military-copy"
+    copy.name = stem
+    local suffix = 1
+    while dutils.get_prot("entity", copy.name) ~= nil do
+        suffix = suffix + 1
+        copy.name = stem .. "-" .. suffix
+    end
+    copy.localised_name = locale.find_localised_name(spawner)
+    variants.originals[copy.name] = spawner.name
+    data:extend({ copy })
+    for _, planet_name in pairs(sorted_keys(data.raw.planet)) do
+        local planet = data.raw.planet[planet_name]
+        if planet.map_gen_settings ~= nil then
+            if planet_name ~= start and planets[planet_name] ~= nil then
+                local map = planet.map_gen_settings
+                map.autoplace_settings = map.autoplace_settings or {}
+                map.autoplace_settings.entity = map.autoplace_settings.entity or {}
+                local placement = map.autoplace_settings.entity
+                placement.settings = placement.settings or {}
+                placement.settings[copy.name] = placement.settings[spawner.name] or {}
+                placement.settings[spawner.name] = nil
+                wild.set_overrides(planet, copy.name, wild.overrides(planet, spawner.name))
+                wild.keep_off(planet, spawner.name)
+            else
+                wild.keep_off(planet, copy.name)
+            end
+        end
+    end
+end
+
 rebalance.apply = function()
+    variants.originals = {}
     local start = lutils.starting_planet_name
     local starting_spawners = unified_starting_data_raw["unit-spawner"] or {}
     local spawners = data.raw["unit-spawner"] or {}
@@ -252,6 +365,8 @@ rebalance.apply = function()
         end
     end
 
+    local separated = {}
+
     -- Units spawned away from their home planet take the strength of the enemies where they spawn most now, measured against home (military.strength_factor)
     for _, unit_name in pairs(sorted_keys(spawned_by)) do
         local home_set = homes[unit_name]
@@ -284,11 +399,16 @@ rebalance.apply = function()
                 if home_set[name] == nil then
                     local evolution = military.peak_of(now_entries[name], index_of(now_entries[name], unit_name))
                     if evolution ~= nil then
+                        local measured_planets = planets[name]
+                        if planets[name][start] ~= nil and not home_on_start then
+                            measured_planets = { [start] = true }
+                        end
                         table.insert(slots, {
                             spawner = name,
                             evolution = evolution,
-                            health_level = usual_over(planets[name], evolution, health_of),
-                            damage_level = usual_over(planets[name], evolution, damage_of),
+                            measured_planets = measured_planets,
+                            health_level = usual_over(measured_planets, evolution, health_of),
+                            damage_level = usual_over(measured_planets, evolution, damage_of),
                             on_start = planets[name][start] == true,
                         })
                     end
@@ -309,6 +429,29 @@ rebalance.apply = function()
                 local health_factor = factor_of("health_level", health_of)
                 local damage_factor = factor_of("damage_level", damage_of)
 
+                -- Downward rebalancing belongs only to starting-planet spawn slots; the shared original keeps its strength everywhere else.
+                local is_copied = now_on_start and not home_on_start
+                if is_copied then
+                    unit = weakened_family(unit_name, health_factor, damage_factor, start)
+                    for _, name in pairs(spawned_by[unit_name]) do
+                        if planets[name][start] ~= nil then
+                            if separated[name] == nil then
+                                separate_spawner(spawners[name], planets[name], start)
+                                separated[name] = true
+                            end
+                            for _, definition in pairs(spawners[name].result_units) do
+                                if (definition.unit or definition[1]) == unit_name then
+                                    if definition.unit ~= nil then
+                                        definition.unit = unit.name
+                                    else
+                                        definition[1] = unit.name
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+
                 -- A cost to join attacks in each pollutant a foreign spawner absorbs that the unit has no cost in, matched to that planet's usual costs (military.matched_cost), the dearest where several ask
                 -- Units that never join attacks need none
                 local home_costs = start_unit.absorptions_to_join_attack or {}
@@ -319,25 +462,49 @@ rebalance.apply = function()
                     end
                 end
                 local new_costs = {}
-                if not military.is_defensive(unit) then
-                    for _, slot in pairs(slots) do
-                        for _, pollutant in pairs(pollutants[slot.spawner]) do
-                            if home_costs[pollutant] == nil then
-                                local new_usual = usual_over(planets[slot.spawner], slot.evolution, cost_of(pollutant), pollutant)
-                                local cost
-                                if home_pollutant ~= nil then
-                                    cost = military.matched_cost(home_costs[home_pollutant], usual_over(planets[home_spawner], home_evolution, cost_of(home_pollutant), home_pollutant), new_usual)
-                                    -- Usual costs unknown: its home cost, scaled like its health (vanilla costs follow health more than damage)
-                                    cost = cost or home_costs[home_pollutant] * health_factor
-                                else
-                                    -- No home cost to go by: the usual cost there
-                                    cost = new_usual
-                                end
-                                if cost ~= nil then
-                                    new_costs[pollutant] = math.max(new_costs[pollutant] or 0, cost)
-                                end
+                local original_costs = {}
+                local function add_costs(costs, slot, measured_planets, fallback_factor)
+                    for _, pollutant in pairs(pollutants[slot.spawner]) do
+                        if home_costs[pollutant] == nil then
+                            local new_usual = usual_over(measured_planets, slot.evolution, cost_of(pollutant), pollutant)
+                            local cost
+                            if home_pollutant ~= nil then
+                                cost = military.matched_cost(home_costs[home_pollutant], usual_over(planets[home_spawner], home_evolution, cost_of(home_pollutant), home_pollutant), new_usual)
+                                -- Usual costs unknown: its home cost, scaled like its health (vanilla costs follow health more than damage).
+                                cost = cost or home_costs[home_pollutant] * fallback_factor
+                            else
+                                cost = new_usual
+                            end
+                            if cost ~= nil then
+                                costs[pollutant] = math.max(costs[pollutant] or 0, cost)
                             end
                         end
+                    end
+                end
+                if not military.is_defensive(unit) then
+                    for _, slot in pairs(slots) do
+                        if not is_copied or slot.on_start == true then
+                            add_costs(new_costs, slot, slot.measured_planets, health_factor)
+                        end
+                        if is_copied then
+                            local elsewhere = {}
+                            for planet, _ in pairs(planets[slot.spawner]) do
+                                if planet ~= start then
+                                    elsewhere[planet] = true
+                                end
+                            end
+                            if next(elsewhere) ~= nil then
+                                add_costs(original_costs, slot, elsewhere, 1)
+                            end
+                        end
+                    end
+                end
+                -- Full-strength originals elsewhere still need to join attacks in their new pollutant.
+                if next(original_costs) ~= nil then
+                    local original = dutils.get_prot("entity", unit_name)
+                    original.absorptions_to_join_attack = original.absorptions_to_join_attack or {}
+                    for pollutant, cost in pairs(original_costs) do
+                        original.absorptions_to_join_attack[pollutant] = military.round_cost(cost)
                     end
                 end
 
@@ -346,17 +513,25 @@ rebalance.apply = function()
                     table.insert(slot_names, slot.spawner .. " (evolution " .. string.format("%.2f", slot.evolution) .. ")")
                 end
                 if health_factor ~= 1 or damage_factor ~= 1 then
-                    local old_health = unit.max_health or 10
-                    scale_health(unit, health_factor)
-                    scale_damage(unit, damage_factor)
+                    local old_health = is_copied and (dutils.get_prot("entity", unit_name).max_health or 10) or (unit.max_health or 10)
+                    if not is_copied then
+                        scale_health(unit, health_factor)
+                        scale_damage(unit, damage_factor)
+                    end
                     local change = "health x" .. string.format("%.3g", health_factor) .. ", damage x" .. string.format("%.3g", damage_factor)
-                    add_description_line(unit, {"propertyrandomizer-description.military-rebalance", string.format("%.3g", health_factor), string.format("%.3g", damage_factor)})
+                    if not is_copied then
+                        add_description_line(unit, {
+                            "propertyrandomizer-description.military-rebalance",
+                            string.format("%.3g", health_factor),
+                            string.format("%.3g", damage_factor),
+                        })
+                    end
                     log("Military rebalance: " .. unit_name .. " " .. change .. " (health " .. old_health .. " -> " .. unit.max_health .. "), spawning in " .. table.concat(slot_names, ", ") .. " away from " .. home_spawner .. " (evolution " .. string.format("%.2f", home_evolution) .. ")")
                 end
                 if health_factor ~= 1 or next(new_costs) ~= nil then
                     local costs = unit.absorptions_to_join_attack or {}
                     -- Its own costs follow its health, like the new ones follow the new planet's usual costs
-                    if health_factor ~= 1 then
+                    if health_factor ~= 1 and not is_copied then
                         for _, pollutant in pairs(sorted_keys(costs)) do
                             if costs[pollutant] > 0 then
                                 costs[pollutant] = military.round_cost(costs[pollutant] * health_factor)

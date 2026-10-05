@@ -7,8 +7,6 @@
     - Next: bounded damage approximation (avoid gun/ammo/effect-chain enumeration); asteroid rate calibration/reference ship; preserve baseline progression checkpoints and rosters across candidates; integrate resistance changes as a unified handler; expose the military difficulty setting when it actually controls those checks. mechanic=true alone preserves eventual contexts, not acquisition timing. Resistance randomization must not be enabled based on this foundation alone.
     - Plain Lua tests: lua lib/logic/test-combat-encounters.lua
 
- * WIP for gleba enemy rebalance: Gleba enemies spawn other enemies right now, which can often be way too powerful; fix!
-
  * TO DO (2026-09-29): bootstrap "initial infrastructure" against isolatability, in recipe randomization first
     - Seen on sa/science-cost@750 (recipe=true, old logic 12/12 packs, new checker 9/12, 333 unreachable recipes): legacy recipe randomization gave the lightning rod 1 holmium plate (and the lightning collector 269 holmium solution)
       It did that on purpose: it preserves the isolatability a recipe has in the new logic (randomizations/graph/recipe.lua:392-432, "Preserving isolatability of lightning-rod on planet: fulgora"), and holmium is the most Fulgora-local ingredient there is

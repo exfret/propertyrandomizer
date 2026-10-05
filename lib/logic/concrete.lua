@@ -11,6 +11,7 @@ local gutils = require(lib_name .. "/graph/graph-utils")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 local acquisition = require(lib_name .. "/logic/acquisition")
+local military_variants = require("lib/military-variants")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -173,6 +174,13 @@ function concrete.build(lu, extra_params)
         add_node("entity", "OR", nil, nil, { cost = entity_cost })
         ----------------------------------------
         -- Can we encounter this entity in the wild?
+
+        -- A rebalanced copy fulfills the same acquisition promise as its source.
+        for copy_name, original_name in pairs(military_variants.originals) do
+            if original_name == entity.name and lu.entities[copy_name] ~= nil then
+                add_edge("entity", copy_name, { amount = 1 })
+            end
+        end
 
         -- Each way of encountering the entity is tagged with its acquisition kind (see lib/logic/acquisition.lua), except building, whose tag is on the item edges into entity-build-item
         -- Ways that make the entity ours go through entity-own instead, since only those let us operate it, and are tagged ours
