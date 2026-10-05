@@ -4,6 +4,9 @@ local mod_gui = require("__core__.lualib.mod-gui")
 local util = require("util")
 
 local events = require("scripts/events")
+local landing_lightning = require("scripts/landing-lightning")
+local natural_lightning = require("lib/natural-lightning-attractors")
+local claim_tool = require("scripts/claim-tool")
 local features = require("helper-tables/feature-flags")
 local gui = require("scripts/gui")
 local constants = require("helper-tables/constants")
@@ -184,6 +187,7 @@ script.on_init(function(event)
 end)
 
 script.on_configuration_changed(function(event)
+    natural_lightning.migrate()
     game.print({"propertyrandomizer-message.configuration-changed"})
 
     load_dep_graph()
@@ -257,6 +261,7 @@ events.on_event("return-to-starting-planet", function(event)
 end)
 
 events.on_event(defines.events.on_cargo_pod_finished_descending, function(event)
+    landing_lightning.on_landing(event)
     if event.player_index ~= nil and not storage.printed_change_surface_message then
         storage.printed_change_surface_message = true
         game.print({"propertyrandomizer-message.return-help"})
@@ -291,6 +296,9 @@ events.on_event(defines.events.on_built_entity, function(event)
     -- I used to make built biters etc. into enemies but actually I think I prefer them as on the player force
 end)
 
+events.on_event(defines.events.on_player_selected_area, claim_tool.on_selected)
+events.on_event(defines.events.on_player_alt_selected_area, claim_tool.on_selected)
+
 script.on_nth_tick(10, function(event)
     for _, surface in pairs(game.surfaces) do
         -- Don't scan through all surfaces each time
@@ -312,10 +320,12 @@ script.on_nth_tick(10, function(event)
 end)
 
 script.on_nth_tick(1, function(event)
+    -- Also handles saves updated in place without a mod version bump.
+    if storage.natural_lightning_migrated ~= true then
+        natural_lightning.migrate()
+    end
     if event.tick == 10 then
         -- Tell them about the randomizer panel
         game.print({"propertyrandomizer-message.panel-help"})
     end
 end)
-
-

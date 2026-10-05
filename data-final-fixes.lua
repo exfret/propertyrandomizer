@@ -1,6 +1,8 @@
 DO_FRODO_FIXES = false
 
 local constants = require("helper-tables/constants")
+local natural_lightning = require("lib/natural-lightning-attractors")
+local claim_tool = require("lib/claim-tool")
 
 -- Global information for control stage and other uses for communicating between processes
 -- TODO: Reorganize globals?
@@ -71,6 +73,10 @@ if config.dupes then
     dupe_planet_locks.execute()
 end
 
+-- Natural ruins belong to the environment, including when enemies share their planet.
+natural_lightning.prepare(data.raw, defines.prototypes.item)
+claim_tool.prepare(data.raw, defines.prototypes.entity)
+
 -- Freeze the original appearance donors after planet copies exist, before gameplay randomization edits them.
 local biomes = require("randomizations/planetary/biomes")
 if config.planetary_biomes == true then
@@ -78,10 +84,24 @@ if config.planetary_biomes == true then
 end
 
 local new_logic = require("lib/logic/init")
+local landing_lightning = require("scripts/landing-lightning")
 
 local unified_info
 local function smuggle_info()
     log("Smuggling control info")
+    claim_tool.prepare(data.raw, defines.prototypes.entity)
+    data:extend({
+        {
+            type = "mod-data",
+            name = "propertyrandomizer-landing-lightning",
+            data = landing_lightning.catalog(data.raw, defines.prototypes.item),
+        },
+        {
+            type = "mod-data",
+            name = "propertyrandomizer-natural-lightning-attractors",
+            data = {names = natural_lightning.prepare(data.raw, defines.prototypes.item)},
+        },
+    })
 
     new_logic.build(true)
 
@@ -111,6 +131,7 @@ local function smuggle_info()
         logic_selection_tool,
         slot_to_trav_selection_tool,
     })
+    claim_tool.add_prototypes()
 end
 
 -- If unit testing is on, do only the unit tests
