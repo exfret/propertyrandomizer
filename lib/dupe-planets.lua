@@ -829,7 +829,7 @@ end
 
 -- The recipe and technology nodes reachable in the current game, by a plain sort of the logic graph
 local function reachable_nodes()
-    new_logic.build(true)
+    new_logic.build()
     local sort_info = top.sort(new_logic.graph)
     local reachable = {}
     for node_key, contexts in pairs(sort_info.node_to_context_inds or {}) do

@@ -89,7 +89,6 @@ local group = require(lib_name .. "/logic/groups")
 local builder = require(lib_name .. "/logic/builder")
 local concrete = require(lib_name .. "/logic/concrete")
 local abstract = require(lib_name .. "/logic/abstract")
-local balance = require(lib_name .. "/logic/balance")
 local balance_mechanics = require(lib_name .. "/logic/balance-mechanics")
 local entity_supply = require(lib_name .. "/logic/entity-supply")
 local combat_encounters = require(lib_name .. "/logic/combat-encounters")
@@ -115,7 +114,7 @@ logic.type_info = {}
 -- Needed for edge context info
 logic.edge_info = {}
 
-logic.build = function(ignore_balance_nodes, extra_params)
+logic.build = function(extra_params)
     extra_params = extra_params or {}
     -- extra_params.tech_gated_unlocks stays off unless the caller sets it: control.lua unlocks mining with fluid and space platforms at the start of every game, so their technologies aren't prereqs here
     -- Other randomizers extracting this logic, which don't unlock them at the start, pass tech_gated_unlocks = true
@@ -183,13 +182,7 @@ logic.build = function(ignore_balance_nodes, extra_params)
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 
-    -- Nodes that code in requirements on the logic that aren't strictly necessary, but which are needed to make the game still pragmatically playable (like having inserters/basic automation)
-    -- These are included in a separate file to separate them out from the "real logic"
-    -- A lot of the time, this can just end up adding edges from nodes created by logic_group
-    
-    if not ignore_balance_nodes then
-        balance.build(lu)
-    end
+    -- Standalone balance goals protect practical capabilities without adding prerequisites to technologies or recipes.
     balance_mechanics.build(lu)
     -- Important encounter goals use the usual first-pass protection. The damage-type handler enables scoring and numerical preservation.
     -- Extra parameters can also enable scoring for diagnostics; unsupported workloads remain explicitly unscored.

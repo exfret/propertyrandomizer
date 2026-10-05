@@ -70,7 +70,6 @@ local function declared_protection()
     local declared = {}
     local files = {
         "abstract",
-        "balance",
         "concrete",
         "groups",
         "balance-mechanics",
@@ -141,7 +140,7 @@ test("lib/logic declares protection on exactly the intended node types", functio
     assert(num_declared == 11, "unexpected keep_isolatability declarations")
 end)
 
-test("balance starter ammo isn't protected (the unified pipeline doesn't build balance.lua; group-starter-ammo is the starter ammo mechanic)", function()
+test("removed balance starter ammo has no protection declaration", function()
     assert(declared_protection()["balance-starter-ammo"] == nil)
 end)
 

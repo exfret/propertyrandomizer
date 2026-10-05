@@ -331,7 +331,7 @@ local function run_resources(logic, state)
             end
         end
     end
-    logic.build(true, {
+    logic.build({
         home_sets = planetary_check.home_sets,
     })
     local repair_of_edge = {}
@@ -848,7 +848,7 @@ end
 
 -- The recipe and technology nodes reachable in the current game, by a plain sort (no contexts)
 local function reachable_nodes(logic)
-    logic.build(true, {
+    logic.build({
         home_sets = planetary_check.home_sets,
     })
     local sort_info = top.sort(logic.graph)

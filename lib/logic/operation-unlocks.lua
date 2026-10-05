@@ -282,7 +282,7 @@ end
 
 -- The graph is rebuilt from prototypes after each caller's changes, never from ready-item wrappers.
 unlocks.run = function()
-    logic.build(true)
+    logic.build()
     local sorted = top.sort(logic.graph, nil, nil, {
         complex_contexts = true,
         home_contexts = true,

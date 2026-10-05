@@ -33,7 +33,7 @@ check.num_sorts = 0
 
 check.sort = function(logic)
     check.num_sorts = check.num_sorts + 1
-    logic.build(true, {
+    logic.build({
         home_sets = check.home_sets,
     })
     if check.home_sets == nil then

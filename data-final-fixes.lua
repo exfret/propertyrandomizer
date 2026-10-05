@@ -117,7 +117,7 @@ local function smuggle_info()
         },
     })
 
-    new_logic.build(true)
+    new_logic.build()
 
     local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     warnings_selection_tool.type = "selection-tool"
@@ -234,7 +234,7 @@ local init_complex_sort_info
 -- Sorts the world the rest of randomization starts from (the game after planetary changes, which is data.raw now) and derives what depends on it
 local function prepare_world()
     combat_encounters.reset()
-    new_logic.build(true)
+    new_logic.build()
     -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
     -- With planetary changes in the game, they're the ones planetary's goals were made with
     local planetary_home_sets = config.planetary and planetary.home_sets()
@@ -277,7 +277,7 @@ local function ship_for_goals(num_lost, failures, sort_info)
             return lookups.weight[item_name]
         end)
         log("Planetary transport: " .. num_lost .. " planet goals lost need items that can't travel to their planet, made shippable: " .. table.concat(lines, ", "))
-        new_logic.build(true)
+        new_logic.build()
         local resorted = top.sort(new_logic.graph, nil, nil, {
             complex_contexts = true,
             home_contexts = true,
@@ -309,7 +309,7 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         if operation_result ~= nil and operation_result.changed == 0 then
             attempt_sort_info = operation_result.sorted
         else
-            new_logic.build(true)
+            new_logic.build()
             attempt_sort_info = top.sort(new_logic.graph, nil, nil, {
                 complex_contexts = true,
                 home_contexts = true,
@@ -627,7 +627,7 @@ end
 
 -- Final check for completability
 
-new_logic.build(true)
+new_logic.build()
 local final_sort_info = top.sort(new_logic.graph)
 -- Mechanic context check (randomizations/graph/unified/skeleton/check.lua), over room/ability contexts
 local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {

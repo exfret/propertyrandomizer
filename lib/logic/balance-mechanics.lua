@@ -204,6 +204,20 @@ balance_mechanics.build = function(lu)
             })
         end
     end
+
+    ----------------------------------------
+    add_node("balance-mechanics-ammo", "OR", nil, "", {
+        mechanic = true,
+        important = true,
+    })
+    ----------------------------------------
+    -- Preserve an available ammunition capability.
+
+    for _, ammo in pairs(data.raw.ammo) do
+        add_edge("item-ammo", ammo.name, {
+            abilities = table.deepcopy(balance_abilities),
+        })
+    end
 end
 
 return balance_mechanics

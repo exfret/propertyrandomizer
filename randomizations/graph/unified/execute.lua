@@ -179,7 +179,7 @@ unified.prepare_first_pass = function()
     if DO_FIRST_PASS and ITEM_ENABLED then
         graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
         -- Production preparation reads surface rooms before the initial world snapshot is built.
-        logic.build(true)
+        logic.build()
         first_pass.prepare()
     end
 end
@@ -224,7 +224,7 @@ unified.execute = function()
     end
 
     -- Logic building
-    logic.build(true)
+    logic.build()
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
     graph_customization.protect_references(init_graph)
@@ -1078,7 +1078,7 @@ unified.claim_slots = function(handler_keys, options)
     for _, handler in pairs(chosen) do
         handler.initialize()
     end
-    logic.build(true)
+    logic.build()
     local spoofed_graph = table.deepcopy(logic.graph)
     for _, handler in pairs(chosen) do
         handler.spoof(spoofed_graph)

@@ -184,7 +184,7 @@ randomizations.recipe_ingredients = function(id)
 
     -- Find previously reachable
     -- Ignore balance nodes here
-    logic.build(true)
+    logic.build()
     local isolation_sort_info = context_sort.sort(logic.graph, nil, nil, { complex_contexts = true })
 
     ----------------------------------------------------------------------

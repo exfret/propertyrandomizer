@@ -77,7 +77,7 @@ randomizations.rebuild_tech_tree = function()
         end
     end]]
 
-    logic.build(true)
+    logic.build()
     local graph = logic.graph
 
     -- Initial top sort for determining science packs for recipes
@@ -538,7 +538,7 @@ randomizations.rebuild_tech_tree = function()
                     tech_to_deps[prereq][tech.name] = true
                 end
             end
-            logic.build(true)
+            logic.build()
             local sort_for_tech_pack_fixes = top.sort(logic.graph, nil, nil, { choose_randomly = true })
             for i = #sort_for_tech_pack_fixes.sorted, 1, -1 do
                 local pebble = sort_for_tech_pack_fixes.sorted[i]
