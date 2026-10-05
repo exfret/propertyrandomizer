@@ -68,6 +68,8 @@ dupe.has_been_duplicated = {}
 dupe.recolored = {}
 -- Dupe number --> original technology name --> its copy with that number (lib/dupe-planets.lua: in that number's parallel technology tree, or discovering that number's planet copy): a duplicate's recipe is unlocked by the copy with its number of the technology unlocking the original, where there is one
 dupe.technology_copies = {}
+-- Starting planet copy discoveries, used to gate recipes that are initially enabled.
+dupe.home_discoveries = {}
 
 -- The recolored copy's path for an original sprite path, or nil when there is none for this dupe number
 local function recolored_path(filename, dupe_number)
@@ -295,6 +297,7 @@ local function research_needs_result(technology, recipe)
     return false
 end
 
+-- Structured variants can provide a dupe number for unlock routing and their own discovery for initial recipes.
 dupe.recipe = function(recipe, extra_info)
     local has_number_suffix = true
     if type(extra_info) == "table" then
@@ -302,6 +305,24 @@ dupe.recipe = function(recipe, extra_info)
     end
 
     local new_recipe = dupe.prototype(recipe, extra_info)
+    local number = extra_info
+    local home
+    if type(extra_info) == "table" then
+        number = extra_info.dupe_number
+        home = extra_info.home_discovery
+        if type(number) == "number" then
+            new_recipe.dupe_number = number
+        end
+    end
+    home = home or (type(number) == "number" and dupe.home_discoveries[number] or nil)
+    if home ~= nil and recipe.enabled ~= false then
+        new_recipe.enabled = false
+        home.effects = home.effects or {}
+        table.insert(home.effects, {
+            type = "unlock-recipe",
+            recipe = new_recipe.name,
+        })
+    end
     -- Don't fix names of specially suffixed recipes; they'll be fixed in the function calling this
     if has_number_suffix then
         -- Recipes get special dupe names to distinguish them from an item that's duplicated
@@ -312,8 +333,8 @@ dupe.recipe = function(recipe, extra_info)
     -- Where the unlocking technology has a copy with the recipe's dupe number (dupe.technology_copies), the unlock goes to the copy instead, unless researching it takes what the recipe makes
     -- Technology copies themselves (which unlock what their originals do) are left out, so a duplicate isn't unlocked in another number's tree, or twice
     local copies = {}
-    if type(extra_info) == "number" then
-        copies = dupe.technology_copies[extra_info] or {}
+    if type(number) == "number" then
+        copies = dupe.technology_copies[number] or {}
     end
     local unlocking = {}
     for _, technology in pairs(data.raw.technology) do

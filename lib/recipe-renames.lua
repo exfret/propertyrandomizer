@@ -66,6 +66,14 @@ recipe_renames.apply = function(renamed, old_recipes, rng_key)
         else
             recipe.localised_name = locale_utils.find_localised_name(product)
         end
+        if recipe.intermediate_planet ~= nil then
+            local planet = data.raw.planet[recipe.intermediate_planet]
+            recipe.localised_name = {
+                "propertyrandomizer.recipe_planet_variant",
+                recipe.localised_name,
+                locale_utils.find_localised_name(planet),
+            }
+        end
         recipe.icon = nil
         recipe.icons = recipe_icons
         recipe.subgroup = nil

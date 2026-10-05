@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.7
 Date: ?
+  Features:
+    - Duplicate technology trees include early research and research triggers, with shared intermediate items made by planet-local recipe variants and more later research distributed across planet copies
   Changes:
     - Duplicate icons no longer have a top left number badge; item randomization has new recipe badges for numbers 1 through 99
   Bugfixes:

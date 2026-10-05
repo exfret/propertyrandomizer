@@ -376,4 +376,45 @@ test("many renamed recipes use complete number badges on the right through 99", 
     assert(data.raw.item.plate.icons == nil)
 end)
 
+test("local intermediate recipe names keep their planet after product renaming", function()
+    defines.prototypes.planet = {}
+    defines.prototypes.planet.planet = 0
+    data.raw.planet = {}
+    data.raw.planet["test-copy-world"] = {
+        name = "test-copy-world",
+        localised_name = {
+            "test-world-name",
+        },
+    }
+    data.raw.planet["test-copy-world"].type = "planet"
+    data.raw.item["test-shared-product"] = {
+        type = "item",
+        name = "test-shared-product",
+        icon = "test-shared-product.png",
+    }
+    local recipe = {
+        type = "recipe",
+        name = "test-local-production",
+        intermediate_planet = "test-copy-world",
+        results = {
+            {
+                type = "item",
+                name = "test-shared-product",
+                amount = 1,
+            },
+        },
+    }
+    data.raw.recipe = {}
+    data.raw.recipe[recipe.name] = recipe
+    recipe_renames.apply({
+        [recipe.name] = {
+            type = "item",
+            name = "test-shared-product",
+        },
+    }, {}, "key")
+    assert(recipe.localised_name[1] == "propertyrandomizer.recipe_planet_variant")
+    assert(recipe.localised_name[3][1] == "test-world-name")
+    assert(recipe.icons[1].icon == "test-shared-product.png")
+end)
+
 print(num_passed .. " tests passed")

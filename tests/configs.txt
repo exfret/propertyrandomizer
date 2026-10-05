@@ -101,6 +101,8 @@ config graph-standard settings technology=true recipe=true item=true recipe-tech
 config planetary-rewards settings planetary-rewards=true
 # Duplicates on their own (the setting is skipped above); needs the generated graphics/dupes/ next to the mod, as a release has them
 config dupes settings dupes=true
+# Isolate the parallel trees and their ingredient chains from other randomizations.
+config dupe-tech-trees settings seeds=1,2 logistic=none production=none military=none misc=none dupes=true
 # Resource swaps alone (the setting is skipped above), with the starting planet's resources in the swap
 config planetary-resources settings seeds=1,2 planetary-resources=true
 # Resource swaps with the planet copies: recipes a planet shares with its copy follow its swap through planet variants, so few extra patches are needed
