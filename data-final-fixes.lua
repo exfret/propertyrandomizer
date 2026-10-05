@@ -645,6 +645,12 @@ if config.planetary_biomes == true then
     biomes.execute()
 end
 
+-- Shared resource profiles use the final placements, including swaps, repairs and duplicate planets.
+local planet_resource_profiles = require("lib/planet-resource-profiles")
+if config.planetary_resources == true then
+    planet_resource_profiles.execute()
+end
+
 -- What the randomization did, in the log as RESULT lines (lib/result-summary.lua): how the finished game differs from the one before any randomization
 log("Logging what the randomization did")
 result_summary.log(pre_planetary_raw or old_data_raw, data.raw, {
