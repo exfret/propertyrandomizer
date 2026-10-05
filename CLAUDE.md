@@ -15,6 +15,7 @@
 ## No hardcoded vanilla assumptions
 
 - Don't identify prototypes by name or by hardcoded type lists, since other mods add their own. Derive the property from data.raw, identify by node type, or declare a flag where the node is built.
+- Files whose basenames contain "test" may hardcode tables as testing fixtures; these tables do not need individual approval.
 - `dev/hardcoded-names.py` flags Lua tables that hardcode API class/type names or vanilla prototype names. Each flagged table needs the user's approval: show them the table and why the names can't be derived, then run `python3 dev/hardcoded-names.py --approve <ids>`, which asks them in a permission prompt.
 
 ## Test failures: don't overfit

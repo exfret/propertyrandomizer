@@ -7,6 +7,7 @@
 #   - an identifier key that's a vanilla prototype name ({nauvis = ...}), or two or more that are prototype types ({furnace = true, lab = true})
 # The type of a table that also has a name isn't counted, since prototype definitions and ingredient specs need it
 # Presentation-only prototypes (fonts, sounds, shortcuts, achievements, ...) are ignored, since their names are ordinary words like "default"
+# Files whose basenames contain "test" are testing fixtures and don't need table approvals
 #
 # Changed means since the start of the current Claude turn (so commits made during the turn still count), plus uncommitted changes
 # An approval covers a file + the set of names one of its tables hardcodes, so edits that don't add names don't need approving again
@@ -269,7 +270,13 @@ def table_matches(source, node, names):
     return matches
 
 
+def is_test_fixture(path):
+    return "test" in os.path.basename(path)
+
+
 def scan_file(path, names):
+    if is_test_fixture(path):
+        return []
     # Nested matching tables are folded into their nearest matching ancestor, so one data table is one approval
     with open(os.path.join(REPO, path), "rb") as f:
         source = f.read()
@@ -297,7 +304,7 @@ def scan_file(path, names):
 
 
 def is_checked(path):
-    return path.endswith(".lua") and not path.startswith(EXCLUDE_PREFIXES)
+    return path.endswith(".lua") and not path.startswith(EXCLUDE_PREFIXES) and not is_test_fixture(path)
 
 
 def all_files():
