@@ -120,3 +120,7 @@ config overrides-malformed settings overrides=RESET:inserter;SET:[entity=inserte
 config fix-pass unified seeds=1,2 dev-unified=true planetary-fix-pass=true planetary-oceans=true planetary-resources=true
 config fix-pass-climate unified seeds=1,2 dev-unified=true planetary-fix-pass=true planetary-oceans=true planetary-resources=true planetary-lightning=true planetary-freezing=true
 config fix-pass-preview unified seeds=1,2 unified-preview=true dev-unified=false planetary-fix-pass=true
+# Mining output offsets in isolation, including low and high chaos.
+config mining-drill-offsets settings seeds=1,2 logistic=none production=none military=none misc=none overrides=ON:mining_drill_offsets
+config mining-drill-offsets-light settings seeds=3 logistic=none production=none military=none misc=none chaos=light overrides=ON:mining_drill_offsets
+config mining-drill-offsets-ultimate settings seeds=4 logistic=none production=none military=none misc=none chaos=ultimate overrides=ON:mining_drill_offsets

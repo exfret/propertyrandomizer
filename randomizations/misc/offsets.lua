@@ -121,76 +121,94 @@ randomizations.inserter_offsets = function(id)
     end
 end
 
-local round_half = function (x)
-    return math.floor(x) + 0.5
+-- Vector and BoundingBox accept both array and named coordinates in the 2.1 API.
+local function coords(vector)
+    return {
+        vector.x or vector[1],
+        vector.y or vector[2],
+    }
 end
 
-local modify_coords = function(v, func)
-    return { func(v[1]), func(v[2]) }
+-- Distance from the origin to the rectangle boundary along a unit vector.
+local function edge_distance(direction, left_top, right_bottom, padding)
+    local distance = math.huge
+    for axis = 1, 2 do
+        if direction[axis] > 0 then
+            distance = math.min(distance, (right_bottom[axis] + padding) / direction[axis])
+        elseif direction[axis] < 0 then
+            distance = math.min(distance, (left_top[axis] - padding) / direction[axis])
+        end
+    end
+    return distance
 end
 
 randomizations.mining_drill_offsets = function(id)
-    -- Probability of randomizing the rotation of vector_to_place_result
     local randomize_place_rotation_p = 0.5
 
     for _, mining_drill in pairs(data.raw["mining-drill"]) do
-        -- Don't randomize fluid output positions
-        if mining_drill.output_fluid_box == nil then
-            local key = rng.key({id = id, prototype = mining_drill})
+        local box = mining_drill.collision_box
+        local off_grid = false
+        for _, flag in pairs(mining_drill.flags or {}) do
+            if flag == "off-grid" then
+                off_grid = true
+            end
+        end
+        -- Leave fluid outputs and unsupported placement geometry as they were.
+        if mining_drill.output_fluid_box == nil and box ~= nil and not off_grid
+        and (box.orientation or box[3] or 0) == 0 then
+            local left_top = coords(box.left_top or box[1])
+            local right_bottom = coords(box.right_bottom or box[2])
+            local old_place_vector = coords(mining_drill.vector_to_place_result)
+            local old_place_distance = math.sqrt(old_place_vector[1]^2 + old_place_vector[2]^2)
 
-            if mining_drill.collision_box ~= nil then
-                -- Assuming square collision box
-                local collision_box_size = math.ceil(mining_drill.collision_box[2][1] - mining_drill.collision_box[1][1])
-                local collision_box_radius = collision_box_size / 2
-                local even_sized = (collision_box_size % 2) == 0
-                local round_function = round
-                if even_sized then
-                    round_function = round_half
-                end
-                local old_place_vector = modify_coords(mining_drill.vector_to_place_result, round_function)
-                local old_place_distance = math.sqrt(old_place_vector[1]^2 + old_place_vector[2]^2)
+            -- A zero vector has no output direction to rotate or stretch.
+            if old_place_distance > 0 then
+                local key = rng.key({
+                    id = id,
+                    prototype = mining_drill,
+                })
+                local old_direction = {
+                    old_place_vector[1] / old_place_distance,
+                    old_place_vector[2] / old_place_distance,
+                }
                 local place_rotation_rad = 0
-
-                local randomize_rotation = randbool.rand_chaos(key, randomize_place_rotation_p)
-                if randomize_rotation then
+                if randbool.rand_chaos(key, randomize_place_rotation_p) then
                     place_rotation_rad = rng.float_range(key, -math.pi/4, math.pi/4)
                 end
-                local rotated_place_vector = rotate_vector(old_place_vector, place_rotation_rad)
-
-                -- Find out the minimum place_distance to not overlap with collision box
-                local min_place_distance = collision_box_radius / math.cos(place_rotation_rad)
-
-                -- Randomize only the extension beyond the collision box so that randomization gets the right variance
-                -- +0.01 as margin
-                local min_extension = min_place_distance - collision_box_radius + 0.01
-                -- let's treat extension as full tiles
-                local old_extension = old_place_distance - collision_box_radius + 0.5
-
+                local direction = rotate_vector(old_direction, place_rotation_rad)
+                local old_edge_distance = edge_distance(old_direction, left_top, right_bottom, 0)
                 local new_extension = randnum.rand({
+                    id = id,
                     key = key,
-                    dummy = old_extension,
+                    dummy = math.max(0.5, old_place_distance - old_edge_distance + 0.5),
                     rounding = "none",
                     dir = 0
-                })
+                }) - 0.5
 
-                -- undo the +0.5 to fix median, then apply minimum, avoiding negative extension
-                new_extension = new_extension - 0.5
-                if new_extension < min_extension then
-                    new_extension = min_extension
+                -- Padding covers half a receiving tile (0.5), the maximum snapping movement (0.5), and a small margin (0.01).
+                local min_place_distance = edge_distance(direction, left_top, right_bottom, 1.01)
+                local new_place_distance = math.max(min_place_distance,
+                    edge_distance(direction, left_top, right_bottom, 0) + new_extension)
+                -- EntityPrototype tile_width/tile_height default to each collision dimension rounded up; even dimensions place the origin on a tile edge.
+                local width = mining_drill.tile_width or math.ceil(right_bottom[1] - left_top[1])
+                local height = mining_drill.tile_height or math.ceil(right_bottom[2] - left_top[2])
+                local grid_phase = {
+                    (1 - width % 2) / 2,
+                    (1 - height % 2) / 2,
+                }
+                local new_place_vector = {}
+                for axis = 1, 2 do
+                    local position = direction[axis] * new_place_distance
+                    new_place_vector[axis] = round(position - grid_phase[axis]) + grid_phase[axis]
                 end
 
-                local new_place_distance = collision_box_radius + new_extension
-                local scale_factor = new_place_distance / old_place_distance
-
-                local scaled_place_vector = modify_coords(rotated_place_vector, function(x) return x * scale_factor end)
-                local new_place_vector = modify_coords(scaled_place_vector, round_function)
-
+                -- Aim toward the near side of the receiving tile along the actual output direction.
+                for axis = 1, 2 do
+                    new_place_vector[axis] = new_place_vector[axis] - 0.2 * direction[axis]
+                end
                 if new_place_vector[1] ~= old_place_vector[1] or new_place_vector[2] ~= old_place_vector[2] then
                     mining_drill.localised_description = {"", locale_utils.find_localised_description(mining_drill), "\n[color=red](Misaligned)[/color]"}
                 end
-
-                -- place stuff on the adjacent side of a belt, assuming the drill places stuff in the -y direction
-                new_place_vector[2] = new_place_vector[2] + 0.2
                 mining_drill.vector_to_place_result = new_place_vector
             end
         end

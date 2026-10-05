@@ -1041,14 +1041,13 @@ local spec = {
         }
     },
     -- Where mining drills put their items
-    -- TODO: Figure out why offsets are appearing inside the machine then re-enable
-    --[[mining_drill_offsets = {
+    mining_drill_offsets = {
         category = "numerical",
         setting = {
             name = "propertyrandomizer-logistic",
             val = "more"
         }
-    },]]
+    },
     --[[mining_drill_radius = {
         category = "numerical",
         setting = {
