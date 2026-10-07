@@ -18,6 +18,14 @@ config = {
 }
 randomization_info = { options = { unified = {} } }
 data = { raw = {} }
+-- Recipe amounts are checked against the final item prototypes after reflection (lib/recipe-item-amounts.lua), which reads the item classes
+defines = {
+    prototypes = {
+        item = {
+            item = 0,
+        },
+    },
+}
 local logic = {
     contexts = {
         A = true,

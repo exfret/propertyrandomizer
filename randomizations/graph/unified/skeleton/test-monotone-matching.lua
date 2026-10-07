@@ -43,18 +43,12 @@ rng.shuffle = function(rng_key, tbl)
     end
 end
 package.loaded["lib/random/rng"] = rng
-package.loaded["lib/logic/init"] = {
-    type_info = {},
-    contexts = {},
-}
+package.loaded["lib/logic/init"] = { type_info = {} }
 package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {}
 
 local gutils = require("lib/graph/graph-utils")
 local matching = require("randomizations/graph/unified/skeleton/monotone-matching")
-local top = require("lib/graph/context-sort")
-local operation = require("lib/logic/operation-requirements")
-local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local key = gutils.key
 
@@ -126,36 +120,6 @@ local function test(name, fn)
     print("ok - " .. name)
 end
 
-test("shared supply used by a recipe position does not pin the old material", function()
-    local graph = { nodes = {}, edges = {}, sources = {} }
-    local source = gutils.add_node(graph, "item", "test-source", { op = "OR", slot = true })
-    local identity = gutils.add_node(graph, "item", "test-identity", { op = "OR", trav = true })
-    local alias = gutils.add_node(graph, "item", "test-alias", { op = "OR", trav = true })
-    local position = gutils.add_node(graph, "item", "test-position", { op = "OR", slot = true })
-    local recipe = gutils.add_node(graph, "recipe", "test-consumer", { op = "AND" })
-    gutils.add_edge(graph, source, identity)
-    gutils.add_edge(graph, identity, alias, { shared_identity = true })
-    gutils.add_edge(graph, alias, position, { identity_supply = true })
-    gutils.add_edge(graph, position, recipe)
-    local assignment = { [key(source)] = key(identity), [key(position)] = key(alias) }
-    local sorted = {}
-    for i, node in pairs({ source, identity, alias, position, recipe }) do
-        sorted[i] = { node_key = key(node), context = "test-room" }
-    end
-    local closure = { true, true, true, true, true }
-    local support = { {}, { 1 }, { 2 }, { 3 }, { 4 } }
-    local needs, _, positions = matching.needs_from_proof(graph, { sorted = sorted }, closure, support, assignment, {})
-    assert(needs[key(identity)] == nil, "the recipe follows the position's replacement, not the old shared material")
-    assert(positions[key(position)]["test-room"] == 5, "the replacement still needs supply before its consumer")
-    local mechanic = gutils.add_node(graph, "test-mechanic", "test-use", { op = "OR" })
-    gutils.add_edge(graph, alias, mechanic)
-    sorted[6] = { node_key = key(mechanic), context = "test-room" }
-    closure[6] = true
-    support[6] = { 3 }
-    needs = matching.needs_from_proof(graph, { sorted = sorted }, closure, support, assignment, {})
-    assert(needs[key(identity)]["test-room"] == 6, "the identity is needed by the actual mechanic's deadline, not its first arrival")
-end)
-
 test("a resource slot doesn't count its own interesting identity as new", function()
     -- The fuel ore's identity is interesting (like coal, a fuel), so only the widget can make it mine something new
     local names = { "fuel-ore", "widget", "filler" }
@@ -163,51 +127,10 @@ test("a resource slot doesn't count its own interesting identity as new", functi
     assert(count_matches(graph, params, {}, no_ranks, assignment_of(names, {}), "fuel-ore", "widget") == NUM_KEYS)
 end)
 
-test("copies of the original ore do not count as new products", function()
-    local names = {
-        "ore-a",
-        "ore-a-copy",
-        "widget",
-    }
-    local graph, params = toy(names, { ["ore-a"] = true }, {
-        ["ore-a"] = true,
-        ["ore-a-copy"] = true,
-        widget = true,
-    })
-    params.is_new_resource_pair = function(slot_key, trav_key)
-        return graph.nodes[graph.nodes[trav_key].old_slot].name == "widget"
-    end
-    assert(count_matches(graph, params, {}, no_ranks, assignment_of(names, {}), "ore-a", "widget") == NUM_KEYS)
-end)
-
 test("a resource slot always gets a new trav when one fits", function()
     local names = { "plain-ore", "widget", "filler" }
     local graph, params = toy(names, { ["plain-ore"] = true }, { widget = true })
     assert(count_matches(graph, params, {}, no_ranks, assignment_of(names, {}), "plain-ore", "widget") == NUM_KEYS)
-end)
-
-test("resource matching can give up one changed deposit to change two others", function()
-    local names = { "r1", "r2", "r3", "a", "b" }
-    local graph, params = toy(names, { r1 = true, r2 = true, r3 = true }, { a = true, b = true })
-    local allowed = {
-        r1 = { a = true },
-        r2 = { b = true },
-        r3 = { a = true },
-        a = { r1 = true, r2 = true },
-        b = { r3 = true },
-    }
-    params.pair_ok = function(slot, trav)
-        local name = graph.nodes[trav.old_slot].name
-        return slot.name == name or (allowed[slot.name] or {})[name] == true
-    end
-    -- Keeping a at r1 allows only one changed deposit.
-    -- The cycle r2 <- b <- r3 <- a <- r2 changes two, while r1 returns home.
-    local assignment = assignment_of(names, { r1 = "a", a = "r1" })
-    for seed = 1, 20 do
-        local result = matching.random_matching(params, graph, no_ranks, {}, {}, assignment, "resource-optimum-" .. seed)
-        assert(result[key("item", "r2")] == key("item", "b-trav"))
-        assert(result[key("item", "r3")] == key("item", "a-trav"))
-    end
 end)
 
 test("a resource slot keeps the new trav an earlier round gave it", function()
@@ -400,191 +323,6 @@ test("a slot connects to its trav where the connection starts, with the connecti
         stop = key("head", "trav-head"),
     })]
     assert(edge ~= nil and edge.abilities[2] == false)
-end)
-
-test("an operation rejection refines the proposal before falling back to identity", function()
-    local graph = {
-        nodes = {},
-        edges = {},
-        sources = {},
-    }
-    local params = {
-        unconnected_graph = graph,
-        slot_keys = {},
-        slot_to_base = {},
-        trav_to_head = {},
-        pair_ok = function() return true end,
-        rounds = 1,
-        operations = {},
-    }
-    for i = 1, 3 do
-        local slot = gutils.add_node(graph, "item", "position-" .. i, { op = "AND" })
-        local trav = gutils.add_node(graph, "item", "identity-" .. i, {
-            op = "OR",
-            trav = true,
-        })
-        slot.old_trav = key(trav)
-        trav.old_slot = key(slot)
-        table.insert(params.slot_keys, key(slot))
-        params.slot_to_base[key(slot)] = slot
-        params.trav_to_head[key(trav)] = trav
-    end
-    local original_sort = top.sort
-    local original_matching = operation.matching
-    local original_protection = protection.planet_locked_recipe_contexts
-    local original_rng_key = rng.key
-    local sorts = 0
-    local rejected_slot
-    local rejected_trav
-    rng.key = function(value) return value.id end
-    protection.planet_locked_recipe_contexts = function() return {} end
-    top.sort = function(proposal)
-        sorts = sorts + 1
-        if sorts == 2 then
-            for _, slot_key in pairs(params.slot_keys) do
-                for edge_key, _ in pairs(proposal.nodes[slot_key].dep) do
-                    local trav_key = proposal.edges[edge_key].stop
-                    if trav_key ~= proposal.nodes[slot_key].old_trav then
-                        rejected_slot = slot_key
-                        rejected_trav = trav_key
-                        break
-                    end
-                end
-                if rejected_slot ~= nil then
-                    break
-                end
-            end
-            assert(rejected_slot ~= nil, "the first proposal should randomize an identity")
-        end
-        return {
-            sorted = {},
-            node_to_context_inds = {},
-            proposal_number = sorts,
-        }
-    end
-    operation.matching = function(_, sorted)
-        return {
-            allows = function(slot_key, trav_key)
-                return sorted.proposal_number ~= 2 or slot_key ~= rejected_slot or trav_key ~= rejected_trav
-            end,
-        }
-    end
-    local result = matching.run(params)
-    top.sort = original_sort
-    operation.matching = original_matching
-    protection.planet_locked_recipe_contexts = original_protection
-    rng.key = original_rng_key
-    assert(sorts >= 3, "a new rejected pair should cause another proposal")
-    assert(result[rejected_slot] ~= rejected_trav)
-    local moved = false
-    for slot_key, trav_key in pairs(result) do
-        moved = moved or trav_key ~= graph.nodes[slot_key].old_trav
-    end
-    assert(moved, "the repaired proposal should retain randomization")
-end)
-
--- Run an actual form-trade gate, with controlled reachability and operation verdicts.
-local function check_form_trade(reachable, ready, enabled)
-    local graph = {
-        nodes = {},
-        edges = {},
-        sources = {},
-    }
-    local params = {
-        unconnected_graph = graph,
-        slot_keys = {},
-        slot_to_base = {},
-        trav_to_head = {},
-        rounds = 0,
-        operations = enabled ~= false and {} or nil,
-    }
-    for i = 1, 2 do
-        local slot = gutils.add_node(graph, "item", "position-" .. i, { op = "AND" })
-        local trav = gutils.add_node(graph, "item", "identity-" .. i, {
-            op = "OR",
-            trav = true,
-        })
-        slot.old_trav = key(trav)
-        trav.old_slot = key(slot)
-        table.insert(params.slot_keys, key(slot))
-        params.slot_to_base[key(slot)] = slot
-        params.trav_to_head[key(trav)] = trav
-    end
-    local goal = gutils.add_node(graph, "make", "protected-goal", {
-        op = "AND",
-        mechanic = true,
-    })
-    params.form_swaps = {
-        candidates = function()
-            return {
-                {
-                    params.slot_keys[1],
-                    params.slot_keys[2],
-                },
-            }
-        end,
-        form_of = function(node_key) return graph.nodes[node_key].old_slot or node_key end,
-        max_trials = 1,
-        max_swaps = 1,
-    }
-    local original_sort = top.sort
-    local original_matching = operation.matching
-    local original_protection = protection.planet_locked_recipe_contexts
-    local original_hard = protection.is_hard_mechanic_pebble
-    local original_rng_key = rng.key
-    local sorts = 0
-    local readiness_calls = 0
-    rng.key = function(value) return value.id end
-    protection.planet_locked_recipe_contexts = function() return {} end
-    protection.is_hard_mechanic_pebble = function() return true end
-    top.sort = function()
-        sorts = sorts + 1
-        local contexts = {}
-        if sorts == 1 or reachable == true then
-            contexts[key(goal)] = { home = 1 }
-        end
-        return {
-            sorted = {},
-            node_to_context_inds = contexts,
-        }
-    end
-    operation.matching = function()
-        readiness_calls = readiness_calls + 1
-        return {
-            allows = function()
-                return ready
-            end,
-        }
-    end
-    local result = matching.run(params)
-    top.sort = original_sort
-    operation.matching = original_matching
-    protection.planet_locked_recipe_contexts = original_protection
-    protection.is_hard_mechanic_pebble = original_hard
-    rng.key = original_rng_key
-    assert(sorts == 2, "the trial should still receive its reachability check")
-    local first = params.slot_keys[1]
-    local expected = graph.nodes[params.slot_keys[reachable and (enabled == false or ready) and 2 or 1]].old_trav
-    assert(result[first] == expected, "only a trade passing both gates may be kept")
-    return readiness_calls
-end
-
-test("a trade losing reachability skips operation proofs", function()
-    assert(check_form_trade(false, true) == 0)
-    assert(check_form_trade(false, false) == 0)
-end)
-
-test("a reachable trade still fails when operation readiness fails", function()
-    assert(check_form_trade(true, false) == 1)
-end)
-
-test("a trade passing reachability and operation readiness is kept", function()
-    assert(check_form_trade(true, true) == 1)
-end)
-
-test("disabled operation checks skip proofs but retain reachability protection", function()
-    assert(check_form_trade(true, false, false) == 0)
-    assert(check_form_trade(false, false, false) == 0)
 end)
 
 print(num_passed .. " tests passed")

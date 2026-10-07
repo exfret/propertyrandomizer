@@ -26,7 +26,6 @@ package.loaded["lib/logic/init"] = logic
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {}
 local gutils = require("lib/graph/graph-utils")
 local operation = require("lib/logic/operation-requirements")
-local matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 local top = require("lib/graph/context-sort")
 local key = gutils.key
 local num_passed = 0
@@ -242,29 +241,6 @@ test("delivery must actually connect the acquisition room to the operation room"
     local rules = operation.matching(graph, sort, operation.items(graph))
     assert(not rules.allows(nodes.early, nodes.item))
     assert(rules.allows(nodes.late, nodes.item))
-end)
-
-test("matching puts the building in the ready position and displaces its occupant", function()
-    local graph, sort, nodes = toy()
-    local params = {
-        operations = operation.items(graph),
-        pair_ok = function() return true end,
-    }
-    local assigned = matching.random_matching(params, graph, sort, {}, {}, {
-        [nodes.early] = nodes.item,
-        [nodes.late] = nodes.supply,
-    }, "operation-test")
-    assert(assigned[nodes.late] == nodes.item)
-    assert(assigned[nodes.early] == nodes.supply)
-end)
-
-test("matching reports failure instead of retaining an unready original position", function()
-    local graph, sort, nodes = toy()
-    local params = {
-        operations = operation.items(graph),
-        pair_ok = function() return true end,
-    }
-    assert(matching.random_matching(params, graph, sort, {}, {}, { [nodes.early] = nodes.item }, "operation-test") == nil)
 end)
 
 test("the final audit distinguishes an enabled crafting step from a later research unlock", function()

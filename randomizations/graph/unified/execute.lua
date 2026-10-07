@@ -38,6 +38,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
 local recycling = require("lib/recycling")
+local recipe_item_amounts = require("lib/recipe-item-amounts")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
 local logic = require("lib/logic/init")
@@ -77,7 +78,6 @@ if config.dev_unified then
         ["item"] = true,
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
-        ["mining-results"] = true,
         ["tech-triggers"] = true,
     }
 
@@ -94,7 +94,6 @@ if config.dev_unified then
         ["item"] = ITEM_ENABLED,
         ["entity-energy-source"] = true,
         ["mining-fluid-required"] = true,
-        ["mining-results"] = true,
         ["recipe-ingredients"] = true,
         ["spoiling"] = is_spoiling_on,
         -- Research triggers (handlers/tech-triggers.lua): technologies trade triggers
@@ -135,7 +134,6 @@ local available_handlers = {
     ["item"] = require("randomizations/graph/unified/handlers/item"),
     ["item-ingredients"] = require("randomizations/graph/unified/handlers/item-ingredients"),
     ["mining-fluid-required"] = require("randomizations/graph/unified/handlers/mining-fluid-required"),
-    ["mining-results"] = require("randomizations/graph/unified/handlers/mining-results"),
     ["recipe-category"] = require("randomizations/graph/unified/handlers/recipe-category"),
     ["recipe-ingredients"] = require("randomizations/graph/unified/handlers/recipe-ingredients"),
     ["recipe-ingredients-first-pass"] = require("randomizations/graph/unified/handlers/recipe-ingredients-first-pass"),
@@ -171,16 +169,6 @@ local function planetary_debt()
         return planetary.superposed
     end
     return nil
-end
-
--- Production variants are part of the starting world, before checks and first-pass matching.
-unified.prepare_first_pass = function()
-    if DO_FIRST_PASS and ITEM_ENABLED then
-        graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
-        -- Production preparation reads surface rooms before the initial world snapshot is built.
-        logic.build()
-        first_pass.prepare()
-    end
 end
 
 -- Repair mode uses the same prerequisite chooser before first pass, only at unpaid requirements.
@@ -260,9 +248,6 @@ unified.execute = function(options)
     -- Spoofing
     for _, handler in pairs(handlers) do
         handler.spoof(spoofed_graph)
-    end
-    if do_first_pass then
-        first_pass.spoof(spoofed_graph)
     end
     test_graph_invariants.test(spoofed_graph)
     gutils.make_orands(spoofed_graph)
@@ -1009,11 +994,9 @@ unified.execute = function(options)
     -- Research triggers too, since item randomization rewrites a craft-item trigger to the item first pass put at its position, reading the trigger the technology has when it reflects
     local reflect_first = {
         "recipe-ingredients-first-pass",
-        "recipe-ingredients",
         "entity",
         "spoiling",
         "tech-triggers",
-        "mining-results",
     }
     local reflects_first = {}
     for _, handler_id in pairs(reflect_first) do
@@ -1076,6 +1059,11 @@ unified.execute = function(options)
     end
     for _, handler in pairs(handlers) do
         handler.after_changes()
+    end
+    -- Same-form item renames can leave amounts untouched; validate their final identities too.
+    local corrected_amounts = recipe_item_amounts.apply(data.raw)
+    if corrected_amounts > 0 then
+        log("Item amounts: corrected " .. corrected_amounts .. " non-stackable recipe entries after reflection")
     end
     if not repair_only then
         for _, handler_id in pairs(handler_ids) do

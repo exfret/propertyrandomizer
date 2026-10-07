@@ -3,7 +3,6 @@
 config = { operation_readiness = true }
 UNIFIED_MATERIAL_RENAMES = {}
 old_data_raw = {}
-data = { raw = { recipe = {} } }
 local messages = {}
 function log(message)
     table.insert(messages, message)

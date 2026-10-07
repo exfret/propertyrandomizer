@@ -130,31 +130,6 @@ furnace_selection.selecting_ingredients = function(ingredients)
     return fluids
 end
 
--- Disjoint surface restrictions cannot compete in automatic furnace selection (2.1 furnace-recipe-selection docs).
-local function overlap(a, b)
-    if a.recycling_rooms ~= nil and b.recycling_rooms ~= nil then
-        for room, _ in pairs(a.recycling_rooms) do
-            if b.recycling_rooms[room] ~= nil then
-                return true
-            end
-        end
-        return false
-    end
-    local ranges = {}
-    for _, recipe in pairs({ a, b }) do
-        for _, condition in pairs(recipe.surface_conditions or {}) do
-            local range = ranges[condition.property] or { min = -math.huge, max = math.huge }
-            range.min = math.max(range.min, condition.min or -math.huge)
-            range.max = math.min(range.max, condition.max or math.huge)
-            if range.min > range.max then
-                return false
-            end
-            ranges[condition.property] = range
-        end
-    end
-    return true
-end
-
 -- Recipes a furnace can't tell apart, as a list of {ingredient = "type-name", recipes = {names...}}, sorted for stable logs
 -- categories_of (optional) gives a recipe's categories, for callers that know where categories will end up
 -- raw (optional) is the prototype table to read furnaces from, data.raw by default
@@ -185,27 +160,10 @@ furnace_selection.collisions = function(recipes, categories_of, raw)
         end
         table.sort(ing_keys)
         for _, ing_key in pairs(ing_keys) do
-            local names = by_pool_ing[pool_ind][ing_key]
-            local competing = {}
-            local overlaps = {}
-            for i = 1, #names do
-                for j = i + 1, #names do
-                    if overlap(recipes[names[i]], recipes[names[j]]) then
-                        competing[names[i]] = true
-                        competing[names[j]] = true
-                        table.insert(overlaps, { names[i], names[j] })
-                    end
-                end
-            end
-            if next(competing) ~= nil then
-                local involved = {}
-                for _, name in pairs(names) do
-                    if competing[name] == true then table.insert(involved, name) end
-                end
+            if #by_pool_ing[pool_ind][ing_key] > 1 then
                 table.insert(collisions, {
                     ingredient = ing_key,
-                    recipes = involved,
-                    overlaps = overlaps,
+                    recipes = by_pool_ing[pool_ind][ing_key],
                 })
             end
         end
@@ -218,16 +176,20 @@ end
 furnace_selection.new_collisions = function(old_raw)
     local old_pairs = {}
     for _, collision in pairs(furnace_selection.collisions(old_raw.recipe, nil, old_raw)) do
-        for _, pair in pairs(collision.overlaps) do
-            old_pairs[pair[1] .. "\n" .. pair[2]] = true
+        for _, a in pairs(collision.recipes) do
+            for _, b in pairs(collision.recipes) do
+                old_pairs[a .. "\n" .. b] = true
+            end
         end
     end
     local new = {}
     for _, collision in pairs(furnace_selection.collisions(data.raw.recipe)) do
         local is_old = true
-        for _, pair in pairs(collision.overlaps) do
-            if old_pairs[pair[1] .. "\n" .. pair[2]] == nil then
-                is_old = false
+        for _, a in pairs(collision.recipes) do
+            for _, b in pairs(collision.recipes) do
+                if old_pairs[a .. "\n" .. b] == nil then
+                    is_old = false
+                end
             end
         end
         if not is_old then

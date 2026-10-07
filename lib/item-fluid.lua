@@ -63,22 +63,10 @@ item_fluid.material_of_node = function(graph, node)
     if node.old_slot ~= nil then
         node = graph.nodes[node.old_slot]
     end
-    if node.production_slot ~= nil then
-        return table.deepcopy(node.production_slot.material)
-    end
-    if node.mining_slot ~= nil then
-        return table.deepcopy(node.mining_slot.material)
-    end
     if node.type == "item" then
         return { type = "item", name = node.name }
     elseif node.type == "fluid-temperature" then
-        local parts = gutils.deconstruct(node.name)
-        local material = {
-            type = "fluid",
-            name = parts.type,
-        }
-        material.temperature = tonumber(parts.name)
-        return material
+        return { type = "fluid", name = gutils.deconstruct(node.name).type }
     end
     return nil
 end
@@ -126,43 +114,6 @@ item_fluid.round_amount = function(form, amount)
         return math.max(0.01, math.floor(amount * 100 + 0.5) / 100)
     end
     return math.max(1, math.floor(amount + 0.5))
-end
-
--- Local positions use the same mechanic-ranked unit cost as shared positions when changing form.
-item_fluid.form_multiplier = function(params, slot_key, trav_key, costs)
-    local graph = params.split_graph
-    local position = item_fluid.material_of_node(graph, graph.nodes[slot_key])
-    local mechanics = (params.trav_to_mechanics_key or {})[trav_key]
-    local rank = ((params.mechanics_sets_to_nodes or {})[mechanics] or {})[trav_key]
-    local cost_key = rank ~= nil and ((params.mechanics_sets_to_ordered or {})[mechanics] or {})[rank] or nil
-    local cost_material = cost_key ~= nil and item_fluid.material_of_node(graph, graph.nodes[cost_key]) or nil
-    local before = position ~= nil and costs[item_fluid.material_key(position)] or nil
-    local after = cost_material ~= nil and costs[item_fluid.material_key(cost_material)] or nil
-    return before ~= nil and after ~= nil and after > 0 and before / after or 1
-end
-
--- Convert a local recipe/mining entry without leaving fields belonging to its previous form.
-item_fluid.retarget_entry = function(entry, identity, multiplier)
-    local result = table.deepcopy(entry)
-    local previous_type = entry.type or "item"
-    result.type = identity.type
-    result.name = identity.name
-    if previous_type ~= identity.type then
-        for _, field in pairs(item_fluid.FORM_ONLY_FIELDS[previous_type]) do
-            result[field] = nil
-        end
-        for _, field in pairs({ "amount", "amount_min", "amount_max" }) do
-            if result[field] ~= nil then
-                result[field] = item_fluid.round_amount(identity.type, result[field] * (multiplier or 1))
-            end
-        end
-    end
-    if identity.type == "fluid" and (previous_type ~= identity.type or entry.name ~= identity.name) then
-        result.temperature = identity.temperature
-        result.minimum_temperature = nil
-        result.maximum_temperature = nil
-    end
-    return result
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -271,11 +222,6 @@ item_fluid.realized_assignment = function(identity_at)
         end
     end
     return realized
-end
-
--- Apply a gated pair directly: independent deposit identities can make several ordinary positions hold the same item.
-item_fluid.reflects_pair = function(position, identity)
-    return item_fluid.material_key(position) ~= item_fluid.material_key(identity) or not item_fluid.is_useless_material(item_fluid.material_key(identity))
 end
 
 -- The positions item reflection switches identities to, given the assignment first pass realized (position material key --> identity material key), as identity material key --> position material key
@@ -862,51 +808,6 @@ item_fluid.final_node_key = function(node_key, renames, type_info)
         end
     end
     return gutils.key(node.type, gutils.key(identity.name, suffix))
-end
-
--- Independent positions can become the same physical fluid; the engine rejects duplicate fluid ingredients.
--- Combine amounts and intersect temperature requirements (FluidIngredientPrototype in the 2.1 docs).
--- Conflicting temperatures reject the attempt instead of silently changing what the recipe needs.
-item_fluid.merge_fluid_ingredients = function(recipe)
-    local ingredients = {}
-    local seen = {}
-    for _, original in pairs(recipe.ingredients or {}) do
-        local previous = original.type == "fluid" and seen[original.name] or nil
-        if previous == nil then
-            local entry = table.deepcopy(original)
-            table.insert(ingredients, entry)
-            if entry.type == "fluid" then seen[entry.name] = entry end
-        else
-            local low = math.max(previous.temperature or previous.minimum_temperature or -math.huge, original.temperature or original.minimum_temperature or -math.huge)
-            local high = math.min(previous.temperature or previous.maximum_temperature or math.huge, original.temperature or original.maximum_temperature or math.huge)
-            if low > high then
-                return false
-            end
-            previous.amount = previous.amount + original.amount
-            if previous.ignored_by_stats ~= nil or original.ignored_by_stats ~= nil then
-                previous.ignored_by_stats = (previous.ignored_by_stats or 0) + (original.ignored_by_stats or 0)
-            end
-            previous.temperature = nil
-            previous.minimum_temperature = low ~= -math.huge and low or nil
-            previous.maximum_temperature = high ~= math.huge and high or nil
-            if previous.fluidbox_multiplier ~= nil or original.fluidbox_multiplier ~= nil then
-                previous.fluidbox_multiplier = math.max(previous.fluidbox_multiplier or 3, original.fluidbox_multiplier or 3)
-            end
-            local indexes = {}
-            for _, index in pairs(previous.optional_fluidbox_indexes or {}) do indexes[index] = true end
-            for _, index in pairs(original.optional_fluidbox_indexes or {}) do indexes[index] = true end
-            if original.fluidbox_index ~= nil and original.fluidbox_index > 0 then indexes[original.fluidbox_index] = true end
-            indexes[previous.fluidbox_index or 0] = nil
-            previous.optional_fluidbox_indexes = nil
-            if previous.fluidbox_index ~= nil and next(indexes) ~= nil then
-                previous.optional_fluidbox_indexes = {}
-                for index, _ in pairs(indexes) do table.insert(previous.optional_fluidbox_indexes, index) end
-                table.sort(previous.optional_fluidbox_indexes)
-            end
-        end
-    end
-    if recipe.ingredients ~= nil then recipe.ingredients = ingredients end
-    return true
 end
 
 return item_fluid

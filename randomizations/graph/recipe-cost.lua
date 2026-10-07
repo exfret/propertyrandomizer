@@ -459,7 +459,6 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
             type = potential_ings[ind].type,
             name = potential_ings[ind].name,
             form = potential_ings[ind].form,
-            first_pass_position = potential_ings[ind].first_pass_position,
         }
     end
     -- Add unrandomized ings back in
@@ -496,7 +495,6 @@ local function search_for_ings(potential_ings, num_ings_to_find, old_recipe_cost
                         type = potential_ings[new_ind_to_use].type,
                         name = potential_ings[new_ind_to_use].name,
                         form = potential_ings[new_ind_to_use].form,
-                        first_pass_position = potential_ings[new_ind_to_use].first_pass_position,
                     }
                     local new_ings_points = calculate_optimal_amounts(old_recipe_costs, material_to_costs, new_ings, num_ings_to_find, amount_params) - novelty_bonus(new_ings)
 

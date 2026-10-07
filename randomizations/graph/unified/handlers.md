@@ -55,14 +55,6 @@ Entity positions (only with constants.entity_first_pass, off for now): first pas
 
 Not ready for release
 
-# mining-results
-
-Runs with the development item randomization. Each existing resource-to-product edge is a separate slot, including separate sources of the same material. Shared resources get deepcopies per planet placement (lib/resource-variants.lua), including dupe planets, before planetary randomization and again after any repairs, before unified models the world. Copies retain the existing autoplace expressions, sliders and placement settings. Mining triggers accept the copies as well as the original. This adds no items, patch sets or settings.
-
-Each deposit product enters first pass as an independent position. Production recipes have local positions on original and copied planets, while travellers representing the same physical material share supply and uses. Matching prioritizes actual deposit product changes; exchanging copies of the same material does not count. Item and fluid positions can trade identities when the category and progression checks pass. Reflection changes product form, removes incompatible fields and scales cross-form amounts using the same mechanic-ranked costs as item reflection. Global item reflection skips these managed mining results. Single-product resource names and icons follow their final products.
-
-Recycling variants are restricted to disjoint surface regions and use the same source selector in the graph and final regeneration. Canonical sources prefer local production, ancestral recipe/item identity, an existing recycling source, a non-self return, fewer original distinct ingredient materials, then stable recipe order. Local ingredient markers survive cost search and reflection, and recycling promises pin their physical ingredients. Fluid ingredients that converge to one identity are merged; incompatible temperature requirements reject the attempt.
-
 # mining-fluid-required
 
 Which fluid mining a resource needs, and whether it needs one at all. Bases are mining-fluid nodes (a fluid with the fluid-input variant of a resource category, which prefixes.lua gives every mining drill), plus a spoofed "no fluid" base fed by true.

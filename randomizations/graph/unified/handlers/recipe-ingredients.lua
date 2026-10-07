@@ -48,10 +48,6 @@ local fluid_use_median
 local fluid_amount_cap
 local shape_stats
 local repair_only
-local container_fluids
-local function is_container_fluid(recipe, ingredient)
-    return ingredient.type == "fluid" and (container_fluids or {})[recipe.name] == ingredient.name
-end
 recipe_ingredients.initialize = function(options)
     repair_only = options ~= nil and options.repair_only == true
     already_duped = {}
@@ -60,10 +56,6 @@ recipe_ingredients.initialize = function(options)
     fluid_use_median = nil
     fluid_amount_cap = nil
     shape_stats = nil
-    container_fluids = {}
-    for _, container in pairs(item_fluid.fluid_containers(data.raw.recipe)) do
-        container_fluids[container.fill] = container.held
-    end
     recipe_shape.reset()
     if config.recipe_shapes == true or repair_only then
         ingredient_uses = recipe_shape.ingredient_uses(data.raw.recipe, key, item_fluid.is_recycling_recipe)
@@ -80,11 +72,6 @@ end
 
 -- Fluid ingredients enter recipes through fluid-temperature-range nodes, so report those as the fluid itself
 local function as_material(node)
-    if node.production_slot ~= nil then
-        local material = table.deepcopy(node.production_slot.material)
-        material.first_pass_position = node.production_slot.position_key or key(node)
-        return material
-    end
     if node.type == "fluid-temperature-range" then
         return { type = "fluid", name = gutils.deconstruct(node.name).type }
     end
@@ -140,11 +127,6 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
     if (prereq.type == "item" or prereq.type == "fluid" or prereq.type == "fluid-temperature-range") and dep.type == "recipe" then
         prereq = as_material(prereq)
         local recipe = data.raw.recipe[dep.name]
-        -- This edge belongs to the held fluid's identity.
-        -- Leaving it unclaimed lets first pass move it with that identity, consistently with item reflection.
-        if is_container_fluid(recipe, prereq) then
-            return false
-        end
         if (recipe.hidden == true and not repair_only) or (repair_only and item_fluid.regenerated_recycling(recipe)) then
             return false
         end
@@ -184,9 +166,6 @@ local function is_unrandomized_ing(ind, is_result_of_this_recipe, recipe)
     -- If this is special in any way, don't randomize
 
     local ing = recipe.ingredients[ind]
-    if is_container_fluid(recipe, ing) then
-        return true
-    end
     if graph_customization.excluded("recipe-ingredients", ing) then
         return true
     end
@@ -266,7 +245,7 @@ recipe_ingredients.before_heads = function(params)
         end
         local kept = {}
         for _, ing in pairs(recipe.ingredients or {}) do
-            if is_result[key(ing)] ~= nil or blacklisted_pre[key(ing)] ~= nil or is_container_fluid(recipe, ing) then
+            if is_result[key(ing)] ~= nil or blacklisted_pre[key(ing)] ~= nil then
                 table.insert(kept, ing)
             end
         end
@@ -365,11 +344,11 @@ recipe_ingredients.custom_prereq_search = function(params)
         for trav_key, slot_key in pairs(trav_to_slot) do
             local slot_node = params.split_graph.nodes[slot_key]
             local trav_node = params.split_graph.nodes[trav_key]
-            if slot_node ~= nil and trav_node ~= nil and (slot_node.production_slot ~= nil or slot_node.mining_slot == nil or slot_node.mining_slot.primary == true) then
+            if slot_node ~= nil and trav_node ~= nil then
                 local position = item_fluid.material_of_node(params.split_graph, slot_node)
                 local identity = item_fluid.material_of_node(params.split_graph, trav_node)
                 if position ~= nil and identity ~= nil then
-                    identity_form[slot_node.production_slot ~= nil and slot_key or key(position)] = identity.type
+                    identity_form[key(position)] = identity.type
                 end
             end
         end
@@ -380,10 +359,7 @@ recipe_ingredients.custom_prereq_search = function(params)
         for field, value in pairs(entry) do
             candidate[field] = value
         end
-        candidate.form = identity_form[position.first_pass_position or key(position)] or position.type
-        if do_first_pass and params.split_graph.local_recipe_positions ~= nil then
-            candidate.first_pass_position = position.first_pass_position or false
-        end
+        candidate.form = identity_form[key(position)] or position.type
         return candidate
     end
 
@@ -1010,9 +986,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                 -- Pins on fixed prereqs (not randomized edges) are kept anyway
                 for material_key, _ in pairs(current_pins) do
                     local kept = prom.vanilla_owner(dep, gutils.deconstruct(material_key)) == nil
-                    -- Pins name materials, while a fluid's owner may be a temperature-range node.
-                    for _, ing in pairs(best_search_info.ings) do
-                        if key(ing) == material_key then
+                    for _, owner_key in pairs(new_owner_keys) do
+                        if owner_key == material_key then
                             kept = true
                         end
                     end
@@ -1145,40 +1120,35 @@ recipe_ingredients.validate = function(graph, base, head, extra)
 end
 
 recipe_ingredients.reflect = function(graph, head_to_base, head_to_handler)
-    local reflected = {}
     for recipe_name, ings in pairs(dependent_to_new_ings) do
         local recipe = data.raw.recipe[recipe_name]
-        -- Staged costing also writes generated recycling overrides, including pending markers.
-        -- Those are pricing state; final regeneration owns these recipes.
-        if not item_fluid.regenerated_recycling(recipe) then
-            reflected[recipe_name] = true
-            -- Remove blacklisted for recipes without cost
-            if ings[1] == "blacklisted" then
-                table.remove(ings, 1)
-            end
-            recipe.ingredients = table.deepcopy(ings)
+
+        -- Remove blacklisted for recipes without cost
+        if ings[1] == "blacklisted" then
+            table.remove(ings, 1)
         end
+
+        -- TODO: Maybe investigate whether the deepcopy is necessary
+        recipe.ingredients = table.deepcopy(ings)
     end
 
     -- Final check to remove duplicate ingredients
-    for recipe_name, _ in pairs(reflected) do
+    for recipe_name, _ in pairs(dependent_to_new_ings) do
         local recipe = data.raw.recipe[recipe_name]
         if recipe.ingredients ~= nil then
             local already_seen = {}
             for i = #recipe.ingredients, 1, -1 do
                 local ing = recipe.ingredients[i]
-                local position = ing.type .. "-" .. ing.name .. "/" .. tostring(ing.first_pass_position)
-                if already_seen[position] ~= nil then
-                    already_seen[position].amount = already_seen[position].amount + ing.amount
+                if already_seen[ing.type .. "-" .. ing.name] then
                     table.remove(recipe.ingredients, i)
                 else
-                    already_seen[position] = ing
+                    already_seen[ing.type .. "-" .. ing.name] = true
                 end
             end
         end
     end
     -- Now go through and make ingredient amounts 1 if thing isn't stackable
-    for recipe_name, _ in pairs(reflected) do
+    for recipe_name, _ in pairs(dependent_to_new_ings) do
         local recipe = data.raw.recipe[recipe_name]
         if recipe.ingredients ~= nil then
             for _, ing in pairs(recipe.ingredients) do

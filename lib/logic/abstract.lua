@@ -826,10 +826,6 @@ function abstract.build(lu, extra_params)
     add_node("fluid-ingredient", "AND", nil, "", { canonical = "fluid" })
     ----------------------------------------
 
-    -- First pass combines the recipes producing one physical material across local positions.
-    -- This is separate from material availability: mining and delivery are not crafting.
-    add_node("material-craft-identity", "OR", nil, "", { canonical = "material-craft-identity" })
-
     ----------------------------------------------------------------------
     -- Meta
     ----------------------------------------------------------------------

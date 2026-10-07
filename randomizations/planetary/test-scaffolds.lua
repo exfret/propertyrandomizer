@@ -238,8 +238,9 @@ end
 check(unlocked[copy_variant.recipe_name] == true and unlocked[ember_variant.recipe_name] == nil, "the unlocks don't follow the variants")
 
 -- 4. A conversion shows its planet like the variants do: "Magma from lake water (Embra)", with the planet's icon as a badge
+-- The name is the planet-variant locale key (scaffolds.variant_name), whose second parameter is the planet's label
 local conversion = data.raw.recipe[copy_conversion.recipe_name]
-check(conversion.localised_name[4] == "Embra", "the copy's conversion isn't named after its planet")
+check(conversion.localised_name[1] == "propertyrandomizer-name.planet-variant" and conversion.localised_name[3] == "Embra", "the copy's conversion isn't named after its planet")
 check(conversion.icons ~= nil and conversion.icons[#conversion.icons].icon == "__test__/ember-2.png", "the copy's conversion doesn't have its planet's badge")
 check(conversion.icons[1].icon == "__test__/magma.png", "the conversion's icon isn't the fluid it makes")
 

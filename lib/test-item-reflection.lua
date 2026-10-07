@@ -162,7 +162,7 @@ test("item reflection and first pass both use the shared rules", function()
     local item_reflection = source("randomizations/graph/unified/handlers/item.lua")
     local first_pass = source("randomizations/graph/unified/first-pass.lua")
     -- First pass gates the assignment as item reflection realizes it (the useless rule for items and fluids, lib/item-fluid.lua), and reflection applies that one as it is
-    assert(string.find(item_reflection, "item_fluid.reflects_pair(", 1, true) ~= nil)
+    assert(string.find(item_reflection, "item_fluid.reflected_positions(", 1, true) ~= nil)
     assert(string.find(item_reflection, "dutils.mining_keeps_item_names(", 1, true) ~= nil)
     assert(string.find(first_pass, "item_fluid.realized_assignment(", 1, true) ~= nil)
     assert(string.find(first_pass, "dutils.mining_keeps_item_names(", 1, true) ~= nil)

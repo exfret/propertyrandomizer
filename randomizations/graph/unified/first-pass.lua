@@ -26,8 +26,6 @@ local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 local item_fluid = require("lib/item-fluid")
-local mining_slots = require("randomizations/graph/unified/handler-helpers/mining-slots")
-local local_slots = require("randomizations/graph/unified/handler-helpers/local-production-slots")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -42,8 +40,6 @@ end
 local key = gutils.key
 
 local first_pass = {}
-first_pass.spoof = local_slots.spoof
-first_pass.prepare = local_slots.prepare
 
 local trav_suffix = "-trav"
 local function make_trav_name(old_name)
@@ -91,10 +87,7 @@ end
 first_pass.is_canonical_result = is_canonical_result
 
 -- Material cost key of a slot, or of the slot a trav came from: a fluid slot (a fluid-temperature node) is costed as its fluid
-local function cost_key(node_key, mining_slot)
-    if mining_slot ~= nil then
-        return key(mining_slot.material)
-    end
+local function cost_key(node_key)
     local node_parts = gutils.deconstruct(node_key)
     if node_parts.type == "fluid-temperature" then
         return key("fluid", gutils.deconstruct(node_parts.name).type)
@@ -103,10 +96,7 @@ local function cost_key(node_key, mining_slot)
 end
 
 -- The form a slot, or the slot a trav came from, stands for ("item" or "fluid", see lib/item-fluid.lua), or nil for other slots
-local function form_of(node_key, mining_slot)
-    if mining_slot ~= nil then
-        return mining_slot.material.type
-    end
+local function form_of(node_key)
     local node_type = gutils.deconstruct(node_key).type
     if node_type == "item" then
         return "item"
@@ -118,8 +108,8 @@ end
 
 -- Whether a slot and trav's material costs are close enough to swap them
 local function cost_ok(slot, trav)
-    local slot_cost = material_costs.costs[cost_key(key(slot), (slot.production_slot or slot.mining_slot))]
-    local trav_cost = material_costs.costs[cost_key(trav.old_slot, (trav.production_slot or trav.mining_slot))]
+    local slot_cost = material_costs.costs[cost_key(key(slot))]
+    local trav_cost = material_costs.costs[cost_key(trav.old_slot)]
     if type(slot_cost) ~= type(trav_cost) then
         return false
     end
@@ -135,13 +125,11 @@ end
 -- An identity at a position of the other form keeps its form, and its amounts follow the costs across forms like any other's (see item_fluid.round_amount)
 local function pair_ok(slot, trav)
     -- A fluid identity's amounts can be fractional, so its costs needn't fit as closely (user, 2026-09-29); an item's must, since a cheap item at an expensive fluid's position would come in the hundreds
-    if form_of(trav.old_slot, (trav.production_slot or trav.mining_slot)) ~= "fluid" and not cost_ok(slot, trav) then
+    if form_of(trav.old_slot) ~= "fluid" and not cost_ok(slot, trav) then
         return false
     end
-    if slot.type == "item" and (slot.mining_slot == nil or slot.mining_slot.primary == true) and dutils.replacement_gets_fuel(slot.name) then
-        local source = trav.production_slot or trav.mining_slot
-        local name = source ~= nil and source.material.name or gutils.deconstruct(trav.old_slot).name
-        local item = dutils.get_prot("item", name)
+    if slot.type == "item" and dutils.replacement_gets_fuel(slot.name) then
+        local item = dutils.get_prot("item", gutils.deconstruct(trav.old_slot).name)
         return item ~= nil and (item.burnt_result == nil or item.burnt_result == "")
     end
     return true
@@ -235,15 +223,6 @@ first_pass.execute = function(params)
     local container_recipes = item_fluid.container_recipes(containers)
     local function valid_node_for_first_pass(node_key)
         local subdiv_node = subdiv_graph.nodes[node_key]
-        if subdiv_node.production_slot ~= nil then
-            return ITEM_ENABLED and subdiv_node.type == subdiv_node.production_slot.node_type
-        end
-        if (subdiv_graph.local_fluid_positions or {})[node_key] ~= nil then
-            return ITEM_ENABLED and config.item_fluids
-        end
-        if subdiv_node.mining_slot ~= nil then
-            return ITEM_ENABLED and subdiv_node.type == subdiv_node.mining_slot.node_type
-        end
         -- Entity positions are slots, including items and capsules that make nothing in vanilla, whose sinks are spoofs
         if entity_rules ~= nil and entity_rules.positions[node_key] ~= nil then
             return true
@@ -296,17 +275,6 @@ first_pass.execute = function(params)
             node_in_sorted[pebble.node_key] = ind
         end
     end
-    -- Every deposit is a position even if its original product is unreachable, just as every entity position is.
-    local unreached_deposits = {}
-    for node_key, node in pairs(subdiv_graph.nodes) do
-        if node.mining_slot ~= nil and node_in_sorted[node_key] == nil and valid_node_for_first_pass(node_key) then
-            table.insert(unreached_deposits, node_key)
-        end
-    end
-    table.sort(unreached_deposits)
-    for i, node_key in pairs(unreached_deposits) do
-        node_in_sorted[node_key] = #init_sort.sorted + i
-    end
     -- Entity positions nothing reaches in vanilla (like units' placing positions and nowhere positions) are slots too, ranked after everything
     if entity_rules ~= nil then
         local unreached = {}
@@ -317,7 +285,7 @@ first_pass.execute = function(params)
         end
         table.sort(unreached)
         for i, position_key in pairs(unreached) do
-            node_in_sorted[position_key] = #init_sort.sorted + #unreached_deposits + i
+            node_in_sorted[position_key] = #init_sort.sorted + i
         end
     end
 
@@ -326,7 +294,6 @@ first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
 
     local split_graph = table.deepcopy(subdiv_graph)
-    local_slots.disconnect_crafts(split_graph)
 
     -- Sends a slot to the base that connects it to a trav, and a trav to its head
     local slot_to_base = {}
@@ -338,8 +305,6 @@ first_pass.execute = function(params)
         trav.op = node.op
         trav.trav = true
         trav.old_slot = node_key
-        trav.mining_slot = table.deepcopy(node.mining_slot)
-        trav.production_slot = table.deepcopy(node.production_slot)
         node.old_trav = key(trav)
         -- Randomized edges stay on the slot, fixed ones move to the trav
         -- By construction, an edge is randomized exactly when it's subdivided, so we can just check for the existence of a head/base
@@ -349,7 +314,7 @@ first_pass.execute = function(params)
             if prenode.type == "orand" then
                 prenode = gutils.unique_prenode(split_graph, prenode)
             end
-            local always_on_slot = node.production_slot ~= nil or (node.mining_slot ~= nil and node.mining_slot.primary ~= true)
+            local always_on_slot = false
             if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] ~= nil then
                 always_on_slot = true
                 if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then
@@ -409,7 +374,6 @@ first_pass.execute = function(params)
         -- The slot --> trav edge, cut into a base and head, is what gets rewired to match slots and travs
         local slot_trav_edge = gutils.add_edge(split_graph, node, trav)
         local base_head = gutils.subdivide_base_head(split_graph, gutils.ekey(slot_trav_edge))
-        base_head.base.identity_connection = true
         slot_to_base[node_key] = base_head.base
         trav_to_head[key(trav)] = base_head.head
         gutils.remove_edge(split_graph, gutils.ekey(gutils.unique_pre(split_graph, base_head.head)))
@@ -421,16 +385,13 @@ first_pass.execute = function(params)
     end
     test_graph_invariants.test(split_graph)
 
-    mining_slots.link_identities(split_graph, trav_to_head)
-    local_slots.prepare_crafts(split_graph)
-
     -- Items and fluids trading positions (see lib/item-fluid.lua): the slot of each item or fluid
     local slot_of_material = {}
     local fluid_slot_names = {}
     for slot_key, _ in pairs(node_in_sorted) do
         local material = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
         if material ~= nil then
-            slot_of_material[mining_slots.position_key(split_graph, split_graph.nodes[slot_key])] = slot_key
+            slot_of_material[item_fluid.material_key(material)] = slot_key
             if material.type == "fluid" then
                 table.insert(fluid_slot_names, material.name)
             end
@@ -531,7 +492,7 @@ first_pass.execute = function(params)
     local is_slot_ordered = {}
     for _, pebble in pairs(init_sort.sorted) do
         local node = split_graph.nodes[pebble.node_key]
-        if node ~= nil and node.slot and is_slot_ordered[pebble.node_key] == nil then
+        if node.slot and is_slot_ordered[pebble.node_key] == nil then
             is_slot_ordered[pebble.node_key] = true
             order_slot(node)
         end
@@ -557,12 +518,8 @@ first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
 
     local slot_keys = {}
-    local has_mining_slots = false
     for slot_key, _ in pairs(node_in_sorted) do
         table.insert(slot_keys, slot_key)
-        if split_graph.nodes[slot_key].mining_slot ~= nil then
-            has_mining_slots = true
-        end
     end
     table.sort(slot_keys)
     -- Items that mining a resource gives, which should become something interesting whenever the matching allows it
@@ -623,11 +580,7 @@ first_pass.execute = function(params)
             end
         end
         local original = split_graph.nodes[trav.old_slot]
-        -- Planet ownership scopes consumers, not replacement identities.
-        -- Local positions participate in the same matching as other planets and shared production.
-        local selected_slot = (slot.production_slot or slot.mining_slot) ~= nil and split_graph.nodes[key((slot.production_slot or slot.mining_slot).material)] or slot
-        local selected_original = (original.production_slot or original.mining_slot) ~= nil and split_graph.nodes[key((original.production_slot or original.mining_slot).material)] or original
-        if key(slot) ~= trav.old_slot and (not graph_customization.selected("item", selected_slot) or not graph_customization.selected("item", selected_original)) then
+        if key(slot) ~= trav.old_slot and (not graph_customization.selected("item", slot) or not graph_customization.selected("item", original)) then
             return false
         end
         return pair_ok(slot, trav)
@@ -640,7 +593,6 @@ first_pass.execute = function(params)
     end
 
     -- An identity can go to a position of the other form if the position's roles suit its form and the recipes and resources there keep crafters and drills (see item_fluid.form_change_ok)
-    -- Local production and independent deposits use the same checks; their metadata identifies the physical material.
     -- That depends on the position and the identity's form alone, so it's judged once per slot and form on the split graph's own nodes
     -- Such pairs aren't admissible in monotone matching's rounds (its needs can't repair what a trade changes): they come from trades after the rounds (form_swaps below)
     local form_change_memo = {}
@@ -661,8 +613,7 @@ first_pass.execute = function(params)
         return form_change_memo[slot_key][identity.type]
     end
     -- Besides coupled heads, a position holding an identity of the other form has its recipes and resources rewired for the form (see item_fluid.rewire_form_change)
-    local function connect_pair_extra(graph, slot_key, trav_key, assignment)
-        local_slots.connect_craft(graph, slot_key, trav_key)
+    local function connect_pair_extra(graph, slot_key, trav_key)
         connect_coupled(graph, slot_key, trav_key)
         if config.item_fluids then
             item_fluid.rewire_form_change(graph, slot_key, trav_key)
@@ -680,21 +631,12 @@ first_pass.execute = function(params)
         rounds = MONOTONE_MATCHING_ROUNDS,
         is_resource_slot = function(slot_key)
             local slot = split_graph.nodes[slot_key]
-            -- Once deposits have explicit positions, their old material nodes may only represent shared recipe production.
-            -- Counting those material nodes would invent extra deposits.
-            return slot.mining_slot ~= nil or (not has_mining_slots and slot.type == "item" and is_resource_item[slot.name] == true)
-        end,
-        is_new_resource_pair = function(slot_key, trav_key)
-            local previous = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
-            local next_material = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
-            return previous == nil or next_material == nil or item_fluid.material_key(previous) ~= item_fluid.material_key(next_material)
+            return slot.type == "item" and is_resource_item[slot.name] == true
         end,
         -- Uses the same notion of useless as item reflection, which skips swaps between two useless materials (see item_fluid.is_useless_material)
-        is_interesting = function(trav_key, slot_key)
+        is_interesting = function(trav_key)
             local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
-            local original = split_graph.nodes[split_graph.nodes[trav_key].old_slot]
-            local local_position = slot_key ~= nil and split_graph.nodes[slot_key].production_slot ~= nil
-            return identity ~= nil and (local_position or original.production_slot ~= nil or not item_fluid.is_useless_material(item_fluid.material_key(identity)))
+            return identity ~= nil and not item_fluid.is_useless_material(item_fluid.material_key(identity))
         end,
         -- Item reflection places useless materials differently from the matching (see item_fluid.realized_assignment, which is dutils.realized_item_assignment's rule with fluids too), so each matching is replaced by the one reflection realizes before it's gated, and reflection applies the gated one as it is
         realize = function(assignment)
@@ -703,44 +645,21 @@ first_pass.execute = function(params)
                 local position = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
                 local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
                 if position ~= nil and identity ~= nil then
-                    identity_at[mining_slots.position_key(split_graph, split_graph.nodes[slot_key])] = mining_slots.position_key(split_graph, split_graph.nodes[trav_key])
-                end
-            end
-            -- A cycle involving a local position is a real chain substitution, including intermediate materials.
-            -- Only wholly global cycles use the cosmetic-swap rule.
-            local visited = {}
-            local global_assignment = {}
-            for start, _ in pairs(identity_at) do
-                if visited[start] == nil then
-                    local cycle = {}
-                    local position_key = start
-                    local local_cycle = false
-                    repeat
-                        visited[position_key] = true
-                        table.insert(cycle, position_key)
-                        local_cycle = local_cycle or split_graph.nodes[slot_of_material[position_key]].production_slot ~= nil
-                        position_key = assert(identity_at[position_key], "Material assignment is not a permutation")
-                    until position_key == start
-                    if not local_cycle then
-                        for _, member in pairs(cycle) do
-                            global_assignment[member] = identity_at[member]
-                        end
-                    end
+                    identity_at[item_fluid.material_key(position)] = item_fluid.material_key(identity)
                 end
             end
             local realized = table.deepcopy(assignment)
-            for position_key, identity_key in pairs(item_fluid.realized_assignment(global_assignment)) do
+            for position_key, identity_key in pairs(item_fluid.realized_assignment(identity_at)) do
                 realized[slot_of_material[position_key]] = split_graph.nodes[slot_of_material[identity_key]].old_trav
             end
             return realized
         end,
         debt = params.debt,
         connect_extra = connect_pair_extra,
-        connect_assignment = local_slots.connect_recycling,
         -- A recycling recipe the recycler generates leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change); the game regenerates it for the item identity under the same name, which the checks see reachable
         recipe_may_vanish = function(node_key)
             local recipe = data.raw.recipe[gutils.deconstruct(node_key).name]
-            return recipe ~= nil and recipe.recycling_origin ~= nil or (config.item_fluids and item_fluid.regenerated_recycling(recipe))
+            return config.item_fluids and item_fluid.regenerated_recycling(recipe)
         end,
         -- Trades between an item position and a fluid position, where each position takes the other's identity (see cross_type_ok and pair_ok)
         form_swaps = {
@@ -792,9 +711,6 @@ first_pass.execute = function(params)
             end,
         },
     })
-    if assignment == false then
-        return false
-    end
     local slot_to_trav = {}
     local trav_to_slot = {}
     for _, slot_key in pairs(slot_keys) do
@@ -806,7 +722,6 @@ first_pass.execute = function(params)
         trav_to_head = trav_to_head,
         connection = connection,
         connect_extra = connect_pair_extra,
-        connect_assignment = local_slots.connect_recycling,
     }, assignment)
     if config.item_fluids then
         local num_changed_form = 0
