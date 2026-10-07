@@ -18,6 +18,7 @@ local operation_unlocks = require("lib/logic/operation-unlocks")
 local technology_prerequisites = require("lib/technology-prerequisites")
 local rebuild_unlocks = require("lib/rebuild-unlocks")
 local trigger_promises = require("lib/technology-trigger-promises")
+local rebuild_check = require("lib/rebuild-check")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -80,6 +81,15 @@ randomizations.rebuild_tech_tree = function()
 
     logic.build()
     local graph = logic.graph
+    -- The game before this rebuild, which the rebuilt one must keep (see rebuild_check below)
+    -- Py's sorts have no room/ability contexts (see context_sort_info below), so py isn't checked
+    local before_sort_info
+    if not mods["pyalternativeenergy"] then
+        before_sort_info = top.sort(graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+        })
+    end
 
     -- Initial top sort for determining science packs for recipes
     -- Also determines recipes for science packs (i.e.- what recipe techs will be marked essential)
@@ -297,7 +307,7 @@ randomizations.rebuild_tech_tree = function()
 
     -- A tech needs all its prerequisites, so a prerequisite without some context the tech has takes that context away
     -- Like a Fulgora-only tech under one every planet's discovery makes isolatable: the lightning rod's tech lost isolatability on Fulgora that way
-    -- So a prerequisite is only kept if its tech has every context the tech has in the sort without tech prerequisites, and then each rebuilt tech keeps the contexts its unit or trigger gives it
+    -- So a prerequisite is only kept if its tech has the contexts that matter in the sort without tech prerequisites, and then each rebuilt tech keeps the contexts its unit or trigger gives it
     -- Witnesses still come from the earliest pebbles above, so prerequisites never wait on anything the recipe isn't already reached without; a witness of a later pebble (like an isolatable one) can need a tech whose own science packs need the recipe
     -- Py's sorts have no room/ability contexts, so there every prerequisite is kept
     local context_sort_info
@@ -307,24 +317,32 @@ randomizations.rebuild_tech_tree = function()
             home_contexts = true,
         })
     end
-    local function covers(prereq_tech_name, tech_name, prereq_recipe_name, recipe_name)
+    -- Whether prereq_tech_name's tech can be a prerequisite of tech_name's without taking away a context that matters
+    -- For a rebuilt tech (recipe_name given), those are the contexts where its recipe can be made: elsewhere the tech unlocks nothing, so it can wait there, and what other techs need from it there is checked in the rebuilt game (rebuild_check below)
+    -- Otherwise (techs the logic needs, see logic_needs below) every context of the tech counts
+    -- Only the prerequisite's tech is compared, not its recipe: the tech waits for that tech, and the recipe can come later (in vanilla's logic, sulfur is automatable on Nauvis before the chemical plant recipe is)
+    local function covers(prereq_tech_name, tech_name, recipe_name)
         if context_sort_info == nil then
             return true
         end
         local nci = context_sort_info.node_to_context_inds
         local prereq_contexts = nci[gutils.key("technology", prereq_tech_name)] or {}
-        local prereq_recipes = nci[gutils.key("recipe", prereq_recipe_name)] or {}
-        local target_recipes = recipe_name ~= nil and nci[gutils.key("recipe", recipe_name)] or {}
+        local target_recipes
+        if recipe_name ~= nil then
+            target_recipes = nci[gutils.key("recipe", recipe_name)] or {}
+        end
         for context, ind in pairs(nci[gutils.key("technology", tech_name)] or {}) do
-            if prereq_contexts[context] == nil then
-                return false
-            end
-            -- The witness may unlock this prerequisite through an alternate technology.
-            -- Substituting a later primary can create a cycle even though it has the same contexts.
-            -- A copied research method can legitimately arrive after an alternate recipe unlock.
-            local target_ind = math.max(target_recipes[context] or ind, ind)
-            if prereq_contexts[context] >= target_ind or (prereq_recipes[context] ~= nil and prereq_recipes[context] >= target_ind) then
-                return false
+            if target_recipes == nil or target_recipes[context] ~= nil then
+                if prereq_contexts[context] == nil then
+                    return false
+                end
+                -- The witness may unlock this prerequisite through an alternate technology.
+                -- Substituting a later primary can create a cycle even though it has the same contexts.
+                -- A copied research method can legitimately arrive after an alternate recipe unlock.
+                local target_ind = math.max((target_recipes or {})[context] or ind, ind)
+                if prereq_contexts[context] >= target_ind then
+                    return false
+                end
             end
         end
         return true
@@ -339,6 +357,7 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     log("Tech tree rebuild: " .. num_retained .. " alternate recipe unlock paths kept to preserve contexts")
+    local num_kept = 0
     local num_left_out = 0
 
     -- Whether a recipe gets a rebuilt tech below: it's locked, and a tech unlocking it has a unit or trigger to copy
@@ -392,7 +411,7 @@ randomizations.rebuild_tech_tree = function()
         end
         local requirements = research_requirements[source]
         if requirements == nil or not witness_recipes.extend(recipe_to_prev, recipe_name, requirements, function(pre, target)
-            return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target], pre, target)
+            return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target], target)
         end) then
             log("Research tech: couldn't add research prerequisites for " .. recipe_name .. " without a missing witness, dependency cycle, or lost context")
         end
@@ -429,6 +448,8 @@ randomizations.rebuild_tech_tree = function()
 
     local new_techs_with_unit = {}
     local is_new_tech = {}
+    -- Rebuilt tech --> the tech whose research it copies, for the check of the rebuilt game
+    local new_tech_sources = {}
     local copied_trigger_sources = {}
     for recipe_name, prev_recipes in pairs(recipe_to_prev) do
         local recipe = data.raw.recipe[recipe_name]
@@ -438,8 +459,9 @@ randomizations.rebuild_tech_tree = function()
             -- Each of these gets a tech (see prev_recipes_of)
             for prev_recipe_name, _ in pairs(prev_recipes) do
                 -- Only if it can't take away a context (see covers); leaving one out only lets this tech be researched sooner
-                if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name], prev_recipe_name, recipe_name) then
+                if recipe_to_source_tech[recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], recipe_to_source_tech[recipe_name], recipe_name) then
                     table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                    num_kept = num_kept + 1
                 else
                     num_left_out = num_left_out + 1
                 end
@@ -449,6 +471,7 @@ randomizations.rebuild_tech_tree = function()
                 table.insert(new_techs_with_unit, "exfret-rebuilt-" .. recipe_name .. "-suffix")
             end
             is_new_tech["exfret-rebuilt-" .. recipe_name .. "-suffix"] = true
+            new_tech_sources["exfret-rebuilt-" .. recipe_name .. "-suffix"] = recipe_to_source_tech[recipe_name]
             local new_tech = {
                 type = "technology",
                 name = "exfret-rebuilt-" .. recipe_name .. "-suffix",
@@ -490,8 +513,9 @@ randomizations.rebuild_tech_tree = function()
                 for prev_recipe_name, _ in pairs(needed_tech_to_prev[tech.name]) do
                     if data.raw.technology["exfret-rebuilt-" .. prev_recipe_name .. "-suffix"] ~= nil then
                         -- Like the rebuilt techs, only if it can't take away a context (see covers)
-                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name, prev_recipe_name) then
+                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name) then
                             table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
+                            num_kept = num_kept + 1
                         else
                             num_left_out = num_left_out + 1
                         end
@@ -509,7 +533,7 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
-    log("Tech tree rebuild: " .. num_left_out .. " prerequisites were left out because they would take away a context")
+    log("Tech tree rebuild: " .. num_kept .. " prerequisites kept, " .. num_left_out .. " left out because they would take away a context")
 
     if mods["pyalternativeenergy"] then
         -- Make pyrrhic come after each later thing with some probability
@@ -580,7 +604,38 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
+    -- The prerequisites above were checked only where each tech's own recipe can be made, so what other techs need from them is checked in the rebuilt game, which must keep everything the game had before
+    -- The check sorts the game with the prerequisites reduce keeps: one that another prerequisite already needs changes no tech's contexts, and the sort is several times faster without them
+    local full_prerequisites
+    if before_sort_info ~= nil then
+        full_prerequisites = {}
+        for tech_name, tech in pairs(data.raw.technology) do
+            full_prerequisites[tech_name] = table.deepcopy(tech.prerequisites)
+        end
+    end
     technology_prerequisites.reduce(data.raw.technology)
+    if before_sort_info ~= nil then
+        local num_cut, num_rounds, still_lost = rebuild_check.run(before_sort_info, graph, context_sort_info, data.raw.technology, full_prerequisites, function(tech_name)
+            if is_new_tech[tech_name] then
+                return new_tech_sources[tech_name]
+            elseif needed_tech_to_prev[tech_name] ~= nil then
+                return tech_name
+            end
+            return nil
+        end)
+        local message = "Tech tree rebuild check: " .. num_cut .. " more prerequisites left out over " .. num_rounds .. " rounds"
+        if #still_lost == 0 and num_cut == 0 then
+            log("Tech tree rebuild check: the rebuilt game keeps everything the game had")
+        elseif #still_lost == 0 then
+            log(message .. ", so the rebuilt game keeps everything the game had")
+        else
+            local examples = {}
+            for i = 1, math.min(10, #still_lost) do
+                table.insert(examples, still_lost[i].node_key .. " @ " .. still_lost[i].context)
+            end
+            log(message .. "; the rebuilt game still lost " .. #still_lost .. " contexts the game had, which leaving out prerequisites doesn't bring back (e.g. " .. table.concat(examples, "; ") .. ")")
+        end
+    end
     trigger_promises.rebuild(data.raw.technology, copied_trigger_sources)
     if config.operation_readiness == true then
         operation_unlocks.run()
