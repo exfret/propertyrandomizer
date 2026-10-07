@@ -182,6 +182,50 @@ test("with complex contexts, an ingredient that can't be automated can't feed a 
     assert(prom.candidate_ok(r, z, contexts))
 end)
 
+test("an automatable recipe nothing needs automated still gets ingredients automatable before it, through its automatable counterparts (like spoilage from hand-caught fish early on)", function()
+    -- x can be gotten in both rooms, but never automated, and p isn't a mechanic, so r only keeps an anchor context, which asks for no automatability
+    local graph = build_graph(false, true)
+    gutils.add_edge(graph, key("room", "B"), key("mine", "x"))
+    local prom = promotion.new({
+        graph = graph,
+        complex = true,
+    })
+    prom.promise_mechanics()
+    local contexts = prom.required_contexts(r)
+    assert(not has_automatable(contexts))
+    local counterparts = prom.automatable_counterparts(r, contexts)
+    assert(#counterparts > 0)
+    for _, context in pairs(counterparts) do
+        assert(top.automatable_counterpart(context) == nil)
+        assert(top.context_room(context) == top.context_room(contexts[1]))
+    end
+    assert(not prom.candidate_ok(r, x, counterparts))
+    assert(prom.candidate_ok(r, z, counterparts))
+end)
+
+test("an ingredient that's only ever added must be automatable before the recipe first appears, so a hand-only one never is (like spoilage from hand-caught fish)", function()
+    local graph = build_graph(false, true)
+    gutils.add_edge(graph, key("room", "B"), key("mine", "x"))
+    local prom = promotion.new({
+        graph = graph,
+        complex = true,
+    })
+    prom.promise_mechanics()
+    local contexts = prom.required_contexts(r)
+    assert(not prom.automatable_before_recipe(r, x, contexts))
+    -- z is mined from the start, so it's automatable before r is even reachable
+    assert(prom.automatable_before_recipe(r, z, contexts))
+end)
+
+test("automatable counterparts add automatability and keep the room and isolatability, and only exist for contexts without it", function()
+    assert(top.automatable_counterpart(top.context_key("planet: a", "00")) == top.context_key("planet: a", "01"))
+    assert(top.automatable_counterpart(top.context_key("planet: a", "10")) == top.context_key("planet: a", "11"))
+    assert(top.automatable_counterpart(top.context_key("planet: a", "01")) == nil)
+    assert(top.automatable_counterpart(top.context_key("planet: a", "11")) == nil)
+    assert(top.automatable_counterpart(top.home_context_key(top.context_key("planet: a", "00"), "home1")) == nil)
+    assert(top.automatable_counterpart("planet: a") == nil)
+end)
+
 test("a planet-locked recipe keeps every context it had, so it can't take an ingredient that can't be automated", function()
     -- x can be gotten in both rooms, but never automated
     local graph = build_graph(false, true)

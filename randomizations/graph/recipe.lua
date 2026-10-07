@@ -18,6 +18,7 @@ local context_costs = require("lib/cost/context-costs")
 local dutils = require("lib/data-utils")
 local furnace_selection = require("lib/furnace-selection")
 local prototype_exclusions = require("lib/graph-customization")
+local ingredient_blacklists = require("lib/ingredient-blacklists")
 
 local DO_SURFACE_PRESERVATION = true
 local gutils = require("lib/graph/graph-utils")
@@ -26,15 +27,18 @@ local context_sort = require("lib/graph/context-sort")
 
 local major_raw_resources = randomization_info.options.cost.major_raw_resources
 
--- Which ingredients stay and which recipes are left alone come from compat/vanilla.lua's recipe-ingredients blacklists, shared with unified randomization's handler
--- blacklisted_pre holds materials (whatever mining a resource gives, spoilage, round-trip materials, ...); blacklisted_dep holds recipes (recycling, barrels, round trips, ...)
-local function recipe_blacklists()
-    return randomization_info.options.unified["recipe-ingredients"]
+-- Which ingredients stay, which can be new ingredients and which recipes are left alone come from compat/vanilla.lua's recipe-ingredients lists, shared with unified randomization's handler (what they mean: lib/ingredient-blacklists.lua)
+-- Set when randomization starts, after compat has made them
+local rules
+
+-- Whether a material stays in every recipe that takes it
+local function keeps_spot(material)
+    return rules.keeps_spots(material) or prototype_exclusions.excluded("recipe_ingredients", material)
 end
 
-local function is_blacklisted_ing(material)
-    return recipe_blacklists().blacklisted_pre[gutils.key(material.type, material.name)] ~= nil
-        or prototype_exclusions.excluded("recipe_ingredients", material)
+-- Whether recipes may take a material as a new ingredient
+local function may_add(material)
+    return rules.may_add(material) and not prototype_exclusions.excluded("recipe_ingredients", material)
 end
 
 local function is_unrandomized_ing(ing, is_result_of_this_recipe)
@@ -42,11 +46,29 @@ local function is_unrandomized_ing(ing, is_result_of_this_recipe)
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
     end
-    if is_blacklisted_ing(ing) then
+    if keeps_spot(ing) then
         return true
     end
 
     return false
+end
+
+-- The earliest rank of a node in a room in a sort with complex contexts (only where it's automatable, with only_automatable), or nil
+local function earliest_ind(sort_info, node_key, room, only_automatable)
+    local context_inds = sort_info.node_to_context_inds[node_key]
+    if context_inds == nil then
+        return nil
+    end
+    local best
+    for _, ability_str in pairs(context_sort.ability_strs) do
+        if not only_automatable or string.sub(ability_str, context_sort.AUTOMATABILITY, context_sort.AUTOMATABILITY) == "1" then
+            local ind = context_inds[context_sort.context_key(room, ability_str)]
+            if ind ~= nil and (best == nil or ind < best) then
+                best = ind
+            end
+        end
+    end
+    return best
 end
 
 -- Find science packs
@@ -61,7 +83,7 @@ end
 local function find_sensitive_recipes()
     local sensitive_recipes = {}
     for recipe_name, _ in pairs(data.raw.recipe) do
-        if recipe_blacklists().blacklisted_dep[gutils.key("recipe", recipe_name)] ~= nil then
+        if rules.keeps_ingredients(recipe_name) then
             sensitive_recipes[recipe_name] = true
         end
     end
@@ -131,6 +153,7 @@ randomizations.recipe_ingredients = function(id)
 
     log("Recipe randomization setup")
 
+    rules = ingredient_blacklists.of(randomization_info.options.unified["recipe-ingredients"])
     local sensitive_recipes = find_sensitive_recipes()
 
     -- The whole game's costs, including manual raw sources (lib/cost/graph-cost.lua).
@@ -199,6 +222,24 @@ randomizations.recipe_ingredients = function(id)
     -- Assign a recipe to the first surface it appears on
     local recipe_to_surface = {}
     local material_added = {}
+    -- Pool entries for one use of a material
+    local function add_use(prereq)
+        table.insert(shuffled_prereqs, prereq)
+        -- Add in twice for flexibility in the algorithm
+        -- There's a 50% chance for this to happen, so that there's not too much clutter
+        if rng.value(rng.key({id = id})) < 0.5 then
+            table.insert(shuffled_prereqs, prereq)
+        end
+        -- With watch the world burn mode, we add more; this helps the algorithm out and makes things more chaotic
+        if config.watch_the_world_burn then
+            table.insert(shuffled_prereqs, prereq)
+        end
+        -- Also, if it's expensive, add more for the algorithm since those things are hard to come by
+        if old_aggregate_cost.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] >= 50 then
+            table.insert(shuffled_prereqs, prereq)
+            table.insert(shuffled_prereqs, prereq)
+        end
+    end
     for _, dependent_node in pairs(graph_sort) do
         -- Add each item/fluid node once
         if dependent_node.type == "item-surface" or dependent_node.type == "fluid-surface" then
@@ -219,8 +260,8 @@ randomizations.recipe_ingredients = function(id)
                 material_added[prot_id] = true
                 -- Check that this material has a cost
                 if old_aggregate_cost.material_to_cost[prot_id] ~= nil then
-                    -- Check that not blacklisted in randomizing as an ingredient
-                    if not is_blacklisted_ing(material) then
+                    -- Check that recipes may take it as a new ingredient
+                    if may_add(material) then
                         -- Insert a manually constructed prereq so things go smoothly
                         table.insert(shuffled_prereqs, {
                             type = material_type,
@@ -258,22 +299,11 @@ randomizations.recipe_ingredients = function(id)
 
                     for _, prereq in pairs(dependent_node.prereqs) do
                         if prereq.is_ingredient then
-                            if not is_blacklisted_ing(prereq.ing) then
-                                table.insert(shuffled_prereqs, prereq)
-                                -- Add in twice for flexibility in the algorithm
-                                -- There's a 50% chance for this to happen, so that there's not too much clutter
-                                if rng.value(rng.key({id = id})) < 0.5 then
-                                    table.insert(shuffled_prereqs, prereq)
-                                end
-                                -- With watch the world burn mode, we add more; this helps the algorithm out and makes things more chaotic
-                                if config.watch_the_world_burn then
-                                    table.insert(shuffled_prereqs, prereq)
-                                end
-                                -- Also, if it's expensive, add more for the algorithm since those things are hard to come by
-                                if old_aggregate_cost.material_to_cost[prereq.ing.type .. "-" .. prereq.ing.name] >= 50 then
-                                    table.insert(shuffled_prereqs, prereq)
-                                    table.insert(shuffled_prereqs, prereq)
-                                end
+                            -- A material that keeps its spots puts its entries in for each like any other (user, 2026-10-07), but its spot here stays
+                            if may_add(prereq.ing) then
+                                add_use(prereq)
+                            end
+                            if not keeps_spot(prereq.ing) then
                                 -- Add to blacklist
                                 blacklist[build_graph.conn_key({prereq, dependent_node})] = true
                                 -- Add recipe being made on other surfaces to blacklist
@@ -286,6 +316,14 @@ randomizations.recipe_ingredients = function(id)
                                     end
                                 end
                             end
+                        end
+                    end
+                elseif has_ings and rules.keeps_ingredients(dependent_node.recipe) and rules.counts_uses(dependent_node.recipe)
+                    and not prototype_exclusions.excluded("recipe_ingredients", data.raw.recipe[dependent_node.recipe]) then
+                    -- A recipe that keeps its ingredients but counts their uses (like ice melting) puts their entries in too, so a material only it takes can still be a new ingredient elsewhere (user, 2026-10-07)
+                    for _, prereq in pairs(dependent_node.prereqs) do
+                        if prereq.is_ingredient and may_add(prereq.ing) and old_aggregate_cost.material_to_cost[flow_cost.get_prot_id(prereq.ing)] ~= nil then
+                            add_use(prereq)
                         end
                     end
                 end
@@ -356,7 +394,7 @@ randomizations.recipe_ingredients = function(id)
     local furnaces = furnace_selection.tracker()
     for recipe_name, recipe in pairs(data.raw.recipe) do
         for _, ing in pairs(recipe.ingredients or {}) do
-            if is_randomized[recipe_name] == nil or is_blacklisted_ing(ing) then
+            if is_randomized[recipe_name] == nil or keeps_spot(ing) then
                 furnaces.take(recipe, ing)
             else
                 for _, result in pairs(recipe.results or {}) do
@@ -439,6 +477,9 @@ randomizations.recipe_ingredients = function(id)
         -- The room only restricts ingredient availability; it does not set prices.
         local context = context_costs.judging_context(rooms, dependent_recipe.name) or rooms.starting_context
         local automatable = rooms.automatable[context] or {}
+        -- When the recipe first appears in that room and when it gets automatable there, in the game before randomization (see the automatability checks in do_recipe_checks)
+        local recipe_first_ind = earliest_ind(isolation_sort_info, gutils.key("recipe", dependent.recipe), context, false)
+        local recipe_automatable_ind = earliest_ind(isolation_sort_info, gutils.key("recipe", dependent.recipe), context, true)
         local recipe_cost = context_costs.recipe_cost_in(old_aggregate_cost, dependent_recipe)
 
         log("Gathering recipe info")
@@ -509,6 +550,19 @@ randomizations.recipe_ingredients = function(id)
                     -- Automation eligibility is independent of whether the ingredient has a price.
                     if automatable[prereq_prot_id] == nil then
                         return false
+                    end
+
+                    -- New ingredients never hold a recipe up with hand work, like spoilage early on, which only hand-caught fish give (two hours each) (user, 2026-10-07), going by the game before randomization
+                    -- A material keeping its spots elsewhere is only ever added, so it must be automatable in the room before the recipe first appears there; any other must be by the time the recipe is automatable there
+                    local deadline = recipe_automatable_ind
+                    if keeps_spot(prereq.ing) then
+                        deadline = recipe_first_ind
+                    end
+                    if deadline ~= nil then
+                        local ind = earliest_ind(isolation_sort_info, gutils.key(prereq.ing.type, prereq.ing.name), context, true)
+                        if ind == nil or ind >= deadline then
+                            return false
+                        end
                     end
 
                     -- Make sure we can find a cost for it

@@ -250,6 +250,35 @@ test("a resource that needs a fluid in vanilla keeps it when too few others coul
     assert(chosen[world.heads.u] == world.graph.nodes[world.heads.u].old_base)
 end)
 
+test("a fluid only automatable after a resource's own mining is never chosen for it, so the resource never waits on hand work (like stone from rocks until sulfuric acid)", function()
+    local world = build()
+    local plain = "room | 00"
+    local automatable = "room | 01"
+    for name, _ in pairs(world.heads) do
+        world.baseline.node_to_context_inds[key("entity-mine", name)] = {
+            [plain] = 1,
+            [automatable] = 5,
+        }
+    end
+    -- Mining with x is automatable only after every resource's own mining is, with y before
+    world.baseline.node_to_context_inds[world.fluids.x] = {
+        [plain] = 1,
+        [automatable] = 9,
+    }
+    world.baseline.node_to_context_inds[world.fluids.y] = {
+        [plain] = 1,
+        [automatable] = 2,
+    }
+    local chosen = choose(world, function()
+        return {}
+    end)
+    for name, head_key in pairs(world.heads) do
+        assert(gutils.get_owner(world.graph, world.graph.nodes[chosen[head_key]]).fluid ~= "x", name .. " needs x")
+    end
+    -- Without the check, a and b would have taken x, every resource's first fluid
+    assert(has_fluid(world, chosen, "a") and has_fluid(world, chosen, "b"))
+end)
+
 test("when nothing passes, no resource needs a fluid", function()
     local world = build()
     local chosen = choose(world, function(cut)

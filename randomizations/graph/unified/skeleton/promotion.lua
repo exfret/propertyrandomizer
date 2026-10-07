@@ -1017,6 +1017,40 @@ promotion.new = function(params)
         return contexts
     end
 
+    -- For the recipe's required contexts that don't ask for automatability, the contexts adding it (top.automatable_counterpart) where the recipe has a pebble, leaving out those required already
+    -- A new ingredient owner that passes candidate_ok in these too is automatable there before the recipe is, so it doesn't hold up the recipe's automation; nothing gets promised in them
+    state.automatable_counterparts = function(recipe_key, required_contexts)
+        local is_listed = {}
+        for _, context in pairs(required_contexts) do
+            is_listed[context] = true
+        end
+        local counterparts = {}
+        for _, context in pairs(required_contexts) do
+            local counterpart = top.automatable_counterpart(context)
+            if counterpart ~= nil and not is_listed[counterpart] and (nci[recipe_key] or {})[counterpart] ~= nil then
+                is_listed[counterpart] = true
+                table.insert(counterparts, counterpart)
+            end
+        end
+        return counterparts
+    end
+
+    -- Whether ingredient owner is automatable in each required context's room (keeping the context's isolatability) before the recipe's pebble in that context, and could be promoted there
+    -- So an ingredient that's only ever added to recipes (one keeping its spots elsewhere, like an ore or spoilage) is automatable by the time the recipe first appears, whether or not the recipe is automatable then (user, 2026-10-07: spoilage early on comes only from hand-caught fish, two hours each)
+    -- Simple and home contexts say nothing about automatability, so they're left out
+    state.automatable_before_recipe = function(recipe_key, owner_key, required_contexts)
+        for _, context in pairs(required_contexts) do
+            if top.context_abilities(context) ~= nil and top.context_home(context) == nil then
+                local automatable = top.automatable_counterpart(context) or context
+                local i = node_ind(owner_key, automatable)
+                if i == nil or i >= nci[recipe_key][context] or not establish(i) then
+                    return false
+                end
+            end
+        end
+        return true
+    end
+
     -- Whether ingredient owner could be promoted in each required context before the recipe
     -- In debt mode, where the recipe is solvent now, the owner must be too (the no-new-insolvency rule)
     state.candidate_ok = function(recipe_key, owner_key, required_contexts)

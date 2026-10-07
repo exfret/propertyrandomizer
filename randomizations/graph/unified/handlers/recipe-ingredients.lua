@@ -20,12 +20,15 @@ local prerequisite_ingredients = require("randomizations/graph/unified/handler-h
 local item_fluid = require("lib/item-fluid")
 local rng = require("lib/random/rng")
 local categories = require("helper-tables/categories")
+local ingredient_blacklists = require("lib/ingredient-blacklists")
 
 
 local key = gutils.key
 
 -- Recipe shapes: the spoofed slot a fluid no recipe takes gets, so it has pool entries too (see spoof)
 local FLUID_SLOT_TYPE = "recipe-shape-fluid-slot"
+-- The spoofed slot a kept spot gets, so the material in it has the pool entries the spot would give if it were randomized (see spoof)
+local KEPT_SPOT_TYPE = "recipe-ingredient-kept-spot"
 
 -- Reprice imports lazily once per batch of recipe decisions. Local costs still update after every recipe (including its generated reverse recipes).
 local IMPORT_BATCH_SIZE = 16
@@ -48,8 +51,11 @@ local fluid_use_median
 local fluid_amount_cap
 local shape_stats
 local repair_only
+-- What compat's lists say about each material and recipe (lib/ingredient-blacklists.lua)
+local rules
 recipe_ingredients.initialize = function(options)
     repair_only = options ~= nil and options.repair_only == true
+    rules = ingredient_blacklists.of(randomization_info.options.unified["recipe-ingredients"])
     already_duped = {}
     claimed_recipes = {}
     ingredient_uses = nil
@@ -83,9 +89,75 @@ local function get_material_owner(graph, conn_node)
     return as_material(gutils.get_owner(graph, conn_node))
 end
 
--- Recipe shapes (config.recipe_shapes): a fluid no recipe takes (the thruster fuels and fusion plasma in vanilla) gets a spoofed slot fed by its temperature-range node at a temperature it's made at, whose claimed edge puts entries for it in the pool like any ingredient edge (see claim)
+-- Kept spots (lib/ingredient-blacklists.lua): where a recipe keeps a material that's still a new ingredient elsewhere (an ore in its smelting recipe, ice in ice melting), a spoofed slot fed by whatever feeds the spot (the item, or the fluid's temperature range) stands in for it
+-- Its claimed edge puts the entries in the pool that the spot would if it were randomized (see claim), so recipes take such a material as a new ingredient about as often as any material with as many uses (user, 2026-10-07), while every spot it has stays
+-- A slot shares its recipe's prototype (prot), so graph customization selects or excludes it along with the recipe
+local function spoof_kept_spots(graph)
+    logic.type_info[KEPT_SPOT_TYPE] = logic.type_info[KEPT_SPOT_TYPE] or {
+        op = "AND",
+        canonical = KEPT_SPOT_TYPE,
+    }
+    local spots = {}
+    for _, node in pairs(graph.nodes) do
+        local recipe = node.type == "recipe" and data.raw.recipe[node.name] or nil
+        -- Hidden recipes' edges aren't claimed either (see claim)
+        if recipe ~= nil and recipe.hidden ~= true then
+            for pre, _ in pairs(node.pre) do
+                local prenode = graph.nodes[graph.edges[pre].start]
+                if prenode.type == "item" or prenode.type == "fluid" or prenode.type == "fluid-temperature-range" then
+                    local material = as_material(prenode)
+                    if rules.kept_use(material, recipe.name) then
+                        table.insert(spots, {
+                            pre_key = key(prenode),
+                            material_key = key(material),
+                            recipe_name = recipe.name,
+                        })
+                    end
+                end
+            end
+        end
+    end
+    -- The same order every time, since the spots came from pairs over the graph
+    table.sort(spots, function(a, b)
+        if a.recipe_name ~= b.recipe_name then
+            return a.recipe_name < b.recipe_name
+        end
+        return a.pre_key < b.pre_key
+    end)
+    local uses = {}
+    for _, spot in pairs(spots) do
+        local slot = gutils.add_node(graph, KEPT_SPOT_TYPE, gutils.concat({ spot.recipe_name, spot.pre_key }), {
+            op = "AND",
+            spoof = true,
+            prot = key("recipe", spot.recipe_name),
+        })
+        gutils.add_edge(graph, spot.pre_key, key(slot))
+        uses[spot.material_key] = (uses[spot.material_key] or 0) + 1
+    end
+    local material_keys = {}
+    for material_key, _ in pairs(uses) do
+        table.insert(material_keys, material_key)
+    end
+    table.sort(material_keys, function(a, b)
+        if uses[a] ~= uses[b] then
+            return uses[a] > uses[b]
+        end
+        return a < b
+    end)
+    local parts = {}
+    for _, material_key in pairs(material_keys) do
+        table.insert(parts, gutils.deconstruct(material_key).name .. " " .. uses[material_key])
+    end
+    log("KEPTSPOTS pool: " .. #spots .. " kept spots of " .. #material_keys .. " materials get pool entries like randomized ones: " .. table.concat(parts, ", "))
+end
+
+-- Recipe shapes (config.recipe_shapes): a fluid no recipe takes (the thruster fuels in vanilla) gets a spoofed slot fed by its temperature-range node at a temperature it's made at, whose claimed edge puts entries for it in the pool like any ingredient edge (see claim)
 -- The slot is a spoof, so it's never a dependent to randomize, first pass doesn't count it as a recipe taking the fluid (lib/item-fluid.lua only counts recipes), and the search makes the ingredient up with no temperature bounds (custom_prereq_search), which the single-temperature node models pessimistically
+-- A fluid that can never be a new ingredient (like fusion plasma, which no crafting machine can take in) gets none
 recipe_ingredients.spoof = function(graph)
+    if not repair_only then
+        spoof_kept_spots(graph)
+    end
     if config.recipe_shapes ~= true and not repair_only then
         return
     end
@@ -95,7 +167,7 @@ recipe_ingredients.spoof = function(graph)
     }
     local names = {}
     for fluid_name, fluid in pairs(data.raw.fluid or {}) do
-        if fluid.hidden ~= true and fluid.parameter ~= true and ingredient_uses[key("fluid", fluid_name)] == nil then
+        if fluid.hidden ~= true and fluid.parameter ~= true and ingredient_uses[key("fluid", fluid_name)] == nil and rules.may_add({ type = "fluid", name = fluid_name }) then
             -- At its default temperature when it's made at that, else the first temperature it's made at
             local temps = lu.fluid_temperatures_ordered[fluid_name] or {}
             local temp = temps[1]
@@ -119,10 +191,34 @@ recipe_ingredients.spoof = function(graph)
     log("RECIPESHAPES pool: " .. #names .. " fluids no recipe takes got a spoofed slot each: " .. table.concat(names, ", "))
 end
 
+-- Pool entries for one ingredient edge of a material (or a kept spot's stand-in for one)
+local function edge_copies(material)
+    -- With recipe shapes, one pool entry per item edge and more for the edges of fluids few recipes take, so every fluid is proposed about as often as the median one (recipe_shape.copies_for); they go straight into the pool (uniform_copies)
+    if config.recipe_shapes then
+        if material.type == "fluid" then
+            return recipe_shape.copies_for(ingredient_uses[key(material)], fluid_use_median, constants.recipe_shape.max_fluid_copies)
+        end
+        return 1
+    end
+    -- TODO: Other checks
+    -- TODO: Better claim logic (not sure what that would entail yet)
+    -- TODO: Things are delicate right now... I should really decrease this from 6 or at least add ways to encourage lesser-used intermediates
+    if already_duped[key(material)] then
+        return 2
+    else
+        already_duped[key(material)] = true
+        return 50
+    end
+end
+
 recipe_ingredients.claim = function(graph, prereq, dep, edge)
     -- A spoofed slot of a fluid no recipe takes (see spoof): as many entries as a fluid one recipe takes would get
     if prereq.type == "fluid-temperature-range" and dep.type == FLUID_SLOT_TYPE and dep.spoof == true then
         return recipe_shape.copies_for(1, fluid_use_median, constants.recipe_shape.max_fluid_copies)
+    end
+    -- A kept spot's spoofed slot (see spoof_kept_spots): the entries the spot would give if it were randomized
+    if dep.type == KEPT_SPOT_TYPE and dep.spoof == true then
+        return edge_copies(as_material(prereq))
     end
     if (prereq.type == "item" or prereq.type == "fluid" or prereq.type == "fluid-temperature-range") and dep.type == "recipe" then
         prereq = as_material(prereq)
@@ -132,30 +228,13 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
         end
         -- Having a cost doesn't decide what's randomized (automatability does, through promotion's contexts); a recipe without a vanilla cost keeps its ingredients when processed
         -- Need to check this here due to doing custom prereq search
-        if not repair_only and randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(prereq)] == true then
-            return false
-        end
-        if not repair_only and randomization_info.options.unified["recipe-ingredients"].blacklisted_dep[key(dep)] == true then
+        -- A spot that stays as it is (lib/ingredient-blacklists.lua) is never claimed; if it counts as a use, its spoofed slot puts its entries in the pool instead
+        if not repair_only and (rules.keeps_spots(prereq) or rules.keeps_ingredients(dep.name)) then
             return false
         end
 
         claimed_recipes[dep.name] = true
-        -- With recipe shapes, one pool entry per item edge and more for the edges of fluids few recipes take, so every fluid is proposed about as often as the median one (recipe_shape.copies_for); they go straight into the pool (uniform_copies)
-        if config.recipe_shapes then
-            if prereq.type == "fluid" then
-                return recipe_shape.copies_for(ingredient_uses[key(prereq)], fluid_use_median, constants.recipe_shape.max_fluid_copies)
-            end
-            return 1
-        end
-        -- TODO: Other checks
-        -- TODO: Better claim logic (not sure what that would entail yet)
-        -- TODO: Things are delicate right now... I should really decrease this from 6 or at least add ways to encourage lesser-used intermediates
-        if already_duped[key(prereq)] then
-            return 2
-        else
-            already_duped[key(prereq)] = true
-            return 50
-        end
+        return edge_copies(prereq)
     end
 end
 
@@ -177,7 +256,7 @@ local function is_unrandomized_ing(ind, is_result_of_this_recipe, recipe)
     if is_result_of_this_recipe[ing.type .. "-" .. ing.name] then
         return true
     end
-    if randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(ing)] then
+    if rules.keeps_spots(ing) then
         return true
     end
 
@@ -204,7 +283,6 @@ recipe_ingredients.before_heads = function(params)
     local split_graph = params.split_graph
     local largest_count = recipe_shape.largest_count(data.raw.recipe)
     local pools = furnace_selection.pools()
-    local blacklisted_pre = randomization_info.options.unified["recipe-ingredients"].blacklisted_pre
     -- Crafting machines by name, for their item ingredient caps
     local machines = {}
     for class, _ in pairs(categories.crafting_machines) do
@@ -237,7 +315,7 @@ recipe_ingredients.before_heads = function(params)
         end
         return caps
     end
-    -- Ingredients the search leaves alone as far as is known now: the recipe's own results and blacklisted materials (pins come later, and the search raises a shape to hold them)
+    -- Ingredients the search leaves alone as far as is known now: the recipe's own results and materials keeping their spots (pins come later, and the search raises a shape to hold them)
     local function kept_counts(recipe)
         local is_result = {}
         for _, result in pairs(recipe.results or {}) do
@@ -245,7 +323,7 @@ recipe_ingredients.before_heads = function(params)
         end
         local kept = {}
         for _, ing in pairs(recipe.ingredients or {}) do
-            if is_result[key(ing)] ~= nil or blacklisted_pre[key(ing)] ~= nil then
+            if is_result[key(ing)] ~= nil or rules.keeps_spots(ing) then
                 table.insert(kept, ing)
             end
         end
@@ -404,8 +482,8 @@ recipe_ingredients.custom_prereq_search = function(params)
             dependent_to_old_ings[slot_node.name] = {"blacklisted"}
         end
     end
-    -- Add sensitive recipes back to dependent_to_new_ings
-    for node_key, _ in pairs(randomization_info.options.unified["recipe-ingredients"].blacklisted_dep) do
+    -- Add sensitive recipes (those keeping their ingredients) back to dependent_to_new_ings
+    for _, node_key in pairs(rules.kept_recipe_keys()) do
         if random_graph.nodes[node_key] ~= nil then
             local recipe_name = random_graph.nodes[node_key].name
             assert(recipe_name ~= "")
@@ -527,7 +605,7 @@ recipe_ingredients.custom_prereq_search = function(params)
     end
     for recipe_name, recipe in pairs(data.raw.recipe) do
         for _, ing in pairs(recipe.ingredients or {}) do
-            if to_process[recipe_name] == nil or randomization_info.options.unified["recipe-ingredients"].blacklisted_pre[key(ing)] then
+            if to_process[recipe_name] == nil or rules.keeps_spots(ing) then
                 take(recipe, ing)
             else
                 for _, result in pairs(recipe.results or {}) do
@@ -570,6 +648,11 @@ recipe_ingredients.custom_prereq_search = function(params)
     local num_drift = 0
     local num_ings = 0
     local ind_to_used = {}
+    -- Materials the automatability check kept out (material key --> in how many recipes), and how many recipes it kept something out of
+    local held_back_counts = {}
+    local num_held_back_recipes = 0
+    -- New ingredients that keep their spots elsewhere (see spoof_kept_spots), by material key
+    local kept_material_uses = {}
     for _, dep in pairs(sorted_deps) do
         local node = random_graph.nodes[dep]
         if node.type == "recipe" and claimed_recipes[node.name] then
@@ -592,6 +675,10 @@ recipe_ingredients.custom_prereq_search = function(params)
                 end
             end
             local paying_contexts = (prom ~= nil and #required_contexts > 0) and prom.recipe_boundary_contexts(dep, required_contexts) or {}
+            -- Contexts where a new ingredient must be automatable before the recipe on top of the required ones: where the recipe is automatable but isn't required to be (see the end of find_valid_prereq_list's checks)
+            local automatable_contexts = (prom ~= nil and #required_contexts > 0) and prom.automatable_counterparts(dep, required_contexts) or {}
+            -- Materials that failed only that check for this recipe
+            local held_back = {}
             local dependent_recipe = data.raw.recipe[node.name]
             assert(dependent_recipe ~= nil)
             -- Ignore the heads etc., just find good ings via search
@@ -735,6 +822,23 @@ recipe_ingredients.custom_prereq_search = function(params)
                                 end
                             end
 
+                            -- New ingredients never hold a recipe up with hand work, like spoilage early on, which only hand-caught fish give (two hours each) (user, 2026-10-07)
+                            -- A material keeping its spots elsewhere (lib/ingredient-blacklists.lua) is only ever added, so it must be automatable before the recipe first appears: otherwise a recipe nothing automates early (small electric poles, with hand-chopped wood) could take spoilage while only fish give it
+                            -- Any other must be automatable before the recipe wherever the recipe is automatable (candidate_ok above covers the contexts required anyway)
+                            -- Last, since these are the dearest checks
+                            if prom ~= nil and #required_contexts > 0 then
+                                local owner_key = key(gutils.get_owner(random_graph, prereq_node))
+                                if rules.keeps_spots(prereq_owner) then
+                                    if not prom.automatable_before_recipe(dep, owner_key, required_contexts) then
+                                        held_back[key(prereq_owner)] = true
+                                        return false
+                                    end
+                                elseif #automatable_contexts > 0 and not prom.candidate_ok(dep, owner_key, automatable_contexts) then
+                                    held_back[key(prereq_owner)] = true
+                                    return false
+                                end
+                            end
+
                             return true
                         end
 
@@ -786,14 +890,20 @@ recipe_ingredients.custom_prereq_search = function(params)
                 end
                 num_processed = num_processed + 1
                 total_valid_prereqs = total_valid_prereqs + #valid_prereq_list_info.prereq_list
+                if next(held_back) ~= nil then
+                    num_held_back_recipes = num_held_back_recipes + 1
+                    for material_key, _ in pairs(held_back) do
+                        held_back_counts[material_key] = (held_back_counts[material_key] or 0) + 1
+                    end
+                end
                 for _, prereq in pairs(valid_prereq_list_info.prereq_list) do
                     local prereq_node = random_graph.nodes[prereq]
                     local prereq_owner = get_material_owner(random_graph, prereq_node)
                     local ing_recipe_node = gutils.get_owner(random_graph, random_graph.nodes[prereq_node.old_head])
                     if ing_recipe_node.spoof == true then
-                        -- A spoofed slot of a fluid no recipe takes (see spoof): the fluid at any temperature, its amount the search's to pick
+                        -- A spoofed slot of a fluid no recipe takes or of a kept spot (see spoof): the material (a fluid at any temperature), its amount the search's to pick
                         table.insert(potential_ings, candidate_entry({
-                            type = "fluid",
+                            type = prereq_owner.type,
                             name = prereq_owner.name,
                             amount = 1,
                         }, prereq_owner))
@@ -973,6 +1083,10 @@ recipe_ingredients.custom_prereq_search = function(params)
                         -- Add prereq to end of shuffled_prereqs (doing with replacement)
                         table.insert(shuffled_prereqs, prereq_of_ing)
                         take(dependent_recipe, prereq_owner)
+                        if rules.keeps_spots(prereq_owner) then
+                            kept_material_uses[key(prereq_owner)] = (kept_material_uses[key(prereq_owner)] or 0) + 1
+                            log("KEPTSPOTS new use: " .. key(prereq_owner) .. " in " .. dep .. ", judged in " .. context)
+                        end
                     end
                 end
                 -- Its ingredients are taken now, so what was held for its fallback is free again
@@ -1064,6 +1178,28 @@ recipe_ingredients.custom_prereq_search = function(params)
         table.sort(judged)
         log("RECIPESTATS judged in rooms: " .. table.concat(judged, ", "))
         log(string.format("RECIPESTATS newer resources in ingredients: %.1f before, %.1f after (summed shares); ingredient cost drift %.3f (mean abs log ratio over %d recipes)", old_newer_share, new_newer_share, cost_drift / math.max(num_drift, 1), num_drift))
+        -- "name count" for material key --> count, most first
+        local function describe_counts(counts)
+            local material_keys = {}
+            local total = 0
+            for material_key, count in pairs(counts) do
+                table.insert(material_keys, material_key)
+                total = total + count
+            end
+            table.sort(material_keys, function(a, b)
+                if counts[a] ~= counts[b] then
+                    return counts[a] > counts[b]
+                end
+                return a < b
+            end)
+            local parts = {}
+            for _, material_key in pairs(material_keys) do
+                table.insert(parts, gutils.deconstruct(material_key).name .. " " .. counts[material_key])
+            end
+            return total .. " (" .. table.concat(parts, ", ") .. ")"
+        end
+        log("RECIPESTATS new ingredients that keep their spots elsewhere: " .. describe_counts(kept_material_uses))
+        log("RECIPESTATS not yet automatable where the recipe is, so held back from " .. num_held_back_recipes .. " recipes: " .. describe_counts(held_back_counts))
     end
     if shape_stats ~= nil then
         log(string.format("RECIPESHAPES result: fluid slots %d of %d (vanilla %d of %d); recipes with a fluid %d (vanilla %d); counts vanilla %s, now %s; fluids vanilla %s, now %s; %d searches fell down their ladder",

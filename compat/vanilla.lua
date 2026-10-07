@@ -1,6 +1,7 @@
 local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
+local fluid_ports = require("lib/fluid-ports")
 
 local key = gutils.key
 
@@ -74,16 +75,21 @@ unified_options("entity-autoplace").blacklisted_dep = {
     [key("entity", "fulgoran-ruin-attractor")] = true,
 }
 
-unified_options("recipe-ingredients").blacklisted_pre = {
+-- Recipe ingredients: what each list means is in lib/ingredient-blacklists.lua
+-- Materials keeping their spots are still new ingredients elsewhere, as often as their uses say; only blacklisted_pre's never are (user, 2026-10-07)
+local ingredient_lists = unified_options("recipe-ingredients")
+ingredient_lists.blacklisted_pre = {}
+ingredient_lists.kept_pre = {
     [key("item", "spoilage")] = true,
     [key("item", "yumako")] = true,
     [key("item", "jellynut")] = true,
 }
 -- Whatever mining a resource or asteroid chunk or pumping a tile gives stays where it is, so the recipes that process it keep it (smelting plates, plastic's coal, oil processing, crushing, ...)
 for _, material in pairs(dutils.resource_materials()) do
-    unified_options("recipe-ingredients").blacklisted_pre[key(material.type, material.name)] = true
+    ingredient_lists.kept_pre[key(material.type, material.name)] = true
 end
-unified_options("recipe-ingredients").blacklisted_dep = {
+ingredient_lists.blacklisted_dep = {}
+ingredient_lists.kept_dep = {
     [key("recipe", "basic-oil-processing")] = true,
     -- Preserve fuel sinks for fluids
     [key("recipe", "solid-fuel-from-heavy-oil")] = true,
@@ -99,6 +105,7 @@ unified_options("recipe-ingredients").blacklisted_dep = {
     [key("recipe", "holmium-plate")] = true,
     [key("recipe", "lithium-plate")] = true,
 }
+-- Recycling recipes keep their ingredients, which don't count as uses (they take nearly everything)
 for _, recipe in pairs(data.raw.recipe) do
     local is_recycling = false
     for _, cat in pairs(recipe.categories or {"crafting"}) do
@@ -107,25 +114,34 @@ for _, recipe in pairs(data.raw.recipe) do
         end
     end
     if is_recycling then
-        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
+        ingredient_lists.blacklisted_dep[key("recipe", recipe.name)] = true
     end
 end
 -- Round trips (like fluoroketone cooling, which undoes what fusion does to it) break if one side's ingredients change
 local round_trips = dutils.round_trips()
 for recipe_name, _ in pairs(round_trips.recipes) do
     log("Round trip recipe: " .. recipe_name)
-    unified_options("recipe-ingredients").blacklisted_dep[key("recipe", recipe_name)] = true
+    if ingredient_lists.blacklisted_dep[key("recipe", recipe_name)] ~= true then
+        ingredient_lists.kept_dep[key("recipe", recipe_name)] = true
+    end
 end
 for material_key, material in pairs(round_trips.materials) do
     log("Round trip material: " .. material_key)
-    unified_options("recipe-ingredients").blacklisted_pre[key(material.type, material.name)] = true
+    ingredient_lists.kept_pre[key(material.type, material.name)] = true
 end
--- Add barreling recipes
+-- Add barreling recipes, whose ingredients don't count as uses either (a barrel is always for its fluid)
 -- Sensed by whether "barrel" is in the name
 for _, recipe in pairs(data.raw.recipe) do
     if string.sub(recipe.name, -6, -1) == "barrel" then
-        (unified_options("recipe-ingredients").blacklisted_dep or {})[key("recipe", recipe.name)] = true
+        ingredient_lists.blacklisted_dep[key("recipe", recipe.name)] = true
+        ingredient_lists.kept_dep[key("recipe", recipe.name)] = nil
     end
+end
+-- Inherently never a new ingredient: fluids no crafting machine can take in, like fusion plasma (the recipe-shape pool gave it to six recipes in a 2026-10-07 load, which no machine could then craft)
+for _, fluid_name in pairs(fluid_ports.fluids_crafters_cannot_take()) do
+    log("Ingredient no crafting machine can take: " .. fluid_name)
+    ingredient_lists.blacklisted_pre[key("fluid", fluid_name)] = true
+    ingredient_lists.kept_pre[key("fluid", fluid_name)] = nil
 end
 
 unified_options("recipe-category").blacklisted_dep = {}

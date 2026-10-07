@@ -389,4 +389,194 @@ fluid_ports.fix_fluid_crafting_categories = function()
     return num_changed
 end
 
+-- The categories a pipe connection joins (types/PipeConnectionDefinition.html: connection_category, one name or a list, "default" when not given); a linked connection only joins its linked partner, so none
+local function connection_categories(connection)
+    if connection.connection_type == "linked" then
+        return {}
+    end
+    local category = connection.connection_category or "default"
+    if type(category) ~= "table" then
+        return { category }
+    end
+    return category
+end
+
+-- Adds the categories of a fluid box's pipe connections to a set
+local function add_categories(set, box)
+    for _, connection in pairs(box.pipe_connections) do
+        for _, category in pairs(connection_categories(connection)) do
+            set[category] = true
+        end
+    end
+end
+
+-- Every fluid box of a prototype (a table with pipe_connections, types/FluidBox.html): its fields, and the tables in them, like a crafting machine's fluid_boxes or an energy source's fluid_box
+local function fluid_boxes_of(prototype)
+    local boxes = {}
+    local function visit(value, depth)
+        if type(value) ~= "table" then
+            return
+        end
+        if type(value.pipe_connections) == "table" then
+            table.insert(boxes, value)
+        elseif depth > 0 then
+            for _, sub in pairs(value) do
+                visit(sub, depth - 1)
+            end
+        end
+    end
+    for _, value in pairs(prototype) do
+        visit(value, 1)
+    end
+    return boxes
+end
+
+-- Fluids no crafting machine can ever take in, by name (sorted)
+-- Pipe connections only join when they share a category (types/PipeConnectionDefinition.html, connection_category), and fluid gets from what makes it to a crafting machine's input box directly or through boxes that pass it on (pipes, and boxes like a boiler's water input, input-output); a filtered box only passes on its fluid
+-- What makes a fluid: crafting machines' output boxes (recipe results), offshore pumps (tile fluids), the drills mining a resource that gives it (their output_fluid_box), and output boxes filtered to it (a boiler's steam)
+-- Fusion plasma is one: only the fusion reactor makes it, into connections of a category only fusion generators share
+-- Hidden entities don't count, since players can't build them (the editor's infinity pipe joins every category); a fluid nothing makes counts as one, since nothing could deliver it
+fluid_ports.fluids_crafters_cannot_take = function()
+    local function visible_prots(class)
+        local prots = {}
+        for _, name in pairs(sorted_names(dutils.prots(class))) do
+            local prot = dutils.prots(class)[name]
+            if prot.hidden ~= true then
+                table.insert(prots, prot)
+            end
+        end
+        return prots
+    end
+
+    -- Categories crafting machines take fluids in through and put them out through
+    local crafter_in = {}
+    local crafter_out = {}
+    for _, class in pairs(sorted_names(categories.crafting_machines)) do
+        for _, machine in pairs(visible_prots(class)) do
+            for _, box in pairs(machine.fluid_boxes or {}) do
+                if box.production_type == "input" or box.production_type == "input-output" then
+                    add_categories(crafter_in, box)
+                end
+                if box.production_type == "output" or box.production_type == "input-output" then
+                    add_categories(crafter_out, box)
+                end
+            end
+        end
+    end
+
+    -- Boxes of every other entity that pass fluid on, with their filters, and the categories each fluid comes out of entities' boxes filtered to it
+    local bridges = {}
+    local filtered_out = {}
+    for _, class in pairs(sorted_names(defines.prototypes.entity)) do
+        if categories.crafting_machines[class] == nil then
+            for _, entity in pairs(visible_prots(class)) do
+                for _, box in pairs(fluid_boxes_of(entity)) do
+                    if box.production_type == nil or box.production_type == "none" or box.production_type == "input-output" then
+                        local bridge = {
+                            categories = {},
+                            filter = box.filter,
+                        }
+                        add_categories(bridge.categories, box)
+                        table.insert(bridges, bridge)
+                    elseif box.production_type == "output" and box.filter ~= nil then
+                        filtered_out[box.filter] = filtered_out[box.filter] or {}
+                        add_categories(filtered_out[box.filter], box)
+                    end
+                end
+            end
+        end
+    end
+
+    -- fluid name --> the categories it comes out of whatever makes it
+    local sources = {}
+    local function add_source(fluid_name, source_categories)
+        sources[fluid_name] = sources[fluid_name] or {}
+        for category, _ in pairs(source_categories) do
+            sources[fluid_name][category] = true
+        end
+    end
+    for _, recipe in pairs(data.raw.recipe or {}) do
+        for _, result in pairs(recipe.results or {}) do
+            if result.type == "fluid" then
+                add_source(result.name, crafter_out)
+            end
+        end
+    end
+    local pumped = {}
+    for _, pump in pairs(visible_prots("offshore-pump")) do
+        for _, box in pairs(fluid_boxes_of(pump)) do
+            add_categories(pumped, box)
+        end
+    end
+    for _, tile in pairs(dutils.prots("tile")) do
+        if tile.fluid ~= nil then
+            add_source(tile.fluid, pumped)
+        end
+    end
+    local drills = visible_prots("mining-drill")
+    for _, resource in pairs(dutils.prots("resource")) do
+        local category = resource.category or "basic-solid"
+        for _, result in pairs(dutils.minable_results(resource)) do
+            if result.type == "fluid" then
+                local drilled = {}
+                for _, drill in pairs(drills) do
+                    if drill.output_fluid_box ~= nil then
+                        for _, drill_category in pairs(drill.resource_categories or {}) do
+                            if drill_category == category then
+                                add_categories(drilled, drill.output_fluid_box)
+                            end
+                        end
+                    end
+                end
+                add_source(result.name, drilled)
+            end
+        end
+    end
+    for fluid_name, out_categories in pairs(filtered_out) do
+        add_source(fluid_name, out_categories)
+    end
+
+    local fluid_names = {}
+    for _, fluid_name in pairs(sorted_names(dutils.prots("fluid"))) do
+        local fluid = dutils.prots("fluid")[fluid_name]
+        -- Hidden and parameter fluids (like the editor's placeholder) are never offered anyway, so they're left out
+        if fluid.hidden ~= true and fluid.parameter ~= true then
+            -- Categories that lead into a crafting machine, growing through the boxes that pass this fluid on
+            local reach = table.deepcopy(crafter_in)
+            local grew = true
+            while grew do
+                grew = false
+                for _, bridge in pairs(bridges) do
+                    if bridge.filter == nil or bridge.filter == fluid_name then
+                        local joins = false
+                        for category, _ in pairs(bridge.categories) do
+                            if reach[category] ~= nil then
+                                joins = true
+                            end
+                        end
+                        if joins then
+                            for category, _ in pairs(bridge.categories) do
+                                if reach[category] == nil then
+                                    reach[category] = true
+                                    grew = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            local delivered = false
+            for category, _ in pairs(sources[fluid_name] or {}) do
+                if reach[category] ~= nil then
+                    delivered = true
+                end
+            end
+            if not delivered then
+                table.insert(fluid_names, fluid_name)
+            end
+        end
+    end
+    return fluid_names
+end
+
 return fluid_ports

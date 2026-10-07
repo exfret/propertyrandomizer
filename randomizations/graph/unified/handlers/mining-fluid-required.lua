@@ -125,7 +125,7 @@ local MAX_CHECKS = 8
 
 -- Chooses every resource's mining fluid before promotion ranks anything (see choose_up_front in handlers/default.lua)
 -- A resource needing no fluid has a free vanilla base, so promotion's ranks put its head near the start, and a fluid could only pass if it happened to sort before the resource's mining, which one random order rarely shows (logged on sa/preview seeds 1 to 4 on 2026-09-29: of about 22 fluids each, none passed for any resource but uranium, and once for tungsten)
--- So random resources each get a random fluid, one at a time, and one keeps it only if with it and the ones kept so far unmineable, each of their fluids is still had wherever its resource was mined
+-- So random resources each get a random fluid, one that's automatable before the resource's mining is (see automatable_before), one at a time, and one keeps it only if with it and the ones kept so far unmineable, each of their fluids is still had wherever its resource was mined
 -- Then no fluid needs any of them, so each is mined wherever it was before and the game reaches everything it did; one that fails (like iron ore needing water on Nauvis, when pumping water takes iron) gives way to the next, and the ones kept so far stay
 -- Every other resource needs no fluid, and a resource that needs one in vanilla keeps it if too few others could take one
 mining_fluid_required.choose_up_front = function(params)
@@ -164,8 +164,22 @@ mining_fluid_required.choose_up_front = function(params)
         end
         return true
     end
+    -- Whether first pass's sort has mining with the fluid of a fluid base automatable before the resource's own mining, wherever that's automatable
+    -- Otherwise the resource would wait on the fluid with only hand work to stand in, like stone from rocks for as long as sulfuric acid took (user, 2026-10-07)
+    local function automatable_before(base_key, contexts)
+        local had = baseline[gutils.key(owner_of(base_key))] or {}
+        for context, ind in pairs(contexts) do
+            local abilities = top.context_abilities(context)
+            if abilities ~= nil and top.context_home(context) == nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+                if had[context] == nil or had[context] >= ind then
+                    return false
+                end
+            end
+        end
+        return true
+    end
 
-    -- Resources that could take a fluid, in random order, each with a random fluid had wherever it's mined in first pass's sort (which could still need the resource itself; the check below settles that)
+    -- Resources that could take a fluid, in random order, each with a random fluid had wherever it's mined in first pass's sort, and automatable before it is (which could still need the resource itself; the check below settles that)
     local candidates = {}
     for _, head_key in pairs(params.heads) do
         local contexts = baseline[mine_key(head_key)] or {}
@@ -173,7 +187,7 @@ mining_fluid_required.choose_up_front = function(params)
         if next(contexts) ~= nil then
             for _, base_key in pairs(fluid_bases) do
                 local base = graph.nodes[base_key]
-                if base.abilities == nil and mining_fluid_required.validate(graph, base, graph.nodes[head_key]) and had_in(baseline, base_key, contexts) then
+                if base.abilities == nil and mining_fluid_required.validate(graph, base, graph.nodes[head_key]) and had_in(baseline, base_key, contexts) and automatable_before(base_key, contexts) then
                     table.insert(options, base_key)
                 end
             end
