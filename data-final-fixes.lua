@@ -216,7 +216,8 @@ local function prepare_deposit_copies()
     if config.deposit_copies ~= true then
         return
     end
-    local prepared = deposit_copies.prepare()
+    -- Sorted with the home sets the initial check below uses (prepare_world)
+    local prepared = deposit_copies.prepare(config.planetary and planetary.home_sets() or nil)
     -- The planetary checks count a recipe's planet versions as the recipe (rules 1 and 2, randomizations/planetary/check.lua)
     if planetary.before ~= nil then
         planetary.before.variants_of = planetary.before.variants_of or {}

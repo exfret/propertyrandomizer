@@ -224,6 +224,54 @@ test("a variant that came out the same as its original stays if it's had earlier
     assert(#raw.technology.smelting.effects == 1 and raw.technology.smelting.effects[1].recipe == "iron-plate")
 end)
 
+test("dropped recipes take their unlocks with them, and nothing else", function()
+    local function recipe(name)
+        return {
+            type = "recipe",
+            name = name,
+        }
+    end
+    local function unlock(name)
+        return {
+            type = "unlock-recipe",
+            recipe = name,
+        }
+    end
+    local raw = {
+        recipe = {
+            ["electrolyte"] = recipe("electrolyte"),
+            ["electrolyte-on-gleba"] = recipe("electrolyte-on-gleba"),
+            ["electrolyte-on-vulcanus"] = recipe("electrolyte-on-vulcanus"),
+        },
+        technology = {
+            ["electromagnetics"] = {
+                type = "technology",
+                name = "electromagnetics",
+                effects = {
+                    unlock("electrolyte-on-gleba"),
+                    unlock("electrolyte"),
+                    {
+                        type = "give-item",
+                        item = "electrolyte-on-gleba",
+                    },
+                    unlock("electrolyte-on-vulcanus"),
+                },
+            },
+            ["no-effects"] = {
+                type = "technology",
+                name = "no-effects",
+            },
+        },
+    }
+    copies.drop_recipes(raw, set({
+        "electrolyte-on-gleba",
+        "electrolyte-on-vulcanus",
+    }))
+    assert(raw.recipe["electrolyte"] ~= nil and raw.recipe["electrolyte-on-gleba"] == nil and raw.recipe["electrolyte-on-vulcanus"] == nil)
+    local effects = raw.technology.electromagnetics.effects
+    assert(#effects == 2 and effects[1].recipe == "electrolyte" and effects[2].type == "give-item")
+end)
+
 local function fixture()
     return {
         item = {

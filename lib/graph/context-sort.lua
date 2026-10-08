@@ -134,6 +134,18 @@ top.provides_context = function(contexts, context)
     return contexts[top.context_key(top.context_room(context), with_ability(abilities, ISOLATABILITY))] ~= nil
 end
 
+-- Whether a node's contexts in a sort with complex contexts (context --> anything) include an isolatable one in a room: it can be had there from the room's own resources, without bringing anything in (lib/logic/builder.lua)
+-- Home contexts and simple contexts never count
+top.isolatable_in = function(contexts, room)
+    for context, _ in pairs(contexts or {}) do
+        local abilities = top.context_abilities(context)
+        if abilities ~= nil and top.context_home(context) == nil and has_ability(abilities, ISOLATABILITY) and top.context_room(context) == room then
+            return true
+        end
+    end
+    return false
+end
+
 -- Gets the lookup tables for the contexts used in a sort
 -- For simple contexts, the contexts are just the rooms, exactly as in consistent-sort.lua
 -- home_sets (from top.home_sets) adds home contexts, or is nil for none

@@ -4,6 +4,7 @@
 --   * the first planet keeps the material itself, so whatever else still takes the material (barrels, recycling, recipes on other surfaces) keeps a way to get it: with every planet on a copy, crude oil barrels and uranium ore's recycling became unreachable before any randomization ran (seed 1 with duplicates, 2026-10-07)
 --   * a resource placed on several planets keeps its prototype on the first (the starting planet first) and gets a clone on every other one, placed where it was there, with the same look, map settings and research triggers
 --   * every recipe a planet with a copy can craft that takes such a material gets a variant taking the planet's copy, locked to that planet ("Iron plate (Nauvis 2)", with the planet's badge, had exactly when the recipe is)
+--   * a variant stays only if its planet can make it from its own resources before any randomization (prune_variants): that's what the variants protect, and the others only crowded the game (the user asked why electrolyte had variants on 8 planets, 2026-10-07)
 --   * the original recipes stay as they are, on every planet they were on, so a planet can still use the material itself from elsewhere (imported, or from rocks and corpses)
 --   * a recipe taking several materials a planet mines copies of gets a variant there for each mix of copies and the materials themselves, so it can still take some from the planet's own deposits and the rest from elsewhere, as it could before: like the tungsten carbide of a Vulcanus copy taking the planet's own crude oil and the volcanic rocks' tungsten ore, without which rocket building on Vulcanus copies lost its isolatability before any randomization ran (seed 1 with duplicates, 2026-10-07)
 -- (Tying each copy to its material in the logic instead kept the game whole too, but first pass couldn't keep what the ties made possible once identities moved, and moved nothing at all)
@@ -17,9 +18,12 @@ local copies = require("lib/deposit-copies")
 local dutils = require("lib/data-utils")
 local graph_customization = require("lib/graph-customization")
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
 local item_fluid = require("lib/item-fluid")
 local locale_utils = require("lib/locale")
 local lutils = require("lib/logic/logic-utils")
+local combat_encounters = require("lib/logic/combat-encounters")
+local logic = require("lib/logic/init")
 local lu = require("lib/lookup/init")
 local surface_sets = require("lib/surface-sets")
 local wild = require("lib/wild-entities")
@@ -90,8 +94,8 @@ local function make_copy(prototype, material, planet_name)
     return copy
 end
 
--- A copy is randomized like its material, and a variant like its recipe: it takes the original's entry in every options table keyed by node (handler blacklists and what recipe randomization keeps, first pass's blacklist)
-local function mirror_options(original_key, copy_key)
+-- Every options table keyed by node (handler blacklists and what recipe randomization keeps, first pass's blacklist)
+local function option_lists()
     local lists = {}
     for _, options in pairs(randomization_info.options.unified or {}) do
         for _, list in pairs(options) do
@@ -105,7 +109,12 @@ local function mirror_options(original_key, copy_key)
             table.insert(lists, list)
         end
     end
-    for _, list in pairs(lists) do
+    return lists
+end
+
+-- A copy is randomized like its material, and a variant like its recipe: it takes the original's entry in every options table keyed by node
+local function mirror_options(original_key, copy_key)
+    for _, list in pairs(option_lists()) do
         if list[original_key] ~= nil then
             list[copy_key] = list[original_key]
         end
@@ -268,10 +277,79 @@ local function localize(recipe, planet_name, copy_for, markers, mixed)
     end
 end
 
+-- Drops the variants their planet can't make from its own resources (an isolatable context in its room, top.isolatable_in), in a sort of the game with every variant in it, sorted like the game the rest of randomization starts from (data-final-fixes.lua's prepare_world)
+-- Isolatable asks that of the machines too: a delivered building only counts where the planet can then make more of it (lib/logic/bootstrap.lua), so Aquilo's oil processing variants go, its refineries coming from elsewhere
+-- Keeping a planet able to make a recipe without imports once its deposits change is what a variant does: its deposits and the variant change together
+-- A variant that needs imports anyway protects nothing, since the import could bring the material too, which the original still takes there (the resource swaps' planet variants follow the same rule, randomizations/planetary/resources.lua)
+-- variants_of: original recipe name --> its variants' names, changed to the ones kept; home_sets: the home sets to sort with, or nil for the game's own
+-- Returns how many it dropped
+local function prune_variants(variants_of, home_sets)
+    combat_encounters.reset()
+    logic.build()
+    local sort_info = top.sort(logic.graph, nil, nil, {
+        complex_contexts = true,
+        home_contexts = true,
+        home_sets = home_sets or top.home_sets(logic.graph),
+    })
+    -- Planet names in order of first appearance, with how many variants each has when that's more than one, like "vulcanus (3), gleba"
+    local function planets_text(planet_names)
+        local order = {}
+        local counts = {}
+        for _, planet_name in pairs(planet_names) do
+            if counts[planet_name] == nil then
+                table.insert(order, planet_name)
+                counts[planet_name] = 0
+            end
+            counts[planet_name] = counts[planet_name] + 1
+        end
+        local texts = {}
+        for _, planet_name in pairs(order) do
+            table.insert(texts, planet_name .. (counts[planet_name] > 1 and (" (" .. counts[planet_name] .. ")") or ""))
+        end
+        return table.concat(texts, ", ")
+    end
+    local dropped = {}
+    local num_dropped = 0
+    for _, recipe_name in pairs(sorted_keys(variants_of)) do
+        local kept = {}
+        local kept_planets = {}
+        local dropped_planets = {}
+        for _, name in pairs(variants_of[recipe_name]) do
+            local planet_name = data.raw.recipe[name].deposit_local.planet
+            if top.isolatable_in(sort_info.node_to_context_inds[key("recipe", name)], key("planet", planet_name)) then
+                table.insert(kept, name)
+                table.insert(kept_planets, planet_name)
+            else
+                dropped[name] = true
+                num_dropped = num_dropped + 1
+                table.insert(dropped_planets, planet_name)
+            end
+        end
+        if #dropped_planets > 0 then
+            local kept_text = #kept > 0 and ("on " .. planets_text(kept_planets) .. "; ") or ""
+            log("Independent deposits: " .. recipe_name .. " keeps " .. #kept .. " of its " .. #variants_of[recipe_name] .. " planet variants (" .. kept_text .. "dropped on " .. planets_text(dropped_planets) .. ")")
+        end
+        if #kept > 0 then
+            variants_of[recipe_name] = kept
+        else
+            variants_of[recipe_name] = nil
+        end
+    end
+    copies.drop_recipes(data.raw, dropped)
+    local lists = option_lists()
+    for name, _ in pairs(dropped) do
+        for _, list in pairs(lists) do
+            list[key("recipe", name)] = nil
+        end
+    end
+    return num_dropped
+end
+
 -- Puts the copies, clones and variants in the game (see the top of this file), with their locks realized (randomizations/planetary/locks.lua)
 -- Call it with the game the rest of randomization starts from (after the planetary stages), before that game is captured
+-- home_sets: the home sets that game is sorted with (the planetary stages' when they ran), or nil for its own (see prune_variants)
 -- Returns { variants_of = original recipe name --> list of its planet variants' names }, for the planetary checks, which count a recipe's variants as the recipe
-stage.prepare = function()
+stage.prepare = function(home_sets)
     graph_customization.initialize(config.customization, data.raw, defines.prototypes, config.seed)
     -- Surface sets read the rooms from the lookups (lib/surface-sets.lua), which only a logic build has loaded so far, and none has run yet without duplicates or planetary stages
     lu.load_lookups()
@@ -444,8 +522,7 @@ stage.prepare = function()
         end
     end
     local variants_of = {}
-    local num_variants = 0
-    local num_recipes = 0
+    local num_made = 0
     for _, recipe_name in pairs(sorted_keys(data.raw.recipe)) do
         local recipe = data.raw.recipe[recipe_name]
         if recipe.hidden ~= true and not is_container_recipe[recipe_name] and not graph_customization.excluded("item", recipe) then
@@ -484,8 +561,7 @@ stage.prepare = function()
                     end
                 end
                 variants_of[recipe_name] = names
-                num_recipes = num_recipes + 1
-                num_variants = num_variants + #names
+                num_made = num_made + #names
             end
         end
     end
@@ -498,7 +574,17 @@ stage.prepare = function()
         mined_on = mined_on,
         deposits = deposits,
     }
-    log("Independent deposits: " .. num_copies .. " copies of the " .. #split_names .. " materials deposits on several planets mine (" .. table.concat(split_names, ", ") .. "), " .. count(clones_of) .. " resources cloned for their other planets, " .. num_variants .. " planet variants of " .. num_recipes .. " recipes")
+    -- The dropped variants' locks go with them (locks.realize forgets a lock whose prototype is gone)
+    if prune_variants(variants_of, home_sets) > 0 then
+        unrealized = locks.realize()
+    end
+    local num_variants = 0
+    local num_recipes = 0
+    for _, names in pairs(variants_of) do
+        num_variants = num_variants + #names
+        num_recipes = num_recipes + 1
+    end
+    log("Independent deposits: " .. num_copies .. " copies of the " .. #split_names .. " materials deposits on several planets mine (" .. table.concat(split_names, ", ") .. "), " .. count(clones_of) .. " resources cloned for their other planets, " .. num_variants .. " planet variants of " .. num_recipes .. " recipes (of " .. num_made .. " made, the others their planet couldn't make from its own resources)")
     if #unrealized > 0 then
         log("Independent deposits: " .. #unrealized .. " locks the surface properties couldn't give stay as they were: " .. table.concat(unrealized, ", "))
     end

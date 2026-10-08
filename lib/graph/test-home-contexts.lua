@@ -419,6 +419,20 @@ test("home context keys parse back into room, abilities and home set", function(
     assert(top.context_home(ROCK) == nil)
 end)
 
+test("a node is isolatable in a room only with an isolatable context of that room", function()
+    assert(top.isolatable_in({ [top.context_key(ROCK, "10")] = 1 }, ROCK))
+    assert(top.isolatable_in({
+        [top.context_key(MOSS, "00")] = 1,
+        [top.context_key(ROCK, "11")] = 1,
+    }, ROCK))
+    -- Automatable, isolatable in another room, a home context, a simple context, or no contexts at all
+    assert(not top.isolatable_in({ [top.context_key(ROCK, "01")] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [top.context_key(MOSS, "10")] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [top.home_context_key(top.context_key(ROCK, NO_ABILITIES), "home1")] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [ROCK] = 1 }, ROCK))
+    assert(not top.isolatable_in(nil, ROCK))
+end)
+
 test("rooms needed match removing each room and sorting again, on the toy graph", function()
     check_rooms_needed(toy_graph())
 end)

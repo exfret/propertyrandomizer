@@ -221,22 +221,28 @@ copies.drop_twins = function(raw)
             end
         end
     end
-    for name, _ in pairs(twins) do
-        raw.recipe[name] = nil
-    end
-    for _, technology in pairs(raw.technology or {}) do
-        local effects = technology.effects or {}
-        for i = #effects, 1, -1 do
-            if effects[i].type == "unlock-recipe" and twins[effects[i].recipe] ~= nil then
-                table.remove(effects, i)
-            end
-        end
-    end
+    copies.drop_recipes(raw, twins)
     local num_dropped = 0
     for _, _ in pairs(twins) do
         num_dropped = num_dropped + 1
     end
     return num_dropped
+end
+
+-- Drops recipes from raw with the technologies' unlocks of them
+-- names: recipe name --> true
+copies.drop_recipes = function(raw, names)
+    for name, _ in pairs(names) do
+        raw.recipe[name] = nil
+    end
+    for _, technology in pairs(raw.technology or {}) do
+        local effects = technology.effects or {}
+        for i = #effects, 1, -1 do
+            if effects[i].type == "unlock-recipe" and names[effects[i].recipe] ~= nil then
+                table.remove(effects, i)
+            end
+        end
+    end
 end
 
 -- Whether raw (a data.raw, or a copy of one) still has any of the copies' prototypes
