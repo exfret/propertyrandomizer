@@ -51,7 +51,8 @@ randomizations.tech_craft_requirement = function (id)
         and tech.research_trigger.count ~= nil
         and tech.research_trigger.count > 1 then
             local rounding = "discrete_float"
-            if tech.research_trigger == "craft-item" then
+            -- A craft-item trigger's count is a whole number (CraftItemTechnologyTrigger::count is an ItemCountType, a uint32)
+            if tech.research_trigger.type == "craft-item" then
                 rounding = "discrete"
             end
 

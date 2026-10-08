@@ -237,7 +237,13 @@ local function research_text(tech)
         if type(target) == "table" then
             target = target.name or ""
         end
-        table.insert(parts, "trigger " .. tostring(trigger.type) .. " " .. tostring(target) .. (trigger.count ~= nil and (" x" .. number_text(trigger.count)) or ""))
+        -- A mine-entity trigger lists its entities, any of which meets it (MineEntityTechnologyTrigger::entities in the 2.1 docs)
+        if trigger.entities ~= nil then
+            target = table.concat(trigger.entities, ", ")
+        end
+        -- A craft-fluid trigger's amount (CraftFluidTechnologyTrigger::amount) is a craft-item trigger's count
+        local amount = trigger.count or trigger.amount
+        table.insert(parts, "trigger " .. tostring(trigger.type) .. " " .. tostring(target) .. (amount ~= nil and (" x" .. number_text(amount)) or ""))
     end
     if #parts == 0 then
         return nil

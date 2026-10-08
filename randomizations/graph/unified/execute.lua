@@ -162,6 +162,8 @@ end
 
 -- Whether any handler is on, so there's anything for unified randomization to do
 unified.has_handlers = #handler_ids > 0
+-- Whether research triggers are randomized (handlers/tech-triggers.lua), for data-final-fixes.lua's split of trigger technologies before the tech tree rebuild (research_triggers.split_technologies)
+unified.randomizes_triggers = handlers["tech-triggers"] ~= nil
 
 -- Planetary changes in superposed mode (any planetary stage with the planetary-superposed setting) hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
 local function planetary_debt()
@@ -659,6 +661,74 @@ unified.execute = function(options)
             end
             return sort_info
         end
+        -- A sort of the game (first pass's graph, with earlier handlers' up-front choices) where these heads start cut off and are connected again one at a time, each once nothing else is left to reach, the one whose base was reached earliest first, leaving the graph as it was
+        -- Returns the sort and head key --> how many pebbles it had sorted when that head was connected (none for a head whose base it never reached): whatever came before doesn't need the head, nor any head connected after it
+        -- So a handler choosing, for each of these heads, a base sorted before the head's entry chooses no cycle (research triggers, handlers/tech-triggers.lua)
+        -- It sorts in the order things become reachable (without choose_randomly, see top.sort), with plain room contexts, which say whether something can be had at all without the heads, several times faster than ability contexts
+        -- With no heads it's a plain sort of the game in that order, whose ranks say how early something can be had, which a random order doesn't (there, late things on one planet can come right next to the first ones on another)
+        local function sort_deferring(head_keys)
+            local removed = {}
+            local added = {}
+            for head_key, base_key in pairs(up_front) do
+                for pre, _ in pairs(table.deepcopy(split_graph.nodes[head_key].pre)) do
+                    table.insert(removed, table.deepcopy(split_graph.edges[pre]))
+                    gutils.remove_edge(split_graph, pre)
+                end
+                local abilities = head_to_handler[head_key].connection_abilities(split_graph.nodes[base_key], split_graph.nodes[head_key])
+                table.insert(added, gutils.ekey(gutils.connect_base_head(split_graph, base_key, head_key, abilities)))
+            end
+            -- Head key --> the edges into it, cut until it's connected
+            local cut = {}
+            for _, head_key in pairs(head_keys) do
+                local edges = {}
+                for pre, _ in pairs(table.deepcopy(split_graph.nodes[head_key].pre)) do
+                    table.insert(edges, table.deepcopy(split_graph.edges[pre]))
+                    gutils.remove_edge(split_graph, pre)
+                end
+                cut[head_key] = edges
+            end
+            local extra = {}
+            local sort_info = top.sort(split_graph, nil, nil, extra)
+            local entry = {}
+            while true do
+                local next_head
+                local next_ind
+                for head_key, edges in pairs(cut) do
+                    for _, edge in pairs(edges) do
+                        for _, ind in pairs(sort_info.node_to_context_inds[edge.start] or {}) do
+                            if next_ind == nil or ind < next_ind or (ind == next_ind and head_key < next_head) then
+                                next_head = head_key
+                                next_ind = ind
+                            end
+                        end
+                    end
+                end
+                if next_head == nil then
+                    break
+                end
+                entry[next_head] = #sort_info.sorted
+                for _, edge in pairs(cut[next_head]) do
+                    gutils.add_edge(split_graph, edge.start, edge.stop, edge)
+                    sort_info = top.sort(split_graph, sort_info, {
+                        split_graph.nodes[edge.start],
+                        split_graph.nodes[edge.stop],
+                    }, extra)
+                end
+                cut[next_head] = nil
+            end
+            for _, edges in pairs(cut) do
+                for _, edge in pairs(edges) do
+                    gutils.add_edge(split_graph, edge.start, edge.stop, edge)
+                end
+            end
+            for _, edge_key in pairs(added) do
+                gutils.remove_edge(split_graph, edge_key)
+            end
+            for _, edge in pairs(removed) do
+                gutils.add_edge(split_graph, edge.start, edge.stop, edge)
+            end
+            return sort_info, entry
+        end
         -- Each handler's heads of randomized dependents
         local handler_heads = {}
         for _, dep in pairs(sorted_deps) do
@@ -676,6 +746,7 @@ unified.execute = function(options)
                 random_graph = random_graph,
                 baseline_sort = first_pass_info.sort,
                 sort_without = sort_without,
+                sort_deferring = sort_deferring,
             })
             for head_key, base_key in pairs(choices) do
                 up_front[head_key] = base_key

@@ -253,6 +253,35 @@ test("a technology's changed unlocks and prerequisites are logged, and so is the
     assert(line_starting("RESULT recipe contraption: unlocked by: contraptions -> later-tech \"Cook up grabber\"") ~= nil, table.concat(logged, "\n"))
 end)
 
+test("a research trigger shows what it asks for, so a mining trigger's new entity shows", function()
+    local before = new_raw()
+    before.technology.contraptions.research_trigger = {
+        type = "mine-entity",
+        entities = {
+            "rock",
+            "big-rock",
+        },
+    }
+    local raw = deepcopy(before)
+    raw.technology.contraptions.research_trigger.entities = {
+        "tree",
+    }
+    result_summary.log(before, raw)
+    local tech_line = line_starting("RESULT technology contraptions: ")
+    assert(tech_line == "RESULT technology contraptions: research: trigger mine-entity rock, big-rock -> trigger mine-entity tree", tostring(tech_line))
+
+    raw = deepcopy(before)
+    raw.technology.contraptions.research_trigger = {
+        type = "craft-fluid",
+        fluid = "steam",
+        amount = 300,
+    }
+    logged = {}
+    result_summary.log(before, raw)
+    tech_line = line_starting("RESULT technology contraptions: ")
+    assert(tech_line == "RESULT technology contraptions: research: trigger mine-entity rock, big-rock -> trigger craft-fluid steam x300", tostring(tech_line))
+end)
+
 test("prototypes a step added are only counted when given as unlisted", function()
     local before = new_raw()
     local raw = deepcopy(before)

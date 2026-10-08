@@ -229,8 +229,20 @@ local function prepare_deposit_copies()
         end
     end
 end
-if config.deposit_copies == true then
+-- Research trigger randomization (randomizations/graph/unified/handlers/tech-triggers.lua) gives each technology its own trigger, while the tech tree rebuild gives every recipe its own technology afterwards, copying its technology's trigger onto each (a technology unlocking 25 versions of a recipe made 25 technologies asking for one stone furnace)
+-- So with both, a trigger technology unlocking several recipes is split into one technology per recipe first (research_triggers.split_technologies, user 2026-10-08), after deposit copies add their recipe versions
+local research_triggers = require("lib/research-triggers")
+local splits_trigger_technologies = config.tech_tree_rebuild == true and unified.randomizes_triggers == true
+local function split_trigger_technologies()
+    if not splits_trigger_technologies then
+        return
+    end
+    local created = research_triggers.split_technologies(data.raw.technology)
+    log("Research triggers: split trigger technologies into " .. #created .. " more, one per recipe")
+end
+if config.deposit_copies == true or splits_trigger_technologies then
     prepare_deposit_copies()
+    split_trigger_technologies()
     old_data_raw = table.deepcopy(data.raw)
 end
 
@@ -380,6 +392,7 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
             end
             recycling.regenerate(pre_planetary_raw)
             prepare_deposit_copies()
+            split_trigger_technologies()
             old_data_raw = table.deepcopy(data.raw)
             prepare_world()
         end
