@@ -349,6 +349,64 @@ test("what justifies a bootstrap grant the graph keeps is kept: heat isolatable 
     assert(next(locked) == nil, "a dropped grant's justification is kept")
 end)
 
+test("a grant keeps only the weakest contexts that justify it: a bootstrapped building's item stays isolatable in its room, not automatable too", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+    }
+    local function node(node_type, name)
+        local node_key = gutils.key(node_type, name)
+        graph.nodes[node_key] = {
+            type = node_type,
+            name = name,
+            pre = {},
+        }
+        return node_key
+    end
+    local function edge(edge_key, start, stop, extra)
+        graph.edges[edge_key] = extra or {}
+        graph.edges[edge_key].start = start
+        graph.edges[edge_key].stop = stop
+        graph.nodes[stop].pre[edge_key] = true
+    end
+    local room = node("room", "planet: ice")
+    local warmth_bootstrap = node("warmth-bootstrap", "planet: ice")
+    local warmth = node("warmth", "")
+    local heat = node("energy-source-heat", "")
+    local bootstrap_rooms = node("entity-own-bootstrap-rooms", "heater")
+    local item = node("entity-build-item", "heater")
+    edge("grant", warmth_bootstrap, warmth, {
+        bootstrap_warmth = true,
+    })
+    edge("pair", room, bootstrap_rooms)
+    local nci = {
+        [heat] = {
+            ["planet: ice | 11"] = 1,
+            ["planet: ice | 10"] = 2,
+        },
+        [item] = {
+            ["planet: ice | 11"] = 3,
+            ["planet: ice | 10"] = 4,
+            ["planet: ice | 01"] = 5,
+        },
+    }
+    local locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    assert(locked[item]["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept")
+    assert(locked[item]["planet: ice | 11"] == nil, "the bootstrapped building's item is kept automatable too, which its grant doesn't need")
+    assert(locked[heat]["planet: ice | 11"], "warmth needs heat isolatable and automatable, the weakest context that justifies it")
+    -- When the sort only has the item isolatable and automatable in the room, that's what keeps its grant
+    nci[item] = {
+        ["planet: ice | 11"] = 3,
+        ["planet: ice | 01"] = 5,
+    }
+    locked = protection.planet_locked_recipe_contexts(graph, {
+        node_to_context_inds = nci,
+    })
+    assert(locked[item]["planet: ice | 11"], "a grant justified only by an automatable context loses its justification")
+end)
+
 test("a model with orands (gutils.make_orands, like first pass's and monotone matching's) finds the same grants in the same rooms, so it keeps the same justifications", function()
     local graph = {
         nodes = {},

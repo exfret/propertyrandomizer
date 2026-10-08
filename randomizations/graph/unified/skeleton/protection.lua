@@ -49,6 +49,18 @@ protection.kept_part = function(node, context)
     return kept
 end
 
+-- Whether context asks for every ability other asks for (both complex contexts of one room), like "room | 11" for "room | 10"
+local function asks_for_no_more(other, context)
+    local other_abilities = top.context_abilities(other)
+    local abilities = top.context_abilities(context)
+    for i = 1, #other_abilities do
+        if string.sub(other_abilities, i, i) == "1" and string.sub(abilities, i, i) ~= "1" then
+            return false
+        end
+    end
+    return true
+end
+
 -- Recipe contexts a planetary change carried over to where they must be kept now, as node key --> context --> true
 -- Like a recipe whose planet lock moved staying automatable on its new planet (randomizations/planetary/check.lua's goal transport), when it also still works on its old planet, so it isn't locked to one planet below
 -- The planetary stage sets these once its changes are final; the rest of randomization keeps them like planet-locked recipes' contexts
@@ -101,9 +113,22 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
             end
         end
     end
+    -- Any one context with a grant's abilities in its room justifies it, so only the ones asking for nothing more are kept: a bootstrapped building's item stays isolatable there, not automatable too (unless the sort only has it automatable)
     for _, justification in pairs(bootstrap.justifications(graph)) do
+        local justifying = {}
         for context, _ in pairs(sort_info.node_to_context_inds[justification.node_key] or {}) do
             if bootstrap.justifies(context, justification.room, justification.ability_inds) then
+                table.insert(justifying, context)
+            end
+        end
+        for _, context in pairs(justifying) do
+            local is_weakest = true
+            for _, other in pairs(justifying) do
+                if other ~= context and asks_for_no_more(other, context) then
+                    is_weakest = false
+                end
+            end
+            if is_weakest then
                 locked[justification.node_key] = locked[justification.node_key] or {}
                 locked[justification.node_key][context] = true
             end
