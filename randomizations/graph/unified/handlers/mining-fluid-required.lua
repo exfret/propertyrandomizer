@@ -117,17 +117,21 @@ mining_fluid_required.spoof = function(graph)
     end
 end
 
--- How many resources need a mining fluid, when the game allows that many (user, 2026-09-30: "about 2-3 ores with fluids per game")
-local MIN_WITH_FLUID = 2
-local MAX_WITH_FLUID = 3
--- How many resources' fluids are tried on the whole game at most, one sort each (a failing one is cheap when it's an early resource, since cutting it off leaves little to sort)
+-- How many resources the user first wanted needing a mining fluid: about 2 or 3 per game in Space Age (2026-09-30), which the tries are counted from
+local MIN_GOAL = 2
+local MAX_GOAL = 3
+-- Resources tried on average beyond 2 * goal, leaving room for tries that fail: 3 or 4 resources with a fluid would be more fun, where that many can take one (user, 2026-10-08: "no need to fret if it stays near 2-3"), and the goal is a goal rather than a bound
+local EXTRA_TRIES = 6
+-- How many sorts of the whole game the checks take at most (up to a few seconds each in Space Age and a minute with planet copies and deposits, though one cutting off an early resource is cheap, since little is left to sort)
 local MAX_CHECKS = 8
 
 -- Chooses every resource's mining fluid before promotion ranks anything (see choose_up_front in handlers/default.lua)
 -- A resource needing no fluid has a free vanilla base, so promotion's ranks put its head near the start, and a fluid could only pass if it happened to sort before the resource's mining, which one random order rarely shows (logged on sa/preview seeds 1 to 4 on 2026-09-29: of about 22 fluids each, none passed for any resource but uranium, and once for tungsten)
--- So random resources each get a random fluid, one that's automatable before the resource's mining is (see automatable_before), one at a time, and one keeps it only if with it and the ones kept so far unmineable, each of their fluids is still had wherever its resource was mined
--- Then no fluid needs any of them, so each is mined wherever it was before and the game reaches everything it did; one that fails (like iron ore needing water on Nauvis, when pumping water takes iron) gives way to the next, and the ones kept so far stay
--- Every other resource needs no fluid, and a resource that needs one in vanilla keeps it if too few others could take one
+-- So each resource that could take a fluid (one that's automatable before its mining is, see automatable_before) is tried on a coin flip weighted so that EXTRA_TRIES + 2 * goal are tried on average (user, 2026-10-08)
+-- A tried resource keeps a random fluid among those that work: with the resource unmineable, the fluid is still had wherever it was mined, while the resources kept so far need their fluids and are still mined wherever they were
+-- Then no fluid needs its own resource, so each is mined wherever it was before and the game reaches everything it did; a resource no fluid works for (like iron ore when every fluid it could take needs pumps made of iron) gets none
+-- The first check cuts every tried resource off at once, and each that has a fluid working then keeps it, since cutting off fewer only reaches more; the rest are checked one at a time after, since a resource cut off with them may be what their fluids needed
+-- Every other resource needs no fluid, including one that needs one in vanilla
 mining_fluid_required.choose_up_front = function(params)
     local graph = params.random_graph
     local baseline = params.baseline_sort.node_to_context_inds
@@ -154,15 +158,19 @@ mining_fluid_required.choose_up_front = function(params)
     local function owner_of(base_key)
         return gutils.get_owner(graph, graph.nodes[base_key])
     end
-    -- Whether a sort has the fluid of a fluid base in every one of these contexts (its connection to a head adds or removes no abilities, see below)
-    local function had_in(node_to_context_inds, base_key, contexts)
-        local had = node_to_context_inds[gutils.key(owner_of(base_key))] or {}
+    -- Whether a sort has a node in every one of these contexts
+    local function node_had_in(node_to_context_inds, node_key, contexts)
+        local had = node_to_context_inds[node_key] or {}
         for context, _ in pairs(contexts) do
             if had[context] == nil then
                 return false
             end
         end
         return true
+    end
+    -- Whether a sort has the fluid of a fluid base in every one of these contexts (its connection to a head adds or removes no abilities, see below)
+    local function had_in(node_to_context_inds, base_key, contexts)
+        return node_had_in(node_to_context_inds, gutils.key(owner_of(base_key)), contexts)
     end
     -- Whether first pass's sort has mining with the fluid of a fluid base automatable before the resource's own mining, wherever that's automatable
     -- Otherwise the resource would wait on the fluid with only hand work to stand in, like stone from rocks for as long as sulfuric acid took (user, 2026-10-07)
@@ -179,7 +187,7 @@ mining_fluid_required.choose_up_front = function(params)
         return true
     end
 
-    -- Resources that could take a fluid, in random order, each with a random fluid had wherever it's mined in first pass's sort, and automatable before it is (which could still need the resource itself; the check below settles that)
+    -- Resources that could take a fluid, in random order, each with every fluid had wherever it's mined in first pass's sort and automatable before it is (which could still need the resource itself; the checks below settle that)
     local candidates = {}
     for _, head_key in pairs(params.heads) do
         local contexts = baseline[mine_key(head_key)] or {}
@@ -195,62 +203,100 @@ mining_fluid_required.choose_up_front = function(params)
         if #options > 0 then
             table.insert(candidates, {
                 head_key = head_key,
-                base_key = options[rng.int(unified_key, #options)],
+                options = options,
             })
         end
     end
     rng.shuffle(unified_key, candidates)
-    -- Last, a resource that needs a fluid in vanilla keeps it
-    for _, head_key in pairs(params.heads) do
-        local old_base = graph.nodes[head_key].old_base
-        if owner_of(old_base).name ~= NO_FLUID then
-            table.insert(candidates, {
-                head_key = head_key,
-                base_key = old_base,
-            })
+
+    -- The ones tried, each on the same coin flip
+    local goal = MIN_GOAL - 1 + rng.int(unified_key, MAX_GOAL - MIN_GOAL + 1)
+    local num_tries = EXTRA_TRIES + 2 * goal
+    local chance = math.min(1, num_tries / math.max(1, #candidates))
+    local tried = {}
+    for _, candidate in pairs(candidates) do
+        if rng.value(unified_key) < chance then
+            table.insert(tried, candidate)
         end
     end
-    local target = MIN_WITH_FLUID - 1 + rng.int(unified_key, MAX_WITH_FLUID - MIN_WITH_FLUID + 1)
 
-    local function describe(head_keys, fluids)
-        local names = {}
-        for _, head_key in pairs(head_keys) do
-            table.insert(names, gutils.get_owner(graph, graph.nodes[head_key]).name .. " <- " .. tostring(owner_of(fluids[head_key]).fluid))
-        end
-        return #names > 0 and table.concat(names, ", ") or "none"
+    local function name_of(head_key)
+        return gutils.get_owner(graph, graph.nodes[head_key]).name
+    end
+    local function describe(head_key, base_key)
+        return name_of(head_key) .. " <- " .. tostring(owner_of(base_key).fluid)
     end
 
-    -- head key --> fluid base, for the resources with a fluid (in order, the order they got it)
+    -- head key --> fluid base, for the resources with a fluid, and those resources in the order they got it
     local fluids = {}
     local order = {}
     local num_checks = 0
-    local next_candidate = 1
-    while #order < target and next_candidate <= #candidates and num_checks < MAX_CHECKS do
-        local candidate = candidates[next_candidate]
-        next_candidate = next_candidate + 1
-        if fluids[candidate.head_key] == nil then
-            fluids[candidate.head_key] = candidate.base_key
-            local trial = table.deepcopy(order)
-            table.insert(trial, candidate.head_key)
-            local cut_off = {}
-            for _, head_key in pairs(trial) do
-                table.insert(cut_off, mine_key(head_key))
+    -- A random one of the candidate's fluids that the sort has wherever its resource was mined, or nil if there's none
+    local function working_fluid(sort_info, candidate)
+        local contexts = baseline[mine_key(candidate.head_key)]
+        local working = {}
+        for _, base_key in pairs(candidate.options) do
+            if had_in(sort_info.node_to_context_inds, base_key, contexts) then
+                table.insert(working, base_key)
             end
-            local sort_info = params.sort_without(cut_off)
-            num_checks = num_checks + 1
-            local passes = true
-            for _, head_key in pairs(trial) do
-                if not had_in(sort_info.node_to_context_inds, fluids[head_key], baseline[mine_key(head_key)] or {}) then
-                    passes = false
+        end
+        if #working == 0 then
+            return nil
+        end
+        return working[rng.int(unified_key, #working)]
+    end
+
+    -- First every tried resource at once
+    local left = {}
+    if #tried > 0 then
+        local cut_off = {}
+        for _, candidate in pairs(tried) do
+            table.insert(cut_off, mine_key(candidate.head_key))
+        end
+        local sort_info = params.sort_without(cut_off)
+        num_checks = num_checks + 1
+        local kept_names = {}
+        local left_names = {}
+        for _, candidate in pairs(tried) do
+            local base_key = working_fluid(sort_info, candidate)
+            if base_key ~= nil then
+                fluids[candidate.head_key] = base_key
+                table.insert(order, candidate.head_key)
+                table.insert(kept_names, describe(candidate.head_key, base_key))
+            else
+                table.insert(left, candidate)
+                table.insert(left_names, name_of(candidate.head_key))
+            end
+        end
+        log("Mining fluids up front, check 1 (" .. #tried .. " at once): " .. (#kept_names > 0 and table.concat(kept_names, ", ") .. " kept" or "none kept") .. (#left_names > 0 and "; none works yet for " .. table.concat(left_names, ", ") or ""))
+    end
+    -- Then each of the rest on its own, with the ones kept so far needing their fluids (with one tried, that would be the same sort again)
+    for i, candidate in pairs(#tried > 1 and left or {}) do
+        if num_checks >= MAX_CHECKS then
+            log("Mining fluids up front: out of checks, so " .. (#left - i + 1) .. " tried resources stay without a fluid")
+            break
+        end
+        local sort_info = params.sort_without({ mine_key(candidate.head_key) }, fluids)
+        num_checks = num_checks + 1
+        local base_key = working_fluid(sort_info, candidate)
+        -- A resource kept so far that isn't mined everywhere it was without this one
+        local lost
+        if base_key ~= nil then
+            for _, head_key in pairs(order) do
+                if not node_had_in(sort_info.node_to_context_inds, mine_key(head_key), baseline[mine_key(head_key)]) then
+                    lost = head_key
                     break
                 end
             end
-            log("Mining fluids up front, check " .. num_checks .. ": " .. describe({ candidate.head_key }, fluids) .. (passes and " kept" or " dropped"))
-            if passes then
-                order = trial
-            else
-                fluids[candidate.head_key] = nil
-            end
+        end
+        if base_key == nil then
+            log("Mining fluids up front, check " .. num_checks .. ": " .. name_of(candidate.head_key) .. " dropped, since no fluid works without it")
+        elseif lost ~= nil then
+            log("Mining fluids up front, check " .. num_checks .. ": " .. name_of(candidate.head_key) .. " dropped, since without it " .. name_of(lost) .. " isn't mined everywhere it was")
+        else
+            fluids[candidate.head_key] = base_key
+            table.insert(order, candidate.head_key)
+            log("Mining fluids up front, check " .. num_checks .. ": " .. describe(candidate.head_key, base_key) .. " kept")
         end
     end
 
@@ -266,7 +312,11 @@ mining_fluid_required.choose_up_front = function(params)
             chosen[head_key] = no_fluid_base or old_base
         end
     end
-    log("Mining fluids up front (aiming for " .. target .. "): " .. describe(order, fluids) .. "; every other resource needs none")
+    local names = {}
+    for _, head_key in pairs(order) do
+        table.insert(names, describe(head_key, fluids[head_key]))
+    end
+    log("Mining fluids up front: tried " .. #tried .. " of " .. #candidates .. " resources that could take a fluid (chance " .. string.format("%.2f", chance) .. ", aiming to try " .. num_tries .. "), " .. num_checks .. " checks; " .. #order .. " need one: " .. (#names > 0 and table.concat(names, ", ") or "none") .. "; every other resource needs none")
     return chosen
 end
 

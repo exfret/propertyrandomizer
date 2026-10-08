@@ -619,17 +619,23 @@ unified.execute = function(options)
         local split_graph = first_pass_info.graph
         local false_key = key("false", "")
         assert(split_graph.nodes[false_key] ~= nil, "first pass's graph has no false node")
-        -- A sort of the game (first pass's graph, with earlier handlers' up-front choices) where these AND nodes can't be reached, leaving the graph as it was
-        local function sort_without(node_keys)
+        -- A sort of the game (first pass's graph, with earlier handlers' up-front choices, and any heads in connections (head key --> base key) fed by those bases instead) where these AND nodes can't be reached, leaving the graph as it was
+        local function sort_without(node_keys, connections)
             local removed = {}
             local added = {}
-            for head_key, base_key in pairs(up_front) do
+            local function connect(head_key, base_key)
                 for pre, _ in pairs(table.deepcopy(split_graph.nodes[head_key].pre)) do
                     table.insert(removed, table.deepcopy(split_graph.edges[pre]))
                     gutils.remove_edge(split_graph, pre)
                 end
                 local abilities = head_to_handler[head_key].connection_abilities(split_graph.nodes[base_key], split_graph.nodes[head_key])
                 table.insert(added, gutils.ekey(gutils.connect_base_head(split_graph, base_key, head_key, abilities)))
+            end
+            for head_key, base_key in pairs(up_front) do
+                connect(head_key, base_key)
+            end
+            for head_key, base_key in pairs(connections or {}) do
+                connect(head_key, base_key)
             end
             for _, node_key in pairs(node_keys) do
                 assert(split_graph.nodes[node_key].op == "AND", "sort_without can only cut off AND nodes, not " .. node_key)

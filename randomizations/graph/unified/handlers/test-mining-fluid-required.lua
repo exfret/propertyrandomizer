@@ -2,7 +2,7 @@
 -- Run from the mod root: lua randomizations/graph/unified/handlers/test-mining-fluid-required.lua
 --
 -- Resources a, b and c need no fluid in vanilla, and resource u needs fluid y; any of them could take fluid x or y
--- The sort of the game with resources cut off is a stand-in that says which fluids need them
+-- The sort of the game with resources cut off is a stand-in that says which fluids (or other resources' mining) need them
 
 -- Stand-ins for the Factorio environment
 function table.deepcopy(tbl)
@@ -37,13 +37,17 @@ package.loaded["lib/logic/init"] = {
     type_info = {},
     contexts = {},
 }
--- The first of everything: each resource's first fluid, the resources in the order given, and the fewest resources with a fluid (2)
+-- The first of everything: each resource's first working fluid, the resources in the order given, and the smaller goal (2, so 10 tries); every coin flip tries the resource unless a test sets next_values
+local next_values = {}
 package.loaded["lib/random/rng"] = {
     key = function(params)
         return "unified"
     end,
     int = function(_, max)
         return 1
+    end,
+    value = function(_)
+        return table.remove(next_values, 1) or 0
     end,
     shuffle = function(_, list)
     end,
@@ -60,8 +64,8 @@ local ROOM = "room"
 -- The resources' category, set on each so the handler never falls back to a default one
 local CATEGORY = "test-rock"
 
--- The handler's graph after claiming: each resource's head, fed by its vanilla base (no fluid, or fluid y for u), and a base for each fluid whose own head is a spoofed resource nothing randomizes
-local function build()
+-- The handler's graph after claiming: each resource's head (a, b, c and u unless names says otherwise), fed by its vanilla base (no fluid, or fluid y for u), and a base for each fluid whose own head is a spoofed resource nothing randomizes
+local function build(names)
     local graph = {
         nodes = {},
         edges = {},
@@ -94,12 +98,13 @@ local function build()
             node_to_context_inds = {},
         },
     }
-    for _, name in pairs({
+    world.names = names or {
         "a",
         "b",
         "c",
         "u",
-    }) do
+    }
+    for _, name in pairs(world.names) do
         local resource = {
             type = "resource",
             name = name,
@@ -164,42 +169,50 @@ local function build()
     return world
 end
 
--- Runs the choice with a stand-in for sort_without: first pass's sort, minus the cut-off mines and the fluids unreachable(cut) says need one of them (cut: mine key --> true)
+-- Runs the choice with a stand-in for sort_without: first pass's sort, minus the cut-off mines and whatever unreachable(cut) says needs one of them (cut: mine key --> true)
+-- Returns the choice, how many sorts it took, and each sort's cut-off mines and connections
 local function choose(world, unreachable)
-    local num_sorts = 0
+    local calls = {}
+    local heads = {}
+    for _, name in pairs(world.names) do
+        table.insert(heads, world.heads[name])
+    end
     local chosen = mining_fluid_required.choose_up_front({
-        heads = {
-            world.heads.a,
-            world.heads.b,
-            world.heads.c,
-            world.heads.u,
-        },
+        heads = heads,
         pool = world.pool,
         random_graph = world.graph,
         baseline_sort = world.baseline,
-        sort_without = function(node_keys)
-            num_sorts = num_sorts + 1
+        sort_without = function(node_keys, connections)
             local cut = {}
             for _, node_key in pairs(node_keys) do
                 cut[node_key] = true
             end
+            table.insert(calls, {
+                cut = cut,
+                connections = table.deepcopy(connections or {}),
+            })
             local sort_info = table.deepcopy(world.baseline)
             for node_key, _ in pairs(cut) do
                 sort_info.node_to_context_inds[node_key] = nil
             end
-            for _, fluid_key in pairs(unreachable(cut)) do
-                sort_info.node_to_context_inds[fluid_key] = nil
+            for _, node_key in pairs(unreachable(cut)) do
+                sort_info.node_to_context_inds[node_key] = nil
             end
             return sort_info
         end,
     })
-    return chosen, num_sorts
+    return chosen, #calls, calls
 end
 
 -- Whether the resource needs a fluid in the choice
 local function has_fluid(world, chosen, name)
     local base_key = chosen[world.heads[name]]
     return gutils.get_owner(world.graph, world.graph.nodes[base_key]).name ~= NO_FLUID
+end
+
+-- The fluid the resource needs in the choice, or nil
+local function fluid_of(world, chosen, name)
+    return gutils.get_owner(world.graph, world.graph.nodes[chosen[world.heads[name]]]).fluid
 end
 
 local num_passed = 0
@@ -209,45 +222,75 @@ local function test(name, fn)
     print("ok - " .. name)
 end
 
-test("a few resources get a fluid, the rest need none, and u loses its vanilla fluid unless chosen", function()
+test("with few resources that could take a fluid, every one is tried, all in one sort, and each keeps a fluid that works", function()
     local world = build()
     local chosen, num_sorts = choose(world, function()
         return {}
     end)
-    -- One sort per resource tried
-    assert(num_sorts == 2)
-    assert(has_fluid(world, chosen, "a") and has_fluid(world, chosen, "b"))
-    assert(not has_fluid(world, chosen, "c") and not has_fluid(world, chosen, "u"))
-    -- A resource that needs no fluid in vanilla keeps its own base
-    assert(chosen[world.heads.c] == world.graph.nodes[world.heads.c].old_base)
+    assert(num_sorts == 1)
+    for _, name in pairs(world.names) do
+        assert(fluid_of(world, chosen, name) == "x", name)
+    end
 end)
 
-test("a resource whose fluid needs it (like water needing iron) gives way to the next, while the others keep theirs", function()
+test("a resource whose first fluid needs it takes another fluid that works", function()
     local world = build()
-    -- Fluid x, which every resource gets first, can only be had by mining a
+    -- Fluid x can only be had by mining a
     local chosen, num_sorts = choose(world, function(cut)
-        if cut[key("entity-mine", "a")] then
+        if cut[key("entity-mine", "a")] ~= nil then
             return { world.fluids.x }
         end
         return {}
     end)
-    assert(num_sorts == 3)
-    assert(not has_fluid(world, chosen, "a"))
-    assert(has_fluid(world, chosen, "b") and has_fluid(world, chosen, "c"))
-    assert(not has_fluid(world, chosen, "u"))
+    assert(num_sorts == 1)
+    assert(fluid_of(world, chosen, "a") == "y")
 end)
 
-test("a resource that needs a fluid in vanilla keeps it when too few others could take one", function()
+test("a resource no fluid works for gets none, and the ones that only failed because it was cut off with them get one on their own", function()
     local world = build()
-    -- Fluid x needs every resource, while fluid y needs none
-    local chosen = choose(world, function(cut)
-        if next(cut) ~= nil then
-            return { world.fluids.x }
+    -- Every fluid needs a's mining, like pumps made of iron
+    local chosen, num_sorts, calls = choose(world, function(cut)
+        if cut[key("entity-mine", "a")] ~= nil then
+            return {
+                world.fluids.x,
+                world.fluids.y,
+            }
         end
         return {}
     end)
-    assert(not has_fluid(world, chosen, "a") and not has_fluid(world, chosen, "b") and not has_fluid(world, chosen, "c"))
-    assert(chosen[world.heads.u] == world.graph.nodes[world.heads.u].old_base)
+    -- One sort for all four, then one for each alone
+    assert(num_sorts == 5)
+    assert(not has_fluid(world, chosen, "a"))
+    for _, name in pairs({
+        "b",
+        "c",
+        "u",
+    }) do
+        assert(fluid_of(world, chosen, name) == "x", name)
+    end
+    -- Alone, each has the ones kept before it fed by their fluids rather than cut off: c's sort has b's
+    assert(next(calls[2].connections) == nil)
+    assert(calls[4].cut[key("entity-mine", "c")] ~= nil and calls[4].connections[world.heads.b] ~= nil)
+    assert(calls[4].cut[key("entity-mine", "b")] == nil)
+end)
+
+test("a resource that a kept resource's mining needs is dropped", function()
+    local world = build()
+    -- Every fluid needs c's mining, and a can only be mined while b is
+    local chosen, num_sorts = choose(world, function(cut)
+        if cut[key("entity-mine", "c")] ~= nil then
+            return {
+                world.fluids.x,
+                world.fluids.y,
+            }
+        elseif cut[key("entity-mine", "b")] ~= nil then
+            return { key("entity-mine", "a") }
+        end
+        return {}
+    end)
+    assert(num_sorts == 5)
+    assert(has_fluid(world, chosen, "a") and has_fluid(world, chosen, "u"))
+    assert(not has_fluid(world, chosen, "b") and not has_fluid(world, chosen, "c"))
 end)
 
 test("a fluid only automatable after a resource's own mining is never chosen for it, so the resource never waits on hand work (like stone from rocks until sulfuric acid)", function()
@@ -272,24 +315,97 @@ test("a fluid only automatable after a resource's own mining is never chosen for
     local chosen = choose(world, function()
         return {}
     end)
-    for name, head_key in pairs(world.heads) do
-        assert(gutils.get_owner(world.graph, world.graph.nodes[chosen[head_key]]).fluid ~= "x", name .. " needs x")
+    -- Without the check, each would have taken x, its first fluid
+    for _, name in pairs(world.names) do
+        assert(fluid_of(world, chosen, name) == "y", name)
     end
-    -- Without the check, a and b would have taken x, every resource's first fluid
-    assert(has_fluid(world, chosen, "a") and has_fluid(world, chosen, "b"))
 end)
 
-test("when nothing passes, no resource needs a fluid", function()
-    local world = build()
-    local chosen = choose(world, function(cut)
+test("each resource that could take a fluid is tried on a coin flip weighted to try 6 + 2 * goal of them, and an untried one needs none, even one that needs one in vanilla", function()
+    local world = build({
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "u",
+    })
+    -- Twelve could, aiming to try ten, so the chance is 10/12: flips alternate under and over it
+    next_values = {
+        0.8,
+        0.9,
+        0.8,
+        0.9,
+        0.8,
+        0.9,
+        0.8,
+        0.9,
+        0.8,
+        0.9,
+        0.8,
+        0.9,
+    }
+    local chosen, num_sorts = choose(world, function()
+        return {}
+    end)
+    assert(num_sorts == 1)
+    for i, name in pairs(world.names) do
+        assert(has_fluid(world, chosen, name) == (i % 2 == 1), name)
+    end
+    assert(not has_fluid(world, chosen, "u"))
+    -- A resource that needs none in vanilla keeps its own base
+    assert(chosen[world.heads.b] == world.graph.nodes[world.heads.b].old_base)
+end)
+
+test("when no fluid works for any resource, none needs one, and the checks stop at the limit", function()
+    local world = build({
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "u",
+    })
+    local chosen, num_sorts = choose(world, function()
         return {
             world.fluids.x,
             world.fluids.y,
         }
     end)
-    for name, _ in pairs(world.heads) do
-        assert(not has_fluid(world, chosen, name))
+    -- The first sort and seven alone
+    assert(num_sorts == 8)
+    for _, name in pairs(world.names) do
+        assert(not has_fluid(world, chosen, name), name)
     end
+end)
+
+test("with one resource tried, a failure isn't sorted again on its own", function()
+    local world = build()
+    -- Only a is tried
+    next_values = {
+        0,
+        1,
+        1,
+        1,
+    }
+    local chosen, num_sorts = choose(world, function()
+        return {
+            world.fluids.x,
+            world.fluids.y,
+        }
+    end)
+    assert(num_sorts == 1)
+    assert(not has_fluid(world, chosen, "a"))
 end)
 
 print(num_passed .. " tests passed")
