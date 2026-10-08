@@ -39,7 +39,6 @@ package.loaded["lib/random/rng"] = {
     end,
 }
 package.loaded["lib/wild-entities"] = {}
-package.loaded["lib/cost/material-costs/sa"] = {}
 package.loaded["randomizations/graph/unified/handler-helpers/entity"] = {
     fits_autoplace_of = function(prototype, other)
         return prototype.blocked ~= true and other.blocked ~= true

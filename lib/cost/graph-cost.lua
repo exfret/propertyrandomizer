@@ -70,14 +70,44 @@ graph_cost.automatable_by_room = function(graph, complex_sort_info)
     return automatable
 end
 
+-- The one context compute_anywhere prices in, standing for every surface at once
+local ANYWHERE = "anywhere"
+
+-- Prices with every surface as one place, a version of compute_for_sort that isn't specific to any surface: node key --> price (OR: per unit, AND: per run), missing where nothing anywhere makes it
+-- Every node sends on what arrives, so a price can use whatever any surface has, without the cost of bringing it together
+graph_cost.compute_anywhere = function(graph, excluded, slot)
+    local prices = graph_cost.compute(graph, { ANYWHERE }, function(_, incoming)
+        return { incoming }
+    end, excluded, slot)
+    local flat = {}
+    for node_key, by_context in pairs(prices) do
+        flat[node_key] = by_context[ANYWHERE]
+    end
+    return flat
+end
+
+-- Material costs from compute_anywhere, scaled like the room prices: material id ("type-name") --> cost, missing for what nothing anywhere makes
+graph_cost.material_costs_anywhere = function(graph, slot)
+    local prices = graph_cost.compute_anywhere(graph, nil, slot)
+    local costs = {}
+    for node_key, node in pairs(graph.nodes) do
+        if (node.type == "item" or node.type == "fluid") and prices[node_key] ~= nil then
+            costs[node.type .. "-" .. node.name] = prices[node_key] * graph_cost.RAW_COST_SCALE
+        end
+    end
+    return costs
+end
+
 -- What each room has and makes (lib/cost/context-costs.lua) and the starting resources of a sorted graph, without setting anything
--- Its raw_costs are what derive_cost_options puts in the default cost table
+-- Its raw_costs are what derive_cost_options puts in the default cost table, and its anywhere_costs are material_costs_anywhere's, for callers that compare costs without a surface (like entity randomization)
 graph_cost.build_costs = function(graph, sort_info, starting_context, complex_sort_info, contexts)
     local starting = graph_cost.starting_resources(graph, sort_info, starting_context)
     -- Slot costs price the player's own time (hand mining, say) dearly, so materials only gotten by hand aren't cheap
     local prices = graph_cost.compute_for_sort(graph, sort_info, nil, true)
     -- With the game's costs tracking the major resources
-    return context_costs.build(graph, sort_info, prices, starting_context, contexts, true, starting, graph_cost.automatable_by_room(graph, complex_sort_info)), starting
+    local built = context_costs.build(graph, sort_info, prices, starting_context, contexts, true, starting, graph_cost.automatable_by_room(graph, complex_sort_info))
+    built.anywhere_costs = graph_cost.material_costs_anywhere(graph, true)
+    return built, starting
 end
 
 -- Fills randomization_info.options.cost from all reachable raw material prices

@@ -2,7 +2,11 @@
 -- Run from the mod root: lua lib/cost/test-graph-cost.lua
 -- Prices follow the logic graph's cost model: AND nodes are actions, OR nodes are materials, and edges carry how much is made or used
 
+-- graph-cost.lua loads the random number generator through the context sort, which needs Factorio's bit32; nothing here draws from it
+package.loaded["lib/random/rng"] = {}
+
 local graph_cost = require("lib/cost/graph-cost-core")
+local game_cost = require("lib/cost/graph-cost")
 
 local num_passed = 0
 local function test(name, fn)
@@ -130,6 +134,50 @@ test("prices are per context, and a node moving contexts (like a room) only send
     local prices = graph_cost.compute(g, { "home", "away" }, transmit)
     assert(prices["ore"]["home"] == nil)
     assert(near(prices["ore"]["away"], 3))
+end)
+
+test("prices anywhere treat every surface as one place: what needs two rooms' materials gets a price, and each material costs its cheapest anywhere", function()
+    local g = new_graph()
+    add_node(g, "start", "AND", { cost = 1 })
+    add_node(g, "home", "OR", { type = "room" })
+    add_edge(g, "start", "home", 1)
+    add_node(g, "away", "OR", { type = "room" })
+    add_edge(g, "start", "away", 1)
+    -- Iron is mined in both rooms, dearer at home; tungsten only away
+    add_node(g, "mine-iron-home", "AND", { cost = 4 })
+    add_edge(g, "home", "mine-iron-home", nil)
+    add_node(g, "mine-iron-away", "AND", { cost = 1 })
+    add_edge(g, "away", "mine-iron-away", nil)
+    add_node(g, "iron", "OR", { type = "item" })
+    add_edge(g, "mine-iron-home", "iron", 1)
+    add_edge(g, "mine-iron-away", "iron", 1)
+    add_node(g, "mine-tungsten", "AND", { cost = 2 })
+    add_edge(g, "away", "mine-tungsten", nil)
+    add_node(g, "tungsten", "OR", { type = "item" })
+    add_edge(g, "mine-tungsten", "tungsten", 1)
+    -- An alloy needs iron mined at home (an edge only from home's mine) and tungsten from away
+    add_node(g, "alloy-craft", "AND", { cost = 0.5 })
+    add_edge(g, "mine-iron-home", "alloy-craft", 1)
+    add_edge(g, "tungsten", "alloy-craft", 1)
+    add_node(g, "alloy", "OR", { type = "item" })
+    add_edge(g, "alloy-craft", "alloy", 1)
+    local function transmit(node, incoming)
+        if node.type == "room" then
+            return { node.name }
+        end
+        return { incoming }
+    end
+    local by_room = graph_cost.compute(g, {
+        "home",
+        "away",
+    }, transmit)
+    assert(by_room["alloy"]["home"] == nil and by_room["alloy"]["away"] == nil, "a room can't make the alloy on its own")
+    assert(near(by_room["iron"]["home"], 4) and near(by_room["iron"]["away"], 1))
+    local anywhere = game_cost.compute_anywhere(g)
+    assert(near(anywhere["iron"], 1), "iron costs its cheapest anywhere")
+    assert(near(anywhere["alloy"], 0.5 + 4 + 2), "the alloy is priced from both rooms' materials")
+    local costs = game_cost.material_costs_anywhere(g)
+    assert(near(costs["item-alloy"], (0.5 + 4 + 2) * game_cost.RAW_COST_SCALE) and costs["item-mine-iron-home"] == nil, "only items and fluids get material costs, by material id")
 end)
 
 test("a loop that gains material converges instead of running forever", function()

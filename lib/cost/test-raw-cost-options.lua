@@ -16,6 +16,7 @@ local graph_cost = require("lib/cost/graph-cost")
 graph_cost.compute_for_sort = function() return {} end
 graph_cost.starting_resources = function() return { "item-automated" } end
 graph_cost.automatable_by_room = function() return context_costs.build().automatable end
+graph_cost.material_costs_anywhere = function() return { ["item-manual"] = 2 } end
 log = function() end
 randomization_info = { options = { cost = { default_cost_table = { ["item-compat"] = 7 } } } }
 local graph = { nodes = {} }
@@ -29,4 +30,6 @@ assert(costs["item-automated"] == 1)
 assert(costs["item-compat"] == 7)
 assert(costs["item-unknown"] == nil)
 assert(context_costs.current.automatable.here["item-manual"] == nil)
+-- Entity randomization compares costs without a surface, from the prices anywhere
+assert(context_costs.current.anywhere_costs["item-manual"] == 2)
 print("ok - global raw prices retain manual sources and compatibility overrides without granting automation")

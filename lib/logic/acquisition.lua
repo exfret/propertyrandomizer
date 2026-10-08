@@ -184,7 +184,8 @@ acquisition.can_supply = function(tier, slot_kind)
     return supplies[tier][slot_kind] ~= nil
 end
 
--- Cost (lib/cost/material-costs) of loot a carrier drops per point of its health, so tougher carriers drop more
+-- Cost (the logic graph's prices with every surface as one place, graph_cost.material_costs_anywhere) of loot a carrier drops per point of its health, so tougher carriers drop more
+-- Tuned with the vanilla cost table lib/cost/material-costs, which priced buildings about the same (a median ratio of 0.99 in Space Age)
 acquisition.LOOT_COST_PER_HEALTH = 0.37
 -- Bulk entities are needed in hundreds, so carriers drop more of them
 acquisition.BULK_LOOT_FACTOR = 2

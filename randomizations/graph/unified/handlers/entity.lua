@@ -22,7 +22,7 @@ local locale = require("lib/locale")
 local localised_text = require("lib/localised-text")
 local rng = require("lib/random/rng")
 local wild = require("lib/wild-entities")
-local material_costs = require("lib/cost/material-costs/sa")
+local context_costs = require("lib/cost/context-costs")
 local common = require("randomizations/graph/unified/handler-helpers/entity")
 local military_rebalance = require("randomizations/graph/unified/handler-helpers/military")
 
@@ -647,10 +647,12 @@ local function trigger_action(graph, base)
     return "capturing " .. owner_name
 end
 
--- Cost of the item in the base game (lib/cost/material-costs), or nil if unknown
+-- Cost of the item before randomization, from the logic graph's prices with every surface as one place (graph_cost.material_costs_anywhere), or nil if nothing makes it
+-- Items this mod makes, like planet copies, get theirs the same way as vanilla ones
 local function item_cost(item_name)
-    local cost = material_costs.costs[key("item", item_name)]
-    if type(cost) == "number" and cost > 0 then
+    assert(context_costs.current ~= nil, "Entity randomization prices items with the costs derived for this game (graph_cost.derive_cost_options), which aren't there yet")
+    local cost = context_costs.current.anywhere_costs["item-" .. item_name]
+    if cost ~= nil and cost > 0 then
         return cost
     end
     return nil
@@ -684,7 +686,7 @@ local function starting_entity(entity_name)
     return nil
 end
 
--- Cost of what mining an entity gave (lib/cost/material-costs), or nil if nothing it gives has a known cost
+-- Cost of what mining an entity gave (item_cost), or nil if nothing it gives has a known cost
 local function mining_yield_cost(prototype)
     if prototype == nil or prototype.minable == nil then
         return nil

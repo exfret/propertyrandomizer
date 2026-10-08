@@ -648,7 +648,8 @@ context_costs.novelty = function(info, context, set, newer_resources, item_recip
     return set.novelty[view_key]
 end
 
--- The costs derived for this game (set by graph_cost.derive_cost_options), for recipe randomization to price with
+-- The costs derived for this game (set by graph_cost.derive_cost_options), for recipe randomization's pricing
+-- Their anywhere_costs (graph_cost.material_costs_anywhere) price materials with every surface as one place, for comparing costs without a surface, as entity randomization does
 context_costs.current = nil
 
 return context_costs
