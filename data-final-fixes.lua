@@ -715,6 +715,8 @@ data:extend({
             ["total"] = total,
             -- Whether the mechanic context check found nothing a player needs lost (see skeleton/check.lua)
             ["check_ok"] = final_check_ok,
+            -- The limits on planetary changes the game breaks, which the panel lists in red (planetary.broken_limits)
+            ["broken_limits"] = planetary.broken_limits(),
         }
     }
 })

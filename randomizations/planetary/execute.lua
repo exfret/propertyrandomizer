@@ -1755,6 +1755,24 @@ planetary.check_final = function(graph)
     return false
 end
 
+-- The limits the user set on planetary changes that the finished game breaks, as LocalisedStrings that the randomizer panel lists in red (dev/run-tests.py fails such a game as well)
+-- They're more extra patches than resources.MAX_EXTRA_PATCHES_PER_PLANET allows, and more conversions than scaffolds.MAX_CONVERSIONS
+-- A broken limit isn't a softlock, so the game still loads as it is
+planetary.broken_limits = function()
+    local broken = {}
+    local patches, max_patches = resources.extra_patches()
+    if patches ~= nil and #patches > max_patches then
+        log("Planetary limits: " .. #patches .. " extra patches on " .. resources.num_planets .. " planets, past the limit of " .. max_patches .. " (listed in red on the randomizer panel)")
+        table.insert(broken, localised_text.get("propertyrandomizer-gui.extra-patches-over-limit", #patches, resources.num_planets, max_patches))
+    end
+    local conversions = scaffolds.conversions()
+    if #conversions > scaffolds.MAX_CONVERSIONS then
+        log("Planetary limits: " .. #conversions .. " conversions, past the limit of " .. scaffolds.MAX_CONVERSIONS .. " (listed in red on the randomizer panel)")
+        table.insert(broken, localised_text.get("propertyrandomizer-gui.conversions-over-limit", #conversions, scaffolds.MAX_CONVERSIONS))
+    end
+    return broken
+end
+
 -- Checks the game an attempt of the rest of randomization built against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK attempt)
 -- The attempt's logic graph comes with sort_info, its sort with room/ability and home contexts, which is only redone if its home sets aren't the stages' own
 -- Outside superposed mode (where planetary.settle does this) the stages repaired their changes before the rest of randomization ran, so an attempt that loses what they kept is retried like one that fails UNIFIEDCHECK (see data-final-fixes.lua)

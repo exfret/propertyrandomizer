@@ -39,6 +39,9 @@ local sets_made = {}
 resources.repair_controls = {}
 -- How many planets the latest resource swap worked on, or nil before any
 resources.num_planets = nil
+-- The user's limit (2026-10-01): at most half an extra patch per planet resource swaps work on, so 7 for the 15 planets of two copies each
+-- A game past it is listed in red on the randomizer panel (planetary.broken_limits), and dev/run-tests.py fails it as a hard limit
+resources.MAX_EXTRA_PATCHES_PER_PLANET = 0.5
 
 -- The two patch counts the helper keeps per autoplace set, as noise expressions named after the set
 local count_suffixes = {
@@ -855,11 +858,11 @@ resources.execute = function(id)
     return slots, assignment, lost
 end
 
--- Logs the extra patches the planets have, and how many planets resource swaps work on (PLANETCHECK extra patches, which dev/run-tests.py holds to half a patch per planet)
+-- The extra patches the planets have, as a sorted list of their slider names, and the most the game may have (see resources.MAX_EXTRA_PATCHES_PER_PLANET), or nil before any resource swap
 -- A patch counts while its planet lists its slider: taking a repair back out (resources.remove_repair) leaves the slider prototype in data.raw
-resources.log_extra_patches = function()
+resources.extra_patches = function()
     if resources.num_planets == nil then
-        return
+        return nil
     end
     local names = {}
     for _, control_name in pairs(sorted_keys(resources.repair_controls)) do
@@ -869,11 +872,20 @@ resources.log_extra_patches = function()
             table.insert(names, control_name)
         end
     end
+    return names, math.floor(resources.MAX_EXTRA_PATCHES_PER_PLANET * resources.num_planets)
+end
+
+-- Logs the extra patches the planets have, how many planets resource swaps work on, and the limit (PLANETCHECK extra patches, which dev/run-tests.py holds the game to)
+resources.log_extra_patches = function()
+    local names, limit = resources.extra_patches()
+    if names == nil then
+        return
+    end
     local listed = ""
     if #names > 0 then
         listed = ": " .. table.concat(names, ", ")
     end
-    log("PLANETCHECK extra patches: " .. #names .. " on " .. resources.num_planets .. " planets" .. listed)
+    log("PLANETCHECK extra patches: " .. #names .. " on " .. resources.num_planets .. " planets (at most " .. limit .. ")" .. listed)
 end
 
 return resources

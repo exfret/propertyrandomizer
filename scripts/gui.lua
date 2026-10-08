@@ -361,6 +361,10 @@ local function toggle_randomizer_panel(event)
         reachability_text = {"propertyrandomizer-gui.science-reachable", tostring(total)}
     end
     local home_flow_reachability = home_flow.add({type = "label", name = "randomizer-home-flow-reachability", caption = reachability_text})
+    -- Limits on planetary changes the game breaks (planetary.broken_limits), each a red line: not a softlock, but a game the tests fail
+    for ind, caption in pairs(prototypes.mod_data["propertyrandomizer-reachability-data"].data["broken_limits"] or {}) do
+        home_flow.add({type = "label", name = "randomizer-home-flow-broken-limit-" .. ind, caption = caption})
+    end
     -- What randomization warned about at startup (randomization_info.warnings, smuggled by data-final-fixes.lua), without the chat-style prefix each one starts with
     for data, _ in pairs(prototypes.item["propertyrandomizer-warnings"].get_entity_type_filters(defines.selection_mode.select)) do
         local _, warnings = serpent.load(data)

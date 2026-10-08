@@ -389,8 +389,8 @@ scaffolds.forget = function()
     scaffolds.kept = {}
 end
 
--- Logs how many conversions the game has (PLANETCHECK conversions, which dev/run-tests.py holds to scaffolds.MAX_CONVERSIONS)
-scaffolds.log_conversions = function()
+-- The conversion recipes the game has, as a sorted list of their names
+scaffolds.conversions = function()
     local names = {}
     for name, _ in pairs(scaffolds.conversion_names) do
         if data.raw.recipe[name] ~= nil then
@@ -398,6 +398,12 @@ scaffolds.log_conversions = function()
         end
     end
     table.sort(names)
+    return names
+end
+
+-- Logs how many conversions the game has (PLANETCHECK conversions, which dev/run-tests.py holds to scaffolds.MAX_CONVERSIONS)
+scaffolds.log_conversions = function()
+    local names = scaffolds.conversions()
     local listed = ""
     if #names > 0 then
         listed = ": " .. table.concat(names, ", ")

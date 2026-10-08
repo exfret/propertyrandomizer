@@ -142,6 +142,15 @@ prototypes = {
                 reachable = 0,
                 total = 0,
                 check_ok = true,
+                -- A limit the finished game broke (planetary.broken_limits), which the home tab lists in red
+                broken_limits = {
+                    {
+                        "propertyrandomizer-gui.extra-patches-over-limit",
+                        "16",
+                        "15",
+                        "7",
+                    },
+                },
             },
         },
     },
@@ -195,6 +204,9 @@ end
 handlers["randomizer-panel"]({player_index = 1})
 local panel = game.players[1].gui.screen["randomizer-main-panel"]
 assert(find(panel, "randomizer-home-flow-caption").style.single_line == false)
+local broken_limit = find(panel, "randomizer-home-flow-broken-limit-1")
+assert(broken_limit ~= nil and broken_limit.caption[1] == "propertyrandomizer-gui.extra-patches-over-limit" and broken_limit.caption[2] == "16", "a broken limit gets its own line on the home tab")
+assert(broken_limit.style.single_line == false, "a broken limit's line wraps like the rest of the home tab")
 assert(find(panel, "randomizer-explorer-intro").style.maximal_width < 1920)
 local category = find(panel, "randomizer-explorer-type-choice")
 category.selected_index = 9
