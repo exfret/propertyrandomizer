@@ -25,6 +25,7 @@ local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
+local replacement_fuel = require("randomizations/graph/unified/skeleton/replacement-fuel")
 local item_fluid = require("lib/item-fluid")
 local deposit_copies = require("lib/deposit-copies")
 local protection = require("randomizations/graph/unified/skeleton/protection")
@@ -299,6 +300,8 @@ first_pass.execute = function(params)
     -- Sends a slot to the base that connects it to a trav, and a trav to its head
     local slot_to_base = {}
     local trav_to_head = {}
+    -- Coal's identity --> its fuel node, which it has an edge to only where it's matched away from coal's slot (see replacement_fuel)
+    local identity_fuel = {}
     for node_key, _ in pairs(node_in_sorted) do
         local node = split_graph.nodes[node_key]
         node.slot = true
@@ -343,11 +346,14 @@ first_pass.execute = function(params)
             gutils.redirect_edge_stop(split_graph, pre, key(trav))
         end
         local fixed_dep = {}
-        -- Whatever replaces coal becomes a fuel like coal (see dutils.replacement_gets_fuel), so that fuel stays on coal's slot, and coal's identity gets its own edge since it's still a fuel wherever it goes
-        -- Otherwise coal's identity would be pinned to the earliest slots wherever proofs need early fuel
-        local replacement_fuel
+        -- Whatever replaces coal becomes a fuel like coal (see dutils.replacement_gets_fuel), so that fuel stays on coal's slot
+        -- Otherwise coal's identity would be pinned to the earliest slots wherever proofs need early fuel; it's still a fuel wherever it goes, but only gets its own edge away from coal's slot (see replacement_fuel)
+        local replacement_fuel_key
         if node.type == "item" and dutils.replacement_gets_fuel(node.name) then
-            replacement_fuel = key("fuel-category", gutils.concat({ dutils.REPLACEMENT_FUEL_CATEGORY, 0 }))
+            replacement_fuel_key = key("fuel-category", gutils.concat({
+                dutils.REPLACEMENT_FUEL_CATEGORY,
+                0,
+            }))
         end
         local keeps_replacement_fuel = false
         for dep, _ in pairs(node.dep) do
@@ -356,7 +362,7 @@ first_pass.execute = function(params)
                 depnode = gutils.unique_depnode(split_graph, depnode)
             end
             local always_on_slot = randomization_info.options.first_pass.always_slot_dep[key(node.type, depnode.type)] ~= nil
-            if key(depnode) == replacement_fuel then
+            if key(depnode) == replacement_fuel_key then
                 always_on_slot = true
                 keeps_replacement_fuel = true
             end
@@ -369,7 +375,7 @@ first_pass.execute = function(params)
             gutils.redirect_edge_start(split_graph, dep, key(trav))
         end
         if keeps_replacement_fuel then
-            gutils.add_edge(split_graph, key(trav), replacement_fuel)
+            identity_fuel[key(trav)] = replacement_fuel_key
         end
 
         -- The slot --> trav edge, cut into a base and head, is what gets rewired to match slots and travs
@@ -613,12 +619,13 @@ first_pass.execute = function(params)
         end
         return form_change_memo[slot_key][identity.type]
     end
-    -- Besides coupled heads, a position holding an identity of the other form has its recipes and resources rewired for the form (see item_fluid.rewire_form_change)
+    -- Besides coupled heads, a position holding an identity of the other form has its recipes and resources rewired for the form (see item_fluid.rewire_form_change), and coal's identity away from coal's slot is a fuel (see replacement_fuel)
     local function connect_pair_extra(graph, slot_key, trav_key)
         connect_coupled(graph, slot_key, trav_key)
         if config.item_fluids then
             item_fluid.rewire_form_change(graph, slot_key, trav_key)
         end
+        replacement_fuel.connect(graph, slot_key, trav_key, identity_fuel)
     end
 
     -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)

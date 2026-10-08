@@ -748,8 +748,11 @@ local function realize(params, assignment)
 end
 
 matching.connect = connect
--- For tests (test-monotone-matching.lua)
+-- For tests (test-monotone-matching.lua, test-replacement-fuel.lua)
 matching.random_matching = random_matching
+matching.make_prover = make_prover
+matching.launch_chains = launch_chains
+matching.needs_from_proof = needs_from_proof
 
 ----------------------------------------------------------------------------------------------------
 -- Debt goals
