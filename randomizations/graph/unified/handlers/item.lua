@@ -785,6 +785,12 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                     if dutils.give_replacement_fuel(trav_item) then
                         trav_item.localised_description = {"", description, {"propertyrandomizer-status.combustible-green"}}
                     end
+                    -- A planet's copy of coal (independent deposits, lib/deposit-copies.lua) is named by its material and planet
+                    local place = slot_item.name
+                    if slot_item.deposit_copy_of ~= nil then
+                        place = slot_item.deposit_copy_of .. " on " .. tostring(slot_item.deposit_planet)
+                    end
+                    log("Item randomization: " .. trav_item.name .. " takes the place of " .. place .. ", so it's a " .. dutils.REPLACEMENT_FUEL_CATEGORY .. " fuel (" .. tostring(trav_item.fuel_value) .. ")")
 
                     -- TODO: Figure out a better way to do this
                     -- Another py compat hot patch: Make it produce ash to guarantee a good way of getting that

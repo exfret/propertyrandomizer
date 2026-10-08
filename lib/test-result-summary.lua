@@ -278,4 +278,57 @@ test("prototypes a step added are only counted when given as unlisted", function
     assert(line_starting("RESULT 1 changed or new prototypes aren't listed: copies") ~= nil, table.concat(logged, "\n"))
 end)
 
+test("an item that becomes a fuel shows its fuel categories and fuel value, like whatever replaces coal", function()
+    local before = new_raw()
+    local raw = deepcopy(before)
+    raw.item.casing.fuel_categories = {
+        "chemical",
+    }
+    raw.item.casing.fuel_value = "4MJ"
+    result_summary.log(before, raw)
+    local line = line_starting("RESULT item casing")
+    assert(line ~= nil and string.find(line, "fuel category: none -> chemical (4MJ)", 1, true) ~= nil, tostring(line))
+end)
+
+test("a deposit's clone on another planet is compared with the deposit it copies, and says which planet it's on, by its shown name", function()
+    local before = new_raw()
+    before.resource = {
+        coal = {
+            type = "resource",
+            name = "coal",
+            minable = {
+                result = "coal",
+            },
+        },
+    }
+    before.planet = {
+        vulcanus = {
+            type = "planet",
+            name = "vulcanus",
+        },
+    }
+    local raw = deepcopy(before)
+    raw.planet.vulcanus.localised_name = "Glebus"
+    raw.resource["coal-on-vulcanus"] = {
+        type = "resource",
+        name = "coal-on-vulcanus",
+        minable = {
+            result = "gate",
+        },
+        deposit_clone_of = "coal",
+        deposit_planet = "vulcanus",
+    }
+    local expected = "RESULT resource coal-on-vulcanus (coal on vulcanus \"Glebus\"): mined into: 1 coal -> 1 gate"
+    result_summary.log(before, raw)
+    assert(line_starting("RESULT resource coal-on-vulcanus") == expected, tostring(line_starting("RESULT resource coal-on-vulcanus")))
+    -- The deposit it copies kept what it mines, so it isn't listed
+    assert(line_starting("RESULT resource coal:") == nil)
+    -- Without the planetary stages, the game it's compared with is the one deposit copies started from, which has the clone already, mining what the deposit mined
+    logged = {}
+    before.resource["coal-on-vulcanus"] = deepcopy(raw.resource["coal-on-vulcanus"])
+    before.resource["coal-on-vulcanus"].minable.result = "coal"
+    result_summary.log(before, raw)
+    assert(line_starting("RESULT resource coal-on-vulcanus") == expected, tostring(line_starting("RESULT resource coal-on-vulcanus")))
+end)
+
 print(num_passed .. " tests passed")

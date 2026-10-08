@@ -326,6 +326,19 @@ local function mined_text(prot, raw)
     return text
 end
 
+-- An item's fuel: its fuel categories (ItemPrototype::fuel_categories in the 2.1 docs; 2.0's fuel_category is gone) and fuel value, or nil if it isn't a fuel
+-- Like whatever replaces coal on its deposit, which becomes a chemical fuel (dutils.give_replacement_fuel)
+local function fuel_text(prot)
+    local text = sorted_text(prot.fuel_categories)
+    if text == nil then
+        return nil
+    end
+    if prot.fuel_value ~= nil then
+        text = text .. " (" .. tostring(prot.fuel_value) .. ")"
+    end
+    return text
+end
+
 local function spoil_text(prot)
     if (prot.spoil_ticks or 0) <= 0 then
         return nil
@@ -445,9 +458,7 @@ local PROPERTIES = {
     },
     {
         label = "fuel category",
-        show = function(prot)
-            return name_text(prot.fuel_category)
-        end,
+        show = fuel_text,
     },
     {
         label = "mined into",
@@ -651,11 +662,20 @@ result_summary.log = function(before_raw, raw, unlisted)
             for _, name in pairs(sorted_names(raw[class])) do
                 local prot = raw[class][name]
                 local before = (before_raw[class] or {})[name]
+                -- A deposit's clone on another planet (independent deposits, randomizations/graph/unified/deposit-copies.lua) says which deposit it copies and on which planet, and is compared with that deposit where the game before randomization doesn't have the clone yet (the one before the planetary stages)
+                local origin = ""
+                if prot.deposit_clone_of ~= nil then
+                    before = before or (before_raw[class] or {})[prot.deposit_clone_of]
+                    origin = " (" .. prot.deposit_clone_of .. " on " .. quoted_name(raw, (raw.planet or {})[prot.deposit_planet], tostring(prot.deposit_planet)) .. ")"
+                end
+                if before == nil then
+                    origin = " (new)"
+                end
                 local changes = changes_text(before ~= nil and other_fields(before_raw, before) or nil, other_fields(raw, prot))
                 if changes ~= nil and is_listed(class, name) then
                     num_others = num_others + 1
                     local shown = prot.localised_name ~= nil and (" \"" .. result_summary.text_of(prot.localised_name) .. "\"") or ""
-                    log(PREFIX .. class .. " " .. name .. shown .. (before == nil and " (new)" or "") .. ": " .. changes)
+                    log(PREFIX .. class .. " " .. name .. shown .. origin .. ": " .. changes)
                 end
             end
         end

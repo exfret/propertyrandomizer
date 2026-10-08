@@ -140,6 +140,9 @@ local function clone_resource(resource, planet_name, planets)
     clone.name = copies.clone_name(resource.name, planet_name)
     clone.localised_name = locale_utils.find_localised_name(resource)
     clone.localised_description = locale_utils.find_localised_description(resource)
+    -- The deposit it stands in for and its planet, so the result summary compares it with that deposit (lib/result-summary.lua)
+    clone.deposit_clone_of = resource.name
+    clone.deposit_planet = planet_name
     data:extend({
         clone,
     })
