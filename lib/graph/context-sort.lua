@@ -1311,6 +1311,8 @@ end
 -- Creates a path of inds within sort_info.sorted starting from the goal and going backwards for how to get there
 -- goal_inds is a list of inds in sort_info.sorted of the pebbles we are hoping to achieve
 -- The immediate option returns only the backing of the first goal, without inspecting its parents.
+-- extra_params.prefer(pre_ind, curr_ind) picks which prereq an OR node that keeps its context takes: a preferred one goes before the earliest, and may even come after the OR node's own pebble as long as it's before extra_params.prefer_before (default: the OR node's pebble)
+-- A later prereq can lead back to the OR node, so with prefer the result also has chosen (ind --> the inds it went on to), for checking that the path is still a derivation (see lib/logic/witness-recipes.lua), and preferred (OR pebble --> the preferred prereq it took over an earlier one)
 top.path = function(graph, goal_inds, sort_info, extra_params)
     local sorted = sort_info.sorted
     local node_to_context_inds = sort_info.node_to_context_inds
@@ -1324,6 +1326,13 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
         context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
     end
     local stop_if = extra_params.stop_if or function(pebble) return false end
+    local prefer = extra_params.prefer
+    local chosen
+    local preferred
+    if prefer ~= nil then
+        chosen = {}
+        preferred = {}
+    end
     -- Only needed for the discovery rule, so found when first used
     local room_discoverers = extra_params.immediate == true and sort_info.immediate_room_discoverers or nil
 
@@ -1349,18 +1358,30 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
                 -- Just try earliest prereq (could be suboptimal, but this is a good heuristic)
                 -- Start at curr_ind to more easily do error checking on indeed getting an earlier pebble
                 local first_occurrence_ind = curr_ind
+                -- Only nodes that keep their context: a forgetting node's prereqs are compared across contexts below
+                local can_prefer = prefer ~= nil and logic.type_info[node.type].context == nil
+                local prefer_before = extra_params.prefer_before or curr_ind
+                local preferred_ind
                 for pre, _ in pairs(node.pre) do
                     -- Need to check that context is non-nil since OR nodes can depend on later things/with different contexts
                     local pre_ind = edge_ind(context_info, node_to_context_inds, graph.edges[pre], context)
                     if pre_ind ~= nil and pre_ind < first_occurrence_ind then
                         first_occurrence_ind = pre_ind
                     end
+                    if can_prefer and pre_ind ~= nil and pre_ind < prefer_before and (preferred_ind == nil or pre_ind < preferred_ind) and prefer(pre_ind, curr_ind) then
+                        preferred_ind = pre_ind
+                    end
                 end
                 -- Make sure we found something/didn't loop
                 if first_occurrence_ind == curr_ind then
                     return false
                 end
-                table.insert(preinds, first_occurrence_ind)
+                if preferred_ind ~= nil and preferred_ind ~= first_occurrence_ind then
+                    preferred[curr_ind] = preferred_ind
+                    table.insert(preinds, preferred_ind)
+                else
+                    table.insert(preinds, first_occurrence_ind)
+                end
             elseif node.op == "AND" then
                 -- Add all previous pebbles to the path
                 for pre, _ in pairs(node.pre) do
@@ -1468,6 +1489,9 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             error()
         end
         if path_ind == 1 or not stop_if(curr_pebble) then
+            if chosen ~= nil then
+                chosen[curr_ind] = preinds
+            end
             for _, ind in pairs(preinds) do
                 if not in_path[ind] then
                     in_path[ind] = true
@@ -1485,6 +1509,8 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     return {
         path = path,
         in_path = in_path,
+        chosen = chosen,
+        preferred = preferred,
     }
 end
 

@@ -366,7 +366,14 @@ randomizations.rebuild_tech_tree = function()
     end
 
     -- The recipes with techs that the pebble at ind directly needs, going on through recipes without one (see lib/logic/witness-recipes.lua)
-    local function prev_recipes_of(ind)
+    -- For a recipe's tech, where the witness has a choice on the recipe's planet it takes what that planet can make from its own resources, even if that comes a bit later (context_sort_info is the sort without tech prerequisites that has those contexts)
+    -- Like a planet's own version of a boiler recipe over another planet's version it would have to import boilers from, so a planet's recipes come after that planet's own unlocks
+    -- Techs the logic needs (logic_needs below) and research methods (witness_recipes.research below) keep the earliest witness
+    local preference_stats = {}
+    local function prev_recipes_of(ind, prefer_local)
+        if prefer_local == true then
+            return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats)
+        end
         return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech)
     end
 
@@ -390,9 +397,9 @@ randomizations.rebuild_tech_tree = function()
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
-            recipe_to_prev[node.name] = prev_recipes_of(ind)
+            recipe_to_prev[node.name] = prev_recipes_of(ind, true)
         elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
-            needed_tech_to_prev[node.name] = prev_recipes_of(ind)
+            needed_tech_to_prev[node.name] = prev_recipes_of(ind, false)
         end
     end
     -- Preserve the research method actually copied, including its crafting/mining triggers.
@@ -450,6 +457,8 @@ randomizations.rebuild_tech_tree = function()
     local is_new_tech = {}
     -- Rebuilt tech --> the tech whose research it copies, for the check of the rebuilt game
     local new_tech_sources = {}
+    -- Rebuilt tech --> the recipe it unlocks
+    local new_tech_recipes = {}
     local copied_trigger_sources = {}
     for recipe_name, prev_recipes in pairs(recipe_to_prev) do
         local recipe = data.raw.recipe[recipe_name]
@@ -472,6 +481,7 @@ randomizations.rebuild_tech_tree = function()
             end
             is_new_tech["exfret-rebuilt-" .. recipe_name .. "-suffix"] = true
             new_tech_sources["exfret-rebuilt-" .. recipe_name .. "-suffix"] = recipe_to_source_tech[recipe_name]
+            new_tech_recipes["exfret-rebuilt-" .. recipe_name .. "-suffix"] = recipe_name
             local new_tech = {
                 type = "technology",
                 name = "exfret-rebuilt-" .. recipe_name .. "-suffix",
@@ -635,6 +645,50 @@ randomizations.rebuild_tech_tree = function()
             end
             log(message .. "; the rebuilt game still lost " .. #still_lost .. " contexts the game had, which leaving out prerequisites doesn't bring back (e.g. " .. table.concat(examples, "; ") .. ")")
         end
+    end
+    -- How preferring a planet's own recipes worked out (see prev_recipes_of), and the prerequisites left that unlock a recipe for elsewhere
+    if context_sort_info ~= nil then
+        -- Rooms a recipe can be made in, from the sort without tech prerequisites (its contexts are rooms)
+        local function rooms_of(recipe_name)
+            return no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
+        end
+        local num_elsewhere = 0
+        local examples = {}
+        local tech_names_sorted = {}
+        for tech_name, _ in pairs(new_tech_recipes) do
+            table.insert(tech_names_sorted, tech_name)
+        end
+        table.sort(tech_names_sorted)
+        for _, tech_name in pairs(tech_names_sorted) do
+            local recipe_name = new_tech_recipes[tech_name]
+            local rooms = rooms_of(recipe_name)
+            for _, prereq in pairs((data.raw.technology[tech_name] or {}).prerequisites or {}) do
+                local prereq_recipe = new_tech_recipes[prereq]
+                if prereq_recipe ~= nil then
+                    local shares_room = false
+                    for room, _ in pairs(rooms_of(prereq_recipe)) do
+                        if rooms[room] ~= nil then
+                            shares_room = true
+                            break
+                        end
+                    end
+                    if not shares_room then
+                        num_elsewhere = num_elsewhere + 1
+                        if #examples < 5 then
+                            table.insert(examples, recipe_name .. " after " .. prereq_recipe)
+                        end
+                    end
+                end
+            end
+        end
+        local message = "Tech tree rebuild: " .. (preference_stats.preferred or 0) .. " techs took a prerequisite their recipe's planet makes itself over an earlier one from elsewhere"
+        message = message .. ", " .. (preference_stats.dropped or 0) .. " passed over a planet's own way that needs what it was picked for or something from elsewhere"
+        message = message .. " (" .. (preference_stats.gave_up or 0) .. " gave up and took the earliest everywhere)"
+        message = message .. "; " .. num_elsewhere .. " prerequisites unlock a recipe that can't be made anywhere their tech's recipe can"
+        if #examples > 0 then
+            message = message .. " (e.g. " .. table.concat(examples, "; ") .. ")"
+        end
+        log(message)
     end
     trigger_promises.rebuild(data.raw.technology, copied_trigger_sources)
     if config.operation_readiness == true then
