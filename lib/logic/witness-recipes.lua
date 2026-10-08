@@ -122,7 +122,9 @@ end
 -- A later choice can need what it was chosen for (like a recipe that needs the item it makes), and then the witness isn't a way to get there; and its route can leave the room's own resources after all (see nonlocal_choices)
 -- Such a choice is dropped, and the witness found again with the next option there
 -- Counts go in stats if it's given: witnesses that took a room's own option over an earlier one somewhere (stats.preferred), that dropped a choice (stats.dropped), and that still had one to drop after MAX_ROUNDS and so took the earliest options everywhere (stats.gave_up)
-witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info, stats)
+-- With keeps_place(tech_name), the second result is the set of techs on the witness that keep their place in the rebuild (like a planet's discovery), which the pebble needs as themselves
+-- The witness still goes on through them, so the recipes are the same either way
+witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info, stats, keeps_place)
     local function has_tech(node_key)
         local node = graph.nodes[node_key]
         return node.type == "recipe" and gets_tech(node.name)
@@ -187,22 +189,27 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
         path_info = top.path(graph, {ind}, sort_info, params)
     end
     local recipes = {}
+    local techs = {}
     for other_ind, _ in pairs(path_info.in_path) do
         -- Don't count ind itself
         if other_ind < ind then
             local other_key = sort_info.sorted[other_ind].node_key
+            local other_node = graph.nodes[other_key]
             if has_tech(other_key) then
-                recipes[graph.nodes[other_key].name] = true
+                recipes[other_node.name] = true
+            elseif keeps_place ~= nil and other_node.type == "technology" and keeps_place(other_node.name) then
+                techs[other_node.name] = true
             end
         end
     end
-    return recipes
+    return recipes, techs
 end
 
 -- Use the research method actually copied onto the rebuilt technology.
 -- A recipe's earliest witness can use another unlocking technology or a fixed recipe instead.
 -- Technology prerequisites have already been removed from this graph, leaving the recipes needed for the science packs or the research trigger itself.
-witness_recipes.research = function(graph, sort_info, tech_name, gets_tech)
+-- With keeps_place, the techs on it that keep their place come second, as in witness_recipes.of
+witness_recipes.research = function(graph, sort_info, tech_name, gets_tech, keeps_place)
     local first
     for _, ind in pairs(sort_info.node_to_context_inds[gutils.key("technology", tech_name)] or {}) do
         if first == nil or ind < first then
@@ -212,7 +219,7 @@ witness_recipes.research = function(graph, sort_info, tech_name, gets_tech)
     if first == nil then
         return nil
     end
-    return witness_recipes.of(graph, sort_info, first, gets_tech)
+    return witness_recipes.of(graph, sort_info, first, gets_tech, nil, nil, keeps_place)
 end
 
 -- Add a research witness only if its prerequisites preserve contexts and cannot lead back to the recipe being unlocked.

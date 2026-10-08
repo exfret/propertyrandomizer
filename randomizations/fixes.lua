@@ -365,18 +365,6 @@ randomizations.rebuild_tech_tree = function()
         return data.raw.recipe[recipe_name].enabled == false and (recipe_to_unit[recipe_name] ~= nil or recipe_to_research_trigger[recipe_name] ~= nil)
     end
 
-    -- The recipes with techs that the pebble at ind directly needs, going on through recipes without one (see lib/logic/witness-recipes.lua)
-    -- For a recipe's tech, where the witness has a choice on the recipe's planet it takes what that planet can make from its own resources, even if that comes a bit later (context_sort_info is the sort without tech prerequisites that has those contexts)
-    -- Like a planet's own version of a boiler recipe over another planet's version it would have to import boilers from, so a planet's recipes come after that planet's own unlocks
-    -- Techs the logic needs (logic_needs below) and research methods (witness_recipes.research below) keep the earliest witness
-    local preference_stats = {}
-    local function prev_recipes_of(ind, prefer_local)
-        if prefer_local == true then
-            return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats)
-        end
-        return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech)
-    end
-
     -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
     -- A random prereq could need what the tech itself gives (like one of the discovered planet's science packs), which would make it unresearchable, and shifted worlds (randomizations/planetary) move which techs those are
     local function logic_needs(tech_node)
@@ -392,14 +380,76 @@ randomizations.rebuild_tech_tree = function()
         return false
     end
 
+    -- Whether a tech on the witness of recipe_name (nil for a tech's witness) is needed as itself: it keeps its place (see logic_needs), so like a planet's discovery it stays in the tree, and what needs it should need it rather than only what its research needs
+    -- Without this, a recipe made only on one planet came right after the science packs that planet's discovery takes, not after the discovery
+    -- Not a kept alternate path that still unlocks recipe_name itself (see retained_unlocks): that's the recipe's own unlock, which its rebuilt tech stands for
+    local function needed_tech_for(recipe_name)
+        return function(tech_name)
+            if recipe_name ~= nil and (retained_unlocks[tech_name] or {})[recipe_name] ~= nil then
+                return false
+            end
+            return data.raw.technology[tech_name] ~= nil and logic_needs(graph.nodes[gutils.key("technology", tech_name)])
+        end
+    end
+
+    -- The recipes with techs that the pebble at ind directly needs, going on through recipes without one (see lib/logic/witness-recipes.lua), and second the techs the logic needs on the way (see needed_tech_for)
+    -- For a recipe's tech, where the witness has a choice on the recipe's planet it takes what that planet can make from its own resources, even if that comes a bit later (context_sort_info is the sort without tech prerequisites that has those contexts)
+    -- Like a planet's own version of a boiler recipe over another planet's version it would have to import boilers from, so a planet's recipes come after that planet's own unlocks
+    -- Techs the logic needs (logic_needs above) and research methods (witness_recipes.research below) keep the earliest witness
+    local preference_stats = {}
+    local function prev_recipes_of(ind, prefer_local)
+        local node = graph.nodes[no_tech_sort_info.sorted[ind].node_key]
+        local needed_tech = needed_tech_for(node.type == "recipe" and node.name or nil)
+        if prefer_local == true then
+            return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats, needed_tech)
+        end
+        return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, nil, nil, needed_tech)
+    end
+
+    -- When the sort without tech prerequisites first reached room (a context of it), as an index in it, or nil
+    local function room_reached(room)
+        local first
+        for _, ind in pairs(no_tech_sort_info.node_to_context_inds[gutils.key("room", room)] or {}) do
+            if first == nil or ind < first then
+                first = ind
+            end
+        end
+        return first
+    end
+    -- The pebble a recipe's witness starts from: its first one, or one the sort added in the same step in a room it reached sooner
+    -- The sort adds a node's pebbles from one step next to each other, in whatever order it lists their contexts, so which of those comes first says nothing about the recipe
+    -- Like a recipe whose tech comes once both Nauvis and Vulcanus can make it: its witness on Vulcanus would make it need Vulcanus's discovery (see needed_tech_for)
+    local num_sooner_rooms = 0
+    local function witness_ind(first_ind)
+        local sorted = no_tech_sort_info.sorted
+        local best_ind = first_ind
+        local best_reached = room_reached(sorted[first_ind].context)
+        local ind = first_ind + 1
+        while sorted[ind] ~= nil and sorted[ind].node_key == sorted[first_ind].node_key do
+            local reached = room_reached(sorted[ind].context)
+            if reached ~= nil and (best_reached == nil or reached < best_reached) then
+                best_ind = ind
+                best_reached = reached
+            end
+            ind = ind + 1
+        end
+        if best_ind ~= first_ind then
+            num_sooner_rooms = num_sooner_rooms + 1
+        end
+        return best_ind
+    end
+
     local recipe_to_prev = {}
     local needed_tech_to_prev = {}
+    -- The techs the logic needs that each recipe's or needed tech's witness passes (see needed_tech_for), which become prerequisites below
+    local recipe_to_needed = {}
+    local needed_tech_to_needed = {}
     for ind, node_info in pairs(no_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
-            recipe_to_prev[node.name] = prev_recipes_of(ind, true)
+            recipe_to_prev[node.name], recipe_to_needed[node.name] = prev_recipes_of(witness_ind(ind), true)
         elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
-            needed_tech_to_prev[node.name] = prev_recipes_of(ind, false)
+            needed_tech_to_prev[node.name], needed_tech_to_needed[node.name] = prev_recipes_of(ind, false)
         end
     end
     -- Preserve the research method actually copied, including its crafting/mining triggers.
@@ -411,16 +461,24 @@ randomizations.rebuild_tech_tree = function()
     end
     table.sort(research_recipes)
     local research_requirements = {}
+    local research_needed = {}
     for _, recipe_name in pairs(research_recipes) do
         local source = recipe_to_source_tech[recipe_name]
         if research_requirements[source] == nil then
-            research_requirements[source] = witness_recipes.research(graph, no_tech_sort_info, source, gets_tech)
+            research_requirements[source], research_needed[source] = witness_recipes.research(graph, no_tech_sort_info, source, gets_tech, needed_tech_for(nil))
         end
         local requirements = research_requirements[source]
         if requirements == nil or not witness_recipes.extend(recipe_to_prev, recipe_name, requirements, function(pre, target)
             return covers(recipe_to_source_tech[pre], recipe_to_source_tech[target], target)
         end) then
             log("Research tech: couldn't add research prerequisites for " .. recipe_name .. " without a missing witness, dependency cycle, or lost context")
+        end
+        -- The techs the logic needs on the research (like the discovery of the planet a trigger happens on) go in with the others below, whether or not its recipes could
+        local is_needed = needed_tech_for(recipe_name)
+        for tech_name, _ in pairs(research_needed[source] or {}) do
+            if is_needed(tech_name) then
+                recipe_to_needed[recipe_name][tech_name] = true
+            end
         end
     end
 
@@ -544,6 +602,85 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     log("Tech tree rebuild: " .. num_kept .. " prerequisites kept, " .. num_left_out .. " left out because they would take away a context")
+
+    -- The techs the logic needs on each witness (see needed_tech_for) go in last, like a planet's discovery for a recipe made only there
+    -- Each only if it can't take away a context (see covers) or make a cycle: what a needed tech needs comes before it, but a research witness above can add a prerequisite reached after its tech, and the needed tech's own prerequisites can need that one
+    -- Whether tech_name's tech needs target_name's, through prerequisites
+    local function needs(tech_name, target_name)
+        local seen = {}
+        local pending = { tech_name }
+        while #pending > 0 do
+            local current = table.remove(pending)
+            if current == target_name then
+                return true
+            end
+            if not seen[current] then
+                seen[current] = true
+                for _, prereq in pairs((data.raw.technology[current] or {}).prerequisites or {}) do
+                    table.insert(pending, prereq)
+                end
+            end
+        end
+        return false
+    end
+    local num_needed_added = 0
+    local num_needed_left_out = 0
+    local num_needed_cycles = 0
+    -- Tech name --> needed tech name --> why it isn't a prerequisite ("context" or "cycle"), or "added", for saying below why a tech still doesn't need its recipe's discovery
+    local needed_outcomes = {}
+    -- Adds needed tech prereq_name to tech_name's prerequisites, if covered(prereq_name) and it makes no cycle
+    local function add_needed(tech_name, prereq_name, covered)
+        local tech = data.raw.technology[tech_name]
+        if tech == nil or prereq_name == tech_name then
+            return
+        end
+        for _, prereq in pairs(tech.prerequisites or {}) do
+            if prereq == prereq_name then
+                return
+            end
+        end
+        needed_outcomes[tech_name] = needed_outcomes[tech_name] or {}
+        if not covered(prereq_name) then
+            num_needed_left_out = num_needed_left_out + 1
+            needed_outcomes[tech_name][prereq_name] = "context"
+        elseif needs(prereq_name, tech_name) then
+            num_needed_cycles = num_needed_cycles + 1
+            needed_outcomes[tech_name][prereq_name] = "cycle"
+        else
+            tech.prerequisites = tech.prerequisites or {}
+            table.insert(tech.prerequisites, prereq_name)
+            num_needed_added = num_needed_added + 1
+            needed_outcomes[tech_name][prereq_name] = "added"
+        end
+    end
+    local function sorted_names(set)
+        local list = {}
+        for name, _ in pairs(set or {}) do
+            table.insert(list, name)
+        end
+        table.sort(list)
+        return list
+    end
+    for _, recipe_name in pairs(sorted_names(recipe_to_needed)) do
+        local tech_name = "exfret-rebuilt-" .. recipe_name .. "-suffix"
+        if is_new_tech[tech_name] then
+            for _, needed_name in pairs(sorted_names(recipe_to_needed[recipe_name])) do
+                add_needed(tech_name, needed_name, function(prereq_name)
+                    return recipe_to_source_tech[recipe_name] == nil or covers(prereq_name, recipe_to_source_tech[recipe_name], recipe_name)
+                end)
+            end
+        end
+    end
+    for _, tech_name in pairs(sorted_names(needed_tech_to_needed)) do
+        if not is_new_tech[tech_name] then
+            for _, needed_name in pairs(sorted_names(needed_tech_to_needed[tech_name])) do
+                add_needed(tech_name, needed_name, function(prereq_name)
+                    return covers(prereq_name, tech_name)
+                end)
+            end
+        end
+    end
+    log("Tech tree rebuild: " .. num_needed_added .. " prerequisites on techs the logic needs (like planet discoveries) added, " .. num_needed_left_out .. " left out because they would take away a context, " .. num_needed_cycles .. " because they would make a cycle; " .. num_sooner_rooms .. " recipes' prerequisites come from a room reached sooner than their first pebble's, which the sort reached in the same step")
 
     if mods["pyalternativeenergy"] then
         -- Make pyrrhic come after each later thing with some probability
@@ -690,6 +827,48 @@ randomizations.rebuild_tech_tree = function()
         end
         log(message)
     end
+    -- Rebuilt techs a player could research before reaching anywhere their recipe is made (see rebuild_check.undiscovered): the techs the logic needs above leave only those whose discovery would have taken away a context or made a cycle
+    local function recipe_rooms(recipe_name)
+        return no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
+    end
+    local undiscovered = rebuild_check.undiscovered(graph, data.raw.technology, new_tech_recipes, recipe_rooms)
+    -- Why, for the examples: the discovery wasn't on the recipe's witness, or it was left out above (to keep a context or for a cycle), or the check of the rebuilt game left it out
+    local undiscovered_examples = {}
+    for i = 1, math.min(5, #undiscovered) do
+        local rooms = recipe_rooms(undiscovered[i].recipe)
+        local reasons = {}
+        for needed_name, outcome in pairs(needed_outcomes[undiscovered[i].tech] or {}) do
+            local discovers_room = false
+            for _, discovered in pairs(top.discovered_rooms({
+                type = "technology",
+                name = needed_name,
+            })) do
+                if rooms[discovered.room] ~= nil then
+                    discovers_room = true
+                end
+            end
+            if discovers_room then
+                if outcome == "added" then
+                    outcome = "left out by the check"
+                elseif outcome == "context" then
+                    outcome = "left out to keep a context"
+                elseif outcome == "cycle" then
+                    outcome = "left out for a cycle"
+                end
+                table.insert(reasons, needed_name .. " " .. outcome)
+            end
+        end
+        table.sort(reasons)
+        if #reasons == 0 then
+            table.insert(reasons, "no discovery on its witness")
+        end
+        table.insert(undiscovered_examples, undiscovered[i].recipe .. " (" .. table.concat(reasons, ", ") .. ")")
+    end
+    local undiscovered_message = "Tech tree rebuild: " .. #undiscovered .. " techs unlock a recipe made only on planets they don't need the discovery of"
+    if #undiscovered_examples > 0 then
+        undiscovered_message = undiscovered_message .. " (e.g. " .. table.concat(undiscovered_examples, ", ") .. ")"
+    end
+    log(undiscovered_message)
     trigger_promises.rebuild(data.raw.technology, copied_trigger_sources)
     if config.operation_readiness == true then
         operation_unlocks.run()

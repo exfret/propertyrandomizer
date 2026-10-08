@@ -134,6 +134,85 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     return cuts
 end
 
+-- The rebuilt techs a player could research before reaching anywhere their recipe is made: the recipe is made only in rooms that need discovering, and the tech doesn't need a tech discovering any of them
+-- Like a recipe made only on Vulcanus whose tech doesn't need Vulcanus's discovery
+-- A room needs discovering when a tech discovers it (top.room_discoverers), unless it's the starting planet, whose room node the start reaches.
+-- Arguments: technologies is data.raw.technology, tech_recipes is rebuilt tech name --> its recipe's name, and recipe_rooms(recipe_name) is the set of rooms (context keys) where the recipe can be made
+-- Returns a list of { tech, recipe }, sorted by tech name
+rebuild_check.undiscovered = function(graph, technologies, tech_recipes, recipe_rooms)
+    -- Room --> set of the names of the techs discovering it, for the rooms that need discovering
+    local discoverers = {}
+    for room, discoverer_keys in pairs(top.room_discoverers(graph)) do
+        local from_start = false
+        local room_node = graph.nodes[gutils.key("room", room)]
+        for pre, _ in pairs(room_node ~= nil and room_node.pre or {}) do
+            if graph.nodes[graph.edges[pre].start].type == "starting-planet" then
+                from_start = true
+            end
+        end
+        if not from_start then
+            for _, discoverer_key in pairs(discoverer_keys) do
+                local discoverer = graph.nodes[discoverer_key]
+                if discoverer.type == "technology" then
+                    discoverers[room] = discoverers[room] or {}
+                    discoverers[room][discoverer.name] = true
+                end
+            end
+        end
+    end
+    -- Tech name --> set of the rooms it or a tech it needs discovers
+    local discovered = {}
+    local function discovered_by(tech_name)
+        if discovered[tech_name] == nil then
+            local rooms = {}
+            -- Set first, so that a cycle (which no researchable tree has) can't loop
+            discovered[tech_name] = rooms
+            for _, found in pairs(top.discovered_rooms({
+                type = "technology",
+                name = tech_name,
+            })) do
+                rooms[found.room] = true
+            end
+            for _, prereq in pairs((technologies[tech_name] or {}).prerequisites or {}) do
+                for room, _ in pairs(discovered_by(prereq)) do
+                    rooms[room] = true
+                end
+            end
+        end
+        return discovered[tech_name]
+    end
+    local found = {}
+    for tech_name, recipe_name in pairs(tech_recipes) do
+        if technologies[tech_name] ~= nil then
+            local rooms = recipe_rooms(recipe_name)
+            local all_discovered = next(rooms) ~= nil
+            for room, _ in pairs(rooms) do
+                if discoverers[room] == nil then
+                    all_discovered = false
+                end
+            end
+            if all_discovered then
+                local reached = false
+                for room, _ in pairs(rooms) do
+                    if discovered_by(tech_name)[room] ~= nil then
+                        reached = true
+                    end
+                end
+                if not reached then
+                    table.insert(found, {
+                        tech = tech_name,
+                        recipe = recipe_name,
+                    })
+                end
+            end
+        end
+    end
+    table.sort(found, function(a, b)
+        return a.tech < b.tech
+    end)
+    return found
+end
+
 -- Sorts the game as the rebuild left it in technologies (data.raw.technology, with the prerequisites technology_prerequisites.reduce keeps), and leaves out prerequisites until it keeps every pebble before_sort has, sorting again after each round
 -- full_prerequisites (tech name --> list) are the prerequisites before reduce; the ones left out come out of these lists, and technologies get them reduced again
 -- Returns the number of prerequisites left out, the number of rounds that left some out, and the pebbles still lost (see rebuild_check.lost)

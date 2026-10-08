@@ -174,6 +174,39 @@ test("copied research keeps its crafting witness when the recipe has another unl
     assert(witness_recipes.research(graph, sort_info, "unreachable-research", gets_tech) == nil)
 end)
 
+test("a tech the rebuild keeps on the witness comes back too, and the witness goes on through it", function()
+    -- A tool made in a workshop that only a discovery opens, researched with plates (like a recipe made only on a planet)
+    local graph = toy_graph()
+    logic.type_info.technology = logic.type_info.technology or {}
+    gutils.add_node(graph, "technology", "discover", { op = "AND" })
+    gutils.add_edge(graph, key("stuff", "plate"), key("technology", "discover"))
+    gutils.add_node(graph, "stuff", "workshop", { op = "OR" })
+    gutils.add_edge(graph, key("technology", "discover"), key("stuff", "workshop"))
+    gutils.add_node(graph, "recipe", "tool", { op = "AND" })
+    gutils.add_edge(graph, key("stuff", "workshop"), key("recipe", "tool"))
+    local sort_info = top.sort(graph)
+    local ind
+    for _, context_ind in pairs(sort_info.node_to_context_inds[key("recipe", "tool")]) do
+        if ind == nil or context_ind < ind then
+            ind = context_ind
+        end
+    end
+    local function keeps_place(tech_name)
+        return tech_name == "discover"
+    end
+    local recipes, techs = witness_recipes.of(graph, sort_info, ind, gets_tech, nil, nil, keeps_place)
+    -- The plates the discovery is researched with still count, since the witness goes on through it
+    assert(names(recipes) == "smelt")
+    assert(names(techs) == "discover")
+    -- Without keeps_place, or for a tech that doesn't keep its place, only the recipes
+    local plain_recipes, plain_techs = witness_recipes.of(graph, sort_info, ind, gets_tech)
+    assert(names(plain_recipes) == "smelt" and next(plain_techs) == nil)
+    local _, other_techs = witness_recipes.of(graph, sort_info, ind, gets_tech, nil, nil, function()
+        return false
+    end)
+    assert(next(other_techs) == nil)
+end)
+
 test("research prerequisites reject cycles and lost contexts without partially adding a witness", function()
     local prerequisites = {
         a = {},

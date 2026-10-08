@@ -581,3 +581,84 @@ do
     logic.home_sets = nil
 end
 print("ok - the rebuild check leaves out a prerequisite that takes away isolatability from the discovery rule")
+
+-- A recipe made only in room B, which a tech discovers, and a recipe made in either room
+-- The first one's rebuilt tech needs the discovery, not only the science pack the discovery takes: before, its witness went on through the discovery to the pack, and the tech could be researched before room B could be reached
+-- The second one's earliest way is in room A, so its tech doesn't need the discovery
+fixture({
+    ["test-b-recipe"] = "test-pack",
+    ["test-either-recipe"] = "test-pack",
+}, function(node)
+    local start = node("start", "", "AND")
+    local a = node("room", ROOM_A, "OR", { start })
+    node("item", "test-pack", "OR", { a })
+    local b = node("room", ROOM_B, "OR", { node("technology", "test-discover", "AND") })
+    recipe_node(node, "test-b-recipe", { node("item", "test-b-input", "OR", { b }) })
+    recipe_node(node, "test-either-recipe", {
+        node("item", "test-either-input", "OR", {
+            a,
+            b,
+        }),
+    })
+end)
+data.raw.technology["test-discover"] = {
+    type = "technology",
+    name = "test-discover",
+    effects = {
+        {
+            type = "unlock-space-location",
+            space_location = "test-b",
+        },
+    },
+    unit = {
+        count = 1,
+        ingredients = {
+            {
+                "test-pack",
+                1,
+            },
+        },
+    },
+}
+logic.contexts = {
+    [ROOM_A] = true,
+    [ROOM_B] = true,
+}
+before = sort()
+logged = {}
+randomizations.rebuild_tech_tree()
+assert(prerequisites("test-b-recipe")["test-discover"], "a recipe made only in a discovered room needs the room's discovery")
+assert(not prerequisites("test-either-recipe")["test-discover"], "a recipe whose earliest way is in the start room doesn't")
+assert(not data.raw.technology["test-discover"].hidden, "the discovery stays in the tree")
+assert_kept(before, sort(), "discovery")
+local reported = false
+for _, message in pairs(logged) do
+    if string.find(message, "Tech tree rebuild: 1 prerequisites on techs the logic needs", 1, true) ~= nil then
+        reported = true
+    end
+    assert(string.find(message, "techs unlock a recipe made only on planets they don't need the discovery of", 1, true) == nil or string.find(message, "Tech tree rebuild: 0 techs", 1, true) ~= nil, "no tech is left without its recipe's discovery: " .. message)
+end
+assert(reported, "the rebuild says how many needed techs it added")
+-- What the check of that counts: without the discovery, the tech could be researched before room B is reached
+logic.build()
+local tech_recipes = {
+    ["exfret-rebuilt-test-b-recipe-suffix"] = "test-b-recipe",
+    ["exfret-rebuilt-test-either-recipe-suffix"] = "test-either-recipe",
+}
+local recipe_rooms = {
+    ["test-b-recipe"] = {
+        [ROOM_B] = true,
+    },
+    ["test-either-recipe"] = {
+        [ROOM_A] = true,
+        [ROOM_B] = true,
+    },
+}
+local function rooms_of(recipe_name)
+    return recipe_rooms[recipe_name]
+end
+assert(#rebuild_check.undiscovered(logic.graph, data.raw.technology, tech_recipes, rooms_of) == 0, "the rebuilt tree leaves no tech without its recipe's discovery")
+data.raw.technology["exfret-rebuilt-test-b-recipe-suffix"].prerequisites = {}
+local undiscovered = rebuild_check.undiscovered(logic.graph, data.raw.technology, tech_recipes, rooms_of)
+assert(#undiscovered == 1 and undiscovered[1].recipe == "test-b-recipe", "a tech whose recipe is made only in a discovered room, without the discovery, is found")
+print("ok - a recipe made only in a discovered room needs the discovery")
