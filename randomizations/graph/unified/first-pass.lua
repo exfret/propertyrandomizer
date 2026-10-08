@@ -18,6 +18,8 @@ local FORM_SWAP_TRIALS = 12
 local FORM_SWAP_MAX = 8
 -- How many trades one trial gates at once (most pass; a failing batch's trades are gated one by one)
 local FORM_SWAP_BATCH = 4
+-- How many trades are tried first for each fluid deposit that mines nothing new after the rounds (with independent deposits, see is_resource_slot below)
+local FORM_SWAP_FIRST_TRIES = 3
 
 local constants = require("helper-tables/constants")
 local graph_customization = require("lib/graph-customization")
@@ -529,14 +531,15 @@ first_pass.execute = function(params)
         table.insert(slot_keys, slot_key)
     end
     table.sort(slot_keys)
-    -- Items that mining a resource gives, which should become something interesting whenever the matching allows it
-    local is_resource_item = {}
+    -- Materials that mining a resource gives, as material key --> true, which should become something interesting whenever the matching allows it (see is_resource_slot below)
+    local is_resource_material = {}
     for _, resource in pairs(data.raw.resource) do
         if resource.minable ~= nil then
             if resource.minable.result ~= nil then
-                is_resource_item[resource.minable.result] = true
+                is_resource_material[gutils.key("item", resource.minable.result)] = true
             elseif resource.minable.results ~= nil and #resource.minable.results == 1 then
-                is_resource_item[resource.minable.results[1].name] = true
+                local result = resource.minable.results[1]
+                is_resource_material[gutils.key(result.type or "item", result.name)] = true
             end
         end
     end
@@ -629,7 +632,9 @@ first_pass.execute = function(params)
     end
 
     -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)
-    local assignment, debt_goals = monotone_matching.run({
+    -- The trades below judge fluid deposits by the matching's own rule, with these parameters
+    local matching_params
+    matching_params = {
         slot_keys = slot_keys,
         unconnected_graph = split_graph,
         slot_to_base = slot_to_base,
@@ -637,9 +642,13 @@ first_pass.execute = function(params)
         pair_ok = pair_ok_with_entities,
         connection = connection,
         rounds = MONOTONE_MATCHING_ROUNDS,
+        -- Fluid deposits count too with independent deposits (user, 2026-10-07: fluid deposits should "also try to be something new"); few fluids do something on their own, so most of them get something new from a trade with an item position (form_swaps' first_for below)
         is_resource_slot = function(slot_key)
-            local slot = split_graph.nodes[slot_key]
-            return slot.type == "item" and is_resource_item[slot.name] == true
+            local material = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+            if material == nil or is_resource_material[item_fluid.material_key(material)] == nil then
+                return false
+            end
+            return material.type == "item" or config.deposit_copies == true
         end,
         -- With independent deposits, a deposit's new identity must also be new to its planets: another planet's copy of an ore its planet mines, or another of the planet's own materials, only relabels its deposits (lib/deposit-copies.lua's is_new_for)
         is_new_resource_pair = config.deposit_copies and function(slot_key, trav_key)
@@ -683,6 +692,7 @@ first_pass.execute = function(params)
             max_trials = FORM_SWAP_TRIALS,
             max_swaps = FORM_SWAP_MAX,
             batch = FORM_SWAP_BATCH,
+            first_tries = FORM_SWAP_FIRST_TRIES,
             form_of = function(node_key)
                 local material = item_fluid.material_of_node(split_graph, split_graph.nodes[node_key])
                 return material ~= nil and material.type or nil
@@ -707,6 +717,13 @@ first_pass.execute = function(params)
                 end
                 table.sort(item_slots)
                 table.sort(fluid_slots)
+                -- Fluid deposits that mine nothing new after the rounds (see is_resource_slot) try trades for an item that's new to them first
+                local needs_new = {}
+                for _, fluid_slot in pairs(fluid_slots) do
+                    if matching_params.is_resource_slot(fluid_slot) and not monotone_matching.is_new_resource_trav(matching_params, fluid_slot, assignment[fluid_slot]) then
+                        needs_new[fluid_slot] = true
+                    end
+                end
                 for _, item_slot in pairs(item_slots) do
                     local item_slot_node = split_graph.nodes[item_slot]
                     local item_trav = split_graph.nodes[assignment[item_slot]]
@@ -716,10 +733,15 @@ first_pass.execute = function(params)
                         local fluid_trav = split_graph.nodes[assignment[fluid_slot]]
                         local fluid_slot_node = split_graph.nodes[fluid_slot]
                         if cross_type_ok(fluid_slot_node, item_trav) and cross_type_ok(item_slot_node, fluid_trav) and pair_ok_with_entities(fluid_slot_node, item_trav) and pair_ok_with_entities(item_slot_node, fluid_trav) then
+                            local first_for
+                            if needs_new[fluid_slot] ~= nil and monotone_matching.is_new_resource_trav(matching_params, fluid_slot, assignment[item_slot]) then
+                                first_for = fluid_slot
+                            end
                             table.insert(candidates, {
                                 item_slot,
                                 fluid_slot,
                                 preferred = preferred,
+                                first_for = first_for,
                             })
                         end
                     end
@@ -727,7 +749,8 @@ first_pass.execute = function(params)
                 return candidates
             end,
         },
-    })
+    }
+    local assignment, debt_goals = monotone_matching.run(matching_params)
     local slot_to_trav = {}
     local trav_to_slot = {}
     for _, slot_key in pairs(slot_keys) do

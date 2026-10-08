@@ -325,4 +325,60 @@ test("a slot connects to its trav where the connection starts, with the connecti
     assert(edge ~= nil and edge.abilities[2] == false)
 end)
 
+test("trades that make a resource slot mine something new come first, a few for each slot, then preferred ones", function()
+    local candidates = {
+        {
+            "item-a",
+            "fluid-x",
+            preferred = true,
+        },
+        {
+            "item-b",
+            "fluid-y",
+            first_for = "fluid-y",
+        },
+        {
+            "item-c",
+            "fluid-y",
+            first_for = "fluid-y",
+        },
+        {
+            "item-d",
+            "fluid-z",
+            first_for = "fluid-z",
+        },
+        {
+            "item-e",
+            "fluid-x",
+        },
+        {
+            "item-f",
+            "fluid-y",
+            first_for = "fluid-y",
+            preferred = true,
+        },
+    }
+    local ordered, num_first, num_first_slots, num_preferred = matching.order_form_swaps(candidates, 2)
+    assert(num_first == 3 and num_first_slots == 2 and num_preferred == 2)
+    local order = {}
+    for _, candidate in pairs(ordered) do
+        table.insert(order, candidate[1])
+    end
+    -- fluid-y's first two tries and fluid-z's, then the preferred ones (fluid-y's third try among them), then the rest
+    assert(table.concat(order, " ") == "item-b item-c item-d item-a item-f item-e", table.concat(order, " "))
+    -- Without first_for, preferred candidates still come first
+    local plain = matching.order_form_swaps({
+        {
+            "item-e",
+            "fluid-x",
+        },
+        {
+            "item-a",
+            "fluid-x",
+            preferred = true,
+        },
+    })
+    assert(plain[1][1] == "item-a" and plain[2][1] == "item-e")
+end)
+
 print(num_passed .. " tests passed")

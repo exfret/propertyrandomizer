@@ -753,6 +753,64 @@ matching.random_matching = random_matching
 matching.make_prover = make_prover
 matching.launch_chains = launch_chains
 matching.needs_from_proof = needs_from_proof
+-- For first pass's trades between items and fluids, which judge resource slots by the same rule
+matching.is_new_resource_trav = is_new_resource_trav
+
+-- Orders form trade candidates (see params.form_swaps in matching.run), in the order given: those that make a resource slot mine something new first (at most first_tries for each such slot, 1 when nil), then preferred ones, then the rest
+-- Returns the ordered candidates, how many come first, for how many resource slots, and how many preferred ones follow them
+local function order_form_swaps(candidates, first_tries)
+    local ordered = {}
+    local is_ordered = {}
+    local tries = {}
+    local num_first_slots = 0
+    for i = 1, #candidates do
+        local slot_key = candidates[i].first_for
+        if slot_key ~= nil then
+            if tries[slot_key] == nil then
+                tries[slot_key] = 0
+                num_first_slots = num_first_slots + 1
+            end
+            if tries[slot_key] < (first_tries or 1) then
+                tries[slot_key] = tries[slot_key] + 1
+                table.insert(ordered, candidates[i])
+                is_ordered[i] = true
+            end
+        end
+    end
+    local num_first = #ordered
+    for i = 1, #candidates do
+        if not is_ordered[i] and candidates[i].preferred == true then
+            table.insert(ordered, candidates[i])
+            is_ordered[i] = true
+        end
+    end
+    local num_preferred = #ordered - num_first
+    for i = 1, #candidates do
+        if not is_ordered[i] then
+            table.insert(ordered, candidates[i])
+        end
+    end
+    return ordered, num_first, num_first_slots, num_preferred
+end
+matching.order_form_swaps = order_form_swaps
+
+-- How many resource slots (params.is_resource_slot) an assignment has, and how many of them mine something new (is_new_resource_trav)
+local function count_new_resources(params, assignment)
+    local num_resources = 0
+    local num_new = 0
+    if params.is_resource_slot == nil then
+        return num_resources, num_new
+    end
+    for slot_key, trav_key in pairs(assignment) do
+        if params.is_resource_slot(slot_key) then
+            num_resources = num_resources + 1
+            if is_new_resource_trav(params, slot_key, trav_key) then
+                num_new = num_new + 1
+            end
+        end
+    end
+    return num_resources, num_new
+end
 
 ----------------------------------------------------------------------------------------------------
 -- Debt goals
@@ -963,19 +1021,12 @@ matching.run = function(params)
             end
         end
         local num_moved = 0
-        local num_resources = 0
-        local num_new_resources = 0
         for slot_key, trav_key in pairs(new_assignment) do
             if params.unconnected_graph.nodes[trav_key].old_slot ~= slot_key then
                 num_moved = num_moved + 1
             end
-            if params.is_resource_slot ~= nil and params.is_resource_slot(slot_key) then
-                num_resources = num_resources + 1
-                if is_new_resource_trav(params, slot_key, trav_key) then
-                    num_new_resources = num_new_resources + 1
-                end
-            end
         end
+        local num_resources, num_new_resources = count_new_resources(params, new_assignment)
         log("Monotone matching: round " .. round .. " done with " .. num_refinements .. " refinements; " .. num_moved .. " identities moved; " .. num_new_resources .. " of " .. num_resources .. " resource slots mine something new")
         assignment = new_assignment
         graph = new_graph
@@ -988,26 +1039,17 @@ matching.run = function(params)
 
     -- Positions of different forms trade identities afterwards (params.form_swaps, items and fluids trading positions, see lib/item-fluid.lua): such a trade moves recipes to other crafters, which the needs above can't repair, so trades are gated like a round and kept only when nothing is lost
     -- Each trial gates a batch of trades with one sort (most trades pass, and a sort is what a trial costs); a failing batch's trades are gated one by one
-    -- params.form_swaps: { candidates = function(assignment) --> list of { slot key, slot key, preferred = whether to try it before the others }, form_of = function(node key) --> the form of a slot or trav, max_trials (gates), max_swaps (trades kept), batch (trades per gate, 1 when nil) }
+    -- params.form_swaps: { candidates = function(assignment) --> list of { slot key, slot key, preferred = whether to try it before the others, first_for = the resource slot it makes mine something new (optional) }, form_of = function(node key) --> the form of a slot or trav, max_trials (gates), max_swaps (trades kept), batch (trades per gate, 1 when nil), first_tries (candidates tried first for each first_for slot, 1 when nil) }
     if params.form_swaps ~= nil then
         local swaps = params.form_swaps
         local candidates = swaps.candidates(assignment)
         rng.shuffle(rng.key({ id = "monotone-matching-form-swaps" }), candidates)
-        -- Preferred candidates come first in their shuffled order, so the others are only tried once those run out
-        local ordered = {}
-        for i = 1, #candidates do
-            if candidates[i].preferred == true then
-                table.insert(ordered, candidates[i])
-            end
-        end
-        local num_preferred = #ordered
-        for i = 1, #candidates do
-            if candidates[i].preferred ~= true then
-                table.insert(ordered, candidates[i])
-            end
-        end
-        candidates = ordered
-        log("Monotone matching: " .. #candidates .. " form trade candidates, " .. num_preferred .. " preferred")
+        -- Trades that make a resource slot mine something new come first, then preferred candidates, each in their shuffled order, so the others are only tried once those run out (order_form_swaps)
+        -- Each such slot may keep one trade beyond max_swaps, so these don't use up the other trades' share
+        local num_first, num_first_slots, num_preferred
+        candidates, num_first, num_first_slots, num_preferred = order_form_swaps(candidates, swaps.first_tries)
+        local max_swaps = swaps.max_swaps + num_first_slots
+        log("Monotone matching: " .. #candidates .. " form trade candidates, " .. num_first .. " first for " .. num_first_slots .. " resource slots, " .. num_preferred .. " preferred")
         local num_trials = 0
         local num_kept = 0
         -- Whether both positions of a candidate still hold identities of their own form (an earlier trade may have taken either)
@@ -1043,14 +1085,14 @@ matching.run = function(params)
             end
         end
         local function budget_left()
-            return num_trials < swaps.max_trials and num_kept < swaps.max_swaps
+            return num_trials < swaps.max_trials and num_kept < max_swaps
         end
         local next_candidate = 1
         while next_candidate <= #candidates and budget_left() do
             -- The next batch: candidates whose positions are still open and that share no position within the batch
             local batch = {}
             local taken = {}
-            while next_candidate <= #candidates and #batch < math.min(swaps.batch or 1, swaps.max_swaps - num_kept) do
+            while next_candidate <= #candidates and #batch < math.min(swaps.batch or 1, max_swaps - num_kept) do
                 local pair = candidates[next_candidate]
                 next_candidate = next_candidate + 1
                 if open(pair) and taken[pair[1]] == nil and taken[pair[2]] == nil then
@@ -1085,6 +1127,10 @@ matching.run = function(params)
             end
         end
         log("Monotone matching: " .. num_kept .. " form trades kept in " .. num_trials .. " trials (" .. #candidates .. " candidates)")
+        if num_first_slots > 0 then
+            local num_resources, num_new_resources = count_new_resources(params, assignment)
+            log("Monotone matching: after form trades, " .. num_new_resources .. " of " .. num_resources .. " resource slots mine something new")
+        end
     end
     return assignment, debt_goals
 end
