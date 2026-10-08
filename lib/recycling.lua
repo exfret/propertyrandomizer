@@ -427,6 +427,10 @@ recycling.regenerate = function(old_raw)
                 hand_recycled[recipe.ingredients[1].name] = true
             end
         end
+        -- So does a planet's version of such a recipe (independent deposits, randomizations/graph/unified/deposit-copies.lua), whose name isn't its item's
+        if recipe.deposit_hand_recycled == true and has_recycling_category(recipe) and recipe.ingredients ~= nil and #recipe.ingredients == 1 and recipe.ingredients[1].type == "item" then
+            hand_recycled[recipe.ingredients[1].name] = true
+        end
     end
 
     -- Item randomization changes which item each recycling recipe recycles, and the logic model follows each recipe by its name, so an item's recycling keeps the name of the recipe that recycles it now
@@ -449,6 +453,10 @@ recycling.regenerate = function(old_raw)
         if vanilla[recipe_name] ~= nil then
             preferred_by_default_name[item_name .. "-recycling"] = vanilla[recipe_name].source
         end
+        taken[recipe_name] = true
+    end
+    -- A name no item keeps stays taken too: when several items become one (independent deposits rename their copies back to the material, randomizations/graph/unified/deposit-copies.lua), the merged item keeps one of their recycling recipes, and another item taking a dropped one's name would recycle something else under the name the logic model gave that recipe
+    for recipe_name, _ in pairs(old_recipes) do
         taken[recipe_name] = true
     end
     local generated = {}

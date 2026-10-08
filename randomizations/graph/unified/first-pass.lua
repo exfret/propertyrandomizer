@@ -26,6 +26,7 @@ local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 local item_fluid = require("lib/item-fluid")
+local deposit_copies = require("lib/deposit-copies")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -633,6 +634,15 @@ first_pass.execute = function(params)
             local slot = split_graph.nodes[slot_key]
             return slot.type == "item" and is_resource_item[slot.name] == true
         end,
+        -- With independent deposits, a deposit's new identity must also be new to its planets: another planet's copy of an ore its planet mines, or another of the planet's own materials, only relabels its deposits (lib/deposit-copies.lua's is_new_for)
+        is_new_resource_pair = config.deposit_copies and function(slot_key, trav_key)
+            local position = item_fluid.material_of_node(split_graph, split_graph.nodes[slot_key])
+            local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])
+            if position == nil or identity == nil then
+                return true
+            end
+            return deposit_copies.is_new_for(item_fluid.material_key(position), item_fluid.material_key(identity))
+        end or nil,
         -- Uses the same notion of useless as item reflection, which skips swaps between two useless materials (see item_fluid.is_useless_material)
         is_interesting = function(trav_key)
             local identity = item_fluid.material_of_node(split_graph, split_graph.nodes[trav_key])

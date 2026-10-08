@@ -414,4 +414,53 @@ test("an item whose recycling name another item has gets one numbered recycling 
     assert(#again == 1 and again[1] == "gear-recycling-2", table.concat(again, ", "))
 end)
 
+-- Independent deposits (randomizations/graph/unified/deposit-copies.lua) give each planet a copy of its ores, made after the recycler ran so they have no recycling of their own, and rename the copies back to their ore after randomization
+-- Here a copy of plates swapped places with gears (like an ore copy with pentapod eggs, seed 2 with planet copies, 2026-10-07): the recipe named gear-recycling recycled the copy in the logic model, and recycles plates once the copy is renamed back
+test("an item several items became keeps one recycling recipe, and no other item takes the names it dropped", function()
+    local old_raw = game(base_recipes(), item_names)
+    old_raw.item["plate-copy"] = {
+        type = "item",
+        name = "plate-copy",
+    }
+    old_raw.recipe["copy-user"] = {
+        name = "copy-user",
+        ingredients = {entry("plate-copy", 1)},
+        results = {entry("circuit", 1)},
+    }
+    local raw = randomize(old_raw)
+    local rename = {
+        gear = "plate",
+        ["plate-copy"] = "gear",
+    }
+    for _, recipe in pairs(raw.recipe) do
+        for _, list in pairs({
+            recipe.ingredients or {},
+            recipe.results or {},
+        }) do
+            for _, material in pairs(list) do
+                material.name = rename[material.name] or material.name
+            end
+        end
+    end
+    raw.item["plate-copy"] = nil
+    local function recycling_of(item_name)
+        local names = {}
+        for name, recipe in pairs(raw.recipe) do
+            if recycling.looks_generated(recipe) and recipe.ingredients[1].name == item_name then
+                table.insert(names, name)
+            end
+        end
+        table.sort(names)
+        return table.concat(names, ", ")
+    end
+    for _ = 1, 2 do
+        recycling.regenerate(old_raw)
+        -- The recycler picks its recipe by ingredient, so plates have one, under their own name
+        assert(recycling_of("plate") == "plate-recycling", recycling_of("plate"))
+        -- Gears, made by nothing now, recycle into themselves, but not as gear-recycling, which recycled what's plates now
+        assert(raw.recipe["gear-recycling"] == nil)
+        assert(recycling_of("gear") == "gear-recycling-2", recycling_of("gear"))
+    end
+end)
+
 print(num_passed .. " tests passed")

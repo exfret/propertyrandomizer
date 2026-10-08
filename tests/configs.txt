@@ -58,6 +58,8 @@ skip unified-entity-biters
 skip military-rebalance
 # Visible so the user can try it (2026-09-29); the unified suite still turns it on (pinned below)
 skip unified-spoiling
+# Being worked on (visible for now only for that): only tested by its own configs below
+skip independent-deposits
 
 # requires SETTING OTHER=VALUE: SETTING does nothing unless OTHER=VALUE, so generated configs that change SETTING set OTHER too
 requires item-percent item=true
@@ -162,3 +164,6 @@ config exclusions-numerical unified seeds=1 dev-unified=true dupes=false logisti
 config exclusions-all unified seeds=1 dev-unified=true dupes=false unified-entity=true logistic=more production=more military=more misc=more overrides=EXCLUDE:all:group/logistics;EXCLUDE:all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:type/assembling-machine
 config exclusions-legacy settings seeds=1 dupes=false recipe=true recipe-tech-unlock=true technology=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:prototype/recipe/iron-gear-wheel;EXCLUDE:graph/all:prototype/technology/logistics;EXCLUDE:randomization/recipe_ingredients:prototype/recipe/copper-cable
 config exclusions-legacy-item settings seeds=1 dupes=false item=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:group/logistics;EXCLUDE:randomization/items:prototype/item/iron-plate
+# Independent deposits (randomizations/graph/unified/deposit-copies.lua): without planet copies (coal, stone and crude oil are mined on two planets each), and on the user's usual settings (11-22 minutes and 12-15 GB of memory per game when run alone, 2026-10-07, so give it the machine: --jobs 1)
+config deposits unified seeds=1,2 dev-unified=true independent-deposits=true
+config dupes-preview-deposits unified seeds=1 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=false independent-deposits=true

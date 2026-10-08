@@ -16,6 +16,7 @@ local constants = require("helper-tables/constants")
 local graph_customization = require("lib/graph-customization")
 local acquisition = require("lib/logic/acquisition")
 local dutils = require("lib/data-utils")
+local deposit_copies = require("lib/deposit-copies")
 local gutils = require("lib/graph/graph-utils")
 local locale = require("lib/locale")
 local localised_text = require("lib/localised-text")
@@ -121,8 +122,9 @@ end
 
 -- Items that place nothing in vanilla and could also place an entity
 -- Items that already place something (entities, plants or tiles) are left out, since placing that and an entity would both be left clicks
+-- So are deposit copies (lib/deposit-copies.lua), which are renamed back to their materials after each attempt, so what they placed would be lost
 local function spoofable_item(item)
-    return claimable_item(item) and not common.places_something(item)
+    return claimable_item(item) and not common.places_something(item) and not deposit_copies.is_copy(item)
 end
 
 -- Entity name --> number of rooms logic finds it autoplaced in (counted in spoof)

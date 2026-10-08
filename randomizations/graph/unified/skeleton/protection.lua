@@ -66,7 +66,8 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
     for node_key, contexts in pairs(sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
         local recipe = node ~= nil and node.type == "recipe" and data.raw.recipe[node.name] or nil
-        if recipe ~= nil and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil then
+        -- A planet's version of a recipe that wasn't locked to one planet (independent deposits, randomizations/graph/unified/deposit-copies.lua) is kept like its original, not like a planet-locked recipe
+        if recipe ~= nil and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil and recipe.deposit_local_unlocked ~= true then
             local family
             local is_one_family = true
             for context, _ in pairs(contexts) do

@@ -1,6 +1,7 @@
 -- Common utilities for handling data.raw
 
 local constants = require("helper-tables/constants")
+local deposit_copies = require("lib/deposit-copies")
 
 local dutils = {}
 
@@ -428,6 +429,11 @@ end
 -- TODO: Do this for fuel ores in general, not by name
 dutils.REPLACEMENT_FUEL_CATEGORY = "chemical"
 dutils.replacement_gets_fuel = function(item_name)
+    -- A planet's copy of coal (independent deposits, lib/deposit-copies.lua) counts as coal
+    local current = deposit_copies.current
+    if current ~= nil and current.original_of[item_name] ~= nil then
+        item_name = current.original_of[item_name]
+    end
     if mods["pypostprocessing"] then
         return item_name == "raw-coal"
     end

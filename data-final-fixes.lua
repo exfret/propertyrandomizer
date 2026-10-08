@@ -209,6 +209,30 @@ if planetary.pending ~= nil then
     old_data_raw = table.deepcopy(data.raw)
 end
 
+-- Independent deposits (randomizations/graph/unified/deposit-copies.lua): while unified randomization runs, each planet's deposits mine a copy of their material, and the recipes taking it there take the copy in a version of their own, so item randomization changes them planet by planet
+-- After the planetary stages, whose resource placements it splits up, and before the game the rest of randomization starts from is captured
+local deposit_copies = require("randomizations/graph/unified/deposit-copies")
+local function prepare_deposit_copies()
+    if config.deposit_copies ~= true then
+        return
+    end
+    local prepared = deposit_copies.prepare()
+    -- The planetary checks count a recipe's planet versions as the recipe (rules 1 and 2, randomizations/planetary/check.lua)
+    if planetary.before ~= nil then
+        planetary.before.variants_of = planetary.before.variants_of or {}
+        for recipe_name, names in pairs(prepared.variants_of) do
+            planetary.before.variants_of[recipe_name] = planetary.before.variants_of[recipe_name] or {}
+            for _, name in pairs(names) do
+                table.insert(planetary.before.variants_of[recipe_name], name)
+            end
+        end
+    end
+end
+if config.deposit_copies == true then
+    prepare_deposit_copies()
+    old_data_raw = table.deepcopy(data.raw)
+end
+
 log("Initial reachability check")
 
 local gutils = require("lib/graph/graph-utils")
@@ -278,6 +302,10 @@ end
 for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
     unified_info = unified.execute()
     if unified_info then
+        -- The copies go back to their materials before anything looks at the game the attempt built, so recycling and the checks see the game players get (randomizations/graph/unified/deposit-copies.lua)
+        if config.deposit_copies == true then
+            deposit_copies.collapse(data.raw)
+        end
         -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
         recycling.regenerate(old_data_raw)
         -- Planetary changes in superposed mode: the attempt settles what it still owes them (randomizations/planetary/execute.lua), and one that leaves goals owed fails like one that fails the check below
@@ -350,12 +378,19 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
                 planetary.undo(i)
             end
             recycling.regenerate(pre_planetary_raw)
+            prepare_deposit_copies()
             old_data_raw = table.deepcopy(data.raw)
             prepare_world()
         end
     else
         break
     end
+end
+
+-- The game every attempt started from loses its copies too, since later stages read it (original versions of recipes, exclusions, the result summary), and so does the game when no attempt ran
+if config.deposit_copies == true then
+    deposit_copies.collapse(old_data_raw, true)
+    deposit_copies.collapse(data.raw, true)
 end
 
 -- Do old data raw for derandomization here so that necessary graph randomization tweaks stay

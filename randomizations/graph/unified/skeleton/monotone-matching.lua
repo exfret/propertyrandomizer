@@ -443,8 +443,9 @@ end
 
 -- Whether a resource slot's trav makes the resource mine something new: an interesting trav (params.is_interesting) other than the slot's own identity
 -- Reflection keeps interesting travs where the matching puts them, but doesn't swap two useless items (ores count as useless), so a useless trav usually leaves the resource as it was
+-- params.is_new_resource_pair(slot_key, trav_key) (optional) can ask for more, like a trav new to the planets mining the slot (independent deposits)
 local function is_new_resource_trav(params, slot_key, trav_key)
-    return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key)
+    return trav_key ~= params.unconnected_graph.nodes[slot_key].old_trav and params.is_interesting(trav_key) and (params.is_new_resource_pair == nil or params.is_new_resource_pair(slot_key, trav_key))
 end
 
 -- Random perfect matching of travs to admissible slots (Kuhn's algorithm with shuffled candidates, current slot tried last)

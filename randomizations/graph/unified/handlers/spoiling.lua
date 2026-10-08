@@ -8,6 +8,7 @@
 
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
+local deposit_copies = require("lib/deposit-copies")
 local item_sinks = require("lib/item-sinks")
 local top = require("lib/graph/context-sort")
 local rng = require("lib/random/rng")
@@ -83,6 +84,10 @@ end
 local function can_start_spoiling(item)
     -- Armor with an equipment grid never spoils (it would take the equipment with it)
     if item.type == "armor" and item.equipment_grid ~= nil then
+        return false
+    end
+    -- Nor does a deposit copy (lib/deposit-copies.lua), which is renamed back to its material after each attempt, so its spoiling would be lost
+    if deposit_copies.is_copy(item) then
         return false
     end
     return is_holdable(item) and (item.spoil_result == nil or (item.spoil_ticks or 0) <= 0)

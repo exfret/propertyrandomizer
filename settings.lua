@@ -277,6 +277,14 @@ data:extend({
     {
         setting_type = "startup",
         type = "bool-setting",
+        name = "propertyrandomizer-independent-deposits",
+        -- Visible while it's worked on, and off by default, since the checkout is the user's playable mod; only takes effect with the unified randomizations in development (config.deposit_copies)
+        default_value = false,
+        order = "e-ca[independent-deposits]",
+    },
+    {
+        setting_type = "startup",
+        type = "bool-setting",
         name = "propertyrandomizer-unified-tech-science-packs",
         default_value = false,
         order = "e-d[tech-science-packs]",
