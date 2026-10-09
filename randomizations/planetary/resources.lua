@@ -7,6 +7,7 @@
 -- A recipe other planets make too (like copper plate, or anything a planet shares with its copies, lib/dupe-planets.lua) can't follow the swap in place, so each planet that made it from its own resources and lost one of them gets a planned variant of its own instead, like "Copper plate (Nauvis 2)" taking what replaced copper ore there, locked to that planet; the original stays for the planets that kept the resource or import it.
 -- So do technologies belonging to that planet that are researched by mining a lost resource: they're researched by mining its replacement instead.
 -- A planet that still can't make what it must (see check.required) gets a few extra patches of a lost resource back (a repair); only the repairs the logic needs are kept.
+-- A planet that fails even with every extra patch gets its original recipes and technology triggers back, without planet variants, while the other planets keep theirs (resources.failing_planets, execute.lua's run_resources).
 -- Everything is read from the planets' map gen settings, so planets and resources from other mods take part too.
 
 local resource_autoplace = require("__core__/lualib/resource-autoplace")
@@ -787,8 +788,9 @@ end
 -- It goes by the resource rather than the technology, since the discovery rule makes a technology isolatable on later planets too (like calcite processing on Aquilo, whose home set includes Vulcanus)
 -- A mining trigger lists entities, any one of which counts, so only those lost resources in it are replaced
 -- A resource more than one planet had (like crude oil on Nauvis, its copy and Aquilo) stays in the list, since the others may still mine it, and each planet that lost it adds what replaced it there, so every planet can still research the technology from its own resources (like oil processing by mining a geyser on a Nauvis whose crude oil went elsewhere)
--- Swaps keep resources within their kind (ores with ores, wells with wells), so the new resource is mined the same way as the old one
+-- Swaps keep resources within their kind (ores with ores, wells with wells), so the new resource is mined into the same form as the old one, though maybe by another drill or with a mining fluid
 -- The replacements come from resources.replacements
+-- Each edit lists the planets it serves (planet_names, and planet_name for the log)
 resources.trigger_edits = function(replacements, before)
     local edits = {}
     for _, technology_name in pairs(sorted_keys(data.raw.technology)) do
@@ -826,6 +828,7 @@ resources.trigger_edits = function(replacements, before)
             if #planet_names > 0 then
                 table.insert(edits, {
                     planet_name = table.concat(planet_names, ", "),
+                    planet_names = planet_names,
                     technology_name = technology_name,
                     old_entities = trigger.entities,
                     new_entities = entities,
@@ -847,6 +850,73 @@ end
 -- What a technology edit changed, for the log
 resources.describe_trigger_edit = function(edit)
     return edit.technology_name .. " on " .. edit.planet_name .. " (mine " .. table.concat(edit.old_entities, " or ") .. " --> mine " .. table.concat(edit.new_entities, " or ") .. ")"
+end
+
+-- The planets with recipe edits, technology trigger edits or planet variants following their swap, as planet name --> true
+resources.changed_planets = function(edits, trigger_edits, variants)
+    local planets = {}
+    for _, edit in pairs(edits) do
+        planets[edit.planet_name] = true
+    end
+    for _, edit in pairs(trigger_edits) do
+        for _, planet_name in pairs(edit.planet_names) do
+            planets[planet_name] = true
+        end
+    end
+    for _, plan in pairs(variants) do
+        planets[plan.planet_name] = true
+    end
+    return planets
+end
+
+-- The planets a check's failures (check.required_failures) are on, as planet name --> true: the room of each failure's context, and for a failure without one (an unreachable recipe), the planet whose recipe edit changed that recipe
+-- A failure in a room that isn't a planet (like a space platform) is on none
+resources.failing_planets = function(failures, edits)
+    local edited_on = {}
+    for _, edit in pairs(edits) do
+        edited_on[gutils.key("recipe", edit.recipe_name)] = edit.planet_name
+    end
+    local planets = {}
+    for _, failure in pairs(failures) do
+        if failure.context ~= nil then
+            local room = gutils.deconstruct(top.context_room(failure.context))
+            if room.type == "planet" then
+                planets[room.name] = true
+            end
+        else
+            for _, key in pairs(failure.keys or {}) do
+                if edited_on[key] ~= nil then
+                    planets[edited_on[key]] = true
+                end
+            end
+        end
+    end
+    return planets
+end
+
+-- Splits recipe edits or variant plans into those on the given planets (planet name --> true) and the rest, each in its old order
+resources.split_by_planet = function(entries, planets)
+    local on = {}
+    local rest = {}
+    for _, entry in pairs(entries) do
+        if planets[entry.planet_name] ~= nil then
+            table.insert(on, entry)
+        else
+            table.insert(rest, entry)
+        end
+    end
+    return on, rest
+end
+
+-- resources.replacements' table without the given planets (planet name --> true), so technology trigger edits leave them out
+resources.replacements_without = function(replacements, planets)
+    local kept = {}
+    for planet_name, planet_replacements in pairs(replacements) do
+        if planets[planet_name] == nil then
+            kept[planet_name] = planet_replacements
+        end
+    end
+    return kept
 end
 
 -- Returns the slots, assignment and planet --> set of lost resources

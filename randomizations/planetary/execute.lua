@@ -292,6 +292,70 @@ local function exclude_originals(logic, state, variants)
     return still, num_back
 end
 
+-- Takes planet variants back out of the game, and out of state.variants_of
+local function remove_variants(state, plans)
+    for _, plan in pairs(plans) do
+        resources.remove_variant(plan)
+        local names = state.variants_of[plan.recipe_name] or {}
+        for i = #names, 1, -1 do
+            if names[i] == plan.variant.name then
+                table.remove(names, i)
+            end
+        end
+    end
+    if #plans > 0 then
+        locks.realize()
+    end
+end
+
+-- After a resource swap failed even with every extra patch (failures, from check.required_failures), the planets those failures are on (resources.failing_planets) get their original recipes and technology triggers back, without planet variants, while the other planets keep theirs
+-- That repeats while failures are on planets with changes left; failures on none of them take every planet's changes (the last resort)
+-- The trigger edits are made again from replacements (resources.replacements' table), since one edit can serve several planets
+-- Leaves state.after the sort of the game it ends with, and returns the edits, trigger edits and variants still in it
+local function undo_failing_planets(logic, state, failures, replacements, edits, trigger_edits, variants)
+    local undone = {}
+    local is_first = true
+    while #failures > 0 do
+        local changed = resources.changed_planets(edits, trigger_edits, variants)
+        local planets = {}
+        for planet_name, _ in pairs(resources.failing_planets(failures, edits)) do
+            if changed[planet_name] ~= nil then
+                planets[planet_name] = true
+            end
+        end
+        if next(planets) ~= nil then
+            log("Planetary resources: " .. (is_first and "every extra patch still wasn't enough" or "still failing") .. ", so these planets get their original recipes and technology triggers back, without planet variants: " .. table.concat(sorted_keys(planets), ", "))
+        elseif next(changed) ~= nil then
+            planets = changed
+            log("Planetary resources: what still fails isn't on a planet with changes left, so every planet gets its original recipes and technology triggers back, without planet variants")
+        else
+            break
+        end
+        is_first = false
+        for planet_name, _ in pairs(planets) do
+            undone[planet_name] = true
+        end
+        local undone_edits
+        undone_edits, edits = resources.split_by_planet(edits, undone)
+        for _, edit in pairs(undone_edits) do
+            resources.remove_edit(edit)
+        end
+        local undone_variants
+        undone_variants, variants = resources.split_by_planet(variants, undone)
+        remove_variants(state, undone_variants)
+        for _, edit in pairs(trigger_edits) do
+            resources.remove_trigger_edit(edit)
+        end
+        trigger_edits = resources.trigger_edits(resources.replacements_without(replacements, undone), state.before)
+        for _, edit in pairs(trigger_edits) do
+            resources.add_trigger_edit(edit)
+        end
+        state.after = planetary_check.sort(logic)
+        failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+    end
+    return edits, trigger_edits, variants
+end
+
 local function run_resources(logic, state)
     local slots, assignment, lost, edits, trigger_edits, variants = swap_resources(state)
     local excluded = {}
@@ -371,33 +435,18 @@ local function run_resources(logic, state)
         end
         kept = repairs
         state.after = planetary_check.sort(logic)
-        if not planetary_check.required(state.before, state.after, state.variants_of, true) then
-            -- The edits themselves may be what's in the way (like a new ingredient only a later drill can mine), so try the original recipes and technology triggers
-            log("Planetary resources: every extra patch still wasn't enough, so trying without recipe and trigger edits and planet variants")
-            for _, edit in pairs(edits) do
-                resources.remove_edit(edit)
+        local failures = planetary_check.required_failures(state.before, state.after, state.variants_of)
+        if #failures > 0 then
+            for _, failure in pairs(failures) do
+                log("Planetary resources: with every extra patch, failing " .. failure.text)
             end
-            for _, edit in pairs(trigger_edits) do
-                resources.remove_trigger_edit(edit)
-            end
-            resources.include_originals(excluded)
-            excluded = {}
-            for _, plan in pairs(variants) do
-                resources.remove_variant(plan)
-                local names = state.variants_of[plan.recipe_name] or {}
-                for i = #names, 1, -1 do
-                    if names[i] == plan.variant.name then
-                        table.remove(names, i)
-                    end
-                end
-            end
-            if #variants > 0 then
+            -- The edits themselves may be what's in the way (like a new ingredient only a later drill can mine), so the planets still failing get their original recipes and technology triggers back (user, 2026-10-08: taking every planet's edits back over one planet's failures left the user's seed 16 extra patches)
+            if #excluded > 0 then
+                resources.include_originals(excluded)
                 locks.realize()
+                excluded = {}
             end
-            edits = {}
-            trigger_edits = {}
-            variants = {}
-            state.after = planetary_check.sort(logic)
+            edits, trigger_edits, variants = undo_failing_planets(logic, state, failures, resources.replacements(slots, assignment, lost), edits, trigger_edits, variants)
             if not planetary_check.required(state.before, state.after, state.variants_of) then
                 return localised_text.reason("planet-lost-patches", "a planet lost something it must keep even with extra patches (see PLANETCHECK in the log)")
             end
