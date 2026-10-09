@@ -68,3 +68,4 @@ For bugs/fixes rather than features, see bugs.txt
  * Randomize pipeline extent
  * mining-with-fluid unlock should still be in logic for archipelago compat
  * Mod hook blacklist
+ * Merge recipes that come out the same into one (like a planet's deposit version beside its original once the copies are renamed back, kept apart only by their unlocks); until then the furnace check skips collisions between recipes that make the same things (lib/furnace-selection.lua, user 2026-10-09)

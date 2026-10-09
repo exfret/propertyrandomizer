@@ -25,12 +25,20 @@ local function add_furnace(name, categories)
     }
 end
 
-local function add_recipe(name, categories, ingredients)
+-- Each recipe makes an item of its own, unless results says otherwise
+local function add_recipe(name, categories, ingredients, results)
     data.raw.recipe[name] = {
         type = "recipe",
         name = name,
         categories = categories,
         ingredients = ingredients,
+        results = results or {
+            {
+                type = "item",
+                name = name,
+                amount = 1,
+            },
+        },
     }
 end
 
@@ -132,6 +140,38 @@ test("only collisions the original game didn't have count as new", function()
     add_recipe("bread", { "baking" }, { item("batter") })
     new = furnace_selection.new_collisions(old_raw)
     assert(#new == 1 and #new[1].recipes == 4)
+end)
+
+test("recipes that make the same things don't count as a new collision, but one making something else does", function()
+    add_furnace("recycler", { "recycling" })
+    local old_raw = {
+        furnace = data.raw.furnace,
+        recipe = {},
+    }
+    local loot = {
+        {
+            type = "item",
+            name = "gear",
+            amount = 1,
+        },
+    }
+    -- A planet's version of junk recycling beside the original, after the copy of junk it took became junk again, taking two at a time
+    add_recipe("junk-recycling", { "recycling" }, { item("junk") }, loot)
+    local two_junk = item("junk")
+    two_junk.amount = 2
+    add_recipe("junk-recycling-on-planet-2", { "recycling" }, { two_junk }, {
+        {
+            type = "item",
+            name = "gear",
+            amount = 3,
+        },
+    })
+    assert(#furnace_selection.collisions(data.raw.recipe) == 1, "the recycler still can't tell them apart")
+    assert(#furnace_selection.new_collisions(old_raw) == 0, "but either makes gears")
+    -- A recipe making something else from junk makes it a collision that matters
+    add_recipe("junk-melting", { "recycling" }, { item("junk") })
+    local new = furnace_selection.new_collisions(old_raw)
+    assert(#new == 1 and #new[1].recipes == 3)
 end)
 
 test("the tracker only blocks ingredients used by recipes a common furnace crafts", function()

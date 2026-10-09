@@ -171,8 +171,32 @@ furnace_selection.collisions = function(recipes, categories_of, raw)
     return collisions
 end
 
+-- The kinds of things a recipe makes, as sorted "type-name" keys, whatever the amounts
+local function result_kinds(recipe)
+    local kinds = {}
+    for _, result in pairs(recipe.results or {}) do
+        table.insert(kinds, (result.type or "item") .. "-" .. result.name)
+    end
+    table.sort(kinds)
+    return table.concat(kinds, ",")
+end
+
+-- Whether recipes all make the same things, so whichever of them a furnace picks, what can be had is the same, which is all the logic graph says about them
+-- Like a planet's version of a recipe beside the original, once independent deposits renamed the copy it took back to its material while randomized unlocks kept the two apart (randomizations/graph/unified/deposit-copies.lua): Fulgora 3's scrap recycling beside scrap recycling, both taking coal, on seed 0 with planet copies (2026-10-09)
+-- A stopgap until such recipes are merged into one (user, 2026-10-09)
+local function all_make_the_same(recipe_names)
+    local kinds = result_kinds(data.raw.recipe[recipe_names[1]])
+    for i = 2, #recipe_names do
+        if result_kinds(data.raw.recipe[recipe_names[i]]) ~= kinds then
+            return false
+        end
+    end
+    return true
+end
+
 -- Collisions in data.raw that old_raw (the game before randomization) didn't have already, like one a mod's recycling makes
 -- Recipes keep their names through randomization, so a collision is old if each pair of its recipes collided in old_raw too
+-- Recipes that all make the same things don't collide in a way that matters (all_make_the_same): a furnace picks the first enabled one its surface allows (doc-html/auxiliary/furnace-recipe-selection.html), and any of them makes those things
 furnace_selection.new_collisions = function(old_raw)
     local old_pairs = {}
     for _, collision in pairs(furnace_selection.collisions(old_raw.recipe, nil, old_raw)) do
@@ -192,7 +216,7 @@ furnace_selection.new_collisions = function(old_raw)
                 end
             end
         end
-        if not is_old then
+        if not is_old and not all_make_the_same(collision.recipes) then
             table.insert(new, collision)
         end
     end
