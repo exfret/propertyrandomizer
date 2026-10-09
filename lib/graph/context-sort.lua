@@ -34,6 +34,8 @@ local top = {}
 top.ISOLATABILITY = ISOLATABILITY
 -- Whether home contexts are kept to their home set's own rooms (see Home contexts above), rather than every room; false only to compare with how sorts used to be
 top.home_contexts_in_set_rooms = true
+-- Whether a smaller home set's home context stands for those of the home sets containing it in the same room (see Home contexts above), rather than each being passed on; false only to compare with how sorts used to be
+top.implied_home_contexts = true
 top.AUTOMATABILITY = AUTOMATABILITY
 
 -- Every ability string, like "00", "01", "10", "11", where the i-th character is whether ability i is had
@@ -70,6 +72,9 @@ end
 -- Home contexts ride on each room's weakest context (the room itself for simple contexts, the room with no abilities for complex ones), and are written like "planet: vulcanus | 00 @ home1"
 -- Only the home set's own rooms have its home contexts (with top.home_contexts_in_set_rooms): no other room's node sends them, so all another room could get is what forgetters send every room, and the set's rooms get that too
 -- With complex contexts, they replace the order-dependent discovery rule: once a room is discovered, techs with a home context of its home set are isolatable there (see discover_home_rooms in top.sort)
+-- What can be had using only a home set's rooms can be had using only the rooms of any home set containing it, so with top.implied_home_contexts a smaller home set's context stands for the bigger ones' in the same room: those aren't passed on, and looking for one counts the other
+-- Discovery tiers make every home set hold the ones before it (randomizations/planetary/discovery.lua), so each pebble then needs only its earliest tier's home context instead of one per later tier (user, 2026-10-09)
+-- Forgetters and rooms send the bigger ones' contexts to rooms the smaller one has none in, and the end of a sort writes out the ones that stood in, so what reads a sort finds every home context as before
 
 -- The home context riding on a context
 top.home_context_key = function(context, home_id)
@@ -169,6 +174,11 @@ local function build_context_info(complex, home_sets)
         home_of = {},
         -- home set id --> room --> true for the rooms in it (home contexts only)
         home_rooms = {},
+        -- home set id --> the other home sets containing it, and those inside it (home contexts only, see top.implied_home_contexts)
+        home_supersets = {},
+        home_subsets = {},
+        -- home set id --> how many rooms it has (home contexts only)
+        home_size = {},
     }
     for room, _ in pairs(logic.contexts) do
         if complex then
@@ -210,8 +220,92 @@ local function build_context_info(complex, home_sets)
         for _, home_id in pairs(home_sets.ids) do
             context_info.home_rooms[home_id] = home_sets.sets[home_id].rooms
         end
+        for _, home_id in pairs(home_sets.ids) do
+            local count = 0
+            for _, _ in pairs(context_info.home_rooms[home_id]) do
+                count = count + 1
+            end
+            context_info.home_size[home_id] = count
+        end
+        -- A home set stands for the contexts of those containing it, and those inside it stand for its own (top.implied_home_contexts)
+        for _, home_id in pairs(home_sets.ids) do
+            context_info.home_supersets[home_id] = {}
+            context_info.home_subsets[home_id] = {}
+        end
+        if top.implied_home_contexts then
+            for _, inner_id in pairs(home_sets.ids) do
+                for _, outer_id in pairs(home_sets.ids) do
+                    if inner_id ~= outer_id then
+                        local inside = true
+                        for room, _ in pairs(context_info.home_rooms[inner_id]) do
+                            if context_info.home_rooms[outer_id][room] == nil then
+                                inside = false
+                                break
+                            end
+                        end
+                        if inside then
+                            table.insert(context_info.home_supersets[inner_id], outer_id)
+                            table.insert(context_info.home_subsets[outer_id], inner_id)
+                        end
+                    end
+                end
+            end
+            -- From the smallest containing home set up, which is the order process_depnode in top.sort tries them in
+            for _, home_id in pairs(home_sets.ids) do
+                table.sort(context_info.home_supersets[home_id], function(a, b)
+                    if context_info.home_size[a] ~= context_info.home_size[b] then
+                        return context_info.home_size[a] < context_info.home_size[b]
+                    end
+                    return a < b
+                end)
+            end
+        end
     end
     return context_info
+end
+
+-- The earliest index of a home context among a node's pebbles, counting those of the home sets inside it in the same room, which stand for it (top.implied_home_contexts), or nil if none
+local function implied_ind(context_info, inds, context)
+    local earliest = inds[context]
+    local subsets = context_info.home_subsets[context_info.home[context]]
+    if subsets ~= nil and subsets[1] ~= nil then
+        local room_homes = context_info.home_of[context_info.room[context]]
+        for _, subset_id in pairs(subsets) do
+            local subset_context = room_homes[subset_id]
+            local ind = subset_context ~= nil and inds[subset_context] or nil
+            if ind ~= nil and (earliest == nil or ind < earliest) then
+                earliest = ind
+            end
+        end
+    end
+    return earliest
+end
+
+-- The contexts of the smallest home sets containing home_id that a room's home contexts (room --> home set id --> context) have, for a room without home_id's, or nil for none
+-- member_room, when given, has to be in those home sets too (a room's own node only sends the home sets holding it)
+local function smallest_containing(context_info, room_homes, home_id, member_room)
+    local candidates = {}
+    for _, superset_id in pairs(context_info.home_supersets[home_id] or {}) do
+        if room_homes[superset_id] ~= nil and (member_room == nil or context_info.home_rooms[superset_id][member_room] ~= nil) then
+            candidates[superset_id] = true
+        end
+    end
+    local contexts
+    for superset_id, _ in pairs(candidates) do
+        -- Not one containing another candidate; of home sets with the same rooms, the first by id
+        local smallest = true
+        for _, inner_id in pairs(context_info.home_subsets[superset_id]) do
+            if candidates[inner_id] ~= nil and (context_info.home_size[inner_id] < context_info.home_size[superset_id] or inner_id < superset_id) then
+                smallest = false
+                break
+            end
+        end
+        if smallest then
+            contexts = contexts or {}
+            table.insert(contexts, room_homes[superset_id])
+        end
+    end
+    return contexts
 end
 
 -- Signature of an edge's abilities, like "-1" for { [2] = true } or "0-" for { [1] = false }
@@ -311,7 +405,10 @@ end
 -- Earliest index in sorted of a pebble on edge.start that gets context to edge.stop, or nil if none
 local function edge_ind(context_info, node_to_context_inds, edge, context)
     local start_inds = node_to_context_inds[edge.start]
-    if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
+    if context_info.home[context] ~= nil then
+        return implied_ind(context_info, start_inds, context)
+    end
+    if not context_info.complex or edge.abilities == nil then
         return start_inds[context]
     end
     -- The same sources as edge_sources, without building the list
@@ -336,10 +433,15 @@ local function home_transmit(context_info, node, incoming, home_id)
         return { incoming }
     elseif context_type == true then
         -- Home sets aren't tied to a room, so forgetters send them to every room that has them (like automatability)
+        -- A room without them gets those of the smallest home sets containing it that it has, which this one stands for elsewhere (top.implied_home_contexts)
         local outgoing = {}
-        for room, _ in pairs(context_info.home_of) do
-            if context_info.home_of[room][home_id] ~= nil then
-                table.insert(outgoing, context_info.home_of[room][home_id])
+        for _, room_homes in pairs(context_info.home_of) do
+            if room_homes[home_id] ~= nil then
+                table.insert(outgoing, room_homes[home_id])
+            else
+                for _, context in pairs(smallest_containing(context_info, room_homes, home_id) or {}) do
+                    table.insert(outgoing, context)
+                end
             end
         end
         return outgoing
@@ -352,7 +454,8 @@ local function home_transmit(context_info, node, incoming, home_id)
         if context_info.home_rooms[home_id][node.name] ~= nil then
             return { room_contexts[home_id] }
         end
-        return {}
+        -- The room can still be in home sets containing this one, which it stands for (top.implied_home_contexts)
+        return smallest_containing(context_info, room_contexts, home_id, node.name) or {}
     else
         -- Unhandled
         error()
@@ -1012,6 +1115,8 @@ top.sort = function(graph, state, new_conn, extra)
     -- With home contexts instead: rooms discovered so far, and home set id --> techs with a pebble in one of its home contexts (see discover_home_rooms)
     local home_discovered = state.home_discovered or {}
     local home_techs = state.home_techs or {}
+    -- Nodes that got a home context in this sort, whose home contexts standing for others are written out at the end (top.implied_home_contexts)
+    local home_touched = {}
     -- Don't choose randomly for backwards compatibility with Frodo version
     if not DO_FRODO_FIXES and extra.choose_randomly == false then
         extra.choose_randomly = true
@@ -1124,6 +1229,37 @@ top.sort = function(graph, state, new_conn, extra)
         open[node_key] = nil
     end
 
+    -- Whether a node has a context already or about to (in open), counting for a home context those of the home sets inside it in the same room, which stand for it (top.implied_home_contexts)
+    local function already_has(node_key, context)
+        local inds = node_to_context_inds[node_key]
+        if inds[context] ~= nil then
+            return true
+        end
+        local subsets = context_info.home_subsets[context_info.home[context]]
+        if subsets == nil or subsets[1] == nil then
+            return false
+        end
+        local room_homes = context_info.home_of[context_info.room[context]]
+        local waiting = open[node_key]
+        for _, subset_id in pairs(subsets) do
+            local subset_context = room_homes[subset_id]
+            if subset_context ~= nil and (inds[subset_context] ~= nil or (waiting ~= nil and waiting[subset_context] ~= nil)) then
+                return true
+            end
+        end
+        return false
+    end
+
+    -- Whether every prerequisite of an AND node sends it context
+    local function all_pres_send(depnode, context)
+        for pre, _ in pairs(depnode.pre) do
+            if edge_ind(context_info, node_to_context_inds, graph.edges[pre], context) == nil then
+                return false
+            end
+        end
+        return true
+    end
+
     -- Checks if this depnode *newly* has context
     -- incoming is the context as it arrives at depnode (after going through the edge)
     -- depnode_key is key(depnode), and edge_key the edge incoming came through, when the caller has them
@@ -1146,31 +1282,58 @@ top.sort = function(graph, state, new_conn, extra)
                 end
             end
         elseif depnode.op == "AND" then
-            -- AND is true until proven false
-            check = true
-            for pre, _ in pairs(depnode.pre) do
-                if edge_ind(context_info, node_to_context_inds, graph.edges[pre], incoming) == nil then
-                    check = false
-                    break
-                end
-            end
+            check = all_pres_send(depnode, incoming)
         else
             error("Invalid node op: " .. tostring(depnode.op))
         end
 
-        if check then
-            -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
-            if logic.type_info[depnode.type].context == nil and (complex or context_info.home[incoming] ~= nil) then
-                -- Skip contexts the depnode is already transmitting
-                if node_to_context_inds[depnode_key][incoming] == nil then
-                    add_to_open(depnode, incoming, depnode_key)
+        local arrived = { incoming }
+        if not check and depnode.op == "AND" then
+            -- The prerequisite incoming came from also stands for the home sets containing incoming's, which the others may all send already, though not incoming itself (top.implied_home_contexts)
+            -- Those home contexts weren't passed on, so their check is here: the smallest containing home sets the depnode can have, each standing for the ones containing it
+            arrived = nil
+            local home_id = context_info.home[incoming]
+            if home_id ~= nil then
+                local room_homes = context_info.home_of[context_info.room[incoming]]
+                local found = {}
+                for _, superset_id in pairs(context_info.home_supersets[home_id]) do
+                    local superset_context = room_homes[superset_id]
+                    local covered = false
+                    for _, inner_id in pairs(context_info.home_subsets[superset_id]) do
+                        if found[inner_id] ~= nil then
+                            covered = true
+                            break
+                        end
+                    end
+                    if superset_context ~= nil and not covered then
+                        if already_has(depnode_key, superset_context) then
+                            found[superset_id] = true
+                        elseif all_pres_send(depnode, superset_context) then
+                            found[superset_id] = true
+                            arrived = arrived or {}
+                            table.insert(arrived, superset_context)
+                        end
+                    end
                 end
-            else
-                local outgoing_contexts = node_transmit(context_info, depnode, incoming)
-                for _, outgoing in pairs(outgoing_contexts) do
+            end
+            check = arrived ~= nil
+        end
+
+        if check then
+            for _, context in pairs(arrived) do
+                -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
+                if logic.type_info[depnode.type].context == nil and (complex or context_info.home[context] ~= nil) then
                     -- Skip contexts the depnode is already transmitting
-                    if node_to_context_inds[depnode_key][outgoing] == nil then
-                        add_to_open(depnode, outgoing, depnode_key)
+                    if not already_has(depnode_key, context) then
+                        add_to_open(depnode, context, depnode_key)
+                    end
+                else
+                    local outgoing_contexts = node_transmit(context_info, depnode, context)
+                    for _, outgoing in pairs(outgoing_contexts) do
+                        -- Skip contexts the depnode is already transmitting
+                        if not already_has(depnode_key, outgoing) then
+                            add_to_open(depnode, outgoing, depnode_key)
+                        end
                     end
                 end
             end
@@ -1289,35 +1452,42 @@ top.sort = function(graph, state, new_conn, extra)
         remove_from_open(node_key)
         -- Transmit contexts to each dependent
         local node = graph.nodes[node_key]
-        -- Home sets that this node got a home context of
+        -- Home sets that this node got a home context of, with the home sets containing them (top.implied_home_contexts)
         local new_home_ids
         for context, _ in pairs(contexts) do
-            -- Add this node-context pebble to sorted
-            table.insert(sorted, {
-                node_key = node_key,
-                context = context,
-            })
-            -- Add the context
-            node_to_context_inds[node_key][context] = #sorted
+            local home_id = context_info.home[context]
+            -- A home context that one of a home set inside it already stands for isn't passed on (it came in before that one did)
+            if home_id == nil or implied_ind(context_info, node_to_context_inds[node_key], context) == nil then
+                -- Add this node-context pebble to sorted
+                table.insert(sorted, {
+                    node_key = node_key,
+                    context = context,
+                })
+                -- Add the context
+                node_to_context_inds[node_key][context] = #sorted
 
-            -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
-            local passes_unchanged = not complex or context_info.home[context] ~= nil
-            for dep, _ in pairs(node.dep) do
-                local edge = graph.edges[dep]
-                local depnode = graph.nodes[edge.stop]
-                if passes_unchanged or edge.abilities == nil then
-                    process_depnode(depnode, context, edge.stop, dep)
-                else
-                    for _, arriving in pairs(edge_transmit(context_info, edge, context)) do
-                        process_depnode(depnode, arriving, edge.stop, dep)
+                -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
+                local passes_unchanged = not complex or home_id ~= nil
+                for dep, _ in pairs(node.dep) do
+                    local edge = graph.edges[dep]
+                    local depnode = graph.nodes[edge.stop]
+                    if passes_unchanged or edge.abilities == nil then
+                        process_depnode(depnode, context, edge.stop, dep)
+                    else
+                        for _, arriving in pairs(edge_transmit(context_info, edge, context)) do
+                            process_depnode(depnode, arriving, edge.stop, dep)
+                        end
                     end
                 end
-            end
 
-            local home_id = context_info.home[context]
-            if home_id ~= nil then
-                new_home_ids = new_home_ids or {}
-                new_home_ids[home_id] = true
+                if home_id ~= nil then
+                    new_home_ids = new_home_ids or {}
+                    new_home_ids[home_id] = true
+                    for _, superset_id in pairs(context_info.home_supersets[home_id]) do
+                        new_home_ids[superset_id] = true
+                    end
+                    home_touched[node_key] = true
+                end
             end
         end
 
@@ -1335,6 +1505,27 @@ top.sort = function(graph, state, new_conn, extra)
             elseif top.is_discoverer(node) then
                 discover_space_locations(node)
             end
+        end
+    end
+
+    -- The home contexts that a smaller home set's context stood for, written out with its index, so what reads the sort finds every home context as before (top.implied_home_contexts)
+    for node_key, _ in pairs(home_touched) do
+        local inds = node_to_context_inds[node_key]
+        local implied = {}
+        for context, ind in pairs(inds) do
+            local home_id = context_info.home[context]
+            if home_id ~= nil then
+                local room_homes = context_info.home_of[context_info.room[context]]
+                for _, superset_id in pairs(context_info.home_supersets[home_id]) do
+                    local superset_context = room_homes[superset_id]
+                    if superset_context ~= nil and inds[superset_context] == nil and (implied[superset_context] == nil or ind < implied[superset_context]) then
+                        implied[superset_context] = ind
+                    end
+                end
+            end
+        end
+        for context, ind in pairs(implied) do
+            inds[context] = ind
         end
     end
 

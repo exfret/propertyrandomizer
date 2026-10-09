@@ -23,6 +23,7 @@ All in `data-final-fixes.lua` and `randomizations/planetary/execute.lua`:
    - Discovery then follows the map in tiers (`discovery.lua`, `DISCOVERY_FOLLOWS_MAP` in execute.lua, user 2026-10-08): a planet's tier is its hops from the start, and its discovery techs take the packs of every planet in the tier before. Tier 1 keeps its cost, the start gives nothing, and the Aquilo family gives like any other planet (user, 2026-10-09).
    - A planet holds back a pack whose making needs the discovery of a later tier (logged as "doesn't give").
    - Every planet of a tier needs the same planets, so home sets come one per tier, which makes sorts slower. On sa/dupes-preview seed 1 there were 5 instead of 2, and a load took 24.5 min instead of 14.7. Keeping home contexts only in their set's rooms (`top.home_contexts_in_set_rooms`) brought it to 20.6.
+   - The tiers' home sets nest, so a smaller set's home context stands for the bigger ones' in the same room, and those aren't passed on (`top.implied_home_contexts`, user 2026-10-09). Sorts give the same results (`lib/graph/test-home-contexts.lua`). Not yet timed headless against the version without it.
    - A full check of the discovery stage, with only discoverers counting as gotten on their planet, undid the tiers on seed 1 (98 losses), so it was dropped (2026-10-09).
 3. **The stages** (`run_stages`), in this order, each checked against `state.before`:
    - ocean swaps (`oceans.lua`, repaired by `scaffolds.lua`)

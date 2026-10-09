@@ -650,6 +650,105 @@ test("keeping home contexts to their set's rooms changes no other pebble, and no
     end
 end)
 
+test("a smaller home set's context standing for those containing it gives the same pebbles as passing each on", function()
+    -- Sorts with every home context passed on, as before, and with the smaller home sets' contexts standing for the bigger ones' (top.implied_home_contexts)
+    local function both(graph, extra, seed)
+        local sorts = {}
+        local settings = {
+            false,
+            true,
+        }
+        for _, implied in pairs(settings) do
+            top.implied_home_contexts = implied
+            rng_state = seed
+            sorts[implied] = top.sort(graph, nil, nil, table.deepcopy(extra))
+        end
+        top.implied_home_contexts = true
+        return sorts[false], sorts[true]
+    end
+    local function compare(graph, extra, seed)
+        local separate, implied = both(graph, extra, seed)
+        assert(pebble_set(separate) == pebble_set(implied), "the pebbles changed")
+        return #separate.sorted, #implied.sorted
+    end
+    local complexities = {
+        false,
+        true,
+    }
+    local in_set_settings = {
+        true,
+        false,
+    }
+    -- The toy graph's two home sets, one inside the other, with its techs and discoverers
+    local graph = toy_graph()
+    local fewer = false
+    for seed = 1, 20 do
+        for _, complex in pairs(complexities) do
+            for _, in_set_rooms in pairs(in_set_settings) do
+                top.home_contexts_in_set_rooms = in_set_rooms
+                local num_separate, num_implied = compare(graph, {
+                    choose_randomly = seed > 1,
+                    complex_contexts = complex,
+                    home_contexts = true,
+                }, seed)
+                fewer = fewer or num_implied < num_separate
+            end
+        end
+    end
+    top.home_contexts_in_set_rooms = true
+    assert(fewer, "no pebbles saved on the toy graph")
+    -- Random graphs with nested home sets, like discovery tiers make, and one that isn't nested in them
+    for seed = 1, 60 do
+        local complex = seed % 2 == 0
+        local random = random_graph(seed, 3 + seed % 3, 10 + seed % 30, complex)
+        local rooms = {}
+        for room, _ in pairs(logic.contexts) do
+            table.insert(rooms, room)
+        end
+        table.sort(rooms)
+        local nested = {}
+        local sets = {}
+        for i, room in pairs(rooms) do
+            nested[room] = true
+            if i < #rooms then
+                sets["tier" .. i] = {
+                    rooms = table.deepcopy(nested),
+                    discovered = {},
+                }
+            end
+        end
+        local other = {}
+        for _, room in pairs(rooms) do
+            if math.random() < 0.5 then
+                other[room] = true
+            end
+        end
+        sets.other = {
+            rooms = other,
+            discovered = {},
+        }
+        local ids = {}
+        for id, _ in pairs(sets) do
+            table.insert(ids, id)
+        end
+        table.sort(ids)
+        for _, in_set_rooms in pairs(in_set_settings) do
+            top.home_contexts_in_set_rooms = in_set_rooms
+            compare(random, {
+                choose_randomly = true,
+                complex_contexts = complex,
+                home_contexts = true,
+                home_sets = {
+                    ids = ids,
+                    sets = sets,
+                    of = {},
+                },
+            }, seed)
+        end
+        top.home_contexts_in_set_rooms = true
+    end
+end)
+
 test("home contexts match removing the other rooms and sorting again, on the toy graph", function()
     local graph = toy_graph()
     local home_sets = top.home_sets(graph)
