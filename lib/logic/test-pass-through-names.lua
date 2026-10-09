@@ -22,14 +22,28 @@ local function is_test(path)
     return string.find(string.match(path, "[^/]*$"), "test", 1, true) ~= nil
 end
 
--- Every Lua file of the mod, relative to its root, sorted
+-- Every Lua file of the mod, relative to its root, sorted, notes aside
+-- In a git checkout only the files git tracks, since ignored folders keep old copies of the source (like benchmark-logs' tested-source); a tree without git, like the precommit runner's snapshot, has only those anyway
 local function lua_files()
-    local files = {}
-    local pipe = assert(io.popen("find . -name \"*.lua\" -not -path \"./notes/*\" -not -path \"./.git/*\""))
+    local found = {}
+    local pipe = assert(io.popen("git ls-files -- '*.lua' 2>/dev/null"))
     for line in pipe:lines() do
-        table.insert(files, (string.gsub(line, "^%./", "")))
+        table.insert(found, line)
     end
     pipe:close()
+    if #found == 0 then
+        pipe = assert(io.popen("find . -name \"*.lua\" -not -path \"./.git/*\""))
+        for line in pipe:lines() do
+            table.insert(found, (string.gsub(line, "^%./", "")))
+        end
+        pipe:close()
+    end
+    local files = {}
+    for _, path in pairs(found) do
+        if string.find(path, "^notes/") == nil then
+            table.insert(files, path)
+        end
+    end
     table.sort(files)
     return files
 end
