@@ -367,7 +367,32 @@ check.spare_building_recipes = function(after)
     return spare
 end
 
--- Rule 2's goals (check.planet_locked_goals) the game checked (after, a sort from check.sort) doesn't keep, as a list of { node_key, context, keys }, where keys are the recipe's and its variants' node keys (variants_of), any of which keeps the goal
+-- The recipes that count as a recipe (variants_of: recipe name --> its variants' names): its variants, theirs, and so on, since one stage's variant can get variants of its own from a later one
+-- Like independent deposits' versions of a resource swap's planet variant, which are what the planet then makes from its own deposits (Vulcanus's acid neutralisation, seed 0 with planet copies, 2026-10-09)
+-- Returns their names, sorted, without the recipe itself
+check.versions = function(variants_of, recipe_name)
+    local versions = {}
+    local seen = {
+        [recipe_name] = true,
+    }
+    local to_visit = {
+        recipe_name,
+    }
+    while #to_visit > 0 do
+        local name = table.remove(to_visit)
+        for _, variant_name in pairs((variants_of or {})[name] or {}) do
+            if seen[variant_name] == nil then
+                seen[variant_name] = true
+                table.insert(versions, variant_name)
+                table.insert(to_visit, variant_name)
+            end
+        end
+    end
+    table.sort(versions)
+    return versions
+end
+
+-- Rule 2's goals (check.planet_locked_goals) the game checked (after, a sort from check.sort) doesn't keep, as a list of { node_key, context, keys }, where keys are the recipe's and its versions' node keys (check.versions), any of which keeps the goal
 local function lost_planet_locked_goals(before, after, variants_of)
     local after_contexts = after.sort_info.node_to_context_inds
     local lost = {}
@@ -375,7 +400,7 @@ local function lost_planet_locked_goals(before, after, variants_of)
         local keys = {
             node_key,
         }
-        for _, variant_name in pairs((variants_of or {})[before.graph.nodes[node_key].name] or {}) do
+        for _, variant_name in pairs(check.versions(variants_of, before.graph.nodes[node_key].name)) do
             table.insert(keys, gutils.key("recipe", variant_name))
         end
         for context, _ in pairs(contexts) do
@@ -417,7 +442,7 @@ check.give_up_spare = function(before, after, variants_of)
     return texts
 end
 
--- variants_of: original recipe name --> list of variant recipe names that count as it for rule 2
+-- variants_of: original recipe name --> list of variant recipe names that count as it for rules 1 and 2, with their own variants (check.versions)
 check.required_failures = function(before, after, variants_of)
     local before_contexts = before.sort_info.node_to_context_inds
     local after_contexts = after.sort_info.node_to_context_inds
@@ -428,7 +453,7 @@ check.required_failures = function(before, after, variants_of)
     -- Neither can a recipe a planet reward retired on purpose (check.is_retired: locked to no surface and unlocked by nothing, with a variant of it on the new planet, see randomizations/planetary/rewards.lua); its own goals follow the variant (rule 2)
     -- A recipe one of its planet variants still makes counts as reachable too, like for rule 2 (a resource swap's variants replace their originals on their planets, see resources.exclude_originals)
     local function variant_reachable(recipe_name)
-        for _, variant_name in pairs((variants_of or {})[recipe_name] or {}) do
+        for _, variant_name in pairs(check.versions(variants_of, recipe_name)) do
             if next(after_contexts[gutils.key("recipe", variant_name)] or {}) ~= nil then
                 return true
             end

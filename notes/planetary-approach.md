@@ -42,6 +42,7 @@ With the planetary fix pass on (section 4), the stages wait until unified is loa
 
 1. Every recipe that was reachable stays reachable somewhere.
 2. Recipes locked to one planet by surface conditions keep every context they had there, isolatable and automatable included, as themselves or as a planet variant. Examples: its science pack, pentapod eggs, soils, the foundry. A spare version of a duplicated building is exempt (`check.spare_building_recipes`, `check.given_up`).
+   - A variant's own variants count too (`check.versions`). On seed 0 with planet copies, Vulcanus's acid neutralisation was the resource swap's variant, and independent deposits made versions of that variant. Only one of those versions was local on Vulcanus, so counting one level lost the goal in most attempts (2026-10-09).
 3. Every mechanic keeps its rooms and automatability (`protection.planetary_kept_context`). Rocket building and electricity keep their isolatability too. A moved feature (like an offshore fluid) is the exception: its goals follow the feature.
 4. The starting planet's science packs keep every context they had there.
 
