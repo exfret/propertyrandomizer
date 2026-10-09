@@ -63,7 +63,6 @@ local mechanics_sets_to_ordered
 local mechanics_sets_to_nodes
 local trav_to_mechanics_key
 local material_to_cost
-local orig_graph
 local node_science_level
 -- Recipe name --> the product reflect made it named after, as {type, name}
 local renamed_recipes
@@ -90,7 +89,6 @@ item.initialize = function()
     mechanics_sets_to_nodes = nil
     trav_to_mechanics_key = nil
     material_to_cost = material_costs.costs
-    orig_graph = nil
     node_science_level = {}
     renamed_recipes = {}
     new_identity_at = {}
@@ -100,8 +98,12 @@ end
 
 item.spoof = function(graph)
     -- Just calculate recipe levels here
-    -- Only used for pyanodons power balancing
-    orig_graph = table.deepcopy(graph)
+    -- Only used for pyanodons power balancing (reflect reads them only with pypostprocessing), so they're only worked out then
+    if not mods["pypostprocessing"] then
+        return
+    end
+    -- The sort only reads the graph, so it needs no copy of it
+    local orig_graph = graph
     local orig_graph_sort = top.sort(orig_graph)
     --local science_inds = {}
     -- Assume linear sciences (this is only for py anyways)
@@ -192,6 +194,16 @@ item.custom_prereq_search = function(params)
     mechanics_sets_to_ordered = params.mechanics_sets_to_ordered
     mechanics_sets_to_nodes = params.mechanics_sets_to_nodes
     trav_to_mechanics_key = params.trav_to_mechanics_key
+end
+
+-- What custom_prereq_search kept from first pass, its graph above all, isn't needed once the attempt is over
+item.release = function()
+    slot_to_trav = nil
+    trav_to_slot = nil
+    split_graph = nil
+    mechanics_sets_to_ordered = nil
+    mechanics_sets_to_nodes = nil
+    trav_to_mechanics_key = nil
 end
 
 item.validate = false

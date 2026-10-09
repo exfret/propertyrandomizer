@@ -139,8 +139,8 @@ local function smuggle_info()
     local slot_to_trav_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     slot_to_trav_selection_tool.type = "selection-tool"
     slot_to_trav_selection_tool.name = "propertyrandomizer-slot-to-trav"
-    if type(unified_info) == "table" and unified_info.first_pass_info ~= nil then
-        slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.first_pass_info.slot_to_trav)}
+    if type(unified_info) == "table" and unified_info.slot_to_trav ~= nil then
+        slot_to_trav_selection_tool.select.entity_type_filters = {serpent.dump(unified_info.slot_to_trav)}
     else
         slot_to_trav_selection_tool.select.entity_type_filters = {}
     end

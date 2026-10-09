@@ -96,4 +96,8 @@ default.after_reflection = function(params)
     return true
 end
 
+-- Called when an attempt is over (see unified.execute), for letting go of what the handler kept for it, like first pass's graph, so that doesn't stay in memory through later attempts and stages
+default.release = function()
+end
+
 return default

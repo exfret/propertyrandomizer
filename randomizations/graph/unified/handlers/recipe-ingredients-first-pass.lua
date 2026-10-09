@@ -65,6 +65,13 @@ recipe_ingredients_first_pass.custom_prereq_search = function(params)
     split_graph = params.split_graph
 end
 
+-- What custom_prereq_search kept from first pass, its graph above all, isn't needed once the attempt is over
+recipe_ingredients_first_pass.release = function()
+    slot_to_trav = nil
+    trav_to_slot = nil
+    split_graph = nil
+end
+
 recipe_ingredients_first_pass.validate = false
 
 recipe_ingredients_first_pass.reflect = function(graph, head_to_base, head_to_handler)

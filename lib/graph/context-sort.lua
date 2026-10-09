@@ -1093,7 +1093,12 @@ end
 -- The offered sort, if a from-scratch sort of graph with extra would make the same one, or nil
 local function take_reusable_sort(graph, extra)
     local offer = reusable
-    if offer.graph ~= graph or extra == nil or extra.complex_contexts ~= true or extra.home_contexts ~= true then
+    if extra == nil or extra.complex_contexts ~= true or extra.home_contexts ~= true then
+        return nil
+    end
+    -- A sort like it of another graph means the work has moved on from the offered graph (like unified randomization sorting its copies of it), so the offer doesn't stay in memory waiting
+    if offer.graph ~= graph then
+        reusable = nil
         return nil
     end
     for option, _ in pairs(extra) do

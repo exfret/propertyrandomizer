@@ -143,15 +143,16 @@ local function pair_ok(slot, trav)
 end
 
 -- Returns false if first pass failed (so the attempt is retried)
--- params: spoofed_graph and subdiv_graph (unified's graphs of the game), debt (optional: planetary changes superposed, see planetary.superposed), and entity_rules (optional: entity randomization's first_pass_rules, given the subdivided graph)
+-- params: spoofed_graph and subdiv_graph (unified's graphs of the game, which first pass only reads), debt (optional: planetary changes superposed, see planetary.superposed), and entity_rules (optional: entity randomization's first_pass_rules, given the subdivided graph)
 first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
     -- CHOOSE SLOTS
     ----------------------------------------------------------------------------------------------------
 
     -- spoofed_graph is used to get prereqs before subdivision
-    local spoofed_graph = table.deepcopy(params.spoofed_graph)
-    local subdiv_graph = table.deepcopy(params.subdiv_graph)
+    -- Neither is changed here (split_graph below is the copy first pass changes), so they need no copies of their own
+    local spoofed_graph = params.spoofed_graph
+    local subdiv_graph = params.subdiv_graph
 
     -- Sorts here use home contexts, so the tech discovery rule doesn't depend on order (see context-sort.lua)
     local init_sort

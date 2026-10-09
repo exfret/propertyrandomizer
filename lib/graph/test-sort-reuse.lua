@@ -190,10 +190,23 @@ test("a sort with other options or other home sets sorts itself and leaves the o
     assert(top.sort(graph, nil, nil, {
         complex_contexts = true,
     }) ~= offered)
-    -- Another graph doesn't take it either
+    -- Nor does another graph sorted with other options
+    local other = toy_graph()
+    assert(top.sort(other) ~= offered)
+    assert(top.sort(other, nil, nil, {
+        complex_contexts = true,
+    }) ~= offered)
+    assert(top.sort(graph, nil, nil, options(home_sets)) == offered)
+end)
+
+test("a sort like it of another graph doesn't take the offer, and drops it", function()
+    local graph, _, home_sets, offered = offered_world()
     local other = toy_graph()
     assert(top.sort(other, nil, nil, options(home_sets)) ~= offered)
-    assert(top.sort(graph, nil, nil, options(home_sets)) == offered)
+    -- The offered graph is then sorted again, the same way
+    local again = top.sort(graph, nil, nil, options(home_sets))
+    assert(again ~= offered)
+    assert(pebbles(again) == pebbles(offered))
 end)
 
 test("a graph changed after the offer is sorted again", function()

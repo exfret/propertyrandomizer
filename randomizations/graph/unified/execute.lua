@@ -173,8 +173,9 @@ local function planetary_debt()
     return nil
 end
 
+-- One attempt (see unified.execute below)
 -- Repair mode uses the same prerequisite chooser before first pass, only at unpaid requirements.
-unified.execute = function(options)
+local function attempt(options)
     options = options or {}
     local repair_only = options.repair_only == true
     local do_first_pass = DO_FIRST_PASS and not repair_only
@@ -411,6 +412,8 @@ unified.execute = function(options)
             head_to_handler = head_to_handler,
         })
     end
+    -- Nothing changes pool_graph after this, so it's checked now, before first pass can let go of it
+    test_graph_invariants.test(pool_graph)
 
     ----------------------------------------------------------------------------------------------------
     log_info(2, "FIRST PASS")
@@ -470,6 +473,11 @@ unified.execute = function(options)
             --switch_vulcanus_nauvis(spoofed_graph_to_pass)
             switch_vulcanus_nauvis(subdiv_graph_to_pass)
         end
+        -- With first pass, nothing reads these again (first pass's sort takes the pool sort's place), so they don't stay in memory through first pass and the shuffle
+        spoofed_graph = nil
+        subdiv_graph = nil
+        pool_graph = nil
+        sort_for_pool = nil
 
         first_pass_info = first_pass.execute({
             spoofed_graph = spoofed_graph_to_pass,
@@ -478,6 +486,8 @@ unified.execute = function(options)
             -- With constants.entity_first_pass, entity randomization's slots are first pass positions (see first_pass_rules in handlers/entity.lua)
             entity_rules = constants.entity_first_pass and handlers["entity"] ~= nil and handlers["entity"].first_pass_rules or nil,
         })
+        spoofed_graph_to_pass = nil
+        subdiv_graph_to_pass = nil
         if first_pass_info == false then
             return false
         end
@@ -565,8 +575,6 @@ unified.execute = function(options)
         return true
     end
 
-    test_graph_invariants.test(pool_graph)
-
     -- TEST: Make sure each head is after its corresponding base
     -- TODO: Make this check compatible with first pass
     if not do_first_pass and not repair_only then
@@ -595,6 +603,11 @@ unified.execute = function(options)
     ----------------------------------------------------------------------------------------------------
 
     local random_graph = table.deepcopy(cut_graph)
+    -- The graphs before this one aren't read again, so they don't stay in memory through the shuffle
+    spoofed_graph = nil
+    subdiv_graph = nil
+    cut_graph = nil
+    pool_graph = nil
     -- First pass's fluid counts on recipes and resources (fluid_delta, see item_fluid.rewire_form_change) are on its graph, while handlers' validate gets this one, so they're carried over
     -- Without this, the recipe-category handler saw no fluid on a recipe whose kept ingredient's position took a fluid identity, and moved it to hand crafting (base seed 1, 2026-09-30: copper plates' recipe, which the game then couldn't craft anywhere)
     if do_first_pass then
@@ -1179,9 +1192,23 @@ unified.execute = function(options)
             return false
         end
     end
+    -- Only what later stages read (first pass's slot_to_trav, for the randomizer panel), so the attempt's graphs and sorts don't stay in memory for the rest of the load
     return {
-        first_pass_info = first_pass_info,
+        slot_to_trav = (first_pass_info or {}).slot_to_trav,
     }
+end
+
+-- Runs one attempt of unified randomization, returning false if it failed (so it's retried), and otherwise what later stages read from it
+-- Then lets go of what only the attempt needed: the game as it started (unified_starting_data_raw) and what handlers kept from it (their release), so none of it stays in memory through later attempts and stages
+unified.execute = function(options)
+    local result = attempt(options)
+    unified_starting_data_raw = nil
+    for _, handler in pairs(available_handlers) do
+        if handler.release ~= nil then
+            handler.release()
+        end
+    end
+    return result
 end
 
 return unified
