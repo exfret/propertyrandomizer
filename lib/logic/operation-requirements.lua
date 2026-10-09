@@ -220,7 +220,9 @@ operation.levels = function(graph, sort_info, research_only)
     end
     local levels = {}
     local nci = sort_info.node_to_context_inds
-    for ind, pebble_key in pairs(sort_info.pebble_keys) do
+    -- Every rank in order, so the contexts pebbles stand for get levels too (top.each_rank)
+    for ind in top.each_rank(sort_info) do
+        local pebble_key = sort_info.pebble_keys[ind]
         local pebble_context = sort_info.pebble_contexts[ind]
         local node = graph.nodes[pebble_key]
         local level = node.op == "AND" and 0 or math.huge

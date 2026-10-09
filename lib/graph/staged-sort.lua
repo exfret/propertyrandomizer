@@ -122,7 +122,8 @@ staged.sort = function(params)
     result.stage_of = function(ind)
         local found
         for _, stage in pairs(stage_order) do
-            if ind >= stage_starts[stage] then
+            -- The contexts a stage's first pebble stands for rank just below it (top.implied_ability_contexts in context-sort.lua), so anything past the rank before counts
+            if ind > stage_starts[stage] - 1 then
                 found = stage
             end
         end
