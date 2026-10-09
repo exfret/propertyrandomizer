@@ -23,6 +23,9 @@ local key = gutils.key
 -- Ability indices, matching edge.abilities (see lib/logic/builder.lua)
 local ISOLATABILITY = ctx.ISOLATABILITY
 local AUTOMATABILITY = ctx.AUTOMATABILITY
+-- Edge abilities code --> mask + 1 --> the masks coming out of the edge, and those going in that make a mask come out (see contexts.forward_masks and contexts.inverse_masks)
+local FORWARD_MASKS = ctx.FORWARD_MASKS
+local INVERSE_MASKS = ctx.INVERSE_MASKS
 
 local top = {}
 
@@ -312,7 +315,7 @@ local function edge_transmit(context_info, edge, context)
     end
     local room_contexts = context_info.of[context_info.room[context]]
     local arriving = {}
-    for _, mask in pairs(ctx.forward_masks(edge.abilities, context_info.mask[context])) do
+    for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
         table.insert(arriving, room_contexts[mask + 1])
     end
     return arriving
@@ -325,7 +328,7 @@ local function edge_sources(context_info, edge, context)
     end
     local room_contexts = context_info.of[context_info.room[context]]
     local sources = {}
-    for _, mask in pairs(ctx.inverse_masks(edge.abilities, context_info.mask[context])) do
+    for _, mask in pairs(INVERSE_MASKS[edge.abilities][context_info.mask[context] + 1]) do
         table.insert(sources, room_contexts[mask + 1])
     end
     return sources
@@ -343,13 +346,31 @@ local function edge_ind(context_info, node_to_context_inds, edge, context)
     -- The same sources as edge_sources, without building the list
     local room_contexts = context_info.of[context_info.room[context]]
     local earliest_ind
-    for _, mask in pairs(ctx.inverse_masks(edge.abilities, context_info.mask[context])) do
+    for _, mask in pairs(INVERSE_MASKS[edge.abilities][context_info.mask[context] + 1]) do
         local ind = start_inds[room_contexts[mask + 1]]
         if ind ~= nil and (earliest_ind == nil or ind < earliest_ind) then
             earliest_ind = ind
         end
     end
     return earliest_ind
+end
+
+-- Whether a pebble on edge.start gets context to edge.stop (edge_ind ~= nil), for callers that don't need the index: it stops at the first source found
+local function edge_sends(context_info, node_to_context_inds, edge, context)
+    local start_inds = node_to_context_inds[edge.start]
+    if context_info.home[context] ~= nil then
+        return implied_ind(context_info, start_inds, context) ~= nil
+    end
+    if not context_info.complex or edge.abilities == nil then
+        return start_inds[context] ~= nil
+    end
+    local room_contexts = context_info.of[context_info.room[context]]
+    for _, mask in pairs(INVERSE_MASKS[edge.abilities][context_info.mask[context] + 1]) do
+        if start_inds[room_contexts[mask + 1]] ~= nil then
+            return true
+        end
+    end
+    return false
 end
 
 -- Contexts leaving node when a home context arrives at it
@@ -1229,12 +1250,18 @@ top.sort = function(graph, state, new_conn, extra)
     end
 
     -- Puts a node that just entered open in the heap, if it has a pebble
+    -- node_key --> index of the node's earliest pebble, once it has one
+    -- New pebbles come after the old ones (and pebbles written out at the end of a sort repeat existing indices), so it doesn't change during a sort once found
+    local earliest_inds = {}
     local function heap_add(node_key)
-        local earliest
-        for _, ind in pairs(node_to_context_inds[node_key]) do
-            if earliest == nil or ind < earliest then
-                earliest = ind
+        local earliest = earliest_inds[node_key]
+        if earliest == nil then
+            for _, ind in pairs(node_to_context_inds[node_key]) do
+                if earliest == nil or ind < earliest then
+                    earliest = ind
+                end
             end
+            earliest_inds[node_key] = earliest
         end
         if earliest ~= nil then
             heap_push(earliest, node_key)
@@ -1303,31 +1330,55 @@ top.sort = function(graph, state, new_conn, extra)
     end
 
     -- Whether every prerequisite of an AND node sends it context
+    -- A context that isn't a home context, through an edge that doesn't change abilities (or any edge, for simple contexts), is read straight from the prerequisite's pebbles, as edge_sends would
     local function all_pres_send(depnode, context)
+        local plain = context_info.home[context] == nil
         for pre, _ in pairs(depnode.pre) do
-            if edge_ind(context_info, node_to_context_inds, graph.edges[pre], context) == nil then
+            local edge = graph.edges[pre]
+            if plain and (not complex or edge.abilities == nil) then
+                if node_to_context_inds[edge.start][context] == nil then
+                    return false
+                end
+            elseif not edge_sends(context_info, node_to_context_inds, edge, context) then
                 return false
             end
         end
         return true
     end
 
+    -- Puts what the depnode sends when context arrives at it in open, skipping contexts it already has
+    local function add_arrived(depnode, context, depnode_key)
+        -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
+        if logic.type_info[depnode.type].context == nil and (complex or context_info.home[context] ~= nil) then
+            if not already_has(depnode_key, context) then
+                add_to_open(depnode, context, depnode_key)
+            end
+        else
+            for _, outgoing in pairs(node_transmit(context_info, depnode, context)) do
+                if not already_has(depnode_key, outgoing) then
+                    add_to_open(depnode, outgoing, depnode_key)
+                end
+            end
+        end
+    end
+
     -- Checks if this depnode *newly* has context
     -- incoming is the context as it arrives at depnode (after going through the edge)
     -- depnode_key is key(depnode), and edge_key the edge incoming came through, when the caller has them
-    local function process_depnode(depnode, incoming, depnode_key, edge_key)
+    -- incoming_sends says edge_key's prerequisite has just got the pebble incoming came from, as in the main loop, so that edge sends incoming
+    local function process_depnode(depnode, incoming, depnode_key, edge_key, incoming_sends)
         depnode_key = depnode_key or key(depnode)
 
         local check
         if depnode.op == "OR" then
             -- OR is false until proven true
             -- Any prereq with a pebble proves it, and the one incoming came through usually has one, so it's tried first
-            if edge_key ~= nil and depnode.pre[edge_key] ~= nil and edge_ind(context_info, node_to_context_inds, graph.edges[edge_key], incoming) ~= nil then
+            if edge_key ~= nil and depnode.pre[edge_key] ~= nil and (incoming_sends or edge_sends(context_info, node_to_context_inds, graph.edges[edge_key], incoming)) then
                 check = true
             else
                 check = false
                 for pre, _ in pairs(depnode.pre) do
-                    if edge_ind(context_info, node_to_context_inds, graph.edges[pre], incoming) ~= nil then
+                    if edge_sends(context_info, node_to_context_inds, graph.edges[pre], incoming) then
                         check = true
                         break
                     end
@@ -1339,11 +1390,13 @@ top.sort = function(graph, state, new_conn, extra)
             error("Invalid node op: " .. tostring(depnode.op))
         end
 
-        local arrived = { incoming }
-        if not check and depnode.op == "AND" then
+        if check then
+            add_arrived(depnode, incoming, depnode_key)
+        elseif depnode.op == "AND" then
             -- The prerequisite incoming came from also stands for the home sets containing incoming's, which the others may all send already, though not incoming itself (top.implied_home_contexts)
             -- Those home contexts weren't passed on, so their check is here: the smallest containing home sets the depnode can have, each standing for the ones containing it
-            arrived = nil
+            -- They go in open after all of them are checked, since open is part of what already_has reads
+            local arrived
             local home_id = context_info.home[incoming]
             if home_id ~= nil then
                 local room_homes = context_info.home_of[context_info.room[incoming]]
@@ -1368,25 +1421,9 @@ top.sort = function(graph, state, new_conn, extra)
                     end
                 end
             end
-            check = arrived ~= nil
-        end
-
-        if check then
-            for _, context in pairs(arrived) do
-                -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
-                if logic.type_info[depnode.type].context == nil and (complex or context_info.home[context] ~= nil) then
-                    -- Skip contexts the depnode is already transmitting
-                    if not already_has(depnode_key, context) then
-                        add_to_open(depnode, context, depnode_key)
-                    end
-                else
-                    local outgoing_contexts = node_transmit(context_info, depnode, context)
-                    for _, outgoing in pairs(outgoing_contexts) do
-                        -- Skip contexts the depnode is already transmitting
-                        if not already_has(depnode_key, outgoing) then
-                            add_to_open(depnode, outgoing, depnode_key)
-                        end
-                    end
+            if arrived ~= nil then
+                for _, context in pairs(arrived) do
+                    add_arrived(depnode, context, depnode_key)
                 end
             end
         end
@@ -1519,15 +1556,18 @@ top.sort = function(graph, state, new_conn, extra)
                 node_to_context_inds[node_key][context] = #sorted
 
                 -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
+                -- An edge that changes abilities sends the masks its table gives, in edge_transmit's order, also without a list
+                -- Either way the pebble just recorded is where incoming comes from, so the edge sends it (process_depnode's incoming_sends)
                 local passes_unchanged = not complex or home_id ~= nil
+                local room_contexts = complex and context_info.of[context_info.room[context]] or nil
                 for dep, _ in pairs(node.dep) do
                     local edge = graph.edges[dep]
                     local depnode = graph.nodes[edge.stop]
                     if passes_unchanged or edge.abilities == nil then
-                        process_depnode(depnode, context, edge.stop, dep)
+                        process_depnode(depnode, context, edge.stop, dep, true)
                     else
-                        for _, arriving in pairs(edge_transmit(context_info, edge, context)) do
-                            process_depnode(depnode, arriving, edge.stop, dep)
+                        for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
+                            process_depnode(depnode, room_contexts[mask + 1], edge.stop, dep, true)
                         end
                     end
                 end

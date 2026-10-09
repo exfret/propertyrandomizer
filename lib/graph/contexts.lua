@@ -188,6 +188,10 @@ contexts.inverse_masks = function(code, mask)
     return INVERSE[code][mask + 1]
 end
 
+-- The same tables (code --> mask + 1 --> masks), for the sort's inner loop to read without a call; not to be changed
+contexts.FORWARD_MASKS = FORWARD
+contexts.INVERSE_MASKS = INVERSE
+
 -- Whether going through an edge with these abilities can take a context's ability away
 contexts.edge_loses_ability = function(code, ability)
     return code ~= nil and HAS[code % EDGE_CODES + 1][ability]
