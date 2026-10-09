@@ -3,6 +3,16 @@ local isolation = {}
 local before
 local prerequisites
 
+-- Whether a technology discovers a space location (UnlockSpaceLocationModifier)
+local function discovers_location(tech)
+    for _, effect in pairs(tech.effects or {}) do
+        if effect.type == "unlock-space-location" then
+            return true
+        end
+    end
+    return false
+end
+
 local function same(left, right)
     if type(left) ~= type(right) then
         return false
@@ -34,7 +44,10 @@ function isolation.capture()
     if not config.graph.technology and not config.tech_tree_rebuild and not config.planetary_rewards and not config.planetary_freezing then
         prerequisites = {}
         for name, tech in pairs(data.raw.technology) do
-            prerequisites[name] = table.deepcopy(tech.prerequisites or {})
+            -- The star map's discovery order (planetary connections, which dupes turn on) gives the technologies discovering a space location new prerequisites on purpose (randomizations/planetary/discovery.lua)
+            if not (config.planetary_connections and discovers_location(tech)) then
+                prerequisites[name] = table.deepcopy(tech.prerequisites or {})
+            end
         end
     end
 end
