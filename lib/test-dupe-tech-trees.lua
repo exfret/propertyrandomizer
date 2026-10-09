@@ -228,6 +228,99 @@ test("parallel roots wait on discovery and pack unlocks move to their own tree",
     assert(root.prerequisites == nil and copied.root.unit.ingredients[1][1] == "shared-pack")
 end)
 
+test("a planet copy's technologies keep only their own branch's prerequisites, as copies", function()
+    local function discovery(name, location)
+        return tech(name, {
+            effects = {
+                {
+                    type = "unlock-space-location",
+                    space_location = location,
+                },
+            },
+        })
+    end
+    -- Like the electric mining drill: the starting planet's own research
+    local drill = tech("drill", {
+        unit = {
+            ingredients = {
+                {
+                    "shared-pack",
+                    1,
+                },
+            },
+        },
+    })
+    discovery("find-hot", "hot")
+    discovery("find-wet", "wet")
+    discovery("find-cold", "cold")
+    -- Like Vulcanus's research: a trigger after its discovery, then one that also needs the drill
+    local mine = tech("hot-mine", {
+        prerequisites = {
+            "find-hot",
+        },
+    })
+    local big = tech("hot-big-drill", {
+        prerequisites = {
+            "hot-mine",
+            "drill",
+        },
+    })
+    -- Like Aquilo's: after its own discovery, needing another planet's research too
+    local heat = tech("wet-heat", {
+        prerequisites = {
+            "find-wet",
+        },
+    })
+    data.raw.technology["find-cold"].prerequisites = {
+        "wet-heat",
+    }
+    local ice = tech("cold-ice", {
+        prerequisites = {
+            "find-cold",
+            "wet-heat",
+        },
+    })
+    local closure = {}
+    local function needs(name)
+        if closure[name] == nil then
+            local needed = {}
+            closure[name] = needed
+            for _, prerequisite in pairs(data.raw.technology[name].prerequisites or {}) do
+                needed[prerequisite] = true
+                for further, _ in pairs(needs(prerequisite)) do
+                    needed[further] = true
+                end
+            end
+        end
+        return closure[name]
+    end
+    local packs = {
+        copies = {},
+        recipe_copies = {},
+    }
+    local discovery_copies = {
+        ["find-hot"] = "find-hot-2",
+        ["find-wet"] = "find-wet-2",
+        ["find-cold"] = "find-cold-2",
+    }
+    local copied = planets.parallel_tree({
+        drill,
+        mine,
+        big,
+        heat,
+        ice,
+    }, {}, packs, discovery_copies, 2, "home-discovery-2", needs)
+    -- Its own branch's copies only: not the drill research's copy, which waits on the starting planet copy's discovery, nor the original
+    assert(copied["hot-mine"].prerequisites[1] == "find-hot-2")
+    assert(#copied["hot-big-drill"].prerequisites == 1)
+    assert(copied["hot-big-drill"].prerequisites[1] == copied["hot-mine"].name)
+    -- Nor another planet's research
+    assert(#copied["cold-ice"].prerequisites == 1)
+    assert(copied["cold-ice"].prerequisites[1] == "find-cold-2")
+    -- The starting planet's copied research itself still waits on the starting planet copy's discovery
+    assert(copied["drill"].prerequisites[1] == "home-discovery-2")
+end)
+
 test("initially enabled duplicate recipes require their copy discovery", function()
     local discovery = tech("home-discovery", {})
     dupe.home_discoveries[2] = discovery
@@ -632,6 +725,116 @@ test("local variants share products and inputs while keeping planet locks and co
     assert(variants["test-component"]["test-other-copy"].ingredients[1].amount == 1)
     assert(data.raw.recipe["test-component"].ingredients[1].amount == 1)
 
+end)
+
+test("on a planet's branch, copies keep the starting planet's items rather than this number's copies of them", function()
+    function log() end
+    local function item(name)
+        data:extend({
+            {
+                type = "item",
+                name = name,
+                icon = name .. ".png",
+                place_result = name,
+            },
+        })
+    end
+    local function recipe(name, ingredient)
+        data:extend({
+            {
+                type = "recipe",
+                name = name,
+                enabled = false,
+                ingredients = {
+                    {
+                        type = "item",
+                        name = ingredient,
+                        amount = 1,
+                    },
+                },
+                results = {
+                    {
+                        type = "item",
+                        name = name,
+                        amount = 1,
+                    },
+                },
+            },
+        })
+    end
+    -- Like the electric mining drill: the starting planet's, with copies of its own
+    item("drill")
+    recipe("drill", "plate")
+    local drill_tech = tech("drill-tech", {
+        effects = {
+            {
+                type = "unlock-recipe",
+                recipe = "drill",
+            },
+            {
+                type = "unlock-recipe",
+                recipe = "drill-line",
+            },
+        },
+        research_trigger = {
+            type = "craft-item",
+            item = "drill",
+        },
+    })
+    -- Another of the starting planet's, made from the drill
+    item("drill-line")
+    recipe("drill-line", "drill")
+    -- Like the big mining drill: a planet's own, made from the drill and triggered by crafting one
+    tech("find-hot", {
+        effects = {
+            {
+                type = "unlock-space-location",
+                space_location = "hot",
+            },
+        },
+    })
+    local big_tech = tech("big-tech", {
+        prerequisites = {
+            "find-hot",
+        },
+        effects = {
+            {
+                type = "unlock-recipe",
+                recipe = "big",
+            },
+        },
+        research_trigger = {
+            type = "craft-item",
+            item = "drill",
+        },
+    })
+    item("big")
+    recipe("big", "drill")
+    local drill_copy = dupe.item(data.raw.item["drill"], 2)
+    dupe.item(data.raw.item["drill-line"], 2)
+    dupe.item(data.raw.item["big"], 2)
+    local drill_tech_copy = dupe.prototype(drill_tech, 2)
+    local big_tech_copy = dupe.prototype(big_tech, 2)
+    dupe.technology_copies[2] = {
+        [drill_tech.name] = drill_tech_copy,
+        [big_tech.name] = big_tech_copy,
+    }
+    intermediates.execute()
+    local function copy_of(name)
+        for _, candidate in pairs(data.raw.recipe) do
+            if candidate.orig_name == name and candidate.dupe_number == 2 then
+                return candidate
+            end
+        end
+    end
+    -- The starting planet's own copies take this number's drill
+    assert(copy_of("drill-line").ingredients[1].name == drill_copy.name)
+    assert(drill_tech_copy.research_trigger.item == drill_copy.name)
+    -- The planet's copies keep the ordinary drill
+    assert(copy_of("big").ingredients[1].name == "drill")
+    assert(big_tech_copy.research_trigger.item == "drill")
+    -- The originals are untouched
+    assert(data.raw.recipe["big"].ingredients[1].name == "drill")
 end)
 
 test("empty copied leaves are removed while prerequisites of real unlocks remain", function()

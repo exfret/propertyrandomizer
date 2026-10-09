@@ -613,15 +613,21 @@ dupe_planets.parallel_tree = function(candidates, chain, packs, discovery_copies
         tech.effects = kept
         copy.effects = copy_effects
     end
+    -- A copy keeps the prerequisites on its own branch (dupe.branch_finder) as this number's copies; the others are left out rather than tying it to another planet: this number's copy of one belongs to another planet, which a planet copy shouldn't rely on just for sharing its dupe number, and an original could come after this planet on the map (user, 2026-10-08)
+    -- Like Vulcanus's big mining drill research, which needs the electric mining drill's because the drill is made from one: Vulcanus 3's copy would otherwise wait on Nauvis 3's discovery, where the copied starting planet technologies are rooted; the tech tree rebuild gives copies their real prerequisites after randomization, from what their recipes take
+    local branch_of = dupe.branch_finder(needs)
     for tech_name, copy in pairs(copied) do
         local prerequisites = {}
         for _, prerequisite in pairs(data.raw.technology[tech_name].prerequisites or {}) do
-            if copied[prerequisite] ~= nil then
-                table.insert(prerequisites, copied[prerequisite].name)
-            elseif discovery_copies[prerequisite] ~= nil then
-                table.insert(prerequisites, discovery_copies[prerequisite])
-            else
-                table.insert(prerequisites, prerequisite)
+            if dupe.on_branch(branch_of(prerequisite), branch_of(tech_name)) then
+                if copied[prerequisite] ~= nil then
+                    table.insert(prerequisites, copied[prerequisite].name)
+                elseif discovery_copies[prerequisite] ~= nil then
+                    table.insert(prerequisites, discovery_copies[prerequisite])
+                elseif next(branch_of(prerequisite)) == nil then
+                    -- One with no copy (like leveled research) stays the original only on the starting planet's branch, which always comes first
+                    table.insert(prerequisites, prerequisite)
+                end
             end
         end
         -- Branches that already follow a planet discovery are rooted there.

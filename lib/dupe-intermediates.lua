@@ -215,6 +215,55 @@ intermediates.execute = function()
     if count > 0 then
         locks.realize()
     end
+    -- Copies take this number's copies of their ingredients, except that what's only on a planet's branch (dupe.branch_finder) keeps the starting planet's own items unchanged
+    -- This number's copy of one of those is made from copied starting planet technologies, which wait on the starting planet copy's discovery, so a planet copy would rely on that other planet just for sharing its dupe number (user, 2026-10-08), like Vulcanus 3's big mining drill on Nauvis 3's electric mining drill; randomization's recipe ingredients later take things from the planets before it
+    local closure = {}
+    local function needs(name)
+        if closure[name] == nil then
+            local needed = {}
+            closure[name] = needed
+            for _, prerequisite in pairs(((data.raw.technology or {})[name] or {}).prerequisites or {}) do
+                needed[prerequisite] = true
+                for further, _ in pairs(needs(prerequisite)) do
+                    needed[further] = true
+                end
+            end
+        end
+        return closure[name]
+    end
+    local branch_of = dupe.branch_finder(needs)
+    -- Whether a recipe of the original game is the starting planet's: enabled from the start, or unlocked by a technology on its branch
+    local unlocking = {}
+    for _, name in pairs(sorted_keys(data.raw.technology)) do
+        local technology = data.raw.technology[name]
+        if technology.dupe_number == nil then
+            for _, effect in pairs(technology.effects or {}) do
+                if effect.type == "unlock-recipe" then
+                    unlocking[effect.recipe] = unlocking[effect.recipe] or {}
+                    table.insert(unlocking[effect.recipe], name)
+                end
+            end
+        end
+    end
+    local function is_start_recipe(recipe)
+        if recipe.enabled ~= false then
+            return true
+        end
+        for _, technology_name in pairs(unlocking[recipe.name] or {}) do
+            if next(branch_of(technology_name)) == nil then
+                return true
+            end
+        end
+        return false
+    end
+    local function is_start_item(name)
+        for _, recipe in pairs(items[name] ~= nil and dupe.item_recipes(items[name]) or {}) do
+            if recipe.orig_name == nil and is_start_recipe(recipe) then
+                return true
+            end
+        end
+        return false
+    end
     local recipe_copies = {}
     for _, recipe in pairs(data.raw.recipe) do
         local number = recipe.dupe_number
@@ -223,8 +272,11 @@ intermediates.execute = function()
             if recipe.intermediate_planet == nil then
                 recipe_copies[number][recipe.orig_name] = recipe.name
             end
+            -- A planet's local variant is on its planet's branch
+            local original = data.raw.recipe[recipe.orig_name]
+            local on_start = recipe.intermediate_planet == nil and original ~= nil and is_start_recipe(original)
             for _, ingredient in pairs(recipe.ingredients or {}) do
-                if ingredient.type == nil or ingredient.type == "item" then
+                if (ingredient.type == nil or ingredient.type == "item") and (on_start == true or not is_start_item(ingredient.name)) then
                     ingredient.name = (copies[number] or {})[ingredient.name] or ingredient.name
                 end
             end
@@ -241,7 +293,9 @@ intermediates.execute = function()
         for _, technology in pairs(technologies) do
             local trigger = technology.research_trigger
             if trigger ~= nil then
-                if trigger.item ~= nil then
+                -- A planet's research is triggered by its own things, so on a planet's branch the starting planet's items stay as they are, as with ingredients above
+                local trigger_item = type(trigger.item) == "table" and trigger.item.name or trigger.item
+                if trigger_item ~= nil and (next(branch_of(technology.orig_name or technology.name)) == nil or not is_start_item(trigger_item)) then
                     trigger.item = replace_item(trigger.item, copies[number] or {})
                 end
                 for index, entity in pairs(trigger.entities or {}) do

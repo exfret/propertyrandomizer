@@ -285,6 +285,64 @@ dupe.technology_icons = function(icons)
     return technology_icons
 end
 
+-- Branches of the technology tree, for keeping a planet copy to its own things (user, 2026-10-08: "What shouldn't happen is reliance on another planet's things just because it's the same dupe number")
+-- A technology's branch is the set of the latest discovery technologies it follows (those that no other discovery it follows comes after), and empty for the starting planet's own technologies, which follow none
+-- The needs argument is a prerequisite closure (technology name --> set of every technology it needs), and the result a function technology name --> its branch
+dupe.branch_finder = function(needs)
+    local function is_discovery(name)
+        for _, effect in pairs(((data.raw.technology or {})[name] or {}).effects or {}) do
+            if effect.type == "unlock-space-location" then
+                return true
+            end
+        end
+        return false
+    end
+    local branches = {}
+    return function(tech_name)
+        if branches[tech_name] == nil then
+            local followed = {}
+            for name, _ in pairs(needs(tech_name)) do
+                if is_discovery(name) then
+                    followed[name] = true
+                end
+            end
+            if is_discovery(tech_name) then
+                followed[tech_name] = true
+            end
+            local latest = {}
+            for name, _ in pairs(followed) do
+                local is_latest = true
+                for other, _ in pairs(followed) do
+                    if other ~= name and needs(other)[name] ~= nil then
+                        is_latest = false
+                    end
+                end
+                if is_latest then
+                    latest[name] = true
+                end
+            end
+            branches[tech_name] = latest
+        end
+        return branches[tech_name]
+    end
+end
+
+-- Whether something on branch inner belongs on branch outer (both from dupe.branch_finder): on the starting planet's branch only what's also on it does, and otherwise what's on one or more of outer's own branches
+dupe.on_branch = function(inner, outer)
+    if next(outer) == nil then
+        return next(inner) == nil
+    end
+    if next(inner) == nil then
+        return false
+    end
+    for name, _ in pairs(inner) do
+        if outer[name] == nil then
+            return false
+        end
+    end
+    return true
+end
+
 -- Whether researching the technology takes an item the recipe makes (a science pack's recipe can't be unlocked by a technology that needs the pack)
 local function research_needs_result(technology, recipe)
     if technology.unit == nil or technology.unit.ingredients == nil then
