@@ -24,8 +24,8 @@ local SWAP_START_WITH = nil
 -- On since 2026-10-01, once such a recipe kept its earliest context too (state.required_contexts in randomizations/graph/unified/skeleton/promotion.lua): 12 of 12 unified-suite runs passed on their first attempt with no planetary losses
 local PROTECT_TRANSPORTED = true
 
--- Whether discovery technologies follow the star map the connection graph draws, in tiers (discovery.lua, run in draw_map_first)
--- On 2026-09-30 each planet took the packs of its own closer neighbors instead: that passed MECHCHECK (sa/dupes-preview seeds 1-2), but every planet got a home set of its own (6-7 instead of 2), and the planetary stage ran 2.5-4 times slower; tiers give one home set per tier (user, 2026-10-08)
+-- Whether discovery technologies follow the star map the connection graph draws, each planet taking the packs of the planets before it (discovery.lua, run in draw_map_first)
+-- Every planet gets a home set of its own that way, which made the planetary stage 2.5-4 times slower on 2026-09-30; research home contexts (top.research_home_contexts in lib/graph/context-sort.lua) keep that cheap now, and the tiers tried in between misread the user (2026-10-09)
 local DISCOVERY_FOLLOWS_MAP = true
 
 local gutils = require("lib/graph/graph-utils")

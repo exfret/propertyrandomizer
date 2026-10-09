@@ -63,6 +63,8 @@ local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local fx = require("lib/graph/contexts-for-tests")
 local C = fx.C
+-- These check home contexts on every node against removing rooms and sorting again, so they use full home contexts rather than research ones (lib/graph/test-research-home-contexts.lua tests those)
+top.research_home_contexts = false
 
 local key = gutils.key
 

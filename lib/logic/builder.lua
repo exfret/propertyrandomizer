@@ -56,6 +56,10 @@ function helpers.add_node(node_type, op, context, node_name, extra)
             op = op,
             context = context,
             canonical = extra.canonical or curr_class,
+            -- What home contexts do with this type (see top.research_home_contexts in lib/graph/context-sort.lua): research_input for what a technology's research needs (its packs' set, the labs for them, its trigger), which gets a home set's context from a prerequisite's isolatable context in one of the set's rooms; home_carrier for technologies, which pass home contexts on; relay for nodes that only stand for part of an edge, which carry them where they lead to research
+            research_input = extra.research_input,
+            home_carrier = extra.home_carrier,
+            relay = extra.relay,
             -- We can't include this here because then the table doesn't get smuggled correctly to control stage (can't smuggle functions); it'll need to be done then
             --[[localiser = extra.localiser or function(node)
                 local deconstructed = gutils.deconstruct(node.prot)
@@ -64,6 +68,10 @@ function helpers.add_node(node_type, op, context, node_name, extra)
             end,]]
         }
     end
+    -- Those are the type's, not each node's
+    extra.research_input = nil
+    extra.home_carrier = nil
+    extra.relay = nil
 
     extra.class = extra.class or curr_class
     if extra.prot == nil and curr_prot ~= nil then

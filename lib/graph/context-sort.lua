@@ -34,6 +34,8 @@ top.ISOLATABILITY = ISOLATABILITY
 top.home_contexts_in_set_rooms = true
 -- Whether a smaller home set's home context stands for those of the home sets containing it in the same room (see Home contexts above), rather than each being passed on; false only to compare with how sorts used to be
 top.implied_home_contexts = true
+-- Whether home contexts are kept to research (see Home contexts above), with complex contexts; false only to compare with how sorts used to be
+top.research_home_contexts = true
 top.AUTOMATABILITY = AUTOMATABILITY
 
 -- Every ability mask, in the order sorts go through them (see lib/graph/contexts.lua)
@@ -42,6 +44,13 @@ top.ability_masks = masks
 -- The weakest mask: no edge takes it away, so a node with any context in a room also has this one there
 local NO_ABILITIES = ctx.NO_ABILITIES
 top.NO_ABILITIES = NO_ABILITIES
+-- The masks with isolatability, whose contexts give research home contexts (see top.research_home_contexts)
+local ISOLATED_MASKS = {}
+for _, mask in pairs(masks) do
+    if ctx.has_ability(mask, ISOLATABILITY) then
+        table.insert(ISOLATED_MASKS, mask)
+    end
+end
 
 local has_ability = ctx.has_ability
 local with_ability = ctx.with_ability
@@ -71,6 +80,14 @@ top.simple_context = ctx.simple
 -- What can be had using only a home set's rooms can be had using only the rooms of any home set containing it, so with top.implied_home_contexts a smaller home set's context stands for the bigger ones' in the same room: those aren't passed on, and looking for one counts the other
 -- Discovery tiers make every home set hold the ones before it (randomizations/planetary/discovery.lua), so each pebble then needs only its earliest tier's home context instead of one per later tier (user, 2026-10-09)
 -- Forgetters and rooms send the bigger ones' contexts to rooms the smaller one has none in, and the end of a sort writes out the ones that stood in, so what reads a sort finds every home context as before
+-- Research home contexts (top.research_home_contexts, with complex contexts): only the discovery rule reads home contexts, and only techs', so beyond the core they're kept to research (user, 2026-10-09)
+--   * The core is the rooms in every home set, like the start and its space platforms, which every discovery needs (the user's "tier 1.5": the platform comes between the start and the first planets, built from what the start ships up); its home set keeps full home contexts, which only take its few rooms
+--   * What a tech's research needs (its packs' set, the labs for it, its trigger, and the launches a send-item-to-orbit trigger needs: node types the logic declares research_input) gets another home set's context from any prerequisite whose own pebble is isolatable in one of the set's rooms beyond the core, or is in the core's home context (every home set holds the core)
+--   * In the core's rooms only the core's home context counts, not isolatability, which can rest on buildings or tiles brought in once from anywhere (a platform builds what it's sent); beyond the core that can happen too (bootstrap.lua's grants on planets), but only for buildings the planet then makes itself
+--   * So each pack only has to be made on one of the set's planets from that planet's own resources, or from the core's, and the packs can come from different planets: shipping between the set's planets is taken to work, so an edge losing isolatability on the way (like a delivery's) doesn't stop it (every Space Age pack lasts longer than a trip, lib/data-utils.lua's survives_trip)
+--   * Techs (home_carrier) pass those home contexts on to the techs after them, research inputs and relays (unified's slots, heads and such) carry them where they lead to a tech, and nothing else takes them; sources only give them to research
+--   * A pack made from another of the set's planets' items (beyond the core's), or with a tech only the set's other planets research, doesn't count, though removing the other rooms and sorting again would count it; late techs needing several planets (biter eggs, biolabs) get none, which leaves them free to go anywhere (user, 2026-10-09)
+--   * Each of those home sets has a single home context, riding on one room's weakest context (the room in the most home sets), since techs send them to every room anyway
 
 -- The home context riding on a context (home sets are numbered, see top.home_sets)
 top.home_context_key = ctx.home
@@ -151,8 +168,8 @@ end
 
 -- Gets the lookup tables for the contexts used in a sort
 -- For simple contexts, the contexts are just the rooms' simple contexts, like the rooms in consistent-sort.lua
--- home_sets (from top.home_sets) adds home contexts, or is nil for none
-local function build_context_info(complex, home_sets)
+-- home_sets (from top.home_sets) adds home contexts, or is nil for none, and research keeps them to research (top.research_home_contexts) with complex contexts
+local function build_context_info(complex, home_sets, research)
     ctx.number_rooms(logic.contexts)
     local context_info = {
         complex = complex,
@@ -177,7 +194,87 @@ local function build_context_info(complex, home_sets)
         home_subsets = {},
         -- home set id --> how many rooms it has (home contexts only)
         home_size = {},
+        -- Whether home contexts are kept to research (see top.research_home_contexts)
+        research_homes = complex and home_sets ~= nil and research == true,
+        -- With research home contexts: the core's home set id (the rooms in every home set, with full home contexts), and home set id --> true for it
+        core_id = nil,
+        home_full = {},
+        -- room --> the research home contexts of the home sets holding it, which its isolatable contexts give research
+        room_home_contexts = {},
+        -- The research home contexts the core's home contexts give research (every home set holds the core)
+        core_research_contexts = {},
+        -- Home set id --> the contexts a prerequisite's pebble gives research its research home context from: the isolatable ones of its rooms beyond the core, and the core's home contexts
+        research_sources = {},
     }
+    -- The home sets, plus a core of its own (numbered after them) when no home set is just the rooms in all of them
+    local ids = {}
+    local sets = {}
+    if home_sets ~= nil then
+        for _, home_id in pairs(home_sets.ids) do
+            table.insert(ids, home_id)
+            sets[home_id] = home_sets.sets[home_id].rooms
+        end
+    end
+    local carrier
+    if context_info.research_homes then
+        local core_rooms
+        local last_id = 0
+        for _, home_id in pairs(ids) do
+            last_id = math.max(last_id, home_id)
+            if core_rooms == nil then
+                core_rooms = {}
+                for room, _ in pairs(sets[home_id]) do
+                    core_rooms[room] = true
+                end
+            else
+                for room, _ in pairs(core_rooms) do
+                    if sets[home_id][room] == nil then
+                        core_rooms[room] = nil
+                    end
+                end
+            end
+        end
+        if core_rooms ~= nil and next(core_rooms) ~= nil then
+            for _, home_id in pairs(ids) do
+                local same = true
+                for room, _ in pairs(sets[home_id]) do
+                    if core_rooms[room] == nil then
+                        same = false
+                        break
+                    end
+                end
+                if same then
+                    context_info.core_id = home_id
+                    break
+                end
+            end
+            if context_info.core_id == nil then
+                context_info.core_id = last_id + 1
+                table.insert(ids, context_info.core_id)
+                sets[context_info.core_id] = core_rooms
+            end
+            context_info.home_full[context_info.core_id] = true
+        end
+        -- The other home sets' contexts all ride on one room: the one in the most home sets, the first by key of those
+        local rooms = {}
+        for room, _ in pairs(logic.contexts) do
+            table.insert(rooms, room)
+        end
+        table.sort(rooms)
+        local most
+        for _, room in pairs(rooms) do
+            local count = 0
+            for _, home_id in pairs(ids) do
+                if sets[home_id][room] ~= nil then
+                    count = count + 1
+                end
+            end
+            if most == nil or count > most then
+                carrier = room
+                most = count
+            end
+        end
+    end
     for room, _ in pairs(logic.contexts) do
         if complex then
             context_info.of[room] = {}
@@ -199,10 +296,16 @@ local function build_context_info(complex, home_sets)
                 base = context_info.of[room][NO_ABILITIES + 1]
             end
             context_info.home_of[room] = {}
-            for _, home_id in pairs(home_sets.ids) do
+            for _, home_id in pairs(ids) do
                 -- A home set with no rooms at all keeps its home contexts everywhere, so what needs no room still gets one
-                local set_rooms = home_sets.sets[home_id].rooms
-                if not top.home_contexts_in_set_rooms or set_rooms[room] ~= nil or next(set_rooms) == nil then
+                local set_rooms = sets[home_id]
+                local keeps
+                if context_info.research_homes and context_info.home_full[home_id] == nil then
+                    keeps = room == carrier
+                else
+                    keeps = not top.home_contexts_in_set_rooms or set_rooms[room] ~= nil or next(set_rooms) == nil
+                end
+                if keeps then
                     local context = ctx.home(base, home_id)
                     table.insert(context_info.list, context)
                     context_info.room[context] = room
@@ -216,25 +319,83 @@ local function build_context_info(complex, home_sets)
         end
     end
     if home_sets ~= nil then
-        for _, home_id in pairs(home_sets.ids) do
-            context_info.home_rooms[home_id] = home_sets.sets[home_id].rooms
-        end
-        for _, home_id in pairs(home_sets.ids) do
+        for _, home_id in pairs(ids) do
+            context_info.home_rooms[home_id] = sets[home_id]
             local count = 0
-            for _, _ in pairs(context_info.home_rooms[home_id]) do
+            for _, _ in pairs(sets[home_id]) do
                 count = count + 1
             end
             context_info.home_size[home_id] = count
         end
+        if context_info.research_homes then
+            -- The core's home contexts, one per room of it
+            local core_contexts = {}
+            local core_rooms = {}
+            if context_info.core_id ~= nil then
+                core_rooms = sets[context_info.core_id]
+                local core_list = {}
+                for room, _ in pairs(sets[context_info.core_id]) do
+                    if context_info.of[room] ~= nil then
+                        table.insert(core_list, room)
+                    end
+                end
+                table.sort(core_list)
+                for _, room in pairs(core_list) do
+                    table.insert(core_contexts, context_info.home_of[room][context_info.core_id])
+                end
+            end
+            for _, home_id in pairs(ids) do
+                if context_info.home_full[home_id] == nil then
+                    local list = {}
+                    for room, _ in pairs(sets[home_id]) do
+                        if context_info.of[room] ~= nil then
+                            table.insert(list, room)
+                        end
+                    end
+                    table.sort(list)
+                    local context = context_info.home_of[carrier][home_id]
+                    local sources = {}
+                    for _, room in pairs(list) do
+                        -- A core room's isolatable pebbles don't count: isolatability can rest on buildings or tiles brought in once from anywhere (like a platform's, see entity-own-space and tile-build-space in lib/logic/concrete.lua), and what the core makes alone has the core's home context
+                        if core_rooms[room] == nil then
+                            context_info.room_home_contexts[room] = context_info.room_home_contexts[room] or {}
+                            table.insert(context_info.room_home_contexts[room], context)
+                            for _, mask in pairs(ISOLATED_MASKS) do
+                                table.insert(sources, context_info.of[room][mask + 1])
+                            end
+                        end
+                    end
+                    for _, core_context in pairs(core_contexts) do
+                        table.insert(sources, core_context)
+                    end
+                    context_info.research_sources[home_id] = sources
+                    table.insert(context_info.core_research_contexts, context)
+                end
+            end
+            -- From the smallest home set up, so that what a smaller one stands for is there first (top.implied_home_contexts)
+            local function by_size(a, b)
+                local a_id = context_info.home[a]
+                local b_id = context_info.home[b]
+                if context_info.home_size[a_id] ~= context_info.home_size[b_id] then
+                    return context_info.home_size[a_id] < context_info.home_size[b_id]
+                end
+                return a_id < b_id
+            end
+            for _, home_contexts in pairs(context_info.room_home_contexts) do
+                table.sort(home_contexts, by_size)
+            end
+            table.sort(context_info.core_research_contexts, by_size)
+        end
         -- A home set stands for the contexts of those containing it, and those inside it stand for its own (top.implied_home_contexts)
-        for _, home_id in pairs(home_sets.ids) do
+        -- Only between home sets of the same kind: the core's contexts are everywhere and the others' only on research, which the core's give through research's edges instead (see edge_transmit)
+        for _, home_id in pairs(ids) do
             context_info.home_supersets[home_id] = {}
             context_info.home_subsets[home_id] = {}
         end
         if top.implied_home_contexts then
-            for _, inner_id in pairs(home_sets.ids) do
-                for _, outer_id in pairs(home_sets.ids) do
-                    if inner_id ~= outer_id then
+            for _, inner_id in pairs(ids) do
+                for _, outer_id in pairs(ids) do
+                    if inner_id ~= outer_id and context_info.home_full[inner_id] == context_info.home_full[outer_id] then
                         local inside = true
                         for room, _ in pairs(context_info.home_rooms[inner_id]) do
                             if context_info.home_rooms[outer_id][room] == nil then
@@ -250,7 +411,7 @@ local function build_context_info(complex, home_sets)
                 end
             end
             -- From the smallest containing home set up, which is the order process_depnode in top.sort tries them in
-            for _, home_id in pairs(home_sets.ids) do
+            for _, home_id in pairs(ids) do
                 table.sort(context_info.home_supersets[home_id], function(a, b)
                     if context_info.home_size[a] ~= context_info.home_size[b] then
                         return context_info.home_size[a] < context_info.home_size[b]
@@ -307,22 +468,84 @@ local function smallest_containing(context_info, room_homes, home_id, member_roo
     return contexts
 end
 
+-- Whether a node is a research input (see top.research_home_contexts), found from the node type in its key and memoized per type info table
+-- Callers reasoning about backings pass stand-ins for edges with no stop, like promotion's chosen bases, which never end at research
+local research_input_of = {}
+local research_input_info
+local function is_research_input(node_key)
+    if node_key == nil then
+        return false
+    end
+    if research_input_info ~= logic.type_info then
+        research_input_of = {}
+        research_input_info = logic.type_info
+    end
+    local known = research_input_of[node_key]
+    if known == nil then
+        local info = logic.type_info[gutils.deconstruct(node_key).type]
+        known = info ~= nil and info.research_input == true
+        research_input_of[node_key] = known
+    end
+    return known
+end
+
+-- The research home contexts a research input gets from a prerequisite's pebble in context (see top.research_home_contexts), or nil
+-- An isolatable pebble gives those of the home sets holding its room (none in the core's rooms), and a pebble in the core's home context gives every one
+-- The pebble's own context counts, not what arrives through the edge, since shipping is taken to work
+-- From the smallest home set up, so that what a smaller one stands for is there first (top.implied_home_contexts)
+local function research_home_contexts(context_info, context)
+    local home_id = context_info.home[context]
+    if home_id ~= nil then
+        if context_info.home_full[home_id] ~= nil then
+            return context_info.core_research_contexts
+        end
+        return nil
+    end
+    local mask = context_info.mask[context]
+    if mask == nil or not has_ability(mask, ISOLATABILITY) then
+        return nil
+    end
+    return context_info.room_home_contexts[context_info.room[context]]
+end
+
+-- Whether a context is a research home context (see top.research_home_contexts): one only research has, rather than the core's, which are everywhere
+local function is_research_home(context_info, context)
+    local home_id = context_info.home[context]
+    return home_id ~= nil and context_info.research_homes and context_info.home_full[home_id] == nil
+end
+
 -- Contexts arriving at edge.stop when context leaves edge.start
 -- Home contexts go through edges unchanged: they have no abilities to lose, and abilities an edge adds come from the context they ride on
+-- An isolatable context beyond the core's rooms, or a core home context, leaving for a research input brings research home contexts along (top.research_home_contexts)
 local function edge_transmit(context_info, edge, context)
+    local arriving
     if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
-        return { context }
+        arriving = { context }
+    else
+        local room_contexts = context_info.of[context_info.room[context]]
+        arriving = {}
+        for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
+            table.insert(arriving, room_contexts[mask + 1])
+        end
     end
-    local room_contexts = context_info.of[context_info.room[context]]
-    local arriving = {}
-    for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
-        table.insert(arriving, room_contexts[mask + 1])
+    if context_info.research_homes and is_research_input(edge.stop) then
+        for _, home_context in pairs(research_home_contexts(context_info, context) or {}) do
+            table.insert(arriving, home_context)
+        end
     end
     return arriving
 end
 
 -- Contexts leaving edge.start that would make context arrive at edge.stop
+-- For a research home context at a research input, that's also every isolatable context in one of its home set's rooms, and the core's home contexts (top.research_home_contexts)
 local function edge_sources(context_info, edge, context)
+    if context_info.research_homes and is_research_home(context_info, context) and is_research_input(edge.stop) then
+        local sources = { context }
+        for _, source in pairs(context_info.research_sources[context_info.home[context]]) do
+            table.insert(sources, source)
+        end
+        return sources
+    end
     if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return { context }
     end
@@ -337,8 +560,19 @@ end
 -- Earliest index in the pebble lists of a pebble on edge.start that gets context to edge.stop, or nil if none
 local function edge_ind(context_info, node_to_context_inds, edge, context)
     local start_inds = node_to_context_inds[edge.start]
-    if context_info.home[context] ~= nil then
-        return implied_ind(context_info, start_inds, context)
+    local home_id = context_info.home[context]
+    if home_id ~= nil then
+        local earliest_ind = implied_ind(context_info, start_inds, context)
+        -- A research home context also comes from the prerequisite's isolatable pebbles in its home set's rooms and its core pebbles (top.research_home_contexts)
+        if context_info.research_homes and context_info.home_full[home_id] == nil and is_research_input(edge.stop) then
+            for _, source in pairs(context_info.research_sources[home_id]) do
+                local ind = start_inds[source]
+                if ind ~= nil and (earliest_ind == nil or ind < earliest_ind) then
+                    earliest_ind = ind
+                end
+            end
+        end
+        return earliest_ind
     end
     if not context_info.complex or edge.abilities == nil then
         return start_inds[context]
@@ -358,8 +592,19 @@ end
 -- Whether a pebble on edge.start gets context to edge.stop (edge_ind ~= nil), for callers that don't need the index: it stops at the first source found
 local function edge_sends(context_info, node_to_context_inds, edge, context)
     local start_inds = node_to_context_inds[edge.start]
-    if context_info.home[context] ~= nil then
-        return implied_ind(context_info, start_inds, context) ~= nil
+    local home_id = context_info.home[context]
+    if home_id ~= nil then
+        if implied_ind(context_info, start_inds, context) ~= nil then
+            return true
+        end
+        if context_info.research_homes and context_info.home_full[home_id] == nil and is_research_input(edge.stop) then
+            for _, source in pairs(context_info.research_sources[home_id]) do
+                if start_inds[source] ~= nil then
+                    return true
+                end
+            end
+        end
+        return false
     end
     if not context_info.complex or edge.abilities == nil then
         return start_inds[context] ~= nil
@@ -395,6 +640,10 @@ local function home_transmit(context_info, node, incoming, home_id)
         end
         return outgoing
     elseif type(context_type) == "string" then
+        -- Rooms aren't research, so they don't carry research home contexts (top.research_home_contexts)
+        if context_info.research_homes and context_info.home_full[home_id] == nil then
+            return {}
+        end
         -- Rooms use node.name for the room (type_info names one room for every room node)
         local room_contexts = context_info.home_of[node.name]
         if room_contexts == nil then
@@ -1046,7 +1295,9 @@ top.graph_fingerprint = function(graph)
         if types[node.type] == nil then
             types[node.type] = true
             n = n + 1
-            parts[n] = "t " .. node.type .. " " .. tostring((logic.type_info[node.type] or {}).context)
+            local info = logic.type_info[node.type] or {}
+            -- With what research home contexts read of a type (top.research_home_contexts)
+            parts[n] = "t " .. node.type .. " " .. tostring(info.context) .. " " .. tostring(info.research_input) .. " " .. tostring(info.home_carrier) .. " " .. tostring(info.relay)
         end
         for pre, _ in pairs(node.pre) do
             n = n + 1
@@ -1072,7 +1323,7 @@ top.graph_fingerprint = function(graph)
         parts[n] = "c " .. room
     end
     n = n + 1
-    parts[n] = "s " .. tostring(top.home_contexts_in_set_rooms) .. " " .. tostring(top.implied_home_contexts)
+    parts[n] = "s " .. tostring(top.home_contexts_in_set_rooms) .. " " .. tostring(top.implied_home_contexts) .. " " .. tostring(top.research_home_contexts)
     return table.concat(parts, "\n")
 end
 
@@ -1121,16 +1372,34 @@ local function take_reusable_sort(graph, extra)
 end
 
 -- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file
--- Cached as complex --> home sets (false for none) --> context info
+-- A sort keeps the context info it was made with (sort_info.context_info); others are cached as complex --> home sets (false for none) --> whether home contexts were kept to research --> context info
 local context_info_cache = {}
 local function cached_context_info(sort_info)
+    if sort_info.context_info ~= nil then
+        return sort_info.context_info
+    end
     local complex = sort_info.complex == true
     local home_key = sort_info.home_sets or false
+    local research = sort_info.research_homes == true
     context_info_cache[complex] = context_info_cache[complex] or {}
-    if context_info_cache[complex][home_key] == nil then
-        context_info_cache[complex][home_key] = build_context_info(complex, sort_info.home_sets)
+    context_info_cache[complex][home_key] = context_info_cache[complex][home_key] or {}
+    if context_info_cache[complex][home_key][research] == nil then
+        context_info_cache[complex][home_key][research] = build_context_info(complex, sort_info.home_sets, research)
     end
-    return context_info_cache[complex][home_key]
+    return context_info_cache[complex][home_key][research]
+end
+
+-- Whether context arrives at edge.stop only from the same context leaving edge.start, as it always does for an edge without abilities but a research home context reaching research (see top.research_home_contexts), for a sort made by top.sort
+-- Callers that look up a pebble's own context on such an edge without asking top.edge_source_contexts check this first
+top.edge_keeps_context = function(sort_info, edge, context)
+    if sort_info.complex ~= true then
+        return true
+    end
+    local context_info = cached_context_info(sort_info)
+    if context_info.home[context] ~= nil then
+        return not is_research_home(context_info, context) or not is_research_input(edge.stop)
+    end
+    return edge.abilities == nil
 end
 
 -- Contexts leaving edge.start that would make context arrive at edge.stop, for a sort made by top.sort
@@ -1176,7 +1445,12 @@ top.sort = function(graph, state, new_conn, extra)
     elseif extra.home_contexts == true then
         home_sets = extra.home_sets or logic.home_sets or top.home_sets(graph)
     end
-    local context_info = build_context_info(complex, home_sets)
+    -- Whether home contexts are kept to research (top.research_home_contexts), which a cached sort keeps too
+    local research = top.research_home_contexts
+    if state.complex ~= nil then
+        research = state.research_homes == true
+    end
+    local context_info = build_context_info(complex, home_sets, research)
     -- The pebbles (node/context combos) in the order the sort reaches them, as two lists: pebble_keys[ind] is the ind-th pebble's node key and pebble_contexts[ind] its context
     -- Lists rather than a { node_key, context } table per pebble, which cost about 0.5 GB per big sort with planet copies
     -- A sort kept from before these lists (the control stage keeps sorts in storage) still has its pebbles as such tables in sorted, so it's changed over here
@@ -1208,6 +1482,40 @@ top.sort = function(graph, state, new_conn, extra)
     local home_techs = state.home_techs or {}
     -- Nodes that got a home context in this sort, whose home contexts standing for others are written out at the end (top.implied_home_contexts)
     local home_touched = {}
+    -- With research home contexts (top.research_home_contexts): whether they're on, and node key --> whether it's a research input (is_research_input), filled in when first read so the main loop needs no call
+    local research_on = context_info.research_homes
+    local research_stops = setmetatable({}, {
+        __index = function(stops, node_key)
+            local known = is_research_input(node_key)
+            stops[node_key] = known
+            return known
+        end,
+    })
+    -- With research home contexts: node key --> whether it takes them, found when first asked
+    -- Techs do, and so do research inputs and relays leading to one (a launch only for the triggers it meets); found again in each sort, since a cached sort's new edge can change where a relay leads
+    local carries_home_memo = {}
+    local function carries_home(node_key)
+        local known = carries_home_memo[node_key]
+        if known == nil then
+            local node = graph.nodes[node_key]
+            local info = node ~= nil and logic.type_info[node.type] or nil
+            known = false
+            if info ~= nil and info.home_carrier == true then
+                known = true
+            elseif info ~= nil and (info.research_input == true or info.relay == true) then
+                -- Stored first, so a cycle of relays ends here
+                carries_home_memo[node_key] = false
+                for dep, _ in pairs(node.dep) do
+                    if carries_home(graph.edges[dep].stop) then
+                        known = true
+                        break
+                    end
+                end
+            end
+            carries_home_memo[node_key] = known
+        end
+        return known
+    end
     -- Don't choose randomly for backwards compatibility with Frodo version
     if not DO_FRODO_FIXES and extra.choose_randomly == false then
         extra.choose_randomly = true
@@ -1387,6 +1695,12 @@ top.sort = function(graph, state, new_conn, extra)
     local function process_depnode(depnode, incoming, depnode_key, edge_key, incoming_sends)
         depnode_key = depnode_key or key(depnode)
 
+        -- Research home contexts only go to research, techs and the relays leading to them, and a node that has one already gets nothing new from it (top.research_home_contexts)
+        local incoming_home = context_info.home[incoming]
+        if incoming_home ~= nil and context_info.research_homes and context_info.home_full[incoming_home] == nil and (not carries_home(depnode_key) or already_has(depnode_key, incoming)) then
+            return
+        end
+
         local check
         if depnode.op == "OR" then
             -- OR is false until proven true
@@ -1510,8 +1824,13 @@ top.sort = function(graph, state, new_conn, extra)
     -- Now we can add starting nodes in open
     if new_conn == nil then
         for _, node in pairs(gutils.sources(graph)) do
+            local node_key = key(node)
+            -- With research home contexts, only research sources get research home contexts (top.research_home_contexts)
+            local gets_home = not context_info.research_homes or carries_home(node_key)
             for _, context in pairs(context_info.list) do
-                add_to_open(node, context)
+                if gets_home or not is_research_home(context_info, context) then
+                    add_to_open(node, context, node_key)
+                end
             end
         end
     else
@@ -1531,7 +1850,7 @@ top.sort = function(graph, state, new_conn, extra)
             for _, arriving in pairs(arriving_contexts) do
                 if extra.do_new_edge_processing then
                     process_depnode(new_conn[2], arriving)
-                else
+                elseif not is_research_home(context_info, arriving) or carries_home(key(new_conn[2])) then
                     add_to_open(new_conn[2], arriving)
                 end
             end
@@ -1577,6 +1896,8 @@ top.sort = function(graph, state, new_conn, extra)
                 -- Either way the pebble just recorded is where incoming comes from, so the edge sends it (process_depnode's incoming_sends)
                 local passes_unchanged = not complex or home_id ~= nil
                 local room_contexts = complex and context_info.of[context_info.room[context]] or nil
+                -- What an isolatable pebble beyond the core's rooms, or a core one, gives research (top.research_home_contexts), found when an edge to research first asks
+                local gives_research
                 for dep, _ in pairs(node.dep) do
                     local edge = graph.edges[dep]
                     local depnode = graph.nodes[edge.stop]
@@ -1585,6 +1906,17 @@ top.sort = function(graph, state, new_conn, extra)
                     else
                         for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
                             process_depnode(depnode, room_contexts[mask + 1], edge.stop, dep, true)
+                        end
+                    end
+                    -- Such a pebble leaving for a research input brings research home contexts along (see edge_transmit), and this pebble is where they come from
+                    if research_on and research_stops[edge.stop] then
+                        if gives_research == nil then
+                            gives_research = research_home_contexts(context_info, context) or false
+                        end
+                        if gives_research then
+                            for _, home_context in pairs(gives_research) do
+                                process_depnode(depnode, home_context, edge.stop, dep, true)
+                            end
                         end
                     end
                 end
@@ -1652,6 +1984,9 @@ top.sort = function(graph, state, new_conn, extra)
         home_sets = home_sets,
         home_discovered = home_discovered,
         home_techs = home_techs,
+        -- Whether its home contexts were kept to research (top.research_home_contexts), and the context info it was made with, for what reasons about its backings
+        research_homes = context_info.research_homes == true,
+        context_info = context_info,
     }
 end
 
@@ -1684,10 +2019,10 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     local context_info
     if extra_params.immediate == true then
         -- Operation layers request many direct backings of the same immutable sort.
-        sort_info.immediate_context_info = sort_info.immediate_context_info or build_context_info(sort_info.complex == true, sort_info.home_sets)
+        sort_info.immediate_context_info = sort_info.immediate_context_info or cached_context_info(sort_info)
         context_info = sort_info.immediate_context_info
     else
-        context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
+        context_info = cached_context_info(sort_info)
     end
     local stop_if = extra_params.stop_if or function(node_key, context) return false end
     local prefer = extra_params.prefer

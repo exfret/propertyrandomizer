@@ -59,6 +59,8 @@ package.loaded["lib/crafter-slots"] = {}
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+-- These fixtures research techs straight from items, without the logic's science pack sets, so the discovery rule needs full home contexts rather than research ones (top.research_home_contexts)
+top.research_home_contexts = false
 local rebuild_check = require("lib/rebuild-check")
 -- Contexts are numbers (lib/graph/contexts.lua) and edge abilities codes; fixtures write ability masks and edge abilities as they used to be written, like "10" and { [2] = true } (lib/graph/contexts-for-tests.lua)
 local fx = require("lib/graph/contexts-for-tests")

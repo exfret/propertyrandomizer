@@ -248,6 +248,22 @@ test("a new room, a changed discovery or a flipped switch after the offer means 
     sorted = top.sort(graph, nil, nil, options(home_sets))
     logic.type_info["stuff"] = {}
     assert(sorted ~= offered)
+
+    -- Research home contexts' switch, and what they read of a node type (top.research_home_contexts)
+    graph, _, home_sets, offered = offered_world()
+    local research = top.research_home_contexts
+    top.research_home_contexts = not research
+    sorted = top.sort(graph, nil, nil, options(home_sets))
+    top.research_home_contexts = research
+    assert(sorted ~= offered)
+
+    graph, _, home_sets, offered = offered_world()
+    logic.type_info["stuff"] = {
+        research_input = true,
+    }
+    sorted = top.sort(graph, nil, nil, options(home_sets))
+    logic.type_info["stuff"] = {}
+    assert(sorted ~= offered)
 end)
 
 test("a sort kept with a table per pebble, from before the pebble lists, carries on as lists", function()

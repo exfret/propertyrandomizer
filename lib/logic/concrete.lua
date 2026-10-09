@@ -1421,7 +1421,8 @@ function concrete.build(lu, extra_params)
             -- TODO: This if condition prevents deliveries of high-weight items *from* space platforms; fix this!
 
             ----------------------------------------
-            add_node("item-launch", "AND", true, nil, { coproduct = true })
+            -- A research input too: a send-item-to-orbit trigger needs it (see top.research_home_contexts)
+            add_node("item-launch", "AND", true, nil, { coproduct = true, research_input = true })
             ----------------------------------------
             -- Can we launch this item into space?
             -- This node FORGETS context: launching makes item available to all reachable rooms
@@ -1881,7 +1882,7 @@ function concrete.build(lu, extra_params)
         set_prot(tech)
 
         ----------------------------------------
-        add_node("technology", "AND", true)
+        add_node("technology", "AND", true, nil, { home_carrier = true })
         ----------------------------------------
         -- Can we research this technology?
         -- This node FORGETS context: research makes tech available everywhere.
@@ -1929,7 +1930,7 @@ function concrete.build(lu, extra_params)
 
         if tech.research_trigger ~= nil then
             ----------------------------------------
-            add_node("technology-trigger", "OR")
+            add_node("technology-trigger", "OR", nil, nil, { research_input = true })
             ----------------------------------------
             -- Can we do what triggers this technology's research?
             -- A mine-entity trigger is met by mining any one of its entities (MineEntityTechnologyTrigger in the 2.1 docs), so each gets an edge; the other kinds name one thing
@@ -2072,6 +2073,7 @@ function concrete.build(lu, extra_params)
                     -- Placement rules:
                     --   * If whitelist is set: only tiles in whitelist are valid
                     --   * If blocking_layers is set: tiles with those layers are excluded
+                    --   * A tile that doesn't allow being covered (TilePrototype::allows_being_covered, like Space Age's platform foundation) takes no tile on top
 
                     local has_any_condition = condition_info.whitelist ~= nil or condition_info.blocking_layers ~= nil
 
@@ -2094,8 +2096,8 @@ function concrete.build(lu, extra_params)
                             if (not condition_info.invert and not group_blocked) or (condition_info.invert and group_blocked) then
                                 -- For more efficiency, we could depend on groups of tiles again instead of specific tiles, but that is less likely to help in this case and more involved, so let's not go that far for now
                                 for tile_name_in_group, _ in pairs(tiles_in_group) do
-                                    local allowed = true
-                                    if condition_info.whitelist ~= nil then
+                                    local allowed = data.raw.tile[tile_name_in_group].allows_being_covered ~= false
+                                    if allowed and condition_info.whitelist ~= nil then
                                         allowed = condition_info.whitelist[tile_name_in_group] == true
                                     end
                                     if allowed then

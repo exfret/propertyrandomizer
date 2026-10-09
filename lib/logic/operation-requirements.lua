@@ -161,7 +161,7 @@ operation.prover = function(graph, sort_info, item_key, context, frontier, level
             for _, edge_key in pairs(edges) do
                 local edge = graph.edges[edge_key]
                 local sources = { pebble_context }
-                if edge.abilities ~= nil then
+                if not top.edge_keeps_context(sort_info, edge, pebble_context) then
                     sources = top.edge_source_contexts(sort_info, edge, pebble_context)
                 end
                 local best
@@ -235,7 +235,7 @@ operation.levels = function(graph, sort_info, research_only)
             for edge_key, _ in pairs(node.pre) do
                 local edge = graph.edges[edge_key]
                 local sources = { pebble_context }
-                if edge.abilities ~= nil then
+                if not top.edge_keeps_context(sort_info, edge, pebble_context) then
                     sources = top.edge_source_contexts(sort_info, edge, pebble_context)
                 end
                 local best = math.huge

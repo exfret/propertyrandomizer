@@ -288,7 +288,7 @@ promotion.new = function(params)
         if pre.edge_key ~= nil then
             edge = graph.edges[pre.edge_key]
         end
-        if not complex or edge == nil or edge.abilities == nil then
+        if not complex or edge == nil or (edge.abilities == nil and top.edge_keeps_context(sort_info, edge, context)) then
             return { context_inds[context] }
         end
         local inds = {}

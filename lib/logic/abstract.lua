@@ -385,6 +385,7 @@ function abstract.build(lu, extra_params)
         ----------------------------------------
         add_node("science-pack-set-science", "AND", nil, set_name, {
             mechanic = true,
+            research_input = true,
         })
         ----------------------------------------
         -- Can we create all these science packs?
@@ -396,6 +397,7 @@ function abstract.build(lu, extra_params)
         ----------------------------------------
         add_node("science-pack-set-lab", "OR", nil, set_name, {
             mechanic = true,
+            research_input = true,
         })
         ----------------------------------------
         -- Can we research with this combination of science packs?
@@ -701,7 +703,8 @@ function abstract.build(lu, extra_params)
     add_edge("cargo-landing-pad", "")
 
     ----------------------------------------
-    add_node("deliver", "OR", nil, "", { canonical = "launch", mechanic = true })
+    -- A research input too: item-launch needs it (see top.research_home_contexts)
+    add_node("deliver", "OR", nil, "", { canonical = "launch", mechanic = true, research_input = true })
     ----------------------------------------
     -- Can we deliver items FROM this location?
     -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
@@ -770,31 +773,31 @@ function abstract.build(lu, extra_params)
     -- Can we satisfy some OR condition that needed to be created ad-hoc?
 
     ----------------------------------------
-    add_node("slot", "AND", nil, "", { canonical = "slot" })
+    add_node("slot", "AND", nil, "", { canonical = "slot", relay = true })
     ----------------------------------------
     -- Can we satisfy a slot that comes at the beginning of an edge?
     -- In some places, edges are broken by two additional nodes (i.e.- subdivided), the one near the start of the edge is the slot, and the other is the traveler.
     -- Rewiring edges then becomes a matter of connecting slots to travelers, which can be simpler to work out sometimes since there is only one edge that could be randomized.
 
     ----------------------------------------
-    add_node("traveler", "OR", nil, "", { canonical = "traveler" })
+    add_node("traveler", "OR", nil, "", { canonical = "traveler", relay = true })
     ----------------------------------------
     -- Can we satisfy a traveler that comes at the end of an edge?
 
     ----------------------------------------
-    add_node("base", "AND", nil, "", { canonical = "base" })
+    add_node("base", "AND", nil, "", { canonical = "base", relay = true })
     ----------------------------------------
     -- Can we satisfy a base that comes at the beginning of an edge? (New name)
     -- This is the same as slot above, but transitioning to a new naming for things
 
     ----------------------------------------
-    add_node("head", "OR", nil, "", { canonical = "head" })
+    add_node("head", "OR", nil, "", { canonical = "head", relay = true })
     ----------------------------------------
     -- Can we satisfy a head that comes at the end of an edge? (New name)
     -- This is the same as traveler above, but transitioning to a new naming for things
 
     ----------------------------------------
-    add_node("orand", "AND", nil, "", { canonical = "orand" })
+    add_node("orand", "AND", nil, "", { canonical = "orand", relay = true })
     ----------------------------------------
     -- Can we satisfy this AND node that comes right before an OR?
 

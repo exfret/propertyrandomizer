@@ -1,6 +1,7 @@
 -- Plain-Lua tests for discovery following the star map (randomizations/planetary/discovery.lua), not loaded by the mod
 -- Run from the mod root: lua randomizations/planetary/test-discovery.lua
--- The map is the user's game of 2026-09-30 with made-up names: hot, hot-copy and stormy-copy are one hop from the start (tier 1), home-copy, wet-copy and cold two (tier 2), and cold-copy, stormy and wet three (tier 3)
+-- The map is the user's game of 2026-09-30 with made-up names: hot, hot-copy and stormy-copy are one hop from the start, home-copy, wet-copy and cold two, and cold-copy, stormy and wet three
+-- A planet takes the packs of its own neighbors one hop closer: home-copy hot's, wet-copy hot-copy's and stormy-copy's, cold stormy-copy's, wet cold's, home-copy's and wet-copy's, stormy cold's and home-copy's, cold-copy wet-copy's
 
 -- discovery.plan reads only what it's given, so the modules discovery.lua loads for reading the game are stand-ins
 package.loaded["helper-tables/constants"] = {}
@@ -268,10 +269,10 @@ local function user_game()
     }
 end
 
-test("a tier's discoveries take the packs of every planet in the tier before", function()
+test("a planet's discovery takes the packs of the planets one hop closer", function()
     local plan = discovery.plan(user_game())
     local wet = plan["find-wet"]
-    assert(wet.tier == 3)
+    assert(wet.hops == 3)
     assert(same_list(wet.before, words("cold home-copy wet-copy")))
     -- The start copy gives the copies of the start packs some discovery takes (production and utility), not its military one
     assert(same_list(wet.ingredients, words("red green blue cosmic cold-pack prod-copy util-copy wet-pack-copy")))
@@ -281,48 +282,50 @@ test("a tier's discoveries take the packs of every planet in the tier before", f
     assert(#wet.dropped == 0)
 end)
 
-test("every planet of a tier needs the same planets, so home sets come one per tier", function()
+test("each planet takes the packs of its own planets before it, not its whole tier's", function()
     local plan = discovery.plan(user_game())
-    local tiers = {
-        [1] = words("find-hot find-hot-copy find-stormy-copy"),
-        [2] = words("find-cold find-home-copy find-wet-copy"),
-        [3] = words("find-cold-copy find-stormy find-wet"),
+    local before = {
+        ["find-home-copy"] = words("hot"),
+        ["find-wet-copy"] = words("hot-copy stormy-copy"),
+        ["find-cold"] = words("stormy-copy"),
+        ["find-wet"] = words("cold home-copy wet-copy"),
+        -- stormy is one hop from home-copy and cold, not from wet-copy
+        ["find-stormy"] = words("cold home-copy"),
+        -- cold-copy's only neighbor one hop closer is wet-copy (stormy is as far out as it is)
+        ["find-cold-copy"] = words("wet-copy"),
     }
-    for tier, names in pairs(tiers) do
-        for _, name in pairs(names) do
-            assert(plan[name].tier == tier)
-            assert(same_list(plan[name].before, plan[names[1]].before))
-        end
+    for name, planets in pairs(before) do
+        assert(same_list(plan[name].before, planets), name .. ": " .. table.concat(plan[name].before, " "))
     end
-    assert(same_list(plan["find-wet-copy"].before, words("hot hot-copy stormy-copy")))
-    -- Even planets the tier before doesn't neighbor: stormy is one hop from home-copy only
-    assert(same_list(plan["find-stormy"].before, words("cold home-copy wet-copy")))
+    -- The hops are only for the log
+    assert(plan["find-stormy"].hops == 3 and plan["find-cold"].hops == 2 and plan["find-hot"].hops == 1)
 end)
 
 test("planets on the outermost planet orbit give packs like any other", function()
     local plan = discovery.plan(user_game())
-    -- cold is in tier 2 and gives its pack to tier 3, though in Space Age no planet's discovery takes Aquilo's
-    assert(same_list(plan["find-cold-copy"].before, words("cold home-copy wet-copy")))
-    for _, name in pairs(words("find-cold-copy find-stormy find-wet")) do
+    -- cold is two hops out and gives its pack to the planets after it, though in Space Age no planet's discovery takes Aquilo's
+    for _, name in pairs(words("find-stormy find-wet")) do
         assert(set_of(plan[name].added)["cold-pack"] ~= nil)
     end
-    -- They take the packs of the tier before them too
-    assert(same_list(plan["find-cold"].before, words("hot hot-copy stormy-copy")))
+    -- But not to one it isn't before
+    assert(set_of(plan["find-cold-copy"].added)["cold-pack"] == nil)
+    -- They take the packs of the planets before them too
+    assert(same_list(plan["find-cold"].before, words("stormy-copy")))
 end)
 
 test("a far planet's discovery loses the other planets' packs and the prerequisites that need planets not before it", function()
     local plan = discovery.plan(user_game())
     local cold = plan["find-cold"]
-    -- The start's own production and utility packs stay; the three inner planets' packs go, and tier 1's come in
-    assert(same_list(cold.ingredients, words("red green blue cosmic prod util hot-pack hot-pack-copy stormy-pack-copy")))
-    -- heating needs wet's discovery, and wet is in tier 3; hot-pack-tech needs hot's, and hot is in tier 1
-    assert(same_list(cold.dropped, {"heating"}))
-    assert(same_list(cold.prerequisites, words("hot-pack-tech thrusters find-hot find-hot-copy find-stormy-copy stormy-pack-copy-tech")))
-    -- Tier 3 may need tier 1 too
-    assert(same_list(plan["find-cold-copy"].dropped, {"heating"}))
+    -- The start's own production and utility packs stay; the three inner planets' packs go, and stormy-copy's comes in
+    assert(same_list(cold.ingredients, words("red green blue cosmic prod util stormy-pack-copy")))
+    -- heating needs wet's discovery and hot-pack-tech hot's, and neither is before cold
+    assert(same_list(cold.dropped, words("heating hot-pack-tech")))
+    assert(same_list(cold.prerequisites, words("thrusters find-stormy-copy stormy-pack-copy-tech")))
+    -- hot is one hop from the start, but not before cold-copy either
+    assert(same_list(plan["find-cold-copy"].dropped, words("heating hot-pack-tech")))
 end)
 
-test("first-tier planets keep their discovery as it was, and the start gives nothing", function()
+test("planets one hop out keep their discovery as it was, and the start gives nothing", function()
     local plan = discovery.plan(user_game())
     for _, name in pairs(words("find-hot find-hot-copy find-stormy-copy")) do
         assert(#plan[name].before == 0)
@@ -332,7 +335,7 @@ test("first-tier planets keep their discovery as it was, and the start gives not
     end
 end)
 
-test("a tier after one with no planet that gives takes the packs of the nearest tier before it with one", function()
+test("a planet none of whose planets before it gives takes the packs of the nearest ones before them that do", function()
     local function edge(from, to)
         return {
             from = from,
@@ -344,34 +347,39 @@ test("a tier after one with no planet that gives takes the packs of the nearest 
         orbit = {
             home = 15,
             hot = 10,
+            moss = 12,
             cold = 35,
             wet = 20,
         },
         edges = {
             edge("home", "hot"),
-            edge("home", "cold"),
+            edge("home", "moss"),
+            edge("hot", "cold"),
             edge("cold", "wet"),
         },
-        is_planet = set_of(words("home hot cold wet")),
+        is_planet = set_of(words("home hot moss cold wet")),
         -- cold has no pack of its own, so it gives nothing
         own_packs = {
             hot = {"hot-pack"},
+            moss = {"moss-pack"},
             wet = {"wet-pack"},
         },
         original_of = {},
         technologies = {
             ["find-hot"] = tech({"red"}, {}, {"hot"}),
+            ["find-moss"] = tech({"red"}, {}, {"moss"}),
             ["find-cold"] = tech({"red"}, {}, {"cold"}),
             ["find-wet"] = tech({"red"}, {}, {"wet"}),
         },
         unlocking = {},
     }
     local plan = discovery.plan(game)
-    -- wet is only reached through cold (tier 1, with nothing to give), so it takes from tier 1's other planet
-    assert(plan["find-wet"].tier == 2)
+    -- wet is only reached through cold, which has nothing to give, so it takes from hot, the planet before cold
+    assert(plan["find-wet"].hops == 3)
     assert(same_list(plan["find-wet"].before, {"hot"}))
-    -- No discovery takes hot's pack, so hot gives all of its packs
+    -- No discovery takes hot's pack, so hot gives all of its packs; moss is one hop out too, but not before wet
     assert(same_list(plan["find-wet"].added, {"hot-pack"}))
+    assert(same_list(plan["find-cold"].before, {"hot"}))
 end)
 
 -- The user's game with what packs and technologies need read from their own fields, as the game's logic graph would give it, then changed by overrides (kind --> name --> set of planets, or false)
@@ -386,32 +394,32 @@ local function with_needs(overrides)
     return game
 end
 
-test("a planet doesn't give a pack that needs a discovery of a later tier", function()
-    -- Like a planet copy's pack, which needs the copy of the starting planet with its number discovered too (home-copy is in tier 2)
+test("a planet doesn't take a pack that needs a planet not before it", function()
+    -- Like a planet copy's pack, which needs the copy of the starting planet with its number discovered too (home-copy isn't before wet-copy)
     local plan, withheld = discovery.plan(with_needs({
         pack = {
             ["hot-pack-copy"] = set_of(words("hot-copy home-copy")),
         },
     }))
-    -- hot-copy has nothing else to give, so tier 2 takes only the others' packs
-    assert(same_list(plan["find-wet-copy"].before, words("hot stormy-copy")))
-    assert(same_list(plan["find-wet-copy"].added, words("hot-pack stormy-pack-copy")))
-    -- And the pack it doesn't give is reported with the later planet it needs
-    assert(same_list(withheld["hot-copy"]["hot-pack-copy"], {"home-copy"}))
+    -- hot-copy has nothing else to give, so wet-copy takes only stormy-copy's pack
+    assert(same_list(plan["find-wet-copy"].before, words("stormy-copy")))
+    assert(same_list(plan["find-wet-copy"].added, words("stormy-pack-copy")))
+    -- And the pack it doesn't take is reported with the planet it needs
+    assert(same_list(withheld["wet-copy"]["hot-pack-copy"], {"home-copy"}))
     assert(withheld["hot"] == nil)
-    -- A pack needing a discovery of the giver's own tier is fine
+    -- A pack needing the discovery of any planet before the taker is fine, even one that isn't before the giver
     plan = discovery.plan(with_needs({
         pack = {
             ["hot-pack-copy"] = set_of(words("hot-copy stormy-copy")),
         },
     }))
-    assert(same_list(plan["find-wet-copy"].before, words("hot hot-copy stormy-copy")))
+    assert(same_list(plan["find-wet-copy"].before, words("hot-copy stormy-copy")))
 end)
 
-test("a discovery keeps the prerequisites that need only earlier tiers' discoveries", function()
+test("a discovery keeps the prerequisites that need only the discoveries of planets before it", function()
     local game = with_needs({
         technology = {
-            -- cold is in tier 2; stormy is in wet's own tier
+            -- cold is before wet; stormy isn't
             ["cold-tech"] = set_of({"cold"}),
             ["stormy-tech"] = set_of({"stormy"}),
             ["lost-tech"] = false,
@@ -429,16 +437,16 @@ test("a discovery keeps the prerequisites that need only earlier tiers' discover
     assert(same_list(plan["find-wet"].dropped, {"stormy-tech"}))
 end)
 
-test("a discovery leaves out a pack it kept that needs a discovery of its own tier or a later one", function()
+test("a discovery leaves out a pack it kept that needs a planet not before it", function()
     local plan = discovery.plan(with_needs({
         pack = {
-            -- wet is in tier 3
+            -- wet is three hops out
             blue = set_of({"wet"}),
         },
     }))
     assert(same_list(plan["find-hot"].dropped_packs, {"blue"}))
     assert(same_list(plan["find-hot"].ingredients, words("red green cosmic")))
-    -- Nor can stormy's, in the same tier as wet
+    -- Nor can stormy's, which wet isn't before
     assert(same_list(plan["find-stormy"].dropped_packs, {"blue"}))
     -- A pack that can't be had at all isn't given, and stays where it was
     plan = discovery.plan(with_needs({
@@ -504,10 +512,10 @@ test("hops never go through the end of the game (locations past every planet tha
     end
     game.technologies["find-lone"] = tech(words("red green"), {}, {"lone"})
     local plan = discovery.plan(game)
-    -- lone is reachable only through edge, so it gets no tier and keeps its discovery
+    -- lone is reachable only through edge, so it gets no hops and keeps its discovery
     assert(plan["find-lone"] == nil)
     -- cold-copy is still three hops out, not two through edge
-    assert(plan["find-cold-copy"].tier == 3)
+    assert(plan["find-cold-copy"].hops == 3)
 end)
 
 print(num_passed .. " tests passed")

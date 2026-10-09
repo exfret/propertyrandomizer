@@ -179,7 +179,7 @@ bundles.prove = function(compiled, sort_info, context, levels)
             for _, edge_key in pairs(edges) do
                 local edge = graph.edges[edge_key]
                 local contexts = { needed }
-                if edge.abilities ~= nil then
+                if not top.edge_keeps_context(sort_info, edge, needed) then
                     contexts = top.edge_source_contexts(sort_info, edge, needed)
                 end
                 local sources = {}

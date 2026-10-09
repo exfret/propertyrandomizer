@@ -172,7 +172,7 @@ local function make_prover(graph, sort_info)
     local function pre_inds(edge_key, context)
         local edge = graph.edges[edge_key]
         local context_inds = nci[edge.start] or {}
-        if edge.abilities == nil then
+        if edge.abilities == nil and top.edge_keeps_context(sort_info, edge, context) then
             return { context_inds[context] }
         end
         local inds = {}
