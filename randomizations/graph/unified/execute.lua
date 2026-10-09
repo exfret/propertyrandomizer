@@ -745,6 +745,8 @@ unified.execute = function(options)
                 pool = handler_to_shuffled_prereqs[handler.id],
                 random_graph = random_graph,
                 baseline_sort = first_pass_info.sort,
+                baseline_graph = first_pass_info.graph,
+                planet_locked = first_pass_info.planet_locked,
                 sort_without = sort_without,
                 sort_deferring = sort_deferring,
             })

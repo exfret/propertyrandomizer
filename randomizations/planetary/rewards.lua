@@ -2473,4 +2473,19 @@ rewards.log_moves = function()
     end
 end
 
+-- What the lock stage's repairs share with reward moves (randomizations/planetary/lock-repairs.lua): a moved recipe gets a version its new planet makes, researched there, like a reward's members and technology
+rewards.helpers = {
+    families = families,
+    family_of = family_of,
+    specific_to_rooms = specific_to_rooms,
+    discoverers = discoverers,
+    trigger_options = trigger_options,
+    trigger_candidates = trigger_candidates,
+    trigger_text = trigger_text,
+    depth_of = depth_of,
+    met_by_own_recipe = met_by_own_recipe,
+    path_avoids = path_avoids,
+    pack_name = pack_name,
+}
+
 return rewards

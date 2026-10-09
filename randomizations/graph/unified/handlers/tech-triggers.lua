@@ -3,12 +3,14 @@
 -- New triggers are spoofed bases (see spoof), one off each node of something a trigger can ask for: crafting an item or a fluid, mining an entity map generation places, building an entity an item places, capturing a spawner, creating a space platform (lib/research-triggers.lua says which qualify)
 -- Sending an item to orbit isn't offered: the docs don't say whether a Space Age rocket carrying an item to a platform counts, and only items with a send_to_orbit_mode can go on their own (ItemPrototype::send_to_orbit_mode), which the logic's item-launch node doesn't model; a technology with such a trigger can still get a new one
 -- With first pass and promotion, triggers are chosen up front and checked on the whole game (choose_up_front below), so a new trigger may come after the old one, favoring what became doable near it (user, 2026-10-08)
+-- A new trigger keeps its technology isolatable wherever the technology is needed (user, 2026-10-08), not wherever its old trigger was: where what unified keeps rests on it (needed_contexts below), so a recipe moved to another planet takes its research along
 -- A technology not chosen there goes to the custom search: a technology forgets its room once researched (context-sort.lua), so the generic shuffle's per-context check doesn't fit it (the technology is had on the platform while no trigger can be met there), and each choice is committed through promotion's try_rewires like the spoiling and entity handlers, which re-establishes the trigger slot's own promised pebbles (where the old trigger was met) with the new trigger
 -- With the tech tree rebuild, trigger technologies are split per recipe before unified randomization (research_triggers.split_technologies, called from data-final-fixes.lua), so each recipe's technology gets its own trigger
 -- A technology keeps its own trigger only when no new one fits (user, 2026-10-07); new kinds come up about as often as the game's own triggers use them (research_triggers.kind_weights)
 -- A craft trigger asks for about as much as the old trigger cost in raw materials (user, 2026-10-07), from the logic graph's prices of the game before randomization (graph_cost.material_costs_anywhere)
 -- A craft trigger names a position, which item randomization renames to the identity first pass put there (handlers/item.lua), since that's what the model's item-craft node is about
 
+local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
@@ -16,6 +18,7 @@ local rng = require("lib/random/rng")
 local logic = require("lib/logic/init")
 local context_costs = require("lib/cost/context-costs")
 local research_triggers = require("lib/research-triggers")
+local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local tech_triggers = {}
 
@@ -34,6 +37,8 @@ local SINK_NAME = "options"
 local old_triggers
 -- Entity name --> items that place it, in the game before reflect (research_triggers.placers), for build triggers' costs
 local placers
+-- Technology name --> the rooms choosing up front found it needed isolatably in, sorted, for the log
+local needed_rooms_of
 
 tech_triggers.initialize = function()
     -- Which technologies have each technology's old trigger after reflect, for checks comparing the final game with the model, or nil if it didn't run
@@ -45,6 +50,7 @@ tech_triggers.initialize = function()
         end
     end
     placers = {}
+    needed_rooms_of = {}
 end
 
 -- The new trigger a logic node can be (see research_triggers.make), or nil
@@ -171,12 +177,75 @@ local MAX_CHECKS = 3
 local PICK_ROUNDS = 2
 -- How much an option another technology took already counts, so technologies spread over what's near them
 local USED_WEIGHT = 0.1
--- How much an option first doable on another planet than the old trigger counts: what's new on arriving somewhere is what that planet has, not what became doable elsewhere at about the same time, like late-game items from the starting planet (2026-10-08: a destroyer capsule for metallurgic science)
+-- How much an option first doable on a planet where the technology isn't needed counts: what's new on arriving somewhere is what that planet has, not what became doable elsewhere at about the same time, like late-game items from the starting planet (2026-10-08: a destroyer capsule for metallurgic science)
 local OTHER_ROOM_WEIGHT = 0.25
 
+-- Whether a context asks for no abilities, like the contexts promotion anchors a recipe in
+local function asks_for_nothing(context)
+    if top.context_home(context) ~= nil then
+        return false
+    end
+    local abilities = top.context_abilities(context)
+    return abilities == nil or string.find(abilities, "1", 1, true) == nil
+end
+
+-- Where each node is needed, in a sort of the game before randomization: the contexts it has on the witnesses (earliest-provider paths, top.path) of what the rest of randomization keeps
+-- That's every pebble promotion promises (hard mechanic pebbles, and the contexts of recipes locked to one planet with what planetary changes carried over, protection.lua), each recipe's earliest pebble asking for no abilities (every recipe stays reachable), and each node in also_reachable's (so each trigger technology stays researchable)
+-- With planetary changes, also what the planetary check holds each attempt to: the isolatability of rocket building and electricity (keep_planetary_isolatability in lib/logic/abstract.lua) and the starting planet's science packs (randomizations/planetary/check.lua)
+-- So a technology is needed isolatably on a planet when something kept there rests on researching it from that planet's own resources (user, 2026-10-08: a trigger keeps its technology isolatable wherever it's needed, not wherever its old trigger was)
+-- The graph is the one sort_info sorted, planet_locked comes from protection.planet_locked_recipe_contexts, and also_reachable is node key --> true
+-- Returns node key --> context --> true
+tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_reachable)
+    local start_packs = {}
+    if config.planetary == true then
+        for _, lab in pairs(data.raw.lab or {}) do
+            for _, pack_name in pairs(lab.inputs or {}) do
+                start_packs[gutils.key("item", pack_name)] = true
+            end
+        end
+    end
+    local start_room = gutils.key("planet", constants.starting_planet)
+    local sorted = sort_info.sorted
+    local goal_inds = {}
+    local has_anchor = {}
+    for ind = 1, #sorted do
+        local pebble = sorted[ind]
+        local node = graph.nodes[pebble.node_key]
+        if node ~= nil then
+            local is_goal = (planet_locked[pebble.node_key] or {})[pebble.context] ~= nil
+            if node.mechanic == true and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble.context) then
+                is_goal = true
+            end
+            if config.planetary == true and top.context_home(pebble.context) == nil then
+                if node.keep_planetary_isolatability == true and protection.is_isolatable_context(pebble.context) then
+                    is_goal = true
+                end
+                if start_packs[pebble.node_key] ~= nil and top.context_room(pebble.context) == start_room then
+                    is_goal = true
+                end
+            end
+            -- The sort is in order, so the first such pebble is the earliest
+            if (node.type == "recipe" or also_reachable[pebble.node_key] ~= nil) and has_anchor[pebble.node_key] == nil and asks_for_nothing(pebble.context) then
+                has_anchor[pebble.node_key] = true
+                is_goal = true
+            end
+            if is_goal then
+                table.insert(goal_inds, ind)
+            end
+        end
+    end
+    local needed = {}
+    for ind, _ in pairs(top.path(graph, goal_inds, sort_info).in_path) do
+        local pebble = sorted[ind]
+        needed[pebble.node_key] = needed[pebble.node_key] or {}
+        needed[pebble.node_key][pebble.context] = true
+    end
+    return needed
+end
+
 -- Chooses every technology's new trigger before promotion ranks anything (see choose_up_front in handlers/default.lua), checked on the whole game, so a new trigger may come after the old one: promotion's fixed ranks only take one that came before it, and for the first thing on a planet almost nothing does (2026-10-08: 2-8 options for tungsten carbide, calcite processing or jellynut, against about 300 doable on their planets at all)
--- Each technology draws a kind like the game's own triggers, then an option of that kind near when its old trigger first became doable anywhere, preferring ones first doable on the same planet (research_triggers.nearness_weights, user 2026-10-08: favor what's newly available), from options had wherever its trigger slot was (keeping isolatability, user 2026-10-08) and first reached without it (sort_deferring), so no choice makes a cycle
--- A sort of the game with all the choices then checks that every technology keeps every context it had. Technologies that lose one pick again from options before their old trigger, then a last sort checks what's left, and if that still loses something every choice is dropped
+-- Each technology draws a kind like the game's own triggers, then an option of that kind near when its old trigger first became doable anywhere, preferring ones first doable on a planet where the technology is needed isolatably (or its old trigger's planet if it's needed nowhere isolatably; research_triggers.nearness_weights, user 2026-10-08: favor what's newly available), from options had wherever the technology is needed (needed_contexts, keeping isolatability; user 2026-10-08) and first reached without it (sort_deferring), so no choice makes a cycle
+-- A sort of the game with all the choices then checks that every technology is still had wherever it's needed. Technologies that aren't pick again from options before their old trigger, then a last sort checks what's left, and if that still loses something every choice is dropped
 -- Technologies not chosen here get the custom search's choice through promotion as before
 tech_triggers.choose_up_front = function(params)
     local graph = params.random_graph
@@ -208,6 +277,13 @@ tech_triggers.choose_up_front = function(params)
     table.sort(heads)
     local kind_weights = research_triggers.kind_weights(old_triggers, kinds)
 
+    -- Where each technology and trigger slot is needed (needed_contexts), in first pass's graph, which its sort is of
+    local tech_keys = {}
+    for _, head_key in pairs(heads) do
+        tech_keys[gutils.key(slot_technology(graph, head_key))] = true
+    end
+    local needed = tech_triggers.needed_contexts(params.baseline_graph, baseline_sort, params.planet_locked or {}, tech_keys)
+
     -- Contexts of a base that get a context to a trigger slot through its connection (see top.edge_source_contexts), cached by context since every slot's connection has the same abilities
     local sources_of = {}
     local function sources(head, context)
@@ -218,6 +294,48 @@ tech_triggers.choose_up_front = function(params)
         end
         return sources_of[context]
     end
+    -- The slot contexts any of which would do for one the slot is needed in: a technology forgets its room once researched (context-sort.lua), so without isolatability or a home set any room's context with the same abilities gives the same, and otherwise only the context itself
+    local rooms = {}
+    for room, _ in pairs(logic.contexts) do
+        table.insert(rooms, room)
+    end
+    table.sort(rooms)
+    local function any_room_does(context)
+        return top.context_home(context) == nil and not protection.is_isolatable_context(context)
+    end
+    -- Whether a base gets the slot a context it's needed in, through any context that would do; cached per base and abilities for the contexts any room's would do, since every slot's connection has the same abilities
+    local anywhere_cache = {}
+    local function base_gives(head, base_key, base_contexts, context)
+        local equivalents = { context }
+        local cache_key
+        if any_room_does(context) then
+            local abilities = top.context_abilities(context)
+            cache_key = base_key .. "|" .. (abilities or "")
+            if anywhere_cache[cache_key] ~= nil then
+                return anywhere_cache[cache_key]
+            end
+            equivalents = {}
+            for _, room in pairs(rooms) do
+                table.insert(equivalents, abilities == nil and room or top.context_key(room, abilities))
+            end
+        end
+        local gives = false
+        for _, equivalent in pairs(equivalents) do
+            for _, source in pairs(sources(head, equivalent)) do
+                if base_contexts[source] ~= nil then
+                    gives = true
+                    break
+                end
+            end
+            if gives then
+                break
+            end
+        end
+        if cache_key ~= nil then
+            anywhere_cache[cache_key] = gives
+        end
+        return gives
+    end
 
     -- A sort that connects the trigger slots one at a time once nothing else is left to reach (sort_deferring): an option sorted before a slot's entry needs neither that technology nor any connected after it, so options taken from there make no cycle, however late they come
     -- A trigger needing its own technology would cut off everything after it, so the check below would fail nearly every choice at once (it did, 2026-10-08: 1 of 93 kept their contexts)
@@ -226,13 +344,13 @@ tech_triggers.choose_up_front = function(params)
     -- A plain sort of the game in the order things become doable, by room: how early something is, for favoring options near the old trigger (the deferring sort can't say, since everything after a slot waits there until nothing else is left, putting old triggers next to late-game things)
     local in_order = params.sort_deferring({}).node_to_context_inds
 
-    -- Per technology: its anchor (when its old trigger was first doable anywhere), and the options had wherever its slot was and somewhere before its entry, by kind, with when they were first doable anywhere
+    -- Per technology: its anchor (when its old trigger was first doable anywhere), and the options had wherever its slot is needed and somewhere before its entry, by kind, with when they were first doable anywhere
     local plans = {}
     local num_planned = 0
     for _, head_key in pairs(heads) do
         local head = graph.nodes[head_key]
         local tech = slot_technology(graph, head_key)
-        local head_contexts = baseline[head_key] or {}
+        local head_contexts = needed[head_key] or {}
         local anchor
         local anchor_room
         for room, ind in pairs(in_order[head.old_base] or {}) do
@@ -241,37 +359,70 @@ tech_triggers.choose_up_front = function(params)
                 anchor_room = room
             end
         end
-        if anchor ~= nil and entry[head_key] ~= nil then
+        -- Planets where the technology is needed isolatably, whose own new things the new trigger favors; a technology needed nowhere isolatably favors its old trigger's planet
+        local home_rooms = {}
+        -- Where an option must be reached before the slot's entry: in every room the slot is needed isolatably in (there, a trigger needing the technology would make it a cycle), or else in a room of a context it's needed in, any room for a context any room's would do
+        local entry_rooms = {}
+        local any_entry_room = false
+        for context, _ in pairs(head_contexts) do
+            if top.context_home(context) == nil and protection.is_isolatable_context(context) then
+                home_rooms[top.context_room(context)] = true
+            end
+            entry_rooms[top.context_room(context)] = true
+            if any_room_does(context) then
+                any_entry_room = true
+            end
+        end
+        local isolatable_rooms = {}
+        for room, _ in pairs(home_rooms) do
+            table.insert(isolatable_rooms, room)
+        end
+        local needed_names = {}
+        for room, _ in pairs(home_rooms) do
+            table.insert(needed_names, gutils.deconstruct(room).name)
+        end
+        table.sort(needed_names)
+        needed_rooms_of[tech.name] = needed_names
+        if next(home_rooms) == nil and anchor_room ~= nil then
+            home_rooms[anchor_room] = true
+        end
+        if anchor ~= nil and entry[head_key] ~= nil and next(head_contexts) ~= nil then
             local old_trigger = old_triggers[tech.name]
             local by_kind = {}
-            -- Options first doable on another planet than the old trigger
+            -- Options first doable on a planet where the technology isn't needed
             local elsewhere = {}
             for _, base_key in pairs(option_bases) do
                 local option = graph.nodes[base_key].trigger_option
                 local base_contexts = baseline[base_key]
                 local before_entry = deferred_rooms[base_key] or {}
                 if base_contexts ~= nil and not research_triggers.matches(option, old_trigger) then
-                    -- Had wherever the slot was (some of it may come later, like isolatability on another planet, which the check below judges), and in one of those rooms before the slot's entry, so researching the technology at all never needs itself
-                    local covers = true
+                    -- Had wherever the slot is needed (some of it may come later, like isolatability on another planet, which the check below judges), and in one of those rooms before the slot's entry, so researching the technology at all never needs itself
                     local reaches_first = false
-                    for context, _ in pairs(head_contexts) do
-                        local had = false
-                        for _, source in pairs(sources(head, context)) do
-                            if base_contexts[source] ~= nil then
-                                had = true
+                    if #isolatable_rooms > 0 then
+                        reaches_first = true
+                        for _, room in pairs(isolatable_rooms) do
+                            if before_entry[room] == nil or before_entry[room] >= entry[head_key] then
+                                reaches_first = false
                                 break
                             end
                         end
-                        local room_ind = before_entry[top.context_room(context)]
-                        if room_ind ~= nil and room_ind < entry[head_key] then
-                            reaches_first = true
-                        end
-                        if not had then
-                            covers = false
-                            break
+                    else
+                        for room, room_ind in pairs(before_entry) do
+                            if room_ind < entry[head_key] and (any_entry_room or entry_rooms[room] ~= nil) then
+                                reaches_first = true
+                                break
+                            end
                         end
                     end
-                    covers = covers and reaches_first
+                    local covers = reaches_first
+                    if covers then
+                        for context, _ in pairs(head_contexts) do
+                            if not base_gives(head, base_key, base_contexts, context) then
+                                covers = false
+                                break
+                            end
+                        end
+                    end
                     if covers then
                         -- When the option first became doable anywhere, since what's newly available is what nothing could do before, not what just became doable on the planet (on a new planet everything brought along does at once)
                         local index
@@ -285,7 +436,7 @@ tech_triggers.choose_up_front = function(params)
                         if index ~= nil then
                             by_kind[option.kind] = by_kind[option.kind] or {}
                             by_kind[option.kind][base_key] = index
-                            if first_room ~= anchor_room then
+                            if home_rooms[first_room] == nil then
                                 elsewhere[base_key] = true
                             end
                         end
@@ -378,7 +529,7 @@ tech_triggers.choose_up_front = function(params)
             local tech_key = plans[head_key].tech_key
             local after = sort_info.node_to_context_inds[tech_key] or {}
             local keeps = true
-            for context, _ in pairs(baseline[tech_key] or {}) do
+            for context, _ in pairs(needed[tech_key] or {}) do
                 if after[context] == nil then
                     keeps = false
                     break
@@ -394,7 +545,7 @@ tech_triggers.choose_up_front = function(params)
                 table.insert(failed_names, gutils.deconstruct(tech_key).name)
             end
         end
-        log("Research triggers up front, check " .. num_checks .. ": " .. (#chosen_heads - #to_pick) .. " of " .. #chosen_heads .. " choices keep their technology's contexts" .. (#failed_names > 0 and ("; lost some: " .. table.concat(failed_names, ", ")) or ""))
+        log("Research triggers up front, check " .. num_checks .. ": " .. (#chosen_heads - #to_pick) .. " of " .. #chosen_heads .. " choices keep their technology wherever it's needed" .. (#failed_names > 0 and ("; lost some: " .. table.concat(failed_names, ", ")) or ""))
         if #to_pick == 0 then
             verified = true
             break
@@ -654,7 +805,12 @@ tech_triggers.reflect = function(graph, head_to_base, head_to_handler)
             if tech ~= nil then
                 if base.trigger_option ~= nil then
                     tech.research_trigger = research_triggers.make(base.trigger_option, old_triggers[tech_name], prices, placers)
-                    log("Research trigger: " .. tech_name .. ": " .. research_triggers.describe(old_triggers[tech_name]) .. " -> " .. research_triggers.describe(tech.research_trigger))
+                    local needed_names = (needed_rooms_of or {})[tech_name]
+                    local where = ""
+                    if needed_names ~= nil then
+                        where = #needed_names > 0 and (" (needed isolatably on " .. table.concat(needed_names, ", ") .. ")") or " (needed nowhere isolatably)"
+                    end
+                    log("Research trigger: " .. tech_name .. ": " .. research_triggers.describe(old_triggers[tech_name]) .. " -> " .. research_triggers.describe(tech.research_trigger) .. where)
                 else
                     local source = gutils.get_owner(graph, base).name
                     if old_triggers[source] ~= nil then

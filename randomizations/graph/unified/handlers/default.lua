@@ -57,7 +57,7 @@ end
 
 -- Called with first pass and promotion, before promotion ranks anything, for heads whose new base is chosen up front and checked on the whole game instead of by promotion's fixed ranks
 -- That suits a head whose vanilla base is free (like a resource needing no mining fluid): its dependent can take a later base only if that base happens to sort before the dependent, which one random order rarely shows
--- params: heads (this handler's heads of randomized dependents), pool (its shuffled bases), random_graph, baseline_sort (first pass's sort of the game), and sort_without(node keys, connections), a sort of the game (first pass's graph, with earlier handlers' up-front choices, and the heads in connections (head key --> base key) fed by those bases) where those AND nodes can't be reached
+-- params: heads (this handler's heads of randomized dependents), pool (its shuffled bases), random_graph, baseline_sort (first pass's sort of the game) and baseline_graph (the graph it sorted), planet_locked (protection.planet_locked_recipe_contexts of the game before randomization, from first pass), and sort_without(node keys, connections), a sort of the game (first pass's graph, with earlier handlers' up-front choices, and the heads in connections (head key --> base key) fed by those bases) where those AND nodes can't be reached
 -- Also sort_deferring(head keys), a sort of the game where those heads are connected one at a time once nothing else is left to reach, with how far it got before each (see execute.lua), for choices that mustn't make cycles
 -- Returns head key --> base key for the heads it decided (promotion starts from them, and the shuffle leaves them alone)
 default.choose_up_front = function(params)

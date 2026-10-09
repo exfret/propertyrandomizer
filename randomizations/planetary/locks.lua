@@ -4,7 +4,7 @@
 -- The planets of a lock other than the starting planet are redrawn among the planets other than the starting planet, as many as before; the starting planet and surfaces (like space platforms) keep their places in it
 -- A lock on only some of a planet's copies (a duplicate's home lock, lib/dupe-planet-locks.lua) keeps their copy numbers when it moves: foundry 2 goes from Vulcanus's copy 2 to another planet's copy 2
 -- Science packs (lab inputs) keep their locks, since each planet makes its own science
--- A moved recipe's goals follow it (check.transport): on its new planet it must be automatable, imports allowed
+-- A moved recipe's goals follow it (check.transport): on its new planet it must be makeable from that planet's own resources (user, 2026-10-08), which randomizations/planetary/lock-repairs.lua gives it with a version for that planet where it isn't
 -- What a planet must keep otherwise (its science, planet-locked recipes that didn't move, mechanics) stays where it was, so a lock can get its old planet back as well (widening), or its old set back (reverting)
 
 local constants = require("helper-tables/constants")
@@ -546,14 +546,16 @@ locks.restore = function(reverted)
     locks.realize()
 end
 
--- Where the goals of moved locks go, as check.transport entries: node key --> { map = old room --> new room }
--- Only recipes have goals of their own in a room (planet-locked recipes keep their contexts, rule 2 of check.required), and they may use imports on their new planet, so they don't keep isolatability
-locks.transport = function()
+-- Where the goals of moved locks go, as check.transport entries: node key --> { map = old room --> new room, keep_isolatability }
+-- Only recipes have goals of their own in a room (planet-locked recipes keep their contexts, rule 2 of check.required)
+-- With keep_isolatability, a moved recipe must be makeable on its new planet from that planet's own resources, as on its old one (the lock stage, user 2026-10-08, with lock-repairs.lua making versions where needed); without it, it may use imports there (lightning's attractor locks)
+locks.transport = function(keep_isolatability)
     local transport = {}
     for _, lock in pairs(locks.moved) do
         if lock.kind == "recipe" then
             transport[gutils.key("recipe", lock.name)] = {
                 map = table.deepcopy(lock.map),
+                keep_isolatability = keep_isolatability == true,
             }
         end
     end
