@@ -47,6 +47,9 @@ For bugs/fixes rather than features, see bugs.txt
  * Fix technology icons to fit recipes unlocked when possible
  * Blacklist tree seeds (and anything with plant results in general) from first pass
  * Blacklist rocket parts from first pass
+ * Maybe integrate item/fluid trades into first pass's matching rounds, only if the separate trade stage after the rounds becomes an issue (it keeps about 6-13 trades per attempt as of 2026-10-09)
+    * Cheap step: trade candidates skip pins and the earlier-place rule, so many fail (e.g. the offshore pump moved into another fluid's place); checking candidates against those would let more batches pass
+    * Full integration needs a timing estimate for a place in its new form (recipes that gain a fluid leave hand crafting), a fallback when a round fails on an item/fluid pair (the retry step can't repair those), and a limit on how many fluids change form (item places outnumber fluid places about ten to one)
  * More unified randomization handlers (make a list and organize better), especially in the context of randomizing large packs like py
  * API for other mods to add nodes and edges
  * Fix technology science pack localisation to not make localised string too long
