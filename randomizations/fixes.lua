@@ -954,19 +954,27 @@ randomizations.fixes = function()
     end
 
     -- Remove duplicate ingredients (needed for watch the world burn mode)
+    -- Entries are duplicates when they have the same type and name, since a fluid can have an item's name and one recipe can take both (probe, 2026-10-09)
+    -- A duplicate's amount goes to the first entry, which keeps its other fields, like a fluid's temperature limits (as in old recipe randomization's merge)
 
     for _, recipe in pairs(data.raw.recipe) do
         if recipe.ingredients ~= nil then
-            local item_ing_seen = {}
+            -- The first entry of each type and name
+            local first_ings = {}
             local new_ings = {}
             for _, ing in pairs(recipe.ingredients) do
-                if ing.type ~= "item" or not item_ing_seen[ing.name] then
-                    item_ing_seen[ing.name] = true
+                local ing_key = ing.type .. "-" .. ing.name
+                local first_ing = first_ings[ing_key]
+                if first_ing == nil then
+                    first_ings[ing_key] = ing
                     table.insert(new_ings, ing)
                 else
-                    for _, new_ing in pairs(new_ings) do
-                        if new_ing.type == "item" and new_ing.name == ing.name then
-                            new_ing.amount = new_ing.amount + ing.amount
+                    first_ing.amount = first_ing.amount + ing.amount
+                    -- An item that doesn't stack is used one at a time (lib/recipe-item-amounts.lua), and this merge runs after that module's last correction
+                    if ing.type == "item" then
+                        local item = dutils.get_prot("item", ing.name)
+                        if item ~= nil and not dutils.is_stackable(item) then
+                            first_ing.amount = 1
                         end
                     end
                 end
