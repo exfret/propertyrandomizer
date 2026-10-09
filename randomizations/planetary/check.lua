@@ -31,19 +31,33 @@ check.home_sets = nil
 -- How many sorts planetary changes took, since sorts are most of what they cost (logged by planetary.execute)
 check.num_sorts = 0
 
+-- The last check sort and what it sorted (top.graph_fingerprint and the home sets), which a rebuild giving the same graph (after a stage changing nothing the logic models, like moving demolishers) takes instead of sorting again
+-- The checks only read their sorts, so results can share one
+local last_check_sort = nil
+
 check.sort = function(logic)
-    check.num_sorts = check.num_sorts + 1
     logic.build({
         home_sets = check.home_sets,
     })
     if check.home_sets == nil then
         check.home_sets = top.home_sets(logic.graph)
     end
-    local sort_info = top.sort(logic.graph, nil, nil, {
-        complex_contexts = true,
-        home_contexts = true,
-        home_sets = check.home_sets,
-    })
+    local sorted = top.graph_fingerprint(logic.graph) .. "\n" .. top.home_sets_signature(check.home_sets)
+    local sort_info
+    if last_check_sort ~= nil and last_check_sort.sorted == sorted then
+        sort_info = last_check_sort.sort_info
+    else
+        check.num_sorts = check.num_sorts + 1
+        sort_info = top.sort(logic.graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = check.home_sets,
+        })
+        last_check_sort = {
+            sorted = sorted,
+            sort_info = sort_info,
+        }
+    end
     return {
         graph = logic.graph,
         sort_info = sort_info,
@@ -285,8 +299,35 @@ end
 -- Machines are what crafts or mines: entities with crafting categories (crafting machines, rocket silos) or resource categories (mining drills)
 -- It's still only operating the machine that counts, so mining a delivered machine back doesn't make it local
 -- For the hard rocket goals: machines may be imported once, the rocket's ingredients are made on the planet (the user, 2026-09-30: broadened from rocket silos to the machines); sorted once per game, when one of them fails the strict check
+-- The last of these sorts and what it sorted, for a game that sorts the same (see last_check_sort)
+local last_imported = nil
+
 check.imported_contexts = function(after)
     if after.imported_nci == nil then
+        -- What the sort below reads: the graph, the home sets and the edges taken out, which depend on the machines' prototypes too
+        -- Without home sets of the check's own, the sort works some out itself, so it's never skipped then
+        local sorted = nil
+        if check.home_sets ~= nil then
+            local parts = {
+                top.graph_fingerprint(after.graph),
+                top.home_sets_signature(check.home_sets),
+            }
+            for _, node in pairs(after.graph.nodes) do
+                local prototype = node.type == "entity-own-space" and dutils.get_prot("entity", node.name) or nil
+                if prototype ~= nil and (prototype.crafting_categories ~= nil or prototype.resource_categories ~= nil) then
+                    for pre, _ in pairs(node.pre) do
+                        if after.graph.nodes[after.graph.edges[pre].start].type == "space-surface" then
+                            table.insert(parts, pre)
+                        end
+                    end
+                end
+            end
+            sorted = table.concat(parts, "\n")
+            if last_imported ~= nil and last_imported.sorted == sorted then
+                after.imported_nci = last_imported.nci
+                return after.imported_nci
+            end
+        end
         local graph = table.deepcopy(after.graph)
         local to_remove = {}
         for _, node in pairs(graph.nodes) do
@@ -308,6 +349,12 @@ check.imported_contexts = function(after)
             home_contexts = true,
             home_sets = check.home_sets,
         }).node_to_context_inds
+        if sorted ~= nil then
+            last_imported = {
+                sorted = sorted,
+                nci = after.imported_nci,
+            }
+        end
     end
     return after.imported_nci
 end

@@ -84,8 +84,11 @@ bootstrap.justifies = function(context, room, ability_inds)
     return true
 end
 
+-- The last prune: what it started from (see bootstrap.prune), the edges it removed in order, its lines about rooms that stay cold and the buildings it counted as local, so pruning the same again (a logic build after a change the logic doesn't model) takes no sorts
+local last_prune = nil
+
 -- Prunes logic.graph's bootstrap grants in place; home_sets are the home sets to sort with (nil for top.home_sets of the graph)
--- Returns the number of sorts it took (0 when there are no grants)
+-- Returns the number of sorts it took (0 when there are no grants, or when it starts from what the last prune started from)
 bootstrap.prune = function(logic, home_sets)
     local graph = logic.graph
     local candidates = bootstrap.justifications(graph)
@@ -94,6 +97,27 @@ bootstrap.prune = function(logic, home_sets)
     end
 
     home_sets = home_sets or logic.home_sets or top.home_sets(graph)
+    -- What the prune depends on: what its sorts read (top.graph_fingerprint) with the home sets, and the grants, whose justifications read edge fields like bootstrap_warmth
+    local start = {
+        top.graph_fingerprint(graph),
+        top.home_sets_signature(home_sets),
+    }
+    for _, candidate in pairs(candidates) do
+        table.insert(start, candidate.edge_key .. " " .. candidate.room .. " " .. candidate.name)
+    end
+    start = table.concat(start, "\n")
+    if last_prune ~= nil and last_prune.start == start then
+        for _, edge_key in pairs(last_prune.removed) do
+            gutils.remove_edge(graph, edge_key)
+        end
+        for _, line in pairs(last_prune.lines) do
+            log(line)
+        end
+        log("Bootstrap infrastructure: no sorts, as the last prune started from the same graph; delivered buildings counted as local: " .. last_prune.counted)
+        return 0
+    end
+    local removed = {}
+    local lines = {}
     local function sort()
         return top.sort(graph, nil, nil, {
             complex_contexts = true,
@@ -124,12 +148,17 @@ bootstrap.prune = function(logic, home_sets)
         end
         for _, candidate in pairs(dropped) do
             if candidate.name == "warmth" then
-                log("Bootstrap infrastructure: heat can't be started in " .. candidate.room .. " and then keep itself going, so it stays cold there")
+                local line = "Bootstrap infrastructure: heat can't be started in " .. candidate.room .. " and then keep itself going, so it stays cold there"
+                table.insert(lines, line)
+                log(line)
             end
+            table.insert(removed, candidate.edge_key)
             gutils.remove_edge(graph, candidate.edge_key)
         end
         candidates = kept
         if #dropped == 0 then
+            -- The graph stays as this sort found it, so the next sort of it the same way can be this one
+            top.offer_reusable_sort(graph, sort_info, home_sets)
             break
         end
     end
@@ -149,7 +178,14 @@ bootstrap.prune = function(logic, home_sets)
         table.sort(names_by_room[room])
         table.insert(parts, room .. " (" .. #names_by_room[room] .. "): " .. table.concat(names_by_room[room], ", "))
     end
-    log("Bootstrap infrastructure: " .. num_sorts .. " sorts; delivered buildings counted as local: " .. (#parts > 0 and table.concat(parts, "; ") or "none"))
+    local counted = #parts > 0 and table.concat(parts, "; ") or "none"
+    log("Bootstrap infrastructure: " .. num_sorts .. " sorts; delivered buildings counted as local: " .. counted)
+    last_prune = {
+        start = start,
+        removed = removed,
+        lines = lines,
+        counted = counted,
+    }
     return num_sorts
 end
 

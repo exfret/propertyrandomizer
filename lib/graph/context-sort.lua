@@ -1048,6 +1048,105 @@ top.same_home_sets = function(a, b)
     return true
 end
 
+-- What a sort reads of home sets, in the order it reads them, so home sets with the same signature give the same sorts (top.same_home_sets also counts other ids and orders as the same)
+top.home_sets_signature = function(home_sets)
+    local parts = {}
+    for _, home_id in pairs(home_sets.ids) do
+        table.insert(parts, "id " .. home_id)
+        for room, _ in pairs(home_sets.sets[home_id].rooms) do
+            table.insert(parts, "room " .. room)
+        end
+        for room, _ in pairs(home_sets.sets[home_id].discovered or {}) do
+            table.insert(parts, "discovered " .. room)
+        end
+    end
+    for room, home_id in pairs(home_sets.of) do
+        table.insert(parts, "of " .. room .. " " .. home_id)
+    end
+    return table.concat(parts, "\n")
+end
+
+-- What a sort reads besides its options and home sets, in the order it reads it: the graph's nodes with their op and edges, how it treats their types (logic.type_info), the rooms its discoverers discover (top.discovered_rooms reads data.raw), its edges with their abilities, the rooms (logic.contexts) and this file's switches
+-- Graphs with the same fingerprint give the same sorts, so whatever else top.sort comes to read has to go in here too
+top.graph_fingerprint = function(graph)
+    local parts = {}
+    local n = 0
+    local types = {}
+    for node_key, node in pairs(graph.nodes) do
+        n = n + 1
+        parts[n] = "n " .. node_key .. " " .. tostring(node.op)
+        if types[node.type] == nil then
+            types[node.type] = true
+            n = n + 1
+            parts[n] = "t " .. node.type .. " " .. tostring((logic.type_info[node.type] or {}).context)
+        end
+        for pre, _ in pairs(node.pre) do
+            n = n + 1
+            parts[n] = "p " .. pre
+        end
+        for dep, _ in pairs(node.dep) do
+            n = n + 1
+            parts[n] = "d " .. dep
+        end
+        if top.is_discoverer(node) then
+            for _, discovered in pairs(top.discovered_rooms(node)) do
+                n = n + 1
+                parts[n] = "r " .. discovered.location .. " " .. discovered.room
+            end
+        end
+    end
+    for edge_key, edge in pairs(graph.edges) do
+        n = n + 1
+        parts[n] = "e " .. edge_key .. " " .. (edge.abilities ~= nil and abilities_signature(edge.abilities) or "")
+    end
+    for room, _ in pairs(logic.contexts) do
+        n = n + 1
+        parts[n] = "c " .. room
+    end
+    n = n + 1
+    parts[n] = "s " .. tostring(top.home_contexts_in_set_rooms) .. " " .. tostring(top.implied_home_contexts)
+    return table.concat(parts, "\n")
+end
+
+-- A sort bootstrap.prune made of a graph it then left alone (top.offer_reusable_sort): the next from-scratch sort of that graph, still unchanged, with the same options and home sets takes it instead of sorting again
+-- It's taken once, so no two callers share one sort's tables
+local reusable = nil
+
+top.offer_reusable_sort = function(graph, sort_info, home_sets)
+    reusable = {
+        graph = graph,
+        sort_info = sort_info,
+        home_sets = home_sets,
+        home_signature = top.home_sets_signature(home_sets),
+        fingerprint = top.graph_fingerprint(graph),
+    }
+end
+
+-- The offered sort, if a from-scratch sort of graph with extra would make the same one, or nil
+local function take_reusable_sort(graph, extra)
+    local offer = reusable
+    if offer.graph ~= graph or extra == nil or extra.complex_contexts ~= true or extra.home_contexts ~= true then
+        return nil
+    end
+    for option, _ in pairs(extra) do
+        if option ~= "complex_contexts" and option ~= "home_contexts" and option ~= "home_sets" then
+            return nil
+        end
+    end
+    -- Home sets the sort would have to work out itself are left to it
+    local home_sets = extra.home_sets or logic.home_sets
+    if home_sets == nil or (home_sets ~= offer.home_sets and top.home_sets_signature(home_sets) ~= offer.home_signature) then
+        return nil
+    end
+    reusable = nil
+    if top.graph_fingerprint(graph) ~= offer.fingerprint then
+        return nil
+    end
+    -- The same contents, so the caller's own table, as a sort of its own would have
+    offer.sort_info.home_sets = home_sets
+    return offer.sort_info
+end
+
 -- Transmission rules for callers that reason about backings (like promotion), so the rules live only in this file
 -- Cached as complex --> home sets (false for none) --> context info
 local context_info_cache = {}
@@ -1075,6 +1174,12 @@ top.sort = function(graph, state, new_conn, extra)
     -- state should be passed in if and only if we're doing a cached sort with a new_conn
     if (state ~= nil and new_conn == nil) or (state == nil and new_conn ~= nil) then
         error("Ambiguous signals for whether this is a cached sort!")
+    end
+    if state == nil and reusable ~= nil then
+        local taken = take_reusable_sort(graph, extra)
+        if taken ~= nil then
+            return taken
+        end
     end
 
     -- Initialize state vars
