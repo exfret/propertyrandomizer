@@ -13,10 +13,10 @@ local key = gutils.key
 local function backing(graph, sort_info, ind)
     sort_info.operation_backings = sort_info.operation_backings or {}
     if sort_info.operation_backings[ind] == nil then
-        local pebble = sort_info.sorted[ind]
-        local context_type = (logic.type_info[graph.nodes[pebble.node_key].type] or {}).context
-        local home = top.context_home(pebble.context)
-        local mask = top.context_mask(pebble.context)
+        local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+        local context_type = (logic.type_info[graph.nodes[pebble_key].type] or {}).context
+        local home = top.context_home(pebble_context)
+        local mask = top.context_mask(pebble_context)
         local group
         if type(context_type) == "string" and home == nil then
             group = "room"
@@ -30,8 +30,8 @@ local function backing(graph, sort_info, ind)
         local shared
         if group ~= nil then
             sort_info.operation_shared_backings = sort_info.operation_shared_backings or {}
-            sort_info.operation_shared_backings[pebble.node_key] = sort_info.operation_shared_backings[pebble.node_key] or {}
-            shared = sort_info.operation_shared_backings[pebble.node_key]
+            sort_info.operation_shared_backings[pebble_key] = sort_info.operation_shared_backings[pebble_key] or {}
+            shared = sort_info.operation_shared_backings[pebble_key]
         end
         local result = shared ~= nil and shared[group] or nil
         if result == nil then
@@ -106,21 +106,21 @@ operation.prover = function(graph, sort_info, item_key, context, frontier, level
             return memo[ind] or nil
         end
         memo[ind] = false
-        local pebble = sort_info.sorted[ind]
-        local node = graph.nodes[pebble.node_key]
+        local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+        local node = graph.nodes[pebble_key]
         local answer
-        local supplied = pebble.context == context
+        local supplied = pebble_context == context
         local incoming_mask = top.context_mask(context)
-        local needed_mask = top.context_mask(pebble.context)
-        if incoming_mask ~= nil and needed_mask ~= nil and top.context_room(context) == top.context_room(pebble.context) and top.context_home(context) == top.context_home(pebble.context) then
+        local needed_mask = top.context_mask(pebble_context)
+        if incoming_mask ~= nil and needed_mask ~= nil and top.context_room(context) == top.context_room(pebble_context) and top.context_home(context) == top.context_home(pebble_context) then
             supplied = top.mask_covers(incoming_mask, needed_mask)
         end
-        if pebble.node_key == item_key and supplied then
+        if pebble_key == item_key and supplied then
             answer = {
                 rank = 0,
                 leaves = {},
             }
-        elseif (levels ~= nil and affected[pebble.node_key] == nil) or (pebble.node_key ~= item_key and frontier(node)) then
+        elseif (levels ~= nil and affected[pebble_key] == nil) or (pebble_key ~= item_key and frontier(node)) then
             answer = {
                 rank = levels ~= nil and levels[ind] or ind,
                 leaves = { [ind] = true },
@@ -160,9 +160,9 @@ operation.prover = function(graph, sort_info, item_key, context, frontier, level
             table.sort(edges)
             for _, edge_key in pairs(edges) do
                 local edge = graph.edges[edge_key]
-                local sources = { pebble.context }
+                local sources = { pebble_context }
                 if edge.abilities ~= nil then
-                    sources = top.edge_source_contexts(sort_info, edge, pebble.context)
+                    sources = top.edge_source_contexts(sort_info, edge, pebble_context)
                 end
                 local best
                 for _, source in pairs(sources) do
@@ -220,8 +220,9 @@ operation.levels = function(graph, sort_info, research_only)
     end
     local levels = {}
     local nci = sort_info.node_to_context_inds
-    for ind, pebble in pairs(sort_info.sorted) do
-        local node = graph.nodes[pebble.node_key]
+    for ind, pebble_key in pairs(sort_info.pebble_keys) do
+        local pebble_context = sort_info.pebble_contexts[ind]
+        local node = graph.nodes[pebble_key]
         local level = node.op == "AND" and 0 or math.huge
         if (logic.type_info[node.type] or {}).context ~= nil then
             level = 0
@@ -233,9 +234,9 @@ operation.levels = function(graph, sort_info, research_only)
         else
             for edge_key, _ in pairs(node.pre) do
                 local edge = graph.edges[edge_key]
-                local sources = { pebble.context }
+                local sources = { pebble_context }
                 if edge.abilities ~= nil then
-                    sources = top.edge_source_contexts(sort_info, edge, pebble.context)
+                    sources = top.edge_source_contexts(sort_info, edge, pebble_context)
                 end
                 local best = math.huge
                 for _, context in pairs(sources) do
@@ -403,7 +404,7 @@ operation.audit = function(graph, sort_info, label)
             local later = {}
             for leaf, _ in pairs(proof ~= nil and proof.leaves or {}) do
                 if levels[leaf] > levels[failure.arrival] then
-                    table.insert(later, sort_info.sorted[leaf].node_key .. " (layer " .. levels[leaf] .. ")")
+                    table.insert(later, sort_info.pebble_keys[leaf] .. " (layer " .. levels[leaf] .. ")")
                 end
             end
             table.sort(later)

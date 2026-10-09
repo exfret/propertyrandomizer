@@ -19,8 +19,8 @@ local plumbing_types = {
 -- Every pebble of every mechanic node, i.e. all mechanic contexts
 build.mechanic_goal_inds = function(graph, sort_info)
     local goal_inds = {}
-    for ind, pebble in pairs(sort_info.sorted) do
-        local node = graph.nodes[pebble.node_key]
+    for ind, pebble_key in pairs(sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.mechanic and node.type ~= "orand" then
             table.insert(goal_inds, ind)
         end

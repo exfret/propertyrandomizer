@@ -160,8 +160,8 @@ spoiling.spoof = function(graph)
     local sort_info = top.sort(graph)
     local reachable_items = {}
     local already_checked = {}
-    for _, pebble in pairs(sort_info.sorted) do
-        local node = graph.nodes[pebble.node_key]
+    for _, pebble_key in pairs(sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.type == "item" and not already_checked[node.name] then
             already_checked[node.name] = true
             table.insert(reachable_items, node.name)

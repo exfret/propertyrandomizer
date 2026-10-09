@@ -261,7 +261,7 @@ local function attempt(options)
     ----------------------------------------------------------------------------------------------------
 
     local sort_for_claiming = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
-    log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.sorted))
+    log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.pebble_keys))
     -- The dependents to randomize come from a sort that includes planetary changes' debt when there is one (superposed mode): a recipe only the debt reaches (a planet's science pack once its machine moved away) has no pebble in the game's own sort, and a recipe with no pebble here was never randomized, so nothing could ever re-home it; promotion then keeps it owed and the settlement sends the machine home
     -- The debt edges live only in this copy: the claimed heads and bases come from subdiv_graph, the game's graph
     local sort_for_deps = sort_for_claiming
@@ -270,7 +270,7 @@ local function attempt(options)
         local added = superpose.add_debt(deps_graph, debt)
         if #added > 0 then
             sort_for_deps = top.sort(deps_graph, nil, nil, { choose_randomly = true })
-            log("Claiming: " .. #added .. " debt edges added for the dependents to randomize; " .. #sort_for_deps.sorted .. " pebbles with them, " .. #sort_for_claiming.sorted .. " without")
+            log("Claiming: " .. #added .. " debt edges added for the dependents to randomize; " .. #sort_for_deps.pebble_keys .. " pebbles with them, " .. #sort_for_claiming.pebble_keys .. " without")
         end
     end
     local subdiv_graph = table.deepcopy(spoofed_graph)
@@ -292,9 +292,8 @@ local function attempt(options)
     end
     local dep_to_heads = {}
     local head_to_handler = {}
-    for ind, pebble in pairs(sort_for_deps.sorted) do
+    for ind, node_key in pairs(sort_for_deps.pebble_keys) do
         -- Get node from subdiv_graph
-        local node_key = pebble.node_key
         local node = subdiv_graph.nodes[node_key]
 
         -- A node only the game before planetary changes has (superpose.add_debt adds those to the debt copy, like a route a planetary change replaced, or a connector for an old edge) has nothing to claim or randomize in the game's graph
@@ -565,8 +564,8 @@ local function attempt(options)
             if ignore_nil_contexts and (index1 == nil or index2 == nil) then
                 return true
             end
-            index1 = index1 or (#sort_for_pool.sorted + 1)
-            index2 = index2 or (#sort_for_pool.sorted + 2)
+            index1 = index1 or (#sort_for_pool.pebble_keys + 1)
+            index2 = index2 or (#sort_for_pool.pebble_keys + 2)
             if not (index1 < index2) then
                 return false
             end
@@ -721,7 +720,7 @@ local function attempt(options)
                 if next_head == nil then
                     break
                 end
-                entry[next_head] = #sort_info.sorted
+                entry[next_head] = #sort_info.pebble_keys
                 for _, edge in pairs(cut[next_head]) do
                     gutils.add_edge(split_graph, edge.start, edge.stop, edge)
                     sort_info = top.sort(split_graph, sort_info, {

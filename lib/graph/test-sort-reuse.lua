@@ -1,4 +1,4 @@
--- Plain-Lua regression tests for reusing bootstrap.prune's last sort in context-sort.lua (top.offer_reusable_sort; not loaded by the mod)
+-- Plain-Lua regression tests for reusing bootstrap.prune's last sort in context-sort.lua (top.offer_reusable_sort), and for resuming a sort kept from before its pebble lists (not loaded by the mod)
 -- Run from the mod root: lua lib/graph/test-sort-reuse.lua
 --
 -- A reused sort has to be the very sort the caller would have made, so it's only handed out while nothing a sort reads has changed (top.graph_fingerprint, top.home_sets_signature)
@@ -126,8 +126,9 @@ end
 -- Every pebble in the order the sort found it, with the contexts' names (contexts are numbers, see lib/graph/contexts.lua)
 local function pebbles(sort_info)
     local list = {}
-    for _, pebble in pairs(sort_info.sorted) do
-        table.insert(list, pebble.node_key .. " @@ " .. top.context_name(pebble.context))
+    for pebble_ind, pebble_key in pairs(sort_info.pebble_keys) do
+        local pebble_context = sort_info.pebble_contexts[pebble_ind]
+        table.insert(list, pebble_key .. " @@ " .. top.context_name(pebble_context))
     end
     return table.concat(list, "\n")
 end
@@ -247,6 +248,38 @@ test("a new room, a changed discovery or a flipped switch after the offer means 
     sorted = top.sort(graph, nil, nil, options(home_sets))
     logic.type_info["stuff"] = {}
     assert(sorted ~= offered)
+end)
+
+test("a sort kept with a table per pebble, from before the pebble lists, carries on as lists", function()
+    -- Ore isn't reachable until its recipe's edge is added back to a kept sort, the way the control stage adds edges to sorts in storage
+    local function resumed(old_format)
+        local graph, nodes = toy_graph()
+        gutils.remove_edge(graph, gutils.ekey({
+            start = nodes["mine-ore"],
+            stop = nodes["ore"],
+        }))
+        local state = top.sort(graph)
+        if old_format == true then
+            state.sorted = {}
+            for ind, node_key in pairs(state.pebble_keys) do
+                state.sorted[ind] = {
+                    node_key = node_key,
+                    context = state.pebble_contexts[ind],
+                }
+            end
+            state.pebble_keys = nil
+            state.pebble_contexts = nil
+        end
+        gutils.add_edge(graph, nodes["mine-ore"], nodes["ore"])
+        local sort_info = top.sort(graph, state, {
+            graph.nodes[nodes["mine-ore"]],
+            graph.nodes[nodes["ore"]],
+        })
+        assert(sort_info.sorted == nil and state.sorted == nil)
+        assert(sort_info.node_to_context_inds[nodes["t-late"]][next(sort_info.node_to_context_inds[nodes["t-late"]])] ~= nil)
+        return pebbles(sort_info)
+    end
+    assert(resumed(true) == resumed(false))
 end)
 
 print(tostring(num_passed) .. " tests passed")

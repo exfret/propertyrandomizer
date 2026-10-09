@@ -101,7 +101,7 @@ staged.sort = function(params)
     local stage_starts = {}
     local stage_order = {}
     for _, stage in pairs(params.stages) do
-        stage_starts[stage] = #sort_info.sorted + 1
+        stage_starts[stage] = #sort_info.pebble_keys + 1
         table.insert(stage_order, stage)
         -- Open the gate and continue the same sort, so everything new ranks after what came before
         gutils.add_edge(graph, SOURCE_KEY, gate_key(stage))
@@ -146,18 +146,18 @@ staged.sort = function(params)
         local path = top.path(graph, table.deepcopy(goal_inds), sort_info).in_path
         local used = {}
         for ind, _ in pairs(path) do
-            local pebble = sort_info.sorted[ind]
-            local slot = slots[pebble.node_key]
+            local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+            local slot = slots[pebble_key]
             if slot ~= nil then
                 -- top.path gives an OR node's earliest provider, so the slot is filled by the gate exactly when the gate's pebble comes first
                 local gate_ind
                 local start_ind
-                for pre, _ in pairs(graph.nodes[pebble.node_key].pre) do
+                for pre, _ in pairs(graph.nodes[pebble_key].pre) do
                     local edge = graph.edges[pre]
                     if edge.start == gate_key(slot.stage) then
-                        gate_ind = provider_ind(edge, pebble.context)
+                        gate_ind = provider_ind(edge, pebble_context)
                     else
-                        start_ind = provider_ind(edge, pebble.context)
+                        start_ind = provider_ind(edge, pebble_context)
                     end
                 end
                 if gate_ind ~= nil and gate_ind < ind and (start_ind == nil or start_ind >= ind or gate_ind < start_ind) then
@@ -167,10 +167,10 @@ staged.sort = function(params)
                         edge_key = slot.edge_key,
                         contexts = {},
                     }
-                    used[slot.edge_key].contexts[pebble.context] = true
+                    used[slot.edge_key].contexts[pebble_context] = true
                 end
             end
-            local join = joins[pebble.node_key]
+            local join = joins[pebble_key]
             if join ~= nil then
                 local id = gutils.ekey(join)
                 used[id] = used[id] or {
@@ -180,7 +180,7 @@ staged.sort = function(params)
                     stop = join.stop,
                     contexts = {},
                 }
-                used[id].contexts[pebble.context] = true
+                used[id].contexts[pebble_context] = true
             end
         end
         return used

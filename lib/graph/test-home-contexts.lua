@@ -607,7 +607,7 @@ test("keeping home contexts to their set's rooms changes no other pebble, and no
             return top.context_home(context) ~= nil
         end), "a home context outside its set's rooms")
         assert(home_nodes(everywhere) == home_nodes(in_set_rooms), "nodes with a home set's contexts changed")
-        return #everywhere.sorted, #in_set_rooms.sorted
+        return #everywhere.pebble_keys, #in_set_rooms.pebble_keys
     end
     -- The toy graph has techs, so the discovery rule runs too
     local graph = toy_graph()
@@ -673,7 +673,7 @@ test("a smaller home set's context standing for those containing it gives the sa
     local function compare(graph, extra, seed)
         local separate, implied = both(graph, extra, seed)
         assert(pebble_set(separate) == pebble_set(implied), "the pebbles changed")
-        return #separate.sorted, #implied.sorted
+        return #separate.pebble_keys, #implied.pebble_keys
     end
     local complexities = {
         false,
@@ -869,11 +869,11 @@ test("the path to a granted pebble goes through the tech's own home pebble and a
         -- The rock way already gives the tech the far planet's home context (its home set has the rock planet), which doesn't count for the moss planet
         local moss_home_id = sort_info.home_sets.of[MOSS]
         for _, ind in pairs(path_info.path) do
-            local pebble = sort_info.sorted[ind]
-            if pebble.node_key == nodes["find-moss"] then
+            local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+            if pebble_key == nodes["find-moss"] then
                 has_discoverer = true
             end
-            if pebble.node_key == nodes["t-alt"] and top.context_home(pebble.context) == moss_home_id then
+            if pebble_key == nodes["t-alt"] and top.context_home(pebble_context) == moss_home_id then
                 has_own_home = true
             end
         end
@@ -894,12 +894,12 @@ test("discovery candidates are the tech's pebbles in the room's home set and the
     assert(candidates ~= nil and #candidates.own > 0 and #candidates.discoverers > 0)
     local home_id = sort_info.home_sets.of[ROCK]
     for i, ind in pairs(candidates.own) do
-        local pebble = sort_info.sorted[ind]
-        assert(pebble.node_key == nodes["t-late6"] and top.context_home(pebble.context) == home_id)
+        local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+        assert(pebble_key == nodes["t-late6"] and top.context_home(pebble_context) == home_id)
         assert(i == 1 or candidates.own[i - 1] < ind)
     end
     for _, ind in pairs(candidates.discoverers) do
-        assert(sort_info.sorted[ind].node_key == nodes["find-rock"])
+        assert(sort_info.pebble_keys[ind] == nodes["find-rock"])
     end
     -- The rule only gives techs their isolatable contexts
     assert(top.discovery_candidates(sort_info, room_discoverers, graph.nodes[nodes["rock-plate"]], rock_isolated) == nil)
@@ -1065,7 +1065,7 @@ test("batched witnesses equal separate witnesses with complex and home contexts"
         })
         local goals = {}
         local separate = {}
-        for ind = #sort_info.sorted, 1, -7 do
+        for ind = #sort_info.pebble_keys, 1, -7 do
             table.insert(goals, ind)
             for witness, _ in pairs(top.path(graph, { ind }, sort_info).in_path) do
                 separate[witness] = true
@@ -1087,7 +1087,7 @@ test("immediate operation backings preserve context and discovery witnesses", fu
         complex_contexts = true,
         home_contexts = true,
     })
-    for ind, _ in pairs(sorted.sorted) do
+    for ind, _ in pairs(sorted.pebble_keys) do
         local full = top.path(graph, { ind }, sorted, { stop_if = function() return true end }).in_path
         local immediate = top.path(graph, { ind }, sorted, { immediate = true }).in_path
         for pre, _ in pairs(full) do
@@ -1113,7 +1113,7 @@ test("immediate discovery witnesses share their graph scan within each sort", fu
             home_contexts = true,
         })
         calls = 0
-        for ind, _ in pairs(sorted.sorted) do
+        for ind, _ in pairs(sorted.pebble_keys) do
             top.path(graph, { ind }, sorted, { immediate = true })
         end
         assert(calls == 1, "each new sort should scan discovery nodes once, not once per witness")

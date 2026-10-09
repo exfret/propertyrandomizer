@@ -160,7 +160,8 @@ end
 -- Finds backings of pebbles in a sort: each pebble is proven by pebbles of strictly lower rank, as in promotion.lua's compute_support (without its recipe and head handling)
 -- Unlike top.path, it backtracks, so when a provider's pebble can't be proven it falls back to other providers
 local function make_prover(graph, sort_info)
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
+    local pebble_contexts = sort_info.pebble_contexts
     local nci = sort_info.node_to_context_inds
     local memo = {}
 
@@ -223,8 +224,8 @@ local function make_prover(graph, sort_info)
     end
 
     local function compute_support(ind)
-        local pebble = sorted[ind]
-        local node = graph.nodes[pebble.node_key]
+        local pebble_context = pebble_contexts[ind]
+        local node = graph.nodes[pebble_keys[ind]]
         if next(node.pre) == nil then
             -- Sources: AND with no prereqs is vacuously satisfied, OR with none never is
             if node.op == "AND" then
@@ -233,7 +234,7 @@ local function make_prover(graph, sort_info)
             return nil
         end
         if logic.type_info[node.type].context == nil then
-            return back_with(ind, node, pebble.context)
+            return back_with(ind, node, pebble_context)
         end
 
         -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
@@ -241,7 +242,7 @@ local function make_prover(graph, sort_info)
         for _, context in pairs(sort_info.contexts) do
             local transmits = false
             for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
-                if outgoing == pebble.context then
+                if outgoing == pebble_context then
                     transmits = true
                     break
                 end
@@ -278,7 +279,7 @@ local function make_prover(graph, sort_info)
 
         -- Isolatable tech contexts can also come from the discovery rule (see top.discovery_candidates): an earlier pebble of the tech itself (in a home context of the room's home set) plus an earlier pebble of a discoverer of the room
         room_discoverers = room_discoverers or top.room_discoverers(graph)
-        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble.context)
+        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble_context)
         if candidates ~= nil then
             local own_ind
             for _, i in pairs(candidates.own) do
@@ -378,7 +379,7 @@ end
 -- If its only use is delivering its own slot's contents to other rooms, the slot needs whatever trav it holds to be launchable instead, since reflection makes the slot's item that trav
 -- Delivered contexts of a trav aren't needs themselves: they follow from its origin context through the same launch chain
 local function needs_from_proof(graph, sort_info, closure, support, assignment, chain_of)
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
     local users = {}
     for i, _ in pairs(closure) do
         for _, j in pairs(support[i]) do
@@ -393,7 +394,7 @@ local function needs_from_proof(graph, sort_info, closure, support, assignment, 
 
     local function is_delivered(q, trav_key)
         for _, j in pairs(support[q] or {}) do
-            if chain_of[sorted[j].node_key] == trav_key then
+            if chain_of[pebble_keys[j]] == trav_key then
                 return true
             end
         end
@@ -409,7 +410,7 @@ local function needs_from_proof(graph, sort_info, closure, support, assignment, 
         genuine[q] = false
         local result = false
         for _, u in pairs(users[q] or {}) do
-            local u_key = sorted[u].node_key
+            local u_key = pebble_keys[u]
             if u_key == slot_of[trav_key] then
                 if is_delivered(q, trav_key) then
                     requires_launchable[u_key] = true
@@ -430,12 +431,12 @@ local function needs_from_proof(graph, sort_info, closure, support, assignment, 
 
     local needs = {}
     for q, _ in pairs(closure) do
-        local pebble = sorted[q]
-        local node = graph.nodes[pebble.node_key]
-        if node.trav and slot_of[pebble.node_key] ~= nil then
-            if is_genuine(q, pebble.node_key) and not is_delivered(q, pebble.node_key) then
-                needs[pebble.node_key] = needs[pebble.node_key] or {}
-                needs[pebble.node_key][pebble.context] = true
+        local node_key = pebble_keys[q]
+        local node = graph.nodes[node_key]
+        if node.trav == true and slot_of[node_key] ~= nil then
+            if is_genuine(q, node_key) and not is_delivered(q, node_key) then
+                needs[node_key] = needs[node_key] or {}
+                needs[node_key][sort_info.pebble_contexts[q]] = true
             end
         end
     end
@@ -735,9 +736,13 @@ local function blocked_travs(graph, sort_info, lost, new_sort)
     end
     -- Only the union of the witnesses matters. Trace them together so shared prerequisites are visited once (top.path picks the same backing regardless of the other goals).
     for i, _ in pairs(top.path(graph, earliest, sort_info).in_path) do
-        local q = sort_info.sorted[i]
-        if graph.nodes[q.node_key].trav == true and (new_sort.node_to_context_inds[q.node_key] or {})[q.context] == nil then
-            blocked[q.node_key .. " @ " .. q.context] = q
+        local node_key = sort_info.pebble_keys[i]
+        local context = sort_info.pebble_contexts[i]
+        if graph.nodes[node_key].trav == true and (new_sort.node_to_context_inds[node_key] or {})[context] == nil then
+            blocked[node_key .. " @ " .. context] = {
+                node_key = node_key,
+                context = context,
+            }
         end
     end
     return blocked

@@ -50,7 +50,8 @@ local function fixture(ready)
         sources = {},
     }
     local sorted = {
-        sorted = {},
+        pebble_keys = {},
+        pebble_contexts = {},
         node_to_context_inds = {},
     }
     local function add(kind, name, op, prerequisites)
@@ -60,11 +61,9 @@ local function fixture(ready)
         for _, prerequisite in pairs(prerequisites or {}) do
             gutils.add_edge(graph, prerequisite, node_key)
         end
-        local ind = #sorted.sorted + 1
-        sorted.sorted[ind] = {
-            node_key = node_key,
-            context = C("test-room"),
-        }
+        local ind = #sorted.pebble_keys + 1
+        sorted.pebble_keys[ind] = node_key
+        sorted.pebble_contexts[ind] = C("test-room")
         sorted.node_to_context_inds[node_key] = { [C("test-room")] = ind }
         return node_key
     end

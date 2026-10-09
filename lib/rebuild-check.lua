@@ -94,16 +94,16 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     -- Their own backings count too, so that what they need is checked like the rest: like the Fulgora water scaffold for electrolyte on sa/dupes-preview seed 1, whose backing went through Fulgora 2's electromagnetic plant research while its own tech, isolatable there only by the discovery rule, lost its home context
     local extra_inds = {}
     for ind, _ in pairs(path_info.in_path) do
-        local pebble = flat_sort.sorted[ind]
-        local unlock = after_graph.nodes[pebble.node_key]
-        if flat_graph.nodes[pebble.node_key].type == "recipe-tech-unlock" and unlock ~= nil then
+        local pebble_key, pebble_context = flat_sort.pebble_keys[ind], flat_sort.pebble_contexts[ind]
+        local unlock = after_graph.nodes[pebble_key]
+        if flat_graph.nodes[pebble_key].type == "recipe-tech-unlock" and unlock ~= nil then
             for pre, _ in pairs(unlock.pre) do
                 local edge = after_graph.edges[pre]
                 local tech = after_graph.nodes[edge.start]
                 local flat_name = tech ~= nil and tech.type == "technology" and flat_tech_of(tech.name) or nil
                 if flat_name ~= nil then
                     local flat_inds = flat_sort.node_to_context_inds[gutils.key("technology", flat_name)] or {}
-                    for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble.context)) do
+                    for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble_context)) do
                         if flat_inds[source] ~= nil and path_info.in_path[flat_inds[source]] == nil then
                             table.insert(extra_inds, flat_inds[source])
                         end
@@ -120,9 +120,9 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     -- The techs unlocking the backing's recipes, by the tech of flat_graph whose research they have: each needs the backing's contexts of that tech too, like the home context the discovery rule makes a tech isolatable on a discovered planet with (see top.discovery_candidates)
     local rebuilt_of = {}
     for ind, _ in pairs(path_info.in_path) do
-        local pebble = flat_sort.sorted[ind]
-        local unlock = after_graph.nodes[pebble.node_key]
-        if flat_graph.nodes[pebble.node_key].type == "recipe-tech-unlock" and unlock ~= nil then
+        local pebble_key = flat_sort.pebble_keys[ind]
+        local unlock = after_graph.nodes[pebble_key]
+        if flat_graph.nodes[pebble_key].type == "recipe-tech-unlock" and unlock ~= nil then
             for pre, _ in pairs(unlock.pre) do
                 local tech_key = after_graph.edges[pre].start
                 local tech = after_graph.nodes[tech_key]
@@ -136,18 +136,18 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
         end
     end
     for ind, _ in pairs(path_info.in_path) do
-        local pebble = flat_sort.sorted[ind]
-        local node = flat_graph.nodes[pebble.node_key]
+        local pebble_key, pebble_context = flat_sort.pebble_keys[ind], flat_sort.pebble_contexts[ind]
+        local node = flat_graph.nodes[pebble_key]
         if node.type == "technology" then
-            cut_blocked(pebble.node_key, pebble.context)
-            for tech_key, _ in pairs(rebuilt_of[pebble.node_key] or {}) do
-                cut_blocked(tech_key, pebble.context)
+            cut_blocked(pebble_key, pebble_context)
+            for tech_key, _ in pairs(rebuilt_of[pebble_key] or {}) do
+                cut_blocked(tech_key, pebble_context)
             end
         elseif node.type == "recipe-tech-unlock" then
-            local unlock = after_graph.nodes[pebble.node_key]
+            local unlock = after_graph.nodes[pebble_key]
             for pre, _ in pairs(unlock ~= nil and unlock.pre or {}) do
                 local edge = after_graph.edges[pre]
-                for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble.context)) do
+                for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble_context)) do
                     cut_blocked(edge.start, source)
                 end
             end

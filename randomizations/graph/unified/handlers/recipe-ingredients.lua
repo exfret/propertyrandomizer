@@ -767,8 +767,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                                 --[[if ignore_nil_contexts and (index1 == nil or index2 == nil) then
                                     return true
                                 end]]
-                                index1 = index1 or (#sort_for_pool.sorted + 1)
-                                index2 = index2 or (#sort_for_pool.sorted + 2)
+                                index1 = index1 or (#sort_for_pool.pebble_keys + 1)
+                                index2 = index2 or (#sort_for_pool.pebble_keys + 2)
                                 if not (index1 < index2) then
                                     return false
                                 end

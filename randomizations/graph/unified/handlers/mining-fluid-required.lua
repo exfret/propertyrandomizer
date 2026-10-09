@@ -98,8 +98,8 @@ mining_fluid_required.spoof = function(graph)
 
     local already_checked_fluid = {}
     local already_checked_resource = {}
-    for _, pebble in pairs(sort_info.sorted) do
-        local node = graph.nodes[pebble.node_key]
+    for _, pebble_key in pairs(sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.type == "fluid" and not already_checked_fluid[node.name] then
             already_checked_fluid[node.name] = true
 

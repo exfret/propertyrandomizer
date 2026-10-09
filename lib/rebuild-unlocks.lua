@@ -22,12 +22,12 @@ unlocks.retained = function(technologies, sources, sort_info, graph)
                 end
             end
             local path = top.path(graph, roots, sort_info, {
-                stop_if = function(pebble)
-                    return pebble.node_key == recipe_key
+                stop_if = function(node_key)
+                    return node_key == recipe_key
                 end,
             })
             for ind, _ in pairs(path.in_path) do
-                if sort_info.sorted[ind].node_key == recipe_key then
+                if sort_info.pebble_keys[ind] == recipe_key then
                     needs_alternate[recipe_name] = true
                     break
                 end

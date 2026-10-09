@@ -609,7 +609,7 @@ do
     local backing = top.path(flat_graph, { flat_sort.node_to_context_inds[recipe_key][isolatable] }, flat_sort)
     local through_other = false
     for ind, _ in pairs(backing.in_path) do
-        if flat_sort.sorted[ind].node_key == other_tech then
+        if flat_sort.pebble_keys[ind] == other_tech then
             through_other = true
         end
     end

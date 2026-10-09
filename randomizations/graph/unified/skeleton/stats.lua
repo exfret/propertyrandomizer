@@ -40,9 +40,10 @@ end
 stats.run = function(params)
     local graph = params.graph
     local sort_info = params.sort_info
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
+    local pebble_contexts = sort_info.pebble_contexts
     local nci = sort_info.node_to_context_inds
-    local num_pebbles = #sorted
+    local num_pebbles = #pebble_keys
 
     ----------------------------------------------------------------------------------------------------
     -- Skeletons
@@ -60,7 +61,7 @@ stats.run = function(params)
     local mech_nodes = {}
     local num_mech_nodes = 0
     for _, ind in pairs(mech_goals) do
-        local node_key = sorted[ind].node_key
+        local node_key = pebble_keys[ind]
         if not mech_nodes[node_key] then
             mech_nodes[node_key] = true
             num_mech_nodes = num_mech_nodes + 1
@@ -74,11 +75,11 @@ stats.run = function(params)
         local type_counts = {}
         local context_counts = {}
         for _, ind in pairs(skel.inds) do
-            local pebble = sorted[ind]
-            nodes_in[pebble.node_key] = true
-            local node_type = graph.nodes[pebble.node_key].type
+            local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+            nodes_in[pebble_key] = true
+            local node_type = graph.nodes[pebble_key].type
             type_counts[node_type] = (type_counts[node_type] or 0) + 1
-            context_counts[pebble.context] = (context_counts[pebble.context] or 0) + 1
+            context_counts[pebble_context] = (context_counts[pebble_context] or 0) + 1
         end
         local num_nodes_in = 0
         for _, _ in pairs(nodes_in) do
@@ -86,8 +87,8 @@ stats.run = function(params)
         end
         log_stat("skeleton[" .. name .. "] pebbles=" .. #skel.inds .. " (" .. pct(#skel.inds, num_pebbles) .. " of all) nodes=" .. num_nodes_in)
         local total_context_counts = {}
-        for _, pebble in pairs(sorted) do
-            total_context_counts[pebble.context] = (total_context_counts[pebble.context] or 0) + 1
+        for _, pebble_context in pairs(pebble_contexts) do
+            total_context_counts[pebble_context] = (total_context_counts[pebble_context] or 0) + 1
         end
         local context_strs = {}
         for context, total in pairs(total_context_counts) do

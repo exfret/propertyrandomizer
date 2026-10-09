@@ -24,8 +24,8 @@ entity_operation_fluid.spoof = function(graph)
     local sort_info = top.sort(graph)
 
     local already_checked = {}
-    for _, pebble in pairs(sort_info.sorted) do
-        local node = graph.nodes[pebble.node_key]
+    for _, pebble_key in pairs(sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.type == "fluid" and not already_checked[node.name] then
             already_checked[node.name] = true
             local node_prot = gutils.deconstruct(node.prot)

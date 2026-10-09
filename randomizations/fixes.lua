@@ -163,8 +163,8 @@ randomizations.rebuild_tech_tree = function()
         end
         table.insert(unlockers[recipe_name], tech)
     end
-    for _, node_info in pairs(with_tech_sort_info.sorted) do
-        local node = graph.nodes[node_info.node_key]
+    for _, pebble_key in pairs(with_tech_sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.type == "technology" then
             local tech = data.raw.technology[node.name]
             -- CRITICAL TODO: Ignore techs right now with levels; we'll need to nuke them completely later
@@ -526,7 +526,7 @@ randomizations.rebuild_tech_tree = function()
     -- Techs the logic needs (logic_needs above) and research methods (witness_recipes.research below) keep the earliest witness
     local preference_stats = {}
     local function prev_recipes_of(ind, prefer_local)
-        local node = graph.nodes[no_tech_sort_info.sorted[ind].node_key]
+        local node = graph.nodes[no_tech_sort_info.pebble_keys[ind]]
         local needed_tech = needed_tech_for(node.type == "recipe" and node.name or nil)
         if prefer_local == true then
             return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats, needed_tech)
@@ -549,13 +549,14 @@ randomizations.rebuild_tech_tree = function()
     -- Like a recipe whose tech comes once both Nauvis and Vulcanus can make it: its witness on Vulcanus would make it need Vulcanus's discovery (see needed_tech_for)
     local num_sooner_rooms = 0
     local function witness_ind(first_ind)
-        local sorted = no_tech_sort_info.sorted
+        local pebble_keys = no_tech_sort_info.pebble_keys
+        local pebble_contexts = no_tech_sort_info.pebble_contexts
         local best_ind = first_ind
         -- The sort has plain room contexts (simple contexts, lib/graph/contexts.lua), each standing for its room
-        local best_reached = room_reached(top.context_room(sorted[first_ind].context))
+        local best_reached = room_reached(top.context_room(pebble_contexts[first_ind]))
         local ind = first_ind + 1
-        while sorted[ind] ~= nil and sorted[ind].node_key == sorted[first_ind].node_key do
-            local reached = room_reached(top.context_room(sorted[ind].context))
+        while pebble_keys[ind] ~= nil and pebble_keys[ind] == pebble_keys[first_ind] do
+            local reached = room_reached(top.context_room(pebble_contexts[ind]))
             if reached ~= nil and (best_reached == nil or reached < best_reached) then
                 best_ind = ind
                 best_reached = reached
@@ -573,8 +574,8 @@ randomizations.rebuild_tech_tree = function()
     -- The techs the logic needs that each recipe's or needed tech's witness passes (see needed_tech_for), which become prerequisites below
     local recipe_to_needed = {}
     local needed_tech_to_needed = {}
-    for ind, node_info in pairs(no_tech_sort_info.sorted) do
-        local node = graph.nodes[node_info.node_key]
+    for ind, pebble_key in pairs(no_tech_sort_info.pebble_keys) do
+        local node = graph.nodes[pebble_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
             recipe_to_prev[node.name], recipe_to_needed[node.name] = prev_recipes_of(witness_ind(ind), true)
         elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
@@ -841,9 +842,9 @@ randomizations.rebuild_tech_tree = function()
             end
             logic.build()
             local sort_for_tech_pack_fixes = top.sort(logic.graph, nil, nil, { choose_randomly = true })
-            for i = #sort_for_tech_pack_fixes.sorted, 1, -1 do
-                local pebble = sort_for_tech_pack_fixes.sorted[i]
-                local node = logic.graph.nodes[pebble.node_key]
+            for i = #sort_for_tech_pack_fixes.pebble_keys, 1, -1 do
+                local pebble_key = sort_for_tech_pack_fixes.pebble_keys[i]
+                local node = logic.graph.nodes[pebble_key]
                 if node.type == "technology" then
                     local tech = data.raw.technology[node.name]
                     if tech.unit ~= nil then

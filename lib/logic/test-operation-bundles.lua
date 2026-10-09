@@ -40,17 +40,16 @@ local function toy()
         sources = {},
     }
     local sort = {
-        sorted = {},
+        pebble_keys = {},
+        pebble_contexts = {},
         node_to_context_inds = {},
     }
     -- context is a context's name (default "home"), here and in add and prove
     local function pebble(node_key, context)
-        local ind = #sort.sorted + 1
+        local ind = #sort.pebble_keys + 1
         context = C(context or "home")
-        sort.sorted[ind] = {
-            node_key = node_key,
-            context = context,
-        }
+        sort.pebble_keys[ind] = node_key
+        sort.pebble_contexts[ind] = context
         sort.node_to_context_inds[node_key] = sort.node_to_context_inds[node_key] or {}
         sort.node_to_context_inds[node_key][context] = ind
         return ind

@@ -77,7 +77,7 @@ end
 -- The preferred choices of a path (from top.path with prefer) whose route doesn't stay in room on things the room can make from its own resources, as OR pebble --> the pebble it chose
 -- Like an item the room makes itself only after the recipe at the root, so that preferring it took the room's earliest way of making it, recycling imported scrap
 -- Only for choices that make no loop (see loop_choices), so the routes end
-local function nonlocal_choices(path_info, sorted, room, local_sort_info)
+local function nonlocal_choices(path_info, sort_info, room, local_sort_info)
     local chosen = path_info.chosen
     -- Pebble --> whether its route stays local, filled in children first
     local stays = {}
@@ -88,8 +88,8 @@ local function nonlocal_choices(path_info, sorted, room, local_sort_info)
             local ind = frame[1]
             local next_ind = (chosen[ind] or {})[frame[2]]
             if next_ind == nil then
-                local pebble = sorted[ind]
-                local ok = top.context_room(pebble.context) == room and isolatable_ind(local_sort_info, pebble.node_key, room) ~= nil
+                local pebble_key, pebble_context = sort_info.pebble_keys[ind], sort_info.pebble_contexts[ind]
+                local ok = top.context_room(pebble_context) == room and isolatable_ind(local_sort_info, pebble_key, room) ~= nil
                 for _, pre_ind in pairs(chosen[ind] or {}) do
                     ok = ok and stays[pre_ind]
                 end
@@ -131,27 +131,28 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
     end
 
     local params = {
-        stop_if = function(pebble)
-            return has_tech(pebble.node_key)
+        stop_if = function(node_key)
+            return has_tech(node_key)
         end,
     }
     local path_info
     if local_sort_info ~= nil then
-        local sorted = sort_info.sorted
-        local room = top.context_room(sorted[ind].context)
+        local pebble_keys = sort_info.pebble_keys
+        local pebble_contexts = sort_info.pebble_contexts
+        local room = top.context_room(pebble_contexts[ind])
         -- OR pebble --> its preferred choices that were dropped
         local banned = {}
         params.prefer = function(pre_ind, curr_ind)
-            if top.context_room(sorted[curr_ind].context) ~= room then
+            if top.context_room(pebble_contexts[curr_ind]) ~= room then
                 return false
             end
             if banned[curr_ind] ~= nil and banned[curr_ind][pre_ind] ~= nil then
                 return false
             end
-            local own_ind = isolatable_ind(local_sort_info, sorted[pre_ind].node_key, room)
+            local own_ind = isolatable_ind(local_sort_info, pebble_keys[pre_ind], room)
             -- The choice's own first way comes from an option reached before it, and an option needing the choice's thing comes after it
             -- An edge can lose the room's own resources (like a delivery), so the choice may have no own way at all even when the option has one
-            local choice_own_ind = isolatable_ind(local_sort_info, sorted[curr_ind].node_key, room)
+            local choice_own_ind = isolatable_ind(local_sort_info, pebble_keys[curr_ind], room)
             return own_ind ~= nil and choice_own_ind ~= nil and own_ind < choice_own_ind
         end
         params.prefer_before = ind
@@ -159,7 +160,7 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
             path_info = top.path(graph, {ind}, sort_info, params)
             local choices = loop_choices(path_info.chosen, ind)
             if next(choices) == nil then
-                choices = nonlocal_choices(path_info, sorted, room, local_sort_info)
+                choices = nonlocal_choices(path_info, sort_info, room, local_sort_info)
             end
             if next(choices) == nil then
                 break
@@ -193,7 +194,7 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
     for other_ind, _ in pairs(path_info.in_path) do
         -- Don't count ind itself
         if other_ind < ind then
-            local other_key = sort_info.sorted[other_ind].node_key
+            local other_key = sort_info.pebble_keys[other_ind]
             local other_node = graph.nodes[other_key]
             if has_tech(other_key) then
                 recipes[other_node.name] = true

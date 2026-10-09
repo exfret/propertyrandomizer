@@ -166,8 +166,8 @@ bundles.prove = function(compiled, sort_info, context, levels)
             end
             table.sort(predecessors)
             for _, pre in pairs(predecessors) do
-                local pebble = sort_info.sorted[pre]
-                add_group({ get_state(pebble.node_key, pebble.context) })
+                local pebble_key, pebble_context = sort_info.pebble_keys[pre], sort_info.pebble_contexts[pre]
+                add_group({ get_state(pebble_key, pebble_context) })
             end
         else
             state.op = node.op

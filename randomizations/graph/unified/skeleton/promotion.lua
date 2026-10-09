@@ -111,7 +111,8 @@ promotion.new = function(params)
             log("Promotion: debt edge skipped: " .. text)
         end
     end
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
+    local pebble_contexts = sort_info.pebble_contexts
     local nci = sort_info.node_to_context_inds
 
     local state = {
@@ -315,8 +316,8 @@ promotion.new = function(params)
     -- Its own rank only reflects its vanilla base: a head whose vanilla base is free (like a resource that needs no mining fluid) sorts near the start however late its dependent comes, so no later base could ever pass
     -- Ranks still strictly decrease along backings if the head's pebble counts as ranked just before its dependent's; a dependent that changes contexts keeps the head's own rank
     local function backing_bound(ind)
-        local pebble = sorted[ind]
-        local node = graph.nodes[pebble.node_key]
+        local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+        local node = graph.nodes[pebble_key]
         if node.type ~= "head" then
             return ind
         end
@@ -324,7 +325,7 @@ promotion.new = function(params)
         if dep == nil or logic.type_info[dep.type].context ~= nil then
             return ind
         end
-        local dep_ind = node_ind(key(dep), pebble.context)
+        local dep_ind = node_ind(key(dep), pebble_context)
         if dep_ind == nil or dep_ind < ind then
             return ind
         end
@@ -417,16 +418,16 @@ promotion.new = function(params)
 
     -- A backing for pebble ind in the current graph, or nil; with solvent (debt mode), one without debt edges
     local function compute_support(ind, solvent)
-        local pebble = sorted[ind]
-        local node = graph.nodes[pebble.node_key]
-        if not derived_valid(pebble.node_key) then
+        local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+        local node = graph.nodes[pebble_key]
+        if not derived_valid(pebble_key) then
             return nil
         end
         local est = establish
         local pres = get_pres(node)
         if solvent then
             -- Only the older world has its own nodes, so they're never solvent
-            if debt.old_nodes[pebble.node_key] ~= nil then
+            if debt.old_nodes[pebble_key] ~= nil then
                 return nil
             end
             est = establish_solvent
@@ -449,7 +450,7 @@ promotion.new = function(params)
         end
 
         if logic.type_info[node.type].context == nil then
-            return back_with(backing_bound(ind), pres, node.op, pebble.context, est)
+            return back_with(backing_bound(ind), pres, node.op, pebble_context, est)
         end
 
         -- Forgetters and emitters can send out this pebble's context from other incoming contexts (see top.node_transmit)
@@ -460,7 +461,7 @@ promotion.new = function(params)
             local transmits = not complex and sort_info.home_sets == nil
             if not transmits then
                 for _, outgoing in pairs(top.node_transmit(sort_info, node, context)) do
-                    if outgoing == pebble.context then
+                    if outgoing == pebble_context then
                         transmits = true
                         break
                     end
@@ -496,7 +497,7 @@ promotion.new = function(params)
 
         -- Isolatable tech contexts can also come from the discovery rule (see top.discovery_candidates): the backing is then an earlier pebble of the tech itself (in a home context of the room's home set) and an earlier pebble of a discoverer of the room
         room_discoverers = room_discoverers or top.room_discoverers(graph)
-        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble.context)
+        local candidates = top.discovery_candidates(sort_info, room_discoverers, node, pebble_context)
         if candidates ~= nil then
             local own_ind
             for _, i in pairs(candidates.own) do
@@ -587,7 +588,7 @@ promotion.new = function(params)
                 end
                 state.is_promised[curr] = true
                 state.num_promised = state.num_promised + 1
-                local d = derived_orand[sorted[curr].node_key]
+                local d = derived_orand[pebble_keys[curr]]
                 if d ~= nil and state.resolved[d.source] == nil then
                     pins[d.source] = pins[d.source] or {}
                     if pins[d.source][d.material] == nil then
@@ -598,14 +599,14 @@ promotion.new = function(params)
                 for _, i in pairs(support[curr]) do
                     table.insert(stack, i)
                 end
-                local pebble = sorted[curr]
-                for _, context in pairs(weaker_contexts(pebble.context)) do
-                    local i = nci[pebble.node_key][context]
+                local pebble_key, pebble_context = pebble_keys[curr], pebble_contexts[curr]
+                for _, context in pairs(weaker_contexts(pebble_context)) do
+                    local i = nci[pebble_key][context]
                     if i ~= nil and not state.is_promised[i] then
                         if establish(i) then
                             table.insert(stack, i)
                         else
-                            log("Promotion: " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " is promised but can't be established @ " .. top.context_name(context))
+                            log("Promotion: " .. pebble_key .. " @ " .. top.context_name(pebble_context) .. " is promised but can't be established @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -630,14 +631,14 @@ promotion.new = function(params)
                 for _, i in pairs(support_solvent[curr]) do
                     table.insert(stack, i)
                 end
-                local pebble = sorted[curr]
-                for _, context in pairs(weaker_contexts(pebble.context)) do
-                    local i = nci[pebble.node_key][context]
+                local pebble_key, pebble_context = pebble_keys[curr], pebble_contexts[curr]
+                for _, context in pairs(weaker_contexts(pebble_context)) do
+                    local i = nci[pebble_key][context]
                     if i ~= nil and not state.is_solvent_promised[i] then
                         if establish_solvent(i) then
                             table.insert(stack, i)
                         else
-                            log("Promotion: " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " is solvent but can't be established solvently @ " .. top.context_name(context))
+                            log("Promotion: " .. pebble_key .. " @ " .. top.context_name(pebble_context) .. " is solvent but can't be established solvently @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -736,21 +737,22 @@ promotion.new = function(params)
         -- Protected mechanic pebbles, and every pebble of a recipe locked to one planet (params.planet_locked, see protection.lua)
         -- In debt mode, also recipe pebbles that are goals (like a recipe the older world had locked to a planet), since the planet-locked ones only come from the game itself
         local planet_locked = params.planet_locked or {}
-        local function is_promised_mechanic(pebble)
-            if (planet_locked[pebble.node_key] or {})[pebble.context] ~= nil then
+        local function is_promised_mechanic(ind)
+            local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+            if (planet_locked[pebble_key] or {})[pebble_context] ~= nil then
                 return true
             end
-            local node = graph.nodes[pebble.node_key]
-            if node ~= nil and node.type == "recipe" and debt ~= nil and debt.is_goal(pebble.node_key, pebble.context) then
+            local node = graph.nodes[pebble_key]
+            if node ~= nil and node.type == "recipe" and debt ~= nil and debt.is_goal(pebble_key, pebble_context) then
                 return true
             end
-            return node ~= nil and node.mechanic and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble.context)
+            return node ~= nil and node.mechanic and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble_context)
         end
         -- Promises the mechanic pebble if it can, returning whether it's kept
         -- In debt mode, a pebble without a solvent backing is only kept if it's a goal: others only the older world has (like a moved feature where it used to be) are left to it
         local num_left = 0
-        local function try_promise(ind, pebble)
-            if debt ~= nil and not establish_solvent(ind) and not debt.is_goal(pebble.node_key, pebble.context) then
+        local function try_promise(ind)
+            if debt ~= nil and not establish_solvent(ind) and not debt.is_goal(pebble_keys[ind], pebble_contexts[ind]) then
                 num_left = num_left + 1
                 return true
             end
@@ -763,9 +765,9 @@ promotion.new = function(params)
         -- First promise everything that doesn't need derived recycling, so pins only come from pebbles that do
         allow_derived = false
         clear_cache()
-        for ind, pebble in pairs(sorted) do
-            if is_promised_mechanic(pebble) then
-                try_promise(ind, pebble)
+        for ind = 1, #pebble_keys do
+            if is_promised_mechanic(ind) then
+                try_promise(ind)
             end
         end
         allow_derived = true
@@ -773,8 +775,8 @@ promotion.new = function(params)
         log("Promotion: " .. num_pins .. " pins after promising mechanics without derived recycling")
         local failed = {}
         num_left = 0
-        for ind, pebble in pairs(sorted) do
-            if is_promised_mechanic(pebble) and not try_promise(ind, pebble) then
+        for ind = 1, #pebble_keys do
+            if is_promised_mechanic(ind) and not try_promise(ind) then
                 table.insert(failed, ind)
             end
         end
@@ -809,13 +811,13 @@ promotion.new = function(params)
         max_depth = max_depth or 40
         local curr = ind
         for depth = 1, max_depth do
-            local pebble = sorted[curr]
-            local node = graph.nodes[pebble.node_key]
+            local pebble_key, pebble_context = pebble_keys[curr], pebble_contexts[curr]
+            local node = graph.nodes[pebble_key]
             local strs = {}
             local next_ind
             for _, pre in pairs(get_pres(node)) do
                 local pre_key = pre.key
-                local i = pre_ind(pre, pebble.context)
+                local i = pre_ind(pre, pebble_context)
                 local status
                 if i == nil then
                     status = "no-pebble"
@@ -831,7 +833,7 @@ promotion.new = function(params)
                 end
                 table.insert(strs, pre_key .. "=" .. status)
             end
-            log("EXPLAIN " .. depth .. ": [" .. curr .. "] " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " op=" .. tostring(node.op) .. " ctxtype=" .. tostring(logic.type_info[node.type].context) .. " pres={" .. table.concat(strs, "; ") .. "}")
+            log("EXPLAIN " .. depth .. ": [" .. curr .. "] " .. pebble_key .. " @ " .. top.context_name(pebble_context) .. " op=" .. tostring(node.op) .. " ctxtype=" .. tostring(logic.type_info[node.type].context) .. " pres={" .. table.concat(strs, "; ") .. "}")
             if next_ind == nil then
                 return
             end
@@ -1113,7 +1115,7 @@ promotion.new = function(params)
     -- The error names the choice by what
     local function promise_after_choice(ind, was_solvent, was_promised, what)
         if debt ~= nil and was_solvent and not establish_solvent(ind) then
-            error(sorted[ind].node_key .. " @ " .. top.context_name(sorted[ind].context) .. " isn't solvent after " .. what .. ", but was before")
+            error(pebble_keys[ind] .. " @ " .. top.context_name(pebble_contexts[ind]) .. " isn't solvent after " .. what .. ", but was before")
         end
         promise_goal(ind, not was_promised)
     end
@@ -1468,7 +1470,7 @@ promotion.new = function(params)
         local num_checked = 0
         while #queue > 0 do
             local ind = table.remove(queue)
-            local node_key = sorted[ind].node_key
+            local node_key = pebble_keys[ind]
             local node = graph.nodes[node_key]
             if node.type == "recipe" and earliest_establishable_context(node_key) == nil then
                 return false, node_key .. " could no longer be established anywhere"
@@ -1566,8 +1568,8 @@ promotion.new = function(params)
         local pebbles = {}
         for ind, _ in pairs(debt ~= nil and state.is_solvent_promised or state.is_promised) do
             table.insert(pebbles, {
-                node_key = sorted[ind].node_key,
-                context = sorted[ind].context,
+                node_key = pebble_keys[ind],
+                context = pebble_contexts[ind],
                 rank = ind,
             })
         end
@@ -1594,8 +1596,8 @@ promotion.new = function(params)
         local pebbles = {}
         for ind, _ in pairs(owed) do
             table.insert(pebbles, {
-                node_key = sorted[ind].node_key,
-                context = sorted[ind].context,
+                node_key = pebble_keys[ind],
+                context = pebble_contexts[ind],
                 rank = ind,
             })
         end

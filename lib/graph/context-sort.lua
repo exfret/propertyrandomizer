@@ -334,7 +334,7 @@ local function edge_sources(context_info, edge, context)
     return sources
 end
 
--- Earliest index in sorted of a pebble on edge.start that gets context to edge.stop, or nil if none
+-- Earliest index in the pebble lists of a pebble on edge.start that gets context to edge.stop, or nil if none
 local function edge_ind(context_info, node_to_context_inds, edge, context)
     local start_inds = node_to_context_inds[edge.start]
     if context_info.home[context] ~= nil then
@@ -761,8 +761,8 @@ local function compute_rooms_needed(graph, watched)
             table.insert(queue, node_key)
         end
     end
-    for _, pebble in pairs(sort_info.sorted) do
-        push(pebble.node_key)
+    for _, node_key in pairs(sort_info.pebble_keys) do
+        push(node_key)
     end
     local queue_pos = 1
     while queue_pos <= #queue do
@@ -1177,12 +1177,25 @@ top.sort = function(graph, state, new_conn, extra)
         home_sets = extra.home_sets or logic.home_sets or top.home_sets(graph)
     end
     local context_info = build_context_info(complex, home_sets)
-    -- node_to_context_inds goes node_key --> { context --> index | nil }, where index is when the node_key/context combo was added in sorted, nil if nonexistent
+    -- The pebbles (node/context combos) in the order the sort reaches them, as two lists: pebble_keys[ind] is the ind-th pebble's node key and pebble_contexts[ind] its context
+    -- Lists rather than a { node_key, context } table per pebble, which cost about 0.5 GB per big sort with planet copies
+    -- A sort kept from before these lists (the control stage keeps sorts in storage) still has its pebbles as such tables in sorted, so it's changed over here
+    if state.sorted ~= nil and state.pebble_keys == nil then
+        state.pebble_keys = {}
+        state.pebble_contexts = {}
+        for ind = 1, #state.sorted do
+            state.pebble_keys[ind] = state.sorted[ind].node_key
+            state.pebble_contexts[ind] = state.sorted[ind].context
+        end
+        state.sorted = nil
+    end
+    -- node_to_context_inds goes node_key --> { context --> index | nil }, where index is the pebble's place in the pebble lists, nil if nonexistent
     -- Represents the OUTGOING contexts
     -- To check incoming, check node_to_context_inds on the prerequisite nodes (through the edge, which could change abilities)
     -- This is updated when processed from open (not when added to it)
     local node_to_context_inds = state.node_to_context_inds or {}
-    local sorted = state.sorted or {}
+    local pebble_keys = state.pebble_keys or {}
+    local pebble_contexts = state.pebble_contexts or {}
     -- Table of node_key --> nil or { context --> true }
     local open = state.open or {}
     -- open's keys as a list, plus each key's position in that list, so random selection doesn't need to scan open
@@ -1200,7 +1213,7 @@ top.sort = function(graph, state, new_conn, extra)
         extra.choose_randomly = true
     end
 
-    -- Without choose_randomly, the next node is the open node with the earliest pebble (lowest index in sorted), or the last one pairs(open) gives if no open node has a pebble yet
+    -- Without choose_randomly, the next node is the open node with the earliest pebble (lowest index in the pebble lists), or the last one pairs(open) gives if no open node has a pebble yet
     -- A node's earliest pebble can't change while it's in open (only the node taken out of open gets new pebbles, and they come after its old ones), so the open nodes with one wait in a heap ordered by it
     -- Indices are unique, so the heap never has to break a tie
     local use_heap = not extra.choose_randomly
@@ -1552,13 +1565,12 @@ top.sort = function(graph, state, new_conn, extra)
             local home_id = context_info.home[context]
             -- A home context that one of a home set inside it already stands for isn't passed on (it came in before that one did)
             if home_id == nil or implied_ind(context_info, node_to_context_inds[node_key], context) == nil then
-                -- Add this node-context pebble to sorted
-                table.insert(sorted, {
-                    node_key = node_key,
-                    context = context,
-                })
+                -- Add this node-context pebble to the pebble lists
+                local ind = #pebble_keys + 1
+                pebble_keys[ind] = node_key
+                pebble_contexts[ind] = context
                 -- Add the context
-                node_to_context_inds[node_key][context] = #sorted
+                node_to_context_inds[node_key][context] = ind
 
                 -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
                 -- An edge that changes abilities sends the masks its table gives, in edge_transmit's order, also without a list
@@ -1628,7 +1640,8 @@ top.sort = function(graph, state, new_conn, extra)
 
     return {
         node_to_context_inds = node_to_context_inds,
-        sorted = sorted,
+        pebble_keys = pebble_keys,
+        pebble_contexts = pebble_contexts,
         open = open,
         open_list = open_list,
         open_pos = open_pos,
@@ -1657,13 +1670,15 @@ local function find_discovery_preinds(sort_info, room_discoverers, tech_node, co
 end
 
 -- This is taken mainly from top-sort.lua
--- Creates a path of inds within sort_info.sorted starting from the goal and going backwards for how to get there
--- goal_inds is a list of inds in sort_info.sorted of the pebbles we are hoping to achieve
+-- Creates a path of inds within the sort's pebble lists starting from the goal and going backwards for how to get there
+-- goal_inds is a list of inds in the pebble lists of the pebbles we are hoping to achieve
+-- extra_params.stop_if(node_key, context): when it's true for a pebble other than the first goal, the path doesn't go on past that pebble
 -- The immediate option returns only the backing of the first goal, without inspecting its parents.
 -- extra_params.prefer(pre_ind, curr_ind) picks which prereq an OR node that keeps its context takes: a preferred one goes before the earliest, and may even come after the OR node's own pebble as long as it's before extra_params.prefer_before (default: the OR node's pebble)
 -- A later prereq can lead back to the OR node, so with prefer the result also has chosen (ind --> the inds it went on to), for checking that the path is still a derivation (see lib/logic/witness-recipes.lua), and preferred (OR pebble --> the preferred prereq it took over an earlier one)
 top.path = function(graph, goal_inds, sort_info, extra_params)
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
+    local pebble_contexts = sort_info.pebble_contexts
     local node_to_context_inds = sort_info.node_to_context_inds
     extra_params = extra_params or {}
     local context_info
@@ -1674,7 +1689,7 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     else
         context_info = build_context_info(sort_info.complex == true, sort_info.home_sets)
     end
-    local stop_if = extra_params.stop_if or function(pebble) return false end
+    local stop_if = extra_params.stop_if or function(node_key, context) return false end
     local prefer = extra_params.prefer
     local chosen
     local preferred
@@ -1695,9 +1710,9 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     local path_ind = 1
     while path_ind <= #path do
         local curr_ind = path[path_ind]
-        local curr_pebble = sorted[curr_ind]
-        local curr_context = curr_pebble.context
-        local curr_node = graph.nodes[curr_pebble.node_key]
+        local curr_key = pebble_keys[curr_ind]
+        local curr_context = pebble_contexts[curr_ind]
+        local curr_node = graph.nodes[curr_key]
 
         -- context is the context arriving at node
         local function find_preinds(node, context)
@@ -1834,10 +1849,10 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
         local preinds = discovery_preinds or find_preinds(curr_node, curr_context)
         -- preinds should always be valid by here
         if preinds == false then
-            log(serpent.block(curr_pebble))
+            log(curr_key .. " @ " .. ctx.name(curr_context))
             error()
         end
-        if path_ind == 1 or not stop_if(curr_pebble) then
+        if path_ind == 1 or not stop_if(curr_key, curr_context) then
             if chosen ~= nil then
                 chosen[curr_ind] = preinds
             end

@@ -343,7 +343,8 @@ local function breadth_first_sort(graph)
         table.insert(contexts, C(room))
     end
     local sort_info = {
-        sorted = {},
+        pebble_keys = {},
+        pebble_contexts = {},
         node_to_context_inds = {},
     }
     for _, node_key in pairs(node_keys) do
@@ -381,8 +382,9 @@ local function breadth_first_sort(graph)
             return sort_info
         end
         for _, pebble in pairs(reached) do
-            table.insert(sort_info.sorted, pebble)
-            sort_info.node_to_context_inds[pebble.node_key][pebble.context] = #sort_info.sorted
+            table.insert(sort_info.pebble_keys, pebble.node_key)
+            table.insert(sort_info.pebble_contexts, pebble.context)
+            sort_info.node_to_context_inds[pebble.node_key][pebble.context] = #sort_info.pebble_keys
         end
     end
 end

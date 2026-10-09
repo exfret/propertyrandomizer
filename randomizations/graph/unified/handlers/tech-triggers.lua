@@ -205,28 +205,29 @@ tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_r
         end
     end
     local start_room = gutils.key("planet", constants.starting_planet)
-    local sorted = sort_info.sorted
+    local pebble_keys = sort_info.pebble_keys
+    local pebble_contexts = sort_info.pebble_contexts
     local goal_inds = {}
     local has_anchor = {}
-    for ind = 1, #sorted do
-        local pebble = sorted[ind]
-        local node = graph.nodes[pebble.node_key]
+    for ind = 1, #pebble_keys do
+        local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+        local node = graph.nodes[pebble_key]
         if node ~= nil then
-            local is_goal = (planet_locked[pebble.node_key] or {})[pebble.context] ~= nil
-            if node.mechanic == true and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble.context) then
+            local is_goal = (planet_locked[pebble_key] or {})[pebble_context] ~= nil
+            if node.mechanic == true and node.type ~= "orand" and protection.is_hard_mechanic_pebble(node, pebble_context) then
                 is_goal = true
             end
-            if config.planetary == true and top.context_home(pebble.context) == nil then
-                if node.keep_planetary_isolatability == true and protection.is_isolatable_context(pebble.context) then
+            if config.planetary == true and top.context_home(pebble_context) == nil then
+                if node.keep_planetary_isolatability == true and protection.is_isolatable_context(pebble_context) then
                     is_goal = true
                 end
-                if start_packs[pebble.node_key] ~= nil and top.context_room(pebble.context) == start_room then
+                if start_packs[pebble_key] ~= nil and top.context_room(pebble_context) == start_room then
                     is_goal = true
                 end
             end
             -- The sort is in order, so the first such pebble is the earliest
-            if (node.type == "recipe" or also_reachable[pebble.node_key] ~= nil) and has_anchor[pebble.node_key] == nil and asks_for_nothing(pebble.context) then
-                has_anchor[pebble.node_key] = true
+            if (node.type == "recipe" or also_reachable[pebble_key] ~= nil) and has_anchor[pebble_key] == nil and asks_for_nothing(pebble_context) then
+                has_anchor[pebble_key] = true
                 is_goal = true
             end
             if is_goal then
@@ -236,9 +237,9 @@ tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_r
     end
     local needed = {}
     for ind, _ in pairs(top.path(graph, goal_inds, sort_info).in_path) do
-        local pebble = sorted[ind]
-        needed[pebble.node_key] = needed[pebble.node_key] or {}
-        needed[pebble.node_key][pebble.context] = true
+        local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
+        needed[pebble_key] = needed[pebble_key] or {}
+        needed[pebble_key][pebble_context] = true
     end
     return needed
 end

@@ -109,10 +109,10 @@ item.spoof = function(graph)
     -- Assume linear sciences (this is only for py anyways)
     local num_science_packs = 0
     local already_checked_science = {}
-    for ind, pebble in pairs(orig_graph_sort.sorted) do
-        local node = orig_graph.nodes[pebble.node_key]
+    for ind, pebble_key in pairs(orig_graph_sort.pebble_keys) do
+        local node = orig_graph.nodes[pebble_key]
         if node.type == "item" and node.name ~= "military-science-pack" then
-            node_science_level[pebble.node_key] = num_science_packs
+            node_science_level[pebble_key] = num_science_packs
             local is_science_pack = false
             for _, lab in pairs(data.raw.lab) do
                 for _, input in pairs(lab.inputs) do
@@ -121,8 +121,8 @@ item.spoof = function(graph)
                     end
                 end
             end
-            if is_science_pack and not already_checked_science[pebble.node_key] then
-                already_checked_science[pebble.node_key] = true
+            if is_science_pack and not already_checked_science[pebble_key] then
+                already_checked_science[pebble_key] = true
                 num_science_packs = 1 + num_science_packs
                 --science_inds[ind] = true
             end

@@ -42,17 +42,17 @@ unlocks.apply = function(graph, sort_info, technologies, recipes, fixed_recipes)
     local function technology_frontier(ind)
         if frontier_cache[ind] == nil then
             local result = {}
-            local node = graph.nodes[sort_info.sorted[ind].node_key]
+            local node = graph.nodes[sort_info.pebble_keys[ind]]
             if node.type == "technology" then
                 result[node.name] = true
             else
                 local path = top.path(graph, { ind }, sort_info, {
-                    stop_if = function(pebble)
-                        return graph.nodes[pebble.node_key].type == "technology"
+                    stop_if = function(node_key)
+                        return graph.nodes[node_key].type == "technology"
                     end,
                 })
                 for pre, _ in pairs(path.in_path) do
-                    local source = graph.nodes[sort_info.sorted[pre].node_key]
+                    local source = graph.nodes[sort_info.pebble_keys[pre]]
                     if source.type == "technology" then
                         result[source.name] = true
                     end
@@ -72,7 +72,7 @@ unlocks.apply = function(graph, sort_info, technologies, recipes, fixed_recipes)
             local result = {}
             if #inds > 0 then
                 for pre, _ in pairs(top.path(graph, inds, sort_info).in_path) do
-                    result[sort_info.sorted[pre].node_key] = true
+                    result[sort_info.pebble_keys[pre]] = true
                 end
             end
             support_cache[name] = result

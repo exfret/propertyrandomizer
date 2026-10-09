@@ -87,10 +87,10 @@ end
 -- Make sure rooms aren't reachable without launch node
 test.validate_launch_first = function()
     if mods["space-age"] then
-        for _, pebble in pairs(no_platform_info.sorted) do
-            local node = no_platform_graph.nodes[pebble.node_key]
+        for ind, node_key in pairs(no_platform_info.pebble_keys) do
+            local node = no_platform_graph.nodes[node_key]
             if node.type == "room" and node.name ~= gutils.key("planet", constants.starting_planet) then
-                log(serpent.block(pebble))
+                log(node_key .. " @ " .. top.context_name(no_platform_info.pebble_contexts[ind]))
                 error("Non-starting-planet context possible to get to without launch.")
             end
         end
@@ -200,7 +200,7 @@ test.profile_num_switches = function()
             if path_info_to_use ~= nil and not (path_info_to_use.in_path[ind_a] and path_info_to_use.in_path[ind_b]) then
                 return false
             end
-            return (ind_b or (#sort_info_to_use.sorted + 1)) >= (ind_a or (#sort_info_to_use.sorted + 2))
+            return (ind_b or (#sort_info_to_use.pebble_keys + 1)) >= (ind_a or (#sort_info_to_use.pebble_keys + 2))
         end
 
         local progress = 0
@@ -261,18 +261,18 @@ test.profile_num_switches = function()
 
     -- Just do all items on nauvis
     local goal_inds = {}
-    for ind, pebble in pairs(sort_info.sorted) do
-        local node = test_graph.nodes[pebble.node_key]
-        if node.type == "item" and top.context_room(pebble.context) == gutils.key("planet", "vulcanus") then
+    for ind, node_key in pairs(sort_info.pebble_keys) do
+        local node = test_graph.nodes[node_key]
+        if node.type == "item" and top.context_room(sort_info.pebble_contexts[ind]) == gutils.key("planet", "vulcanus") then
             table.insert(goal_inds, ind)
         end
     end
     local path_info = top.path(test_graph, goal_inds, sort_info)
 
     local goal_inds_unoptimized = {}
-    for ind, pebble in pairs(sort_info_unoptimized.sorted) do
-        local node = test_graph.nodes[pebble.node_key]
-        if node.type == "item" and top.context_room(pebble.context) == gutils.key("planet", "vulcanus") then
+    for ind, node_key in pairs(sort_info_unoptimized.pebble_keys) do
+        local node = test_graph.nodes[node_key]
+        if node.type == "item" and top.context_room(sort_info_unoptimized.pebble_contexts[ind]) == gutils.key("planet", "vulcanus") then
             table.insert(goal_inds_unoptimized, ind)
         end
     end

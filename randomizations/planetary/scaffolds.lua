@@ -463,10 +463,10 @@ scaffolds.execute = function(assignment, oceans, logic, before, should_verify)
     local nci = with_all.sort_info.node_to_context_inds
     local used = {}
     for ind, _ in pairs(top.path(with_all.graph, planetary_check.goal_inds(failures, with_all), with_all.sort_info).in_path) do
-        local pebble = with_all.sort_info.sorted[ind]
-        local original_key = original_of[pebble.node_key]
-        if original_key ~= nil and (nci[original_key] or {})[pebble.context] == nil then
-            used[pebble.node_key] = true
+        local pebble_key, pebble_context = with_all.sort_info.pebble_keys[ind], with_all.sort_info.pebble_contexts[ind]
+        local original_key = original_of[pebble_key]
+        if original_key ~= nil and (nci[original_key] or {})[pebble_context] == nil then
+            used[pebble_key] = true
         end
     end
     local kept = {}

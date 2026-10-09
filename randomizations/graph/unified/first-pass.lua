@@ -278,9 +278,9 @@ first_pass.execute = function(params)
 
     -- slot key --> rank of its first pebble
     local node_in_sorted = {}
-    for ind, pebble in pairs(init_sort.sorted) do
-        if node_in_sorted[pebble.node_key] == nil and valid_node_for_first_pass(pebble.node_key) then
-            node_in_sorted[pebble.node_key] = ind
+    for ind, node_key in pairs(init_sort.pebble_keys) do
+        if node_in_sorted[node_key] == nil and valid_node_for_first_pass(node_key) then
+            node_in_sorted[node_key] = ind
         end
     end
     -- Entity positions nothing reaches in vanilla (like units' placing positions and nowhere positions) are slots too, ranked after everything
@@ -293,7 +293,7 @@ first_pass.execute = function(params)
         end
         table.sort(unreached)
         for i, position_key in pairs(unreached) do
-            node_in_sorted[position_key] = #init_sort.sorted + i
+            node_in_sorted[position_key] = #init_sort.pebble_keys + i
         end
     end
 
@@ -503,10 +503,10 @@ first_pass.execute = function(params)
     end
     -- A node has a pebble per context, but these lists order nodes, so only count each slot once (at its first pebble)
     local is_slot_ordered = {}
-    for _, pebble in pairs(init_sort.sorted) do
-        local node = split_graph.nodes[pebble.node_key]
-        if node.slot and is_slot_ordered[pebble.node_key] == nil then
-            is_slot_ordered[pebble.node_key] = true
+    for _, node_key in pairs(init_sort.pebble_keys) do
+        local node = split_graph.nodes[node_key]
+        if node.slot and is_slot_ordered[node_key] == nil then
+            is_slot_ordered[node_key] = true
             order_slot(node)
         end
     end
@@ -841,17 +841,17 @@ first_pass.execute = function(params)
     -- Only the protected part of each context counts (see protection.lua)
     local lost = {}
     local kept_by_node = {}
-    for _, pebble in pairs(ordered_sort.sorted) do
+    for ind, node_key in pairs(ordered_sort.pebble_keys) do
         -- Protection is declared on the original nodes (split graph travs don't carry it, and aren't mechanics)
-        local node = spoofed_graph.nodes[pebble.node_key] or split_graph.nodes[pebble.node_key]
-        kept_by_node[pebble.node_key] = kept_by_node[pebble.node_key] or {}
-        kept_by_node[pebble.node_key][protection.kept_part(node, pebble.context)] = true
+        local node = spoofed_graph.nodes[node_key] or split_graph.nodes[node_key]
+        kept_by_node[node_key] = kept_by_node[node_key] or {}
+        kept_by_node[node_key][protection.kept_part(node, ordered_sort.pebble_contexts[ind])] = true
     end
-    for _, pebble in pairs(init_sort.sorted) do
-        local node = spoofed_graph.nodes[pebble.node_key]
-        local kept = protection.kept_part(node, pebble.context)
-        if node.mechanic and node.type ~= "orand" and (kept_by_node[pebble.node_key] or {})[kept] == nil then
-            table.insert(lost, pebble.node_key .. " @ " .. protection.kept_name(kept))
+    for ind, node_key in pairs(init_sort.pebble_keys) do
+        local node = spoofed_graph.nodes[node_key]
+        local kept = protection.kept_part(node, init_sort.pebble_contexts[ind])
+        if node.mechanic == true and node.type ~= "orand" and (kept_by_node[node_key] or {})[kept] == nil then
+            table.insert(lost, node_key .. " @ " .. protection.kept_name(kept))
         end
     end
     -- Planet-locked recipes keep their exact contexts
@@ -933,10 +933,10 @@ first_pass.execute = function(params)
     local mechanics_sets_to_size = {}
     -- Count each trav once (at its first pebble), matching mechanics_sets_to_ordered
     local is_trav_ordered = {}
-    for _, pebble in pairs(ordered_sort.sorted) do
-        local node = split_graph.nodes[pebble.node_key]
-        if node.trav and is_trav_ordered[pebble.node_key] == nil then
-            is_trav_ordered[pebble.node_key] = true
+    for _, node_key in pairs(ordered_sort.pebble_keys) do
+        local node = split_graph.nodes[node_key]
+        if node.trav and is_trav_ordered[node_key] == nil then
+            is_trav_ordered[node_key] = true
             local mechanics_set = trav_to_mechanics[key(node)]
             local mechanics_list = {}
             for mechanic, _ in pairs(mechanics_set) do

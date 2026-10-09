@@ -44,7 +44,8 @@ local function toy(research_supply)
         sources = {},
     }
     local sort = {
-        sorted = {},
+        pebble_keys = {},
+        pebble_contexts = {},
         node_to_context_inds = {},
     }
     -- context is a context's name (default "home")
@@ -55,11 +56,9 @@ local function toy(research_supply)
             gutils.add_edge(graph, pre, key(node))
         end
         context = C(context or "home")
-        local ind = #sort.sorted + 1
-        sort.sorted[ind] = {
-            node_key = key(node),
-            context = context,
-        }
+        local ind = #sort.pebble_keys + 1
+        sort.pebble_keys[ind] = key(node)
+        sort.pebble_contexts[ind] = context
         sort.node_to_context_inds[key(node)] = { [context] = ind }
         return key(node)
     end
@@ -120,14 +119,10 @@ test("an alternative early supply is enough", function()
     gutils.add_edge(graph, nodes.supply, key(supply))
     gutils.add_edge(graph, nodes.early, key(supply))
     local old = sort.node_to_context_inds[nodes.operate][C("home")]
-    sort.sorted[old] = {
-        node_key = key(supply),
-        context = C("home"),
-    }
-    sort.sorted[old + 1] = {
-        node_key = nodes.operate,
-        context = C("home"),
-    }
+    sort.pebble_keys[old] = key(supply)
+    sort.pebble_contexts[old] = C("home")
+    sort.pebble_keys[old + 1] = nodes.operate
+    sort.pebble_contexts[old + 1] = C("home")
     sort.node_to_context_inds[key(supply)] = { [C("home")] = old }
     sort.node_to_context_inds[nodes.operate][C("home")] = old + 1
     gutils.remove_edge(graph, gutils.ekey({
@@ -141,8 +136,8 @@ end)
 
 test("operation in another context does not justify this placement", function()
     local graph, sort, nodes = toy()
-    sort.node_to_context_inds[nodes.operate] = { [C("elsewhere")] = #sort.sorted }
-    sort.sorted[#sort.sorted].context = C("elsewhere")
+    sort.node_to_context_inds[nodes.operate] = { [C("elsewhere")] = #sort.pebble_keys }
+    sort.pebble_contexts[#sort.pebble_contexts] = C("elsewhere")
     assert(not operation.matching(graph, sort, operation.items(graph)).allows(nodes.late, nodes.item))
 end)
 
@@ -155,7 +150,8 @@ test("a new sort invalidates a proof when its supply moves later", function()
     }))
     gutils.add_edge(graph, nodes.item, nodes.late)
     sort = {
-        sorted = sort.sorted,
+        pebble_keys = sort.pebble_keys,
+        pebble_contexts = sort.pebble_contexts,
         node_to_context_inds = sort.node_to_context_inds,
     }
     assert(not operation.matching(graph, sort, operation.items(graph)).allows(nodes.late, nodes.item))
@@ -233,11 +229,9 @@ test("delivery must actually connect the acquisition room to the operation room"
         nodes.own,
         nodes.operate,
     }) do
-        local ind = #sort.sorted + 1
-        sort.sorted[ind] = {
-            node_key = node_key,
-            context = C("away"),
-        }
+        local ind = #sort.pebble_keys + 1
+        sort.pebble_keys[ind] = node_key
+        sort.pebble_contexts[ind] = C("away")
         sort.node_to_context_inds[node_key][C("away")] = ind
     end
     sort.node_to_context_inds[nodes.operate][C("home")] = nil
@@ -261,11 +255,13 @@ test("the physical audit accepts a later build instead of the earlier research c
     local capture = add("entity-capture", "device", "AND", { capsule })
     gutils.add_edge(graph, capture, nodes.own)
     -- The physical sort encountered capture before the independently enabled build route.
-    local reordered = {}
+    local reordered_keys = {}
+    local reordered_contexts = {}
     local build = key("entity-build-item", "device")
-    for _, pebble in pairs(sort.sorted) do
-        if pebble.node_key ~= build and pebble.node_key ~= nodes.own and pebble.node_key ~= nodes.operate then
-            table.insert(reordered, pebble)
+    for ind, node_key in pairs(sort.pebble_keys) do
+        if node_key ~= build and node_key ~= nodes.own and node_key ~= nodes.operate then
+            table.insert(reordered_keys, node_key)
+            table.insert(reordered_contexts, sort.pebble_contexts[ind])
         end
     end
     for _, node_key in pairs({
@@ -273,14 +269,13 @@ test("the physical audit accepts a later build instead of the earlier research c
         nodes.operate,
         build,
     }) do
-        table.insert(reordered, {
-            node_key = node_key,
-            context = C("home"),
-        })
+        table.insert(reordered_keys, node_key)
+        table.insert(reordered_contexts, C("home"))
     end
-    sort.sorted = reordered
-    for ind, pebble in pairs(reordered) do
-        sort.node_to_context_inds[pebble.node_key][pebble.context] = ind
+    sort.pebble_keys = reordered_keys
+    sort.pebble_contexts = reordered_contexts
+    for ind, node_key in pairs(reordered_keys) do
+        sort.node_to_context_inds[node_key][reordered_contexts[ind]] = ind
     end
     local levels = operation.levels(graph, sort, true)
     assert(levels[sort.node_to_context_inds[nodes.item][C("home")]] == 0)
@@ -312,11 +307,9 @@ test("shared outgoing contexts reuse one backing without depending on each other
     local graph, sort, nodes, add = toy()
     logic.type_info["shared-location"] = { context = true }
     local shared = add("shared-location", "", "OR", { nodes.item })
-    local first = #sort.sorted
-    sort.sorted[first + 1] = {
-        node_key = shared,
-        context = C("away"),
-    }
+    local first = #sort.pebble_keys
+    sort.pebble_keys[first + 1] = shared
+    sort.pebble_contexts[first + 1] = C("away")
     sort.node_to_context_inds[shared][C("away")] = first + 1
     local original_path = top.path
     local calls = 0

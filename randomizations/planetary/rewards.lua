@@ -723,7 +723,7 @@ local function discovery_witness(before, room_key)
     end
     local recipes = {}
     for ind, _ in pairs(top.path(before.graph, inds, before.sort_info).in_path) do
-        local node_key = before.sort_info.sorted[ind].node_key
+        local node_key = before.sort_info.pebble_keys[ind]
         if gutils.deconstruct(node_key).type == "recipe" then
             recipes[node_key] = true
         end
@@ -852,13 +852,13 @@ end
 -- The walk stops at rooms and at reaching them (reachable-room), so what discovering the planet takes doesn't count as a route through the bundle: Aquilo's discovery is researched with the three inner planets' science, so every material there would otherwise seem to need their machines
 local function path_avoids(before, ind, excluded)
     local path = top.path(before.graph, { ind }, before.sort_info, {
-        stop_if = function(pebble)
-            local node_type = gutils.deconstruct(pebble.node_key).type
+        stop_if = function(node_key)
+            local node_type = gutils.deconstruct(node_key).type
             return node_type == "room" or node_type == "reachable-room"
         end,
     })
     for path_ind, _ in pairs(path.in_path) do
-        if excluded[before.sort_info.sorted[path_ind].node_key] ~= nil then
+        if excluded[before.sort_info.pebble_keys[path_ind]] ~= nil then
             return false
         end
     end
@@ -1876,17 +1876,17 @@ local function science_needs(ref, bundle, excluded, crafters_of)
     end
     table.sort(inds)
     local path = top.path(ref.graph, inds, ref.sort_info, {
-        stop_if = function(pebble)
-            local node_type = gutils.deconstruct(pebble.node_key).type
+        stop_if = function(node_key)
+            local node_type = gutils.deconstruct(node_key).type
             return node_type == "room" or node_type == "reachable-room"
         end,
     })
     local machines = bundle_machines(bundle)
     local needs = {}
     for path_ind, _ in pairs(path.in_path) do
-        local pebble = ref.sort_info.sorted[path_ind]
-        local node = gutils.deconstruct(pebble.node_key)
-        if node.type == "recipe" and bundle.planets[top.context_room(pebble.context)] ~= nil and excluded[pebble.node_key] == nil then
+        local pebble_key, pebble_context = ref.sort_info.pebble_keys[path_ind], ref.sort_info.pebble_contexts[path_ind]
+        local node = gutils.deconstruct(pebble_key)
+        if node.type == "recipe" and bundle.planets[top.context_room(pebble_context)] ~= nil and excluded[pebble_key] == nil then
             local recipe = data.raw.recipe[node.name]
             if recipe ~= nil and not recycling.looks_generated(recipe) and only_machines_craft(recipe, machines, crafters_of) then
                 needs[node.name] = true
