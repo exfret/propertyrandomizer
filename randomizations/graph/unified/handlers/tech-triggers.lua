@@ -209,7 +209,8 @@ tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_r
     local pebble_contexts = sort_info.pebble_contexts
     local goal_inds = {}
     local has_anchor = {}
-    for ind = 1, #pebble_keys do
+    -- Every rank, so the contexts pebbles stand for count too (top.each_rank)
+    for ind in top.each_rank(sort_info) do
         local pebble_key, pebble_context = pebble_keys[ind], pebble_contexts[ind]
         local node = graph.nodes[pebble_key]
         if node ~= nil then
