@@ -1,3 +1,10 @@
+-- The garbage collector's step multiplier is how much collection work Lua does for each byte allocated (Lua 5.2 manual 2.5), and Factorio's data stage starts at Lua's default of 200 (logged by a probe, 2026-10-09).
+-- At 200 the collector falls behind the randomizer's allocation inside long steps like first pass and shuffle, so garbage piles up between its rounds.
+-- At 1000 a 2-dupes load of the user's settings peaked at 6.2 GB instead of 9.0 GB, built the same game and wasn't slower (2026-10-09, notes/logs/2026-10-09-memory-profile/stepmul-results.txt).
+-- The old value goes back at the end of this file, so mods that load after this one get the collector as they found it.
+local GC_STEPMUL = 1000
+local previous_gc_stepmul = collectgarbage("setstepmul", GC_STEPMUL)
+
 DO_FRODO_FIXES = false
 
 local constants = require("helper-tables/constants")
@@ -800,3 +807,6 @@ log("Done!")
 
 -- Set config back to nil so that globals aren't floating around
 config = nil
+
+-- The collector's step multiplier as it was before this file (see GC_STEPMUL at the top)
+collectgarbage("setstepmul", previous_gc_stepmul)
