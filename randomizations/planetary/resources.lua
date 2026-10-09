@@ -18,6 +18,7 @@ local planetary_check = require("randomizations/planetary/check")
 local locks = require("randomizations/planetary/locks")
 local scaffolds = require("randomizations/planetary/scaffolds")
 local surface_sets = require("lib/surface-sets")
+local wild = require("lib/wild-entities")
 
 local resources = {}
 
@@ -231,6 +232,14 @@ resources.apply = function(slots, assignment)
         end
         place(slot.planet_name, assignment[i], probability_name, richness_name)
     end
+    -- Off its planet's list, a lost resource still generates wherever its slider is left (AutoplaceSettings.treat_missing_as_default reads true on planets that don't set it), and the slider stays when the resource placed in its old spot reads it (like calcite on Fulgora, placed with scrap's own expression)
+    -- Sharing one placement, the newcomer took every spot in a probe but got only 40% as many, and logic would count the lost resource as still there, so no extra patches would bring it back
+    -- So it's kept off the planet, until a repair places it again (resources.add_repair)
+    for _, planet_name in pairs(sorted_keys(lost)) do
+        for _, resource_name in pairs(sorted_keys(lost[planet_name])) do
+            wild.keep_off(data.raw.planet[planet_name], resource_name)
+        end
+    end
     return lost
 end
 
@@ -345,8 +354,9 @@ resources.remove_repair = function(repair)
     local map_gen_settings = data.raw.planet[repair.planet_name].map_gen_settings
     map_gen_settings.autoplace_controls[repair.control.name] = nil
     map_gen_settings.autoplace_settings.entity.settings[repair.resource_name] = nil
-    map_gen_settings.property_expression_names["entity:" .. repair.resource_name .. ":probability"] = nil
     map_gen_settings.property_expression_names["entity:" .. repair.resource_name .. ":richness"] = nil
+    -- Repairs are for resources the planet lost, which stay off it (see resources.apply)
+    wild.keep_off(data.raw.planet[repair.planet_name], repair.resource_name)
 end
 
 -- What a resource is mined into that matters for its kind (its first fluid for a well, its first item for an ore), or nil if there's none
