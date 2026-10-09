@@ -44,6 +44,10 @@ local top = require("lib/graph/context-sort")
 -- Edge abilities are codes (lib/graph/contexts.lua); fixtures write them as the logic builders used to, like { [2] = true } (lib/graph/contexts-for-tests.lua)
 local fx = require("lib/graph/contexts-for-tests")
 require("randomizations/fixes")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (lib/logic/unlock-contraction.lua), and pass-through nodes left out (lib/logic/pass-through.lua)
+local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 data = { raw = {} }
 data.raw.lab = {}
@@ -125,7 +129,7 @@ logic.build = function()
     end
     local pack_b = node("item", "test-pack-b", "OR", { later })
     local unlock = node("recipe-tech-unlock", "test-target-recipe", "OR")
-    local target = node("recipe", "test-target-recipe", "AND", { unlock })
+    local target = node("recipe", "test-target-recipe", "AND", { node("recipe-unlock", "test-target-recipe", "OR", { unlock }) })
     if research_uses_target == true then
         gutils.add_edge(graph, target, pack_b)
     end
@@ -148,6 +152,10 @@ logic.build = function()
                 gutils.add_edge(graph, key, unlock)
             end
         end
+    end
+    if reductions.enabled then
+        unlock_contraction.contract(graph)
+        pass_through.contract(graph)
     end
     logic.graph = graph
 end
@@ -281,9 +289,9 @@ logic.build = function()
     local pack_a = node("item", "test-pack-a", "OR", { a })
     local pack_b = node("item", "test-pack-b", "OR", { b })
     local production_unlock = node("recipe-tech-unlock", "test-production-recipe", "OR")
-    local production = node("recipe", "test-production-recipe", "AND", { production_unlock })
+    local production = node("recipe", "test-production-recipe", "AND", { node("recipe-unlock", "test-production-recipe", "OR", { production_unlock }) })
     local dependent_unlock = node("recipe-tech-unlock", "test-dependent-recipe", "OR")
-    local dependent = node("recipe", "test-dependent-recipe", "AND", { dependent_unlock })
+    local dependent = node("recipe", "test-dependent-recipe", "AND", { node("recipe-unlock", "test-dependent-recipe", "OR", { dependent_unlock }) })
     local production_pack = node("item", "test-production-pack", "OR", { production })
     gutils.add_edge(graph, dependent, pack_a)
     local science = {
@@ -309,6 +317,10 @@ logic.build = function()
                 gutils.add_edge(graph, key, gutils.key("recipe-tech-unlock", effect.recipe))
             end
         end
+    end
+    if reductions.enabled then
+        unlock_contraction.contract(graph)
+        pass_through.contract(graph)
     end
     logic.graph = graph
 end

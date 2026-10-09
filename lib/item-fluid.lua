@@ -569,12 +569,13 @@ local function with_delta(fluids, delta)
 end
 
 -- The recipe-category node a recipe needs with these fluid counts, keyed like the logic's (lutils.rcat_name): its categories, with hand crafting's traded for the fluid one when it has any fluid (the rule fix_fluid_crafting_categories applies to the game), then the counts
+-- That's the node of its group: spoofed categories with the same crafters share one (lutils.group_rcats)
 item_fluid.recipe_category_key = function(recipe, fluids)
     local cats = furnace_selection.recipe_categories(recipe)
     if fluids.input + fluids.output > 0 and fluid_ports.fluid_category_exists() then
         cats = fluid_ports.trade_hand_category(cats) or cats
     end
-    return gutils.key("recipe-category", lutils.rcat_key(cats, fluids))
+    return gutils.key("recipe-category", lutils.rcat_node_name(lutils.rcat_key(cats, fluids)))
 end
 
 -- The resource-category node a resource needs with these fluid counts (a required fluid in, fluid results out), keyed like the logic's (lutils.mcat_name)

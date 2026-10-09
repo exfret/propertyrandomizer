@@ -43,6 +43,10 @@ local gutils = require("lib/graph/graph-utils")
 local fixes = require("randomizations/fixes")
 local top = require("lib/graph/context-sort")
 local operation = require("lib/logic/operation-requirements")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (lib/logic/unlock-contraction.lua), and pass-through nodes left out (lib/logic/pass-through.lua)
+local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 data = { raw = {} }
 data.raw.lab = {}
@@ -149,7 +153,7 @@ local function check(operation_enabled, starts_enabled, placement)
         end
         for name, prototype in pairs(data.raw.recipe) do
             local unlock = node("recipe-tech-unlock", name, "OR", prototype.enabled ~= false and { start } or {})
-            local recipe_key = node("recipe", name, "AND", { unlock })
+            local recipe_key = node("recipe", name, "AND", { node("recipe-unlock", name, "OR", { unlock }) })
             for _, product in pairs(prototype.results or {}) do
                 local item_key = gutils.key("item", product.name)
                 if graph.nodes[item_key] == nil then
@@ -188,6 +192,10 @@ local function check(operation_enabled, starts_enabled, placement)
                 production,
             })
             gutils.add_edge(graph, heat, operate)
+        end
+        if reductions.enabled then
+            unlock_contraction.contract(graph)
+            pass_through.contract(graph)
         end
         logic.graph = graph
     end

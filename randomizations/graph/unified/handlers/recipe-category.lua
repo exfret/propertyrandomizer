@@ -165,7 +165,9 @@ recipe_category.validate = function(graph, base, head, extra)
             fluids_in = plan.model_fluids + (plan.delta.input or 0)
             fluids_out = recipe_fluids.output + (plan.delta.output or 0)
         end
-        if fluids_in > base_rcat.input or fluids_out > base_rcat.output then
+        -- A category node stands for every spoofed category with its crafters (lutils.group_rcats), so the recipe fits when every one of them has the fluid boxes
+        local capability = (lu.rcat_capability or {})[base_owner.name] or base_rcat
+        if fluids_in > capability.input or fluids_out > capability.output then
             return false
         end
 

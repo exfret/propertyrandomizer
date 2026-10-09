@@ -387,7 +387,7 @@ rewards.trigger_source_keys = function(trigger)
     return keys
 end
 
--- The edges that would tie every moved bundle's technology to its old planet again, for the lock stage's staged sort (see run_locks in execute.lua, where a gate on a witness sends the whole bundle back): list of { start, stop, bundle_id }
+-- The edges that would tie every moved bundle's technology to its old planet again, for the lock stage's staged sort (see run_locks in execute.lua, where a gate on a witness sends the whole bundle back): list of { start, stop, bundle_id, and recipe for an unlock }
 -- A split bundle's original technology unlocking it again (technology --> recipe-tech-unlock), or an edited technology asking for its old trigger again (trigger source --> technology-trigger), its own or one the move retied (retie_dependent_triggers)
 rewards.tie_edges = function()
     local edges = {}
@@ -403,9 +403,11 @@ rewards.tie_edges = function()
                 end
                 for _, recipe_name in pairs(sorted_keys(bundle.member_recipes)) do
                     if is_variant[recipe_name] == nil then
+                        -- recipe says whose unlock it is: a recipe one technology unlocks has no recipe-tech-unlock node until the lock stage expands it (lib/logic/unlock-contraction.lua)
                         table.insert(edges, {
                             start = gutils.key("technology", bundle.tech_edit.split.source),
                             stop = gutils.key("recipe-tech-unlock", recipe_name),
+                            recipe = recipe_name,
                             bundle_id = bundle_id,
                         })
                     end

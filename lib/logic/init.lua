@@ -115,6 +115,10 @@ local compat_spaceage = require(lib_name .. "/logic/compat/spaceage")
 local compat_spaceexploration = require(lib_name .. "/logic/compat/spaceexploration")
 local graph_setup = require(lib_name .. "/logic/graph-setup")
 local bootstrap = require(lib_name .. "/logic/bootstrap")
+local pass_through = require(lib_name .. "/logic/pass-through")
+local reductions = require(lib_name .. "/logic/reductions")
+local reduction_check = require(lib_name .. "/logic/reduction-check")
+local unlock_contraction = require(lib_name .. "/logic/unlock-contraction")
 
 local key = gutils.key
 
@@ -130,7 +134,7 @@ logic.type_info = {}
 -- Needed for edge context info
 logic.edge_info = {}
 
-logic.build = function(extra_params)
+local function build(extra_params)
     extra_params = extra_params or {}
     -- extra_params.tech_gated_unlocks stays off unless the caller sets it: control.lua unlocks mining with fluid and space platforms at the start of every game, so their technologies aren't prereqs here
     -- Other randomizers extracting this logic, which don't unlock them at the start, pass tech_gated_unlocks = true
@@ -139,6 +143,8 @@ logic.build = function(extra_params)
     lu.load_lookups()
     -- Just make it a global
     lookups = lu
+    -- Recipe categories sharing a node in this build (lutils.rcat_node_name), nil when the graph isn't reduced
+    logic.rcat_canonical = lu.rcat_canonical
 
     --log("Lookups loaded")
 
@@ -251,6 +257,13 @@ logic.build = function(extra_params)
 
     graph_setup.build(logic)
 
+    -- The reduced graph (lib/logic/reductions.lua): nodes that only pass on their one way in are left out (lib/logic/pass-through.lua)
+    -- A recipe one technology unlocks, with nothing else unlocking it, gets that technology's edge directly (lib/logic/unlock-contraction.lua), and so do the dependents of the types declared pass-through
+    if reductions.enabled then
+        unlock_contraction.contract(logic.graph)
+        pass_through.contract(logic.graph)
+    end
+
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 -- Bootstrap infrastructure
@@ -280,6 +293,26 @@ logic.build = function(extra_params)
         })
     end
 
+end
+
+-- Builds the logic graph from data.raw (logic.graph, logic.type_info, logic.edge_info and logic.contexts), reduced (lib/logic/reductions.lua)
+-- With the hidden test-reductions setting, every build is made twice from the same data.raw, full and reduced, and lib/logic/reduction-check.lua compares them; the game keeps the reduced one
+local checking_reductions = false
+logic.build = function(extra_params)
+    if config == nil or config.test_reductions ~= true or checking_reductions then
+        build(extra_params)
+        return
+    end
+    checking_reductions = true
+    local caller = debug.getinfo(2, "Sl")
+    local where = caller ~= nil and (tostring(caller.short_src) .. ":" .. tostring(caller.currentline)) or "?"
+    reductions.enabled = false
+    build(extra_params)
+    local full = logic.graph
+    reductions.enabled = true
+    build(extra_params)
+    reduction_check.compare(full, logic.graph, (extra_params or {}).home_sets or logic.home_sets, where)
+    checking_reductions = false
 end
 
 return logic

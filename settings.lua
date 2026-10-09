@@ -561,4 +561,12 @@ data:extend({
         default_value = false,
         hidden = true,
     },
+    -- Builds every logic graph twice, full and reduced, and checks they agree (lib/logic/reduction-check.lua)
+    {
+        setting_type = "startup",
+        type = "bool-setting",
+        name = "propertyrandomizer-test-reductions",
+        default_value = false,
+        hidden = true,
+    },
 })

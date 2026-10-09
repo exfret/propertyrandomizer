@@ -72,7 +72,7 @@ pin dev-unified=false smoke settings
 pin dev-unified=true unified
 # Spoiling runs only with its own setting too, which is visible and so isn't among the hidden unified-* settings unified-all turns on
 pin unified-spoiling=true unified-all
-pin dev-unified=false preview preview-with-graph preview-superposed preview-rewards preview-rewards-superposed
+pin dev-unified=false preview preview-with-graph preview-superposed preview-rewards preview-rewards-superposed reduction-check
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
 # nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)
@@ -80,6 +80,8 @@ pin dev-unified=false preview preview-with-graph preview-superposed preview-rewa
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 # The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development
 config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false operation-readiness=false
+# The preview with every logic build made twice, full and reduced (lib/logic/reductions.lua), compared each time (hidden setting test-reductions, lib/logic/reduction-check.lua); a run fails on any build where they disagree
+config reduction-check unified seeds=1 unified-preview=true dev-unified=false operation-readiness=false test-reductions=true
 # Parked combat experiment: enable military_resistances in source before restoring these profiles.
 # config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more operation-readiness=false
 # config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap operation-readiness=false

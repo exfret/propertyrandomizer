@@ -60,6 +60,8 @@ function helpers.add_node(node_type, op, context, node_name, extra)
             research_input = extra.research_input,
             home_carrier = extra.home_carrier,
             relay = extra.relay,
+            -- pass_through declares the type pass-through, which logic.build leaves out where it only passes on one way in (lib/logic/pass-through.lua); only for types no code looks up by name
+            pass_through = extra.pass_through,
             -- We can't include this here because then the table doesn't get smuggled correctly to control stage (can't smuggle functions); it'll need to be done then
             --[[localiser = extra.localiser or function(node)
                 local deconstructed = gutils.deconstruct(node.prot)
@@ -72,6 +74,7 @@ function helpers.add_node(node_type, op, context, node_name, extra)
     extra.research_input = nil
     extra.home_carrier = nil
     extra.relay = nil
+    extra.pass_through = nil
 
     extra.class = extra.class or curr_class
     if extra.prot == nil and curr_prot ~= nil then

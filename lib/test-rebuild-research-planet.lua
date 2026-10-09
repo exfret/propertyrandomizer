@@ -55,6 +55,10 @@ package.loaded["lib/surface-sets"] = { accepted = function(recipe) return recipe
 
 local gutils = require("lib/graph/graph-utils")
 require("randomizations/fixes")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (lib/logic/unlock-contraction.lua), and pass-through nodes left out (lib/logic/pass-through.lua)
+local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 data = { raw = {} }
 data.raw.lab = {}
@@ -157,9 +161,13 @@ logic.build = function()
         other,
         hot,
     })
-    node("recipe", "planet-recipe", "AND", { planet_unlock })
+    node("recipe", "planet-recipe", "AND", { node("recipe-unlock", "planet-recipe", "OR", { planet_unlock }) })
     local unowned_unlock = node("recipe-tech-unlock", "unowned-recipe", "OR", { other })
-    node("recipe", "unowned-recipe", "AND", { unowned_unlock })
+    node("recipe", "unowned-recipe", "AND", { node("recipe-unlock", "unowned-recipe", "OR", { unowned_unlock }) })
+    if reductions.enabled then
+        unlock_contraction.contract(graph)
+        pass_through.contract(graph)
+    end
     logic.graph = graph
 end
 

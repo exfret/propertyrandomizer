@@ -105,6 +105,8 @@ FAILURE_GUIDANCE = (
 
 # The end-of-load check's verdict, which leaves out losses that only affect isolatability (those are acceptable)
 VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
+# With the hidden test-reductions setting, every logic build is made twice, full and reduced, and compared (lib/logic/reduction-check.lua)
+REDUCTIONCHECK = re.compile(r"REDUCTIONCHECK build \d+ \(([^)]*)\): (ok|FAILED)(.*)$", re.MULTILINE)
 # Conversion recipes the ocean scaffolds left in the game, logged at the end of planetary randomization with the limit the mod holds them to (scaffolds.MAX_CONVERSIONS in randomizations/planetary/scaffolds.lua)
 CONVERSIONS = re.compile(r"PLANETCHECK conversions: (\d+) in the game(?: \(at most (\d+)\))?[^:\r\n]*:? ?([^\r\n]*)")
 # The user's rule (2026-10-01): one conversion is the worst that should ever happen; only for logs that don't give the limit
@@ -739,6 +741,14 @@ def check_verdict(text):
     return []
 
 
+def check_reductions(text):
+    # Every logic build's two graphs must agree; a run with the setting but no lines didn't check anything
+    lines = REDUCTIONCHECK.findall(text)
+    if len(lines) == 0:
+        return ["no REDUCTIONCHECK lines in the log (the both-ways reduction check didn't run)"]
+    return ["REDUCTIONCHECK " + where + ": FAILED" + rest for where, verdict, rest in lines if verdict != "ok"]
+
+
 def check_science_costs(text):
     # Every pack has equal weight: arithmetic mean of after/before ratios.
     # At most 4x per pack; the mean must stay below 2x.
@@ -850,6 +860,8 @@ def run_one(run, ctx):
                 problems.extend(check_reachability(text))
             if "mechcheck" not in run.config.nocheck:
                 problems.extend(check_verdict(text))
+        if reported.get(PREFIX + "test-reductions") == "true":
+            problems.extend(check_reductions(text))
         if "control" not in run.config.nocheck:
             control_log = os.path.join(run_dir, "control.log")
             code = ctx.processes.run(base_args + ["--benchmark", save, "--benchmark-ticks", str(CONTROL_TICKS)], control_log)

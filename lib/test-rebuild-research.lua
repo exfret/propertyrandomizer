@@ -41,6 +41,10 @@ package.loaded["lib/crafter-slots"] = {}
 
 local gutils = require("lib/graph/graph-utils")
 require("randomizations/fixes")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (lib/logic/unlock-contraction.lua), and pass-through nodes left out (lib/logic/pass-through.lua)
+local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 data = { raw = {} }
 data.raw.lab = {}
@@ -110,7 +114,7 @@ logic.build = function()
     end
     local start = node("start", "", "AND")
     local material_tech = node("technology", "test-material-tech", "AND", { start })
-    local material = node("recipe", "test-material-recipe", "AND", { material_tech })
+    local material = node("recipe", "test-material-recipe", "AND", { node("recipe-unlock", "test-material-recipe", "OR", { node("recipe-tech-unlock", "test-material-recipe", "OR", { material_tech }) }) })
     local trigger = node("technology-trigger", "test-copied-tech", "OR", { material })
     local copied = node("technology", "test-copied-tech", "AND", { trigger })
     local alternate = node("technology", "test-alternate-tech", "AND", {
@@ -121,7 +125,11 @@ logic.build = function()
         copied,
         alternate,
     })
-    node("recipe", "test-target-recipe", "AND", { unlock })
+    node("recipe", "test-target-recipe", "AND", { node("recipe-unlock", "test-target-recipe", "OR", { unlock }) })
+    if reductions.enabled then
+        unlock_contraction.contract(graph)
+        pass_through.contract(graph)
+    end
     logic.graph = graph
 end
 

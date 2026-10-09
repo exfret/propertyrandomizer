@@ -1,5 +1,7 @@
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
+local lutils = require("lib/logic/logic-utils")
+local reductions = require("lib/logic/reductions")
 
 local prots = dutils.prots
 
@@ -46,11 +48,14 @@ stage.rcat_to_crafters = function()
         end
     end
 
+    -- Crafter name --> its fluid boxes, { input, output }
+    local crafter_fluids = {}
     for _, class in pairs({"assembling-machine", "furnace", "rocket-silo", "character"}) do
         for _, machine in pairs(prots(class)) do
             if machine.crafting_categories ~= nil then
                 -- Count machine fluid boxes once per machine (not per rcat!)
                 local machine_fluids = {input = 0, output = 0}
+                crafter_fluids[machine.name] = machine_fluids
                 if machine.fluid_boxes ~= nil then
                     for _, fluid_box in pairs(machine.fluid_boxes) do
                         if fluid_box.production_type == "input" then
@@ -75,6 +80,14 @@ stage.rcat_to_crafters = function()
     end
 
     lu.rcat_to_crafters = rcat_to_crafters
+
+    -- Spoofed categories with the same crafters share one recipe-category node (lutils.group_rcats), when the graph is reduced (lib/logic/reductions.lua)
+    if reductions.enabled then
+        lu.rcat_canonical, lu.rcat_capability = lutils.group_rcats(lu.rcats, rcat_to_crafters, crafter_fluids)
+    else
+        lu.rcat_canonical = nil
+        lu.rcat_capability = nil
+    end
 end
 
 -- Bidirectional material-recipe mapping

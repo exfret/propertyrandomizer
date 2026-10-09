@@ -31,6 +31,10 @@ local concrete = {}
 -- It was off for a while because first pass then often moved no items: first pass traded the spoiling handler's spoil edges among themselves, which nothing applies, and so lost Gleba's automated chains in its model; the spoiling handler now keeps those edges out of first pass
 local AUTOMATABLE_PLANT_HARVESTING = true
 
+-- Whether equipment and equipment grids get nodes (user, 2026-10-09: not for now)
+-- Equipment only works on planets, and nothing randomizes it; what its damage kills on planets isn't modeled yet, which damage type randomization will need (then this goes back on)
+local BUILD_EQUIPMENT = false
+
 function concrete.build(lu, extra_params)
     extra_params = extra_params or {}
     local payback_time = extra_params.payback_time or constants.cost.default_payback_time
@@ -151,7 +155,7 @@ function concrete.build(lu, extra_params)
                         damage_amount = source_info.amount,
                         abilities = ctx.LOSES_AUTOMATABILITY,
                     })
-                elseif source_info.source_type == "equipment" then
+                elseif source_info.source_type == "equipment" and BUILD_EQUIPMENT then
                     -- Equipment: need equipment-operate
                     add_edge("equipment-operate", source.name, {
                         damage_amount = source_info.amount,
@@ -351,7 +355,7 @@ function concrete.build(lu, extra_params)
 
             if categories.rolling_stock[entity.type] then
                 ----------------------------------------
-                add_node("entity-build-rail", "OR")
+                add_node("entity-build-rail", "OR", nil, nil, { pass_through = true })
                 ----------------------------------------
                 -- Can we build a rail to put this rolling stock on?
 
@@ -396,7 +400,7 @@ function concrete.build(lu, extra_params)
             end
 
             ----------------------------------------
-            add_node("entity-build-tile", "OR")
+            add_node("entity-build-tile", "OR", nil, nil, { pass_through = true })
             ----------------------------------------
             -- Can we access a tile on which the entity can be built? (i.e., no collision)
 
@@ -814,7 +818,7 @@ function concrete.build(lu, extra_params)
 
     set_class("equipment")
 
-    for equip_name, equip in pairs(lu.equipment) do
+    for equip_name, equip in pairs(BUILD_EQUIPMENT and lu.equipment or {}) do
         set_prot(equip)
 
         ----------------------------------------
@@ -869,7 +873,7 @@ function concrete.build(lu, extra_params)
             add_edge("equipment-operate-power")
 
             ----------------------------------------
-            add_node("equipment-operate-power", "OR")
+            add_node("equipment-operate-power", "OR", nil, nil, { pass_through = true })
             ----------------------------------------
             -- Can we power this equipment?
 
@@ -917,7 +921,7 @@ function concrete.build(lu, extra_params)
     set_class("equipment-category")
 
     local seen_categories = {}
-    for _, grid in pairs(prots("equipment-grid")) do
+    for _, grid in pairs(BUILD_EQUIPMENT and prots("equipment-grid") or {}) do
         for _, cat in pairs(grid.equipment_categories) do
             seen_categories[cat] = true
         end
@@ -957,7 +961,7 @@ function concrete.build(lu, extra_params)
 
     set_class("equipment-grid")
 
-    for _, grid in pairs(prots("equipment-grid")) do
+    for _, grid in pairs(BUILD_EQUIPMENT and prots("equipment-grid") or {}) do
         set_prot(grid)
 
         ----------------------------------------
@@ -1499,7 +1503,8 @@ function concrete.build(lu, extra_params)
     for _, recipe in pairs(lu.recipes) do
         set_prot(recipe)
 
-        local rcat_name = lutils.rcat_name(recipe)
+        -- The node of the recipe's spoofed category, shared with the others its crafters craft (lutils.group_rcats)
+        local rcat_name = lutils.rcat_node_name(lutils.rcat_name(recipe))
         local unlocking_techs = lu.recipe_to_techs[recipe.name]
         local ingredient_map = lu.mat_recipe_map.recipe[recipe.name].ingredients
 
@@ -1676,42 +1681,45 @@ function concrete.build(lu, extra_params)
         local spoofed_cats = lu.vanilla_to_rcats[cat.name]
         if spoofed_cats ~= nil then
             for rcat_name, _ in pairs(spoofed_cats) do
-                -- A category rocket silos craft in (rocket parts) is part of rocket building, which keeps its isolatability through all randomization, planetary changes included (skeleton/protection.lua)
-                local is_rocket_building = false
-                for crafter_name, _ in pairs(lu.rcat_to_crafters[rcat_name] or {}) do
-                    if dutils.get_prot("entity", crafter_name).type == "rocket-silo" then
-                        is_rocket_building = true
+                -- Spoofed categories with the same crafters share their group's node (lutils.group_rcats)
+                if lutils.rcat_node_name(rcat_name) == rcat_name then
+                    -- A category rocket silos craft in (rocket parts) is part of rocket building, which keeps its isolatability through all randomization, planetary changes included (skeleton/protection.lua)
+                    local is_rocket_building = false
+                    for crafter_name, _ in pairs(lu.rcat_to_crafters[rcat_name] or {}) do
+                        if dutils.get_prot("entity", crafter_name).type == "rocket-silo" then
+                            is_rocket_building = true
+                        end
                     end
-                end
-                ----------------------------------------
-                add_node("recipe-category", "OR", nil, rcat_name, {
-                    mechanic = true,
-                    keep_planetary_isolatability = is_rocket_building or nil,
-                    keep_isolatability = is_rocket_building or nil,
-                    rocket_goal = is_rocket_building and "launch" or nil,
-                })
-                ----------------------------------------
-                -- Can we craft recipes in this spoofed category?
+                    ----------------------------------------
+                    add_node("recipe-category", "OR", nil, rcat_name, {
+                        mechanic = true,
+                        keep_planetary_isolatability = is_rocket_building or nil,
+                        keep_isolatability = is_rocket_building or nil,
+                        rocket_goal = is_rocket_building and "launch" or nil,
+                    })
+                    ----------------------------------------
+                    -- Can we craft recipes in this spoofed category?
 
-                local crafters = lu.rcat_to_crafters[rcat_name]
-                if crafters ~= nil then
-                    for crafter_name, _ in pairs(crafters) do
-                        local crafter_entity = dutils.get_prot("entity", crafter_name)
-                        local crafting_speed
-                        local base_name
-                        if string.len(crafter_entity.name) >= 6 then
-                            if string.sub(crafter_entity.name, -5, -3) == "-mk" then
-                                base_name = string.sub(crafter_entity.name, 1, -6)
+                    local crafters = lu.rcat_to_crafters[rcat_name]
+                    if crafters ~= nil then
+                        for crafter_name, _ in pairs(crafters) do
+                            local crafter_entity = dutils.get_prot("entity", crafter_name)
+                            local crafting_speed
+                            local base_name
+                            if string.len(crafter_entity.name) >= 6 then
+                                if string.sub(crafter_entity.name, -5, -3) == "-mk" then
+                                    base_name = string.sub(crafter_entity.name, 1, -6)
+                                end
                             end
+                            -- Assume pyAL buildings have crafting speed of 1
+                            -- TODO: Factor in higher mk speed bonus
+                            if base_name ~= nil and lu.py_operability_module_cats[base_name] ~= nil then
+                                crafting_speed = 1
+                            else
+                                crafting_speed = crafter_entity.crafting_speed
+                            end
+                            add_edge("entity-operate", crafter_name, { amount = crafting_speed or 1 })
                         end
-                        -- Assume pyAL buildings have crafting speed of 1
-                        -- TODO: Factor in higher mk speed bonus
-                        if base_name ~= nil and lu.py_operability_module_cats[base_name] ~= nil then
-                            crafting_speed = 1
-                        else
-                            crafting_speed = crafter_entity.crafting_speed
-                        end
-                        add_edge("entity-operate", crafter_name, { amount = crafting_speed or 1 })
                     end
                 end
             end

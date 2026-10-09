@@ -41,6 +41,7 @@ local recycling = require("lib/recycling")
 local recipe_item_amounts = require("lib/recipe-item-amounts")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
+local pass_through = require("lib/logic/pass-through")
 local logic = require("lib/logic/init")
 local first_pass = require("randomizations/graph/unified/first-pass")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
@@ -240,6 +241,10 @@ local function attempt(options)
 
     -- Logic building
     logic.build()
+    -- The debt has every node logic.build left out (see superpose.union), so this game needs them too for the debt to fit onto its graphs
+    if debt ~= nil then
+        pass_through.expand_all(logic.graph)
+    end
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
     if not repair_only then

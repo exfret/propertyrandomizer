@@ -65,6 +65,30 @@ local rebuild_check = require("lib/rebuild-check")
 -- Contexts are numbers (lib/graph/contexts.lua) and edge abilities codes; fixtures write ability masks and edge abilities as they used to be written, like "10" and { [2] = true } (lib/graph/contexts-for-tests.lua)
 local fx = require("lib/graph/contexts-for-tests")
 require("randomizations/fixes")
+-- Games are built like logic.build builds them: concrete.lua's unlock nodes, contracted where one technology unlocks a recipe (lib/logic/unlock-contraction.lua), and pass-through nodes left out (lib/logic/pass-through.lua)
+local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local unlock_contraction = require("lib/logic/unlock-contraction")
+
+-- The rebuild check's own fixtures below run with each game contracted or not, since the game before the rebuild and the rebuilt one can have either shape for a recipe (one technology before and two after, or the other way around)
+local SHAPES = {}
+for _, flat in pairs({ false, true }) do
+    for _, after in pairs({ false, true }) do
+        table.insert(SHAPES, {
+            name = (flat and "flat contracted" or "flat full") .. ", " .. (after and "rebuilt contracted" or "rebuilt full"),
+            flat = flat,
+            after = after,
+        })
+    end
+end
+-- Contracts graph if contract is set, which must leave num recipes contracted (none otherwise)
+local function shaped(graph, contract, num)
+    if contract then
+        unlock_contraction.contract(graph)
+    end
+    assert(#unlock_contraction.contracted_recipes(graph) == (contract and num or 0), "the fixture contracts " .. tostring(contract and num or 0) .. " recipes")
+    return graph
+end
 
 data = { raw = {} }
 function data:extend(prototypes)
@@ -147,6 +171,10 @@ local function fixture(techs, build_world)
                 end
             end
         end
+        if reductions.enabled then
+            unlock_contraction.contract(graph)
+            pass_through.contract(graph)
+        end
         logic.graph = graph
     end
 end
@@ -162,7 +190,7 @@ end
 -- A recipe node needing its unlock and other nodes, with the item it makes
 local function recipe_node(node, name, pres, abilities)
     local unlock = node("recipe-tech-unlock", name, "OR")
-    table.insert(pres, unlock)
+    table.insert(pres, node("recipe-unlock", name, "OR", { unlock }))
     local key = node("recipe", name, "AND", pres, abilities)
     node("item", name .. "-product", "OR", { key })
     return key
@@ -359,7 +387,7 @@ do
             local prereq_key = node("technology", "test-prereq-tech", { pack }, fx.edge({ [1] = false }))
             gutils.add_edge(graph, prereq_key, techs[1], { abilities = fx.edge({ [2] = true }) })
         end
-        node("recipe", "test-recipe", { node("recipe-tech-unlock", "test-recipe", techs) })
+        node("recipe", "test-recipe", { node("recipe-unlock", "test-recipe", { node("recipe-tech-unlock", "test-recipe", techs) }) })
         return graph
     end
     local function sorted(graph)
@@ -371,30 +399,33 @@ do
     logic.contexts = {
         [ROOM_A] = true,
     }
-    local flat_graph = graph_with(true, false)
-    local flat_sort = sorted(flat_graph)
-    local after_graph = graph_with(false, true)
-    local after_sort = sorted(after_graph)
-    local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
-    local isolatable = top.context_key(ROOM_A, fx.mask("10"))
-    local found = false
-    for _, pebble in pairs(lost) do
-        if pebble.node_key == gutils.key("recipe", "test-recipe") and pebble.context == isolatable then
-            found = true
+    for _, shape in pairs(SHAPES) do
+        -- Two techs unlock the recipe before the rebuild, so only the rebuilt game's recipe can be contracted
+        local flat_graph = shaped(graph_with(true, false), shape.flat, 0)
+        local flat_sort = sorted(flat_graph)
+        local after_graph = shaped(graph_with(false, true), shape.after, 1)
+        local after_sort = sorted(after_graph)
+        local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
+        local isolatable = top.context_key(ROOM_A, fx.mask("10"))
+        local found = false
+        for _, pebble in pairs(lost) do
+            if pebble.node_key == gutils.key("recipe", "test-recipe") and pebble.context == isolatable then
+                found = true
+            end
         end
+        assert(found, shape.name .. ": the fixture's recipe loses isolatability with only the rebuilt tech")
+        local full_prerequisites = {
+            ["test-flat-tech"] = { "test-prereq-tech" },
+        }
+        local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+            return tech_name == "test-flat-tech" and "test-flat-tech" or nil
+        end, full_prerequisites)
+        assert(next(cuts) == nil, shape.name .. ": research that can't reach the context keeps its prerequisites")
+        cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+            return tech_name == "test-flat-tech" and "test-alternate-tech" or nil
+        end, full_prerequisites)
+        assert((cuts["test-flat-tech"] or {})["test-prereq-tech"], shape.name .. ": research that reaches the context loses the prerequisite that doesn't")
     end
-    assert(found, "the fixture's recipe loses isolatability with only the rebuilt tech")
-    local full_prerequisites = {
-        ["test-flat-tech"] = { "test-prereq-tech" },
-    }
-    local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
-        return tech_name == "test-flat-tech" and "test-flat-tech" or nil
-    end, full_prerequisites)
-    assert(next(cuts) == nil, "research that can't reach the context keeps its prerequisites")
-    cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
-        return tech_name == "test-flat-tech" and "test-alternate-tech" or nil
-    end, full_prerequisites)
-    assert((cuts["test-flat-tech"] or {})["test-prereq-tech"], "research that reaches the context loses the prerequisite that doesn't")
 end
 print("ok - the rebuild check only leaves out prerequisites when the tech's own research reaches the context")
 
@@ -427,52 +458,56 @@ do
         return add(graph, "item", "test-pack", { a })
     end
     local function recipe_of(graph, tech)
-        add(graph, "recipe", "test-recipe", { add(graph, "recipe-tech-unlock", "test-recipe", { tech }) })
+        add(graph, "recipe", "test-recipe", { add(graph, "recipe-unlock", "test-recipe", { add(graph, "recipe-tech-unlock", "test-recipe", { tech }) }) })
     end
     logic.contexts = {
         [ROOM_A] = true,
     }
-    local flat_graph = new_graph()
-    recipe_of(flat_graph, add(flat_graph, "technology", "test-tech", { pack_of(flat_graph) }, tech_abilities))
-    -- The rebuilt tech's full prerequisites are test-direct, test-needed and test-fine, and reduce kept test-direct, which needs the other two
-    local after_graph = new_graph()
-    local pack = pack_of(after_graph)
-    local needed = add(after_graph, "technology", "test-needed", { pack }, fx.edge({
-        [1] = false,
-        [2] = true,
-    }))
-    local fine = add(after_graph, "technology", "test-fine", { pack }, tech_abilities)
-    local direct = add(after_graph, "technology", "test-direct", {
-        pack,
-        needed,
-        fine,
-    }, tech_abilities)
-    recipe_of(after_graph, add(after_graph, "technology", "test-tech", {
-        pack,
-        direct,
-    }, tech_abilities))
     local function sorted(graph)
         return top.sort(graph, nil, nil, {
             complex_contexts = true,
             home_contexts = true,
         })
     end
-    local flat_sort = sorted(flat_graph)
-    local after_sort = sorted(after_graph)
-    local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
-    assert(#lost > 0, "the fixture's recipe loses isolatability through test-needed")
-    local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
-        return tech_name == "test-tech" and "test-tech" or nil
-    end, {
-        ["test-tech"] = {
-            "test-direct",
-            "test-needed",
-            "test-fine",
-        },
-    })
-    local tech_cuts = cuts["test-tech"] or {}
-    assert(tech_cuts["test-direct"] and tech_cuts["test-needed"], "the kept prerequisite and the one reduce left out that can't send isolatability are both left out")
-    assert(not tech_cuts["test-fine"], "a prerequisite reduce left out that can send isolatability stays")
+    for _, shape in pairs(SHAPES) do
+        local flat_graph = new_graph()
+        recipe_of(flat_graph, add(flat_graph, "technology", "test-tech", { pack_of(flat_graph) }, tech_abilities))
+        shaped(flat_graph, shape.flat, 1)
+        -- The rebuilt tech's full prerequisites are test-direct, test-needed and test-fine, and reduce kept test-direct, which needs the other two
+        local after_graph = new_graph()
+        local pack = pack_of(after_graph)
+        local needed = add(after_graph, "technology", "test-needed", { pack }, fx.edge({
+            [1] = false,
+            [2] = true,
+        }))
+        local fine = add(after_graph, "technology", "test-fine", { pack }, tech_abilities)
+        local direct = add(after_graph, "technology", "test-direct", {
+            pack,
+            needed,
+            fine,
+        }, tech_abilities)
+        recipe_of(after_graph, add(after_graph, "technology", "test-tech", {
+            pack,
+            direct,
+        }, tech_abilities))
+        shaped(after_graph, shape.after, 1)
+        local flat_sort = sorted(flat_graph)
+        local after_sort = sorted(after_graph)
+        local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
+        assert(#lost > 0, shape.name .. ": the fixture's recipe loses isolatability through test-needed")
+        local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+            return tech_name == "test-tech" and "test-tech" or nil
+        end, {
+            ["test-tech"] = {
+                "test-direct",
+                "test-needed",
+                "test-fine",
+            },
+        })
+        local tech_cuts = cuts["test-tech"] or {}
+        assert(tech_cuts["test-direct"] and tech_cuts["test-needed"], shape.name .. ": the kept prerequisite and the one reduce left out that can't send isolatability are both left out")
+        assert(not tech_cuts["test-fine"], shape.name .. ": a prerequisite reduce left out that can send isolatability stays")
+    end
 end
 print("ok - the rebuild check leaves out prerequisites reduce left out when they can't send the context either")
 
@@ -508,7 +543,7 @@ do
     end
     local function recipe_of(graph, tech, b_input)
         add(graph, "recipe", "test-recipe", {
-            add(graph, "recipe-tech-unlock", "test-recipe", { tech }),
+            add(graph, "recipe-unlock", "test-recipe", { add(graph, "recipe-tech-unlock", "test-recipe", { tech }) }),
             b_input,
         })
     end
@@ -553,78 +588,86 @@ do
             home_contexts = true,
         })
     end
-    local flat_graph = new_graph()
-    local pack_a, _, b_input = world(flat_graph)
-    recipe_of(flat_graph, add(flat_graph, "technology", "test-flat-tech", { pack_a }), b_input)
-    local after_graph = new_graph()
-    local pack_b
-    pack_a, pack_b, b_input = world(after_graph)
-    recipe_of(after_graph, add(after_graph, "technology", "test-rebuilt-tech", {
-        pack_a,
-        add(after_graph, "technology", "test-prereq-tech", { pack_b }),
-    }), b_input)
-    local flat_sort = sorted(flat_graph)
-    local after_sort = sorted(after_graph)
-    local isolatable = top.context_key(ROOM_B, fx.mask("10"))
-    local recipe_key = gutils.key("recipe", "test-recipe")
-    assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil, "the fixture's recipe is isolatable in room B by the discovery rule")
-    assert(after_sort.node_to_context_inds[gutils.key("technology", "test-prereq-tech")][isolatable] ~= nil, "the fixture's prerequisite sends room B's isolatability")
-    local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
-    local found = false
-    for _, pebble in pairs(lost) do
-        if pebble.node_key == recipe_key and pebble.context == isolatable then
-            found = true
+    for _, shape in pairs(SHAPES) do
+        local flat_graph = new_graph()
+        local pack_a, _, b_input = world(flat_graph)
+        recipe_of(flat_graph, add(flat_graph, "technology", "test-flat-tech", { pack_a }), b_input)
+        local after_graph = new_graph()
+        local pack_b
+        pack_a, pack_b, b_input = world(after_graph)
+        recipe_of(after_graph, add(after_graph, "technology", "test-rebuilt-tech", {
+            pack_a,
+            add(after_graph, "technology", "test-prereq-tech", { pack_b }),
+        }), b_input)
+        shaped(flat_graph, shape.flat, 1)
+        shaped(after_graph, shape.after, 1)
+        local flat_sort = sorted(flat_graph)
+        local after_sort = sorted(after_graph)
+        local isolatable = top.context_key(ROOM_B, fx.mask("10"))
+        local recipe_key = gutils.key("recipe", "test-recipe")
+        assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil, shape.name .. ": the fixture's recipe is isolatable in room B by the discovery rule")
+        assert(after_sort.node_to_context_inds[gutils.key("technology", "test-prereq-tech")][isolatable] ~= nil, shape.name .. ": the fixture's prerequisite sends room B's isolatability")
+        local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
+        local found = false
+        for _, pebble in pairs(lost) do
+            if pebble.node_key == recipe_key and pebble.context == isolatable then
+                found = true
+            end
         end
-    end
-    assert(found, "the fixture's recipe loses isolatability in room B")
-    local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
-        return tech_name == "test-rebuilt-tech" and "test-flat-tech" or nil
-    end, {
-        ["test-rebuilt-tech"] = { "test-prereq-tech" },
-    })
-    assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], "the prerequisite that keeps the rebuilt tech from the home context is left out")
-    print("ok - the rebuild check leaves out a prerequisite that takes away isolatability from the discovery rule")
+        assert(found, shape.name .. ": the fixture's recipe loses isolatability in room B")
+        local cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+            return tech_name == "test-rebuilt-tech" and "test-flat-tech" or nil
+        end, {
+            ["test-rebuilt-tech"] = { "test-prereq-tech" },
+        })
+        assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], shape.name .. ": the prerequisite that keeps the rebuilt tech from the home context is left out")
 
-    -- The same, but the earliest way to the recipe's isolatability without prerequisites is another tech that unlocked it, which the rebuild didn't keep
-    -- The check's backing then goes through that tech, so it follows the backing of the rebuilt tech's own research too (lib/rebuild-check.lua)
-    -- Like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, isolatable on Fulgora first through Fulgora 2's electromagnetic plant research
-    flat_graph = new_graph()
-    pack_a, _, b_input = world(flat_graph)
-    -- The other tech comes after room B's discovery and the rebuilt tech's flat tech after the other tech, so the other tech is isolatable in room B first whatever order the sort takes nodes in
-    local other_tech = add(flat_graph, "technology", "test-other-tech", {
-        pack_a,
-        gutils.key("technology", "test-discover-tech"),
-    })
-    local own_tech = add(flat_graph, "technology", "test-flat-tech", {
-        pack_a,
-        other_tech,
-    })
-    add(flat_graph, "recipe", "test-recipe", {
-        add(flat_graph, "recipe-tech-unlock", "test-recipe", {
+        -- The same, but the earliest way to the recipe's isolatability without prerequisites is another tech that unlocked it, which the rebuild didn't keep
+        -- The check's backing then goes through that tech, so it follows the backing of the rebuilt tech's own research too (lib/rebuild-check.lua)
+        -- Like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, isolatable on Fulgora first through Fulgora 2's electromagnetic plant research
+        flat_graph = new_graph()
+        pack_a, _, b_input = world(flat_graph)
+        -- The other tech comes after room B's discovery and the rebuilt tech's flat tech after the other tech, so the other tech is isolatable in room B first whatever order the sort takes nodes in
+        local other_tech = add(flat_graph, "technology", "test-other-tech", {
+            pack_a,
+            gutils.key("technology", "test-discover-tech"),
+        })
+        local own_tech = add(flat_graph, "technology", "test-flat-tech", {
+            pack_a,
             other_tech,
-            own_tech,
-        }),
-        b_input,
-    })
-    flat_sort = sorted(flat_graph)
-    assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil)
-    local backing = top.path(flat_graph, { flat_sort.node_to_context_inds[recipe_key][isolatable] }, flat_sort)
-    local through_other = false
-    for ind, _ in pairs(backing.in_path) do
-        if flat_sort.pebble_keys[ind] == other_tech then
-            through_other = true
+        })
+        add(flat_graph, "recipe", "test-recipe", {
+            add(flat_graph, "recipe-unlock", "test-recipe", {
+                add(flat_graph, "recipe-tech-unlock", "test-recipe", {
+                    other_tech,
+                    own_tech,
+                }),
+            }),
+            b_input,
+        })
+        -- Two techs unlock it here, so it keeps its unlock nodes either way
+        shaped(flat_graph, shape.flat, 0)
+        flat_sort = sorted(flat_graph)
+        assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil, shape.name .. ": the fixture's recipe is isolatable in room B through the other tech")
+        local backing = top.path(flat_graph, { flat_sort.node_to_context_inds[recipe_key][isolatable] }, flat_sort)
+        local through_other = false
+        for ind, _ in pairs(backing.in_path) do
+            if flat_sort.pebble_keys[ind] == other_tech then
+                through_other = true
+            end
         end
+        assert(through_other, shape.name .. ": the fixture's backing goes through the tech the rebuild didn't keep")
+        lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
+        cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+            return tech_name == "test-rebuilt-tech" and "test-flat-tech" or nil
+        end, {
+            ["test-rebuilt-tech"] = { "test-prereq-tech" },
+        })
+        assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], shape.name .. ": the prerequisite that keeps the rebuilt tech from the home context is left out, though the backing went through another tech")
     end
-    assert(through_other, "the fixture's backing goes through the tech the rebuild didn't keep")
-    lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
-    cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
-        return tech_name == "test-rebuilt-tech" and "test-flat-tech" or nil
-    end, {
-        ["test-rebuilt-tech"] = { "test-prereq-tech" },
-    })
-    assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], "the prerequisite that keeps the rebuilt tech from the home context is left out, though the backing went through another tech")
     logic.home_sets = nil
 end
+print("ok - the rebuild check leaves out a prerequisite that takes away isolatability from the discovery rule")
 print("ok - the rebuild check follows the backing of the tech now unlocking a lost recipe, when the backing went through one the rebuild didn't keep")
 
 -- A recipe made only in room B, which a tech discovers, and a recipe made in either room

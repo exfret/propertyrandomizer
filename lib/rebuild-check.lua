@@ -5,6 +5,7 @@ local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/init")
 local top = require("lib/graph/context-sort")
 local technology_prerequisites = require("lib/technology-prerequisites")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 local rebuild_check = {}
 
@@ -92,13 +93,14 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     local path_info = top.path(flat_graph, goal_inds, flat_sort)
     -- The techs now unlocking the backing's recipes can be others than the backing went through, like when that one was a kept tech's alternate path the rebuild didn't keep
     -- Their own backings count too, so that what they need is checked like the rest: like the Fulgora water scaffold for electrolyte on sa/dupes-preview seed 1, whose backing went through Fulgora 2's electromagnetic plant research while its own tech, isolatable there only by the discovery rule, lost its home context
+    -- A recipe's unlock on the backing is its recipe-tech-unlock pebble, or the recipe's own pebble once contracted (lib/logic/unlock-contraction.lua), and either graph can have either shape for it
     local extra_inds = {}
     for ind, _ in pairs(path_info.in_path) do
         local pebble_key, pebble_context = flat_sort.pebble_keys[ind], flat_sort.pebble_contexts[ind]
-        local unlock = after_graph.nodes[pebble_key]
-        if flat_graph.nodes[pebble_key].type == "recipe-tech-unlock" and unlock ~= nil then
-            for pre, _ in pairs(unlock.pre) do
-                local edge = after_graph.edges[pre]
+        local recipe_name = unlock_contraction.unlocked_recipe(flat_graph, flat_graph.nodes[pebble_key])
+        if recipe_name ~= nil then
+            for _, edge_key in pairs(unlock_contraction.tech_edges(after_graph, recipe_name)) do
+                local edge = after_graph.edges[edge_key]
                 local tech = after_graph.nodes[edge.start]
                 local flat_name = tech ~= nil and tech.type == "technology" and flat_tech_of(tech.name) or nil
                 if flat_name ~= nil then
@@ -121,10 +123,10 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     local rebuilt_of = {}
     for ind, _ in pairs(path_info.in_path) do
         local pebble_key = flat_sort.pebble_keys[ind]
-        local unlock = after_graph.nodes[pebble_key]
-        if flat_graph.nodes[pebble_key].type == "recipe-tech-unlock" and unlock ~= nil then
-            for pre, _ in pairs(unlock.pre) do
-                local tech_key = after_graph.edges[pre].start
+        local recipe_name = unlock_contraction.unlocked_recipe(flat_graph, flat_graph.nodes[pebble_key])
+        if recipe_name ~= nil then
+            for _, edge_key in pairs(unlock_contraction.tech_edges(after_graph, recipe_name)) do
+                local tech_key = after_graph.edges[edge_key].start
                 local tech = after_graph.nodes[tech_key]
                 local flat_name = tech ~= nil and tech.type == "technology" and flat_tech_of(tech.name) or nil
                 if flat_name ~= nil then
@@ -143,10 +145,9 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
             for tech_key, _ in pairs(rebuilt_of[pebble_key] or {}) do
                 cut_blocked(tech_key, pebble_context)
             end
-        elseif node.type == "recipe-tech-unlock" then
-            local unlock = after_graph.nodes[pebble_key]
-            for pre, _ in pairs(unlock ~= nil and unlock.pre or {}) do
-                local edge = after_graph.edges[pre]
+        elseif unlock_contraction.unlocked_recipe(flat_graph, node) ~= nil then
+            for _, edge_key in pairs(unlock_contraction.tech_edges(after_graph, node.name)) do
+                local edge = after_graph.edges[edge_key]
                 for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble_context)) do
                     cut_blocked(edge.start, source)
                 end

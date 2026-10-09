@@ -7,6 +7,8 @@ local constants = require("helper-tables/constants")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
 local wild = require(lib_name .. "/wild-entities")
+-- The current build's recipe-category groups (logic.rcat_canonical, set by logic.build)
+local logic = require(lib_name .. "/logic/state")
 
 local lutils = {}
 
@@ -69,6 +71,78 @@ end
 
 lutils.rcat_name = function(recipe)
     return lutils.rcat_key(recipe.categories or {"crafting"}, lutils.find_recipe_fluids(recipe))
+end
+
+-- Spoofed categories with the same category list and the same crafters get one recipe-category node between them: the same machines craft their recipes, so their nodes would get the same contexts in every sort
+-- Arguments: rcats is lu.rcats, rcat_to_crafters is lu.rcat_to_crafters, and crafter_fluids is crafter name --> { input, output } fluid boxes
+-- Returns spoofed category name --> the name of its group's node (the group's one with the fewest fluids, then the fewest inputs), and node name --> the fluids every crafter of the group has, { input, output }, which bounds a recipe the node can take (the recipe-category handler's validate)
+-- Categories no crafter can craft keep a node each, bounded by their own counts as before
+lutils.group_rcats = function(rcats, rcat_to_crafters, crafter_fluids)
+    local names = {}
+    for rcat_name, _ in pairs(rcats) do
+        table.insert(names, rcat_name)
+    end
+    -- Fewest fluids first (input before output), then by name, so each group's node is its first member
+    table.sort(names, function(a, b)
+        local ra = rcats[a]
+        local rb = rcats[b]
+        if ra.input + ra.output ~= rb.input + rb.output then
+            return ra.input + ra.output < rb.input + rb.output
+        end
+        if ra.input ~= rb.input then
+            return ra.input < rb.input
+        end
+        return a < b
+    end)
+    local canonical = {}
+    local capability = {}
+    local node_of_group = {}
+    for _, rcat_name in pairs(names) do
+        local rcat = rcats[rcat_name]
+        local crafters = {}
+        for crafter_name, _ in pairs(rcat_to_crafters[rcat_name] or {}) do
+            table.insert(crafters, crafter_name)
+        end
+        if #crafters == 0 then
+            canonical[rcat_name] = rcat_name
+            capability[rcat_name] = {
+                input = rcat.input,
+                output = rcat.output,
+            }
+        else
+            table.sort(crafters)
+            local cats = {}
+            for _, cat in pairs(rcat.cats) do
+                table.insert(cats, cat)
+            end
+            table.sort(cats)
+            local group = table.concat(cats, ",") .. " | " .. table.concat(crafters, ",")
+            if node_of_group[group] == nil then
+                node_of_group[group] = rcat_name
+                local fewest = nil
+                for _, crafter_name in pairs(crafters) do
+                    local fluids = crafter_fluids[crafter_name]
+                    if fewest == nil then
+                        fewest = {
+                            input = fluids.input,
+                            output = fluids.output,
+                        }
+                    else
+                        fewest.input = math.min(fewest.input, fluids.input)
+                        fewest.output = math.min(fewest.output, fluids.output)
+                    end
+                end
+                capability[rcat_name] = fewest
+            end
+            canonical[rcat_name] = node_of_group[group]
+        end
+    end
+    return canonical, capability
+end
+
+-- The name of the recipe-category node standing for a spoofed category in the current logic graph: its group's (lutils.group_rcats), or its own when the graph isn't reduced
+lutils.rcat_node_name = function(rcat_name)
+    return (logic.rcat_canonical or {})[rcat_name] or rcat_name
 end
 
 -- Spoofed fuel category for burning an item: its fuel categories as one sorted key, so a burner of any of them can burn it

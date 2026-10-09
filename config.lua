@@ -31,6 +31,8 @@ config.dump_data_raw = settings.startup["propertyrandomizer-dump-data-raw"].valu
 if settings.startup["propertyrandomizer-test-unit"].value then
     config.unit_test = true
 end
+-- Whether every logic build is made twice, full and reduced, and compared (lib/logic/reduction-check.lua)
+config.test_reductions = settings.startup["propertyrandomizer-test-reductions"].value
 
 config.graph = {}
 if settings.startup["propertyrandomizer-technology"].value then

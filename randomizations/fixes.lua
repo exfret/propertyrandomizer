@@ -20,6 +20,8 @@ local technology_prerequisites = require("lib/technology-prerequisites")
 local rebuild_unlocks = require("lib/rebuild-unlocks")
 local trigger_promises = require("lib/technology-trigger-promises")
 local rebuild_check = require("lib/rebuild-check")
+-- A recipe one technology unlocks has that technology as a prerequisite, without unlock nodes in between
+local unlock_contraction = require("lib/logic/unlock-contraction")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -500,8 +502,8 @@ randomizations.rebuild_tech_tree = function()
             return true
         end
         for dep, _ in pairs(tech_node.dep) do
-            local dep_type = graph.nodes[graph.edges[dep].stop].type
-            if dep_type ~= "recipe-tech-unlock" and dep_type ~= "technology" then
+            local edge = graph.edges[dep]
+            if graph.nodes[edge.stop].type ~= "technology" and not unlock_contraction.is_unlock_edge(graph, edge) then
                 return true
             end
         end

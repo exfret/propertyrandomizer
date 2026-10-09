@@ -5,6 +5,7 @@
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local pass_through = require("lib/logic/pass-through")
 
 local superpose = {}
 
@@ -32,6 +33,13 @@ end
 --   * not_into_or: keys of debt edges into nodes of new_graph that aren't OR nodes, since then the superposition may reach less than new_graph does and isn't a reference
 superpose.union = function(new_graph, old_graph)
     local graph = table.deepcopy(new_graph)
+    -- Both games have every node logic.build left out (lib/logic/pass-through.lua), so their edges line up: a recipe whose technology changed between them is unlocked by either, not only with both
+    -- Graphs taking the debt need that shape too (superpose.add_debt, settlement.owed_edges)
+    pass_through.expand_all(graph)
+    if #pass_through.joined_edges(old_graph) > 0 then
+        old_graph = table.deepcopy(old_graph)
+        pass_through.expand_all(old_graph)
+    end
     local old_nodes = {}
     for node_key, node in pairs(old_graph.nodes) do
         if graph.nodes[node_key] == nil then
@@ -81,6 +89,7 @@ superpose.union = function(new_graph, old_graph)
 end
 
 -- Adds a superposition's debt (graph, debt_edges and old_nodes, as superpose.union returns them) to another graph with the same keys for shared nodes, like unified's graphs of the new world
+-- The graph has its pass-through nodes expanded like the superposition's (lib/logic/pass-through.lua, see unified.execute), or a debt edge into a node it lacks is left out
 -- Added nodes get old_world = true and added edges get debt = true
 -- An edge into a node of graph that isn't an OR node is left out, since it would make that node harder to reach instead of easier
 -- Returns the added edges (in a fixed order) and texts saying why the others were left out

@@ -37,6 +37,7 @@ local top = require("lib/graph/context-sort")
 local staged = require("lib/graph/staged-sort")
 local superpose = require("lib/graph/superpose")
 local settlement = require("lib/graph/settlement")
+local unlock_contraction = require("lib/logic/unlock-contraction")
 local planetary_check = require("randomizations/planetary/check")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local oceans = require("randomizations/planetary/oceans")
@@ -629,6 +630,8 @@ local function run_locks(logic, state)
         end
     end
     local tie_of_edge = {}
+    -- Recipes a tie unlocks again, which need their recipe-tech-unlock node for the tie to be one more way in (lib/logic/unlock-contraction.lua)
+    local tied_recipes = {}
     for _, edge in pairs(rewards.tie_edges()) do
         table.insert(add, {
             start = edge.start,
@@ -636,10 +639,22 @@ local function run_locks(logic, state)
             stage = "tie",
         })
         tie_of_edge[gutils.ekey(edge)] = edge
+        if edge.recipe ~= nil then
+            table.insert(tied_recipes, edge.recipe)
+        end
     end
     local function sort_with_gates()
+        local graph = without.graph
+        for _, recipe_name in pairs(tied_recipes) do
+            if graph.nodes[gutils.key("recipe-tech-unlock", recipe_name)] == nil then
+                if graph == without.graph then
+                    graph = table.deepcopy(without.graph)
+                end
+                unlock_contraction.expand(graph, recipe_name)
+            end
+        end
         local sorted = staged.sort({
-            graph = without.graph,
+            graph = graph,
             stages = {
                 "widen",
                 "tie",
