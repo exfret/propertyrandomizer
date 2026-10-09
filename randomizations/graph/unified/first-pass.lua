@@ -850,14 +850,14 @@ first_pass.execute = function(params)
         local node = spoofed_graph.nodes[pebble.node_key]
         local kept = protection.kept_part(node, pebble.context)
         if node.mechanic and node.type ~= "orand" and (kept_by_node[pebble.node_key] or {})[kept] == nil then
-            table.insert(lost, pebble.node_key .. " @ " .. kept)
+            table.insert(lost, pebble.node_key .. " @ " .. protection.kept_name(kept))
         end
     end
     -- Planet-locked recipes keep their exact contexts
     for node_key, contexts in pairs(planet_locked) do
         for context, _ in pairs(contexts) do
             if (ordered_sort.node_to_context_inds[node_key] or {})[context] == nil then
-                table.insert(lost, node_key .. " @ " .. context)
+                table.insert(lost, node_key .. " @ " .. top.context_name(context))
             end
         end
     end
@@ -865,7 +865,7 @@ first_pass.execute = function(params)
     if debt_goals ~= nil then
         local _, sup_sort = monotone_matching.superposed_sort(split_graph, params.debt)
         for _, pebble in pairs(monotone_matching.lost_debt_goals(debt_goals, sup_sort)) do
-            table.insert(lost, pebble.node_key .. " @ " .. pebble.context .. " (with the debt)")
+            table.insert(lost, pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " (with the debt)")
         end
     end
     if #lost > 0 then
@@ -913,8 +913,8 @@ first_pass.execute = function(params)
                     for context, _ in pairs(ordered_sort.node_to_context_inds[prekey] or {}) do
                         table.insert(contexts, context)
                     end
-                    table.sort(contexts)
-                    log("First pass: " .. string.rep("  ", depth + 1) .. prekey .. " reachable in " .. table.concat(contexts, ", ", 1, math.min(8, #contexts)) .. (#contexts > 8 and " ..." or ""))
+                    top.sort_by_name(contexts)
+                    log("First pass: " .. string.rep("  ", depth + 1) .. prekey .. " reachable in " .. table.concat(top.context_names(contexts), ", ", 1, math.min(8, #contexts)) .. (#contexts > 8 and " ..." or ""))
                 end
             end
         end

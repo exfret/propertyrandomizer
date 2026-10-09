@@ -43,6 +43,17 @@ prototypes = {
             end,
         },
     },
+    -- The data stage's room numbering (lib/graph/contexts.lua export_rooms), which the control stage imports
+    mod_data = {
+        ["propertyrandomizer-contexts"] = {
+            data = {
+                numbers = {
+                    ["planet: test-planet"] = 0,
+                },
+                originals = 1,
+            },
+        },
+    },
 }
 serpent = {
     load = function()

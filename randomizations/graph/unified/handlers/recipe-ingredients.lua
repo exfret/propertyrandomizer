@@ -3,6 +3,7 @@
 local constants = require("helper-tables/constants")
 local logic = require("lib/logic/init")
 local gutils = require("lib/graph/graph-utils")
+local ctx = require("lib/graph/contexts")
 local lutils = require("lib/logic/logic-utils")
 local dutils = require("lib/data-utils")
 local lu = require("lib/lookup/init")
@@ -758,7 +759,8 @@ recipe_ingredients.custom_prereq_search = function(params)
                             -- Test for reachability at all contexts
                             local key1 = prereq
                             local key2 = dep
-                            for context, _ in pairs(prom ~= nil and {} or logic.contexts) do
+                            for room, _ in pairs(prom ~= nil and {} or logic.contexts) do
+                                local context = ctx.simple(room)
                                 local index1 = sort_for_pool.node_to_context_inds[key1][context]
                                 local index2 = sort_for_pool.node_to_context_inds[key2][context]
                                 -- TODO: Should I ignore nil contexts?

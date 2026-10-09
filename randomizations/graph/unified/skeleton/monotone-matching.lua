@@ -108,7 +108,8 @@ local function hard_pebbles(graph, sort_info, params)
             local best_context
             local best_ind
             for context, ind in pairs(context_inds) do
-                if string.find(top.context_abilities(context) or "", "1", 1, true) == nil and top.context_home(context) == nil and (best_ind == nil or ind < best_ind) then
+                local mask = top.context_mask(context)
+                if (mask == nil or mask == top.NO_ABILITIES) and top.context_home(context) == nil and (best_ind == nil or ind < best_ind) then
                     best_ind = ind
                     best_context = context
                 end
@@ -137,7 +138,7 @@ local function lost_pebbles(exact, recipes, sort_info)
             table.insert(lost, pebble)
         end
     end
-    table.sort(lost, function(a, b) return a.node_key .. a.context < b.node_key .. b.context end)
+    table.sort(lost, top.pebble_order)
     return lost
 end
 
@@ -870,7 +871,7 @@ local function debt_goals_of(graph, sort_info, debt)
         end
     end
     for _, list in pairs(goals) do
-        table.sort(list, function(a, b) return a.node_key .. a.context < b.node_key .. b.context end)
+        table.sort(list, top.pebble_order)
     end
     return goals, sup_graph, sup_sort
 end
@@ -1016,7 +1017,7 @@ matching.run = function(params)
             end
             num_refinements = num_refinements + 1
             local example = lost[1] or lost_debt[1]
-            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles and " .. #lost_debt .. " debt goals (e.g. " .. example.node_key .. " @ " .. example.context .. "); added " .. num_added .. " needs")
+            log("Monotone matching: round " .. round .. " lost " .. #lost .. " hard pebbles and " .. #lost_debt .. " debt goals (e.g. " .. example.node_key .. " @ " .. top.context_name(example.context) .. "); added " .. num_added .. " needs")
             if num_added == 0 or num_refinements >= 10 then
                 -- Nothing left to refine, so keep the previous matching (always valid)
                 new_assignment = assignment
@@ -1114,9 +1115,9 @@ matching.run = function(params)
             if #lost == 0 then
                 keep(trial, batch)
             elseif #batch == 1 then
-                log("Monotone matching: form trade dropped, " .. assignment[batch[1][2]] .. " at " .. batch[1][1] .. " and " .. assignment[batch[1][1]] .. " at " .. batch[1][2] .. " lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. lost[1].context .. ")")
+                log("Monotone matching: form trade dropped, " .. assignment[batch[1][2]] .. " at " .. batch[1][1] .. " and " .. assignment[batch[1][1]] .. " at " .. batch[1][2] .. " lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. top.context_name(lost[1].context) .. ")")
             else
-                log("Monotone matching: a batch of " .. #batch .. " form trades lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. lost[1].context .. "), so each is gated alone")
+                log("Monotone matching: a batch of " .. #batch .. " form trades lost " .. #lost .. " pebbles (e.g. " .. lost[1].node_key .. " @ " .. top.context_name(lost[1].context) .. "), so each is gated alone")
                 for _, pair in pairs(batch) do
                     if not budget_left() then
                         break
@@ -1126,7 +1127,7 @@ matching.run = function(params)
                     if #lost_one == 0 then
                         keep(trial_one, { pair })
                     else
-                        log("Monotone matching: form trade dropped, " .. assignment[pair[2]] .. " at " .. pair[1] .. " and " .. assignment[pair[1]] .. " at " .. pair[2] .. " lost " .. #lost_one .. " pebbles (e.g. " .. lost_one[1].node_key .. " @ " .. lost_one[1].context .. ")")
+                        log("Monotone matching: form trade dropped, " .. assignment[pair[2]] .. " at " .. pair[1] .. " and " .. assignment[pair[1]] .. " at " .. pair[2] .. " lost " .. #lost_one .. " pebbles (e.g. " .. lost_one[1].node_key .. " @ " .. top.context_name(lost_one[1].context) .. ")")
                     end
                 end
             end

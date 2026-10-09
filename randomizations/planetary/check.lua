@@ -67,8 +67,8 @@ check.sort = function(logic)
 end
 
 local function is_isolatable(context)
-    local abilities = top.context_abilities(context)
-    return abilities ~= nil and string.sub(abilities, 1, 1) == "1"
+    local mask = top.context_mask(context)
+    return mask ~= nil and top.has_ability(mask, top.ISOLATABILITY)
 end
 
 local function sorted_keys(tbl)
@@ -239,11 +239,11 @@ check.transported_context = function(node_key, context)
         return context
     end
     if entry.keep_isolatability then
-        local abilities = top.context_abilities(context)
-        if abilities == nil then
-            return new_room
+        local mask = top.context_mask(context)
+        if mask == nil then
+            return top.simple_context(new_room)
         end
-        return top.context_key(new_room, abilities)
+        return top.context_key(new_room, mask)
     end
     return protection.without_isolatability(context, new_room)
 end
@@ -392,8 +392,8 @@ check.spare_building_recipes = function(after)
     end
     local function is_automatable(item_name)
         for context, _ in pairs(after_contexts[gutils.key("item", item_name)] or {}) do
-            local abilities = top.context_abilities(context)
-            if abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+            local mask = top.context_mask(context)
+            if mask ~= nil and top.has_ability(mask, top.AUTOMATABILITY) then
                 return true
             end
         end
@@ -481,7 +481,7 @@ check.give_up_spare = function(before, after, variants_of)
         if spare[goal.node_key] ~= nil then
             given_up[goal.node_key] = given_up[goal.node_key] or {}
             given_up[goal.node_key][goal.context] = true
-            table.insert(texts, "planet-locked " .. goal.node_key .. " @ " .. goal.context)
+            table.insert(texts, "planet-locked " .. goal.node_key .. " @ " .. top.context_name(goal.context))
         end
     end
     check.given_up = given_up
@@ -525,7 +525,7 @@ check.required_failures = function(before, after, variants_of)
     local spare = check.spare_building_recipes(after)
     local spare_goals = {}
     for _, goal in pairs(lost_planet_locked_goals(before, after, variants_of)) do
-        local text = "planet-locked " .. goal.node_key .. " @ " .. goal.context
+        local text = "planet-locked " .. goal.node_key .. " @ " .. top.context_name(goal.context)
         if spare[goal.node_key] ~= nil then
             table.insert(spare_goals, text)
         else
@@ -553,7 +553,7 @@ check.required_failures = function(before, after, variants_of)
                 local hard_ok = strict_ok
                 if check.rocket_machines_importable and after_node.rocket_goal ~= nil and is_isolatable(kept) and top.context_home(kept) == nil then
                     if not strict_ok and near[top.context_room(kept)] ~= nil then
-                        table.insert(soft, "rocket " .. node_key .. " @ " .. kept)
+                        table.insert(soft, "rocket " .. node_key .. " @ " .. top.context_name(kept))
                     end
                     if not strict_ok and after_node.rocket_goal == "launch" then
                         hard_ok = top.provides_context(check.imported_contexts(after)[node_key] or {}, kept)
@@ -563,7 +563,7 @@ check.required_failures = function(before, after, variants_of)
                 end
                 if not hard_ok then
                     table.insert(failures, {
-                        text = "mechanic " .. node_key .. " @ " .. kept,
+                        text = "mechanic " .. node_key .. " @ " .. top.context_name(kept),
                         keys = {
                             node_key,
                         },
@@ -580,7 +580,7 @@ check.required_failures = function(before, after, variants_of)
         for context, _ in pairs(contexts) do
             if not top.provides_context(after_contexts[node_key] or {}, context) then
                 table.insert(failures, {
-                    text = "starting planet's science " .. node_key .. " @ " .. context,
+                    text = "starting planet's science " .. node_key .. " @ " .. top.context_name(context),
                     keys = {
                         node_key,
                     },
@@ -740,7 +740,7 @@ check.run = function(before, after, is_quiet)
             if is_isolatable(context) then
                 num_science = num_science + 1
                 if (after_contexts[node_key] or {})[context] == nil then
-                    table.insert(lost_science, node_key .. " @ " .. context)
+                    table.insert(lost_science, node_key .. " @ " .. top.context_name(context))
                 end
             end
         end
@@ -796,7 +796,8 @@ check.run = function(before, after, is_quiet)
         if moved[node_key] == nil then
             moved[node_key] = {}
         end
-        table.insert(moved[node_key], sign .. top.context_room(context) .. "|" .. (top.context_abilities(context) or ""))
+        local mask = top.context_mask(context)
+        table.insert(moved[node_key], sign .. top.context_room(context) .. "|" .. (mask ~= nil and top.mask_name(mask) or ""))
     end
     for node_key, contexts in pairs(before_contexts) do
         local node = before.graph.nodes[node_key]

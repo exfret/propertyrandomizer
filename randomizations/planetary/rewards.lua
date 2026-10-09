@@ -70,8 +70,8 @@ local function specific_to_rooms(sort, node_key, rooms)
         if not is_there then
             is_only_there = false
         end
-        local abilities = top.context_abilities(context)
-        if abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+        local mask = top.context_mask(context)
+        if mask ~= nil and top.has_ability(mask, top.ISOLATABILITY) then
             if is_there then
                 is_isolatable_there = true
             else
@@ -1193,8 +1193,8 @@ local function is_local_to(before, material, target_rooms, lock_specific)
         return true
     end
     for context, _ in pairs(before.sort_info.node_to_context_inds[node_key] or {}) do
-        local abilities = top.context_abilities(context)
-        if top.context_home(context) == nil and target_rooms[top.context_room(context)] ~= nil and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+        local mask = top.context_mask(context)
+        if top.context_home(context) == nil and target_rooms[top.context_room(context)] ~= nil and mask ~= nil and top.has_ability(mask, top.ISOLATABILITY) then
             return true
         end
     end
@@ -1841,8 +1841,8 @@ end
 
 -- Whether a context has isolatability (no imports), which is what a planet loses when its machine leaves: anything else can use the machine delivered from its new planet
 local function context_is_isolatable(context)
-    local abilities = top.context_abilities(context)
-    return abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1"
+    local mask = top.context_mask(context)
+    return mask ~= nil and top.has_ability(mask, top.ISOLATABILITY)
 end
 
 -- The recipes a special machine's planet needs re-homed once it leaves: every recipe on the proof (top.path, stopping at rooms like path_avoids) of its science pack's recipes in their isolatable contexts on the family's planets, in ref (the game as the earlier planetary stages left it, or the sort before), that only the bundle's machines craft (only_machines_craft), its own recipes aside (excluded)

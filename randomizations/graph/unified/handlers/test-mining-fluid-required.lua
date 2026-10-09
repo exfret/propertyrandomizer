@@ -56,11 +56,14 @@ package.loaded["lib/random/rng"] = {
 local gutils = require("lib/graph/graph-utils")
 local lutils = require("lib/logic/logic-utils")
 local mining_fluid_required = require("randomizations/graph/unified/handlers/mining-fluid-required")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names (lib/graph/contexts-for-tests.lua)
+local C = require("lib/graph/contexts-for-tests").C
 
 local key = gutils.key
 
 local NO_FLUID = "no-fluid-spoof"
-local ROOM = "room"
+-- The room's simple context
+local ROOM = C("room")
 -- The resources' category, set on each so the handler never falls back to a default one
 local CATEGORY = "test-rock"
 
@@ -295,8 +298,8 @@ end)
 
 test("a fluid only automatable after a resource's own mining is never chosen for it, so the resource never waits on hand work (like stone from rocks until sulfuric acid)", function()
     local world = build()
-    local plain = "room | 00"
-    local automatable = "room | 01"
+    local plain = C("room | 00")
+    local automatable = C("room | 01")
     for name, _ in pairs(world.heads) do
         world.baseline.node_to_context_inds[key("entity-mine", name)] = {
             [plain] = 1,

@@ -15,6 +15,7 @@ local gutils = require("lib/graph/graph-utils")
 local graph_cost = require("lib/cost/graph-cost-core")
 local context_costs = require("lib/cost/context-costs")
 local flow_cost = require("lib/cost/flow-cost")
+local fx = require("lib/graph/contexts-for-tests")
 
 local num_passed = 0
 local function test(name, fn)
@@ -121,8 +122,9 @@ local function world(automatable)
     local prices = graph_cost.compute(graph, { "A", "B" }, transmit)
 
     -- Where the sort reaches things (earlier index first): ore and smelting only in A; debris, gems and plates in both (shipped)
+    -- Written by room, and keyed by the rooms' simple contexts, as a sort without complex contexts keys them (lib/graph/contexts.lua)
     local function at(contexts)
-        return contexts
+        return fx.keyed(contexts)
     end
     local sort_info = {
         node_to_context_inds = {

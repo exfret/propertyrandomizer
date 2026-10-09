@@ -8,6 +8,7 @@ local categories = require("helper-tables/categories")
 local cutils = require("lib/cost/cost-utils")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
+local ctx = require(lib_name .. "/graph/contexts")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 local acquisition = require(lib_name .. "/logic/acquisition")
@@ -59,7 +60,7 @@ function concrete.build(lu, extra_params)
                     -- Guns: need the gun item + planet (player uses guns on planets only)
                     -- Guns can't be "automated"
                     add_edge("item-gun", source_info.name, {
-                        abilities = { [2] = false },
+                        abilities = ctx.LOSES_AUTOMATABILITY,
                     })
                 end
             end
@@ -109,7 +110,7 @@ function concrete.build(lu, extra_params)
 
         -- Asteroid chunks can be mined automatically
         add_edge("asteroid-chunk", chunk.name, {
-            abilities = { [2] = true },
+            abilities = ctx.GAINS_AUTOMATABILITY,
         })
         -- Seconds of collector operation per chunk
         add_edge("asteroid-collector", "", { amount = constants.cost.asteroid_chunk_collection_time })
@@ -148,13 +149,13 @@ function concrete.build(lu, extra_params)
                     -- Combat robots: come from capsules, entity must be creatable
                     add_edge("entity", source.name, {
                         damage_amount = source_info.amount,
-                        abilities = { [2] = false },
+                        abilities = ctx.LOSES_AUTOMATABILITY,
                     })
                 elseif source_info.source_type == "equipment" then
                     -- Equipment: need equipment-operate
                     add_edge("equipment-operate", source.name, {
                         damage_amount = source_info.amount,
-                        abilities = { [2] = false },
+                        abilities = ctx.LOSES_AUTOMATABILITY,
                     })
                 end
             end
@@ -211,7 +212,7 @@ function concrete.build(lu, extra_params)
                         -- Technically, we should check that there are non-colliding tiles too, but it would be very silly to have an entity in autoplace that can't be placed there
                         add_edge("room-autoplace", room_key, acquisition.tag("autoplace", {
                             entity = entity.name,
-                            abilities = { [1] = true },
+                            abilities = ctx.GAINS_ISOLATABILITY,
                             amount = 0, -- Zero amount to trigger the creation of this entity as an OR node
                             ours = autoplace_is_ours or nil,
                         })) -- Being from a room leads to isolatability
@@ -318,7 +319,7 @@ function concrete.build(lu, extra_params)
         -- Check if we can get access this through it being our character
         if entity.type == "character" then
             add_edge("entity-character", entity.name, acquisition.tag("character", {
-                abilities = { [1] = true }, -- Characters are always "local"
+                abilities = ctx.GAINS_ISOLATABILITY, -- Characters are always "local"
                 amount = 0,
                 ours = true,
             }))
@@ -456,7 +457,7 @@ function concrete.build(lu, extra_params)
 
             -- Only an entity that's ours can be operated (see entity-own), and on a space surface a delivered one counts as local (entity-own-operable)
             add_edge("entity-own-operable", nil, {
-                abilities = { [2] = is_automatic },
+                abilities = is_automatic and ctx.GAINS_AUTOMATABILITY or ctx.LOSES_AUTOMATABILITY,
                 -- Account for one-time cost of entity
                 amount = 1 / payback_time,
                 used_payback = payback_time,
@@ -552,7 +553,7 @@ function concrete.build(lu, extra_params)
                 -- Planets could get this too for buildings they can then make themselves, but in vanilla that adds nothing, so it's left out to keep loading fast (see notes/bootstrap-infrastructure.txt)
 
                 add_edge("entity-build", entity.name, {
-                    abilities = { [1] = true },
+                    abilities = ctx.GAINS_ISOLATABILITY,
                     amount = 1,
                 })
                 -- Makes this only apply in space surface contexts
@@ -571,7 +572,7 @@ function concrete.build(lu, extra_params)
                     -- Is this a delivered building in a room that can make more of it, so operating it there counts as local?
 
                     add_edge("entity-build", entity.name, {
-                        abilities = { [1] = true },
+                        abilities = ctx.GAINS_ISOLATABILITY,
                         amount = 1,
                     })
                     add_edge("entity-own-bootstrap-rooms", nil)
@@ -689,7 +690,7 @@ function concrete.build(lu, extra_params)
 
             if entity.type == "resource" then
                 add_edge("entity", entity.name, {
-                    abilities = { [2] = true },
+                    abilities = ctx.GAINS_AUTOMATABILITY,
                     amount = 1,
                 })
                 -- For resources requiring fluid: need the specific fluid + tech unlock
@@ -702,7 +703,7 @@ function concrete.build(lu, extra_params)
                     -- Mining with fluid is unlocked at the start of the game (control.lua), so the unlock is only a prereq with extra_params.tech_gated_unlocks (see abstract.lua)
                     if extra_params.tech_gated_unlocks then
                         add_edge("mining-with-fluid-unlock", "", {
-                            abilities = { [2] = true }, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
+                            abilities = ctx.GAINS_AUTOMATABILITY, -- I don't know if I'll count unlocks as "automatable", but resources should be automatable as long as fluid is (if any), and the drill is automatically operable
                         })
                     end
                 end
@@ -712,13 +713,13 @@ function concrete.build(lu, extra_params)
                 -- Agricultural towers harvest plants, which is automatic like a drill mining a resource, so a plant gains automatability like a resource does
                 -- The harvester decides which contexts come out: a tower's operation is automatic and the character's isn't (see entity-operate)
                 add_edge("entity", entity.name, {
-                    abilities = { [2] = true },
+                    abilities = ctx.GAINS_AUTOMATABILITY,
                     amount = 1,
                 })
                 add_edge("entity-harvest", nil, { amount = 1 })
             else
                 add_edge("entity", entity.name, {
-                    abilities = { [2] = false },
+                    abilities = ctx.LOSES_AUTOMATABILITY,
                     amount = 1,
                 })
                 -- TODO: Don't hardcode characters?
@@ -759,7 +760,7 @@ function concrete.build(lu, extra_params)
             if entity.name == lutils.starting_character_name then
                 -- Starting character can visit the planet, so is isolatable
                 add_edge("starting-character", "", {
-                    abilities = { [1] = true },
+                    abilities = ctx.GAINS_ISOLATABILITY,
                 })
             end
         end
@@ -1329,7 +1330,7 @@ function concrete.build(lu, extra_params)
         local rocket_lift_weight = data.raw["utility-constants"].default.default_rocket_lift_weight
         if lu.weight[item.name] <= rocket_lift_weight and dutils.survives_trip(item) then
             add_edge("item-deliver", item.name, {
-                abilities = { [1] = false },
+                abilities = ctx.LOSES_ISOLATABILITY,
                 amount = 1,
                 -- TODO: Deliver cost
             })
@@ -1363,7 +1364,7 @@ function concrete.build(lu, extra_params)
             for entity_name, amount in pairs(lu.loot_to_entities[item.name]) do
                 add_edge("entity-kill", entity_name, {
                     amount = amount,
-                    abilities = { [2] = false }, -- Even if we can automatically kill something, we can't automatically pick up its loot (at least in vanilla)
+                    abilities = ctx.LOSES_AUTOMATABILITY, -- Even if we can automatically kill something, we can't automatically pick up its loot (at least in vanilla)
                 })
             end
         end
@@ -1825,7 +1826,7 @@ function concrete.build(lu, extra_params)
         add_edge("space-surface", "")
         -- Special rule for space platforms: flying a platform to a location is a one-time cost, so it doesn't count against the platform's isolatability
         add_edge("space-location-reachable", loc.name, {
-            abilities = { [1] = true },
+            abilities = ctx.GAINS_ISOLATABILITY,
         })
 
         ----------------------------------------
@@ -1842,7 +1843,7 @@ function concrete.build(lu, extra_params)
         end
         if loc.type == "planet" then
             add_edge("room-launch", loc.name, {
-                abilities = { [1] = false },
+                abilities = ctx.LOSES_ISOLATABILITY,
             })
         end
 
@@ -1891,15 +1892,13 @@ function concrete.build(lu, extra_params)
 
         -- Techs via triggers can get planet-locked, but assuming this for unit techs might be too harsh
         -- For now, we'll stick to all techs, but could change this in the future
-        local tech_abilities = {
-            [2] = true,
-        }
+        local tech_abilities = ctx.GAINS_AUTOMATABILITY
 
         -- Prerequisite technologies
         if tech.prerequisites ~= nil then
             for _, prereq in pairs(tech.prerequisites) do
                 add_edge("technology", prereq, {
-                    abilities = table.deepcopy(tech_abilities),
+                    abilities = tech_abilities,
                 })
             end
         end
@@ -1914,17 +1913,17 @@ function concrete.build(lu, extra_params)
             table.sort(set)
             -- Need the science pack items
             add_edge("science-pack-set-science", gutils.concat(set), {
-                abilities = table.deepcopy(tech_abilities),
+                abilities = tech_abilities,
             })
             -- Need a lab that can accept all packs
             add_edge("science-pack-set-lab", gutils.concat(set), {
-                abilities = table.deepcopy(tech_abilities),
+                abilities = tech_abilities,
             })
         elseif tech.research_trigger ~= nil then
             -- Trigger-based research, through an OR node over what meets the trigger (technology-trigger below)
             -- So a planetary change that edits a trigger (randomizations/planetary) only replaces inputs of an OR node, which superposition keeps as debt (lib/graph/superpose.lua)
             add_edge("technology-trigger", nil, {
-                abilities = table.deepcopy(tech_abilities),
+                abilities = tech_abilities,
             })
         end
 
@@ -2000,7 +1999,7 @@ function concrete.build(lu, extra_params)
         if tile_rooms ~= nil then
             for room_key, _ in pairs(tile_rooms) do
                 add_edge("room-autoplace", room_key, {
-                    abilities = { [1] = true },
+                    abilities = ctx.GAINS_ISOLATABILITY,
                 })
             end
         end
@@ -2018,7 +2017,7 @@ function concrete.build(lu, extra_params)
             -- A space surface starts as empty space (see room_tile_maps in lib/lookup/2-simple/tile.lua), so its foundation is built like this
 
             add_edge("tile-build", nil, {
-                abilities = { [1] = true },
+                abilities = ctx.GAINS_ISOLATABILITY,
                 amount = 1,
             })
             -- Makes this only apply in space surface contexts

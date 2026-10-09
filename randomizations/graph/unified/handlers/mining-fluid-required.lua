@@ -178,8 +178,8 @@ mining_fluid_required.choose_up_front = function(params)
     local function automatable_before(base_key, contexts)
         local had = baseline[gutils.key(owner_of(base_key))] or {}
         for context, ind in pairs(contexts) do
-            local abilities = top.context_abilities(context)
-            if abilities ~= nil and top.context_home(context) == nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+            local mask = top.context_mask(context)
+            if mask ~= nil and top.context_home(context) == nil and top.has_ability(mask, top.AUTOMATABILITY) then
                 if had[context] == nil or had[context] >= ind then
                     return false
                 end

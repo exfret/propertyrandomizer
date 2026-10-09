@@ -29,6 +29,8 @@ package.loaded["lib/logic/init"] = logic
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local unlocks = require("lib/logic/operation-unlocks")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, like a room's simple context "room: test-home" (lib/graph/contexts-for-tests.lua)
+local C = require("lib/graph/contexts-for-tests").C
 local key = gutils.key
 local passed = 0
 
@@ -342,7 +344,7 @@ test("two individually safe alternative gates cannot create a joint research cyc
     for _ = 1, 64 do
         local candidate = top.sort(f.graph, nil, nil, { choose_randomly = true })
         local contexts = candidate.node_to_context_inds
-        if contexts[first]["room: test-home"] < contexts[second]["room: test-home"] then
+        if contexts[first][C("room: test-home")] < contexts[second][C("room: test-home")] then
             sorted = candidate
             break
         end

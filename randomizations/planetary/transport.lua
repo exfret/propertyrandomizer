@@ -27,8 +27,8 @@ end
 
 -- Whether a context's abilities include the ability (top.ISOLATABILITY, top.AUTOMATABILITY)
 local function has_ability(context, ability)
-    local abilities = top.context_abilities(context)
-    return abilities ~= nil and string.sub(abilities, ability, ability) == "1"
+    local mask = top.context_mask(context)
+    return mask ~= nil and top.has_ability(mask, ability)
 end
 
 -- Whether a context counts for a goal that needs automatability or not (home contexts never count)

@@ -514,7 +514,8 @@ unified.execute = function(options)
             local smallest_ind1
             local smallest_ind2
 
-            for context, _ in pairs(logic.contexts) do
+            for room, _ in pairs(logic.contexts) do
+                local context = top.simple_context(room)
                 local index1 = sort_for_pool.node_to_context_inds[key1][context]
                 local index2 = sort_for_pool.node_to_context_inds[key2][context]
                 if ignore_nil_contexts and (index1 == nil or index2 == nil) then
@@ -547,7 +548,8 @@ unified.execute = function(options)
             end
         end
 
-        for context, _ in pairs(logic.contexts) do
+        for room, _ in pairs(logic.contexts) do
+            local context = top.simple_context(room)
             local index1 = sort_for_pool.node_to_context_inds[key1][context]
             local index2 = sort_for_pool.node_to_context_inds[key2][context]
             if ignore_nil_contexts and (index1 == nil or index2 == nil) then
@@ -892,7 +894,7 @@ unified.execute = function(options)
                     end
                 end
                 if #paying_contexts > 0 then
-                    log("Promotion: boundary head of " .. dep .. " (" .. handler_id .. ") in " .. table.concat(paying_contexts, ", ") .. ": " .. #order .. " of " .. #shuffled_prereqs .. " bases pay")
+                    log("Promotion: boundary head of " .. dep .. " (" .. handler_id .. ") in " .. table.concat(top.context_names(paying_contexts), ", ") .. ": " .. #order .. " of " .. #shuffled_prereqs .. " bases pay")
                 end
                 -- A head that rolls under its handler's stay_chance tries the bases that keep its old connection (the handler's stays) first among the paying bases and among the rest, so paying bases still go first
                 local stay_stats

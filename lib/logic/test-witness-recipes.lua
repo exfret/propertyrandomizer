@@ -25,7 +25,9 @@ package.loaded["lib/random/rng"] = {
     end,
 }
 
-local HOME = "room: home"
+-- The room of the toy graph's room node (named "home"), as the logic names a room node after its room
+-- Contexts are numbered rooms (lib/graph/contexts.lua), so a room node only sends a context for a room the sort numbers; this was "room: home" while contexts were strings, which any room node's name could stand for
+local HOME = "home"
 
 local logic = {
     contexts = {
@@ -33,7 +35,7 @@ local logic = {
     },
     type_info = {
         start = {},
-        -- Emitter: sends the context named by the node
+        -- Emitter: sends the context of the room named by the node
         room = { context = "room" },
         stuff = {},
         -- The node type witness_recipes looks for
@@ -58,6 +60,9 @@ package.loaded["lib/data-utils"] = {
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local witness_recipes = require("lib/logic/witness-recipes")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, like a room's simple context "away", and edge abilities as the logic builders used to (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 
 local key = gutils.key
 
@@ -225,7 +230,7 @@ test("research prerequisites reject cycles and lost contexts without partially a
 end)
 
 -- A planet's own recipes over imports: the away room can import boilers from home early on, or make its own a few steps later
--- Rooms send the context named by the node, so the room nodes are named like the contexts
+-- Rooms send the context of the room named by the node, so the room nodes are named like the rooms
 -- options.own_boiler_steps: how many steps the away room's own boilers take after its plates (default 6)
 -- options.pickup: the away room can also get a boiler back by picking up a placed one, which needs a boiler first (like mining a built entity in the logic)
 -- options.kit: the away room can also craft boilers from a boiler, without a tech, so the witness looks past it
@@ -266,12 +271,12 @@ local function two_room_graph(options)
     node("craft", "boiler", "OR", { key("recipe", "home-boiler"), key("recipe", "away-boiler") })
     local lossy
     if options.lossy == true then
-        lossy = { [1] = false }
+        lossy = fx.edge({ [1] = false })
     end
     node("stuff", "boiler", "OR", { key("craft", "boiler") }, lossy)
     -- Moving boilers between rooms: launching forgets the room, and what arrives isn't the room's own
     node("launch", "boiler", "AND", { key("stuff", "boiler") })
-    node("deliver", "boiler", "AND", { key("launch", "boiler") }, { [1] = false })
+    node("deliver", "boiler", "AND", { key("launch", "boiler") }, fx.edge({ [1] = false }))
     gutils.add_edge(graph, key("deliver", "boiler"), key("stuff", "boiler"))
     if options.kit == true then
         node("recipe", "boiler-kit", "AND", { key("stuff", "away-plate"), key("stuff", "boiler") })
@@ -285,7 +290,7 @@ local function two_room_graph(options)
     if options.scrap == true then
         node("stuff", "scrap", "OR", { key("room", "home") })
         node("launch", "scrap", "AND", { key("stuff", "scrap") })
-        node("deliver", "scrap", "AND", { key("launch", "scrap") }, { [1] = false })
+        node("deliver", "scrap", "AND", { key("launch", "scrap") }, fx.edge({ [1] = false }))
         gutils.add_edge(graph, key("deliver", "scrap"), key("stuff", "scrap"))
         last = key("stuff", "away-plate")
         for i = 1, 6 do
@@ -327,11 +332,16 @@ local function breadth_first_sort(graph)
         table.insert(node_keys, node_key)
     end
     table.sort(node_keys)
-    local contexts = {}
-    for context, _ in pairs(logic.contexts) do
-        table.insert(contexts, context)
+    -- The rooms' simple contexts, in the order of the rooms' names
+    local rooms = {}
+    for room, _ in pairs(logic.contexts) do
+        table.insert(rooms, room)
     end
-    table.sort(contexts)
+    table.sort(rooms)
+    local contexts = {}
+    for _, room in pairs(rooms) do
+        table.insert(contexts, C(room))
+    end
     local sort_info = {
         sorted = {},
         node_to_context_inds = {},
@@ -352,7 +362,7 @@ local function breadth_first_sort(graph)
             for _, context in pairs(contexts) do
                 -- Rooms only send their own context, and they and forgetters take any context in
                 local any_context = context_type ~= nil
-                if sort_info.node_to_context_inds[node_key][context] == nil and (type(context_type) ~= "string" or context == node.name) then
+                if sort_info.node_to_context_inds[node_key][context] == nil and (type(context_type) ~= "string" or top.context_room(context) == node.name) then
                     local ok = node.op == "AND"
                     for pre, _ in pairs(node.pre) do
                         if node.op == "AND" and not pre_has(pre, context, any_context) then
@@ -445,7 +455,7 @@ test("an own way that needs what it gets isn't taken, but the room's own recipe 
     with_two_rooms({ pickup = true }, function(graph, sort_info, local_sort_info, first_ind)
         local ind = first_ind("fuel")
         -- Picking a boiler back up in the away room needs a boiler there first, so it comes after the import, and before the room's own boiler recipe
-        assert(sort_info.node_to_context_inds[key("pickup", "boiler")].away < first_ind("away-boiler"))
+        assert(sort_info.node_to_context_inds[key("pickup", "boiler")][C("away")] < first_ind("away-boiler"))
         local stats = {}
         assert(names(witness_recipes.of(graph, sort_info, ind, two_room_gets_tech, local_sort_info, stats)) == "away-boiler,away-smelt")
         -- It can't be the room's first own boiler, so it's never tried
@@ -470,7 +480,7 @@ test("the room's own way is only taken if it stays on the room's own resources d
     with_two_rooms({ scrap = true, own_boiler_steps = 24 }, function(graph, sort_info, local_sort_info, first_ind)
         local ind = first_ind("fuel")
         assert(first_ind("away-boiler") > ind and first_ind("recycle") < ind)
-        assert(sort_info.node_to_context_inds[key("deliver", "boiler")].away < sort_info.node_to_context_inds[key("craft", "boiler")].away)
+        assert(sort_info.node_to_context_inds[key("deliver", "boiler")][C("away")] < sort_info.node_to_context_inds[key("craft", "boiler")][C("away")])
         -- Crafting boilers in the away room is the room's own eventually, but taking it now would make fuel wait on scrap recycling: the import stays
         local stats = {}
         assert(names(witness_recipes.of(graph, sort_info, ind, two_room_gets_tech, local_sort_info, stats)) == "away-smelt,home-boiler")
@@ -509,7 +519,7 @@ test("a choice in a room the witness only passes through takes the earliest", fu
     node("room", "away", "OR", { key("start", "start") })
     node("stuff", "away-ore", "OR", { key("room", "away") })
     node("launch", "away-ore", "AND", { key("stuff", "away-ore") })
-    node("deliver", "away-ore", "AND", { key("launch", "away-ore") }, { [1] = false })
+    node("deliver", "away-ore", "AND", { key("launch", "away-ore") }, fx.edge({ [1] = false }))
     gutils.add_edge(graph, key("deliver", "away-ore"), key("stuff", "away-ore"))
     node("stuff", "anvil", "OR", { key("room", "home") })
     node("recipe", "gear-from-away-ore", "AND", { key("stuff", "away-ore"), key("stuff", "anvil") })
@@ -522,7 +532,7 @@ test("a choice in a room the witness only passes through takes the earliest", fu
     node("recipe", "gear-from-ore", "AND", { last })
     node("stuff", "gear", "OR", { key("recipe", "gear-from-away-ore"), key("recipe", "gear-from-ore") })
     node("launch", "gear", "AND", { key("stuff", "gear") })
-    node("deliver", "gear", "AND", { key("launch", "gear") }, { [1] = false })
+    node("deliver", "gear", "AND", { key("launch", "gear") }, fx.edge({ [1] = false }))
     gutils.add_edge(graph, key("deliver", "gear"), key("stuff", "gear"))
     node("recipe", "machine", "AND", { key("stuff", "gear"), key("stuff", "away-ore") })
     local old_contexts = logic.contexts
@@ -544,10 +554,10 @@ test("a choice in a room the witness only passes through takes the earliest", fu
         local local_sort_info = top.sort(graph, nil, nil, {
             complex_contexts = true,
         })
-        local machine_ind = sort_info.node_to_context_inds[key("recipe", "machine")].away
-        local home_gears = sort_info.node_to_context_inds[key("stuff", "gear")].home
+        local machine_ind = sort_info.node_to_context_inds[key("recipe", "machine")][C("away")]
+        local home_gears = sort_info.node_to_context_inds[key("stuff", "gear")][C("home")]
         -- Home's own gears come after home's first gears, but before the machine, so preferring them at home would take them
-        local own_gears = sort_info.node_to_context_inds[key("recipe", "gear-from-ore")].home
+        local own_gears = sort_info.node_to_context_inds[key("recipe", "gear-from-ore")][C("home")]
         assert(own_gears > home_gears and own_gears < machine_ind)
         local function locked(recipe_name)
             return recipe_name ~= "machine"

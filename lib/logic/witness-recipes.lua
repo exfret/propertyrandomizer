@@ -11,11 +11,11 @@ local witness_recipes = {}
 -- How many times to drop preferred choices that didn't work out before giving up on preferring (see witness_recipes.of)
 local MAX_ROUNDS = 10
 
--- Ability strings with isolatability, for looking up a node's isolatable contexts in a room directly
-local isolatable_strs = {}
-for _, ability_str in pairs(top.ability_strs) do
-    if string.sub(ability_str, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
-        table.insert(isolatable_strs, ability_str)
+-- Ability masks with isolatability, for looking up a node's isolatable contexts in a room directly
+local isolatable_masks = {}
+for _, mask in pairs(top.ability_masks) do
+    if top.has_ability(mask, top.ISOLATABILITY) then
+        table.insert(isolatable_masks, mask)
     end
 end
 
@@ -26,8 +26,8 @@ local function isolatable_ind(local_sort_info, node_key, room)
         return nil
     end
     local first
-    for _, ability_str in pairs(isolatable_strs) do
-        local ind = contexts[top.context_key(room, ability_str)]
+    for _, mask in pairs(isolatable_masks) do
+        local ind = contexts[top.context_key(room, mask)]
         if ind ~= nil and (first == nil or ind < first) then
             first = ind
         end

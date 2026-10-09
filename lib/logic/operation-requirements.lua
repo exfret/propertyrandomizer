@@ -16,15 +16,15 @@ local function backing(graph, sort_info, ind)
         local pebble = sort_info.sorted[ind]
         local context_type = (logic.type_info[graph.nodes[pebble.node_key].type] or {}).context
         local home = top.context_home(pebble.context)
-        local abilities = top.context_abilities(pebble.context)
+        local mask = top.context_mask(pebble.context)
         local group
         if type(context_type) == "string" and home == nil then
             group = "room"
         elseif context_type == true then
             if home ~= nil then
-                group = "home:" .. home
-            elseif abilities == nil or string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "0" then
-                group = "shared:" .. (abilities or "")
+                group = "home:" .. top.home_name(home)
+            elseif mask == nil or not top.has_ability(mask, top.ISOLATABILITY) then
+                group = "shared:" .. (mask ~= nil and top.mask_name(mask) or "")
             end
         end
         local shared
@@ -110,15 +110,10 @@ operation.prover = function(graph, sort_info, item_key, context, frontier, level
         local node = graph.nodes[pebble.node_key]
         local answer
         local supplied = pebble.context == context
-        local incoming_abilities = top.context_abilities(context)
-        local needed_abilities = top.context_abilities(pebble.context)
-        if incoming_abilities ~= nil and needed_abilities ~= nil and top.context_room(context) == top.context_room(pebble.context) and top.context_home(context) == top.context_home(pebble.context) then
-            supplied = true
-            for i = 1, #needed_abilities do
-                if string.sub(needed_abilities, i, i) == "1" and string.sub(incoming_abilities, i, i) ~= "1" then
-                    supplied = false
-                end
-            end
+        local incoming_mask = top.context_mask(context)
+        local needed_mask = top.context_mask(pebble.context)
+        if incoming_mask ~= nil and needed_mask ~= nil and top.context_room(context) == top.context_room(pebble.context) and top.context_home(context) == top.context_home(pebble.context) then
+            supplied = top.mask_covers(incoming_mask, needed_mask)
         end
         if pebble.node_key == item_key and supplied then
             answer = {
@@ -318,7 +313,7 @@ operation.matching = function(graph, sort_info, operations, research_only)
             end
             local ready = requirement(item_key, context)
             local layer = research_only == true and " research layer " or " acquisition layer "
-            return "arrival" .. layer .. levels[rank] .. ", ready" .. layer .. ready .. " @ " .. context
+            return "arrival" .. layer .. levels[rank] .. ", ready" .. layer .. ready .. " @ " .. top.context_name(context)
         end,
         allows = function(slot_key, item_key)
             if operations[item_key] == nil then
@@ -401,7 +396,7 @@ operation.audit = function(graph, sort_info, label)
     log(label .. " checked " .. checked .. " building items; " .. #failed .. " precede operation readiness")
     for i = 1, math.min(10, #failed) do
         local failure = failures[failed[i]]
-        log(label .. " " .. failed[i] .. "; arrival research layer " .. levels[failure.arrival] .. ", ready research layer " .. failure.ready .. " @ " .. failure.context)
+        log(label .. " " .. failed[i] .. "; arrival research layer " .. levels[failure.arrival] .. ", ready research layer " .. failure.ready .. " @ " .. top.context_name(failure.context))
         for operation_key, _ in pairs(items[failed[i]]) do
             local compiled = bundles.compile(graph, failed[i], { [operation_key] = true })
             local proof = bundles.prove(compiled, sort_info, failure.context, levels)

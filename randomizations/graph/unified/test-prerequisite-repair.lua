@@ -69,6 +69,8 @@ end
 local gutils = require("lib/graph/graph-utils")
 local superpose = require("lib/graph/superpose")
 local top = require("lib/graph/context-sort")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, a room's name for its simple context (lib/graph/contexts-for-tests.lua)
+local C = require("lib/graph/contexts-for-tests").C
 local default = require("randomizations/graph/unified/handlers/default")
 local handler = table.deepcopy(default)
 local reflected
@@ -168,8 +170,8 @@ gutils.remove_edge(graph, gutils.ekey({
 }))
 gutils.add_edge(graph, gutils.key("item", "replacement"), gutils.key("recipe", "target"))
 local actual = top.sort(graph)
-assert(actual.node_to_context_inds[gutils.key("item", "product")].A ~= nil)
-assert(actual.node_to_context_inds[gutils.key("item", "product")].B ~= nil)
+assert(actual.node_to_context_inds[gutils.key("item", "product")][C("A")] ~= nil)
+assert(actual.node_to_context_inds[gutils.key("item", "product")][C("B")] ~= nil)
 print("ok - repairs pay an unpaid requirement without changing satisfied prerequisites or choosing a cycle")
 
 graph, debt = world(false)

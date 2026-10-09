@@ -45,6 +45,8 @@ data = {
 local check = require("randomizations/planetary/check")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+-- Contexts are numbers (lib/graph/contexts.lua); the fixtures write them as their names (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
 check.transported_mechanic_goals = function(before)
     return {}
 end
@@ -87,8 +89,8 @@ local looped = check.versions({
 check_that(#looped == 2 and looped[1] == "b" and looped[2] == "c", "a loop ends, and the recipe itself never counts as its own version: " .. table.concat(looped, ", "))
 
 -- Rule 2 of check.required: acid neutralisation was isolatable and automatable on Vulcanus before the planetary changes, and afterwards only the deposits' version of its Vulcanus variant is
-local vulcanus_11 = top.context_key(gutils.key("planet", "vulcanus"), "11")
-local vulcanus_01 = top.context_key(gutils.key("planet", "vulcanus"), "01")
+local vulcanus_11 = fx.C(gutils.key("planet", "vulcanus") .. " | 11")
+local vulcanus_01 = fx.C(gutils.key("planet", "vulcanus") .. " | 01")
 local acid_key = gutils.key("recipe", "acid-neutralisation")
 local function node(name)
     return {
@@ -148,6 +150,6 @@ local without_deposits = {
     ["acid-neutralisation"] = variants_of["acid-neutralisation"],
 }
 lost = lost_goals(without_deposits)
-check_that(#lost == 1 and lost[1] == "planet-locked " .. acid_key .. " @ " .. vulcanus_11, "without that version the goal is lost: " .. table.concat(lost, "; "))
+check_that(#lost == 1 and lost[1] == "planet-locked " .. acid_key .. " @ " .. top.context_name(vulcanus_11), "without that version the goal is lost: " .. table.concat(lost, "; "))
 
 print("test-check-versions: " .. num_checks .. " checks passed")

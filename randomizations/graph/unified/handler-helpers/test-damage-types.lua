@@ -35,6 +35,19 @@ local gutils = require("lib/graph/graph-utils")
 local helper = require("randomizations/graph/unified/handler-helpers/damage-types")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local top = require("lib/graph/context-sort")
+-- Edge abilities are codes (lib/graph/contexts.lua); fixtures write them as the tables the logic builders used to (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local fx = require("lib/graph/contexts-for-tests")
+
+-- Whether edge abilities lose an ability, as { [ability] = false } said
+local function loses(abilities, ability)
+    return ctx.edge_loses_ability(abilities, ability) and not ctx.edge_gains_ability(abilities, ability)
+end
+
+-- Whether a complex context has an ability
+local function context_has(context, ability)
+    return top.has_ability(top.context_mask(context), ability)
+end
 
 local passed = 0
 local function test(name, run)
@@ -119,9 +132,9 @@ local function fixture(important, mode)
     keys.counters = node("combat-encounter-counters", "test-encounter", "OR")
     local counter_edge = {}
     if mode == "manual" then
-        counter_edge.abilities = {
+        counter_edge.abilities = fx.edge({
             [top.AUTOMATABILITY] = false,
-        }
+        })
     end
     gutils.add_edge(graph, keys.counter, keys.counters, counter_edge)
     keys.encounter = node("combat-encounter", "test-encounter", "AND", {mechanic = important})
@@ -129,9 +142,9 @@ local function fixture(important, mode)
     keys.old_damage = node("damage-type", "test-old-damage", "OR")
     keys.new_damage = node("damage-type", "test-new-damage", "OR")
     gutils.add_edge(graph, keys.ammo, keys.old_damage, {
-        abilities = {
+        abilities = fx.edge({
             [top.AUTOMATABILITY] = false,
-        },
+        }),
     })
     gutils.make_orands(graph)
     keys.counter_carrier = gutils.key(gutils.prenodes(graph, graph.nodes[keys.counters])[1])
@@ -343,12 +356,12 @@ test("moving a source to another damage type reuses the connector carrying its m
     apply(graph, changes)
     assert(graph.edges[edge_key(keys.damage_carrier, keys.old_damage)] == nil)
     assert(graph.edges[edge_key(keys.damage_carrier, keys.new_damage)] ~= nil)
-    assert(graph.edges[edge_key(keys.ammo, keys.damage_carrier)].abilities[top.AUTOMATABILITY] == false)
+    assert(loses(graph.edges[edge_key(keys.ammo, keys.damage_carrier)].abilities, top.AUTOMATABILITY))
     local sorted = top.sort(graph, nil, nil, {complex_contexts = true})
     local contexts = sorted.node_to_context_inds[keys.new_damage]
     assert(contexts ~= nil and next(contexts) ~= nil)
     for context, _ in pairs(contexts) do
-        assert(string.sub(top.context_abilities(context), top.AUTOMATABILITY, top.AUTOMATABILITY) == "0")
+        assert(not context_has(context, top.AUTOMATABILITY))
     end
 end)
 
@@ -358,12 +371,12 @@ test("a retained manual counter never gains an automatic encounter context", fun
     witness.count = 1
     local changes = helper.changes(graph, helper.capture(graph), evaluation(keys, witness), damage_sources(keys, "test-old-damage"))
     assert(#changes == 0)
-    assert(graph.edges[edge_key(keys.counter, keys.counter_carrier)].abilities[top.AUTOMATABILITY] == false)
+    assert(loses(graph.edges[edge_key(keys.counter, keys.counter_carrier)].abilities, top.AUTOMATABILITY))
     local sorted = top.sort(graph, nil, nil, {complex_contexts = true})
     local contexts = sorted.node_to_context_inds[keys.encounter]
     assert(contexts ~= nil and next(contexts) ~= nil)
     for context, _ in pairs(contexts) do
-        assert(string.sub(top.context_abilities(context), top.AUTOMATABILITY, top.AUTOMATABILITY) == "0")
+        assert(not context_has(context, top.AUTOMATABILITY))
     end
     witness.mode = "turret"
     assert(#helper.changes(graph, helper.capture(graph), evaluation(keys, witness), damage_sources(keys, "test-old-damage")) == 1)
@@ -372,9 +385,9 @@ end)
 test("an unchanged source with several damage types keeps each existing connector", function()
     local graph, keys = fixture()
     local duplicate = gutils.add_edge(graph, keys.ammo, keys.new_damage, {
-        abilities = {
+        abilities = fx.edge({
             [top.AUTOMATABILITY] = false,
-        },
+        }),
     })
     gutils.make_orand(graph, gutils.ekey(duplicate))
     local sources = damage_sources(keys, "test-old-damage")
@@ -427,7 +440,7 @@ test("real promotion accepts a type change retaining the promised mixed witness 
     end, function(changes)
         return prom.try_rewires(changes, true, function(trial)
             checked = true
-            assert(trial.edges[edge_key(keys.ammo, keys.damage_carrier)].abilities[top.AUTOMATABILITY] == false)
+            assert(loses(trial.edges[edge_key(keys.ammo, keys.damage_carrier)].abilities, top.AUTOMATABILITY))
             same_set(prekeys(trial, keys.counter), {
                 keys.source,
                 keys.ammo,

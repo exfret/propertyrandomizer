@@ -1,8 +1,8 @@
 -- A copy of consistent-sort.lua that can optionally also track the ability contexts (isolatability/automatability) from extended-sort.lua
 -- Kept as close to consistent-sort.lua as possible so that callers can be ported over by just swapping the require
 -- Differences from consistent-sort.lua:
---   1. Pass extra.complex_contexts = true to make each context a room/ability string pair rather than just a room
---      These are encoded as a single string (see top.context_key) so the rest of the sort treats them just like rooms
+--   1. Pass extra.complex_contexts = true to make each context a room with an ability mask rather than just a room
+--      Contexts are numbers (see lib/graph/contexts.lua), a simple context standing for its room, so the rest of the sort treats them all alike
 --   2. Contexts are now also transmitted through edges, since edges can add/remove abilities (edge.abilities)
 --   3. Random selection from open is O(1) using a list of open keys, rather than rebuilding that list every step
 --   4. Pass extra.home_contexts = true to also track home contexts (see Home contexts below), with or without complex contexts
@@ -10,7 +10,7 @@
 -- Without complex contexts, this should behave exactly like consistent-sort.lua except for which random node is picked
 -- I kept the pebble terminology: a *pebble* is a node_key/context pair
 
-local contutils = require("lib/graph/context-utils")
+local ctx = require("lib/graph/contexts")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local rng = require("lib/random/rng")
@@ -21,13 +21,8 @@ local logic = require("lib/logic/state")
 local key = gutils.key
 
 -- Ability indices, matching edge.abilities (see lib/logic/builder.lua)
-local ISOLATABILITY = 1
-local AUTOMATABILITY = 2
-local NUM_ABILITIES = 2
--- Can't appear in room keys
-local CONTEXT_SEPARATOR = " | "
--- Separates a home context's home set id from the context it rides on; can't appear in room keys or ability strings
-local HOME_SEPARATOR = " @ "
+local ISOLATABILITY = ctx.ISOLATABILITY
+local AUTOMATABILITY = ctx.AUTOMATABILITY
 
 local top = {}
 
@@ -38,94 +33,86 @@ top.home_contexts_in_set_rooms = true
 top.implied_home_contexts = true
 top.AUTOMATABILITY = AUTOMATABILITY
 
--- Every ability string, like "00", "01", "10", "11", where the i-th character is whether ability i is had
-local ability_strs = { "" }
-for _ = 1, NUM_ABILITIES do
-    local longer_strs = {}
-    for _, ability_str in pairs(ability_strs) do
-        table.insert(longer_strs, ability_str .. "0")
-        table.insert(longer_strs, ability_str .. "1")
-    end
-    ability_strs = longer_strs
-end
-top.ability_strs = ability_strs
--- The weakest ability string: no edge takes it away, so a node with any context in a room also has this one there
-local NO_ABILITIES = string.rep("0", NUM_ABILITIES)
+-- Every ability mask, in the order sorts go through them (see lib/graph/contexts.lua)
+local masks = ctx.masks
+top.ability_masks = masks
+-- The weakest mask: no edge takes it away, so a node with any context in a room also has this one there
+local NO_ABILITIES = ctx.NO_ABILITIES
+top.NO_ABILITIES = NO_ABILITIES
 
-local function has_ability(ability_str, ability)
-    return string.sub(ability_str, ability, ability) == "1"
-end
+local has_ability = ctx.has_ability
+local with_ability = ctx.with_ability
+top.has_ability = has_ability
+top.with_ability = with_ability
+top.without_ability = ctx.without_ability
+-- Whether a mask has every ability another has
+top.mask_covers = ctx.mask_covers
+-- How a mask is written in logs, like "10"
+top.mask_name = ctx.mask_name
+-- Whether edge abilities (an edge's or a connection's, or nil for none) gain or lose an ability
+top.edge_changes = ctx.edge_changes
 
-local function with_ability(ability_str, ability)
-    return string.sub(ability_str, 1, ability - 1) .. "1" .. string.sub(ability_str, ability + 1)
-end
+-- Context helpers (see lib/graph/contexts.lua for how contexts are numbered)
 
--- Complex context helpers
-
-top.context_key = function(room, ability_str)
-    return room .. CONTEXT_SEPARATOR .. ability_str
-end
+-- Complex context of a room with an ability mask, or nil for a room that isn't a context
+top.context_key = ctx.complex
+-- Simple context of a room (a sort without complex contexts), or nil for a room that isn't a context
+top.simple_context = ctx.simple
 
 -- Home contexts
 -- A home set is a set of rooms (see top.home_sets), and a pebble's home context for it means the pebble can be had using only those rooms
 -- This is what removing every other room's node and sorting again would give, but for every home set in the same sort
--- Home contexts ride on each room's weakest context (the room itself for simple contexts, the room with no abilities for complex ones), and are written like "planet: vulcanus | 00 @ home1"
+-- Home contexts ride on each room's weakest context (the room's simple context for simple contexts, the room with no abilities for complex ones), and are named like "planet: vulcanus | 00 @ home1"
 -- Only the home set's own rooms have its home contexts (with top.home_contexts_in_set_rooms): no other room's node sends them, so all another room could get is what forgetters send every room, and the set's rooms get that too
 -- With complex contexts, they replace the order-dependent discovery rule: once a room is discovered, techs with a home context of its home set are isolatable there (see discover_home_rooms in top.sort)
 -- What can be had using only a home set's rooms can be had using only the rooms of any home set containing it, so with top.implied_home_contexts a smaller home set's context stands for the bigger ones' in the same room: those aren't passed on, and looking for one counts the other
 -- Discovery tiers make every home set hold the ones before it (randomizations/planetary/discovery.lua), so each pebble then needs only its earliest tier's home context instead of one per later tier (user, 2026-10-09)
 -- Forgetters and rooms send the bigger ones' contexts to rooms the smaller one has none in, and the end of a sort writes out the ones that stood in, so what reads a sort finds every home context as before
 
--- The home context riding on a context
-top.home_context_key = function(context, home_id)
-    return context .. HOME_SEPARATOR .. home_id
-end
+-- The home context riding on a context (home sets are numbered, see top.home_sets)
+top.home_context_key = ctx.home
 
 -- The context a home context rides on, or the context itself if it isn't one
-local function without_home(context)
-    local i = string.find(context, HOME_SEPARATOR, 1, true)
-    if i == nil then
-        return context
-    end
-    return string.sub(context, 1, i - 1)
-end
+local without_home = ctx.without_home
 top.context_without_home = without_home
 
-top.context_room = function(context)
-    context = without_home(context)
-    local i = string.find(context, CONTEXT_SEPARATOR, 1, true)
-    if i == nil then
-        return context
-    end
-    return string.sub(context, 1, i - 1)
+top.context_room = ctx.room
+
+-- Ability mask of a complex context, nil for simple ones
+top.context_mask = ctx.mask
+
+-- Home set number of a home context, or nil for other contexts
+top.context_home = ctx.home_of
+
+-- How a context is written in logs and on the panel, like "planet: nauvis | 11" (from lookup tables, see lib/graph/contexts.lua)
+top.context_name = ctx.name
+top.home_name = ctx.home_name
+-- Names of a list of contexts, for logs
+top.context_names = ctx.names
+
+-- Sorts a list of contexts by name, for logs (decisions order contexts by number)
+local function by_name(a, b)
+    return ctx.name(a) < ctx.name(b)
+end
+top.sort_by_name = function(list)
+    table.sort(list, by_name)
 end
 
--- Returns nil for simple contexts
-top.context_abilities = function(context)
-    context = without_home(context)
-    local _, j = string.find(context, CONTEXT_SEPARATOR, 1, true)
-    if j == nil then
-        return nil
+-- Orders pebbles (tables with node_key and context) by node key, then context, for table.sort
+top.pebble_order = function(a, b)
+    if a.node_key ~= b.node_key then
+        return a.node_key < b.node_key
     end
-    return string.sub(context, j + 1, -1)
-end
-
--- Home set id of a home context, or nil for other contexts
-top.context_home = function(context)
-    local _, j = string.find(context, HOME_SEPARATOR, 1, true)
-    if j == nil then
-        return nil
-    end
-    return string.sub(context, j + 1, -1)
+    return a.context < b.context
 end
 
 -- The context in the same room asking for automatability on top of what this one asks for, or nil for one that already does, a simple context or a home context
 top.automatable_counterpart = function(context)
-    local abilities = top.context_abilities(context)
-    if abilities == nil or top.context_home(context) ~= nil or has_ability(abilities, AUTOMATABILITY) then
+    local mask = ctx.mask(context)
+    if mask == nil or ctx.home_of(context) ~= nil or has_ability(mask, AUTOMATABILITY) then
         return nil
     end
-    return top.context_key(top.context_room(context), with_ability(abilities, AUTOMATABILITY))
+    return ctx.with_mask(context, with_ability(mask, AUTOMATABILITY))
 end
 
 -- Whether a node's contexts in a sort (context --> anything) provide a goal context: the context itself, or its isolatable counterpart when the goal isn't isolatable, since whatever can be had isolatably can be had without isolatability too (a sort records the contexts of its routes, so the weaker one needn't be there on its own)
@@ -135,38 +122,46 @@ top.provides_context = function(contexts, context)
     if contexts[context] ~= nil then
         return true
     end
-    local abilities = top.context_abilities(context)
-    if abilities == nil or top.context_home(context) ~= nil or string.sub(abilities, ISOLATABILITY, ISOLATABILITY) ~= "0" then
+    local mask = ctx.mask(context)
+    if mask == nil or ctx.home_of(context) ~= nil or has_ability(mask, ISOLATABILITY) then
         return false
     end
-    return contexts[top.context_key(top.context_room(context), with_ability(abilities, ISOLATABILITY))] ~= nil
+    return contexts[ctx.with_mask(context, with_ability(mask, ISOLATABILITY))] ~= nil
 end
 
 -- Whether a node's contexts in a sort with complex contexts (context --> anything) include an isolatable one in a room: it can be had there from the room's own resources, without bringing anything in (lib/logic/builder.lua)
 -- Home contexts and simple contexts never count
 top.isolatable_in = function(contexts, room)
-    for context, _ in pairs(contexts or {}) do
-        local abilities = top.context_abilities(context)
-        if abilities ~= nil and top.context_home(context) == nil and has_ability(abilities, ISOLATABILITY) and top.context_room(context) == room then
-            return true
+    if contexts == nil then
+        return false
+    end
+    for _, mask in pairs(masks) do
+        if has_ability(mask, ISOLATABILITY) then
+            local context = ctx.complex(room, mask)
+            if context ~= nil and contexts[context] ~= nil then
+                return true
+            end
         end
     end
     return false
 end
 
 -- Gets the lookup tables for the contexts used in a sort
--- For simple contexts, the contexts are just the rooms, exactly as in consistent-sort.lua
+-- For simple contexts, the contexts are just the rooms' simple contexts, like the rooms in consistent-sort.lua
 -- home_sets (from top.home_sets) adds home contexts, or is nil for none
 local function build_context_info(complex, home_sets)
+    ctx.number_rooms(logic.contexts)
     local context_info = {
         complex = complex,
         -- Every context
         list = {},
+        -- The rooms' simple contexts, in room order (simple contexts only)
+        simple_list = {},
         -- context --> room (complex and home contexts only)
         room = {},
-        -- context --> ability string (complex contexts only)
-        abilities = {},
-        -- room --> ability string --> context (complex contexts only)
+        -- context --> ability mask (complex contexts only)
+        mask = {},
+        -- room --> ability mask + 1 --> context (complex contexts only)
         of = {},
         -- context --> home set id (home contexts only)
         home = {},
@@ -183,32 +178,33 @@ local function build_context_info(complex, home_sets)
     for room, _ in pairs(logic.contexts) do
         if complex then
             context_info.of[room] = {}
-            for _, ability_str in pairs(ability_strs) do
-                local context = top.context_key(room, ability_str)
+            for _, mask in pairs(masks) do
+                local context = ctx.complex(room, mask)
                 table.insert(context_info.list, context)
                 context_info.room[context] = room
-                context_info.abilities[context] = ability_str
-                context_info.of[room][ability_str] = context
+                context_info.mask[context] = mask
+                context_info.of[room][mask + 1] = context
             end
         else
-            table.insert(context_info.list, room)
+            table.insert(context_info.list, ctx.simple(room))
+            table.insert(context_info.simple_list, ctx.simple(room))
         end
         if home_sets ~= nil then
             -- Home contexts ride on the room's weakest context
-            local base = room
+            local base = ctx.simple(room)
             if complex then
-                base = context_info.of[room][NO_ABILITIES]
+                base = context_info.of[room][NO_ABILITIES + 1]
             end
             context_info.home_of[room] = {}
             for _, home_id in pairs(home_sets.ids) do
                 -- A home set with no rooms at all keeps its home contexts everywhere, so what needs no room still gets one
                 local set_rooms = home_sets.sets[home_id].rooms
                 if not top.home_contexts_in_set_rooms or set_rooms[room] ~= nil or next(set_rooms) == nil then
-                    local context = top.home_context_key(base, home_id)
+                    local context = ctx.home(base, home_id)
                     table.insert(context_info.list, context)
                     context_info.room[context] = room
                     if complex then
-                        context_info.abilities[context] = NO_ABILITIES
+                        context_info.mask[context] = NO_ABILITIES
                     end
                     context_info.home[context] = home_id
                     context_info.home_of[room][home_id] = context
@@ -308,82 +304,16 @@ local function smallest_containing(context_info, room_homes, home_id, member_roo
     return contexts
 end
 
--- Signature of an edge's abilities, like "-1" for { [2] = true } or "0-" for { [1] = false }
-local function abilities_signature(abilities)
-    local signature = ""
-    for i = 1, NUM_ABILITIES do
-        if abilities[i] == nil then
-            signature = signature .. "-"
-        elseif abilities[i] == true then
-            signature = signature .. "1"
-        else
-            signature = signature .. "0"
-        end
-    end
-    return signature
-end
-
--- signature --> ability string --> list of ability strings that come out the other side of the edge
-local forward_memo = {}
--- signature --> ability string --> list of ability strings that could have gone into the edge to produce it
-local inverse_memo = {}
-
--- Same as extended-sort.lua's transmit_through_edge, but for a single ability string
--- Gaining an ability keeps the old ability string and adds the one with the ability; losing an ability drops strings that have it
-local function compute_edge_abilities(abilities, ability_str)
-    local results = { [ability_str] = true }
-    for ability, gained in pairs(abilities) do
-        local new_results = {}
-        for result, _ in pairs(results) do
-            if gained == true then
-                new_results[result] = true
-                new_results[with_ability(result, ability)] = true
-            elseif not has_ability(result, ability) then
-                new_results[result] = true
-            end
-        end
-        results = new_results
-    end
-    local result_list = {}
-    for _, result in pairs(ability_strs) do
-        if results[result] ~= nil then
-            table.insert(result_list, result)
-        end
-    end
-    return result_list
-end
-
-local function edge_ability_tables(abilities)
-    local signature = abilities_signature(abilities)
-    if forward_memo[signature] == nil then
-        local forward = {}
-        local inverse = {}
-        for _, ability_str in pairs(ability_strs) do
-            inverse[ability_str] = {}
-        end
-        for _, ability_str in pairs(ability_strs) do
-            forward[ability_str] = compute_edge_abilities(abilities, ability_str)
-            for _, result in pairs(forward[ability_str]) do
-                table.insert(inverse[result], ability_str)
-            end
-        end
-        forward_memo[signature] = forward
-        inverse_memo[signature] = inverse
-    end
-    return forward_memo[signature], inverse_memo[signature]
-end
-
 -- Contexts arriving at edge.stop when context leaves edge.start
 -- Home contexts go through edges unchanged: they have no abilities to lose, and abilities an edge adds come from the context they ride on
 local function edge_transmit(context_info, edge, context)
     if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return { context }
     end
-    local forward = edge_ability_tables(edge.abilities)
-    local room = context_info.room[context]
+    local room_contexts = context_info.of[context_info.room[context]]
     local arriving = {}
-    for _, ability_str in pairs(forward[context_info.abilities[context]]) do
-        table.insert(arriving, context_info.of[room][ability_str])
+    for _, mask in pairs(ctx.forward_masks(edge.abilities, context_info.mask[context])) do
+        table.insert(arriving, room_contexts[mask + 1])
     end
     return arriving
 end
@@ -393,11 +323,10 @@ local function edge_sources(context_info, edge, context)
     if not context_info.complex or edge.abilities == nil or context_info.home[context] ~= nil then
         return { context }
     end
-    local _, inverse = edge_ability_tables(edge.abilities)
-    local room = context_info.room[context]
+    local room_contexts = context_info.of[context_info.room[context]]
     local sources = {}
-    for _, ability_str in pairs(inverse[context_info.abilities[context]]) do
-        table.insert(sources, context_info.of[room][ability_str])
+    for _, mask in pairs(ctx.inverse_masks(edge.abilities, context_info.mask[context])) do
+        table.insert(sources, room_contexts[mask + 1])
     end
     return sources
 end
@@ -412,11 +341,10 @@ local function edge_ind(context_info, node_to_context_inds, edge, context)
         return start_inds[context]
     end
     -- The same sources as edge_sources, without building the list
-    local _, inverse = edge_ability_tables(edge.abilities)
     local room_contexts = context_info.of[context_info.room[context]]
     local earliest_ind
-    for _, ability_str in pairs(inverse[context_info.abilities[context]]) do
-        local ind = start_inds[room_contexts[ability_str]]
+    for _, mask in pairs(ctx.inverse_masks(edge.abilities, context_info.mask[context])) do
+        local ind = start_inds[room_contexts[mask + 1]]
         if ind ~= nil and (earliest_ind == nil or ind < earliest_ind) then
             earliest_ind = ind
         end
@@ -446,7 +374,7 @@ local function home_transmit(context_info, node, incoming, home_id)
         end
         return outgoing
     elseif type(context_type) == "string" then
-        -- Rooms use node.name for the room, see contutils.transmit
+        -- Rooms use node.name for the room (type_info names one room for every room node)
         local room_contexts = context_info.home_of[node.name]
         if room_contexts == nil then
             error("Room node " .. node.name .. " is not a context")
@@ -463,41 +391,59 @@ local function home_transmit(context_info, node, incoming, home_id)
 end
 
 -- Contexts leaving node when incoming arrives at it
--- For simple contexts this is just contutils.transmit
+-- For simple contexts, as consistent-sort.lua's contutils.transmit does with rooms: forgetters send every room's simple context, and a room sends its own
 -- For complex contexts this follows extended-sort.lua's transmit_through_node
 local function node_transmit(context_info, node, incoming)
     local home_id = context_info.home[incoming]
     if home_id ~= nil then
         return home_transmit(context_info, node, incoming, home_id)
     end
+    local context_type = logic.type_info[node.type].context
     if not context_info.complex then
-        return contutils.transmit(node, incoming)
+        if context_type == nil then
+            return { incoming }
+        elseif context_type == true then
+            local outgoing = {}
+            for _, context in pairs(context_info.simple_list) do
+                table.insert(outgoing, context)
+            end
+            return outgoing
+        elseif type(context_type) == "string" then
+            -- Rooms use node.name for the room (type_info names one room for every room node)
+            -- A room the logic doesn't list still gets a context, as the room's own name did when contexts were names
+            if ctx.simple(node.name) == nil then
+                ctx.number_rooms({ [node.name] = true })
+            end
+            return { ctx.simple(node.name) }
+        else
+            -- Unhandled
+            error()
+        end
     end
 
-    local context_type = logic.type_info[node.type].context
-    local ability_str = context_info.abilities[incoming]
+    local mask = context_info.mask[incoming]
     if context_type == nil then
         return { incoming }
     elseif context_type == true then
         -- Forgetters forget the room, but isolatability is tied to the room so it isn't shared with other rooms
-        if has_ability(ability_str, ISOLATABILITY) then
+        if has_ability(mask, ISOLATABILITY) then
             return { incoming }
         end
         local outgoing = {}
-        for room, _ in pairs(context_info.of) do
-            table.insert(outgoing, context_info.of[room][ability_str])
+        for _, room_contexts in pairs(context_info.of) do
+            table.insert(outgoing, room_contexts[mask + 1])
         end
         return outgoing
     elseif type(context_type) == "string" then
-        -- Rooms use node.name for the room, see contutils.transmit
-        -- Like extended-sort.lua, rooms emit every ability string no matter what came in
+        -- Rooms use node.name for the room (type_info names one room for every room node)
+        -- Like extended-sort.lua, rooms emit every ability mask no matter what came in
         local room_contexts = context_info.of[node.name]
         if room_contexts == nil then
             error("Room node " .. node.name .. " is not a context")
         end
         local outgoing = {}
-        for _, room_ability_str in pairs(ability_strs) do
-            table.insert(outgoing, room_contexts[room_ability_str])
+        for _, room_mask in pairs(masks) do
+            table.insert(outgoing, room_contexts[room_mask + 1])
         end
         return outgoing
     else
@@ -580,11 +526,11 @@ top.discovery_candidates = function(sort_info, room_discoverers, tech_node, cont
     if sort_info.complex ~= true or tech_node.type ~= "technology" or top.context_home(context) ~= nil then
         return nil
     end
-    local abilities = top.context_abilities(context)
-    if abilities == nil or not has_ability(abilities, ISOLATABILITY) then
+    local mask = ctx.mask(context)
+    if mask == nil or not has_ability(mask, ISOLATABILITY) then
         return nil
     end
-    local room = top.context_room(context)
+    local room = ctx.room(context)
     local home_id
     if sort_info.home_sets ~= nil then
         home_id = sort_info.home_sets.of[room]
@@ -631,10 +577,10 @@ local function compute_rooms_needed(graph, watched)
         table.insert(rooms, room)
     end
     table.sort(rooms)
-    -- The contexts a pebble can have are the rooms alone
+    -- The contexts a pebble can have are the rooms' simple contexts
     local contexts = {}
     for _, room in pairs(rooms) do
-        table.insert(contexts, room)
+        table.insert(contexts, ctx.simple(room))
     end
     local watched_keys = {}
     for _, node_key in pairs(watched or {}) do
@@ -765,8 +711,8 @@ local function compute_rooms_needed(graph, watched)
                         new_needed[context] = common
                     end
                 else
-                    -- Rooms use node.name for the room, see contutils.transmit
-                    new_needed[node.name] = with_room(common, node.name)
+                    -- Rooms use node.name for the room, see node_transmit
+                    new_needed[ctx.simple(node.name)] = with_room(common, node.name)
                 end
             end
         end
@@ -838,7 +784,7 @@ local function compute_rooms_needed(graph, watched)
 end
 
 -- For every pebble of a sort without complex contexts, the rooms it can't be reached without (see compute_rooms_needed)
--- Returns a function (node_key, context) --> { room --> true }, which gives nil for a pebble that can't be reached at all
+-- Returns a function (node_key, context) --> { room --> true }, which gives nil for a pebble that can't be reached at all (context is a simple context, see top.simple_context)
 top.rooms_needed = function(graph)
     local info = compute_rooms_needed(graph)
     return function(node_key, context)
@@ -890,6 +836,7 @@ end
 -- Those rooms have been used by the time the room is discovered and reached, so with home contexts, a tech that can be had using only them is isolatable there once it's discovered (see discover_home_rooms in top.sort); isolatable contexts there only matter once it's reached
 -- The route mostly needs no more than the discovery, but where discoveries follow the star map (randomizations/planetary/discovery.lua), a far planet's route passes planets that need other planets' packs, and isolatability may use the techs gotten by the time the room is reached (lib/logic/builder.lua)
 -- Returns { ids = list of home set ids, sets = id --> { rooms = room --> true, discovered = room --> true for the rooms it's the home set of }, of = room --> home set id }
+-- Home set ids are the numbers 1, 2, ..., named home1, home2, ... in logs (top.home_name)
 -- Rooms with the same home set share it, and rooms with no reachable discoverer have none
 -- Home sets are meant to come from the vanilla graph, so a sort of a randomized graph should pass the vanilla ones as extra.home_sets
 -- Also returns the rooms the graph has discoverers of but reaches none of (sorted, and logged): nothing is isolatable in them by discovery, so they mean the graph isn't one to take home sets from (like a planetary change's world before unified pays its debt)
@@ -915,7 +862,7 @@ top.home_sets = function(graph)
     end
     -- And what reaching the room needs (its room node's rooms, the room itself aside)
     for room, needs in pairs(needs_of_room) do
-        local reach = (info.needed[gutils.key("room", room)] or {})[room]
+        local reach = (info.needed[gutils.key("room", room)] or {})[ctx.simple(room)]
         if reach ~= nil then
             needs_of_room[room] = info.union(needs, info.without(reach, room))
         end
@@ -939,7 +886,7 @@ top.home_sets = function(graph)
     }
     for i = 1, #needs_list do
         local needs = needs_list[i]
-        local home_id = "home" .. tostring(i)
+        local home_id = i
         table.insert(home_sets.ids, home_id)
         home_sets.sets[home_id] = {
             rooms = info.decode(needs),
@@ -948,7 +895,7 @@ top.home_sets = function(graph)
         for room, _ in pairs(rooms_with_needs[needs]) do
             home_sets.of[room] = home_id
         end
-        log("Home set " .. home_id .. " of " .. table.concat(sorted_keys(rooms_with_needs[needs]), ", ") .. ": " .. table.concat(sorted_keys(home_sets.sets[home_id].rooms), ", "))
+        log("Home set " .. ctx.home_name(home_id) .. " of " .. table.concat(sorted_keys(rooms_with_needs[needs]), ", ") .. ": " .. table.concat(sorted_keys(home_sets.sets[home_id].rooms), ", "))
     end
 
     local undiscovered = {}
@@ -1005,7 +952,7 @@ top.intersect_home_sets = function(a, b)
         of = {},
     }
     for i, text in pairs(texts) do
-        local home_id = "home" .. tostring(i)
+        local home_id = i
         table.insert(home_sets.ids, home_id)
         home_sets.sets[home_id] = {
             rooms = needs_of_text[text],
@@ -1097,7 +1044,7 @@ top.graph_fingerprint = function(graph)
     end
     for edge_key, edge in pairs(graph.edges) do
         n = n + 1
-        parts[n] = "e " .. edge_key .. " " .. (edge.abilities ~= nil and abilities_signature(edge.abilities) or "")
+        parts[n] = "e " .. edge_key .. " " .. (edge.abilities ~= nil and tostring(edge.abilities) or "")
     end
     for room, _ in pairs(logic.contexts) do
         n = n + 1
@@ -1455,8 +1402,8 @@ top.sort = function(graph, state, new_conn, extra)
                 if room_contexts ~= nil then
                     for node_key, node in pairs(graph.nodes) do
                         if node.type == "technology" and (next(node_to_context_inds[node_key]) ~= nil or open[node_key] ~= nil) then
-                            for ability_str, context in pairs(room_contexts) do
-                                if has_ability(ability_str, ISOLATABILITY) and node_to_context_inds[node_key][context] == nil then
+                            for i, context in pairs(room_contexts) do
+                                if has_ability(i - 1, ISOLATABILITY) and node_to_context_inds[node_key][context] == nil then
                                     add_to_open(node, context)
                                 end
                             end
@@ -1470,8 +1417,8 @@ top.sort = function(graph, state, new_conn, extra)
     -- Gives a tech the isolatable contexts of a room that it doesn't have yet
     local function add_isolatable_contexts(tech_node, room)
         local tech_key = key(tech_node)
-        for ability_str, context in pairs(context_info.of[room]) do
-            if has_ability(ability_str, ISOLATABILITY) and node_to_context_inds[tech_key][context] == nil then
+        for i, context in pairs(context_info.of[room]) do
+            if has_ability(i - 1, ISOLATABILITY) and node_to_context_inds[tech_key][context] == nil then
                 add_to_open(tech_node, context)
             end
         end
@@ -1770,11 +1717,11 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
                 if home ~= nil then
                     return true
                 end
-                local abilities = context_info.abilities[incoming]
-                if has_ability(abilities, ISOLATABILITY) then
+                local mask = context_info.mask[incoming]
+                if has_ability(mask, ISOLATABILITY) then
                     return incoming == curr_context
                 end
-                return abilities == context_info.abilities[curr_context]
+                return mask == context_info.mask[curr_context]
             elseif type(context_type) == "string" then
                 return context_info.room[curr_context] == curr_node.name
                     and (home == nil or context_info.home_rooms[home][curr_node.name] ~= nil)
@@ -1833,7 +1780,7 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             -- If nothing was earlier, that's a contradiction
             if earliest_context_ind == curr_ind and discovery_preinds == nil then
                 log(serpent.block(curr_node))
-                log(outgoing_context)
+                log(ctx.name(outgoing_context))
                 error("No earlier contexts possible.")
             end
         end

@@ -2,6 +2,7 @@
 -- This includes things like transport belts and assembling machines, which should be relatively early
 
 local gutils = require("lib/graph/graph-utils")
+local ctx = require("lib/graph/contexts")
 local logic = require("lib/logic/init")
 
 local balance = {}
@@ -21,7 +22,8 @@ balance.find_balance_blacklist = function(graph, init_sort)
                 local smallest_ind1
                 local smallest_ind2
 
-                for context, _ in pairs(logic.contexts) do
+                for room, _ in pairs(logic.contexts) do
+                    local context = ctx.simple(room)
                     local index1 = init_sort.node_to_context_inds[key1][context]
                     local index2 = init_sort.node_to_context_inds[key2][context]
                     if index1 ~= nil and (smallest_ind1 == nil or index1 < smallest_ind1) then

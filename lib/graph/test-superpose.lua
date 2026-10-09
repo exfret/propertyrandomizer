@@ -63,6 +63,7 @@ package.loaded["lib/data-utils"] = {
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
+local fx = require("lib/graph/contexts-for-tests")
 
 local key = gutils.key
 local ekey = function(start, stop)
@@ -122,11 +123,12 @@ local function toy_world(lava_room)
     return graph, nodes
 end
 
+-- Every pebble, as "node key @@ context name" (contexts are numbers, see lib/graph/contexts.lua; a room's simple context is named as its room)
 local function pebbles(sort_info)
     local set = {}
     for node_key, inds in pairs(sort_info.node_to_context_inds) do
         for context, _ in pairs(inds) do
-            set[node_key .. " @@ " .. context] = true
+            set[node_key .. " @@ " .. fx.N(context)] = true
         end
     end
     return set
@@ -241,19 +243,20 @@ test("an old edge the new world has with other abilities stays, through a connec
     local old, nodes = toy_world(ROCK)
     local new = toy_world(ROCK)
     -- In the old world, pumping lava on the rock planet was isolatable; in the new world the same connection loses isolatability
+    -- (Edge abilities are codes, written here as the logic builders used to write them, see lib/graph/contexts.lua)
     local edge_key = ekey(nodes["rock"], nodes["pump-lava"])
-    old.edges[edge_key].abilities = {
+    old.edges[edge_key].abilities = fx.edge({
         [1] = true,
-    }
-    new.edges[edge_key].abilities = {
+    })
+    new.edges[edge_key].abilities = fx.edge({
         [1] = false,
-    }
+    })
     local result = superpose.union(new, old)
     local connector = key("base", "superposed: " .. edge_key)
     assert(result.graph.nodes[connector] ~= nil)
     assert(result.old_nodes[connector])
     assert(result.debt_edges[ekey(nodes["rock"], connector)] and result.debt_edges[ekey(connector, nodes["pump-lava"])])
-    assert(result.graph.edges[edge_key].abilities[1] == false, "the new world's edge stays as it was")
+    assert(result.graph.edges[edge_key].abilities == fx.edge({ [1] = false }), "the new world's edge stays as it was")
     for seed = 1, 20 do
         local reach = pebbles(sort_of(result.graph, seed, true))
         assert(contains(reach, pebbles(sort_of(old, seed, true))))
@@ -289,7 +292,8 @@ local function random_abilities(complex)
             [2] = false,
         },
     }
-    return choices[math.random(#choices)]
+    -- Written as the logic builders used to write edge abilities; edges have them as a code (lib/graph/contexts.lua)
+    return fx.edge(choices[math.random(#choices)])
 end
 
 -- A random layered graph, and the keys of its OR nodes that could take new in-edges (feature-like)

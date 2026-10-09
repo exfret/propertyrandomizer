@@ -60,6 +60,8 @@ lookups = {
 }
 
 local check_lib = require("randomizations/planetary/check")
+-- Contexts are numbers (lib/graph/contexts.lua); the sorts below write them as their names (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
 
 local num_checks = 0
 local function check(condition, message)
@@ -69,13 +71,13 @@ local function check(condition, message)
     end
 end
 
--- A sort as the check reads it: node key --> context --> index
+-- A sort as the check reads it: node key --> context --> index, made from node key --> the contexts' names
 local function sort_with(contexts_by_node)
     local node_to_context_inds = {}
     for node_key, contexts in pairs(contexts_by_node) do
         node_to_context_inds[node_key] = {}
         for i, context in pairs(contexts) do
-            node_to_context_inds[node_key][context] = i
+            node_to_context_inds[node_key][fx.C(context)] = i
         end
     end
     return {

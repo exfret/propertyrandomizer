@@ -12,6 +12,8 @@ local flow_cost = require("lib/cost/flow-cost")
 local cutils = require("lib/cost/cost-utils")
 local dutils = require("lib/data-utils")
 
+local ctx = require("lib/graph/contexts")
+
 local context_costs = {}
 
 -- Rounds of pricing imports from the previous round's costs (the room an import comes from may make it with imports of its own)
@@ -27,12 +29,21 @@ local function sorted_keys(tbl)
     return keys
 end
 
--- The context a node is first reached in by a sort, or nil
+-- The room a sort's context stands for: costs are per room, and the sorts priced here have no complex or home contexts, so each context is a room's simple context (lib/graph/contexts.lua); nil for any other context
+local function context_room(context)
+    if ctx.mask(context) ~= nil or ctx.home_of(context) ~= nil then
+        return nil
+    end
+    return ctx.room(context)
+end
+
+-- The room a node is first reached in by a sort, or nil
 local function first_context(sort_info, node_key)
     local best_context
     local best_ind
-    for context, ind in pairs(sort_info.node_to_context_inds[node_key] or {}) do
-        if best_ind == nil or ind < best_ind or (ind == best_ind and context < best_context) then
+    for sort_context, ind in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+        local context = context_room(sort_context)
+        if context ~= nil and (best_ind == nil or ind < best_ind or (ind == best_ind and context < best_context)) then
             best_context = context
             best_ind = ind
         end
@@ -107,8 +118,9 @@ context_costs.build = function(graph, sort_info, prices, starting_context, conte
     end
     for recipe_name, _ in pairs(data.raw.recipe) do
         local node_key = gutils.key("recipe", recipe_name)
-        for context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
-            if info.recipe_available[context] ~= nil then
+        for sort_context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+            local context = context_room(sort_context)
+            if context ~= nil and info.recipe_available[context] ~= nil then
                 info.recipe_available[context][recipe_name] = true
             end
         end
@@ -117,8 +129,9 @@ context_costs.build = function(graph, sort_info, prices, starting_context, conte
     for node_key, node in pairs(graph.nodes) do
         if node.type == "item" or node.type == "fluid" then
             local id = node.type .. "-" .. node.name
-            for context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
-                if info.material_available[context] ~= nil then
+            for sort_context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+                local context = context_room(sort_context)
+                if context ~= nil and info.material_available[context] ~= nil then
                     info.material_available[context][id] = true
                     local raw = graph_cost.price_without_recipes(graph, prices, node_key, context, slot)
                     if raw ~= nil then

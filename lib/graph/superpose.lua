@@ -18,21 +18,9 @@ local function copy_extras(edge)
     return extra
 end
 
--- Whether two edges change contexts the same way (abilities are all that matter to the sort)
+-- Whether two edges change contexts the same way (abilities are all that matter to the sort; they're codes, see lib/graph/contexts.lua)
 local function same_abilities(edge1, edge2)
-    local abilities1 = edge1.abilities or {}
-    local abilities2 = edge2.abilities or {}
-    for i, value in pairs(abilities1) do
-        if abilities2[i] ~= value then
-            return false
-        end
-    end
-    for i, value in pairs(abilities2) do
-        if abilities1[i] ~= value then
-            return false
-        end
-    end
-    return true
+    return edge1.abilities == edge2.abilities
 end
 
 -- new_graph, old_graph: logic graphs whose shared nodes have the same keys (neither is changed)

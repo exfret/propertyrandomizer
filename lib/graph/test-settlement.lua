@@ -57,6 +57,7 @@ local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
 local settlement = require("lib/graph/settlement")
+local C = require("lib/graph/contexts-for-tests").C
 
 local key = gutils.key
 
@@ -67,6 +68,7 @@ local function test(name, fn)
     print("ok - " .. name)
 end
 
+-- Room keys; contexts are numbers (lib/graph/contexts.lua), which the tests write as their names, so C(ROCK) is the rock planet's simple context (lib/graph/contexts-for-tests.lua)
 local HOME = "planet: home"
 local ROCK = "planet: rock"
 
@@ -109,13 +111,13 @@ local function setup()
     local function check()
         local sort_info = top.sort(game)
         local failures = {}
-        if (sort_info.node_to_context_inds[nodes["metal"]] or {})[ROCK] == nil then
+        if (sort_info.node_to_context_inds[nodes["metal"]] or {})[C(ROCK)] == nil then
             table.insert(failures, {
                 text = "metal @ rock",
                 keys = {
                     nodes["metal"],
                 },
-                context = ROCK,
+                context = C(ROCK),
             })
         end
         return {
@@ -168,7 +170,7 @@ test("the debt edge on the owed goal's witness is the old world's lava pump", fu
         start = nodes["rock"],
         stop = nodes["pump-lava"],
     })
-    assert(owed[edge_key] ~= nil and owed[edge_key][ROCK])
+    assert(owed[edge_key] ~= nil and owed[edge_key][C(ROCK)])
     local num_owed = 0
     for _, _ in pairs(owed) do
         num_owed = num_owed + 1
@@ -217,16 +219,16 @@ test("a debt edge no settler owns is reported as unsettled", function()
 end)
 
 test("a goal without isolatability is provided by its isolatable counterpart, and nothing else is implied", function()
-    local rock_both = top.context_key(ROCK, "11")
-    assert(top.provides_context({ [rock_both] = 1 }, top.context_key(ROCK, "01")))
+    local rock_both = C(ROCK .. " | 11")
+    assert(top.provides_context({ [rock_both] = 1 }, C(ROCK .. " | 01")))
     assert(top.provides_context({ [rock_both] = 1 }, rock_both))
     -- Automatability isn't implied, and isolatability isn't implied the other way round
-    assert(not top.provides_context({ [rock_both] = 1 }, top.context_key(ROCK, "00")))
-    assert(not top.provides_context({ [top.context_key(ROCK, "01")] = 1 }, rock_both))
+    assert(not top.provides_context({ [rock_both] = 1 }, C(ROCK .. " | 00")))
+    assert(not top.provides_context({ [C(ROCK .. " | 01")] = 1 }, rock_both))
     -- Other rooms, home contexts and simple contexts are looked up as they are
-    assert(not top.provides_context({ [rock_both] = 1 }, top.context_key(HOME, "01")))
-    assert(not top.provides_context({ [rock_both] = 1 }, top.home_context_key(top.context_key(ROCK, "01"), "1")))
-    assert(not top.provides_context({ [ROCK] = 1 }, top.context_key(ROCK, "01")))
+    assert(not top.provides_context({ [rock_both] = 1 }, C(HOME .. " | 01")))
+    assert(not top.provides_context({ [rock_both] = 1 }, top.home_context_key(C(ROCK .. " | 01"), 1)))
+    assert(not top.provides_context({ [C(ROCK)] = 1 }, C(ROCK .. " | 01")))
 end)
 
 test("a debt edge whose start the game lost since the superposition brings that node along, so an old node it fed stays reachable through the debt", function()
@@ -280,7 +282,7 @@ test("a debt edge whose start the game lost since the superposition brings that 
             keys = {
                 nodes["metal"],
             },
-            context = ROCK,
+            context = C(ROCK),
         },
     }
     local owed = settlement.owed_edges(game, {}, failures, debt)

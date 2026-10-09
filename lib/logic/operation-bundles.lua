@@ -72,17 +72,12 @@ local function supplies(incoming, needed)
     if top.context_room(incoming) ~= top.context_room(needed) or top.context_home(incoming) ~= top.context_home(needed) then
         return false
     end
-    local have = top.context_abilities(incoming)
-    local want = top.context_abilities(needed)
+    local have = top.context_mask(incoming)
+    local want = top.context_mask(needed)
     if have == nil or want == nil then
         return false
     end
-    for i = 1, #want do
-        if string.sub(want, i, i) == "1" and string.sub(have, i, i) ~= "1" then
-            return false
-        end
-    end
-    return true
+    return top.mask_covers(have, want)
 end
 
 local function better(candidate, old)

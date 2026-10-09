@@ -27,6 +27,8 @@ package.loaded["randomizations/graph/unified/skeleton/protection"] = {}
 local gutils = require("lib/graph/graph-utils")
 local operation = require("lib/logic/operation-requirements")
 local top = require("lib/graph/context-sort")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, like "home" (lib/graph/contexts-for-tests.lua)
+local C = require("lib/graph/contexts-for-tests").C
 local key = gutils.key
 local num_passed = 0
 local function test(name, fn)
@@ -45,13 +47,14 @@ local function toy(research_supply)
         sorted = {},
         node_to_context_inds = {},
     }
+    -- context is a context's name (default "home")
     local function add(kind, name, op, pres, context)
         logic.type_info[kind] = logic.type_info[kind] or {}
         local node = gutils.add_node(graph, kind, name, { op = op })
         for _, pre in pairs(pres or {}) do
             gutils.add_edge(graph, pre, key(node))
         end
-        context = context or "home"
+        context = C(context or "home")
         local ind = #sort.sorted + 1
         sort.sorted[ind] = {
             node_key = key(node),
@@ -104,10 +107,10 @@ end)
 
 test("provisional placement cuts the own-item dependency only", function()
     local graph, sort, nodes = toy()
-    local proof = operation.prover(graph, sort, nodes.item, "home", material_frontier)(nodes.operate)
-    assert(proof.rank == sort.node_to_context_inds[nodes.supply].home)
-    assert(proof.leaves[sort.node_to_context_inds[nodes.item].home] == nil)
-    assert(proof.leaves[sort.node_to_context_inds[nodes.supply].home])
+    local proof = operation.prover(graph, sort, nodes.item, C("home"), material_frontier)(nodes.operate)
+    assert(proof.rank == sort.node_to_context_inds[nodes.supply][C("home")])
+    assert(proof.leaves[sort.node_to_context_inds[nodes.item][C("home")]] == nil)
+    assert(proof.leaves[sort.node_to_context_inds[nodes.supply][C("home")]])
 end)
 
 test("an alternative early supply is enough", function()
@@ -116,30 +119,30 @@ test("an alternative early supply is enough", function()
     local supply = gutils.add_node(graph, "supply", "", { op = "OR" })
     gutils.add_edge(graph, nodes.supply, key(supply))
     gutils.add_edge(graph, nodes.early, key(supply))
-    local old = sort.node_to_context_inds[nodes.operate].home
+    local old = sort.node_to_context_inds[nodes.operate][C("home")]
     sort.sorted[old] = {
         node_key = key(supply),
-        context = "home",
+        context = C("home"),
     }
     sort.sorted[old + 1] = {
         node_key = nodes.operate,
-        context = "home",
+        context = C("home"),
     }
-    sort.node_to_context_inds[key(supply)] = { home = old }
-    sort.node_to_context_inds[nodes.operate].home = old + 1
+    sort.node_to_context_inds[key(supply)] = { [C("home")] = old }
+    sort.node_to_context_inds[nodes.operate][C("home")] = old + 1
     gutils.remove_edge(graph, gutils.ekey({
         start = nodes.supply,
         stop = nodes.operate,
     }))
     gutils.add_edge(graph, key(supply), nodes.operate)
-    local proof = operation.prover(graph, sort, nodes.item, "home", material_frontier)(nodes.operate)
-    assert(proof.rank == sort.node_to_context_inds[nodes.early].home)
+    local proof = operation.prover(graph, sort, nodes.item, C("home"), material_frontier)(nodes.operate)
+    assert(proof.rank == sort.node_to_context_inds[nodes.early][C("home")])
 end)
 
 test("operation in another context does not justify this placement", function()
     local graph, sort, nodes = toy()
-    sort.node_to_context_inds[nodes.operate] = { elsewhere = #sort.sorted }
-    sort.sorted[#sort.sorted].context = "elsewhere"
+    sort.node_to_context_inds[nodes.operate] = { [C("elsewhere")] = #sort.sorted }
+    sort.sorted[#sort.sorted].context = C("elsewhere")
     assert(not operation.matching(graph, sort, operation.items(graph)).allows(nodes.late, nodes.item))
 end)
 
@@ -161,15 +164,15 @@ end)
 test("a later supply recipe cannot be advanced by the provisional building", function()
     local graph, sort, nodes = toy()
     gutils.add_edge(graph, nodes.item, nodes.supply_recipe)
-    local proof = operation.prover(graph, sort, nodes.item, "home", material_frontier)(nodes.operate)
-    assert(proof.rank > sort.node_to_context_inds[nodes.item].home)
+    local proof = operation.prover(graph, sort, nodes.item, C("home"), material_frontier)(nodes.operate)
+    assert(proof.rank > sort.node_to_context_inds[nodes.item][C("home")])
 end)
 
 test("tech witnesses include the supply recipe and exclude the building recipe", function()
     local graph, sort, nodes = toy()
-    local proof = operation.prover(graph, sort, nodes.item, "home", function(node) return node.type == "recipe" end)(nodes.operate)
-    assert(proof.leaves[sort.node_to_context_inds[nodes.supply_recipe].home])
-    assert(proof.leaves[sort.node_to_context_inds[key("recipe", "make-device")].home] == nil)
+    local proof = operation.prover(graph, sort, nodes.item, C("home"), function(node) return node.type == "recipe" end)(nodes.operate)
+    assert(proof.leaves[sort.node_to_context_inds[nodes.supply_recipe][C("home")]])
+    assert(proof.leaves[sort.node_to_context_inds[key("recipe", "make-device")][C("home")]] == nil)
 end)
 
 test("operation tech prerequisites are added together", function()
@@ -233,11 +236,11 @@ test("delivery must actually connect the acquisition room to the operation room"
         local ind = #sort.sorted + 1
         sort.sorted[ind] = {
             node_key = node_key,
-            context = "away",
+            context = C("away"),
         }
-        sort.node_to_context_inds[node_key].away = ind
+        sort.node_to_context_inds[node_key][C("away")] = ind
     end
-    sort.node_to_context_inds[nodes.operate].home = nil
+    sort.node_to_context_inds[nodes.operate][C("home")] = nil
     local rules = operation.matching(graph, sort, operation.items(graph))
     assert(not rules.allows(nodes.early, nodes.item))
     assert(rules.allows(nodes.late, nodes.item))
@@ -272,7 +275,7 @@ test("the physical audit accepts a later build instead of the earlier research c
     }) do
         table.insert(reordered, {
             node_key = node_key,
-            context = "home",
+            context = C("home"),
         })
     end
     sort.sorted = reordered
@@ -280,8 +283,8 @@ test("the physical audit accepts a later build instead of the earlier research c
         sort.node_to_context_inds[pebble.node_key][pebble.context] = ind
     end
     local levels = operation.levels(graph, sort, true)
-    assert(levels[sort.node_to_context_inds[nodes.item].home] == 0)
-    assert(levels[sort.node_to_context_inds[capture].home] == 1)
+    assert(levels[sort.node_to_context_inds[nodes.item][C("home")]] == 0)
+    assert(levels[sort.node_to_context_inds[capture][C("home")]] == 1)
     assert(not operation.matching(graph, sort, operation.items(graph), true).allows(nodes.item, nodes.item))
     local messages = {}
     local original_log = log
@@ -312,9 +315,9 @@ test("shared outgoing contexts reuse one backing without depending on each other
     local first = #sort.sorted
     sort.sorted[first + 1] = {
         node_key = shared,
-        context = "away",
+        context = C("away"),
     }
-    sort.node_to_context_inds[shared].away = first + 1
+    sort.node_to_context_inds[shared][C("away")] = first + 1
     local original_path = top.path
     local calls = 0
     top.path = function(...)
@@ -322,7 +325,7 @@ test("shared outgoing contexts reuse one backing without depending on each other
         return original_path(...)
     end
     local levels = operation.levels(graph, sort)
-    assert(levels[first] == levels[sort.node_to_context_inds[nodes.item].home])
+    assert(levels[first] == levels[sort.node_to_context_inds[nodes.item][C("home")]])
     assert(levels[first + 1] == levels[first])
     top.path = original_path
     assert(calls == 1, "the same incoming witness should only be reconstructed once")

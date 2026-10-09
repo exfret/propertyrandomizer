@@ -60,6 +60,8 @@ package.loaded["lib/crafter-slots"] = {}
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local rebuild_check = require("lib/rebuild-check")
+-- Contexts are numbers (lib/graph/contexts.lua) and edge abilities codes; fixtures write ability masks and edge abilities as they used to be written, like "10" and { [2] = true } (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
 require("randomizations/fixes")
 
 data = { raw = {} }
@@ -70,7 +72,7 @@ function data:extend(prototypes)
 end
 
 -- A fixture: recipes each unlocked by their own tech, researched with one science pack
--- build_world(node) adds the rest of the game, where node(kind, name, op, pres, abilities) adds a node, its prerequisites by key and their edges' abilities by key
+-- build_world(node) adds the rest of the game, where node(kind, name, op, pres, abilities) adds a node, its prerequisites by key and their edges' abilities (codes) by key
 local function fixture(techs, build_world)
     data.raw = {
         lab = {},
@@ -126,7 +128,7 @@ local function fixture(techs, build_world)
             local key = node("technology", name, "AND")
             for _, ingredient in pairs(prototype.unit.ingredients) do
                 gutils.add_edge(graph, gutils.key("item", ingredient[1]), key, {
-                    abilities = { [2] = true },
+                    abilities = fx.edge({ [2] = true }),
                 })
             end
         end
@@ -134,7 +136,7 @@ local function fixture(techs, build_world)
             local key = gutils.key("technology", name)
             for _, pre in pairs(prototype.prerequisites or {}) do
                 gutils.add_edge(graph, gutils.key("technology", pre), key, {
-                    abilities = { [2] = true },
+                    abilities = fx.edge({ [2] = true }),
                 })
             end
             for _, effect in pairs(prototype.effects or {}) do
@@ -177,7 +179,7 @@ local function assert_kept(before, after, label)
     for node_key, contexts in pairs(before.node_to_context_inds) do
         if gutils.deconstruct(node_key).type == "recipe" then
             for context, _ in pairs(contexts) do
-                assert((after.node_to_context_inds[node_key] or {})[context] ~= nil, label .. ": lost " .. node_key .. " @ " .. context)
+                assert((after.node_to_context_inds[node_key] or {})[context] ~= nil, label .. ": lost " .. node_key .. " @ " .. top.context_name(context))
             end
         end
     end
@@ -197,19 +199,19 @@ fixture({
         a,
         target_product,
     }, {
-        [a] = { [2] = false },
+        [a] = fx.edge({ [2] = false }),
     })
     recipe_node(node, "test-machine", { hand_input })
     local machine = gutils.key("item", "test-machine-product")
     recipe_node(node, "test-target", { machine }, {
-        [machine] = { [2] = true },
+        [machine] = fx.edge({ [2] = true }),
     })
 end)
 logic.contexts = {
     [ROOM_A] = true,
 }
 local before = sort()
-local automatable = top.context_key(ROOM_A, "01")
+local automatable = top.context_key(ROOM_A, fx.mask("01"))
 assert(before.node_to_context_inds[gutils.key("recipe", "test-machine")][automatable] > before.node_to_context_inds[gutils.key("recipe", "test-target")][automatable], "the fixture's machine recipe is automatable after the target recipe")
 randomizations.rebuild_tech_tree()
 assert(prerequisites("test-target")["exfret-rebuilt-test-machine-suffix"], "the machine's tech must be a prerequisite though its recipe is automatable later")
@@ -239,7 +241,7 @@ logic.contexts = {
     [ROOM_B] = true,
 }
 before = sort()
-assert(before.node_to_context_inds[gutils.key("technology", "test-target-tech")][top.context_key(ROOM_A, "10")] ~= nil and before.node_to_context_inds[gutils.key("technology", "test-input-tech")][top.context_key(ROOM_A, "10")] == nil, "the fixture's target tech is isolatable in room A and its input's tech isn't")
+assert(before.node_to_context_inds[gutils.key("technology", "test-target-tech")][top.context_key(ROOM_A, fx.mask("10"))] ~= nil and before.node_to_context_inds[gutils.key("technology", "test-input-tech")][top.context_key(ROOM_A, fx.mask("10"))] == nil, "the fixture's target tech is isolatable in room A and its input's tech isn't")
 randomizations.rebuild_tech_tree()
 assert(prerequisites("test-target")["exfret-rebuilt-test-input-suffix"], "the input's tech must be a prerequisite of a recipe made only where that tech is just as good")
 assert_kept(before, sort(), "other room")
@@ -279,7 +281,7 @@ fixture({
     recipe_node(node, "test-product", { parts })
 end)
 before = sort()
-local isolatable = top.context_key(ROOM_B, "10")
+local isolatable = top.context_key(ROOM_B, fx.mask("10"))
 assert(before.node_to_context_inds[gutils.key("recipe", "test-product")][isolatable] ~= nil, "the fixture's product is isolatable in room B")
 logged = {}
 randomizations.rebuild_tech_tree()
@@ -310,8 +312,8 @@ do
     }) do
         gutils.add_node(graph, kind, "test", { op = "OR" })
     end
-    local context = top.context_key(ROOM_A, "00")
-    local home = top.home_context_key(context, "home1")
+    local context = top.context_key(ROOM_A, fx.mask("00"))
+    local home = top.home_context_key(context, 1)
     local before_sort = { node_to_context_inds = {} }
     for node_key, _ in pairs(graph.nodes) do
         before_sort.node_to_context_inds[node_key] = {
@@ -347,13 +349,13 @@ do
         end
         local a = node("room", ROOM_A, { node("start", "", {}) })
         local pack = node("item", "test-pack", { a })
-        local techs = { node("technology", "test-flat-tech", { pack }, { [1] = false }) }
+        local techs = { node("technology", "test-flat-tech", { pack }, fx.edge({ [1] = false })) }
         if has_alternate then
             table.insert(techs, node("technology", "test-alternate-tech", { pack }))
         end
         if has_prereq then
-            local prereq_key = node("technology", "test-prereq-tech", { pack }, { [1] = false })
-            gutils.add_edge(graph, prereq_key, techs[1], { abilities = { [2] = true } })
+            local prereq_key = node("technology", "test-prereq-tech", { pack }, fx.edge({ [1] = false }))
+            gutils.add_edge(graph, prereq_key, techs[1], { abilities = fx.edge({ [2] = true }) })
         end
         node("recipe", "test-recipe", { node("recipe-tech-unlock", "test-recipe", techs) })
         return graph
@@ -372,7 +374,7 @@ do
     local after_graph = graph_with(false, true)
     local after_sort = sorted(after_graph)
     local lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
-    local isolatable = top.context_key(ROOM_A, "10")
+    local isolatable = top.context_key(ROOM_A, fx.mask("10"))
     local found = false
     for _, pebble in pairs(lost) do
         if pebble.node_key == gutils.key("recipe", "test-recipe") and pebble.context == isolatable then
@@ -398,7 +400,7 @@ print("ok - the rebuild check only leaves out prerequisites when the tech's own 
 -- One that can send the context stays
 do
     -- Every edge into a tech asks for automatability (lib/logic/concrete.lua), and test-needed's research isn't isolatable
-    local tech_abilities = { [2] = true }
+    local tech_abilities = fx.edge({ [2] = true })
     local function new_graph()
         return {
             nodes = {},
@@ -433,10 +435,10 @@ do
     -- The rebuilt tech's full prerequisites are test-direct, test-needed and test-fine, and reduce kept test-direct, which needs the other two
     local after_graph = new_graph()
     local pack = pack_of(after_graph)
-    local needed = add(after_graph, "technology", "test-needed", { pack }, {
+    local needed = add(after_graph, "technology", "test-needed", { pack }, fx.edge({
         [1] = false,
         [2] = true,
-    })
+    }))
     local fine = add(after_graph, "technology", "test-fine", { pack }, tech_abilities)
     local direct = add(after_graph, "technology", "test-direct", {
         pack,
@@ -526,10 +528,11 @@ do
         [ROOM_A] = true,
         [ROOM_B] = true,
     }
+    -- Home set ids are numbers, named home1, home2, ... (top.home_name)
     logic.home_sets = {
-        ids = { "home1" },
+        ids = { 1 },
         sets = {
-            home1 = {
+            [1] = {
                 rooms = {
                     [ROOM_A] = true,
                 },
@@ -539,7 +542,7 @@ do
             },
         },
         of = {
-            [ROOM_B] = "home1",
+            [ROOM_B] = 1,
         },
     }
     local function sorted(graph)
@@ -560,7 +563,7 @@ do
     }), b_input)
     local flat_sort = sorted(flat_graph)
     local after_sort = sorted(after_graph)
-    local isolatable = top.context_key(ROOM_B, "10")
+    local isolatable = top.context_key(ROOM_B, fx.mask("10"))
     local recipe_key = gutils.key("recipe", "test-recipe")
     assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil, "the fixture's recipe is isolatable in room B by the discovery rule")
     assert(after_sort.node_to_context_inds[gutils.key("technology", "test-prereq-tech")][isolatable] ~= nil, "the fixture's prerequisite sends room B's isolatability")
@@ -742,7 +745,7 @@ data.raw.technology["test-discover"] = {
     },
 }
 before = sort()
-local isolatable_b = top.context_key(ROOM_B, "10")
+local isolatable_b = top.context_key(ROOM_B, fx.mask("10"))
 assert(before.node_to_context_inds[gutils.key("recipe", "test-target")][isolatable_b] ~= nil, "the fixture's target recipe is isolatable in room B")
 assert(before.node_to_context_inds[gutils.key("technology", "test-ingredient-tech")][isolatable_b] ~= nil, "the fixture's ingredient tech is isolatable in room B")
 logged = {}

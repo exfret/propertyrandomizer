@@ -13,18 +13,30 @@ package.loaded["lib/logic/init"] = logic
 package.loaded["lib/random/rng"] = {}
 package.loaded["lib/furnace-selection"] = { new_collisions = function() return {} end }
 package.loaded["lib/item-fluid"] = {}
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local C = require("lib/graph/contexts-for-tests").C
 local locked_contexts = {}
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {
     planet_locked_recipe_contexts = function() return locked_contexts end,
     protects_isolatability = function(node) return node.keep_isolatability == true end,
     is_isolatable_context = function(context)
-        return string.find(context, " | 1", 1, true) ~= nil
+        local mask = ctx.mask(context)
+        return mask ~= nil and ctx.has_ability(mask, ctx.ISOLATABILITY)
     end,
+    -- "room | ia" is kept as "room | ?a", which kept parts write as minus one minus "room | 0a" (see protection.kept_part)
     kept_part = function(node, context)
-        if node.keep_isolatability == true then
+        local mask = ctx.mask(context)
+        if node.keep_isolatability == true or mask == nil then
             return context
         end
-        return string.gsub(context, " | [01]", " | ?")
+        return -1 - ctx.with_mask(context, ctx.without_ability(mask, ctx.ISOLATABILITY))
+    end,
+    kept_name = function(kept)
+        if kept >= 0 then
+            return ctx.name(kept)
+        end
+        return (string.gsub(ctx.name(-1 - kept), " | [01]", " | ?"))
     end,
 }
 
@@ -51,9 +63,9 @@ local function fixture(ready)
         local ind = #sorted.sorted + 1
         sorted.sorted[ind] = {
             node_key = node_key,
-            context = "test-room",
+            context = C("test-room"),
         }
-        sorted.node_to_context_inds[node_key] = { ["test-room"] = ind }
+        sorted.node_to_context_inds[node_key] = { [C("test-room")] = ind }
         return node_key
     end
     local start = add("start", "", "AND")
@@ -126,14 +138,14 @@ local function isolation_fixture(kind, protected)
         keep_isolatability = protected,
     })
     local node_key = gutils.key(node)
-    local before = { node_to_context_inds = { [node_key] = { ["test-room | 11"] = 1 } } }
-    local after = { node_to_context_inds = { [node_key] = { ["test-room | 01"] = 1 } } }
+    local before = { node_to_context_inds = { [node_key] = { [C("test-room | 11")] = 1 } } }
+    local after = { node_to_context_inds = { [node_key] = { [C("test-room | 01")] = 1 } } }
     return graph, before, after, node_key
 end
 
 test("an attempt losing a planet-locked recipe's isolatability fails", function()
     local graph, before, after, node_key = isolation_fixture("recipe")
-    locked_contexts = { [node_key] = { ["test-room | 11"] = true } }
+    locked_contexts = { [node_key] = { [C("test-room | 11")] = true } }
     local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
     locked_contexts = {}
     assert(not verdict.ok and verdict.lost == 1)
@@ -155,11 +167,11 @@ end)
 
 test("a promised planet-locked context cannot be excused as only isolatability", function()
     local graph, before, after, node_key = isolation_fixture("recipe")
-    locked_contexts = { [node_key] = { ["test-room | 11"] = true } }
+    locked_contexts = { [node_key] = { [C("test-room | 11")] = true } }
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = node_key,
-            context = "test-room | 11",
+            context = C("test-room | 11"),
             rank = 1,
         },
     }
@@ -174,7 +186,7 @@ test("a promised protected mechanic context cannot be excused as only isolatabil
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = node_key,
-            context = "test-room | 11",
+            context = C("test-room | 11"),
             rank = 1,
         },
     }
@@ -188,7 +200,7 @@ test("missing home backings do not fail when protected room contexts are kept", 
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = node_key,
-            context = "test-room | 00 @ home1",
+            context = C("test-room | 00 @ home1"),
             rank = 1,
         },
     }
@@ -209,12 +221,12 @@ test("trigger promises survive removal of the model's original technology", func
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = original,
-            context = "test-room | 00",
+            context = C("test-room | 00"),
             rank = 1,
         },
     }
     local before = { node_to_context_inds = {} }
-    local after = { node_to_context_inds = { [copied] = { ["test-room | 00"] = 1 } } }
+    local after = { node_to_context_inds = { [copied] = { [C("test-room | 00")] = 1 } } }
     local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
     assert(verdict.ok and verdict.missing == 0)
     after.node_to_context_inds[copied] = nil
@@ -242,13 +254,13 @@ test("every copied trigger owes the promised context", function()
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = original,
-            context = "test-room | 00",
+            context = C("test-room | 00"),
             rank = 1,
         },
     }
     local before = { node_to_context_inds = {} }
     local after = { node_to_context_inds = {} }
-    after.node_to_context_inds[ready] = { ["test-room | 00"] = 1 }
+    after.node_to_context_inds[ready] = { [C("test-room | 00")] = 1 }
     local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
     assert(not verdict.ok and verdict.missing == 1)
     UNIFIED_TRIGGER_TAKERS = nil
@@ -265,7 +277,7 @@ test("an unused trigger has no final carrier to check", function()
     UNIFIED_PROMISED_PEBBLES = {
         {
             node_key = gutils.key("technology-trigger", "test-unused-trigger"),
-            context = "test-room | 00",
+            context = C("test-room | 00"),
             rank = 1,
         },
     }

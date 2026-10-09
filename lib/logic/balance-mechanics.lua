@@ -4,6 +4,7 @@ local lib_name = "lib"
 local categories = require("helper-tables/categories")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
+local ctx = require(lib_name .. "/graph/contexts")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 
@@ -21,10 +22,7 @@ local balance_mechanics = {}
 balance_mechanics.build = function(lu)
     -- Balance nodes shouldn't affect abilities contexts
     -- To accomplish this, we have them add all
-    local balance_abilities = {
-        [1] = true,
-        [2] = true,
-    }
+    local balance_abilities = ctx.GAINS_ALL
 
     set_class("balance-mechanics")
     set_prot(nil)
@@ -44,7 +42,7 @@ balance_mechanics.build = function(lu)
         end
         if valid then
             add_edge("entity-operate", drill.name, {
-                abilities = table.deepcopy(balance_abilities),
+                abilities = balance_abilities,
             })
         end
     end
@@ -64,7 +62,7 @@ balance_mechanics.build = function(lu)
         end
         if valid then
             add_edge("entity-operate", machine.name, {
-                abilities = table.deepcopy(balance_abilities),
+                abilities = balance_abilities,
             })
         end
     end
@@ -76,7 +74,7 @@ balance_mechanics.build = function(lu)
 
     for _, inserter in pairs(data.raw.inserter) do
         add_edge("entity-operate", inserter.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -87,7 +85,7 @@ balance_mechanics.build = function(lu)
 
     for _, belt in pairs(data.raw["transport-belt"]) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -98,7 +96,7 @@ balance_mechanics.build = function(lu)
 
     for _, belt in pairs(data.raw["underground-belt"]) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -109,7 +107,7 @@ balance_mechanics.build = function(lu)
 
     for _, belt in pairs(data.raw.splitter) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -120,7 +118,7 @@ balance_mechanics.build = function(lu)
 
     for _, pipe in pairs(data.raw["pipe"]) do
         add_edge("entity-operate", pipe.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -131,7 +129,7 @@ balance_mechanics.build = function(lu)
 
     for _, pipe in pairs(data.raw["pipe-to-ground"]) do
         add_edge("entity-operate", pipe.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -142,7 +140,7 @@ balance_mechanics.build = function(lu)
 
     for _, container in pairs(data.raw.container) do
         add_edge("entity-operate", container.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -153,7 +151,7 @@ balance_mechanics.build = function(lu)
 
     for _, bot in pairs(data.raw["construction-robot"]) do
         add_edge("entity-operate", bot.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -164,7 +162,7 @@ balance_mechanics.build = function(lu)
 
     for _, roboport in pairs(data.raw.roboport) do
         add_edge("entity-operate", roboport.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -176,7 +174,7 @@ balance_mechanics.build = function(lu)
     for _, chest in pairs(data.raw["logistic-container"]) do
         if chest.logistic_mode == "storage" then
             add_edge("entity-operate", chest.name, {
-                abilities = table.deepcopy(balance_abilities),
+                abilities = balance_abilities,
             })
         end
     end
@@ -188,7 +186,7 @@ balance_mechanics.build = function(lu)
 
     for _, pump in pairs(data.raw.pump) do
         add_edge("entity-operate", pump.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 
@@ -200,7 +198,7 @@ balance_mechanics.build = function(lu)
     for _, pole in pairs(data.raw["electric-pole"]) do
         if pole.name ~= "big-electric-pole" then
             add_edge("entity-operate", pole.name, {
-                abilities = table.deepcopy(balance_abilities),
+                abilities = balance_abilities,
             })
         end
     end
@@ -215,7 +213,7 @@ balance_mechanics.build = function(lu)
 
     for _, ammo in pairs(data.raw.ammo) do
         add_edge("item-ammo", ammo.name, {
-            abilities = table.deepcopy(balance_abilities),
+            abilities = balance_abilities,
         })
     end
 end

@@ -184,7 +184,7 @@ local function burner_needs(with_own_edge)
     })
     local goal_inds = {}
     for context, ind in pairs(sort_info.node_to_context_inds[burner] or {}) do
-        if string.find(context, "B", 1, true) == 1 then
+        if string.find(top.context_name(context), "B", 1, true) == 1 then
             table.insert(goal_inds, ind)
         end
     end

@@ -122,8 +122,8 @@ end
 local function isolatable_rooms(contexts)
     local rooms = {}
     for context, _ in pairs(contexts or {}) do
-        local abilities = top.context_abilities(context)
-        if top.context_home(context) == nil and abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1" then
+        local mask = top.context_mask(context)
+        if top.context_home(context) == nil and mask ~= nil and top.has_ability(mask, top.ISOLATABILITY) then
             rooms[top.context_room(context)] = true
         end
     end

@@ -185,8 +185,8 @@ local function asks_for_nothing(context)
     if top.context_home(context) ~= nil then
         return false
     end
-    local abilities = top.context_abilities(context)
-    return abilities == nil or string.find(abilities, "1", 1, true) == nil
+    local mask = top.context_mask(context)
+    return mask == nil or mask == top.NO_ABILITIES
 end
 
 -- Where each node is needed, in a sort of the game before randomization: the contexts it has on the witnesses (earliest-provider paths, top.path) of what the rest of randomization keeps
@@ -309,14 +309,14 @@ tech_triggers.choose_up_front = function(params)
         local equivalents = { context }
         local cache_key
         if any_room_does(context) then
-            local abilities = top.context_abilities(context)
-            cache_key = base_key .. "|" .. (abilities or "")
+            local mask = top.context_mask(context)
+            cache_key = base_key .. "|" .. (mask or "")
             if anywhere_cache[cache_key] ~= nil then
                 return anywhere_cache[cache_key]
             end
             equivalents = {}
             for _, room in pairs(rooms) do
-                table.insert(equivalents, abilities == nil and room or top.context_key(room, abilities))
+                table.insert(equivalents, mask == nil and top.simple_context(room) or top.context_key(room, mask))
             end
         end
         local gives = false
@@ -353,10 +353,11 @@ tech_triggers.choose_up_front = function(params)
         local head_contexts = needed[head_key] or {}
         local anchor
         local anchor_room
-        for room, ind in pairs(in_order[head.old_base] or {}) do
+        -- The deferring sorts have plain room contexts (simple contexts, lib/graph/contexts.lua), each standing for its room
+        for context, ind in pairs(in_order[head.old_base] or {}) do
             if anchor == nil or ind < anchor then
                 anchor = ind
-                anchor_room = room
+                anchor_room = top.context_room(context)
             end
         end
         -- Planets where the technology is needed isolatably, whose own new things the new trigger favors; a technology needed nowhere isolatably favors its old trigger's planet
@@ -401,14 +402,15 @@ tech_triggers.choose_up_front = function(params)
                     if #isolatable_rooms > 0 then
                         reaches_first = true
                         for _, room in pairs(isolatable_rooms) do
-                            if before_entry[room] == nil or before_entry[room] >= entry[head_key] then
+                            local room_ind = before_entry[top.simple_context(room)]
+                            if room_ind == nil or room_ind >= entry[head_key] then
                                 reaches_first = false
                                 break
                             end
                         end
                     else
-                        for room, room_ind in pairs(before_entry) do
-                            if room_ind < entry[head_key] and (any_entry_room or entry_rooms[room] ~= nil) then
+                        for context, room_ind in pairs(before_entry) do
+                            if room_ind < entry[head_key] and (any_entry_room or entry_rooms[top.context_room(context)] ~= nil) then
                                 reaches_first = true
                                 break
                             end
@@ -427,10 +429,10 @@ tech_triggers.choose_up_front = function(params)
                         -- When the option first became doable anywhere, since what's newly available is what nothing could do before, not what just became doable on the planet (on a new planet everything brought along does at once)
                         local index
                         local first_room
-                        for room, ind in pairs(in_order[base_key] or {}) do
+                        for context, ind in pairs(in_order[base_key] or {}) do
                             if index == nil or ind < index then
                                 index = ind
-                                first_room = room
+                                first_room = top.context_room(context)
                             end
                         end
                         if index ~= nil then
@@ -608,10 +610,10 @@ tech_triggers.custom_prereq_search = function(params)
     -- A connection only changes the abilities it names (edge.abilities, see context-sort.lua), and a technology's names only automatability (tech_abilities in lib/logic/concrete.lua), so they're the pebbles in the same room with the same isolatability unless the connection names that too; a home context goes through unchanged, and a simple context is its room
     local earliest_ranks = {}
     local function earliest_source(node_key, context, keeps_isolatability)
-        local abilities = top.context_abilities(context)
+        local mask = top.context_mask(context)
         local group = context
-        if top.context_home(context) == nil and abilities ~= nil then
-            group = top.context_room(context) .. "|" .. (keeps_isolatability and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) or "any")
+        if top.context_home(context) == nil and mask ~= nil then
+            group = top.context_room(context) .. "|" .. (keeps_isolatability and (top.has_ability(mask, top.ISOLATABILITY) and "1" or "0") or "any")
         end
         earliest_ranks[node_key] = earliest_ranks[node_key] or {}
         local by_group = earliest_ranks[node_key]
@@ -620,9 +622,9 @@ tech_triggers.custom_prereq_search = function(params)
             if group == context then
                 earliest = prom.rank(node_key, context) or false
             else
-                for _, ability_str in pairs(top.ability_strs) do
-                    if not keeps_isolatability or string.sub(ability_str, top.ISOLATABILITY, top.ISOLATABILITY) == string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) then
-                        local rank = prom.rank(node_key, top.context_key(top.context_room(context), ability_str))
+                for _, other_mask in pairs(top.ability_masks) do
+                    if not keeps_isolatability or top.has_ability(other_mask, top.ISOLATABILITY) == top.has_ability(mask, top.ISOLATABILITY) then
+                        local rank = prom.rank(node_key, top.context_key(top.context_room(context), other_mask))
                         if rank ~= nil and (earliest == false or rank < earliest) then
                             earliest = rank
                         end
@@ -635,8 +637,7 @@ tech_triggers.custom_prereq_search = function(params)
     end
     -- Whether a base could back the head's pebble in each context: it has a pebble that could get the context to the head before the head's, which re-establishing the head needs (promotion's base_backing), so a base without one isn't tried
     local function could_back(base_key, head_key, contexts)
-        local abilities = graph.nodes[head_key].abilities
-        local keeps_isolatability = abilities == nil or abilities[top.ISOLATABILITY] == nil
+        local keeps_isolatability = not top.edge_changes(graph.nodes[head_key].abilities, top.ISOLATABILITY)
         for _, context in pairs(contexts) do
             local head_rank = prom.rank(head_key, context)
             local earliest = earliest_source(base_key, context, keeps_isolatability)

@@ -64,6 +64,8 @@ package.loaded["lib/data-utils"] = {
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local staged = require("lib/graph/staged-sort")
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 
 local key = gutils.key
 local ekey = function(start, stop)
@@ -80,6 +82,7 @@ local function test(name, fn)
     print("ok - " .. name)
 end
 
+-- Room keys; contexts are numbers (lib/graph/contexts.lua), which the tests write as their names, so C(ROCK) is the rock planet's simple context (lib/graph/contexts-for-tests.lua)
 local HOME = "planet: home"
 local ROCK = "planet: rock"
 
@@ -130,8 +133,9 @@ local function toy_graph()
     return graph, nodes
 end
 
+-- The rank of a node's pebble in a room's simple context
 local function goal_ind(result, node_key, room)
-    return result.sort_info.node_to_context_inds[node_key][room]
+    return result.sort_info.node_to_context_inds[node_key][C(room)]
 end
 
 local function run_seeds(fn)
@@ -182,7 +186,7 @@ test("a relaxed slot brings the goal back in its stage, and the witness uses onl
         assert(result.stage_of(ind) == "root")
         local used = result.gates_on_witness({ ind })
         assert(used[lava_slot] ~= nil and used[lava_slot].kind == "relax" and used[lava_slot].stage == "root")
-        assert(used[lava_slot].contexts[ROCK])
+        assert(used[lava_slot].contexts[C(ROCK)])
         local num_used = 0
         for _, _ in pairs(used) do
             num_used = num_used + 1
@@ -304,7 +308,8 @@ local function random_abilities(complex)
     if choice == false then
         return nil
     end
-    return choice
+    -- Written as the logic builders used to write edge abilities; edges have them as a code (lib/graph/contexts.lua)
+    return fx.edge(choice)
 end
 
 -- A random layered graph: rooms reached from the start, then AND/OR nodes over earlier ones (some forgetters)
@@ -360,13 +365,13 @@ local function random_graph(complex)
     return graph, inner
 end
 
--- Every pebble, as one sorted string, to compare reach regardless of order (the gated graph's own connectors left out)
+-- Every pebble, as one sorted string with the contexts' names, to compare reach regardless of order (the gated graph's own connectors left out)
 local function reach_of(sort_info)
     local pebbles = {}
     for node_key, inds in pairs(sort_info.node_to_context_inds) do
         if string.find(node_key, "staged-", 1, true) == nil then
             for context, _ in pairs(inds) do
-                table.insert(pebbles, node_key .. " @@ " .. context)
+                table.insert(pebbles, node_key .. " @@ " .. fx.N(context))
             end
         end
     end

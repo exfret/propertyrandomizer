@@ -29,8 +29,11 @@ local categories = require("helper-tables/categories")
 local lutils = require("lib/logic/logic-utils")
 local fuel_lookups = require("lib/lookup/2-simple/fuel")
 local top = require("lib/graph/context-sort")
+local fx = require("lib/graph/contexts-for-tests")
 local key = gutils.key
 local mechanic_key = key("chemical-fuel", "")
+-- The sorts here have simple contexts, so a reached pebble is in the home room's simple context (a number, lib/graph/contexts.lua)
+local HOME = fx.C("home")
 
 -- Derive the burner combinations through the production lookup, using an entity type that supports an energy source.
 local entity_type, energy_properties = next(categories.energy_sources_input)
@@ -89,7 +92,7 @@ local function fixture(has_category)
 end
 
 local function reached(sorted, node_key)
-    return (sorted.node_to_context_inds[node_key] or {}).home ~= nil
+    return (sorted.node_to_context_inds[node_key] or {})[HOME] ~= nil
 end
 
 local graph, position, original, replacement = fixture(true)

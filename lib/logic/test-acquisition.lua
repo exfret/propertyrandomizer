@@ -14,6 +14,9 @@ table.deepcopy = function(object)
 end
 
 local acquisition = require("lib/logic/acquisition")
+-- Edge abilities are codes (lib/graph/contexts.lua); fixtures write them as the logic builders used to, like { [1] = true } (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local fx = require("lib/graph/contexts-for-tests")
 
 local num_passed = 0
 local function test(name, fn)
@@ -170,12 +173,27 @@ test("unknown costs fail the balance checks, since loot and salvage can't be bal
     assert(not acquisition.worth_salvaging(nil, nil))
 end)
 
--- A base or head as gutils.subdivide_base_head leaves it: carrying its edge's acq_kind and abilities
+-- A base or head as gutils.subdivide_base_head leaves it: carrying its edge's acq_kind and abilities (an edge ability code, or nil for none)
 local function slot_node(kind, abilities)
     return {
         acq_kind = kind,
         abilities = abilities,
     }
+end
+
+-- What edge abilities (a code, or nil for none) do with one ability, as the old ability tables said: true gained, false lost, nil unchanged
+-- A code can't both gain and lose an ability the way the old tables couldn't, so that reads as neither true, false nor nil
+local function ability_change(abilities, ability)
+    local gains = ctx.edge_gains_ability(abilities, ability)
+    local loses = ctx.edge_loses_ability(abilities, ability)
+    if gains == true and loses == true then
+        return "gained and lost"
+    elseif gains == true then
+        return true
+    elseif loses == true then
+        return false
+    end
+    return nil
 end
 
 test("an item slot for a built entity connects with the slot's own abilities", function()
@@ -184,21 +202,21 @@ test("an item slot for a built entity connects with the slot's own abilities", f
 end)
 
 test("an entity slot for an entity that isn't built keeps the slot's abilities", function()
-    local pairing = acquisition.pairing(slot_node("autoplace", {
+    local pairing = acquisition.pairing(slot_node("autoplace", fx.edge({
         [1] = true,
-    }), slot_node("spawn"))
-    assert(pairing.abilities[1] == true and pairing.abilities[2] == nil)
+    })), slot_node("spawn"))
+    assert(ability_change(pairing.abilities, 1) == true and ability_change(pairing.abilities, 2) == nil)
 end)
 
 test("an entity slot for a built entity can't be automated, since its item is salvaged or looted", function()
-    local autoplace = slot_node("autoplace", {
+    local autoplace = slot_node("autoplace", fx.edge({
         [1] = true,
-    })
+    }))
     local pairing = acquisition.pairing(autoplace, slot_node("build"))
-    assert(pairing.abilities[1] == true and pairing.abilities[2] == false)
+    assert(ability_change(pairing.abilities, 1) == true and ability_change(pairing.abilities, 2) == false)
     -- The slot's own abilities aren't changed
-    assert(autoplace.abilities[2] == nil)
-    assert(acquisition.pairing(slot_node("spawn"), slot_node("build")).abilities[2] == false)
+    assert(ability_change(autoplace.abilities, 2) == nil)
+    assert(ability_change(acquisition.pairing(slot_node("spawn"), slot_node("build")).abilities, 2) == false)
 end)
 
 test("an item slot for an entity that isn't built isn't supported yet", function()
@@ -216,16 +234,16 @@ test("an entity that has to be ours only comes from a slot that makes it ours", 
     assert(acquisition.pairing(ours_node("capsule"), ours_node("capture")) ~= nil)
     assert(acquisition.pairing(ours_node("capture"), ours_node("ammo")) ~= nil)
     -- Found in the wild or spawned by enemies isn't ours
-    assert(acquisition.pairing(slot_node("autoplace", {
+    assert(acquisition.pairing(slot_node("autoplace", fx.edge({
         [1] = true,
-    }), ours_node("capsule")) == nil)
+    })), ours_node("capsule")) == nil)
     assert(acquisition.pairing(slot_node("spawn"), ours_node("capture")) == nil)
     assert(acquisition.pairing(slot_node("build"), ours_node("capsule")) == nil)
 end)
 
 test("a slot making an entity ours also makes it show up, and a built entity from it is mined for its item", function()
     assert(acquisition.pairing(ours_node("capsule"), slot_node("autoplace")).abilities == nil)
-    assert(acquisition.pairing(ours_node("capture"), slot_node("build")).abilities[2] == false)
+    assert(ability_change(acquisition.pairing(ours_node("capture"), slot_node("build")).abilities, 2) == false)
 end)
 
 test("a built entity in a spawn or spoil slot is carried by the unit, so getting its item takes killing it", function()
@@ -236,9 +254,9 @@ test("a built entity in a spawn or spoil slot is carried by the unit, so getting
     assert(acquisition.pairing(slot_node("spoil"), slot_node("spoil")).needs_kill == nil)
     -- A dying slot is already a kill, and salvage, wrecks and what a trigger makes are mined
     assert(acquisition.pairing(slot_node("dying"), slot_node("build")).needs_kill == nil)
-    assert(acquisition.pairing(slot_node("autoplace", {
+    assert(acquisition.pairing(slot_node("autoplace", fx.edge({
         [1] = true,
-    }), slot_node("build")).needs_kill == nil)
+    })), slot_node("build")).needs_kill == nil)
     assert(acquisition.pairing(ours_node("capsule"), slot_node("build")).needs_kill == nil)
     assert(acquisition.pairing(slot_node("build"), slot_node("build")).needs_kill == nil)
 end)

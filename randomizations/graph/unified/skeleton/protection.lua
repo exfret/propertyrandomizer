@@ -12,8 +12,8 @@ local surface_sets = require("lib/surface-sets")
 local protection = {}
 
 protection.is_isolatable_context = function(context)
-    local abilities = top.context_abilities(context)
-    return abilities ~= nil and string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) == "1"
+    local mask = top.context_mask(context)
+    return mask ~= nil and top.has_ability(mask, top.ISOLATABILITY)
 end
 
 -- Whether the node must keep its isolatable contexts
@@ -32,33 +32,35 @@ protection.is_hard_mechanic_pebble = function(node, context)
 end
 
 -- The part of a context that must be kept for the node: "room | ia" becomes "room | ?a" when the node's isolatability isn't protected, and a home context keeps what the context it rides on keeps
+-- Kept parts are numbers: a context, or for "room | ?a" minus one minus the context with isolatability cleared, so it's never a context (protection.kept_name writes them)
 protection.kept_part = function(node, context)
     context = top.context_without_home(context)
-    local abilities = top.context_abilities(context)
-    if abilities == nil or protection.protects_isolatability(node) then
+    local mask = top.context_mask(context)
+    if mask == nil or protection.protects_isolatability(node) then
         return context
     end
-    local kept = top.context_room(context) .. " | "
-    for i = 1, #abilities do
-        if i == top.ISOLATABILITY then
-            kept = kept .. "?"
-        else
-            kept = kept .. string.sub(abilities, i, i)
-        end
+    return -1 - top.context_key(top.context_room(context), top.without_ability(mask, top.ISOLATABILITY))
+end
+
+-- Kept part --> how it's written in logs, like "planet: nauvis | ?1" (filled once per kept part)
+local kept_names = {}
+protection.kept_name = function(kept)
+    if kept >= 0 then
+        return top.context_name(kept)
     end
-    return kept
+    local name = kept_names[kept]
+    if name == nil then
+        local context = -1 - kept
+        local mask_name = top.mask_name(top.context_mask(context))
+        name = top.context_room(context) .. " | " .. string.sub(mask_name, 1, top.ISOLATABILITY - 1) .. "?" .. string.sub(mask_name, top.ISOLATABILITY + 1)
+        kept_names[kept] = name
+    end
+    return name
 end
 
 -- Whether context asks for every ability other asks for (both complex contexts of one room), like "room | 11" for "room | 10"
 local function asks_for_no_more(other, context)
-    local other_abilities = top.context_abilities(other)
-    local abilities = top.context_abilities(context)
-    for i = 1, #other_abilities do
-        if string.sub(other_abilities, i, i) == "1" and string.sub(abilities, i, i) ~= "1" then
-            return false
-        end
-    end
-    return true
+    return top.mask_covers(top.context_mask(context), top.context_mask(other))
 end
 
 -- Recipe contexts a planetary change carried over to where they must be kept now, as node key --> context --> true
@@ -162,13 +164,13 @@ end
 -- The context with the same abilities but isolatability, in room (default: the context's own room), like "room | 11" --> "room | 01"
 -- Anything reachable isolatably is also reachable without isolatability, so this pebble exists whenever the original does (in the same room)
 protection.without_isolatability = function(context, room)
-    local abilities = top.context_abilities(context)
+    local mask = top.context_mask(context)
     room = room or top.context_room(context)
-    -- A simple context is just its room
-    if abilities == nil then
-        return room
+    -- A simple context stands for its room
+    if mask == nil then
+        return top.simple_context(room)
     end
-    return top.context_key(room, string.sub(abilities, 1, top.ISOLATABILITY - 1) .. "0" .. string.sub(abilities, top.ISOLATABILITY + 1))
+    return top.context_key(room, top.without_ability(mask, top.ISOLATABILITY))
 end
 
 return protection

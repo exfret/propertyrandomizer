@@ -8,6 +8,7 @@ local constants = require("helper-tables/constants")
 local categories = require("helper-tables/categories")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
+local ctx = require(lib_name .. "/graph/contexts")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 
@@ -284,7 +285,7 @@ function abstract.build(lu, extra_params)
         if room.type == "planet" and data.raw.planet[room.name].lightning_properties ~= nil then
             -- Technically we should also check if at least one of the lightnings carries energy, but who makes lightning that doesn't give energy?
             add_edge("room", room_key, {
-                abilities = { [1] = true },
+                abilities = ctx.GAINS_ISOLATABILITY,
             })
         end
     end
@@ -327,10 +328,7 @@ function abstract.build(lu, extra_params)
     for _, attractor in pairs(prots("lightning-attractor")) do
         if lu.buildables[key(attractor)] ~= nil then
             add_edge("entity-build", attractor.name, {
-                abilities = {
-                    [1] = true,
-                    [2] = true,
-                },
+                abilities = ctx.GAINS_ALL,
             })
         end
     end
@@ -568,7 +566,7 @@ function abstract.build(lu, extra_params)
 
         add_edge("room", room_key)
         add_edge("energy-source-heat", "", {
-            abilities = { [2] = true },
+            abilities = ctx.GAINS_AUTOMATABILITY,
         })
     end
 
@@ -709,11 +707,11 @@ function abstract.build(lu, extra_params)
     -- Space surfaces can deliver anywhere, planets can deliver anywhere if their rocket silo was unlocked
 
     add_edge("launch", "", {
-        abilities = { [1] = false }, -- Make sure deliverability doesn't carry isolatability with it
+        abilities = ctx.LOSES_ISOLATABILITY, -- Make sure deliverability doesn't carry isolatability with it
         amount = 1,
     })
     add_edge("space-surface", "", {
-        abilities = { [1] = false },
+        abilities = ctx.LOSES_ISOLATABILITY,
     })
 
     ----------------------------------------------------------------------

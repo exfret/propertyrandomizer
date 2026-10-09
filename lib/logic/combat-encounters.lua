@@ -7,6 +7,7 @@ local encounters = require("lib/combat-encounters")
 local asteroids = require("lib/combat-asteroids")
 local counters = require("lib/logic/combat-counters")
 local gutils = require("lib/graph/graph-utils")
+local ctx = require("lib/graph/contexts")
 local builder = require("lib/logic/builder")
 local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
@@ -153,7 +154,7 @@ combat.build_definitions = function(graph, definitions, options)
                         end
                         local edge_extra = {}
                         if counter.mode == "manual" then
-                            edge_extra.abilities = { [2] = false }
+                            edge_extra.abilities = ctx.LOSES_AUTOMATABILITY
                         end
                         -- Automatic counters only preserve their inputs' abilities; nothing here grants automatic production or operation.
                         gutils.add_edge(graph, key("combat-encounter-counter", name), counters_key, edge_extra)

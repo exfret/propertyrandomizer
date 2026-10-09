@@ -12,14 +12,19 @@ local graph_cost = {
     RAW_COST_SCALE = core.RAW_COST_SCALE,
 }
 
--- Prices for the contexts and context rules of a sort made by top.sort (lib/graph/context-sort.lua)
+-- Prices for the contexts and context rules of a sort made by top.sort (lib/graph/context-sort.lua) without complex or home contexts
+-- Prices are per room, so each room stands for its simple context in the sort (lib/graph/contexts.lua)
 graph_cost.compute_for_sort = function(graph, sort_info, excluded, slot)
     local contexts = {}
     for context, _ in pairs(logic.contexts) do
         table.insert(contexts, context)
     end
     return graph_cost.compute(graph, contexts, function(node, incoming)
-        return top.node_transmit(sort_info, node, incoming)
+        local outgoing = {}
+        for _, context in pairs(top.node_transmit(sort_info, node, top.simple_context(incoming))) do
+            table.insert(outgoing, top.context_room(context))
+        end
+        return outgoing
     end, excluded, slot)
 end
 
@@ -46,10 +51,10 @@ graph_cost.starting_resources = function(graph, sort_info, starting_context)
     return ids
 end
 
--- Whether a complex context (a room with ability string, see lib/graph/context-sort.lua) has automatability
+-- Whether a complex context (a room with an ability mask, see lib/graph/contexts.lua) has automatability
 local function context_automatable(context)
-    local abilities = top.context_abilities(context)
-    return abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1"
+    local mask = top.context_mask(context)
+    return mask ~= nil and top.has_ability(mask, top.AUTOMATABILITY)
 end
 
 -- What a sort with complex contexts reaches automatably in each room: room --> material id ("type-name") --> true, for the item and fluid nodes of graph

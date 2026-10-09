@@ -112,14 +112,14 @@ package.loaded["lib/data-utils"] = {
         return data.raw.item[name]
     end,
 }
--- Contexts are "room | abilities", as in lib/graph/context-sort.lua
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local C = require("lib/graph/contexts-for-tests").C
 package.loaded["lib/graph/context-sort"] = {
-    context_room = function(context)
-        return string.match(context, "^(.-) | ") or context
-    end,
-    context_abilities = function(context)
-        return string.match(context, " | (.*)$")
-    end,
+    ISOLATABILITY = ctx.ISOLATABILITY,
+    context_room = ctx.room,
+    context_mask = ctx.mask,
+    has_ability = ctx.has_ability,
 }
 package.loaded["randomizations/planetary/check"] = {}
 -- Locks as the scaffolds use them: fix replaces a target's rooms, unfix forgets them
@@ -185,8 +185,8 @@ local before = {
     sort_info = {
         node_to_context_inds = {
             ["recipe: molten-ore"] = {
-                ["planet: ember | 11"] = 1,
-                ["planet: ember-exfret-2-copy | 11"] = 2,
+                [C("planet: ember | 11")] = 1,
+                [C("planet: ember-exfret-2-copy | 11")] = 2,
             },
         },
     },

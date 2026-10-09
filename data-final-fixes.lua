@@ -3,6 +3,7 @@ DO_FRODO_FIXES = false
 local constants = require("helper-tables/constants")
 local natural_lightning = require("lib/natural-lightning-attractors")
 local claim_tool = require("lib/claim-tool")
+local ctx = require("lib/graph/contexts")
 
 -- Global information for control stage and other uses for communicating between processes
 -- TODO: Reorganize globals?
@@ -113,6 +114,15 @@ local function smuggle_info()
     })
 
     new_logic.build()
+    -- Context numbers, so the control stage's are the same (lib/graph/contexts.lua)
+    ctx.number_rooms(new_logic.contexts)
+    data:extend({
+        {
+            type = "mod-data",
+            name = "propertyrandomizer-contexts",
+            data = ctx.export_rooms(),
+        },
+    })
 
     local warnings_selection_tool = table.deepcopy(data.raw.blueprint.blueprint)
     warnings_selection_tool.type = "selection-tool"

@@ -1,7 +1,11 @@
 -- Plain-Lua tests for making items shippable where planet goals need it (randomizations/planetary/transport.lua), not loaded by the mod
 -- Run from the mod root: lua randomizations/planetary/test-transport.lua
 
--- Stand-ins for what transport.lua loads: contexts are written "room | abilities" (isolatability, then automatability) and home contexts end in " @ home id", as in lib/graph/context-sort.lua
+-- Stand-ins for what transport.lua loads, with the real context helpers: contexts are numbers (lib/graph/contexts.lua)
+-- The tests write contexts as their names, "room | abilities" (isolatability, then automatability), with home contexts ending in " @ home" and their home set's number (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 local TRIP_TICKS = 1000
 package.loaded["helper-tables/constants"] = {
     spoil_trip_ticks = TRIP_TICKS,
@@ -21,17 +25,12 @@ package.loaded["lib/graph/graph-utils"] = {
     end,
 }
 package.loaded["lib/graph/context-sort"] = {
-    ISOLATABILITY = 1,
-    AUTOMATABILITY = 2,
-    context_room = function(context)
-        return string.match(context, "^(.-) | ")
-    end,
-    context_abilities = function(context)
-        return string.match(context, " | (%d%d)")
-    end,
-    context_home = function(context)
-        return string.match(context, " @ (.*)$")
-    end,
+    ISOLATABILITY = ctx.ISOLATABILITY,
+    AUTOMATABILITY = ctx.AUTOMATABILITY,
+    context_room = ctx.room,
+    context_mask = ctx.mask,
+    has_ability = ctx.has_ability,
+    context_home = ctx.home_of,
 }
 
 local transport = require("randomizations/planetary/transport")
@@ -77,7 +76,7 @@ local function toy()
         }
         local set = {}
         for _, context in pairs(node_contexts) do
-            set[context] = true
+            set[C(context)] = true
         end
         contexts[key] = set
     end
@@ -146,7 +145,7 @@ test("only the unshippable items a lost goal needs from another planet are block
             keys = {
                 "recipe: belt",
             },
-            context = COLD .. " | 01",
+            context = C(COLD .. " | 01"),
         },
     }, is_unshippable)
     -- The heavy plate and the fruit behind the part; not the ore behind the plate (shipping the plate is enough), the goo (made on the cold planet too) or the scarce item (automatable nowhere)
@@ -160,7 +159,7 @@ test("a goal that needs isolatability can't be helped by shipping", function()
             keys = {
                 "recipe: belt",
             },
-            context = COLD .. " | 11",
+            context = C(COLD .. " | 11"),
         },
     }, is_unshippable)
     assert(#blockers == 0)

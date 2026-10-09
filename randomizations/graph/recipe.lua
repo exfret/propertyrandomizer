@@ -60,9 +60,9 @@ local function earliest_ind(sort_info, node_key, room, only_automatable)
         return nil
     end
     local best
-    for _, ability_str in pairs(context_sort.ability_strs) do
-        if not only_automatable or string.sub(ability_str, context_sort.AUTOMATABILITY, context_sort.AUTOMATABILITY) == "1" then
-            local ind = context_inds[context_sort.context_key(room, ability_str)]
+    for _, mask in pairs(context_sort.ability_masks) do
+        if not only_automatable or context_sort.has_ability(mask, context_sort.AUTOMATABILITY) then
+            local ind = context_inds[context_sort.context_key(room, mask)]
             if ind ~= nil and (best == nil or ind < best) then
                 best = ind
             end
@@ -438,8 +438,8 @@ randomizations.recipe_ingredients = function(id)
                 if context_inds == nil then
                     return false
                 end
-                for _, ability_str in pairs(context_sort.ability_strs) do
-                    if string.sub(ability_str, context_sort.ISOLATABILITY, context_sort.ISOLATABILITY) == "1" and context_inds[context_sort.context_key(context, ability_str)] ~= nil then
+                for _, mask in pairs(context_sort.ability_masks) do
+                    if context_sort.has_ability(mask, context_sort.ISOLATABILITY) and context_inds[context_sort.context_key(context, mask)] ~= nil then
                         return true
                     end
                 end

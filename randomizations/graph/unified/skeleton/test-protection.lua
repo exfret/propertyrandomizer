@@ -5,25 +5,26 @@
 -- Stand-ins for the Factorio environment and the context sort
 local constants = { keep_isolatability = false }
 package.loaded["helper-tables/constants"] = constants
+-- Contexts are numbers (lib/graph/contexts.lua), so the stand-in sort uses the real context helpers
+-- The tests write contexts as their names, like "nauvis | 11", and home contexts like "nauvis | 00 @ home1" (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
+local N = fx.N
 package.loaded["lib/graph/context-sort"] = {
-    ISOLATABILITY = 1,
-    AUTOMATABILITY = 2,
-    context_abilities = function(context)
-        return string.match(context, " | (.*)$")
-    end,
-    context_room = function(context)
-        return string.match(context, "^(.-) | ") or context
-    end,
-    -- Home contexts are written like "nauvis | 00 @ home1"
-    context_home = function(context)
-        return string.match(context, " @ (.*)$")
-    end,
-    context_without_home = function(context)
-        return string.match(context, "^(.-) @ ") or context
-    end,
-    context_key = function(room, ability_str)
-        return room .. " | " .. ability_str
-    end,
+    ISOLATABILITY = ctx.ISOLATABILITY,
+    AUTOMATABILITY = ctx.AUTOMATABILITY,
+    has_ability = ctx.has_ability,
+    without_ability = ctx.without_ability,
+    mask_covers = ctx.mask_covers,
+    mask_name = ctx.mask_name,
+    context_mask = ctx.mask,
+    context_room = ctx.room,
+    context_home = ctx.home_of,
+    context_without_home = ctx.without_home,
+    context_key = ctx.complex,
+    simple_context = ctx.simple,
+    context_name = ctx.name,
 }
 data = {
     raw = {
@@ -157,25 +158,25 @@ test("the protected set is exactly the flagged nodes", function()
     for _, node in pairs(nodes) do
         local flagged = node.keep_isolatability == true
         assert(protection.protects_isolatability(node) == flagged, node.type .. ": " .. node.name)
-        assert(protection.is_hard_mechanic_pebble(node, "nauvis | 11") == flagged, node.type .. ": " .. node.name)
+        assert(protection.is_hard_mechanic_pebble(node, C("nauvis | 11")) == flagged, node.type .. ": " .. node.name)
         -- Non-isolatable contexts are always kept
-        assert(protection.is_hard_mechanic_pebble(node, "nauvis | 01"))
-        assert(protection.kept_part(node, "nauvis | 11") == (flagged and "nauvis | 11" or "nauvis | ?1"))
+        assert(protection.is_hard_mechanic_pebble(node, C("nauvis | 01")))
+        assert(protection.kept_name(protection.kept_part(node, C("nauvis | 11"))) == (flagged and "nauvis | 11" or "nauvis | ?1"))
     end
 end)
 
 test("the global switch protects everything", function()
     constants.keep_isolatability = true
     assert(protection.protects_isolatability(make_node("balance-starter-ammo", "", nil)))
-    assert(protection.kept_part(make_node("item", "fake-science-pack", nil), "nauvis | 11") == "nauvis | 11")
+    assert(protection.kept_name(protection.kept_part(make_node("item", "fake-science-pack", nil), C("nauvis | 11"))) == "nauvis | 11")
     constants.keep_isolatability = false
 end)
 
 test("home contexts aren't mechanic contexts of their own, even on protected nodes", function()
     for _, is_flagged in pairs({ true, false }) do
         local node = make_node("item", "automation-science-pack", is_flagged)
-        assert(not protection.is_hard_mechanic_pebble(node, "nauvis | 00 @ home1"))
-        assert(protection.kept_part(node, "nauvis | 00 @ home1") == protection.kept_part(node, "nauvis | 00"))
+        assert(not protection.is_hard_mechanic_pebble(node, C("nauvis | 00 @ home1")))
+        assert(protection.kept_part(node, C("nauvis | 00 @ home1")) == protection.kept_part(node, C("nauvis | 00")))
     end
 end)
 
@@ -213,7 +214,7 @@ test("a recipe locked to one planet by surface conditions keeps every context it
         }
         nci[node_key] = {}
         for i, context in pairs(contexts) do
-            nci[node_key][context] = i
+            nci[node_key][C(context)] = i
         end
     end
     add_node("recipe", "locked", {
@@ -241,8 +242,8 @@ test("a recipe locked to one planet by surface conditions keeps every context it
     local locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = nci,
     })
-    assert(locked["recipe: locked"]["planet: rock | 00"] and locked["recipe: locked"]["planet: rock | 11"])
-    assert(locked["recipe: locked"]["planet: rock | 00 @ home1"] == nil, "home contexts aren't kept for their own sake")
+    assert(locked["recipe: locked"][C("planet: rock | 00")] and locked["recipe: locked"][C("planet: rock | 11")])
+    assert(locked["recipe: locked"][C("planet: rock | 00 @ home1")] == nil, "home contexts aren't kept for their own sake")
     for node_key, _ in pairs(locked) do
         assert(node_key == "recipe: locked", node_key .. " isn't locked")
     end
@@ -265,23 +266,23 @@ test("recipe contexts a planetary change carried over are kept too, but only whe
     }
     local nci = {
         ["recipe: moved"] = {
-            ["planet: rock | 01"] = 1,
-            ["planet: sand | 01"] = 2,
+            [C("planet: rock | 01")] = 1,
+            [C("planet: sand | 01")] = 2,
         },
     }
     protection.transported_recipe_contexts = {
         ["recipe: moved"] = {
-            ["planet: sand | 01"] = true,
-            ["planet: ice | 01"] = true,
+            [C("planet: sand | 01")] = true,
+            [C("planet: ice | 01")] = true,
         },
     }
     local locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = nci,
     })
     protection.transported_recipe_contexts = {}
-    assert(locked["recipe: moved"]["planet: sand | 01"], "a carried-over context the sort has isn't kept")
-    assert(locked["recipe: moved"]["planet: ice | 01"] == nil, "a carried-over context the sort doesn't have is kept")
-    assert(locked["recipe: moved"]["planet: rock | 01"] == nil, "a recipe on two planets without surface conditions is locked")
+    assert(locked["recipe: moved"][C("planet: sand | 01")], "a carried-over context the sort has isn't kept")
+    assert(locked["recipe: moved"][C("planet: ice | 01")] == nil, "a carried-over context the sort doesn't have is kept")
+    assert(locked["recipe: moved"][C("planet: rock | 01")] == nil, "a recipe on two planets without surface conditions is locked")
     data.raw.recipe = nil
 end)
 
@@ -319,27 +320,27 @@ test("what justifies a bootstrap grant the graph keeps is kept: heat isolatable 
     edge("pair", room, bootstrap_rooms)
     local nci = {
         [heat] = {
-            ["planet: ice | 11"] = 1,
-            ["planet: ice | 10"] = 2,
-            ["planet: rock | 11"] = 3,
-            ["planet: ice | 11 @ home1"] = 4,
+            [C("planet: ice | 11")] = 1,
+            [C("planet: ice | 10")] = 2,
+            [C("planet: rock | 11")] = 3,
+            [C("planet: ice | 11 @ home1")] = 4,
         },
         [item] = {
-            ["planet: ice | 10"] = 5,
-            ["planet: ice | 01"] = 6,
-            ["planet: rock | 11"] = 7,
+            [C("planet: ice | 10")] = 5,
+            [C("planet: ice | 01")] = 6,
+            [C("planet: rock | 11")] = 7,
         },
     }
     local locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = nci,
     })
-    assert(locked[heat]["planet: ice | 11"], "heat keeping itself going in the warmed room isn't kept")
-    assert(locked[heat]["planet: ice | 10"] == nil, "heat that's only hand-fed doesn't justify warmth")
-    assert(locked[heat]["planet: rock | 11"] == nil, "only the warmed room's heat justifies its grant")
-    assert(locked[heat]["planet: ice | 11 @ home1"] == nil, "home contexts aren't kept for their own sake")
-    assert(locked[item]["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept")
-    assert(locked[item]["planet: ice | 01"] == nil, "an item that isn't isolatable doesn't justify a pair")
-    assert(locked[item]["planet: rock | 11"] == nil, "only the pair's room justifies it")
+    assert(locked[heat][C("planet: ice | 11")], "heat keeping itself going in the warmed room isn't kept")
+    assert(locked[heat][C("planet: ice | 10")] == nil, "heat that's only hand-fed doesn't justify warmth")
+    assert(locked[heat][C("planet: rock | 11")] == nil, "only the warmed room's heat justifies its grant")
+    assert(locked[heat][C("planet: ice | 11 @ home1")] == nil, "home contexts aren't kept for their own sake")
+    assert(locked[item][C("planet: ice | 10")], "the bootstrapped building's isolatable item isn't kept")
+    assert(locked[item][C("planet: ice | 01")] == nil, "an item that isn't isolatable doesn't justify a pair")
+    assert(locked[item][C("planet: rock | 11")] == nil, "only the pair's room justifies it")
     -- Once pruning drops the grants, nothing is kept for them
     graph.nodes[warmth].pre["grant"] = nil
     graph.nodes[bootstrap_rooms].pre["pair"] = nil
@@ -381,30 +382,30 @@ test("a grant keeps only the weakest contexts that justify it: a bootstrapped bu
     edge("pair", room, bootstrap_rooms)
     local nci = {
         [heat] = {
-            ["planet: ice | 11"] = 1,
-            ["planet: ice | 10"] = 2,
+            [C("planet: ice | 11")] = 1,
+            [C("planet: ice | 10")] = 2,
         },
         [item] = {
-            ["planet: ice | 11"] = 3,
-            ["planet: ice | 10"] = 4,
-            ["planet: ice | 01"] = 5,
+            [C("planet: ice | 11")] = 3,
+            [C("planet: ice | 10")] = 4,
+            [C("planet: ice | 01")] = 5,
         },
     }
     local locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = nci,
     })
-    assert(locked[item]["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept")
-    assert(locked[item]["planet: ice | 11"] == nil, "the bootstrapped building's item is kept automatable too, which its grant doesn't need")
-    assert(locked[heat]["planet: ice | 11"], "warmth needs heat isolatable and automatable, the weakest context that justifies it")
+    assert(locked[item][C("planet: ice | 10")], "the bootstrapped building's isolatable item isn't kept")
+    assert(locked[item][C("planet: ice | 11")] == nil, "the bootstrapped building's item is kept automatable too, which its grant doesn't need")
+    assert(locked[heat][C("planet: ice | 11")], "warmth needs heat isolatable and automatable, the weakest context that justifies it")
     -- When the sort only has the item isolatable and automatable in the room, that's what keeps its grant
     nci[item] = {
-        ["planet: ice | 11"] = 3,
-        ["planet: ice | 01"] = 5,
+        [C("planet: ice | 11")] = 3,
+        [C("planet: ice | 01")] = 5,
     }
     locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = nci,
     })
-    assert(locked[item]["planet: ice | 11"], "a grant justified only by an automatable context loses its justification")
+    assert(locked[item][C("planet: ice | 11")], "a grant justified only by an automatable context loses its justification")
 end)
 
 test("a model with orands (gutils.make_orands, like first pass's and monotone matching's) finds the same grants in the same rooms, so it keeps the same justifications", function()
@@ -448,25 +449,27 @@ test("a model with orands (gutils.make_orands, like first pass's and monotone ma
     local locked = protection.planet_locked_recipe_contexts(graph, {
         node_to_context_inds = {
             [heat] = {
-                ["planet: ice | 11"] = 1,
+                [C("planet: ice | 11")] = 1,
             },
             [item] = {
-                ["planet: ice | 10"] = 2,
+                [C("planet: ice | 10")] = 2,
             },
         },
     })
-    assert((locked[heat] or {})["planet: ice | 11"], "heat keeping itself going isn't kept in a model with orands")
-    assert((locked[item] or {})["planet: ice | 10"], "the bootstrapped building's isolatable item isn't kept in a model with orands")
+    assert((locked[heat] or {})[C("planet: ice | 11")], "heat keeping itself going isn't kept in a model with orands")
+    assert((locked[item] or {})[C("planet: ice | 10")], "the bootstrapped building's isolatable item isn't kept in a model with orands")
 end)
 
 test("a context without isolatability keeps its other abilities, in its own room or a new one (goal transport)", function()
-    assert(protection.without_isolatability("planet: rock | 11") == "planet: rock | 01")
-    assert(protection.without_isolatability("planet: rock | 10") == "planet: rock | 00")
-    assert(protection.without_isolatability("planet: rock | 11", "planet: sand") == "planet: sand | 01")
-    assert(protection.without_isolatability("planet: rock") == "planet: rock", "a simple context is just its room")
-    assert(protection.without_isolatability("planet: rock", "planet: sand") == "planet: sand")
+    -- The new room has its number before any of its contexts are made, as every room does once a sort has run in the game
+    C("planet: sand")
+    assert(N(protection.without_isolatability(C("planet: rock | 11"))) == "planet: rock | 01")
+    assert(N(protection.without_isolatability(C("planet: rock | 10"))) == "planet: rock | 00")
+    assert(N(protection.without_isolatability(C("planet: rock | 11"), "planet: sand")) == "planet: sand | 01")
+    assert(N(protection.without_isolatability(C("planet: rock"))) == "planet: rock", "a simple context stands for its room")
+    assert(N(protection.without_isolatability(C("planet: rock"), "planet: sand")) == "planet: sand")
     -- An unprotected mechanic's isolatable context is kept the same way
-    assert(protection.planetary_kept_context({}, "planet: rock | 11", {}) == "planet: rock | 01")
+    assert(N(protection.planetary_kept_context({}, C("planet: rock | 11"), {})) == "planet: rock | 01")
 end)
 
 print(num_passed .. " tests passed")

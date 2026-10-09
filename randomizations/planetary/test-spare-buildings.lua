@@ -39,6 +39,9 @@ package.loaded["lib/random/rng"] = {}
 
 local check = require("randomizations/planetary/check")
 local recycling = require("lib/recycling")
+-- Contexts are numbers (lib/graph/contexts.lua); the sorts below write them as their names (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 
 local num_checks = 0
 local function check_that(condition, message)
@@ -111,7 +114,7 @@ local function sorted_with(contexts_of_items)
     for item_name, contexts in pairs(contexts_of_items) do
         node_to_context_inds["item: " .. item_name] = {}
         for _, context in pairs(contexts) do
-            node_to_context_inds["item: " .. item_name][context] = 1
+            node_to_context_inds["item: " .. item_name][C(context)] = 1
         end
     end
     return {
@@ -187,7 +190,7 @@ local function game(recipe_contexts, item_contexts)
         }
         sorted.sort_info.node_to_context_inds[node_key] = {}
         for _, context in pairs(contexts) do
-            sorted.sort_info.node_to_context_inds[node_key][context] = 1
+            sorted.sort_info.node_to_context_inds[node_key][C(context)] = 1
         end
     end
     return sorted
@@ -208,15 +211,15 @@ local before = game({
 }, {})
 before.planet_locked = {
     ["recipe: digger"] = {
-        ["planet: alpha | 11"] = true,
-        ["planet: alpha | 01"] = true,
+        [C("planet: alpha | 11")] = true,
+        [C("planet: alpha | 01")] = true,
     },
     ["recipe: " .. COPY_2] = {
-        ["planet: beta | 11"] = true,
+        [C("planet: beta | 11")] = true,
     },
     ["recipe: loner"] = {
-        ["planet: alpha | 11"] = true,
-        ["planet: alpha | 01"] = true,
+        [C("planet: alpha | 11")] = true,
+        [C("planet: alpha | 01")] = true,
     },
 }
 -- After the stages: the original and the loner lost their isolatable context, and copy 2 stays automatable on its planet
@@ -237,7 +240,7 @@ local after_stages = game({
 })
 check.given_up = {}
 local given_up = check.give_up_spare(before, after_stages)
-check_that(#given_up == 1 and check.given_up["recipe: digger"]["planet: alpha | 11"] ~= nil, "the stages give up the original's lost goal, since copy 2 covers it")
+check_that(#given_up == 1 and check.given_up["recipe: digger"][C("planet: alpha | 11")] ~= nil, "the stages give up the original's lost goal, since copy 2 covers it")
 check_that(check.given_up["recipe: loner"] == nil, "a lost goal of a building without copies isn't given up")
 
 -- An attempt after them, with item randomization: the original's recipe makes cogs now, and copy 2's recipe lost its planet too and makes cogs as well

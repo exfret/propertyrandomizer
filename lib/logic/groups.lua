@@ -7,6 +7,7 @@ local lib_name = "lib"
 local categories = require("helper-tables/categories")
 local dutils = require(lib_name .. "/data-utils")
 local gutils = require(lib_name .. "/graph/graph-utils")
+local ctx = require(lib_name .. "/graph/contexts")
 local lutils = require(lib_name .. "/logic/logic-utils")
 local builder = require(lib_name .. "/logic/builder")
 
@@ -22,10 +23,7 @@ local groups = {}
 
 function groups.build(lu)
     -- Group nodes don't care about abilities contexts
-    local group_abilities = {
-        [1] = true,
-        [2] = true,
-    }
+    local group_abilities = ctx.GAINS_ALL
 
     set_class("groups")
     set_prot(nil)
@@ -45,7 +43,7 @@ function groups.build(lu)
         end
         if valid then
             add_edge("entity-operate", machine.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -57,7 +55,7 @@ function groups.build(lu)
 
     for _, bot in pairs(prots("construction-robot")) do
         add_edge("entity-operate", bot.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -81,7 +79,7 @@ function groups.build(lu)
         end
         if valid then
             add_edge("entity-operate", drill.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -97,7 +95,7 @@ function groups.build(lu)
     for turret_class, _ in pairs(categories.turrets) do
         for _, turret in pairs(prots(turret_class)) do
             add_edge("entity-operate", turret.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -109,7 +107,7 @@ function groups.build(lu)
 
     for _, inserter in pairs(prots("inserter")) do
         add_edge("entity-operate", inserter.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -122,7 +120,7 @@ function groups.build(lu)
     for _, chest in pairs(prots("logistic-container")) do
         if chest.logistic_mode == "storage" then
             add_edge("entity-operate", chest.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -142,7 +140,7 @@ function groups.build(lu)
         end
         if valid then
             add_edge("entity-operate", drill.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -154,7 +152,7 @@ function groups.build(lu)
 
     for _, pump in pairs(data.raw.pump) do
         add_edge("entity-operate", pump.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -165,7 +163,7 @@ function groups.build(lu)
 
     for _, pack in pairs(data.raw["repair-tool"]) do
         add_edge("item", pack.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -176,7 +174,7 @@ function groups.build(lu)
 
     for _, roboport in pairs(prots("roboport")) do
         add_edge("entity-operate", roboport.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -187,7 +185,7 @@ function groups.build(lu)
 
     for _, belt in pairs(prots("splitter")) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -202,7 +200,7 @@ function groups.build(lu)
     for _, ammo in pairs(prots("ammo")) do
         if ammo.ammo_category == "bullet" then
             add_edge("item", ammo.name, {
-                abilities = table.deepcopy(group_abilities),
+                abilities = group_abilities,
             })
         end
     end
@@ -214,7 +212,7 @@ function groups.build(lu)
 
     for _, container in pairs(prots("container")) do
         add_edge("entity-operate", container.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -226,7 +224,7 @@ function groups.build(lu)
 
     for _, belt in pairs(data.raw["transport-belt"]) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -237,7 +235,7 @@ function groups.build(lu)
 
     for _, belt in pairs(prots("underground-belt")) do
         add_edge("entity-operate", belt.name, {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
     end
 
@@ -249,7 +247,7 @@ function groups.build(lu)
         -- TODO: Test more generally, don't just hardcode to spage's specfic turret
 
         add_edge("entity-operate", "rocket-turret", {
-            abilities = table.deepcopy(group_abilities),
+            abilities = group_abilities,
         })
 
         ----------------------------------------
@@ -260,7 +258,7 @@ function groups.build(lu)
         for _, ammo in pairs(data.raw.ammo) do
             if ammo.ammo_category == "rocket" then
                 add_edge("item", ammo.name, {
-                    abilities = table.deepcopy(group_abilities),
+                    abilities = group_abilities,
                 })
             end
         end

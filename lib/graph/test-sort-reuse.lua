@@ -123,11 +123,11 @@ local function options(home_sets)
     }
 end
 
--- Every pebble in the order the sort found it
+-- Every pebble in the order the sort found it, with the contexts' names (contexts are numbers, see lib/graph/contexts.lua)
 local function pebbles(sort_info)
     local list = {}
     for _, pebble in pairs(sort_info.sorted) do
-        table.insert(list, pebble.node_key .. " @@ " .. pebble.context)
+        table.insert(list, pebble.node_key .. " @@ " .. top.context_name(pebble.context))
     end
     return table.concat(list, "\n")
 end

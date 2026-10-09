@@ -54,6 +54,8 @@ package.loaded["lib/surface-sets"] = {}
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local resources = require("randomizations/planetary/resources")
+-- Contexts are numbers (lib/graph/contexts.lua); the failures below write them as their names (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
 
 local num_checks = 0
 local function check(condition, message)
@@ -78,8 +80,9 @@ local function names_of(list, field)
     return table.concat(names, ",")
 end
 
+-- A planet's complex context, its abilities written as in context names, like "10"
 local function context(planet_name, abilities)
-    return top.context_key(gutils.key("planet", planet_name), abilities)
+    return fx.C(gutils.key("planet", planet_name) .. " | " .. abilities)
 end
 local edits = {
     {
@@ -108,7 +111,8 @@ local planets = resources.failing_planets({
     {
         text = "mechanic on beta, at home",
         keys = {},
-        context = top.home_context_key(context("beta", "00"), "home1"),
+        -- Home set 1, named "home1" in logs
+        context = top.home_context_key(context("beta", "00"), 1),
     },
     {
         text = "unreachable gamma-brick",
@@ -124,7 +128,7 @@ planets = resources.failing_planets({
     {
         text = "on a platform",
         keys = {},
-        context = top.context_key(gutils.key("surface", "platform"), "11"),
+        context = fx.C(gutils.key("surface", "platform") .. " | 11"),
     },
     {
         text = "unreachable untouched",

@@ -3,6 +3,8 @@
 -- The edges go into entity nodes, except for build, which is the edge from each item that places the entity into its entity-build-item node
 -- Ways that make the entity ours (like a thrown capsule, or a captured spawner) go into its entity-own node instead, and their edges are tagged ours
 
+local ctx = require("lib/graph/contexts")
+
 local acquisition = {}
 
 acquisition.kinds = {
@@ -217,8 +219,6 @@ acquisition.worth_salvaging = function(cost, yield)
     return cost ~= nil and yield ~= nil and cost <= acquisition.SALVAGE_COST_FACTOR * yield
 end
 
--- Index of automatability in edge abilities (top.AUTOMATABILITY in lib/graph/context-sort.lua, which can't be required here since building logic uses this file)
-local AUTOMATABILITY = 2
 
 -- Whether slots of this kind give an item that places the entity (only build slots do), rather than the entity itself
 acquisition.gives_item = function(kind)
@@ -249,10 +249,9 @@ acquisition.pairing = function(base, head)
     if not head_is_built and head.ours ~= nil and base.ours == nil then
         return nil
     end
-    local abilities = table.deepcopy(base.abilities)
+    local abilities = base.abilities
     if head_is_built and not base_gives_item then
-        abilities = abilities or {}
-        abilities[AUTOMATABILITY] = false
+        abilities = ctx.edge_with(abilities, ctx.AUTOMATABILITY, false)
     end
     local needs_kill
     if head_is_built and acquisition.carrier_kinds[base.acq_kind] ~= nil then

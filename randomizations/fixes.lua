@@ -413,11 +413,11 @@ randomizations.rebuild_tech_tree = function()
         return gives_directly_memo[memo_key]
     end
     -- The home context of a tech's contexts that the discovery rule gives an isolatable context through: the one for the home set of the context's room, or nil
-    -- Techs send home contexts to every room, so the first by name stands for them all
+    -- Techs send home contexts to every room, so the first by number stands for them all
     local function rule_home_context(tech_contexts, context)
         local home_sets = context_sort_info.home_sets
-        local abilities = top.context_abilities(context)
-        if home_sets == nil or abilities == nil or top.context_home(context) ~= nil or string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) ~= "1" then
+        local mask = top.context_mask(context)
+        if home_sets == nil or mask == nil or top.context_home(context) ~= nil or not top.has_ability(mask, top.ISOLATABILITY) then
             return nil
         end
         local home_id = home_sets.of[top.context_room(context)]
@@ -551,10 +551,11 @@ randomizations.rebuild_tech_tree = function()
     local function witness_ind(first_ind)
         local sorted = no_tech_sort_info.sorted
         local best_ind = first_ind
-        local best_reached = room_reached(sorted[first_ind].context)
+        -- The sort has plain room contexts (simple contexts, lib/graph/contexts.lua), each standing for its room
+        local best_reached = room_reached(top.context_room(sorted[first_ind].context))
         local ind = first_ind + 1
         while sorted[ind] ~= nil and sorted[ind].node_key == sorted[first_ind].node_key do
-            local reached = room_reached(sorted[ind].context)
+            local reached = room_reached(top.context_room(sorted[ind].context))
             if reached ~= nil and (best_reached == nil or reached < best_reached) then
                 best_ind = ind
                 best_reached = reached
@@ -906,7 +907,7 @@ randomizations.rebuild_tech_tree = function()
         else
             local examples = {}
             for i = 1, math.min(10, #still_lost) do
-                table.insert(examples, still_lost[i].node_key .. " @ " .. still_lost[i].context)
+                table.insert(examples, still_lost[i].node_key .. " @ " .. top.context_name(still_lost[i].context))
             end
             log(message .. "; the rebuilt game still lost " .. #still_lost .. " contexts the game had, which leaving out prerequisites doesn't bring back (e.g. " .. table.concat(examples, "; ") .. ")")
         end
@@ -931,7 +932,7 @@ randomizations.rebuild_tech_tree = function()
 
     -- How preferring a planet's own recipes worked out (see prev_recipes_of), and the prerequisites left that unlock a recipe for elsewhere
     if context_sort_info ~= nil then
-        -- Rooms a recipe can be made in, from the sort without tech prerequisites (its contexts are rooms)
+        -- Rooms a recipe can be made in, as the sort without tech prerequisites' contexts (simple contexts, each standing for its room)
         local function rooms_of(recipe_name)
             return no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
         end
@@ -974,8 +975,13 @@ randomizations.rebuild_tech_tree = function()
         log(message)
     end
     -- Rebuilt techs a player could research before reaching anywhere their recipe is made (see rebuild_check.undiscovered): the techs the logic needs above leave only those whose discovery would have taken away a context or made a cycle
+    -- As room --> index: the sort has plain room contexts (simple contexts, lib/graph/contexts.lua), each standing for its room
     local function recipe_rooms(recipe_name)
-        return no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
+        local rooms = {}
+        for context, ind in pairs(no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}) do
+            rooms[top.context_room(context)] = ind
+        end
+        return rooms
     end
     local undiscovered = rebuild_check.undiscovered(graph, data.raw.technology, new_tech_recipes, recipe_rooms)
     -- Why, for the examples: the discovery wasn't on the recipe's witness, or it was left out above (to keep a context or for a cycle), or the check of the rebuilt game left it out

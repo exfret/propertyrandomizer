@@ -34,12 +34,7 @@ rebuild_check.lost = function(before_sort, after_graph, after_sort)
             end
         end
     end
-    table.sort(lost, function(a, b)
-        if a.node_key ~= b.node_key then
-            return a.node_key < b.node_key
-        end
-        return a.context < b.context
-    end)
+    table.sort(lost, top.pebble_order)
     return lost
 end
 

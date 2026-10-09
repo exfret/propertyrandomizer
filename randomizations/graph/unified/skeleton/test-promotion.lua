@@ -46,8 +46,17 @@ package.loaded["lib/logic/state"] = package.loaded["lib/logic/init"]
 local gutils = require("lib/graph/graph-utils")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local top = require("lib/graph/context-sort")
+-- Contexts are numbers (lib/graph/contexts.lua), and edge abilities codes; fixtures write contexts as their names (a room's name for its simple context) and edge abilities as the tables the logic builders used to (lib/graph/contexts-for-tests.lua)
+local ctx = require("lib/graph/contexts")
+local fx = require("lib/graph/contexts-for-tests")
+local C, N = fx.C, fx.N
 
 local key = gutils.key
+
+-- Whether edge abilities lose an ability, as { [ability] = false } said
+local function loses(abilities, ability)
+    return ctx.edge_loses_ability(abilities, ability) and not ctx.edge_gains_ability(abilities, ability)
+end
 
 local function build_graph(p_is_mechanic, x_not_automatable)
     local graph = {
@@ -81,7 +90,7 @@ local function build_graph(p_is_mechanic, x_not_automatable)
         local extra
         if name == "x" and x_not_automatable then
             extra = {
-                abilities = { [2] = false },
+                abilities = fx.edge({ [2] = false }),
             }
         end
         gutils.add_edge(graph, mine, node("item", name, "OR"), extra)
@@ -103,8 +112,8 @@ local x, y, z = key("item", "x"), key("item", "y"), key("item", "z")
 -- Whether some complex context in the list is automatable (read through context-sort's accessors, since contexts can carry a home context too)
 local function has_automatable(contexts)
     for _, context in pairs(contexts) do
-        local abilities = top.context_abilities(context)
-        if abilities ~= nil and string.sub(abilities, top.AUTOMATABILITY, top.AUTOMATABILITY) == "1" then
+        local mask = top.context_mask(context)
+        if mask ~= nil and top.has_ability(mask, top.AUTOMATABILITY) then
             return true
         end
     end
@@ -218,12 +227,12 @@ test("an ingredient that's only ever added must be automatable before the recipe
 end)
 
 test("automatable counterparts add automatability and keep the room and isolatability, and only exist for contexts without it", function()
-    assert(top.automatable_counterpart(top.context_key("planet: a", "00")) == top.context_key("planet: a", "01"))
-    assert(top.automatable_counterpart(top.context_key("planet: a", "10")) == top.context_key("planet: a", "11"))
-    assert(top.automatable_counterpart(top.context_key("planet: a", "01")) == nil)
-    assert(top.automatable_counterpart(top.context_key("planet: a", "11")) == nil)
-    assert(top.automatable_counterpart(top.home_context_key(top.context_key("planet: a", "00"), "home1")) == nil)
-    assert(top.automatable_counterpart("planet: a") == nil)
+    assert(top.automatable_counterpart(C("planet: a | 00")) == C("planet: a | 01"))
+    assert(top.automatable_counterpart(C("planet: a | 10")) == C("planet: a | 11"))
+    assert(top.automatable_counterpart(C("planet: a | 01")) == nil)
+    assert(top.automatable_counterpart(C("planet: a | 11")) == nil)
+    assert(top.automatable_counterpart(C("planet: a | 00 @ home1")) == nil)
+    assert(top.automatable_counterpart(C("planet: a")) == nil)
 end)
 
 test("a planet-locked recipe keeps every context it had, so it can't take an ingredient that can't be automated", function()
@@ -266,9 +275,10 @@ end)
 test("a recipe promised only in a later context keeps its earliest one too, where its product first comes from (like a moved lock's recipe, promised on its new planet)", function()
     local graph = build_graph(false)
     local probe = promotion.new({ graph = graph })
-    local rank_a = probe.rank(r, "A")
-    local rank_b = probe.rank(r, "B")
+    local rank_a = probe.rank(r, C("A"))
+    local rank_b = probe.rank(r, C("B"))
     assert(rank_a ~= nil and rank_b ~= nil, "the toy recipe needs both contexts")
+    -- early and late are the contexts' names (C gives their numbers)
     local early = rank_a < rank_b and "A" or "B"
     local late = early == "A" and "B" or "A"
     -- Promised only in the later context, the recipe keeps the earlier one as well, so whatever needs its product there without a promise of its own (like the recipe recycling it) stays reachable
@@ -276,14 +286,14 @@ test("a recipe promised only in a later context keeps its earliest one too, wher
         graph = graph,
         planet_locked = {
             [r] = {
-                [late] = true,
+                [C(late)] = true,
             },
         },
     })
     assert(#prom.promise_mechanics() == 0)
     local contexts = prom.required_contexts(r)
-    table.sort(contexts)
-    assert(#contexts == 2 and contexts[1] == "A" and contexts[2] == "B", "a recipe promised late lost its earliest context")
+    top.sort_by_name(contexts)
+    assert(#contexts == 2 and N(contexts[1]) == "A" and N(contexts[2]) == "B", "a recipe promised late lost its earliest context")
     -- So an ingredient only the later context has can't replace its vanilla one
     assert(not prom.candidate_ok(r, early == "A" and y or x, contexts))
     assert(prom.candidate_ok(r, z, contexts))
@@ -292,13 +302,13 @@ test("a recipe promised only in a later context keeps its earliest one too, wher
         graph = graph,
         planet_locked = {
             [r] = {
-                [early] = true,
+                [C(early)] = true,
             },
         },
     })
     assert(#early_prom.promise_mechanics() == 0)
     local early_contexts = early_prom.required_contexts(r)
-    assert(#early_contexts == 1 and early_contexts[1] == early)
+    assert(#early_contexts == 1 and N(early_contexts[1]) == early)
 end)
 
 -- A generic handler head: mechanic m needs whatever feeds its cut head, whose vanilla base comes from item z
@@ -379,25 +389,25 @@ test("subdividing an edge keeps its abilities on the connection between base and
         op = "AND",
     })
     local edge = gutils.add_edge(graph, key("item", "a"), key("mine", "b"), {
-        abilities = {
+        abilities = fx.edge({
             [2] = false,
-        },
+        }),
     })
     local conns = gutils.subdivide_base_head(graph, gutils.ekey(edge))
     local connection = graph.edges[gutils.ekey({
         start = key(conns.base),
         stop = key(conns.head),
     })]
-    assert(connection.abilities[2] == false)
+    assert(loses(connection.abilities, 2))
     -- The connection has its own copy
-    connection.abilities[2] = true
-    assert(conns.base.abilities[2] == false)
+    connection.abilities = ctx.edge_with(connection.abilities, 2, true)
+    assert(loses(conns.base.abilities, 2))
 end)
 
 test("a base whose connection loses automatability can't feed a head whose dependent must stay automatable", function()
-    local prom, contexts = promoted_head_graph({
+    local prom, contexts = promoted_head_graph(fx.edge({
         [2] = false,
-    })
+    }))
     assert(not prom.head_candidate_ok(head_m, base_x, contexts))
     assert(prom.head_candidate_ok(head_m, base_z, contexts))
     -- Without the lost ability, x is as good as z
@@ -408,9 +418,9 @@ end)
 test("a handler's connection abilities count instead of the base's own", function()
     -- z's own edge can't be automated, so m can't be either
     local own_prom = promotion.new({
-        graph = build_head_graph(nil, {
+        graph = build_head_graph(nil, fx.edge({
             [2] = false,
-        }),
+        })),
         complex = true,
     })
     assert(#own_prom.promise_mechanics() == 0)
@@ -418,16 +428,16 @@ test("a handler's connection abilities count instead of the base's own", functio
     -- Unless the handler says the connection can be
     local prom, contexts = promoted_head_graph(nil, function(base, head)
         return nil
-    end, {
+    end, fx.edge({
         [2] = false,
-    })
+    }))
     assert(prom.head_candidate_ok(head_m, base_z, contexts))
 end)
 
 test("rewiring a promised head to a base whose connection loses automatability is refused", function()
-    local prom, contexts = promoted_head_graph({
+    local prom, contexts = promoted_head_graph(fx.edge({
         [2] = false,
-    })
+    }))
     prom.resolve_head(head_m, base_z, contexts)
     assert(not prom.try_rewires({
         {
@@ -799,11 +809,11 @@ local function build_debt_worlds(opts)
     }
 end
 
--- Promised pebbles as a set of "node_key @ context"
+-- Promised pebbles as a set of "node_key @ context name"
 local function pebble_set(pebbles)
     local set = {}
     for _, pebble in pairs(pebbles) do
-        set[pebble.node_key .. " @ " .. pebble.context] = true
+        set[pebble.node_key .. " @ " .. N(pebble.context)] = true
     end
     return set
 end
@@ -833,8 +843,8 @@ test("in debt mode, a goal only the old world backs is promised but owed, and on
     })
     assert(#prom.promise_mechanics() == 0)
     local owed = prom.owed_pebbles()
-    assert(#owed == 1 and owed[1].node_key == p and owed[1].context == "A")
-    assert(prom.is_solvent(p, "B") and not prom.is_solvent(p, "A"))
+    assert(#owed == 1 and owed[1].node_key == p and N(owed[1].context) == "A")
+    assert(prom.is_solvent(p, C("B")) and not prom.is_solvent(p, C("A")))
     local solvent = pebble_set(prom.promised_pebbles())
     assert(solvent[p .. " @ B"] and solvent[q .. " @ A"])
     assert(solvent[p .. " @ A"] == nil)
@@ -905,7 +915,7 @@ test("a mechanic pebble only the old world has isn't promised unless it's a goal
     assert(#prom.promise_mechanics() == 0)
     assert(#prom.owed_pebbles() == 0)
     local contexts = prom.promised_contexts(p)
-    assert(#contexts == 1 and contexts[1] == "B")
+    assert(#contexts == 1 and N(contexts[1]) == "B")
 end)
 
 test("a recipe whose promises are all owed also keeps a context it's solvent in", function()
@@ -918,10 +928,10 @@ test("a recipe whose promises are all owed also keeps a context it's solvent in"
     })
     assert(#prom.promise_mechanics() == 0)
     local promised = prom.promised_contexts(r)
-    assert(#promised == 1 and promised[1] == "A")
+    assert(#promised == 1 and N(promised[1]) == "A")
     local contexts = prom.required_contexts(r)
-    table.sort(contexts)
-    assert(#contexts == 2 and contexts[1] == "A" and contexts[2] == "B")
+    top.sort_by_name(contexts)
+    assert(#contexts == 2 and N(contexts[1]) == "A" and N(contexts[2]) == "B")
 end)
 
 test("a recipe that owes something is a chunk boundary, and an ingredient that doesn't need the debt pays its part of it", function()
@@ -937,17 +947,17 @@ test("a recipe that owes something is a chunk boundary, and an ingredient that d
         debt = debt,
     })
     prom.promise_mechanics()
-    local boundary = prom.recipe_boundary_contexts(r, {
+    local boundary = prom.recipe_boundary_contexts(r, fx.list({
         "A",
         "B",
-    })
-    assert(#boundary == 1 and boundary[1] == "A", "r owes only in A, and only through its lava slot")
+    }))
+    assert(#boundary == 1 and N(boundary[1]) == "A", "r owes only in A, and only through its lava slot")
     assert(prom.pays(r, z, boundary))
     assert(not prom.pays(r, lava, boundary))
     -- An owed chain is paid link by link: melting's ingredients pay their part in A even while its lava edge is still owed there, so it's a boundary too
-    assert(#prom.recipe_boundary_contexts(melt, {
+    assert(#prom.recipe_boundary_contexts(melt, fx.list({
         "A",
-    }) == 1, "melting owes in A, so its ingredient choices pay their part")
+    })) == 1, "melting owes in A, so its ingredient choices pay their part")
 end)
 
 test("a head whose dependent owes something only through it is a chunk boundary, and a base that doesn't need the debt pays for it", function()
@@ -1005,7 +1015,7 @@ test("a head whose dependent owes something only through it is a chunk boundary,
     })
     prom.promise_mechanics()
     local boundary = prom.head_boundary_contexts(head, prom.required_contexts(use))
-    assert(#boundary == 1 and boundary[1] == "A")
+    assert(#boundary == 1 and N(boundary[1]) == "A")
     assert(prom.head_pays(head, z_base, boundary))
     assert(not prom.head_pays(head, lava_base, boundary))
 end)
@@ -1031,10 +1041,10 @@ test("ranks are solvency-first: everything the game has ranks before anything th
             local last_solvent = 0
             local first_insolvent = math.huge
             for _, node_key in pairs(keys) do
-                for _, context in pairs({
+                for _, context in pairs(fx.list({
                     "A",
                     "B",
-                }) do
+                })) do
                     local rank = prom.rank(node_key, context)
                     if rank ~= nil and prom.is_solvent(node_key, context) then
                         last_solvent = math.max(last_solvent, rank)
@@ -1136,10 +1146,10 @@ test("where a recipe is solvent, it can't take an ingredient only a debt edge ba
             prom.promise_mechanics()
             assert(prom.try_rewires(stop_making_w, true))
             local contexts = prom.required_contexts(s)
-            assert(#contexts == 1 and contexts[1] == "A")
-            if prom.rank(w, "A") < prom.rank(s, "A") then
+            assert(#contexts == 1 and N(contexts[1]) == "A")
+            if prom.rank(w, C("A")) < prom.rank(s, C("A")) then
                 num_debt_checked = num_debt_checked + 1
-                assert(prom.is_solvent(s, "A") and not prom.is_solvent(w, "A"))
+                assert(prom.is_solvent(s, C("A")) and not prom.is_solvent(w, C("A")))
                 assert(not prom.candidate_ok(s, w, contexts))
                 local is_ok, err = pcall(prom.resolve, s, {
                     w,
@@ -1156,7 +1166,7 @@ test("where a recipe is solvent, it can't take an ingredient only a debt edge ba
             plain.promise_mechanics()
             assert(plain.try_rewires(stop_making_w, true))
             local contexts = plain.required_contexts(s)
-            if plain.rank(w, "A") < plain.rank(s, "A") then
+            if plain.rank(w, C("A")) < plain.rank(s, C("A")) then
                 num_plain_checked = num_plain_checked + 1
                 assert(plain.candidate_ok(s, w, contexts))
             end
@@ -1179,10 +1189,10 @@ test("a rewire can't make a solvent promise insolvent", function()
         debt = debt,
     })
     assert(#prom.promise_mechanics() == 0)
-    assert(prom.is_solvent(w, "A"))
+    assert(prom.is_solvent(w, C("A")))
     -- The debt edge alone would still establish w in A, but not solvently
     assert(not prom.try_rewires(stop_making_w, true))
-    assert(prom.is_solvent(w, "A"))
+    assert(prom.is_solvent(w, C("A")))
 end)
 
 print(num_passed .. " tests passed")

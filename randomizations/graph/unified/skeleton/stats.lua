@@ -3,6 +3,7 @@
 -- Does not change randomization; all output goes to the log with the prefix SKELSTATS
 
 local gutils = require("lib/graph/graph-utils")
+local ctx = require("lib/graph/contexts")
 local logic = require("lib/logic/init")
 local build = require("randomizations/graph/unified/skeleton/build")
 
@@ -90,7 +91,7 @@ stats.run = function(params)
         end
         local context_strs = {}
         for context, total in pairs(total_context_counts) do
-            table.insert(context_strs, context .. "=" .. (context_counts[context] or 0) .. "/" .. total)
+            table.insert(context_strs, ctx.name(context) .. "=" .. (context_counts[context] or 0) .. "/" .. total)
         end
         table.sort(context_strs)
         log_stat("skeleton[" .. name .. "] by context: " .. table.concat(context_strs, ", "))
@@ -158,7 +159,8 @@ stats.run = function(params)
 
     -- Current rule in recipe-ingredients.lua: base earlier than recipe in every context, nil counting as "at the end"
     local function today_valid(recipe_key, base_key)
-        for context, _ in pairs(logic.contexts) do
+        for room, _ in pairs(logic.contexts) do
+            local context = ctx.simple(room)
             local ind1 = nci[base_key][context] or (num_pebbles + 1)
             local ind2 = nci[recipe_key][context] or (num_pebbles + 2)
             if not (ind1 < ind2) then
@@ -169,7 +171,8 @@ stats.run = function(params)
     end
     -- Same rule but using the ingredient's own ranks rather than its base's
     local function today_item_rank_valid(recipe_key, ing_key)
-        for context, _ in pairs(logic.contexts) do
+        for room, _ in pairs(logic.contexts) do
+            local context = ctx.simple(room)
             local ind1 = nci[ing_key][context] or (num_pebbles + 1)
             local ind2 = nci[recipe_key][context] or (num_pebbles + 2)
             if not (ind1 < ind2) then
@@ -296,7 +299,8 @@ stats.run = function(params)
     for r, _ in pairs(watch) do
         if nci[r] ~= nil then
             local strs = {}
-            for context, _ in pairs(logic.contexts) do
+            for room, _ in pairs(logic.contexts) do
+                local context = ctx.simple(room)
                 local r_ind = nci[r][context]
                 local w_ind = nci[water_key] and nci[water_key][context]
                 local mark = ""
@@ -306,7 +310,7 @@ stats.run = function(params)
                 if r_ind ~= nil and full_skel.in_skeleton[r_ind] then
                     mark = mark .. " [full-skel]"
                 end
-                table.insert(strs, context .. ": recipe=" .. tostring(r_ind) .. " water=" .. tostring(w_ind) .. mark)
+                table.insert(strs, room .. ": recipe=" .. tostring(r_ind) .. " water=" .. tostring(w_ind) .. mark)
             end
             table.sort(strs)
             log_stat("watch " .. r .. " ranks: " .. table.concat(strs, " | "))

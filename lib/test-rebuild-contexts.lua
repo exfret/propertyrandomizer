@@ -41,6 +41,8 @@ package.loaded["lib/crafter-slots"] = {}
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+-- Edge abilities are codes (lib/graph/contexts.lua); fixtures write them as the logic builders used to, like { [2] = true } (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
 require("randomizations/fixes")
 
 data = { raw = {} }
@@ -131,14 +133,14 @@ logic.build = function()
         local science = prototype.unit.ingredients[1][1] == "test-pack-a" and pack_a or pack_b
         local key = node("technology", name, "AND")
         gutils.add_edge(graph, science, key, {
-            abilities = { [2] = true },
+            abilities = fx.edge({ [2] = true }),
         })
     end
     for name, prototype in pairs(data.raw.technology) do
         local key = gutils.key("technology", name)
         for _, pre in pairs(prototype.prerequisites or {}) do
             gutils.add_edge(graph, gutils.key("technology", pre), key, {
-                abilities = { [2] = true },
+                abilities = fx.edge({ [2] = true }),
             })
         end
         for _, effect in pairs(prototype.effects or {}) do
@@ -219,7 +221,7 @@ local function check(distinct, self_research)
         randomizations.rebuild_tech_tree()
         local after = sort()
         for context, _ in pairs(before.node_to_context_inds[key]) do
-            assert(after.node_to_context_inds[key][context] ~= nil, "rebuild " .. iteration .. " lost alternate unlock context " .. context)
+            assert(after.node_to_context_inds[key][context] ~= nil, "rebuild " .. iteration .. " lost alternate unlock context " .. top.context_name(context))
         end
         assert(providers() == (distinct and 2 or 1), "only alternatives contributing a missing context stay")
     end
@@ -292,14 +294,14 @@ logic.build = function()
     for name, prototype in pairs(data.raw.technology) do
         local key = node("technology", name, "AND")
         gutils.add_edge(graph, science[prototype.unit.ingredients[1][1]], key, {
-            abilities = { [2] = true },
+            abilities = fx.edge({ [2] = true }),
         })
     end
     for name, prototype in pairs(data.raw.technology) do
         local key = gutils.key("technology", name)
         for _, pre in pairs(prototype.prerequisites or {}) do
             gutils.add_edge(graph, gutils.key("technology", pre), key, {
-                abilities = { [2] = true },
+                abilities = fx.edge({ [2] = true }),
             })
         end
         for _, effect in pairs(prototype.effects or {}) do
@@ -320,7 +322,7 @@ local frontier_recipes = {
 for _, name in pairs(frontier_recipes) do
     local key = gutils.key("recipe", name)
     for context, _ in pairs(before_frontier.node_to_context_inds[key]) do
-        assert(after_frontier.node_to_context_inds[key][context] ~= nil, "substituting a later primary unlock lost " .. name .. " @ " .. context)
+        assert(after_frontier.node_to_context_inds[key][context] ~= nil, "substituting a later primary unlock lost " .. name .. " @ " .. top.context_name(context))
     end
 end
 print("ok - a prerequisite witness cannot be replaced with a later primary unlock")

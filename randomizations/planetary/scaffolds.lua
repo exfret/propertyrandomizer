@@ -41,8 +41,8 @@ end
 local function reachable_on(sort, node_key, planet_name, is_isolatable_only)
     local room = gutils.key("planet", planet_name)
     for context, _ in pairs(sort.sort_info.node_to_context_inds[node_key] or {}) do
-        local abilities = top.context_abilities(context) or ""
-        if top.context_room(context) == room and (not is_isolatable_only or string.sub(abilities, 1, 1) == "1") then
+        local mask = top.context_mask(context)
+        if top.context_room(context) == room and (not is_isolatable_only or (mask ~= nil and top.has_ability(mask, top.ISOLATABILITY))) then
             return true
         end
     end

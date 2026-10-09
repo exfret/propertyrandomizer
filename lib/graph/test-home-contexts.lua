@@ -61,10 +61,12 @@ package.loaded["lib/data-utils"] = {
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 
 local key = gutils.key
 
-local NO_ABILITIES = string.rep("0", string.len(top.ability_strs[1]))
+local NO_ABILITIES = top.NO_ABILITIES
 
 local function set_rooms(rooms)
     logic.contexts = {}
@@ -81,11 +83,12 @@ local function new_graph()
     }
 end
 
+-- abilities are written as the logic builders used to write them, like { [1] = false }, and edges have them as a code (lib/graph/contexts.lua)
 local function add_edge(graph, start, stop, abilities)
     local extra
     if abilities ~= nil then
         extra = {
-            abilities = abilities,
+            abilities = fx.edge(abilities),
         }
     end
     gutils.add_edge(graph, start, stop, extra)
@@ -99,9 +102,9 @@ local function remove_room(graph, room)
     end
 end
 
--- The home context of a room for a home set id
+-- The home context of a room for a home set id (a number, see top.home_sets)
 local function home_context(room, home_id, complex)
-    local base = room
+    local base = top.simple_context(room)
     if complex then
         base = top.context_key(room, NO_ABILITIES)
     end
@@ -112,6 +115,7 @@ end
 -- Toy solar system
 ----------------------------------------------------------------------
 
+-- Room keys; contexts are numbers (lib/graph/contexts.lua), which the tests write as their names, like C(ROCK .. " | 10") (lib/graph/contexts-for-tests.lua)
 local HOME = "planet: home"
 local ROCK = "planet: rock"
 local MOSS = "planet: moss"
@@ -204,13 +208,13 @@ local function toy_graph()
     return graph, nodes
 end
 
--- Every pebble of a sort, as one sorted string, to compare sorts regardless of order
+-- Every pebble of a sort, as one sorted string with the contexts' names, to compare sorts regardless of order
 local function pebble_set(sort_info, keep)
     local pebbles = {}
     for node_key, inds in pairs(sort_info.node_to_context_inds) do
         for context, _ in pairs(inds) do
             if keep == nil or keep(context) then
-                table.insert(pebbles, node_key .. " @@ " .. context)
+                table.insert(pebbles, node_key .. " @@ " .. top.context_name(context))
             end
         end
     end
@@ -327,7 +331,7 @@ local function check_rooms_needed(graph)
     local full_inds = top.sort(graph).node_to_context_inds
     for node_key, inds in pairs(full_inds) do
         for context, _ in pairs(inds) do
-            assert(needed(node_key, context) ~= nil, "reached pebble " .. node_key .. " in " .. context .. " has no rooms needed")
+            assert(needed(node_key, context) ~= nil, "reached pebble " .. node_key .. " in " .. top.context_name(context) .. " has no rooms needed")
         end
     end
     for room, _ in pairs(logic.contexts) do
@@ -338,7 +342,7 @@ local function check_rooms_needed(graph)
             for context, _ in pairs(inds) do
                 local is_needed = without_inds[node_key][context] == nil
                 local says_needed = needed(node_key, context)[room] ~= nil
-                assert(is_needed == says_needed, node_key .. " in " .. context .. ": removing " .. room .. " loses it " .. tostring(is_needed) .. ", but rooms_needed says " .. tostring(says_needed))
+                assert(is_needed == says_needed, node_key .. " in " .. top.context_name(context) .. ": removing " .. room .. " loses it " .. tostring(is_needed) .. ", but rooms_needed says " .. tostring(says_needed))
             end
         end
     end
@@ -376,9 +380,9 @@ end
 -- Home contexts against removing every room outside the home set and sorting again, and the other contexts against a sort without home contexts
 local function check_home_contexts(graph, complex, home_rooms, seed)
     local home_sets = {
-        ids = { "h" },
+        ids = { 1 },
         sets = {
-            h = {
+            [1] = {
                 rooms = home_rooms,
                 discovered = {},
             },
@@ -401,9 +405,9 @@ local function check_home_contexts(graph, complex, home_rooms, seed)
     local restricted_inds = top.sort(restricted).node_to_context_inds
     for node_key, _ in pairs(graph.nodes) do
         for room, _ in pairs(logic.contexts) do
-            local has_home = sort_info.node_to_context_inds[node_key][home_context(room, "h", complex)] ~= nil
+            local has_home = sort_info.node_to_context_inds[node_key][home_context(room, 1, complex)] ~= nil
             -- Rooms outside the home set don't have its home contexts at all
-            local has_restricted = restricted_inds[node_key][room] ~= nil and (home_rooms[room] ~= nil or not top.home_contexts_in_set_rooms)
+            local has_restricted = restricted_inds[node_key][C(room)] ~= nil and (home_rooms[room] ~= nil or not top.home_contexts_in_set_rooms)
             assert(has_home == has_restricted, node_key .. " in " .. room .. ": home context " .. tostring(has_home) .. ", sort without other rooms " .. tostring(has_restricted))
         end
     end
@@ -437,29 +441,29 @@ local function test(name, fn)
 end
 
 test("home context keys parse back into room, abilities and home set", function()
-    local complex_context = top.home_context_key(top.context_key(ROCK, NO_ABILITIES), "home1")
+    local complex_context = top.home_context_key(C(ROCK .. " | 00"), 1)
     assert(top.context_room(complex_context) == ROCK)
-    assert(top.context_abilities(complex_context) == NO_ABILITIES)
-    assert(top.context_home(complex_context) == "home1")
-    local simple_context = top.home_context_key(ROCK, "home1")
+    assert(top.context_mask(complex_context) == NO_ABILITIES)
+    assert(top.context_home(complex_context) == 1)
+    local simple_context = top.home_context_key(C(ROCK), 1)
     assert(top.context_room(simple_context) == ROCK)
-    assert(top.context_abilities(simple_context) == nil)
-    assert(top.context_home(simple_context) == "home1")
-    assert(top.context_home(top.context_key(ROCK, NO_ABILITIES)) == nil)
-    assert(top.context_home(ROCK) == nil)
+    assert(top.context_mask(simple_context) == nil)
+    assert(top.context_home(simple_context) == 1)
+    assert(top.context_home(C(ROCK .. " | 00")) == nil)
+    assert(top.context_home(C(ROCK)) == nil)
 end)
 
 test("a node is isolatable in a room only with an isolatable context of that room", function()
-    assert(top.isolatable_in({ [top.context_key(ROCK, "10")] = 1 }, ROCK))
+    assert(top.isolatable_in({ [C(ROCK .. " | 10")] = 1 }, ROCK))
     assert(top.isolatable_in({
-        [top.context_key(MOSS, "00")] = 1,
-        [top.context_key(ROCK, "11")] = 1,
+        [C(MOSS .. " | 00")] = 1,
+        [C(ROCK .. " | 11")] = 1,
     }, ROCK))
     -- Automatable, isolatable in another room, a home context, a simple context, or no contexts at all
-    assert(not top.isolatable_in({ [top.context_key(ROCK, "01")] = 1 }, ROCK))
-    assert(not top.isolatable_in({ [top.context_key(MOSS, "10")] = 1 }, ROCK))
-    assert(not top.isolatable_in({ [top.home_context_key(top.context_key(ROCK, NO_ABILITIES), "home1")] = 1 }, ROCK))
-    assert(not top.isolatable_in({ [ROCK] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [C(ROCK .. " | 01")] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [C(MOSS .. " | 10")] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [top.home_context_key(C(ROCK .. " | 00"), 1)] = 1 }, ROCK))
+    assert(not top.isolatable_in({ [C(ROCK)] = 1 }, ROCK))
     assert(not top.isolatable_in(nil, ROCK))
 end)
 
@@ -577,7 +581,7 @@ test("keeping home contexts to their set's rooms changes no other pebble, and no
         for node_key, inds in pairs(sort_info.node_to_context_inds) do
             for context, _ in pairs(inds) do
                 if top.context_home(context) ~= nil then
-                    table.insert(found, node_key .. " @@ " .. top.context_home(context))
+                    table.insert(found, node_key .. " @@ " .. top.home_name(top.context_home(context)))
                 end
             end
         end
@@ -637,9 +641,9 @@ test("keeping home contexts to their set's rooms changes no other pebble, and no
             complex_contexts = complex,
             home_contexts = true,
             home_sets = {
-                ids = { "h" },
+                ids = { 1 },
                 sets = {
-                    h = {
+                    [1] = {
                         rooms = home_rooms,
                         discovered = {},
                     },
@@ -707,11 +711,11 @@ test("a smaller home set's context standing for those containing it gives the sa
         end
         table.sort(rooms)
         local nested = {}
-        local sets = {}
+        local named_sets = {}
         for i, room in pairs(rooms) do
             nested[room] = true
             if i < #rooms then
-                sets["tier" .. i] = {
+                named_sets["tier" .. i] = {
                     rooms = table.deepcopy(nested),
                     discovered = {},
                 }
@@ -723,15 +727,22 @@ test("a smaller home set's context standing for those containing it gives the sa
                 other[room] = true
             end
         end
-        sets.other = {
+        named_sets.other = {
             rooms = other,
             discovered = {},
         }
-        local ids = {}
-        for id, _ in pairs(sets) do
-            table.insert(ids, id)
+        local names = {}
+        for name, _ in pairs(named_sets) do
+            table.insert(names, name)
         end
-        table.sort(ids)
+        table.sort(names)
+        -- Home set ids are numbers (top.home_sets), given in the order of the names
+        local ids = {}
+        local sets = {}
+        for id, name in pairs(names) do
+            table.insert(ids, id)
+            sets[id] = named_sets[name]
+        end
         for _, in_set_rooms in pairs(in_set_settings) do
             top.home_contexts_in_set_rooms = in_set_rooms
             compare(random, {
@@ -765,8 +776,8 @@ test("with home contexts, the discovery rule gives isolatability to home techs a
     for seed = 1, 60 do
         local sort_info = complex_home_sort(graph, seed)
         local inds = sort_info.node_to_context_inds
-        local rock_isolated = top.context_key(ROCK, "10")
-        local moss_isolated = top.context_key(MOSS, "10")
+        local rock_isolated = C(ROCK .. " | 10")
+        local moss_isolated = C(MOSS .. " | 10")
         -- The discoverer, and home techs however late the sort reaches them
         assert(inds[nodes["find-rock"]][rock_isolated] ~= nil)
         assert(inds[nodes["t-late6"]][rock_isolated] ~= nil and inds[nodes["t-late6"]][moss_isolated] ~= nil)
@@ -774,9 +785,9 @@ test("with home contexts, the discovery rule gives isolatability to home techs a
         assert(inds[nodes["rock-plate"]][rock_isolated] ~= nil)
         -- A tech that needs the rock planet is isolatable there, but never on the moss planet
         assert(inds[nodes["t-cross"]][rock_isolated] ~= nil)
-        assert(inds[nodes["t-cross"]][moss_isolated] == nil and inds[nodes["t-cross"]][top.context_key(MOSS, "11")] == nil)
+        assert(inds[nodes["t-cross"]][moss_isolated] == nil and inds[nodes["t-cross"]][C(MOSS .. " | 11")] == nil)
         -- The far planet's home set has the near planets, so their techs count there
-        assert(inds[nodes["t-cross"]][top.context_key(FROST, "10")] ~= nil)
+        assert(inds[nodes["t-cross"]][C(FROST .. " | 10")] ~= nil)
         local pebbles = pebble_set(sort_info)
         first_pebbles = first_pebbles or pebbles
         assert(pebbles == first_pebbles, "sort " .. tostring(seed) .. " has different pebbles")
@@ -798,11 +809,11 @@ test("without home contexts, a sort has no home contexts and keeps the old disco
             assert(top.context_home(context) == nil)
         end
         local inds = sort_info.node_to_context_inds
-        assert(inds[nodes["find-rock"]][top.context_key(ROCK, "10")] ~= nil)
-        if inds[nodes["t-cross"]][top.context_key(MOSS, "10")] ~= nil then
+        assert(inds[nodes["find-rock"]][C(ROCK .. " | 10")] ~= nil)
+        if inds[nodes["t-cross"]][C(MOSS .. " | 10")] ~= nil then
             num_leaks = num_leaks + 1
         end
-        if inds[nodes["t-late6"]][top.context_key(ROCK, "10")] == nil then
+        if inds[nodes["t-late6"]][C(ROCK .. " | 10")] == nil then
             num_misses = num_misses + 1
         end
     end
@@ -827,7 +838,7 @@ test("a cached sort with a new edge gets the same pebbles as a fresh sort", func
     }, {
         choose_randomly = true,
     })
-    assert(cached.node_to_context_inds[nodes["t-late6"]][top.context_key(ROCK, "10")] ~= nil)
+    assert(cached.node_to_context_inds[nodes["t-late6"]][C(ROCK .. " | 10")] ~= nil)
     assert(pebble_set(cached) == pebble_set(complex_home_sort(graph, 3)))
 end)
 
@@ -850,7 +861,7 @@ test("the path to a granted pebble goes through the tech's own home pebble and a
             choose_randomly = true,
         })
         -- The alt item never reaches the moss planet, so the tech's isolatability there only comes from the discovery rule
-        local goal = sort_info.node_to_context_inds[nodes["t-alt"]][top.context_key(MOSS, "10")]
+        local goal = sort_info.node_to_context_inds[nodes["t-alt"]][C(MOSS .. " | 10")]
         assert(goal ~= nil)
         local path_info = top.path(partial, { goal }, sort_info)
         local has_discoverer = false
@@ -870,7 +881,7 @@ test("the path to a granted pebble goes through the tech's own home pebble and a
     end
     -- The path to a recipe that needs a granted tech works too
     local sort_info = complex_home_sort(graph, 5)
-    top.path(graph, { sort_info.node_to_context_inds[nodes["rock-plate"]][top.context_key(ROCK, "10")] }, sort_info)
+    top.path(graph, { sort_info.node_to_context_inds[nodes["rock-plate"]][C(ROCK .. " | 10")] }, sort_info)
 end)
 
 test("discovery candidates are the tech's pebbles in the room's home set and the room's discoverers' pebbles", function()
@@ -878,7 +889,7 @@ test("discovery candidates are the tech's pebbles in the room's home set and the
     local sort_info = complex_home_sort(graph, 4)
     local room_discoverers = top.room_discoverers(graph)
     local late_tech = graph.nodes[nodes["t-late6"]]
-    local rock_isolated = top.context_key(ROCK, "10")
+    local rock_isolated = C(ROCK .. " | 10")
     local candidates = top.discovery_candidates(sort_info, room_discoverers, late_tech, rock_isolated)
     assert(candidates ~= nil and #candidates.own > 0 and #candidates.discoverers > 0)
     local home_id = sort_info.home_sets.of[ROCK]
@@ -892,7 +903,7 @@ test("discovery candidates are the tech's pebbles in the room's home set and the
     end
     -- The rule only gives techs their isolatable contexts
     assert(top.discovery_candidates(sort_info, room_discoverers, graph.nodes[nodes["rock-plate"]], rock_isolated) == nil)
-    assert(top.discovery_candidates(sort_info, room_discoverers, late_tech, top.context_key(ROCK, "01")) == nil)
+    assert(top.discovery_candidates(sort_info, room_discoverers, late_tech, C(ROCK .. " | 01")) == nil)
     assert(top.discovery_candidates(sort_info, room_discoverers, late_tech, home_context(ROCK, home_id, true)) == nil)
     -- Without home contexts, any of the tech's pebbles counts (the old rule)
     rng_state = 4

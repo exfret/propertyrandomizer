@@ -582,29 +582,35 @@ local ability_tooltips = {
     [top.AUTOMATABILITY] = {"propertyrandomizer-gui.automated-help"},
 }
 
--- Ability strings with fewer abilities first, so {"propertyrandomizer-gui.reachable"} leads and "Isolated + Automated" ends
-local function ordered_ability_strs()
-    local strs = {}
-    for _, ability_str in pairs(top.ability_strs) do
-        table.insert(strs, ability_str)
+-- Ability masks with fewer abilities first, so {"propertyrandomizer-gui.reachable"} leads and "Isolated + Automated" ends (isolated before automated among single abilities)
+local function ordered_ability_masks()
+    local masks = {}
+    for _, mask in pairs(top.ability_masks) do
+        table.insert(masks, mask)
     end
-    local function num_abilities(ability_str)
-        return select(2, string.gsub(ability_str, "1", ""))
+    local function num_abilities(mask)
+        local num = 0
+        for ability, _ in pairs(ability_names) do
+            if top.has_ability(mask, ability) then
+                num = num + 1
+            end
+        end
+        return num
     end
-    table.sort(strs, function(a, b)
+    table.sort(masks, function(a, b)
         if num_abilities(a) ~= num_abilities(b) then
             return num_abilities(a) < num_abilities(b)
         end
         return a > b
     end)
-    return strs
+    return masks
 end
 
-local function ability_str_caption(ability_str)
+local function ability_mask_caption(mask)
     local captions = {}
     local tooltips = {}
     for ability, name in pairs(ability_names) do
-        if string.sub(ability_str, ability, ability) == "1" then
+        if top.has_ability(mask, ability) then
             table.insert(captions, name)
             table.insert(tooltips, {"propertyrandomizer-gui.ability-help", name, ability_tooltips[ability]})
         end
@@ -684,15 +690,15 @@ local function show_contexts_panel(player, node)
     local inside = frame.add({type = "frame", style = "inside_shallow_frame_with_padding", direction = "vertical"})
     inside.add({type = "label", caption = {"propertyrandomizer-gui.contexts-intro"}})
 
-    local ability_strs = ordered_ability_strs()
+    local ability_masks = ordered_ability_masks()
     -- One row per room, so with many planet copies (the dupe count setting) the table scrolls rather than running off the screen
     local table_scroll = inside.add({type = "scroll-pane", vertical_scroll_policy = "auto", horizontal_scroll_policy = "never"})
     table_scroll.style.maximal_height = 600
-    local table_elt = table_scroll.add({type = "table", style = "bordered_table", column_count = 1 + #ability_strs})
+    local table_elt = table_scroll.add({type = "table", style = "bordered_table", column_count = 1 + #ability_masks})
     table_elt.style.top_margin = 8
     table_elt.add({type = "label", style = "bold_label", caption = {"propertyrandomizer-gui.room"}})
-    for _, ability_str in pairs(ability_strs) do
-        local info = ability_str_caption(ability_str)
+    for _, mask in pairs(ability_masks) do
+        local info = ability_mask_caption(mask)
         local header = table_elt.add({type = "label", style = "bold_label", caption = info.caption, tooltip = info.tooltip})
         header.style.minimal_width = 72
         header.style.horizontal_align = "center"
@@ -722,8 +728,8 @@ local function show_contexts_panel(player, node)
             icon.style.stretch_image_to_widget_size = true
         end
         local reached_anywhere = false
-        for _, ability_str in pairs(ability_strs) do
-            if reach_level_of(complex_inds, node_key, top.context_key(info.room, ability_str)).sort ~= nil then
+        for _, mask in pairs(ability_masks) do
+            if reach_level_of(complex_inds, node_key, top.context_key(info.room, mask)).sort ~= nil then
                 reached_anywhere = true
             end
         end
@@ -732,12 +738,12 @@ local function show_contexts_panel(player, node)
             room_label.style.font_color = {0.5, 0.5, 0.5}
         end
 
-        for _, ability_str in pairs(ability_strs) do
-            local level = reach_level_of(complex_inds, node_key, top.context_key(info.room, ability_str))
+        for _, mask in pairs(ability_masks) do
+            local level = reach_level_of(complex_inds, node_key, top.context_key(info.room, mask))
             local cell = table_elt.add({type = "flow", direction = "horizontal"})
             cell.style.horizontally_stretchable = true
             cell.style.horizontal_align = "center"
-            add_level_square(cell, level, {"propertyrandomizer-gui.context-help", info.localised_name, ability_str_caption(ability_str).caption, level.tooltip})
+            add_level_square(cell, level, {"propertyrandomizer-gui.context-help", info.localised_name, ability_mask_caption(mask).caption, level.tooltip})
         end
     end
 

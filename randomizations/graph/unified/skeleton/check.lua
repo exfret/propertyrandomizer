@@ -17,15 +17,18 @@ local check = {}
 -- Losing only isolatability is allowed only when the goal doesn't protect it (see protection.lua).
 -- Home contexts only back isolatability, so losing one never fails the check either
 local function only_isolatability_lost(context, final_has)
+    -- A kept part with isolatability left open (protection.kept_part) has none to lose
+    if context < 0 then
+        return false
+    end
     if top.context_home(context) ~= nil then
         return true
     end
-    local abilities = top.context_abilities(context)
-    if abilities == nil or not protection.is_isolatable_context(context) then
+    local mask = top.context_mask(context)
+    if mask == nil or not protection.is_isolatable_context(context) then
         return false
     end
-    local without_isolatability = string.sub(abilities, 1, top.ISOLATABILITY - 1) .. "0" .. string.sub(abilities, top.ISOLATABILITY + 1)
-    return final_has(top.context_key(top.context_room(context), without_isolatability))
+    return final_has(top.context_key(top.context_room(context), top.without_ability(mask, top.ISOLATABILITY)))
 end
 
 -- graph: final logic graph; init_sort_info / final_sort_info: sorts of the original and final graphs (with complex contexts, so abilities like isolatability are checked too)
@@ -69,9 +72,9 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
                         if not protection.protects_isolatability(node) and only_isolatability_lost(kept, function(other)
                             return final_kept[other] ~= nil
                         end) then
-                            table.insert(lost, node_key .. " @ " .. kept .. " (only isolatability)")
+                            table.insert(lost, node_key .. " @ " .. protection.kept_name(kept) .. " (only isolatability)")
                         else
-                            table.insert(lost, node_key .. " @ " .. kept)
+                            table.insert(lost, node_key .. " @ " .. protection.kept_name(kept))
                             num_hard_lost = num_hard_lost + 1
                         end
                     end
@@ -90,7 +93,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
             num_locked_checked = num_locked_checked + 1
             if final_contexts[context] == nil then
                 num_locked_lost = num_locked_lost + 1
-                table.insert(lost, "planet-locked " .. node_key .. " @ " .. context)
+                table.insert(lost, "planet-locked " .. node_key .. " @ " .. top.context_name(context))
                 num_hard_lost = num_hard_lost + 1
             end
         end
@@ -167,7 +170,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
         for i = 1, math.min(20, #mismatches) do
             local mismatch = mismatches[i]
             local model_note = mismatch.model_key ~= mismatch.node_key and ("; the model's " .. mismatch.model_key) or ""
-            log_check("promised but missing: " .. mismatch.node_key .. " @ " .. mismatch.context .. " (model rank " .. mismatch.rank .. model_note .. ")")
+            log_check("promised but missing: " .. mismatch.node_key .. " @ " .. top.context_name(mismatch.context) .. " (model rank " .. mismatch.rank .. model_note .. ")")
         end
     end
 

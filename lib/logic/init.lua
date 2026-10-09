@@ -58,6 +58,7 @@
 
 local gutils = require("lib/graph/graph-utils")
 local logic = require("lib/logic/state")
+local ctx = require("lib/graph/contexts")
 
 -- If this is control stage, just get the contexts and type info
 if data == nil then
@@ -79,10 +80,25 @@ if data == nil then
         break
     end
 
+    -- Context numbers are the data stage's (planet copies can't be told from their originals here, see lib/graph/contexts.lua)
+    ctx.import_rooms(prototypes.mod_data["propertyrandomizer-contexts"].data)
+
     return logic
 end
 
 local lib_name = "lib"
+local constants = require("helper-tables/constants")
+local surface_sets = require(lib_name .. "/surface-sets")
+
+-- Rooms are numbered from the starting planet, and a planet's copies are shifted copies of their original (lib/graph/contexts.lua)
+ctx.start_room = gutils.key("planet", constants.starting_planet)
+ctx.copy_of = function(room_key)
+    local family = surface_sets.family_of(room_key)
+    if family ~= room_key then
+        return family, surface_sets.copy_number(room_key)
+    end
+    return nil
+end
 local lu = require(lib_name .. "/lookup/init")
 local logic_group = require(lib_name .. "/logic/logic-group")
 local group = require(lib_name .. "/logic/groups")

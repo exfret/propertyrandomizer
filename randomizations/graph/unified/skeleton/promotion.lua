@@ -562,22 +562,14 @@ promotion.new = function(params)
         if base ~= context then
             table.insert(weaker, base)
         end
-        local abilities = top.context_abilities(base)
-        if abilities == nil then
+        local base_mask = top.context_mask(base)
+        if base_mask == nil then
             return weaker
         end
         local room = top.context_room(base)
-        for _, ability_str in pairs(top.ability_strs) do
-            if ability_str ~= abilities then
-                local is_subset = true
-                for i = 1, #ability_str do
-                    if string.sub(ability_str, i, i) == "1" and string.sub(abilities, i, i) ~= "1" then
-                        is_subset = false
-                    end
-                end
-                if is_subset then
-                    table.insert(weaker, top.context_key(room, ability_str))
-                end
+        for _, mask in pairs(top.ability_masks) do
+            if mask ~= base_mask and top.mask_covers(base_mask, mask) then
+                table.insert(weaker, top.context_key(room, mask))
             end
         end
         return weaker
@@ -613,7 +605,7 @@ promotion.new = function(params)
                         if establish(i) then
                             table.insert(stack, i)
                         else
-                            log("Promotion: " .. pebble.node_key .. " @ " .. pebble.context .. " is promised but can't be established @ " .. context)
+                            log("Promotion: " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " is promised but can't be established @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -645,7 +637,7 @@ promotion.new = function(params)
                         if establish_solvent(i) then
                             table.insert(stack, i)
                         else
-                            log("Promotion: " .. pebble.node_key .. " @ " .. pebble.context .. " is solvent but can't be established solvently @ " .. context)
+                            log("Promotion: " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " is solvent but can't be established solvently @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -724,7 +716,7 @@ promotion.new = function(params)
                     for context, _ in pairs(context_inds) do
                         if not has_room(node_key, context) then
                             num_lost = num_lost + 1
-                            log("Promotion: mechanic context lost before recipe randomization: " .. node_key .. " @ " .. context)
+                            log("Promotion: mechanic context lost before recipe randomization: " .. node_key .. " @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -797,7 +789,7 @@ promotion.new = function(params)
                 if graph.nodes[node_key] ~= nil then
                     for context, _ in pairs(contexts) do
                         if (nci[node_key] or {})[context] == nil then
-                            table.insert(unreached, node_key .. " @ " .. context)
+                            table.insert(unreached, node_key .. " @ " .. top.context_name(context))
                         end
                     end
                 end
@@ -839,7 +831,7 @@ promotion.new = function(params)
                 end
                 table.insert(strs, pre_key .. "=" .. status)
             end
-            log("EXPLAIN " .. depth .. ": [" .. curr .. "] " .. pebble.node_key .. " @ " .. pebble.context .. " op=" .. tostring(node.op) .. " ctxtype=" .. tostring(logic.type_info[node.type].context) .. " pres={" .. table.concat(strs, "; ") .. "}")
+            log("EXPLAIN " .. depth .. ": [" .. curr .. "] " .. pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " op=" .. tostring(node.op) .. " ctxtype=" .. tostring(logic.type_info[node.type].context) .. " pres={" .. table.concat(strs, "; ") .. "}")
             if next_ind == nil then
                 return
             end
@@ -866,7 +858,7 @@ promotion.new = function(params)
                 end
                 table.insert(strs, pre_key .. "=" .. status)
             end
-            log("Promotion: " .. recipe_key .. " @ " .. context .. " (rank " .. recipe_ind .. "): " .. table.concat(strs, "; "))
+            log("Promotion: " .. recipe_key .. " @ " .. top.context_name(context) .. " (rank " .. recipe_ind .. "): " .. table.concat(strs, "; "))
         end
     end
 
@@ -876,8 +868,8 @@ promotion.new = function(params)
         if top.context_home(context) ~= nil then
             return false
         end
-        local abilities = top.context_abilities(context)
-        return abilities == nil or string.find(abilities, "1", 1, true) == nil
+        local mask = top.context_mask(context)
+        return mask == nil or mask == top.NO_ABILITIES
     end
 
     -- Earliest context in which the recipe can currently be established with its current ingredients, or nil
@@ -1040,7 +1032,7 @@ promotion.new = function(params)
     -- Simple and home contexts say nothing about automatability, so they're left out
     state.automatable_before_recipe = function(recipe_key, owner_key, required_contexts)
         for _, context in pairs(required_contexts) do
-            if top.context_abilities(context) ~= nil and top.context_home(context) == nil then
+            if top.context_mask(context) ~= nil and top.context_home(context) == nil then
                 local automatable = top.automatable_counterpart(context) or context
                 local i = node_ind(owner_key, automatable)
                 if i == nil or i >= nci[recipe_key][context] or not establish(i) then
@@ -1121,7 +1113,7 @@ promotion.new = function(params)
     -- The error names the choice by what
     local function promise_after_choice(ind, was_solvent, was_promised, what)
         if debt ~= nil and was_solvent and not establish_solvent(ind) then
-            error(sorted[ind].node_key .. " @ " .. sorted[ind].context .. " isn't solvent after " .. what .. ", but was before")
+            error(sorted[ind].node_key .. " @ " .. top.context_name(sorted[ind].context) .. " isn't solvent after " .. what .. ", but was before")
         end
         promise_goal(ind, not was_promised)
     end
@@ -1130,7 +1122,7 @@ promotion.new = function(params)
     -- Candidates must have passed candidate_ok (or be the vanilla fallback) since the last resolve
     state.resolve = function(recipe_key, owner_keys, required_contexts)
         assert(#required_contexts > 0, "resolve needs required contexts (from required_contexts) for " .. recipe_key)
-        log("Promotion: resolving " .. recipe_key .. " in " .. table.concat(required_contexts, ", "))
+        log("Promotion: resolving " .. recipe_key .. " in " .. table.concat(top.context_names(required_contexts), ", "))
         -- Contexts the recipe is solvent in now, which it must stay solvent in (debt mode), and contexts it was promised in before (the others are anchors)
         local was_solvent = {}
         local was_promised = {}
@@ -1142,12 +1134,12 @@ promotion.new = function(params)
             for _, owner_key in pairs(owner_keys) do
                 local i = node_ind(owner_key, context)
                 if i == nil or i >= nci[recipe_key][context] or not establish(i) then
-                    error("Resolving recipe " .. recipe_key .. " with unestablished ingredient " .. owner_key .. " in " .. context)
+                    error("Resolving recipe " .. recipe_key .. " with unestablished ingredient " .. owner_key .. " in " .. top.context_name(context))
                 end
                 commit(i)
                 if was_solvent[context] then
                     if not establish_solvent(i) then
-                        error("Resolving recipe " .. recipe_key .. " with ingredient " .. owner_key .. ", which isn't solvent in " .. context .. " where the recipe is")
+                        error("Resolving recipe " .. recipe_key .. " with ingredient " .. owner_key .. ", which isn't solvent in " .. top.context_name(context) .. " where the recipe is")
                     end
                     commit_solvent(i)
                 end
@@ -1162,7 +1154,7 @@ promotion.new = function(params)
             local ind = nci[recipe_key][context]
             if not establish(ind) then
                 log_recipe_prereqs(recipe_key)
-                error("Recipe " .. recipe_key .. " can't be established in required context " .. context .. " after resolving")
+                error("Recipe " .. recipe_key .. " can't be established in required context " .. top.context_name(context) .. " after resolving")
             end
             promise_after_choice(ind, was_solvent[context], was_promised[context], "resolving it")
         end
@@ -1298,13 +1290,13 @@ promotion.new = function(params)
         for _, context in pairs(required_contexts) do
             local i = base_backing(base_key, head_key, context)
             if i == nil then
-                error("Resolving head " .. head_key .. " with unestablished base " .. base_key .. " in " .. context)
+                error("Resolving head " .. head_key .. " with unestablished base " .. base_key .. " in " .. top.context_name(context))
             end
             commit(i)
             if was_solvent[context] then
                 local solvent_i = base_backing(base_key, head_key, context, true)
                 if solvent_i == nil then
-                    error("Resolving head " .. head_key .. " with base " .. base_key .. ", which isn't solvent in " .. context .. " where the head is")
+                    error("Resolving head " .. head_key .. " with base " .. base_key .. ", which isn't solvent in " .. top.context_name(context) .. " where the head is")
                 end
                 commit_solvent(solvent_i)
             end
@@ -1320,7 +1312,7 @@ promotion.new = function(params)
             for _, node_key in pairs({ head_key, dep_key }) do
                 local ind = nci[node_key][context]
                 if not establish(ind) then
-                    error("Can't establish " .. node_key .. " in " .. context .. " after resolving head " .. head_key)
+                    error("Can't establish " .. node_key .. " in " .. top.context_name(context) .. " after resolving head " .. head_key)
                 end
                 -- The head is only ever part of its dependent's backing
                 if node_key == head_key then
@@ -1623,7 +1615,7 @@ promotion.new = function(params)
             local node = graph.nodes[pebble.node_key]
             local kind = node.mechanic and "mechanic" or node.type
             num_by_kind[kind] = (num_by_kind[kind] or 0) + 1
-            table.insert(lines, pebble.node_key .. " @ " .. pebble.context)
+            table.insert(lines, pebble.node_key .. " @ " .. top.context_name(pebble.context))
         end
         table.sort(lines)
         local kinds = {}

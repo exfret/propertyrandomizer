@@ -22,6 +22,9 @@ local logic = {
 package.loaded["lib/logic/state"] = logic
 local gutils = require("lib/graph/graph-utils")
 local bundles = require("lib/logic/operation-bundles")
+-- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, like "home" or "home | 01", and edge abilities as the logic builders used to (lib/graph/contexts-for-tests.lua)
+local fx = require("lib/graph/contexts-for-tests")
+local C = fx.C
 local key = gutils.key
 local passed = 0
 local function test(name, fn)
@@ -40,9 +43,10 @@ local function toy()
         sorted = {},
         node_to_context_inds = {},
     }
+    -- context is a context's name (default "home"), here and in add and prove
     local function pebble(node_key, context)
         local ind = #sort.sorted + 1
-        context = context or "home"
+        context = C(context or "home")
         sort.sorted[ind] = {
             node_key = node_key,
             context = context,
@@ -66,7 +70,7 @@ local function toy()
 end
 
 local function prove(graph, sort, item, operate, context, levels)
-    return bundles.prove(bundles.compile(graph, item, { [operate] = true }), sort, context or "home", levels)
+    return bundles.prove(bundles.compile(graph, item, { [operate] = true }), sort, C(context or "home"), levels)
 end
 
 test("compilation preserves every independent acquisition alternative", function()
@@ -124,8 +128,8 @@ test("OR keeps the earliest provider and honors optional research levels", funct
         second,
     })
     local operate = add("entity-operate", "device", "AND", { power })
-    local early_ind = sort.node_to_context_inds[early].home
-    local late_ind = sort.node_to_context_inds[late].home
+    local early_ind = sort.node_to_context_inds[early][C("home")]
+    local late_ind = sort.node_to_context_inds[late][C("home")]
     local proof = prove(graph, sort, item, operate)
     assert(proof.leaves[early_ind] and not proof.leaves[late_ind])
     proof = prove(graph, sort, item, operate, "home", {
@@ -150,7 +154,7 @@ test("an external OR acquisition remains a valid ownership alternative", functio
     })
     local operate = add("entity-operate", "device", "AND", { own })
     local proof = prove(graph, sort, item, operate)
-    assert(proof.leaves[sort.node_to_context_inds[capture].home])
+    assert(proof.leaves[sort.node_to_context_inds[capture][C("home")]])
 end)
 
 test("missing external supplies are never granted by the item", function()
@@ -174,7 +178,7 @@ test("a material produced downstream is an external boundary", function()
         supply,
     })
     local proof = prove(graph, sort, item, operate)
-    assert(proof.leaves[sort.node_to_context_inds[supply].home])
+    assert(proof.leaves[sort.node_to_context_inds[supply][C("home")]])
 end)
 
 test("a corridor with an unseeded AND cycle stays unproved", function()
@@ -214,8 +218,8 @@ test("operation elsewhere still needs an actual delivery witness", function()
     pebble(item, "away")
     local proof = prove(graph, sort, item, operate)
     assert(proof ~= nil)
-    assert(proof.leaves[sort.node_to_context_inds[infrastructure].home])
-    assert(proof.leaves[sort.node_to_context_inds[supply].away])
+    assert(proof.leaves[sort.node_to_context_inds[infrastructure][C("home")]])
+    assert(proof.leaves[sort.node_to_context_inds[supply][C("away")]])
 end)
 
 test("the corridor preserves ability-changing edges", function()
@@ -223,7 +227,7 @@ test("the corridor preserves ability-changing edges", function()
     sort.complex = true
     local item = add("item", "device", "OR", {}, "home | 00")
     local operate = add("entity-operate", "device", "AND", {}, "home | 01")
-    gutils.add_edge(graph, item, operate, { abilities = { [2] = true } })
+    gutils.add_edge(graph, item, operate, { abilities = fx.edge({ [2] = true }) })
     assert(prove(graph, sort, item, operate, "home | 00").rank == 0)
 end)
 
@@ -236,7 +240,7 @@ test("a recipe downstream of the item remains an external acquisition", function
         recipe,
     })
     local proof = prove(graph, sort, item, operate)
-    assert(proof.leaves[sort.node_to_context_inds[recipe].home])
+    assert(proof.leaves[sort.node_to_context_inds[recipe][C("home")]])
 end)
 
 test("all requested operations contribute their external requirements", function()
@@ -252,8 +256,8 @@ test("all requested operations contribute their external requirements", function
         [first] = true,
         [second] = true,
     })
-    local proof = bundles.prove(compiled, sort, "home")
-    assert(proof.leaves[sort.node_to_context_inds[supply].home])
+    local proof = bundles.prove(compiled, sort, C("home"))
+    assert(proof.leaves[sort.node_to_context_inds[supply][C("home")]])
 end)
 
 test("no requested operation means no compilation work or proof", function()
@@ -261,7 +265,7 @@ test("no requested operation means no compilation work or proof", function()
     local item = add("item", "device", "OR")
     local compiled = bundles.compile(graph, item, {})
     assert(not compiled.supported and next(compiled.nodes) == nil)
-    assert(bundles.prove(compiled, sort, "home") == nil)
+    assert(bundles.prove(compiled, sort, C("home")) == nil)
 end)
 
 print(passed .. " tests passed")

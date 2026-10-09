@@ -72,12 +72,12 @@ end
 
 -- Whether context is in room, not a home context, and has every ability in ability_inds (indices like top.ISOLATABILITY)
 bootstrap.justifies = function(context, room, ability_inds)
-    local abilities = top.context_abilities(context)
-    if top.context_room(context) ~= room or top.context_home(context) ~= nil or abilities == nil then
+    local mask = top.context_mask(context)
+    if top.context_room(context) ~= room or top.context_home(context) ~= nil or mask == nil then
         return false
     end
     for _, ind in pairs(ability_inds) do
-        if string.sub(abilities, ind, ind) ~= "1" then
+        if not top.has_ability(mask, ind) then
             return false
         end
     end
