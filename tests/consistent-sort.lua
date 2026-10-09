@@ -47,8 +47,8 @@ test.validate_all_techs_reachable = function()
             -- TODO: Implement those!
             if tech.max_level ~= "infinite" then
                 local has_context = false
-                for context, _ in pairs(logic.contexts) do
-                    if sort_info.node_to_context_inds[gutils.key(node)][context] ~= nil then
+                for room, _ in pairs(logic.contexts) do
+                    if sort_info.node_to_context_inds[gutils.key(node)][top.simple_context(room)] ~= nil then
                         has_context = true
                         break
                     end
@@ -69,8 +69,8 @@ test.validate_no_techs_reachable = function()
             local tech = data.raw.technology[node.name]
             if tech.unit ~= nil then
                 local has_context = false
-                for context, _ in pairs(logic.contexts) do
-                    if severed_sort_info.node_to_context_inds[gutils.key(node)][context] ~= nil then
+                for room, _ in pairs(logic.contexts) do
+                    if severed_sort_info.node_to_context_inds[gutils.key(node)][top.simple_context(room)] ~= nil then
                         has_context = true
                         break
                     end
@@ -101,8 +101,8 @@ end
 test.lava_only_on_vulcanus = function()
     if mods["space-age"] then
         for context, _ in pairs(sort_info.node_to_context_inds[gutils.key("fluid", "lava")]) do
-            if context ~= gutils.key("planet", "vulcanus") then
-                log(serpent.block(pebble))
+            if top.context_room(context) ~= gutils.key("planet", "vulcanus") then
+                log(top.context_name(context))
                 error("Non-vulcanus context produces lava!")
             end
         end
@@ -111,7 +111,7 @@ end
 
 test.path_contains_chemical_science = function()
     local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
-    local starting_planet_context = gutils.key("planet", constants.starting_planet)
+    local starting_planet_context = top.simple_context(gutils.key("planet", constants.starting_planet))
     local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][starting_planet_context]
     local path_info = top.path(test_graph, { silo_ind }, sort_info)
 
@@ -124,7 +124,7 @@ end
 
 test.path_not_contains_defender = function()
     local silo_node = test_graph.nodes[gutils.key("entity-operate", "rocket-silo")]
-    local starting_planet_context = gutils.key("planet", constants.starting_planet)
+    local starting_planet_context = top.simple_context(gutils.key("planet", constants.starting_planet))
     local silo_ind = sort_info.node_to_context_inds[gutils.key(silo_node)][starting_planet_context]
     local path_info = top.path(test_graph, { silo_ind }, sort_info)
 
@@ -138,12 +138,12 @@ end
 test.path_contains_gleba_biochamber = function()
     if mods["space-age"] then
         local science_node = test_graph.nodes[gutils.key("item", "promethium-science-pack")]
-        local starting_planet_context = gutils.key("planet", constants.starting_planet)
+        local starting_planet_context = top.simple_context(gutils.key("planet", constants.starting_planet))
         local science_ind = sort_info.node_to_context_inds[gutils.key(science_node)][starting_planet_context]
         local path_info = top.path(test_graph, { science_ind }, sort_info)
 
         local chamber_node = test_graph.nodes[gutils.key("entity-operate", "biochamber")]
-        local gleba_context = gutils.key("planet", "gleba")
+        local gleba_context = top.simple_context(gutils.key("planet", "gleba"))
         local chamber_ind = sort_info.node_to_context_inds[gutils.key(chamber_node)][gleba_context]
         if not path_info.in_path[chamber_ind] then
             error()
@@ -216,7 +216,8 @@ test.profile_num_switches = function()
             for _, node2 in pairs(all_nodes) do
                 local imply = false
                 local impliedby = false
-                for context, _ in pairs(logic.contexts) do
+                for room, _ in pairs(logic.contexts) do
+                    local context = top.simple_context(room)
                     if node_context_a_cant_rely_on_b(gutils.key(node1), gutils.key(node2), context) then
                         imply = true
                     elseif node_context_a_cant_rely_on_b(gutils.key(node2), gutils.key(node1), context) then
@@ -262,7 +263,7 @@ test.profile_num_switches = function()
     local goal_inds = {}
     for ind, pebble in pairs(sort_info.sorted) do
         local node = test_graph.nodes[pebble.node_key]
-        if node.type == "item" and pebble.context == gutils.key("planet", "vulcanus") then
+        if node.type == "item" and top.context_room(pebble.context) == gutils.key("planet", "vulcanus") then
             table.insert(goal_inds, ind)
         end
     end
@@ -271,7 +272,7 @@ test.profile_num_switches = function()
     local goal_inds_unoptimized = {}
     for ind, pebble in pairs(sort_info_unoptimized.sorted) do
         local node = test_graph.nodes[pebble.node_key]
-        if node.type == "item" and pebble.context == gutils.key("planet", "vulcanus") then
+        if node.type == "item" and top.context_room(pebble.context) == gutils.key("planet", "vulcanus") then
             table.insert(goal_inds_unoptimized, ind)
         end
     end
