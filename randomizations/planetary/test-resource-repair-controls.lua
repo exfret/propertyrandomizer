@@ -84,7 +84,10 @@ assert(resources.extra_patches() == nil, "nothing is counted before any resource
 resources.num_planets = 15
 resources.num_patches = 45
 local names, limit = resources.extra_patches()
-assert(limit == 22, "half of all the resource patches, rounded down")
+assert(limit == 15, "a third of all the resource patches, rounded down")
+resources.num_patches = 46
+assert(select(2, resources.extra_patches()) == 15, "a third of 46 patches rounds down to 15")
+resources.num_patches = 45
 assert(#names == 1 and names[1] == control.name)
 resources.remove_repair(hidden)
 names = resources.extra_patches()
@@ -94,5 +97,5 @@ function log(message)
     logged = message
 end
 resources.log_extra_patches()
-assert(logged == "PLANETCHECK extra patches: 0 on 15 planets (at most 22)", "the log line gives the limit dev/run-tests.py holds the game to")
-print("ok - extra patches count what the planets list, against half of all the resource patches")
+assert(logged == "PLANETCHECK extra patches: 0 on 15 planets (at most 15)", "the log line gives the limit dev/run-tests.py holds the game to")
+print("ok - extra patches count what the planets list, against a third of all the resource patches")

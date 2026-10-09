@@ -1834,7 +1834,7 @@ planetary.check_final = function(graph)
 end
 
 -- The limits the user set on planetary changes that the finished game breaks, as LocalisedStrings that the randomizer panel lists in red (dev/run-tests.py fails such a game as well)
--- They're more extra patches than resources.MAX_EXTRA_PATCH_SHARE of the resource patches allows, and more conversions than scaffolds.MAX_CONVERSIONS
+-- They're more extra patches than one for every resources.PATCHES_PER_EXTRA_PATCH resource patches, and more conversions than scaffolds.MAX_CONVERSIONS
 -- A broken limit isn't a softlock, so the game still loads as it is
 planetary.broken_limits = function()
     local broken = {}
