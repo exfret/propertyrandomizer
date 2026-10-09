@@ -125,4 +125,44 @@ assert(map.autoplace_controls[other.name].size == 0)
 -- A slider alone must not make a constant-zero placement eligible.
 data.raw.resource[ore.name].autoplace.probability_expression = 0
 assert(#profiles.eligible(data.raw.planet[planet.name]) == 0)
+-- A resource placed with another slot's placement (a resource swap) gets that placement's sliders, not the one it names, which a planet without it must not gain (scrap on Gleba, 2026-10-09).
+data.raw = table.deepcopy(original)
+local named = add("autoplace-control", "fixture-named-slider", { richness = true })
+named.category = "resource"
+local swapped = add("resource", "fixture-swapped-ore", {
+    autoplace = {
+        control = named.name,
+        probability_expression = "var('control:fixture-named-slider:size')",
+        richness_expression = "var('control:fixture-named-slider:richness')",
+    },
+})
+local swap_map = data.raw.planet[planet.name].map_gen_settings
+swap_map.autoplace_settings.entity.settings[swapped.name] = {}
+swap_map.property_expression_names = {
+    ["entity:" .. swapped.name .. ":probability"] = patches.name,
+    ["entity:" .. swapped.name .. ":richness"] = patches.name,
+}
+local swap_entries, swap_controls = profiles.eligible(data.raw.planet[planet.name])
+assert(swap_controls[named.name] == nil, "The slider a swapped resource names isn't one its placement reads")
+for _, entry in pairs(swap_entries) do
+    if entry.resource_name == swapped.name then
+        assert(entry.controls[control.name] == true and entry.controls[named.name] == nil)
+    end
+end
+profiles.execute()
+assert(swap_map.autoplace_controls[named.name] == nil, "Profiles don't add a slider no placement reads")
+-- Where the planet has that slider, it's scaled as before.
+data.raw = table.deepcopy(original)
+data.raw["autoplace-control"][named.name] = table.deepcopy(named)
+data.raw.resource[swapped.name] = table.deepcopy(swapped)
+swap_map = data.raw.planet[planet.name].map_gen_settings
+swap_map.autoplace_settings.entity.settings[swapped.name] = {}
+swap_map.property_expression_names = {
+    ["entity:" .. swapped.name .. ":probability"] = patches.name,
+}
+swap_map.autoplace_controls[named.name] = { size = 2 }
+local _, kept_controls = profiles.eligible(data.raw.planet[planet.name])
+assert(kept_controls[named.name] == true)
+local kept_profile = profiles.execute()[planet.name]
+assert(math.abs(swap_map.autoplace_controls[named.name].size - 2 * kept_profile.size) < 1e-12)
 print("Planet resource profile tests passed")

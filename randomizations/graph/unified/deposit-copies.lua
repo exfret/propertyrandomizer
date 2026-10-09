@@ -22,6 +22,7 @@ local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local item_fluid = require("lib/item-fluid")
 local locale_utils = require("lib/locale")
+local looks = require("lib/looks")
 local lutils = require("lib/logic/logic-utils")
 local combat_encounters = require("lib/logic/combat-encounters")
 local logic = require("lib/logic/init")
@@ -144,6 +145,13 @@ local function clone_resource(resource, planet_name, planets)
     -- The deposit it stands in for and its planet, so the result summary compares it with that deposit (lib/result-summary.lua)
     clone.deposit_clone_of = resource.name
     clone.deposit_planet = planet_name
+    -- Its Factoriopedia page shows a patch of the clone, which item randomization gives its own look, not one of its resource
+    looks.retarget_simulation(clone, resource.name)
+    -- The clone is placed by its planet's listing alone, so it names no slider (AutoplaceSpecification.control) and isn't placed where it isn't listed (default_enabled, as for the clones planet copies make in lib/dupe.lua)
+    -- With its resource's slider, every other planet with that slider would place it but for the probability override keeping it off, and Factoriopedia listed those planets anyway: each scrap clone showed the six planets with the scrap slider (user's game, 2026-10-09)
+    -- Its noise expressions still read the planet's sliders (control:scrap:size and the like), as the game's own ores do without naming one (core/lualib/resource-autoplace.lua leaves control out)
+    clone.autoplace.control = nil
+    clone.autoplace.default_enabled = false
     data:extend({
         clone,
     })
@@ -165,6 +173,18 @@ local function clone_resource(resource, planet_name, planets)
     end
     return clone
 end
+
+-- A resource with clones stays on its first planet alone; where that planet lists it, it's placed by the listing alone there, like its clones, so its slider doesn't list it in Factoriopedia on the planets its clones took (planet copies keep their original's sliders)
+-- One that planet places by its slider alone keeps the slider
+local function place_by_listing(resource, planet_name)
+    local entity_settings = ((data.raw.planet[planet_name].map_gen_settings or {}).autoplace_settings or {}).entity or {}
+    if (entity_settings.settings or {})[resource.name] ~= nil then
+        resource.autoplace.control = nil
+        resource.autoplace.default_enabled = false
+    end
+end
+stage.clone_resource = clone_resource
+stage.place_by_listing = place_by_listing
 
 -- Makes a resource on a planet mine that planet's copies of what it mined
 local function mine_copies(resource, planet_name, copy_for)
@@ -482,6 +502,9 @@ stage.prepare = function(home_sets)
                 resource_name = entity_name,
                 originals = originals,
             })
+        end
+        if clones_of[resource_name] ~= nil then
+            place_by_listing(resource, homes[resource_name][1])
         end
     end
     for _, deposit in pairs(deposits) do

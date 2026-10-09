@@ -129,9 +129,10 @@ local function dependencies(planet, resource)
             scan(expression, resource.autoplace)
         end
     end
+    -- The slider the resource names (AutoplaceSpecification.control) is scaled where the planet has it, but never added to a planet only for that: a swapped slot reads its old resource's sliders, and the scrap slider this added to Gleba, Gleba 3 and Nauvis 2 placed nothing there, while every scrap clone showed up in Factoriopedia on all six planets with it (2026-10-09)
     local control = resource.autoplace.control
     local prototype = (data.raw["autoplace-control"] or {})[control]
-    if prototype ~= nil and prototype.category == "resource" and prototype.richness == true then
+    if prototype ~= nil and prototype.category == "resource" and prototype.richness == true and (planet.map_gen_settings.autoplace_controls or {})[control] ~= nil then
         controls[control] = true
     end
     return controls, has_helper and not has_sparse_placement, has_starting
