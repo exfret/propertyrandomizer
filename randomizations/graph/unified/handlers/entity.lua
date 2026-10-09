@@ -2551,6 +2551,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 type = "explosion",
                 name = effect_name,
                 localised_name = {"propertyrandomizer-entity.set-off-name", locale.find_localised_name(from)},
+                -- Nothing to look up, like the game's own explosions, which are all hidden
+                hidden_in_factoriopedia = true,
                 flags = {
                     "placeable-player",
                     "not-on-map",

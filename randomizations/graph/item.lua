@@ -1,5 +1,6 @@
 local constants = require("helper-tables/constants")
 local dutils = require("lib/data-utils")
+local looks = require("lib/looks")
 local build_graph = require("lib/old-logic/build-graph")
 local flow_cost = require("lib/cost/flow-cost")
 local graph_utils = require("lib/old-logic/graph-utils")
@@ -11,18 +12,7 @@ local recycling_sources = require("lib/logic/recycling-sources")
 local recipe_renames = require("lib/recipe-renames")
 local prototype_exclusions = require("lib/graph-customization")
 
-local function get_primary_icon(prot)
-    if prot.icon ~= nil then
-        return prot.icon, prot.icon_size or 64
-    end
-
-    if prot.icons ~= nil and prot.icons[1] ~= nil then
-        local icon = prot.icons[1]
-        return icon.icon, icon.icon_size or prot.icon_size or 64
-    end
-
-    error("Prototype has no usable icon: " .. tostring(prot.name))
-end
+local get_primary_icon = looks.primary_icon
 
 randomizations.item_new = function(id)
     local item_slots
@@ -728,42 +718,7 @@ randomizations.item_new = function(id)
                         if has_result then
                             if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
                                 entity.localised_name = locale_utils.find_localised_name(item_prototype)
-                                local icon_filename, icon_size = get_primary_icon(item_prototype)
-                                entity.stages = {
-                                    -- Note: This is technically botched with icons, TODO: Fix
-                                    sheets = {
-                                        {
-                                            variation_count = 1,
-                                            filename = icon_filename,
-                                            size = icon_size,
-                                            scale = 0.35,
-                                            shift = {0.2, 0.6}
-                                        },
-                                        {
-                                            variation_count = 1,
-                                            filename = icon_filename,
-                                            size = icon_size,
-                                            scale = 0.25,
-                                            shift = {-0.5, 0.2}
-                                        },
-                                        {
-                                            variation_count = 1,
-                                            filename = icon_filename,
-                                            size = icon_size,
-                                            scale = 0.45,
-                                            shift = {0, 0}
-                                        },
-                                        {
-                                            variation_count = 1,
-                                            filename = icon_filename,
-                                            size = icon_size,
-                                            scale = 0.4,
-                                            shift = {-0.2, -0.6}
-                                        }
-                                    }
-                                }
-                                entity.stage_counts = {entity.stage_counts[1]}
-                                entity.stages_effect = nil
+                                looks.like_item(entity, item_prototype)
                             end
 
                             -- Make trees like fruit trees

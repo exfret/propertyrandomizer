@@ -3,6 +3,7 @@ local locale_utils = require("lib/locale")
 local recipe_renames = require("lib/recipe-renames")
 local recycling_sources = require("lib/logic/recycling-sources")
 local dutils = require("lib/data-utils")
+local looks = require("lib/looks")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
 local top = require("lib/graph/context-sort")
@@ -201,18 +202,7 @@ item.validate = false
     end
 end]]
 
-local function get_primary_icon(prot)
-    if prot.icon ~= nil then
-        return prot.icon, prot.icon_size or 64
-    end
-
-    if prot.icons ~= nil and prot.icons[1] ~= nil then
-        local icon = prot.icons[1]
-        return icon.icon, icon.icon_size or prot.icon_size or 64
-    end
-
-    error("Prototype has no usable icon: " .. tostring(prot.name))
-end
+local get_primary_icon = looks.primary_icon
 
 item.reflect = function(graph, head_to_base, head_to_handler)
     dutils.recalculate_spoil_burnt_results()
@@ -591,42 +581,7 @@ item.reflect = function(graph, head_to_base, head_to_handler)
                                 if has_result then
                                     if entity.type == "resource" and (entity.minable.results == nil or #entity.minable.results == 1) then
                                         entity.localised_name = locale_utils.find_localised_name(trav_item)
-                                        local icon_filename, icon_size = get_primary_icon(trav_item)
-                                        entity.stages = {
-                                            -- Note: This is technically botched with icons, TODO: Fix
-                                            sheets = {
-                                                {
-                                                    variation_count = 1,
-                                                    filename = icon_filename,
-                                                    size = icon_size,
-                                                    scale = 0.35,
-                                                    shift = {0.2, 0.6},
-                                                },
-                                                {
-                                                    variation_count = 1,
-                                                    filename = icon_filename,
-                                                    size = icon_size,
-                                                    scale = 0.25,
-                                                    shift = {-0.5, 0.2},
-                                                },
-                                                {
-                                                    variation_count = 1,
-                                                    filename = icon_filename,
-                                                    size = icon_size,
-                                                    scale = 0.45,
-                                                    shift = {0, 0},
-                                                },
-                                                {
-                                                    variation_count = 1,
-                                                    filename = icon_filename,
-                                                    size = icon_size,
-                                                    scale = 0.4,
-                                                    shift = {-0.2, -0.6},
-                                                },
-                                            },
-                                        }
-                                        entity.stage_counts = {entity.stage_counts[1]}
-                                        entity.stages_effect = nil
+                                        looks.like_item(entity, trav_item)
                                     end
 
                                     -- TODO: Add back fruit trees!

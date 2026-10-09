@@ -3,6 +3,7 @@ local categories = require("helper-tables/categories")
 local rng = require("lib/random/rng")
 local locale_utils = require("lib/locale")
 local dutils = require("lib/data-utils")
+local looks = require("lib/looks")
 
 local resource_autoplace = require("resource-autoplace")
 -- Which original sprite paths have recolored copies under graphics/dupes/<n>/ (dev/make-dupe-graphics.py)
@@ -198,6 +199,8 @@ dupe.prototype = function(prototype, extra_info)
 
     -- Need to add the -copy at the end to prevent the special behavior for technology prototypes with -number at end of prototype names
     new_prototype.name = new_prototype.name .. "-exfret-" .. suffix_addon .. "-copy"
+    -- Its Factoriopedia page shows the copy, recolored, and not the original
+    looks.retarget_simulation(new_prototype, prototype.name)
     new_prototype.localised_name = {"propertyrandomizer.dupe", locale_utils.find_localised_name(prototype), suffix_addon}
     -- For help in localisation later
     new_prototype.localised_description = locale_utils.find_localised_description(prototype)
