@@ -13,6 +13,8 @@ local EXCLUDE_TECHS = true
 local EXCLUDE_ENTITY_OPERATE = true
 -- How many rounds of monotone matching to iterate (each starts from the last round's matching)
 local MONOTONE_MATCHING_ROUNDS = 3
+-- Whether items and fluids trade positions after the rounds, off for now (user, 2026-10-09): gating each trade with a whole-game sort took about 14 of first pass's 20 minutes per attempt in a load with planet copies; parked in notes/wip.txt
+local FORM_SWAPS = false
 -- Trades of an item position's identity with a fluid position's after the rounds (items and fluids trading positions, see monotone matching's form_swaps): how many are tried, and how many are kept at most
 local FORM_SWAP_TRIALS = 12
 local FORM_SWAP_MAX = 8
@@ -791,6 +793,9 @@ first_pass.execute = function(params)
             end,
         },
     }
+    if not FORM_SWAPS then
+        matching_params.form_swaps = nil
+    end
     local assignment, debt_goals = monotone_matching.run(matching_params)
     local slot_to_trav = {}
     local trav_to_slot = {}
