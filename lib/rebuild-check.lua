@@ -95,6 +95,33 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
         end
     end
     local path_info = top.path(flat_graph, goal_inds, flat_sort)
+    -- The techs now unlocking the backing's recipes can be others than the backing went through, like when that one was a kept tech's alternate path the rebuild didn't keep
+    -- Their own backings count too, so that what they need is checked like the rest: like the Fulgora water scaffold for electrolyte on sa/dupes-preview seed 1, whose backing went through Fulgora 2's electromagnetic plant research while its own tech, isolatable there only by the discovery rule, lost its home context
+    local extra_inds = {}
+    for ind, _ in pairs(path_info.in_path) do
+        local pebble = flat_sort.sorted[ind]
+        local unlock = after_graph.nodes[pebble.node_key]
+        if flat_graph.nodes[pebble.node_key].type == "recipe-tech-unlock" and unlock ~= nil then
+            for pre, _ in pairs(unlock.pre) do
+                local edge = after_graph.edges[pre]
+                local tech = after_graph.nodes[edge.start]
+                local flat_name = tech ~= nil and tech.type == "technology" and flat_tech_of(tech.name) or nil
+                if flat_name ~= nil then
+                    local flat_inds = flat_sort.node_to_context_inds[gutils.key("technology", flat_name)] or {}
+                    for _, source in pairs(top.edge_source_contexts(after_sort, edge, pebble.context)) do
+                        if flat_inds[source] ~= nil and path_info.in_path[flat_inds[source]] == nil then
+                            table.insert(extra_inds, flat_inds[source])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    if #extra_inds > 0 then
+        for ind, _ in pairs(top.path(flat_graph, extra_inds, flat_sort).in_path) do
+            path_info.in_path[ind] = true
+        end
+    end
     -- The techs unlocking the backing's recipes, by the tech of flat_graph whose research they have: each needs the backing's contexts of that tech too, like the home context the discovery rule makes a tech isolatable on a discovered planet with (see top.discovery_candidates)
     local rebuilt_of = {}
     for ind, _ in pairs(path_info.in_path) do

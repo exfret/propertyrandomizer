@@ -578,9 +578,49 @@ do
         ["test-rebuilt-tech"] = { "test-prereq-tech" },
     })
     assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], "the prerequisite that keeps the rebuilt tech from the home context is left out")
+    print("ok - the rebuild check leaves out a prerequisite that takes away isolatability from the discovery rule")
+
+    -- The same, but the earliest way to the recipe's isolatability without prerequisites is another tech that unlocked it, which the rebuild didn't keep
+    -- The check's backing then goes through that tech, so it follows the backing of the rebuilt tech's own research too (lib/rebuild-check.lua)
+    -- Like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, isolatable on Fulgora first through Fulgora 2's electromagnetic plant research
+    flat_graph = new_graph()
+    pack_a, _, b_input = world(flat_graph)
+    -- The other tech comes after room B's discovery and the rebuilt tech's flat tech after the other tech, so the other tech is isolatable in room B first whatever order the sort takes nodes in
+    local other_tech = add(flat_graph, "technology", "test-other-tech", {
+        pack_a,
+        gutils.key("technology", "test-discover-tech"),
+    })
+    local own_tech = add(flat_graph, "technology", "test-flat-tech", {
+        pack_a,
+        other_tech,
+    })
+    add(flat_graph, "recipe", "test-recipe", {
+        add(flat_graph, "recipe-tech-unlock", "test-recipe", {
+            other_tech,
+            own_tech,
+        }),
+        b_input,
+    })
+    flat_sort = sorted(flat_graph)
+    assert(flat_sort.node_to_context_inds[recipe_key][isolatable] ~= nil)
+    local backing = top.path(flat_graph, { flat_sort.node_to_context_inds[recipe_key][isolatable] }, flat_sort)
+    local through_other = false
+    for ind, _ in pairs(backing.in_path) do
+        if flat_sort.sorted[ind].node_key == other_tech then
+            through_other = true
+        end
+    end
+    assert(through_other, "the fixture's backing goes through the tech the rebuild didn't keep")
+    lost = rebuild_check.lost(flat_sort, after_graph, after_sort)
+    cuts = rebuild_check.cuts(lost, flat_graph, flat_sort, after_graph, after_sort, function(tech_name)
+        return tech_name == "test-rebuilt-tech" and "test-flat-tech" or nil
+    end, {
+        ["test-rebuilt-tech"] = { "test-prereq-tech" },
+    })
+    assert((cuts["test-rebuilt-tech"] or {})["test-prereq-tech"], "the prerequisite that keeps the rebuilt tech from the home context is left out, though the backing went through another tech")
     logic.home_sets = nil
 end
-print("ok - the rebuild check leaves out a prerequisite that takes away isolatability from the discovery rule")
+print("ok - the rebuild check follows the backing of the tech now unlocking a lost recipe, when the backing went through one the rebuild didn't keep")
 
 -- A recipe made only in room B, which a tech discovers, and a recipe made in either room
 -- The first one's rebuilt tech needs the discovery, not only the science pack the discovery takes: before, its witness went on through the discovery to the pack, and the tech could be researched before room B could be reached
@@ -662,3 +702,58 @@ data.raw.technology["exfret-rebuilt-test-b-recipe-suffix"].prerequisites = {}
 local undiscovered = rebuild_check.undiscovered(logic.graph, data.raw.technology, tech_recipes, rooms_of)
 assert(#undiscovered == 1 and undiscovered[1].recipe == "test-b-recipe", "a tech whose recipe is made only in a discovered room, without the discovery, is found")
 print("ok - a recipe made only in a discovered room needs the discovery")
+
+-- A recipe made only in room B, which a tech researched in room A discovers, whose tech is isolatable there only by the discovery rule, and whose ingredient's tech is researched in room B
+-- The ingredient's tech is isolatable in room B from room B's own resources, but not in room B's home set, so as a prerequisite it would take the target tech's isolatability there away
+-- The prerequisite filter leaves it out up front, so the check has nothing left to cut (like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1, under scrap recycling's tech)
+fixture({
+    ["test-ingredient"] = "test-pack-b",
+    ["test-target"] = "test-pack-a",
+}, function(node)
+    local start = node("start", "", "AND")
+    local a = node("room", ROOM_A, "OR", { start })
+    node("item", "test-pack-a", "OR", { a })
+    local b = node("room", ROOM_B, "OR", { node("technology", "test-discover", "AND") })
+    node("item", "test-pack-b", "OR", { b })
+    local b_input = node("item", "test-b-input", "OR", { b })
+    recipe_node(node, "test-ingredient", { b_input })
+    recipe_node(node, "test-target", {
+        gutils.key("item", "test-ingredient-product"),
+        b_input,
+    })
+end)
+data.raw.technology["test-discover"] = {
+    type = "technology",
+    name = "test-discover",
+    effects = {
+        {
+            type = "unlock-space-location",
+            space_location = "test-b",
+        },
+    },
+    unit = {
+        count = 1,
+        ingredients = {
+            {
+                "test-pack-a",
+                1,
+            },
+        },
+    },
+}
+before = sort()
+local isolatable_b = top.context_key(ROOM_B, "10")
+assert(before.node_to_context_inds[gutils.key("recipe", "test-target")][isolatable_b] ~= nil, "the fixture's target recipe is isolatable in room B")
+assert(before.node_to_context_inds[gutils.key("technology", "test-ingredient-tech")][isolatable_b] ~= nil, "the fixture's ingredient tech is isolatable in room B")
+logged = {}
+randomizations.rebuild_tech_tree()
+assert(not prerequisites("test-target")["exfret-rebuilt-test-ingredient-suffix"], "the ingredient's tech would take away the target tech's isolatability from the discovery rule")
+assert_kept(before, sort(), "rule")
+local nothing_cut = false
+for _, message in pairs(logged) do
+    if string.find(message, "Tech tree rebuild check: the rebuilt game keeps everything the game had", 1, true) ~= nil then
+        nothing_cut = true
+    end
+end
+assert(nothing_cut, "the prerequisite filter leaves it out before the check")
+print("ok - a prerequisite without the home context the discovery rule needs is left out up front")

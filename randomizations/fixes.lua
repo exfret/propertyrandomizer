@@ -8,6 +8,7 @@ local logic = require("lib/logic/init")
 local top = require("lib/graph/context-sort")
 -- Needed for recipe icons logic
 local dupe = require("lib/dupe")
+local surface_sets = require("lib/surface-sets")
 local recycling_lib = require("lib/recycling")
 local recycling_sources_lib = require("lib/logic/recycling-sources")
 local crafter_slots = require("lib/crafter-slots")
@@ -147,37 +148,31 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
+    -- Each recipe's research is copied from a technology unlocking it: the first one the sort reaches (then by name, for those it never reaches), except that a recipe only one planet makes takes it from that planet's own technologies (its discovery or those after it) when one unlocks it
+    -- With planet copies, a copy's technologies unlock its family's recipes too (lib/dupe-planets.lua), so the first one reached can be another planet's: the original Gleba's lava scaffold (randomizations/planetary/scaffolds.lua) got Gleba 3's biochamber research, and once unified randomization had changed what that research needs, the recipe lost its isolatable contexts on Gleba, which leaving out prerequisites can't bring back
     local science_pack_marked = {}
     local is_essential_recipe = {}
+    -- Recipe name --> the technologies unlocking it that have research to copy, in the order above
+    local unlockers = {}
+    local function add_unlocker(recipe_name, tech)
+        unlockers[recipe_name] = unlockers[recipe_name] or {}
+        for _, other in pairs(unlockers[recipe_name]) do
+            if other == tech then
+                return
+            end
+        end
+        table.insert(unlockers[recipe_name], tech)
+    end
     for _, node_info in pairs(with_tech_sort_info.sorted) do
         local node = graph.nodes[node_info.node_key]
         if node.type == "technology" then
             local tech = data.raw.technology[node.name]
             -- CRITICAL TODO: Ignore techs right now with levels; we'll need to nuke them completely later
             --local isdigit = {["0"] = true, ["1"] = true, ["2"] = true, ["3"] = true, ["4"] = true, ["5"] = true, ["6"] = true, ["7"] = true, ["8"] = true, ["9"] = true}
-            if tech.unit ~= nil and tech.unit.count ~= nil then
-                local num_recipe_unlocks = 0
+            if (tech.unit ~= nil and tech.unit.count ~= nil) or tech.research_trigger ~= nil then
                 for _, effect in pairs(tech.effects or {}) do
                     if effect.type == "unlock-recipe" then
-                        num_recipe_unlocks = 1 + num_recipe_unlocks
-                    end
-                end
-                for _, effect in pairs(tech.effects or {}) do
-                    if effect.type == "unlock-recipe" then
-                        if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
-                            recipe_to_unit[effect.recipe] = table.deepcopy(tech.unit)
-                            recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * recipe_to_unit[effect.recipe].count)
-                            recipe_to_source_tech[effect.recipe] = tech.name
-                        end
-                    end
-                end
-            elseif tech.research_trigger ~= nil then
-                for _, effect in pairs(tech.effects or {}) do
-                    if effect.type == "unlock-recipe" then
-                        if recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
-                            recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
-                            recipe_to_source_tech[effect.recipe] = tech.name
-                        end
+                        add_unlocker(effect.recipe, tech)
                     end
                 end
             end
@@ -201,27 +196,102 @@ randomizations.rebuild_tech_tree = function()
     table.sort(tech_names)
     for _, tech_name in pairs(tech_names) do
         local tech = data.raw.technology[tech_name]
-        local num_recipe_unlocks = 0
-        for _, effect in pairs(tech.effects or {}) do
-            if effect.type == "unlock-recipe" then
-                num_recipe_unlocks = 1 + num_recipe_unlocks
-            end
-        end
-        for _, effect in pairs(tech.effects or {}) do
-            if effect.type == "unlock-recipe" and recipe_to_unit[effect.recipe] == nil and recipe_to_research_trigger[effect.recipe] == nil then
-                if tech.unit ~= nil then
-                    recipe_to_unit[effect.recipe] = table.deepcopy(tech.unit)
-                    if tech.unit.count ~= nil then
-                        recipe_to_unit[effect.recipe].count = math.ceil(1 / num_recipe_unlocks * tech.unit.count)
-                    end
-                    recipe_to_source_tech[effect.recipe] = tech.name
-                elseif tech.research_trigger ~= nil then
-                    recipe_to_research_trigger[effect.recipe] = table.deepcopy(tech.research_trigger)
-                    recipe_to_source_tech[effect.recipe] = tech.name
+        if tech.unit ~= nil or tech.research_trigger ~= nil then
+            for _, effect in pairs(tech.effects or {}) do
+                if effect.type == "unlock-recipe" and unlockers[effect.recipe] == nil then
+                    add_unlocker(effect.recipe, tech)
                 end
             end
         end
     end
+    -- The planet's discovery technologies, and whether a technology is one or comes after one (its prerequisites, all the way down)
+    local discoverers_of = {}
+    for _, tech_name in pairs(tech_names) do
+        for _, effect in pairs(data.raw.technology[tech_name].effects or {}) do
+            if effect.type == "unlock-space-location" then
+                discoverers_of[effect.space_location] = discoverers_of[effect.space_location] or {}
+                discoverers_of[effect.space_location][tech_name] = true
+            end
+        end
+    end
+    local closure = {}
+    local function needs(tech_name)
+        if closure[tech_name] == nil then
+            local needed = {}
+            -- Stored first, so a prerequisite cycle ends here
+            closure[tech_name] = needed
+            for _, prerequisite in pairs((data.raw.technology[tech_name] or {}).prerequisites or {}) do
+                needed[prerequisite] = true
+                for further, _ in pairs(needs(prerequisite)) do
+                    needed[further] = true
+                end
+            end
+        end
+        return closure[tech_name]
+    end
+    local function follows_discovery(tech_name, planet_name)
+        for discoverer, _ in pairs(discoverers_of[planet_name] or {}) do
+            if tech_name == discoverer or needs(tech_name)[discoverer] ~= nil then
+                return true
+            end
+        end
+        return false
+    end
+    -- The one planet that makes a recipe, or nil (a recipe several rooms make, or none); one without surface conditions is made everywhere
+    local function only_planet(recipe)
+        if next(recipe.surface_conditions or {}) == nil then
+            return nil
+        end
+        local rooms = {}
+        for room_key, _ in pairs(surface_sets.accepted(recipe)) do
+            table.insert(rooms, room_key)
+        end
+        if #rooms ~= 1 then
+            return nil
+        end
+        local room = gutils.deconstruct(rooms[1])
+        if room.type ~= "planet" then
+            return nil
+        end
+        return room.name
+    end
+    local num_research_from_own_planet = 0
+    local unlocked_names = {}
+    for recipe_name, _ in pairs(unlockers) do
+        table.insert(unlocked_names, recipe_name)
+    end
+    table.sort(unlocked_names)
+    for _, recipe_name in pairs(unlocked_names) do
+        local candidates = unlockers[recipe_name]
+        local source = candidates[1]
+        local recipe = data.raw.recipe[recipe_name]
+        local planet_name = recipe ~= nil and only_planet(recipe) or nil
+        if planet_name ~= nil and not follows_discovery(source.name, planet_name) then
+            for _, candidate in pairs(candidates) do
+                if follows_discovery(candidate.name, planet_name) then
+                    source = candidate
+                    num_research_from_own_planet = num_research_from_own_planet + 1
+                    break
+                end
+            end
+        end
+        local num_recipe_unlocks = 0
+        for _, effect in pairs(source.effects or {}) do
+            if effect.type == "unlock-recipe" then
+                num_recipe_unlocks = 1 + num_recipe_unlocks
+            end
+        end
+        if source.unit ~= nil then
+            recipe_to_unit[recipe_name] = table.deepcopy(source.unit)
+            if source.unit.count ~= nil then
+                recipe_to_unit[recipe_name].count = math.ceil(1 / num_recipe_unlocks * source.unit.count)
+            end
+        else
+            recipe_to_research_trigger[recipe_name] = table.deepcopy(source.research_trigger)
+        end
+        recipe_to_source_tech[recipe_name] = source.name
+    end
+    log("Tech tree rebuild: " .. num_research_from_own_planet .. " recipes only one planet makes take their research from that planet's technologies rather than the first one reached")
 
     -- A second rebuild keeps the existing per-recipe technology as its primary source.
     -- Otherwise that technology could be retained as an alternate and then overwritten below.
@@ -321,17 +391,56 @@ randomizations.rebuild_tech_tree = function()
     -- For a rebuilt tech (recipe_name given), those are the contexts where its recipe can be made: elsewhere the tech unlocks nothing, so it can wait there, and what other techs need from it there is checked in the rebuilt game (rebuild_check below)
     -- Otherwise (techs the logic needs, see logic_needs below) every context of the tech counts
     -- Only the prerequisite's tech is compared, not its recipe: the tech waits for that tech, and the recipe can come later (in vanilla's logic, sulfur is automatable on Nauvis before the chemical plant recipe is)
+    -- Whether a tech's research gives it a context by itself in the sort without tech prerequisites, rather than only through the discovery rule's home context (see top.discovery_candidates)
+    local gives_directly_memo = {}
+    local function gives_directly(tech_name, context)
+        local memo_key = tech_name .. " / " .. context
+        if gives_directly_memo[memo_key] == nil then
+            local node = graph.nodes[gutils.key("technology", tech_name)]
+            local direct = node ~= nil
+            for pre, _ in pairs(node ~= nil and node.pre or {}) do
+                local edge = graph.edges[pre]
+                local sends = false
+                for _, source in pairs(top.edge_source_contexts(context_sort_info, edge, context)) do
+                    if (context_sort_info.node_to_context_inds[edge.start] or {})[source] ~= nil then
+                        sends = true
+                    end
+                end
+                direct = direct and sends
+            end
+            gives_directly_memo[memo_key] = direct
+        end
+        return gives_directly_memo[memo_key]
+    end
+    -- The home context of a tech's contexts that the discovery rule gives an isolatable context through: the one for the home set of the context's room, or nil
+    -- Techs send home contexts to every room, so the first by name stands for them all
+    local function rule_home_context(tech_contexts, context)
+        local home_sets = context_sort_info.home_sets
+        local abilities = top.context_abilities(context)
+        if home_sets == nil or abilities == nil or top.context_home(context) ~= nil or string.sub(abilities, top.ISOLATABILITY, top.ISOLATABILITY) ~= "1" then
+            return nil
+        end
+        local home_id = home_sets.of[top.context_room(context)]
+        local found
+        for tech_context, _ in pairs(tech_contexts) do
+            if home_id ~= nil and top.context_home(tech_context) == home_id and (found == nil or tech_context < found) then
+                found = tech_context
+            end
+        end
+        return found
+    end
     local function covers(prereq_tech_name, tech_name, recipe_name)
         if context_sort_info == nil then
             return true
         end
         local nci = context_sort_info.node_to_context_inds
         local prereq_contexts = nci[gutils.key("technology", prereq_tech_name)] or {}
+        local tech_contexts = nci[gutils.key("technology", tech_name)] or {}
         local target_recipes
         if recipe_name ~= nil then
             target_recipes = nci[gutils.key("recipe", recipe_name)] or {}
         end
-        for context, ind in pairs(nci[gutils.key("technology", tech_name)] or {}) do
+        for context, ind in pairs(tech_contexts) do
             if target_recipes == nil or target_recipes[context] ~= nil then
                 if prereq_contexts[context] == nil then
                     return false
@@ -343,6 +452,14 @@ randomizations.rebuild_tech_tree = function()
                 if prereq_contexts[context] >= target_ind then
                     return false
                 end
+                -- A tech with an isolatable context only through the discovery rule keeps it only with its home context, which a prerequisite with that context from the room's own resources can lack (every context of the tech counts without a recipe, home contexts too)
+                -- Like the original Fulgora's water scaffold for electrolyte on sa/dupes-preview seed 1: its tech was researched before reaching Fulgora, and scrap recycling's tech, researched by mining Fulgoran ruins, took that away as a prerequisite
+                if target_recipes ~= nil and not gives_directly(tech_name, context) then
+                    local home_context = rule_home_context(tech_contexts, context)
+                    if home_context ~= nil and prereq_contexts[home_context] == nil then
+                        return false
+                    end
+                end
             end
         end
         return true
@@ -350,6 +467,17 @@ randomizations.rebuild_tech_tree = function()
     -- Keep research paths supplying recipe contexts the primary source cannot supply.
     -- Their technologies keep their research methods and receive the same context guards below.
     local retained_unlocks = rebuild_unlocks.retained(data.raw.technology, recipe_to_source_tech, context_sort_info, graph)
+    -- How many recipes each tech unlocks before the rebuild, which divides the research of the kept paths' own techs (rebuild_unlocks.split below) as for the rebuilt techs
+    local recipe_unlocks_before = {}
+    for tech_name, tech in pairs(data.raw.technology) do
+        local num_unlocks = 0
+        for _, effect in pairs(tech.effects or {}) do
+            if effect.type == "unlock-recipe" then
+                num_unlocks = num_unlocks + 1
+            end
+        end
+        recipe_unlocks_before[tech_name] = num_unlocks
+    end
     local num_retained = 0
     for _, recipes in pairs(retained_unlocks) do
         for _, _ in pairs(recipes) do
@@ -783,6 +911,24 @@ randomizations.rebuild_tech_tree = function()
             log(message .. "; the rebuilt game still lost " .. #still_lost .. " contexts the game had, which leaving out prerequisites doesn't bring back (e.g. " .. table.concat(examples, "; ") .. ")")
         end
     end
+    -- The kept paths become techs of their own, so that each tech unlocks one recipe; the check above holds for them, since each has its original's research and prerequisites
+    local split_copies, split_originals = rebuild_unlocks.split(data.raw.technology, retained_unlocks, recipe_unlocks_before, function(recipe_name)
+        local recipe = data.raw.recipe[recipe_name]
+        return {
+            localised_name = locale_utils.find_localised_name(recipe),
+            icons = dupe.technology_icons(dupe.get_recipe_icons(recipe)),
+        }
+    end)
+    local num_split = 0
+    for copy_name, copy in pairs(split_copies) do
+        num_split = num_split + 1
+        new_tech_recipes[copy_name] = copy.recipe
+        if data.raw.technology[copy.original].research_trigger ~= nil then
+            copied_trigger_sources[copy_name] = copy.original
+        end
+    end
+    log("Tech tree rebuild: " .. num_split .. " kept alternate unlock paths got techs of their own (Unlock 2 and up), copied from " .. #split_originals .. " original techs" .. (#split_originals > 0 and (": " .. table.concat(split_originals, ", ")) or ""))
+
     -- How preferring a planet's own recipes worked out (see prev_recipes_of), and the prerequisites left that unlock a recipe for elsewhere
     if context_sort_info ~= nil then
         -- Rooms a recipe can be made in, from the sort without tech prerequisites (its contexts are rooms)

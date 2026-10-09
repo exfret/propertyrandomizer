@@ -160,12 +160,22 @@ end
 
 local function providers()
     local count = 0
-    for _, technology in pairs(data.raw.technology) do
+    for name, technology in pairs(data.raw.technology) do
+        local num_unlocks = 0
+        local unlocks_target = false
         for _, effect in pairs(technology.effects or {}) do
+            if effect.type == "unlock-recipe" then
+                num_unlocks = num_unlocks + 1
+            end
             if effect.type == "unlock-recipe" and effect.recipe == "test-target-recipe" then
                 count = count + 1
+                unlocks_target = true
                 assert(technology.hidden ~= true, "a retained research path must stay visible")
             end
+        end
+        if unlocks_target then
+            -- A kept path is a tech of its own (lib/rebuild-unlocks.lua), never the original
+            assert(string.sub(name, 1, string.len("exfret-rebuilt-")) == "exfret-rebuilt-" and num_unlocks == 1, name .. " unlocks the recipe, but isn't one of its rebuilt techs")
         end
     end
     return count
