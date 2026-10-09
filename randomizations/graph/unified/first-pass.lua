@@ -30,6 +30,7 @@ local monotone_matching = require("randomizations/graph/unified/skeleton/monoton
 local replacement_fuel = require("randomizations/graph/unified/skeleton/replacement-fuel")
 local item_fluid = require("lib/item-fluid")
 local deposit_copies = require("lib/deposit-copies")
+local recycling = require("lib/recycling")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 local test_graph_invariants = require("tests/graph-invariants")
 
@@ -631,6 +632,45 @@ first_pass.execute = function(params)
         replacement_fuel.connect(graph, slot_key, trav_key, identity_fuel)
     end
 
+    -- With independent deposits, the copies become their materials again after the attempt, so the items at several positions can end up one, and the recycler then keeps one recycling recipe per item (recycling.lost_to_merges)
+    -- The others lead nowhere in every matching's graph, so the gate holds what relied on them, and the rest of randomization doesn't rely on them either (seed 0 with planet copies, 2026-10-09: a Vulcanus research was given a trigger only reachable there by recycling overgrowth soil, whose item became scrap like five others, and scrap kept the atomic bomb's recycling)
+    local merge_inputs
+    if config.deposit_copies == true and deposit_copies.current ~= nil then
+        merge_inputs = recycling.merge_inputs(old_data_raw)
+    end
+    -- The generated recycling recipes a matching loses that way, sorted
+    local function recycling_lost_to_merges(graph, assignment)
+        local identity_at = {}
+        for slot_key, trav_key in pairs(assignment) do
+            local position = item_fluid.material_of_node(graph, graph.nodes[slot_key])
+            local identity = item_fluid.material_of_node(graph, graph.nodes[trav_key])
+            if position ~= nil and identity ~= nil then
+                identity_at[item_fluid.material_key(position)] = item_fluid.material_key(identity)
+            end
+        end
+        return recycling.lost_to_merges(merge_inputs, function(item_name)
+            local position_key = key("item", item_name)
+            local identity_key = identity_at[position_key] or position_key
+            identity_key = deposit_copies.current.original_key[identity_key] or identity_key
+            local identity = gutils.deconstruct(identity_key)
+            if identity.type ~= "item" then
+                return nil
+            end
+            return identity.name
+        end)
+    end
+    local function connect_after(graph, assignment)
+        if merge_inputs == nil then
+            return
+        end
+        for _, recipe_name in pairs(recycling_lost_to_merges(graph, assignment)) do
+            local node_key = key("recipe", recipe_name)
+            if graph.nodes[node_key] ~= nil then
+                item_fluid.make_unreachable(graph, node_key)
+            end
+        end
+    end
+
     -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)
     -- The trades below judge fluid deposits by the matching's own rule, with these parameters
     local matching_params
@@ -682,10 +722,11 @@ first_pass.execute = function(params)
         end,
         debt = params.debt,
         connect_extra = connect_pair_extra,
-        -- A recycling recipe the recycler generates leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change); the game regenerates it for the item identity under the same name, which the checks see reachable
+        connect_after = connect_after,
+        -- A recycling recipe the recycler generates leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change), or once its item becomes one with others that keep their own (connect_after above); the game regenerates it for the item identity under the same name, which the checks see reachable, or not at all
         recipe_may_vanish = function(node_key)
             local recipe = data.raw.recipe[gutils.deconstruct(node_key).name]
-            return config.item_fluids and item_fluid.regenerated_recycling(recipe)
+            return (config.item_fluids or merge_inputs ~= nil) and item_fluid.regenerated_recycling(recipe)
         end,
         -- Trades between an item position and a fluid position, where each position takes the other's identity (see cross_type_ok and pair_ok)
         form_swaps = {
@@ -762,7 +803,12 @@ first_pass.execute = function(params)
         trav_to_head = trav_to_head,
         connection = connection,
         connect_extra = connect_pair_extra,
+        connect_after = connect_after,
     }, assignment)
+    if merge_inputs ~= nil then
+        local lost_recycling = recycling_lost_to_merges(split_graph, assignment)
+        log("First pass: " .. #lost_recycling .. " generated recycling recipes lead nowhere, since the items they recycle become one with others once the deposit copies are their materials again" .. (#lost_recycling > 0 and (": " .. table.concat(lost_recycling, ", ")) or ""))
+    end
     if config.item_fluids then
         local num_changed_form = 0
         for slot_key, trav_key in pairs(assignment) do

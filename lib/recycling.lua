@@ -393,6 +393,83 @@ recycling.generated_names = function(raw, old_raw)
     return is_generated
 end
 
+-- The generated recycling recipe whose name an item's recycling keeps when several of them recycle the item (regenerate gives an item one recycling recipe, and the logic model follows each by its name): the one named after the item if it's among them, otherwise the first by name
+-- recipe_names: the names of the generated recycling recipes recycling item_name, in any order
+recycling.kept_name = function(item_name, recipe_names)
+    local kept
+    for _, recipe_name in pairs(recipe_names) do
+        if recipe_name == item_name .. "-recycling" then
+            return recipe_name
+        end
+        if kept == nil or recipe_name < kept then
+            kept = recipe_name
+        end
+    end
+    return kept
+end
+
+-- What lost_to_merges reads from old_raw (the game randomization starts from), worked out once:
+--   * generated: list of { name = a recycling recipe the recycler generated there, takes = the item it recycles there }
+--   * hand: items recycled by hand-written recycling recipes there (like scrap by scrap recycling), and by planets' versions of those (independent deposits), which regenerate gives no generated recycling
+recycling.merge_inputs = function(old_raw)
+    local vanilla = recycling.vanilla(old_raw)
+    local inputs = {
+        generated = {},
+        hand = {},
+    }
+    for _, recipe_name in pairs(sorted_keys(old_raw.recipe or {})) do
+        local recipe = old_raw.recipe[recipe_name]
+        local ingredients = recipe.ingredients or {}
+        if #ingredients == 1 and ingredients[1].type == "item" then
+            if vanilla[recipe_name] ~= nil then
+                table.insert(inputs.generated, {
+                    name = recipe_name,
+                    takes = ingredients[1].name,
+                })
+            elseif has_recycling_category(recipe) and (ingredients[1].name .. "-recycling" == recipe_name or recipe.deposit_hand_recycled == true) then
+                table.insert(inputs.hand, ingredients[1].name)
+            end
+        end
+    end
+    return inputs
+end
+
+-- The generated recycling recipes regenerate won't keep, once several items have become one: independent deposits rename their copies back to their materials after randomization (randomizations/graph/unified/deposit-copies.lua), so items at several positions can end up the same
+-- Regenerate gives an item one recycling recipe, under the name kept_name picks among those recycling it then, and none for an item a hand-written recycling recipe takes then; so the logic model can leave out the others, which the game won't have
+-- inputs: from merge_inputs; final_item(item_name): the item a recipe taking item_name in old_raw takes once randomization is done, or nil if that's a fluid now
+-- Returns the names of the recipes lost, sorted
+recycling.lost_to_merges = function(inputs, final_item)
+    local hand_items = {}
+    for _, item_name in pairs(inputs.hand) do
+        local item = final_item(item_name)
+        if item ~= nil then
+            hand_items[item] = true
+        end
+    end
+    local names_for_item = {}
+    for _, entry in pairs(inputs.generated) do
+        local item = final_item(entry.takes)
+        if item ~= nil then
+            names_for_item[item] = names_for_item[item] or {}
+            table.insert(names_for_item[item], entry.name)
+        end
+    end
+    local lost = {}
+    for item, recipe_names in pairs(names_for_item) do
+        local kept
+        if hand_items[item] == nil then
+            kept = recycling.kept_name(item, recipe_names)
+        end
+        for _, recipe_name in pairs(recipe_names) do
+            if recipe_name ~= kept then
+                table.insert(lost, recipe_name)
+            end
+        end
+    end
+    table.sort(lost)
+    return lost
+end
+
 -- Replaces the recycling recipes the recycler generated with what it generates from data.raw now
 -- old_raw is the game before randomization, for which recipes the recycler generated there and which recipe each was made from
 -- Every generated recycling recipe is unlocked from the start
@@ -434,16 +511,19 @@ recycling.regenerate = function(old_raw)
     end
 
     -- Item randomization changes which item each recycling recipe recycles, and the logic model follows each recipe by its name, so an item's recycling keeps the name of the recipe that recycles it now
-    -- Item name --> name of the generated recipe recycling it now, preferring the one named after it
-    local name_for_item = {}
+    -- Item name --> name of the generated recipe recycling it now (recycling.kept_name)
+    local names_for_item = {}
     for _, recipe_name in pairs(sorted_keys(old_recipes)) do
         local ingredients = old_recipes[recipe_name].ingredients or {}
         if #ingredients == 1 and ingredients[1].type == "item" then
             local item_name = ingredients[1].name
-            if name_for_item[item_name] == nil or recipe_name == item_name .. "-recycling" then
-                name_for_item[item_name] = recipe_name
-            end
+            names_for_item[item_name] = names_for_item[item_name] or {}
+            table.insert(names_for_item[item_name], recipe_name)
         end
+    end
+    local name_for_item = {}
+    for item_name, recipe_names in pairs(names_for_item) do
+        name_for_item[item_name] = recycling.kept_name(item_name, recipe_names)
     end
 
     -- The source to prefer for an item's recycling is the one its recipe name had before randomization

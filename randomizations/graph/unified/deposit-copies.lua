@@ -12,7 +12,8 @@
 -- The rule that keeps two useless items from trading places (item_fluid.realized_assignment) treats copies like their ores, so a deposit only changes to an item that does something on its own; first pass's newness rule for deposits also asks for something the planet didn't mine (lib/deposit-copies.lua's is_new_for)
 -- After each unified attempt, collapse renames the copies back to their materials, so the game has one iron ore again, and drops the variants that came out the same as their originals or as one another (a planet whose deposits kept their material); the others stay, locked to their planets, beside the originals
 -- Merging the copies mostly only adds ways to get things the logic didn't count, but machines that pick their recipe by ingredient can't keep everything: the recycler has one recipe per item, so a material keeps one of the recycling recipes its copies had (lib/recycling.lua's regenerate), and two furnace recipes whose ingredients became one material collide
--- The attempt's checks run on the collapsed game, so an attempt whose model relied on what was lost there is retried
+-- First pass knows which recycling recipes go (recycling.lost_to_merges, the rule regenerate keeps by), so no matching relies on them and neither does the rest of randomization (2026-10-09)
+-- The attempt's checks run on the collapsed game, so an attempt whose model relied on what was lost there, like a furnace collision, is retried
 local constants = require("helper-tables/constants")
 local copies = require("lib/deposit-copies")
 local dutils = require("lib/data-utils")

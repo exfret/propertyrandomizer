@@ -325,6 +325,57 @@ test("a slot connects to its trav where the connection starts, with the connecti
     assert(edge ~= nil and edge.abilities[2] == false)
 end)
 
+-- What follows the whole matching, like recycling recipes lost when items become one (first pass's connect_after), comes once every pair is connected
+test("connecting a matching ends with connect_after, given the graph and the whole matching", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    for _, node_key in pairs({
+        key("base", "base-1"),
+        key("head", "head-1"),
+        key("orand", "slot-1"),
+        key("orand", "trav-1"),
+        key("base", "base-2"),
+        key("head", "head-2"),
+        key("orand", "slot-2"),
+        key("orand", "trav-2"),
+    }) do
+        local parts = gutils.deconstruct(node_key)
+        local node = gutils.add_node(graph, parts.type, parts.name)
+        node.op = "AND"
+    end
+    local num_pairs_connected
+    local seen_assignment
+    local params = {
+        slot_to_base = {
+            [key("orand", "slot-1")] = graph.nodes[key("base", "base-1")],
+            [key("orand", "slot-2")] = graph.nodes[key("base", "base-2")],
+        },
+        trav_to_head = {
+            [key("orand", "trav-1")] = graph.nodes[key("head", "head-1")],
+            [key("orand", "trav-2")] = graph.nodes[key("head", "head-2")],
+        },
+        connect_after = function(connected, assignment)
+            num_pairs_connected = 0
+            for _, edge in pairs(connected.edges) do
+                if gutils.deconstruct(edge.start).type == "base" then
+                    num_pairs_connected = num_pairs_connected + 1
+                end
+            end
+            seen_assignment = assignment
+        end,
+    }
+    local assignment = {
+        [key("orand", "slot-1")] = key("orand", "trav-2"),
+        [key("orand", "slot-2")] = key("orand", "trav-1"),
+    }
+    matching.connect(graph, params, assignment)
+    assert(num_pairs_connected == 2, "every pair is connected first, not " .. tostring(num_pairs_connected))
+    assert(seen_assignment == assignment, "it gets the whole matching")
+end)
+
 test("trades that make a resource slot mine something new come first, a few for each slot, then preferred ones", function()
     local candidates = {
         {

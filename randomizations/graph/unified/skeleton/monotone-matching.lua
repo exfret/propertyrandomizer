@@ -45,6 +45,7 @@ end
 -- A fluid position (a fluid-temperature node, an AND of being made and being held, see lib/logic/concrete.lua) gets the same back edge into its making (fluid-create-temperature): its consumers can then use the identity's own sources too, pumping and barrels for a fluid identity (lib/item-fluid.lua moves those to the identity) or delivery for an item identity, which is how a recipe locked to a planet that doesn't make the fluid still gets it there
 -- Only when the trav is an OR node (an item, or a fluid with sources of its own): a fluid trav without them is an AND node fed by its head alone, so the edge would add nothing but a cycle through AND nodes, which needs derivation can't follow
 -- The slot_to_base and trav_to_head connectors come from params, and params.connect_extra(graph, slot_key, trav_key) (optional) connects anything else that follows the pair
+-- params.connect_after(graph, assignment) (optional) then changes what follows the whole matching, not one pair alone
 local function connect(graph, params, assignment)
     for slot_key, trav_key in pairs(assignment) do
         local slot = graph.nodes[slot_key]
@@ -69,6 +70,9 @@ local function connect(graph, params, assignment)
         if params.connect_extra ~= nil then
             params.connect_extra(graph, slot_key, trav_key)
         end
+    end
+    if params.connect_after ~= nil then
+        params.connect_after(graph, assignment)
     end
     return graph
 end
@@ -903,6 +907,7 @@ matching.superposed_sort = superposed_sort
 --   realize(assignment) (optional): the matching the game will actually have, which is what gets gated and returned
 --   connection(slot_key, trav_key) (optional): where the connection of a slot/trav pair starts and what abilities it gains or loses (see connection_of)
 --   connect_extra(graph, slot_key, trav_key) (optional): connects anything else that follows a slot/trav pair (see connect)
+--   connect_after(graph, assignment) (optional): changes what follows the whole matching (see connect)
 --   debt (optional): planetary changes superposed (see the debt goals above), whose goals only the debt reaches must stay reachable with it
 -- Returns slot key --> trav key, and the debt goals it kept (nil without debt), for first pass's own gate
 matching.run = function(params)

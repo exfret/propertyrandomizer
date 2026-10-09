@@ -463,4 +463,74 @@ test("an item several items became keeps one recycling recipe, and no other item
     end
 end)
 
+test("an item's recycling keeps the name of the recipe named after it, or else the first by name", function()
+    assert(recycling.kept_name("plate", {"gear-recycling", "plate-recycling", "cable-recycling"}) == "plate-recycling")
+    assert(recycling.kept_name("plate", {"gear-recycling", "cable-recycling"}) == "cable-recycling")
+    assert(recycling.kept_name("plate", {"gear-recycling"}) == "gear-recycling")
+end)
+
+-- Item randomization moved identities to positions, and the copies (junk-copy, plate-copy) became their materials again: recipes taking a position in old_raw take final[position] now
+-- Gears and cables both became plates, and junk and the junk copy both became junk, which junkyard recycling, written by hand, takes now
+test("the generated recycling recipes the logic model leaves out after items became one are exactly the ones regeneration drops", function()
+    local recipes = base_recipes()
+    recipes["copy-user"] = {
+        name = "copy-user",
+        ingredients = {entry("plate-copy", 1)},
+        results = {entry("new-item", 1)},
+    }
+    local names = {"junkyard", "junk-copy", "plate-copy"}
+    for _, name in pairs(item_names) do
+        table.insert(names, name)
+    end
+    local old_raw = game(recipes, names)
+    -- Written by hand under the name the recycler would give junkyard's recycling, which it then doesn't generate, like scrap recycling (recycler/data-updates.lua)
+    old_raw.recipe["junkyard-recycling"] = {
+        name = "junkyard-recycling",
+        categories = {"recycling"},
+        ingredients = {entry("junkyard", 1)},
+        results = {entry("gear", 1)},
+    }
+    assert(old_raw.recipe["junk-recycling"] ~= nil and old_raw.recipe["junk-copy-recycling"] ~= nil, "the copies and junk recycle before randomization")
+    local final = {
+        plate = "circuit",
+        gear = "plate",
+        circuit = "gear",
+        cable = "plate",
+        ["plate-copy"] = "cable",
+        junkyard = "junk",
+        junk = "junk",
+        ["junk-copy"] = "junkyard",
+    }
+    local function final_item(item_name)
+        return final[item_name] or item_name
+    end
+    local predicted = recycling.lost_to_merges(recycling.merge_inputs(old_raw), final_item)
+    local raw = randomize(old_raw)
+    for _, recipe in pairs(raw.recipe) do
+        for _, list in pairs({
+            recipe.ingredients or {},
+            recipe.results or {},
+        }) do
+            for _, material in pairs(list) do
+                material.name = final_item(material.name)
+            end
+        end
+    end
+    raw.item["junk-copy"] = nil
+    raw.item["plate-copy"] = nil
+    recycling.regenerate(old_raw)
+    -- What regeneration kept of each generated recycling recipe: still there, and recycling the item its old one turned into
+    local dropped = {}
+    for _, entry in pairs(recycling.merge_inputs(old_raw).generated) do
+        local recipe = raw.recipe[entry.name]
+        if recipe == nil or recipe.ingredients[1].name ~= final_item(entry.takes) then
+            table.insert(dropped, entry.name)
+        end
+    end
+    table.sort(dropped)
+    assert(table.concat(predicted, ", ") == table.concat(dropped, ", "), "predicted " .. table.concat(predicted, ", ") .. "; regeneration dropped " .. table.concat(dropped, ", "))
+    -- Gears and cables became plates, so plates keep cable recycling, the first by name; junk is recycled by hand, so neither junk recycling stays
+    assert(table.concat(predicted, ", ") == "gear-recycling, junk-recycling", table.concat(predicted, ", "))
+end)
+
 print(num_passed .. " tests passed")

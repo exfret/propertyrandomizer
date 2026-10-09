@@ -679,6 +679,7 @@ local function make_unreachable(graph, node_key)
         gutils.add_edge(graph, false_key(graph), node_key)
     end
 end
+item_fluid.make_unreachable = make_unreachable
 
 -- Takes an orand out of the graph with its two edges and gutils.make_orand's bookkeeping, so its maker no longer feeds the OR node (an orand keeps exactly one prerequisite, so it can't just need the false node)
 local function remove_orand(graph, orand_key)
