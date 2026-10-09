@@ -7,7 +7,7 @@
 #   - the randomizer panel wouldn't warn about a softlock: every science pack reachable before randomization still is (the check at the end of data-final-fixes.lua)
 #   - the MECHCHECK verdict (randomizations/graph/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
 #   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, randomizations/planetary/scaffolds.lua)
-#   - resource swaps left at most half an extra patch per planet they work on (PLANETCHECK extra patches, randomizations/planetary/resources.lua)
+#   - resource swaps left extra patches for at most half of all the resource patches they work on (PLANETCHECK extra patches, randomizations/planetary/resources.lua)
 #   - when operation readiness is audited, no building arrives before its operation inputs
 # Resource-patch limit and operation-readiness violations fail even work-in-progress suites.
 #   - the new map runs some ticks without errors (the control stage)
@@ -109,9 +109,9 @@ VERDICT = re.compile(r"MECHCHECK verdict: (ok|FAILED) (\(.*\))")
 CONVERSIONS = re.compile(r"PLANETCHECK conversions: (\d+) in the game(?: \(at most (\d+)\))?[^:\r\n]*:? ?([^\r\n]*)")
 # The user's rule (2026-10-01): one conversion is the worst that should ever happen; only for logs that don't give the limit
 MAX_CONVERSIONS = 1
-# Extra patches resource swaps gave planets back (a planet keeping a resource it lost), logged at the end of planetary randomization with the limit the mod holds them to (resources.MAX_EXTRA_PATCHES_PER_PLANET in randomizations/planetary/resources.lua), which the randomizer panel also lists in red when broken
+# Extra patches resource swaps gave planets back (a planet keeping a resource it lost), logged at the end of planetary randomization with the limit the mod holds them to (resources.MAX_EXTRA_PATCH_SHARE in randomizations/planetary/resources.lua), which the randomizer panel also lists in red when broken
 EXTRA_PATCHES = re.compile(r"PLANETCHECK extra patches: (\d+) on (\d+) planets(?: \(at most (\d+)\))?:? ?([^\r\n]*)")
-# The user's limit (2026-10-01): half an extra patch per planet, so 7 for the 15 planets of two copies each; only for logs from before the mod logged its limit (like --ref of an older version)
+# The user's limit from 2026-10-01 to 2026-10-09: half an extra patch per planet, so 7 for the 15 planets of two copies each; only for logs from before the mod logged its limit (like --ref of an older version), which also held that limit
 MAX_EXTRA_PATCHES_PER_PLANET = 0.5
 OPERATION_CHECK = re.compile(r"OPERATIONCHECK checked (\d+) building items; (\d+) precede operation readiness")
 SETTING_LINE = re.compile(r"PRTEST setting (\S+) = (.*)$", re.MULTILINE)

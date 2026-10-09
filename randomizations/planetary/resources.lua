@@ -41,9 +41,11 @@ local sets_made = {}
 resources.repair_controls = {}
 -- How many planets the latest resource swap worked on, or nil before any
 resources.num_planets = nil
--- The user's limit (2026-10-01): at most half an extra patch per planet resource swaps work on, so 7 for the 15 planets of two copies each
+-- How many resource patches (slots: a resource's placement on a planet) the latest resource swap worked on, or nil before any
+resources.num_patches = nil
+-- The user's limit (2026-10-09; from 2026-10-01 it was half an extra patch per planet): extra patches for at most half of all the resource patches resource swaps work on, so 22 for the 45 patches on 15 planets of the user's settings with two copies of each planet
 -- A game past it is listed in red on the randomizer panel (planetary.broken_limits), and dev/run-tests.py fails it as a hard limit
-resources.MAX_EXTRA_PATCHES_PER_PLANET = 0.5
+resources.MAX_EXTRA_PATCH_SHARE = 0.5
 
 -- The two patch counts the helper keeps per autoplace set, as noise expressions named after the set
 local count_suffixes = {
@@ -928,6 +930,7 @@ resources.execute = function(id)
         planets[slot.planet_name] = true
     end
     resources.num_planets = #sorted_keys(planets)
+    resources.num_patches = #slots
     local assignment = resources.random_assignment(slots, id)
     local moves = {}
     for i, slot in pairs(slots) do
@@ -938,10 +941,10 @@ resources.execute = function(id)
     return slots, assignment, lost
 end
 
--- The extra patches the planets have, as a sorted list of their slider names, and the most the game may have (see resources.MAX_EXTRA_PATCHES_PER_PLANET), or nil before any resource swap
+-- The extra patches the planets have, as a sorted list of their slider names, and the most the game may have (see resources.MAX_EXTRA_PATCH_SHARE), or nil before any resource swap
 -- A patch counts while its planet lists its slider: taking a repair back out (resources.remove_repair) leaves the slider prototype in data.raw
 resources.extra_patches = function()
-    if resources.num_planets == nil then
+    if resources.num_patches == nil then
         return nil
     end
     local names = {}
@@ -952,7 +955,7 @@ resources.extra_patches = function()
             table.insert(names, control_name)
         end
     end
-    return names, math.floor(resources.MAX_EXTRA_PATCHES_PER_PLANET * resources.num_planets)
+    return names, math.floor(resources.MAX_EXTRA_PATCH_SHARE * resources.num_patches)
 end
 
 -- Logs the extra patches the planets have, how many planets resource swaps work on, and the limit (PLANETCHECK extra patches, which dev/run-tests.py holds the game to)

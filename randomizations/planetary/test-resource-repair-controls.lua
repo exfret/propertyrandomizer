@@ -79,10 +79,12 @@ print("ok - restoring a repair preserves its template's hidden setting")
 
 -- The extra patches the planets list, against the limit the randomizer panel lists a game in red for and dev/run-tests.py fails it for (planetary.broken_limits)
 resources.num_planets = nil
+resources.num_patches = nil
 assert(resources.extra_patches() == nil, "nothing is counted before any resource swap")
 resources.num_planets = 15
+resources.num_patches = 45
 local names, limit = resources.extra_patches()
-assert(limit == 7, "half a patch per planet, rounded down")
+assert(limit == 22, "half of all the resource patches, rounded down")
 assert(#names == 1 and names[1] == control.name)
 resources.remove_repair(hidden)
 names = resources.extra_patches()
@@ -92,5 +94,5 @@ function log(message)
     logged = message
 end
 resources.log_extra_patches()
-assert(logged == "PLANETCHECK extra patches: 0 on 15 planets (at most 7)", "the log line gives the limit dev/run-tests.py holds the game to")
-print("ok - extra patches count what the planets list, against half a patch per planet")
+assert(logged == "PLANETCHECK extra patches: 0 on 15 planets (at most 22)", "the log line gives the limit dev/run-tests.py holds the game to")
+print("ok - extra patches count what the planets list, against half of all the resource patches")
