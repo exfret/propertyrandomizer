@@ -2,7 +2,8 @@
 
 -- Bases are mining-fluid nodes: a fluid together with the resource category variant that takes a fluid input (lutils.mcat_name), since only machines with an input fluid box mine a resource needing a fluid, never the character (fluid_amount > 0 means it can't be mined by hand, see MinableProperties in the API docs)
 -- prefixes.lua gives every mining drill an input fluid box, so this mostly takes hand mining away
--- A resource can only gain a fluid if its category's fluid input variant has a resource-category node in logic (some resource of that category needed a fluid)
+-- A resource can only gain a fluid if its category's fluid input variant has a resource-category node in logic, which it has when the category's drills can take an input fluid (lib/lookup/2-simple/mining.lua)
+-- With the unified randomizations in development, no resource needs a fluid before this chooses (lib/mining-fluids.lua, user 2026-10-09), so every resource's fluid comes from here, uranium's included
 -- With first pass and promotion, every resource's fluid is chosen up front (choose_up_front below), and the shuffle only chooses them without those
 
 local gutils = require("lib/graph/graph-utils")

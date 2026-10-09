@@ -169,6 +169,15 @@ local planetary = require("randomizations/planetary/execute")
 local transport = require("randomizations/planetary/transport")
 local fix_pass = require("randomizations/planetary/fix-pass")
 local recycling = require("lib/recycling")
+local mining_fluids = require("lib/mining-fluids")
+
+-- With the unified randomizations in development, the mining fluid randomization chooses which resources need a fluid, so none needs one before it (lib/mining-fluids.lua, user 2026-10-09): planetary changes and independent deposits then never depend on a vanilla mining fluid they can't keep
+if config.dev_unified then
+    local stripped = mining_fluids.strip(data.raw.resource)
+    if #stripped > 0 then
+        log("Mining fluids: no resource needs one until the mining fluid randomization chooses them; needed before: " .. table.concat(stripped, ", "))
+    end
+end
 
 -- The game before any planetary change, for rolling the changes again for another attempt of the rest of randomization (superposed mode, see the unified loop below)
 local pre_planetary_raw = nil
