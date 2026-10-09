@@ -36,10 +36,6 @@ top.home_contexts_in_set_rooms = true
 top.implied_home_contexts = true
 -- Whether home contexts are kept to research (see Home contexts above), with complex contexts; false only to compare with how sorts used to be
 top.research_home_contexts = true
--- Whether an ability context stands for the weaker ones of its room that come with it or after it (see Ability contexts standing for weaker ones below), rather than each being recorded and passed on; false only to compare with how sorts used to be
-top.implied_ability_contexts = true
--- Only for tests: when set, function(open, number of pebbles so far) --> the node key top.sort takes out of open next, in place of a random or earliest pick, so sorts with different switches can be compared step by step
-top.choose_open = nil
 top.AUTOMATABILITY = AUTOMATABILITY
 
 -- Every ability mask, in the order sorts go through them (see lib/graph/contexts.lua)
@@ -55,171 +51,12 @@ for _, mask in pairs(masks) do
         table.insert(ISOLATED_MASKS, mask)
     end
 end
--- The strongest mask, which stands for every other (top.implied_ability_contexts)
-local ALL_ABILITIES = ctx.ALL_ABILITIES
 
 local has_ability = ctx.has_ability
 local with_ability = ctx.with_ability
-local without_ability = ctx.without_ability
-
--- For ability contexts standing for weaker ones (top.implied_ability_contexts): mask + 1 --> the masks with fewer abilities, the most abilities first, and the masks with more
-local WEAKER_MASKS = {}
-local STRONGER_MASKS = {}
-for _, mask in pairs(masks) do
-    WEAKER_MASKS[mask + 1] = {}
-    STRONGER_MASKS[mask + 1] = {}
-end
-for _, mask in pairs(masks) do
-    for _, other in pairs(masks) do
-        if other ~= mask and ctx.mask_covers(mask, other) then
-            table.insert(WEAKER_MASKS[mask + 1], other)
-            table.insert(STRONGER_MASKS[other + 1], mask)
-        end
-    end
-end
-local function num_abilities(mask)
-    local count = 0
-    for ability = 1, ctx.NUM_ABILITIES do
-        if has_ability(mask, ability) then
-            count = count + 1
-        end
-    end
-    return count
-end
-for _, mask in pairs(masks) do
-    table.sort(WEAKER_MASKS[mask + 1], function(a, b)
-        if num_abilities(a) ~= num_abilities(b) then
-            return num_abilities(a) > num_abilities(b)
-        end
-        return a < b
-    end)
-end
--- Edge abilities code --> mask + 1 --> the one mask the edge makes of it, which stands for every mask FORWARD_MASKS gives from it and from its weaker masks
--- An edge gaining an ability adds it, and one losing an ability takes it away: FORWARD_MASKS drops a mask with an ability the edge loses, but the weaker mask without it comes through
-local STRONGEST_FORWARD = {}
-for code, _ in pairs(FORWARD_MASKS) do
-    STRONGEST_FORWARD[code] = {}
-    local gains = ctx.edge_gains(code)
-    local loses = ctx.edge_loses(code)
-    for _, mask in pairs(masks) do
-        local result = mask
-        for ability = 1, ctx.NUM_ABILITIES do
-            -- Gaining wins over losing, as in FORWARD_MASKS
-            if has_ability(gains, ability) then
-                result = with_ability(result, ability)
-            elseif has_ability(loses, ability) then
-                result = without_ability(result, ability)
-            end
-        end
-        STRONGEST_FORWARD[code][mask + 1] = result
-    end
-end
-top.weaker_masks = function(mask)
-    return WEAKER_MASKS[mask + 1]
-end
-top.strongest_forward = function(code, mask)
-    return STRONGEST_FORWARD[code][mask + 1]
-end
-
--- The rank of the weaker context with mask that the ind-th pebble stands for (top.implied_ability_contexts): between the pebble before it and this one, the weaker masks first
--- Exact in floating point, since NUM_MASKS is a power of two
-local NUM_MASKS = ctx.NUM_MASKS
-local function stood_for_rank(ind, mask)
-    return ind - 1 + (mask + 1) / NUM_MASKS
-end
-
--- The pebble lists of a sort with complex contexts give the node and context of a rank stood_for_rank made, as if they listed it
--- (Factorio doesn't save these metatables in storage, doc-html/auxiliary/storage.html, so a sort kept there gets them again when top.sort carries it on)
-local function stood_for_ind(rank)
-    if type(rank) ~= "number" then
-        return nil
-    end
-    local below = math.floor(rank)
-    if below == rank then
-        return nil
-    end
-    return below + 1
-end
-local PEBBLE_KEYS_META = {
-    __index = function(pebble_keys, rank)
-        local ind = stood_for_ind(rank)
-        return ind ~= nil and rawget(pebble_keys, ind) or nil
-    end,
-}
-local PEBBLE_CONTEXTS_META = {
-    __index = function(pebble_contexts, rank)
-        local ind = stood_for_ind(rank)
-        local own = ind ~= nil and rawget(pebble_contexts, ind) or nil
-        if own == nil then
-            return nil
-        end
-        return ctx.with_mask(own, math.floor((rank - ind + 1) * NUM_MASKS + 0.5) - 1)
-    end,
-}
-
--- How many node contexts a sort made by top.sort has, counting the contexts pebbles stand for (the pebble lists don't list them)
-top.num_contexts = function(sort_info)
-    local count = 0
-    for _, inds in pairs(sort_info.node_to_context_inds) do
-        for _, _ in pairs(inds) do
-            count = count + 1
-        end
-    end
-    return count
-end
-
--- Every rank of a sort made by top.sort, in order, for going through each pebble's node and context (pebble_keys[rank] and pebble_contexts[rank]) as `for rank in top.each_rank(sort_info) do`
--- That's each pebble's index, after the ranks of the weaker contexts it stands for (top.implied_ability_contexts), which the pebble lists don't list
-top.each_rank = function(sort_info)
-    local pebble_keys = sort_info.pebble_keys
-    local pebble_contexts = sort_info.pebble_contexts
-    local node_to_context_inds = sort_info.node_to_context_inds
-    local num_pebbles = #pebble_keys
-    local ind = 0
-    -- The current pebble's stood-for ranks, and how many of them are left before its own index
-    local ranks = {}
-    local num_ranks = 0
-    local next_rank = 1
-    return function()
-        if next_rank <= num_ranks then
-            next_rank = next_rank + 1
-            return ranks[next_rank - 1]
-        end
-        if num_ranks > 0 then
-            num_ranks = 0
-            return ind
-        end
-        ind = ind + 1
-        if ind > num_pebbles then
-            return nil
-        end
-        local context = rawget(pebble_contexts, ind)
-        local mask = ctx.mask(context)
-        if mask == nil or ctx.home_of(context) ~= nil or mask == NO_ABILITIES then
-            return ind
-        end
-        local inds = node_to_context_inds[rawget(pebble_keys, ind)]
-        -- Weaker masks first, as their ranks go
-        for weaker_mask = 0, mask - 1 do
-            if ctx.mask_covers(mask, weaker_mask) then
-                local rank = stood_for_rank(ind, weaker_mask)
-                if inds[ctx.with_mask(context, weaker_mask)] == rank then
-                    num_ranks = num_ranks + 1
-                    ranks[num_ranks] = rank
-                end
-            end
-        end
-        if num_ranks == 0 then
-            return ind
-        end
-        next_rank = 2
-        return ranks[1]
-    end
-end
-
 top.has_ability = has_ability
 top.with_ability = with_ability
-top.without_ability = without_ability
+top.without_ability = ctx.without_ability
 -- Whether a mask has every ability another has
 top.mask_covers = ctx.mask_covers
 -- How a mask is written in logs, like "10"
@@ -251,14 +88,6 @@ top.simple_context = ctx.simple
 --   * Techs (home_carrier) pass those home contexts on to the techs after them, research inputs and relays (unified's slots, heads and such) carry them where they lead to a tech, and nothing else takes them; sources only give them to research
 --   * A pack made from another of the set's planets' items (beyond the core's), or with a tech only the set's other planets research, doesn't count, though removing the other rooms and sorting again would count it; late techs needing several planets (biter eggs, biolabs) get none, which leaves them free to go anywhere (user, 2026-10-09)
 --   * Each of those home sets has a single home context, riding on one room's weakest context (the room in the most home sets), since techs send them to every room anyway
-
--- Ability contexts standing for weaker ones (top.implied_ability_contexts, with complex contexts)
--- A node with a context in a room also has that room's contexts with fewer abilities, so "11" stands for "10", "01" and "00", and "10" or "01" for "00" (user, 2026-10-09: "01 should always imply 00")
--- So of a node's batch from open, only the strongest contexts of each room become pebbles in the pebble lists, and the weaker ones the node didn't have yet are neither listed nor sent to dependents
--- A weaker context coming in a batch before any stronger one keeps its own pebble and index, since ranks are read (wood on Nauvis is reachable early and automatable only later, user, 2026-10-09)
--- What's passed on stands for the rest too: an edge sends the one mask it makes of a pebble's (STRONGEST_FORWARD, so one losing an ability sends the context without it), a forgetter also sends an isolatable context's mask without isolatability to the other rooms, a room sends its strongest context, the discovery rule adds a tech's strongest isolatable context, and an AND node that doesn't get a mask checks the weaker ones
--- Each weaker context a pebble stands for still gets a rank of its own in node_to_context_inds, just below the pebble's index (stood_for_rank), which the pebble lists give its node and context for, as if it were listed
--- So what reads ranks is unchanged; only going through the pebble lists misses those contexts, so that goes through top.each_rank instead
 
 -- The home context riding on a context (home sets are numbered, see top.home_sets)
 top.home_context_key = ctx.home
@@ -893,39 +722,6 @@ local function node_transmit(context_info, node, incoming)
     end
 end
 
--- The strongest of the contexts node_transmit gives when incoming and the contexts it stands for arrive at a forgetter or a room, which stand for the rest (top.implied_ability_contexts)
--- Only for complex contexts that aren't home contexts
--- A forgetter keeps an isolatable context in its room and sends the mask without isolatability to the other rooms, and a room sends its strongest context
-local function strongest_transmit(context_info, node, incoming)
-    local context_type = logic.type_info[node.type].context
-    local mask = context_info.mask[incoming]
-    if context_type == true then
-        local outgoing = {}
-        if has_ability(mask, ISOLATABILITY) then
-            table.insert(outgoing, incoming)
-            local room = context_info.room[incoming]
-            local shared = without_ability(mask, ISOLATABILITY)
-            for other_room, room_contexts in pairs(context_info.of) do
-                if other_room ~= room then
-                    table.insert(outgoing, room_contexts[shared + 1])
-                end
-            end
-        else
-            for _, room_contexts in pairs(context_info.of) do
-                table.insert(outgoing, room_contexts[mask + 1])
-            end
-        end
-        return outgoing
-    elseif type(context_type) == "string" then
-        local room_contexts = context_info.of[node.name]
-        if room_contexts == nil then
-            error("Room node " .. node.name .. " is not a context")
-        end
-        return { room_contexts[ALL_ABILITIES + 1] }
-    end
-    return { incoming }
-end
-
 -- Rooms (as context keys) whose space locations this tech unlocks
 -- Nodes that discover rooms for the isolatability discovery rule (see discover_space_locations and discover_home_rooms in top.sort)
 -- Techs discover the space locations they unlock, and a spaceship discovers space platforms (the platform's techs count from when it can fly, not from when platforms are unlocked)
@@ -1527,7 +1323,7 @@ top.graph_fingerprint = function(graph)
         parts[n] = "c " .. room
     end
     n = n + 1
-    parts[n] = "s " .. tostring(top.home_contexts_in_set_rooms) .. " " .. tostring(top.implied_home_contexts) .. " " .. tostring(top.research_home_contexts) .. " " .. tostring(top.implied_ability_contexts)
+    parts[n] = "s " .. tostring(top.home_contexts_in_set_rooms) .. " " .. tostring(top.implied_home_contexts) .. " " .. tostring(top.research_home_contexts)
     return table.concat(parts, "\n")
 end
 
@@ -1674,11 +1470,6 @@ top.sort = function(graph, state, new_conn, extra)
     local node_to_context_inds = state.node_to_context_inds or {}
     local pebble_keys = state.pebble_keys or {}
     local pebble_contexts = state.pebble_contexts or {}
-    -- Ranks of the weaker contexts that pebbles stand for are read through the lists like listed pebbles (top.implied_ability_contexts)
-    if complex then
-        setmetatable(pebble_keys, PEBBLE_KEYS_META)
-        setmetatable(pebble_contexts, PEBBLE_CONTEXTS_META)
-    end
     -- Table of node_key --> nil or { context --> true }
     local open = state.open or {}
     -- open's keys as a list, plus each key's position in that list, so random selection doesn't need to scan open
@@ -1691,11 +1482,6 @@ top.sort = function(graph, state, new_conn, extra)
     local home_techs = state.home_techs or {}
     -- Nodes that got a home context in this sort, whose home contexts standing for others are written out at the end (top.implied_home_contexts)
     local home_touched = {}
-    -- Whether ability contexts stand for the weaker ones of their room (top.implied_ability_contexts), and mask + 1 --> true for the masks process_depnode's check of weaker masks has found so far (emptied after each check)
-    local implied_abilities = complex and top.implied_ability_contexts
-    local masks_found = {}
-    -- With them, node key --> { context --> true } for the contexts the discovery rule put in open for a tech, which its batch records after its others (see the main loop)
-    local discovery_added = {}
     -- With research home contexts (top.research_home_contexts): whether they're on, and node key --> whether it's a research input (is_research_input), filled in when first read so the main loop needs no call
     local research_on = context_info.research_homes
     local research_stops = setmetatable({}, {
@@ -1791,7 +1577,7 @@ top.sort = function(graph, state, new_conn, extra)
 
     -- Puts a node that just entered open in the heap, if it has a pebble
     -- node_key --> index of the node's earliest pebble, once it has one
-    -- New pebbles come after the old ones (and the contexts they stand for rank just below them, after the old ones too), so it doesn't change during a sort once found
+    -- New pebbles come after the old ones (and pebbles written out at the end of a sort repeat existing indices), so it doesn't change during a sort once found
     local earliest_inds = {}
     local function heap_add(node_key)
         local earliest = earliest_inds[node_key]
@@ -1893,12 +1679,6 @@ top.sort = function(graph, state, new_conn, extra)
             if not already_has(depnode_key, context) then
                 add_to_open(depnode, context, depnode_key)
             end
-        elseif implied_abilities and context_info.home[context] == nil then
-            for _, outgoing in pairs(strongest_transmit(context_info, depnode, context)) do
-                if not already_has(depnode_key, outgoing) then
-                    add_to_open(depnode, outgoing, depnode_key)
-                end
-            end
         else
             for _, outgoing in pairs(node_transmit(context_info, depnode, context)) do
                 if not already_has(depnode_key, outgoing) then
@@ -1972,36 +1752,6 @@ top.sort = function(graph, state, new_conn, extra)
                         end
                     end
                 end
-            elseif implied_abilities then
-                -- Likewise the prerequisite incoming came from also stands for the weaker masks of incoming's room, which the others may all send though not incoming itself (top.implied_ability_contexts)
-                -- So they're checked here from the strongest down, each one the depnode has, is about to have or now gets standing for the ones below it
-                local inds = node_to_context_inds[depnode_key]
-                local waiting = open[depnode_key]
-                if inds[incoming] == nil and (waiting == nil or waiting[incoming] == nil) then
-                    local room_contexts = context_info.of[context_info.room[incoming]]
-                    for _, mask in pairs(WEAKER_MASKS[context_info.mask[incoming] + 1]) do
-                        local covered = false
-                        for _, stronger in pairs(STRONGER_MASKS[mask + 1]) do
-                            if masks_found[stronger + 1] then
-                                covered = true
-                                break
-                            end
-                        end
-                        if not covered then
-                            local weaker = room_contexts[mask + 1]
-                            if inds[weaker] ~= nil or (waiting ~= nil and waiting[weaker] ~= nil) then
-                                masks_found[mask + 1] = true
-                            elseif all_pres_send(depnode, weaker) then
-                                masks_found[mask + 1] = true
-                                arrived = arrived or {}
-                                table.insert(arrived, weaker)
-                            end
-                        end
-                    end
-                    for _, mask in pairs(masks) do
-                        masks_found[mask + 1] = nil
-                    end
-                end
             end
             if arrived ~= nil then
                 for _, context in pairs(arrived) do
@@ -2022,12 +1772,8 @@ top.sort = function(graph, state, new_conn, extra)
                     for node_key, node in pairs(graph.nodes) do
                         if node.type == "technology" and (next(node_to_context_inds[node_key]) ~= nil or open[node_key] ~= nil) then
                             for i, context in pairs(room_contexts) do
-                                if has_ability(i - 1, ISOLATABILITY) and (not implied_abilities or i - 1 == ALL_ABILITIES) and node_to_context_inds[node_key][context] == nil then
+                                if has_ability(i - 1, ISOLATABILITY) and node_to_context_inds[node_key][context] == nil then
                                     add_to_open(node, context)
-                                    if implied_abilities then
-                                        discovery_added[node_key] = discovery_added[node_key] or {}
-                                        discovery_added[node_key][context] = true
-                                    end
                                 end
                             end
                         end
@@ -2038,16 +1784,11 @@ top.sort = function(graph, state, new_conn, extra)
     end
 
     -- Gives a tech the isolatable contexts of a room that it doesn't have yet
-    -- With ability contexts standing for weaker ones, the strongest stands for them (top.implied_ability_contexts); the weaker non-isolatable ones it stands for, a tech already has in every room once it has anything, since every edge into a tech gains automatability (lib/logic/concrete.lua) and techs forget rooms
     local function add_isolatable_contexts(tech_node, room)
         local tech_key = key(tech_node)
         for i, context in pairs(context_info.of[room]) do
-            if has_ability(i - 1, ISOLATABILITY) and (not implied_abilities or i - 1 == ALL_ABILITIES) and node_to_context_inds[tech_key][context] == nil then
+            if has_ability(i - 1, ISOLATABILITY) and node_to_context_inds[tech_key][context] == nil then
                 add_to_open(tech_node, context)
-                if implied_abilities then
-                    discovery_added[tech_key] = discovery_added[tech_key] or {}
-                    discovery_added[tech_key][context] = true
-                end
             end
         end
     end
@@ -2087,9 +1828,7 @@ top.sort = function(graph, state, new_conn, extra)
             -- With research home contexts, only research sources get research home contexts (top.research_home_contexts)
             local gets_home = not context_info.research_homes or carries_home(node_key)
             for _, context in pairs(context_info.list) do
-                local is_home = context_info.home[context] ~= nil
-                -- With ability contexts standing for weaker ones, each room's strongest context stands for the room's others (top.implied_ability_contexts)
-                if (gets_home or not is_research_home(context_info, context)) and (is_home or not implied_abilities or context_info.mask[context] == ALL_ABILITIES) then
+                if gets_home or not is_research_home(context_info, context) then
                     add_to_open(node, context, node_key)
                 end
             end
@@ -2123,9 +1862,7 @@ top.sort = function(graph, state, new_conn, extra)
         -- Find the next candidate to remove from open
         -- This is the node, if any, with lowest value in the node_to_context_inds table
         local node_key
-        if top.choose_open ~= nil then
-            node_key = top.choose_open(open, #pebble_keys)
-        elseif extra.choose_randomly then
+        if extra.choose_randomly then
             -- Use the mod's rng so the sort follows the seed setting
             node_key = open_list[rng.int("context-sort", #open_list)]
         elseif heap_size > 0 then
@@ -2143,100 +1880,56 @@ top.sort = function(graph, state, new_conn, extra)
         local node = graph.nodes[node_key]
         -- Home sets that this node got a home context of, with the home sets containing them (top.implied_home_contexts)
         local new_home_ids
-        -- The contexts the discovery rule added for a tech go in a second batch after its others, which they don't stand for, so its own earlier pebble a path backs them with (find_discovery_preinds) comes first (top.implied_ability_contexts)
-        local batch = contexts
-        local discovered_batch
-        if discovery_added[node_key] ~= nil then
-            local discovered = discovery_added[node_key]
-            discovery_added[node_key] = nil
-            batch = {}
-            discovered_batch = {}
-            for context, _ in pairs(contexts) do
-                if discovered[context] ~= nil then
-                    discovered_batch[context] = true
-                else
-                    batch[context] = true
-                end
-            end
-        end
-        while batch ~= nil do
-            for context, _ in pairs(batch) do
-                local home_id = context_info.home[context]
+        for context, _ in pairs(contexts) do
+            local home_id = context_info.home[context]
+            -- A home context that one of a home set inside it already stands for isn't passed on (it came in before that one did)
+            if home_id == nil or implied_ind(context_info, node_to_context_inds[node_key], context) == nil then
+                -- Add this node-context pebble to the pebble lists
+                local ind = #pebble_keys + 1
+                pebble_keys[ind] = node_key
+                pebble_contexts[ind] = context
+                -- Add the context
+                node_to_context_inds[node_key][context] = ind
+
+                -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
+                -- An edge that changes abilities sends the masks its table gives, in edge_transmit's order, also without a list
+                -- Either way the pebble just recorded is where incoming comes from, so the edge sends it (process_depnode's incoming_sends)
+                local passes_unchanged = not complex or home_id ~= nil
                 local room_contexts = complex and context_info.of[context_info.room[context]] or nil
-                -- A context that a stronger one of its room in the same batch stands for gets a rank of its own below that pebble's, without being listed (top.implied_ability_contexts)
-                -- One the node has already, like one a continued sort's new edge brings again, isn't listed again either, and keeps its rank (as home contexts do)
-                local stood_for = false
-                if implied_abilities and home_id == nil then
-                    stood_for = node_to_context_inds[node_key][context] ~= nil
-                    for _, mask in pairs(STRONGER_MASKS[context_info.mask[context] + 1]) do
-                        if batch[room_contexts[mask + 1]] ~= nil then
-                            stood_for = true
-                            break
+                -- What an isolatable pebble beyond the core's rooms, or a core one, gives research (top.research_home_contexts), found when an edge to research first asks
+                local gives_research
+                for dep, _ in pairs(node.dep) do
+                    local edge = graph.edges[dep]
+                    local depnode = graph.nodes[edge.stop]
+                    if passes_unchanged or edge.abilities == nil then
+                        process_depnode(depnode, context, edge.stop, dep, true)
+                    else
+                        for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
+                            process_depnode(depnode, room_contexts[mask + 1], edge.stop, dep, true)
+                        end
+                    end
+                    -- Such a pebble leaving for a research input brings research home contexts along (see edge_transmit), and this pebble is where they come from
+                    if research_on and research_stops[edge.stop] then
+                        if gives_research == nil then
+                            gives_research = research_home_contexts(context_info, context) or false
+                        end
+                        if gives_research then
+                            for _, home_context in pairs(gives_research) do
+                                process_depnode(depnode, home_context, edge.stop, dep, true)
+                            end
                         end
                     end
                 end
-                -- A home context that one of a home set inside it already stands for isn't passed on (it came in before that one did)
-                if not stood_for and (home_id == nil or implied_ind(context_info, node_to_context_inds[node_key], context) == nil) then
-                    -- Add this node-context pebble to the pebble lists
-                    local ind = #pebble_keys + 1
-                    pebble_keys[ind] = node_key
-                    pebble_contexts[ind] = context
-                    -- Add the context
-                    local inds = node_to_context_inds[node_key]
-                    inds[context] = ind
-                    -- And the weaker contexts of its room it stands for, at their own ranks just below it, unless the node had them already (top.implied_ability_contexts)
-                    if implied_abilities and home_id == nil then
-                        for _, mask in pairs(WEAKER_MASKS[context_info.mask[context] + 1]) do
-                            local weaker = room_contexts[mask + 1]
-                            if inds[weaker] == nil then
-                                inds[weaker] = stood_for_rank(ind, mask)
-                            end
-                        end
-                    end
 
-                    -- Edges without abilities (and every edge, for simple and home contexts) pass the context on unchanged, as edge_transmit would, without making a list for it
-                    -- An edge that changes abilities sends the masks its table gives, in edge_transmit's order, also without a list, or with ability contexts standing for weaker ones the one mask standing for them (top.implied_ability_contexts)
-                    -- Either way the pebble just recorded is where incoming comes from, so the edge sends it (process_depnode's incoming_sends)
-                    local passes_unchanged = not complex or home_id ~= nil
-                    -- What an isolatable pebble beyond the core's rooms, or a core one, gives research (top.research_home_contexts), found when an edge to research first asks
-                    local gives_research
-                    for dep, _ in pairs(node.dep) do
-                        local edge = graph.edges[dep]
-                        local depnode = graph.nodes[edge.stop]
-                        if passes_unchanged or edge.abilities == nil then
-                            process_depnode(depnode, context, edge.stop, dep, true)
-                        elseif implied_abilities then
-                            process_depnode(depnode, room_contexts[STRONGEST_FORWARD[edge.abilities][context_info.mask[context] + 1] + 1], edge.stop, dep, true)
-                        else
-                            for _, mask in pairs(FORWARD_MASKS[edge.abilities][context_info.mask[context] + 1]) do
-                                process_depnode(depnode, room_contexts[mask + 1], edge.stop, dep, true)
-                            end
-                        end
-                        -- Such a pebble leaving for a research input brings research home contexts along (see edge_transmit), and this pebble is where they come from
-                        if research_on and research_stops[edge.stop] then
-                            if gives_research == nil then
-                                gives_research = research_home_contexts(context_info, context) or false
-                            end
-                            if gives_research then
-                                for _, home_context in pairs(gives_research) do
-                                    process_depnode(depnode, home_context, edge.stop, dep, true)
-                                end
-                            end
-                        end
+                if home_id ~= nil then
+                    new_home_ids = new_home_ids or {}
+                    new_home_ids[home_id] = true
+                    for _, superset_id in pairs(context_info.home_supersets[home_id]) do
+                        new_home_ids[superset_id] = true
                     end
-
-                    if home_id ~= nil then
-                        new_home_ids = new_home_ids or {}
-                        new_home_ids[home_id] = true
-                        for _, superset_id in pairs(context_info.home_supersets[home_id]) do
-                            new_home_ids[superset_id] = true
-                        end
-                        home_touched[node_key] = true
-                    end
+                    home_touched[node_key] = true
                 end
             end
-            batch = discovered_batch
-            discovered_batch = nil
         end
 
         -- The discovery rules run after the whole batch, so a context they add isn't one this node is still processing

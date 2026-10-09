@@ -841,16 +841,13 @@ first_pass.execute = function(params)
     -- Only the protected part of each context counts (see protection.lua)
     local lost = {}
     local kept_by_node = {}
-    -- Every rank of both sorts, so the contexts pebbles stand for count too (top.each_rank)
-    for ind in top.each_rank(ordered_sort) do
-        local node_key = ordered_sort.pebble_keys[ind]
+    for ind, node_key in pairs(ordered_sort.pebble_keys) do
         -- Protection is declared on the original nodes (split graph travs don't carry it, and aren't mechanics)
         local node = spoofed_graph.nodes[node_key] or split_graph.nodes[node_key]
         kept_by_node[node_key] = kept_by_node[node_key] or {}
         kept_by_node[node_key][protection.kept_part(node, ordered_sort.pebble_contexts[ind])] = true
     end
-    for ind in top.each_rank(init_sort) do
-        local node_key = init_sort.pebble_keys[ind]
+    for ind, node_key in pairs(init_sort.pebble_keys) do
         local node = spoofed_graph.nodes[node_key]
         local kept = protection.kept_part(node, init_sort.pebble_contexts[ind])
         if node.mechanic == true and node.type ~= "orand" and (kept_by_node[node_key] or {})[kept] == nil then

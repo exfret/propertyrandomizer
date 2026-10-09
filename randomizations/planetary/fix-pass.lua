@@ -89,7 +89,7 @@ fix_pass.run = function(params)
     end
     while #failures > 0 do
         local previous_failures = #failures
-        local previous_available = top.num_contexts(after.sort_info)
+        local previous_available = #after.sort_info.pebble_keys
         failures, after = choose_once({
             logic = params.logic,
             unified = params.unified,
@@ -97,7 +97,7 @@ fix_pass.run = function(params)
             variants_of = params.variants_of,
             after = after,
         })
-        if #failures > previous_failures or (#failures == previous_failures and top.num_contexts(after.sort_info) <= previous_available) then
+        if #failures > previous_failures or (#failures == previous_failures and #after.sort_info.pebble_keys <= previous_available) then
             break
         end
         -- Newly backed prerequisites must rank before the remaining dependents in the next choice.

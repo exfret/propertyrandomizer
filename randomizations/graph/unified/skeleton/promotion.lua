@@ -765,8 +765,7 @@ promotion.new = function(params)
         -- First promise everything that doesn't need derived recycling, so pins only come from pebbles that do
         allow_derived = false
         clear_cache()
-        -- Every rank, so the contexts pebbles stand for count too (top.each_rank)
-        for ind in top.each_rank(sort_info) do
+        for ind = 1, #pebble_keys do
             if is_promised_mechanic(ind) then
                 try_promise(ind)
             end
@@ -776,7 +775,7 @@ promotion.new = function(params)
         log("Promotion: " .. num_pins .. " pins after promising mechanics without derived recycling")
         local failed = {}
         num_left = 0
-        for ind in top.each_rank(sort_info) do
+        for ind = 1, #pebble_keys do
             if is_promised_mechanic(ind) and not try_promise(ind) then
                 table.insert(failed, ind)
             end
