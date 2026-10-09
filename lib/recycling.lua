@@ -85,6 +85,16 @@ local function has_recycling_category(recipe)
     return false
 end
 
+-- Whether a crafting machine crafts the recycling recipes (the category the recycler generates them in, which the recycler crafts)
+recycling.crafts_recycling = function(machine)
+    for _, category in pairs(machine.crafting_categories or {}) do
+        if category == recycling_category then
+            return true
+        end
+    end
+    return false
+end
+
 -- The recycler's default_can_recycle
 local function can_recycle(recipe)
     if has_recycling_category(recipe) then

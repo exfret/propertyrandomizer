@@ -1,12 +1,18 @@
 local categories = require("helper-tables/categories")
 local fluid_ports = require("lib/fluid-ports")
 local dutils = require("lib/data-utils")
+local furnace_assemblers = require("lib/furnace-assemblers")
 local pipe_conns = require("lib/pipe-conns")
 
 -- Shared preparation is needed by the legacy graph randomizers too; numerical-only games need none of it.
 if not config.dev_unified and next(config.graph) == nil then
     return
 end
+
+-- Every furnace but the recycler becomes an assembling machine, so recipes there no longer need a furnace's shape (lib/furnace-assemblers.lua)
+-- First, so the fluid ports below and everything after treat them as the assembling machines they are now
+local furnaces_turned = furnace_assemblers.convert(data.raw)
+log("Furnaces made assembling machines: " .. (#furnaces_turned > 0 and table.concat(furnaces_turned, ", ") or "none"))
 
 if mods["pyalternativeenergy"] and config.dev_unified then
     -- Make assembling machines painfully early so they don't get pushed late
@@ -35,18 +41,7 @@ if mods["pyalternativeenergy"] and config.dev_unified then
         end
     end
 
-    -- Make furnaces crafting machines
-    -- I think this is really all that's needed?
-    for _, furnace_name in pairs({"stone-furnace", "steel-furnace", "electric-furnace"}) do
-        local furnace = data.raw.furnace[furnace_name]
-        furnace.type = "assembling-machine"
-        data.raw.furnace[furnace_name] = nil
-        data:extend({
-            furnace
-        })
-    end
-
-    -- Make other furnace recipes always unlocked
+    -- Make the recipes of the furnaces left (the recycler, see furnace_assemblers above) always unlocked
     for _, furnace in pairs(data.raw.furnace) do
         for _, category in pairs(furnace.crafting_categories) do
             for _, recipe in pairs(data.raw.recipe) do
