@@ -24,7 +24,9 @@ local SWAP_START_WITH = nil
 -- On since 2026-10-01, once such a recipe kept its earliest context too (state.required_contexts in randomizations/graph/unified/skeleton/promotion.lua): 12 of 12 unified-suite runs passed on their first attempt with no planetary losses
 local PROTECT_TRANSPORTED = true
 
-local DISCOVERY_FOLLOWS_MAP = false
+-- Whether discovery technologies follow the star map the connection graph draws, in tiers (discovery.lua, run in draw_map_first)
+-- On 2026-09-30 each planet took the packs of its own closer neighbors instead: that passed MECHCHECK (sa/dupes-preview seeds 1-2), but every planet got a home set of its own (6-7 instead of 2), and the planetary stage ran 2.5-4 times slower; tiers give one home set per tier (user, 2026-10-08)
+local DISCOVERY_FOLLOWS_MAP = true
 
 local gutils = require("lib/graph/graph-utils")
 local localised_text = require("lib/localised-text")
@@ -887,7 +889,8 @@ end
 -- The new order changes which planets come before which, so it isn't checked against what planets had before it (their home sets were the old order's); it's undone if it leaves anything out of reach, like a discovery that waits on itself through a planet before it whose packs need it
 local function run_discovery(logic, state)
     local before = reachable_nodes(logic)
-    log("Planetary discovery: " .. discovery.execute())
+    -- reachable_nodes built the logic from the game before the change, which says what packs and technologies need
+    log("Planetary discovery: " .. discovery.execute(logic.graph))
     local after = reachable_nodes(logic)
     local lost = {}
     for node_key, _ in pairs(before) do

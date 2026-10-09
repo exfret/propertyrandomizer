@@ -1,8 +1,12 @@
--- Discovery follows the star map (with the connection graph, randomizations/planetary/connections.lua): a planet's discovery technologies take the science packs of the planets before it on the map
--- The planets before a planet are its neighbors on the connection graph one hop closer to the starting planet that don't orbit farther from the sun (user, 2026-09-30: of Glebis's neighbors one hop closer, it takes Vullis's and Naucanra's packs but not those of an Aquilo on the outermost orbit)
+-- Discovery follows the star map in tiers (with the connection graph, randomizations/planetary/connections.lua): a planet's tier is how many hops it is from the starting planet, and its discovery technologies take the science packs of every planet in the tier before it
+-- Tiers (user, 2026-10-08) replaced each planet taking the packs of its own neighbors one hop closer (2026-09-30): every planet of a tier now needs the same planets, so the logic's home sets (top.home_sets in lib/graph/context-sort.lua) number the tiers rather than the planets, and each home set makes every sort that keeps them slower
+-- Planets on the outermost planet orbit (in Space Age, Aquilo and its copies) give packs like any other (user, 2026-10-08): first kept for the end of the game, as in Space Age, where no planet's discovery takes cryogenic science (only the solar system edge's and the shattered planet's do, space-age/prototypes/technology.lua), but an Aquilo the map puts in an early tier may as well count for the planets after it
+-- A tier after one with no planet that gives takes the packs of the nearest tier before it with one
 -- What a planet gives the planets after it: its own science packs (the lab inputs whose recipes only it accepts) that some discovery technology takes already, a copy's pack counting as its original (like the starting planet's production and utility packs, which Aquilo's discovery takes, but not its military ones, which no discovery takes); a planet none of whose packs a discovery takes gives all of them
--- The starting planet gives nothing: every discovery takes what it needs from there already
--- A discovery technology keeps its other packs, loses those that are another planet's own, and takes those the planets before its planet give; it keeps the prerequisites that need no planet but the ones before it (all the way back to the start), and gains the discoveries of the planets just before it and the technologies unlocking the packs it now takes, where there's one of each (both are needed anyway, so they add no requirement)
+-- The starting planet gives nothing: every discovery takes what it needs from there already, so the first tier's discoveries keep their cost
+-- A discovery technology keeps its other packs, loses those that are another planet's own, and takes those the planets before its planet give; it keeps the prerequisites that need no planet's discovery but those of earlier tiers, and gains the discoveries of the planets just before it and the technologies unlocking the packs it now takes, where there's one of each (both are needed anyway, so they add no requirement)
+-- So that no discovery waits on itself, a tier's discoveries never need a discovery of their own tier or a later one: a planet only gives the packs it can make with the discoveries of its own tier and earlier ones (by induction over the tiers, what those need stays in earlier tiers too)
+-- What a pack or technology needs comes from the game's logic graph (top.watched_needed), since technologies' own fields don't show all of it: a planet copy's pack comes from copies of its planet's technologies, which also need the copy of the starting planet with its number discovered (lib/dupe-planets.lua), and a research trigger can need a recipe from another planet's technologies
 -- Space locations that aren't planets (the solar system edge, the shattered planet) keep their discovery, and so does a technology discovering several planets
 -- Those past every planet are the end of the game, not stops on the way (user, 2026-09-30), so hops are never counted through them
 -- A planet copy's packs need copies of its original's discovery chain for this (lib/dupe-planets.lua), or taking a planet's copy's packs would wait on the planet's own discovery
@@ -11,6 +15,7 @@ local constants = require("helper-tables/constants")
 local localised_text = require("lib/localised-text")
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
+local top = require("lib/graph/context-sort")
 local dupe = require("lib/dupe")
 local surface_sets = require("lib/surface-sets")
 
@@ -59,7 +64,104 @@ local function hops(start, edges, ends)
             end
         end
     end
-    return depth, neighbors
+    return depth
+end
+
+-- What technologies and packs need, from the technologies' own fields, for a plan without the logic graph (like the plain-Lua tests): a technology needs the planets whose own packs its research or its prerequisites' research takes, and those it or its prerequisites discover (all the way down); a pack needs the planet that makes it
+-- Returns needs as discovery.plan takes them
+discovery.needs_from_fields = function(info)
+    local owner = {}
+    for planet, packs in pairs(info.own_packs) do
+        for _, pack in pairs(packs) do
+            owner[pack] = planet
+        end
+    end
+    local technology = {}
+    local function planets_needed(tech_name)
+        if technology[tech_name] == nil then
+            local planets = {}
+            -- Stored first, so a prerequisite cycle ends here
+            technology[tech_name] = planets
+            local tech = info.technologies[tech_name]
+            if tech ~= nil then
+                for _, pack in pairs(tech.ingredients or {}) do
+                    if owner[pack] ~= nil then
+                        planets[owner[pack]] = true
+                    end
+                end
+                for _, location in pairs(tech.discovers or {}) do
+                    if info.is_planet[location] ~= nil then
+                        planets[location] = true
+                    end
+                end
+                for _, prerequisite in pairs(tech.prerequisites or {}) do
+                    for planet, _ in pairs(planets_needed(prerequisite)) do
+                        planets[planet] = true
+                    end
+                end
+            end
+        end
+        return technology[tech_name]
+    end
+    for tech_name, _ in pairs(info.technologies) do
+        planets_needed(tech_name)
+    end
+    local pack = {}
+    for pack_name, planet in pairs(owner) do
+        pack[pack_name] = {
+            [planet] = true,
+        }
+    end
+    return {
+        technology = technology,
+        pack = pack,
+    }
+end
+
+-- What technologies and packs need, from the game's logic graph: the planets whose discovered nodes (space-location-discover) they can't be reached without (top.watched_needed), which sees research triggers and recipes too, and works however many technologies discover a planet
+-- Returns needs as discovery.plan takes them, with false for what the graph doesn't reach
+discovery.needs_from_graph = function(graph, info)
+    local watched = {}
+    local planet_of = {}
+    for _, planet in pairs(sorted_keys(info.is_planet)) do
+        local node_key = gutils.key("space-location-discover", planet)
+        if graph.nodes[node_key] ~= nil then
+            table.insert(watched, node_key)
+            planet_of[node_key] = planet
+        end
+    end
+    local needed = top.watched_needed(graph, watched)
+    local function planets(node_key)
+        local keys = needed(node_key)
+        if keys == nil then
+            return false
+        end
+        local set = {}
+        for watched_key, _ in pairs(keys) do
+            set[planet_of[watched_key]] = true
+        end
+        return set
+    end
+    local needs = {
+        technology = {},
+        pack = {},
+    }
+    local packs = {}
+    for _, own in pairs(info.own_packs) do
+        for _, pack in pairs(own) do
+            packs[pack] = true
+        end
+    end
+    for tech_name, tech in pairs(info.technologies) do
+        needs.technology[tech_name] = planets(gutils.key("technology", tech_name))
+        for _, pack in pairs(tech.ingredients or {}) do
+            packs[pack] = true
+        end
+    end
+    for pack, _ in pairs(packs) do
+        needs.pack[pack] = planets(gutils.key("item", pack))
+    end
+    return needs
 end
 
 -- The plan, from what it needs to know about the game (discovery.execute reads it from data.raw):
@@ -71,7 +173,8 @@ end
 --   original_of: pack name --> the pack it's a copy of, for copies
 --   technologies: technology name --> { ingredients = list of pack names, prerequisites = list of names, discovers = list of location names }
 --   unlocking: pack name --> sorted list of the technologies unlocking a recipe that makes it
--- Returns technology name --> { planet, before = sorted list of planets, ingredients = list of pack names (kept ones first, in their order), added = list of the packs it now takes, prerequisites = list of names, dropped = list of the prerequisites it lost }, for each discovery technology of a planet it changes
+--   needs (optional): { technology = name --> set of the planets whose discovery it can't be had without, pack = name --> the same }, false for what can't be had at all and nil if unknown; from the logic graph in the game (discovery.needs_from_graph), and from the technologies' own fields if not given (discovery.needs_from_fields)
+-- Returns the changes, and the packs planets don't give since they need a discovery of a later tier (planet --> pack --> sorted list of those planets); the changes are technology name --> { planet, tier, before = sorted list of planets, ingredients = list of pack names (kept ones first, in their order), added = list of the packs it now takes, prerequisites = list of names, dropped = list of the prerequisites it lost, dropped_packs = list of the packs it lost that aren't another planet's own }, for each discovery technology of a planet it changes
 discovery.plan = function(info)
     -- The end of the game: locations that aren't planets, farther from the sun than every planet
     local farthest_planet = nil
@@ -86,7 +189,7 @@ discovery.plan = function(info)
             ends[location] = true
         end
     end
-    local depth, neighbors = hops(info.start, info.edges, ends)
+    local depth = hops(info.start, info.edges, ends)
 
     -- Planet --> the technologies discovering it (sorted), and the packs any discovery technology takes (as their originals too)
     local discoverers = {}
@@ -112,84 +215,82 @@ discovery.plan = function(info)
         end
     end
 
-    -- The planets before each planet, and what each planet gives the planets after it
-    local function before(planet)
-        local list = {}
-        if depth[planet] == nil then
-            return list
+    local needs = info.needs or discovery.needs_from_fields(info)
+    -- Whether every planet whose discovery planets needs is the start or no more than tier hops from it (planets as in needs: a set, false for what can't be had at all, nil if unknown)
+    local function needs_fit(planets, tier)
+        if planets == false then
+            return false
         end
-        for _, other in pairs(neighbors[planet] or {}) do
-            if info.is_planet[other] ~= nil and depth[other] < depth[planet] and (info.orbit[other] or 0) <= (info.orbit[planet] or 0) then
-                table.insert(list, other)
+        for planet, _ in pairs(planets or {}) do
+            if planet ~= info.start and (depth[planet] == nil or depth[planet] > tier) then
+                return false
             end
         end
-        table.sort(list)
-        return list
+        return true
     end
+
+    -- What each planet gives the tiers after it: its own packs that some discovery takes, or all of them if no discovery takes any, of those it can make with discoveries of its own tier and earlier ones
+    -- Planet --> pack --> the later planets it needs, for the packs a planet would give if not for those
+    local withheld = {}
     local function gives(planet)
-        if planet == info.start then
+        if planet == info.start or depth[planet] == nil then
             return {}
         end
         local own = info.own_packs[planet] or {}
-        local given = {}
+        local taken = {}
         for _, pack in pairs(own) do
             if taken_by_discovery[pack] ~= nil or (info.original_of[pack] ~= nil and taken_by_discovery[info.original_of[pack]] ~= nil) then
-                table.insert(given, pack)
+                table.insert(taken, pack)
             end
         end
-        if #given == 0 then
-            return own
+        if #taken == 0 then
+            taken = own
+        end
+        local given = {}
+        for _, pack in pairs(taken) do
+            if needs_fit(needs.pack[pack], depth[planet]) then
+                table.insert(given, pack)
+            else
+                -- Logged, since it means a planet's pack needs a later planet (like a planet copy tied to another one by its dupe number, which lib/dupe-planets.lua shouldn't do)
+                local later = {}
+                for other, _ in pairs(needs.pack[pack] or {}) do
+                    if other ~= info.start and (depth[other] == nil or depth[other] > depth[planet]) then
+                        table.insert(later, other)
+                    end
+                end
+                table.sort(later)
+                withheld[planet] = withheld[planet] or {}
+                withheld[planet][pack] = needs.pack[pack] == false and {"(it can't be made at all)"} or later
+            end
         end
         return given
     end
 
-    -- Planet --> the planets its discovery may need: the start and the planets before it, all the way back
-    local allowed_memo = {}
-    local function allowed(planet)
-        if allowed_memo[planet] == nil then
-            local rooms = {
-                [info.start] = true,
-            }
-            for _, other in pairs(before(planet)) do
-                rooms[other] = true
-                for further, _ in pairs(allowed(other)) do
-                    rooms[further] = true
-                end
-            end
-            allowed_memo[planet] = rooms
+    -- Tier --> its planets that give packs (sorted): every planet that many hops from the start with a pack to give
+    local givers_of_tier = {}
+    for _, planet in pairs(sorted_keys(info.is_planet)) do
+        if depth[planet] ~= nil and #gives(planet) > 0 then
+            givers_of_tier[depth[planet]] = givers_of_tier[depth[planet]] or {}
+            table.insert(givers_of_tier[depth[planet]], planet)
         end
-        return allowed_memo[planet]
     end
 
-    -- Technology --> the planets it needs: those whose own packs its research or its prerequisites' research takes, and those it or its prerequisites discover (all the way down)
-    local needs_memo = {}
-    local function planets_needed(tech_name)
-        if needs_memo[tech_name] == nil then
-            local planets = {}
-            -- Stored first, so a prerequisite cycle ends here
-            needs_memo[tech_name] = planets
-            local tech = info.technologies[tech_name]
-            if tech ~= nil then
-                for _, pack in pairs(tech.ingredients or {}) do
-                    if owner[pack] ~= nil then
-                        planets[owner[pack]] = true
-                    end
+    -- The planets before each planet: those of the nearest tier before its own with a planet that gives, the same for every planet of its tier
+    local function before(planet)
+        if depth[planet] == nil then
+            return {}
+        end
+        for tier = depth[planet] - 1, 1, -1 do
+            if givers_of_tier[tier] ~= nil then
+                local list = {}
+                for _, other in pairs(givers_of_tier[tier]) do
+                    table.insert(list, other)
                 end
-                for _, location in pairs(tech.discovers or {}) do
-                    if info.is_planet[location] ~= nil then
-                        planets[location] = true
-                    end
-                end
-                for _, prerequisite in pairs(tech.prerequisites or {}) do
-                    for planet, _ in pairs(planets_needed(prerequisite)) do
-                        planets[planet] = true
-                    end
-                end
+                return list
             end
         end
-        return needs_memo[tech_name]
+        return {}
     end
-
     local plan = {}
     for _, tech_name in pairs(sorted_keys(info.technologies)) do
         local tech = info.technologies[tech_name]
@@ -204,9 +305,15 @@ discovery.plan = function(info)
             local planets_before = before(planet)
             local ingredients = {}
             local seen = {}
+            local dropped_packs = {}
             for _, pack in pairs(tech.ingredients or {}) do
+                -- Another planet's own packs go, and so does any other that needs a discovery of this tier or a later one (one that can't be had at all is kept as it is: it adds no new cycle)
                 if owner[pack] == nil then
-                    add_new(ingredients, seen, pack)
+                    if needs.pack[pack] == false or needs_fit(needs.pack[pack], depth[planet] - 1) then
+                        add_new(ingredients, seen, pack)
+                    else
+                        table.insert(dropped_packs, pack)
+                    end
                 end
             end
             local added = {}
@@ -218,18 +325,13 @@ discovery.plan = function(info)
                     add_new(ingredients, seen, pack)
                 end
             end
-            local may_need = allowed(planet)
             local prerequisites = {}
             local dropped = {}
             local seen_prerequisites = {}
             for _, prerequisite in pairs(tech.prerequisites or {}) do
-                local fits = true
-                for needed, _ in pairs(planets_needed(prerequisite)) do
-                    if may_need[needed] == nil then
-                        fits = false
-                    end
-                end
-                if fits then
+                -- One that can't be had at all is kept as it is: it adds no new cycle
+                local prerequisite_needs = needs.technology[prerequisite]
+                if prerequisite_needs == false or needs_fit(prerequisite_needs, depth[planet] - 1) then
                     add_new(prerequisites, seen_prerequisites, prerequisite)
                 else
                     table.insert(dropped, prerequisite)
@@ -247,15 +349,17 @@ discovery.plan = function(info)
             end
             plan[tech_name] = {
                 planet = planet,
+                tier = depth[planet],
                 before = planets_before,
                 ingredients = ingredients,
                 added = added,
                 prerequisites = prerequisites,
                 dropped = dropped,
+                dropped_packs = dropped_packs,
             }
         end
     end
-    return plan
+    return plan, withheld
 end
 
 -- The game as discovery.plan needs it, from data.raw and the current space connections
@@ -364,10 +468,18 @@ discovery.problem = function()
     return nil
 end
 
--- Changes the discovery technologies; returns a line for the log
-discovery.execute = function()
+-- Changes the discovery technologies; graph is the logic graph of the game as it is, for what packs and technologies need (discovery.needs_from_graph), or nil to read that from the technologies' own fields; returns a line for the log
+discovery.execute = function(graph)
     local info = read_game()
-    local plan = discovery.plan(info)
+    if graph ~= nil then
+        info.needs = discovery.needs_from_graph(graph, info)
+    end
+    local plan, withheld = discovery.plan(info)
+    for _, planet in pairs(sorted_keys(withheld)) do
+        for _, pack in pairs(sorted_keys(withheld[planet])) do
+            log("Planetary discovery: " .. planet .. " doesn't give " .. pack .. ", which needs the discovery of " .. table.concat(withheld[planet][pack], ", ") .. ", in a later tier")
+        end
+    end
     local lines = {}
     for _, tech_name in pairs(sorted_keys(plan)) do
         local change = plan[tech_name]
@@ -387,9 +499,13 @@ discovery.execute = function()
             tech.unit.ingredients = ingredients
         end
         tech.prerequisites = change.prerequisites
-        table.insert(lines, change.planet .. " <-- " .. (#change.before > 0 and table.concat(change.before, ", ") or "nothing") .. " (" .. tech_name .. (#change.added > 0 and (" takes " .. table.concat(change.added, ", ")) or "") .. (#change.dropped > 0 and ("; left out " .. table.concat(change.dropped, ", ")) or "") .. ")")
+        table.insert(lines, "tier " .. change.tier .. ": " .. change.planet .. " <-- " .. (#change.before > 0 and table.concat(change.before, ", ") or "nothing") .. " (" .. tech_name .. (#change.added > 0 and (" takes " .. table.concat(change.added, ", ")) or "") .. (#change.dropped > 0 and ("; left out " .. table.concat(change.dropped, ", ")) or "") .. (#change.dropped_packs > 0 and ("; left out packs " .. table.concat(change.dropped_packs, ", ")) or "") .. ")")
     end
-    return #sorted_keys(plan) .. " discovery technologies follow the map: " .. table.concat(lines, "; ")
+    local tiers = {}
+    for _, change in pairs(plan) do
+        tiers[change.tier] = true
+    end
+    return #sorted_keys(plan) .. " discovery technologies follow the map in " .. #sorted_keys(tiers) .. " tiers: " .. table.concat(lines, "; ")
 end
 
 return discovery

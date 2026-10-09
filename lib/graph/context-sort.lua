@@ -32,6 +32,8 @@ local HOME_SEPARATOR = " @ "
 local top = {}
 
 top.ISOLATABILITY = ISOLATABILITY
+-- Whether home contexts are kept to their home set's own rooms (see Home contexts above), rather than every room; false only to compare with how sorts used to be
+top.home_contexts_in_set_rooms = true
 top.AUTOMATABILITY = AUTOMATABILITY
 
 -- Every ability string, like "00", "01", "10", "11", where the i-th character is whether ability i is had
@@ -66,6 +68,7 @@ end
 -- A home set is a set of rooms (see top.home_sets), and a pebble's home context for it means the pebble can be had using only those rooms
 -- This is what removing every other room's node and sorting again would give, but for every home set in the same sort
 -- Home contexts ride on each room's weakest context (the room itself for simple contexts, the room with no abilities for complex ones), and are written like "planet: vulcanus | 00 @ home1"
+-- Only the home set's own rooms have its home contexts (with top.home_contexts_in_set_rooms): no other room's node sends them, so all another room could get is what forgetters send every room, and the set's rooms get that too
 -- With complex contexts, they replace the order-dependent discovery rule: once a room is discovered, techs with a home context of its home set are isolatable there (see discover_home_rooms in top.sort)
 
 -- The home context riding on a context
@@ -188,14 +191,18 @@ local function build_context_info(complex, home_sets)
             end
             context_info.home_of[room] = {}
             for _, home_id in pairs(home_sets.ids) do
-                local context = top.home_context_key(base, home_id)
-                table.insert(context_info.list, context)
-                context_info.room[context] = room
-                if complex then
-                    context_info.abilities[context] = NO_ABILITIES
+                -- A home set with no rooms at all keeps its home contexts everywhere, so what needs no room still gets one
+                local set_rooms = home_sets.sets[home_id].rooms
+                if not top.home_contexts_in_set_rooms or set_rooms[room] ~= nil or next(set_rooms) == nil then
+                    local context = top.home_context_key(base, home_id)
+                    table.insert(context_info.list, context)
+                    context_info.room[context] = room
+                    if complex then
+                        context_info.abilities[context] = NO_ABILITIES
+                    end
+                    context_info.home[context] = home_id
+                    context_info.home_of[room][home_id] = context
                 end
-                context_info.home[context] = home_id
-                context_info.home_of[room][home_id] = context
             end
         end
     end
@@ -328,10 +335,12 @@ local function home_transmit(context_info, node, incoming, home_id)
     if context_type == nil then
         return { incoming }
     elseif context_type == true then
-        -- Home sets aren't tied to a room, so forgetters send them to every room (like automatability)
+        -- Home sets aren't tied to a room, so forgetters send them to every room that has them (like automatability)
         local outgoing = {}
         for room, _ in pairs(context_info.home_of) do
-            table.insert(outgoing, context_info.home_of[room][home_id])
+            if context_info.home_of[room][home_id] ~= nil then
+                table.insert(outgoing, context_info.home_of[room][home_id])
+            end
         end
         return outgoing
     elseif type(context_type) == "string" then
@@ -509,18 +518,36 @@ end
 -- Starting every pebble at all rooms and shrinking until nothing changes gives exactly the rooms each pebble can't be reached without
 -- (The true answer follows these rules, and by induction along a sort without the room, any answer that follows them is contained in it; so it's the largest one, which is where shrinking ends up)
 -- Sets of rooms are strings with a "0" or "1" per room, like ability strings, so that they're cheap to compare and memoize
-local function compute_rooms_needed(graph)
+-- Given watched (a list of node keys), those nodes go in the sets as if they were rooms: each needs itself on top of what satisfied it, so the sets also say which of them a pebble can't be reached without
+local function compute_rooms_needed(graph, watched)
     local sort_info = top.sort(graph)
 
-    -- Rooms in a fixed order, so that sets of them can be strings
+    -- Rooms in a fixed order, then the watched nodes, so that sets of them can be strings
     local rooms = {}
     for room, _ in pairs(logic.contexts) do
         table.insert(rooms, room)
     end
     table.sort(rooms)
+    -- The contexts a pebble can have are the rooms alone
+    local contexts = {}
+    for _, room in pairs(rooms) do
+        table.insert(contexts, room)
+    end
+    local watched_keys = {}
+    for _, node_key in pairs(watched or {}) do
+        table.insert(watched_keys, node_key)
+    end
+    table.sort(watched_keys)
+    for _, node_key in pairs(watched_keys) do
+        table.insert(rooms, node_key)
+    end
     local room_ind = {}
     for i = 1, #rooms do
         room_ind[rooms[i]] = i
+    end
+    local is_watched = {}
+    for _, node_key in pairs(watched_keys) do
+        is_watched[node_key] = true
     end
     local all_rooms = string.rep("1", #rooms)
     local no_rooms = string.rep("0", #rooms)
@@ -577,6 +604,9 @@ local function compute_rooms_needed(graph)
                 if type(logic.type_info[node.type].context) == "string" then
                     start_set = with_room(no_rooms, node.name)
                 end
+                if is_watched[node_key] then
+                    start_set = with_room(start_set, node_key)
+                end
             end
             needed[node_key] = {}
             for context, _ in pairs(inds) do
@@ -595,7 +625,7 @@ local function compute_rooms_needed(graph)
 
         -- Rooms needed by each incoming context that satisfies the node (edges don't change simple contexts)
         local incoming = {}
-        for _, context in pairs(rooms) do
+        for _, context in pairs(contexts) do
             local set
             local is_satisfied = node.op == "AND"
             for pre, _ in pairs(node.pre) do
@@ -635,6 +665,11 @@ local function compute_rooms_needed(graph)
                     -- Rooms use node.name for the room, see contutils.transmit
                     new_needed[node.name] = with_room(common, node.name)
                 end
+            end
+        end
+        if is_watched[node_key] then
+            for context, set in pairs(new_needed) do
+                new_needed[context] = with_room(set, node_key)
             end
         end
         local has_shrunk = false
@@ -709,6 +744,32 @@ top.rooms_needed = function(graph)
             return nil
         end
         return info.decode(set)
+    end
+end
+
+-- For every node a sort without complex contexts reaches, which of the watched nodes (a list of node keys) it can't be reached without in any context (see compute_rooms_needed)
+-- Returns a function node_key --> { watched node key --> true }, which gives nil for a node that can't be reached at all
+top.watched_needed = function(graph, watched)
+    local info = compute_rooms_needed(graph, watched)
+    local is_watched = {}
+    for _, node_key in pairs(watched) do
+        is_watched[node_key] = true
+    end
+    return function(node_key)
+        local common
+        for _, set in pairs(info.needed[node_key] or {}) do
+            common = info.intersect(common, set)
+        end
+        if common == nil then
+            return nil
+        end
+        local needed = {}
+        for name, _ in pairs(info.decode(common)) do
+            if is_watched[name] then
+                needed[name] = true
+            end
+        end
+        return needed
     end
 end
 

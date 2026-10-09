@@ -344,6 +344,35 @@ local function check_rooms_needed(graph)
     end
 end
 
+-- watched_needed against blocking each watched node and sorting again
+local function check_watched_needed(graph, watched)
+    local needed = top.watched_needed(graph, watched)
+    local full_inds = top.sort(graph).node_to_context_inds
+    for _, watched_key in pairs(watched) do
+        local blocked = table.deepcopy(graph)
+        local node = blocked.nodes[watched_key]
+        if node.op == "OR" then
+            for pre, _ in pairs(table.deepcopy(node.pre)) do
+                gutils.remove_edge(blocked, pre)
+            end
+        else
+            -- An OR node with no way in never gets a pebble
+            gutils.add_node(blocked, "stuff", "never", {
+                op = "OR",
+            })
+            add_edge(blocked, key("stuff", "never"), watched_key)
+        end
+        local blocked_inds = top.sort(blocked).node_to_context_inds
+        for node_key, inds in pairs(full_inds) do
+            if next(inds) ~= nil then
+                local is_needed = next(blocked_inds[node_key] or {}) == nil
+                local says_needed = needed(node_key)[watched_key] ~= nil
+                assert(is_needed == says_needed, node_key .. ": blocking " .. watched_key .. " loses it " .. tostring(is_needed) .. ", but watched_needed says " .. tostring(says_needed))
+            end
+        end
+    end
+end
+
 -- Home contexts against removing every room outside the home set and sorting again, and the other contexts against a sort without home contexts
 local function check_home_contexts(graph, complex, home_rooms, seed)
     local home_sets = {
@@ -373,7 +402,8 @@ local function check_home_contexts(graph, complex, home_rooms, seed)
     for node_key, _ in pairs(graph.nodes) do
         for room, _ in pairs(logic.contexts) do
             local has_home = sort_info.node_to_context_inds[node_key][home_context(room, "h", complex)] ~= nil
-            local has_restricted = restricted_inds[node_key][room] ~= nil
+            -- Rooms outside the home set don't have its home contexts at all
+            local has_restricted = restricted_inds[node_key][room] ~= nil and (home_rooms[room] ~= nil or not top.home_contexts_in_set_rooms)
             assert(has_home == has_restricted, node_key .. " in " .. room .. ": home context " .. tostring(has_home) .. ", sort without other rooms " .. tostring(has_restricted))
         end
     end
@@ -443,6 +473,38 @@ test("rooms needed match removing each room and sorting again, on random graphs"
     end
 end)
 
+test("watched nodes needed match blocking each one and sorting again", function()
+    for seed = 1, 60 do
+        local graph = random_graph(seed, 2 + seed % 4, 10 + seed % 30, false)
+        local candidates = {}
+        for node_key, _ in pairs(graph.nodes) do
+            if node_key ~= key("start", "") then
+                table.insert(candidates, node_key)
+            end
+        end
+        table.sort(candidates)
+        local watched = {}
+        for _ = 1, 3 do
+            table.insert(watched, candidates[math.random(#candidates)])
+        end
+        check_watched_needed(graph, watched)
+    end
+    -- On the toy graph, with the discoveries watched: the far planet needs all three, and a tech on the rock planet only the rock planet's
+    local graph, nodes = toy_graph()
+    local watched = {
+        nodes["find-rock"],
+        nodes["find-moss"],
+        nodes["find-frost"],
+    }
+    check_watched_needed(graph, watched)
+    local needed = top.watched_needed(graph, watched)
+    local frost = needed(nodes["frost"])
+    assert(frost[nodes["find-rock"]] and frost[nodes["find-moss"]] and frost[nodes["find-frost"]])
+    local cross = needed(nodes["t-cross"])
+    assert(cross[nodes["find-rock"]] and cross[nodes["find-moss"]] == nil and cross[nodes["find-frost"]] == nil)
+    assert(next(needed(nodes["t-late6"])) == nil)
+end)
+
 test("home sets are the rooms each room's discoverers can't be reached without", function()
     local graph = toy_graph()
     local home_sets = top.home_sets(graph)
@@ -487,6 +549,104 @@ test("home contexts match removing the other rooms and sorting again, on random 
             end
         end
         check_home_contexts(graph, complex, home_rooms, seed)
+    end
+end)
+
+test("keeping home contexts to their set's rooms changes no other pebble, and no tech's home contexts", function()
+    -- Sorts with home contexts in every room, as before, and only in their set's rooms
+    local function both(graph, extra, seed)
+        local sorts = {}
+        local settings = {
+            false,
+            true,
+        }
+        for _, in_set_rooms in pairs(settings) do
+            top.home_contexts_in_set_rooms = in_set_rooms
+            rng_state = seed
+            sorts[in_set_rooms] = top.sort(graph, nil, nil, table.deepcopy(extra))
+        end
+        top.home_contexts_in_set_rooms = true
+        return sorts[false], sorts[true]
+    end
+    local function is_not_home(context)
+        return top.context_home(context) == nil
+    end
+    -- Techs (and other nodes) with each home set's contexts in some room, which is all the discovery rule asks for
+    local function home_nodes(sort_info)
+        local found = {}
+        for node_key, inds in pairs(sort_info.node_to_context_inds) do
+            for context, _ in pairs(inds) do
+                if top.context_home(context) ~= nil then
+                    table.insert(found, node_key .. " @@ " .. top.context_home(context))
+                end
+            end
+        end
+        table.sort(found)
+        local unique = {}
+        for _, entry in pairs(found) do
+            if unique[#unique] ~= entry then
+                table.insert(unique, entry)
+            end
+        end
+        return table.concat(unique, "\n")
+    end
+    local function compare(graph, extra, seed)
+        local everywhere, in_set_rooms = both(graph, extra, seed)
+        local home_sets = everywhere.home_sets
+        local function in_own_rooms(context)
+            local home_id = top.context_home(context)
+            return home_id ~= nil and home_sets.sets[home_id].rooms[top.context_room(context)] ~= nil
+        end
+        assert(pebble_set(everywhere, is_not_home) == pebble_set(in_set_rooms, is_not_home), "other contexts changed")
+        assert(pebble_set(everywhere, in_own_rooms) == pebble_set(in_set_rooms, in_own_rooms), "home contexts in the set's rooms changed")
+        assert(pebble_set(in_set_rooms, in_own_rooms) == pebble_set(in_set_rooms, function(context)
+            return top.context_home(context) ~= nil
+        end), "a home context outside its set's rooms")
+        assert(home_nodes(everywhere) == home_nodes(in_set_rooms), "nodes with a home set's contexts changed")
+        return #everywhere.sorted, #in_set_rooms.sorted
+    end
+    -- The toy graph has techs, so the discovery rule runs too
+    local graph = toy_graph()
+    local fewer = false
+    local complexities = {
+        false,
+        true,
+    }
+    for seed = 1, 20 do
+        for _, complex in pairs(complexities) do
+            local num_everywhere, num_in_set_rooms = compare(graph, {
+                choose_randomly = seed > 1,
+                complex_contexts = complex,
+                home_contexts = true,
+            }, seed)
+            fewer = fewer or num_in_set_rooms < num_everywhere
+        end
+    end
+    assert(fewer, "no pebbles saved on the toy graph")
+    for seed = 1, 60 do
+        local complex = seed % 2 == 0
+        local random = random_graph(seed, 2 + seed % 4, 10 + seed % 30, complex)
+        local home_rooms = {}
+        for room, _ in pairs(logic.contexts) do
+            if room == "planet: r1" or math.random() < 0.5 then
+                home_rooms[room] = true
+            end
+        end
+        compare(random, {
+            choose_randomly = true,
+            complex_contexts = complex,
+            home_contexts = true,
+            home_sets = {
+                ids = { "h" },
+                sets = {
+                    h = {
+                        rooms = home_rooms,
+                        discovered = {},
+                    },
+                },
+                of = {},
+            },
+        }, seed)
     end
 end)
 
