@@ -131,9 +131,13 @@ end
 -- Names a planet variant of the recipe after the planet (scaffolds.variant_name) and puts the planet in its intermediate_planet field, as lib/dupe-intermediates.lua does for planet copies' own recipes
 -- The field keeps the planet in the name when item randomization renames the recipe (lib/recipe-renames.lua), and keeps a further variant for the same planet from naming it twice
 -- A room that isn't a planet gets no intermediate_planet, since the renames look the planet up
+-- A variant is a version of the recipe it was made from (version_of, the first recipe for a version of a version), so it can merge with the recipe's other versions once randomization is done (lib/recipe-merges.lua); a new recipe named this way (a conversion) is no one's version
 scaffolds.name_variant = function(variant, recipe, planet_name)
     variant.localised_name = scaffolds.variant_name(recipe, planet_name)
     variant.intermediate_planet = data.raw.planet[planet_name] ~= nil and planet_name or nil
+    if variant ~= recipe then
+        variant.version_of = recipe.version_of or recipe.name
+    end
 end
 
 -- A planet variant's prototype name: base (like the original recipe's name) and the planet's

@@ -10,6 +10,7 @@ local furnace_selection = require("lib/furnace-selection")
 local item_fluid = require("lib/item-fluid")
 local logic = require("lib/logic/init")
 local operation_requirements = require("lib/logic/operation-requirements")
+local recipe_merges = require("lib/recipe-merges")
 
 local check = {}
 
@@ -121,7 +122,12 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
     -- Item-derived nodes (item, item-craft, item-launch, entity-build-item, ...) are skipped since first pass renames items: the model keys them by position, the final game by the item now at that position
     -- Nodes named after fluids (fluid, fluid-temperature, fluid-create, ..., and mining-fluid bases) are skipped for the same reason, since first pass renames fluids too (see lib/item-fluid.lua)
     -- Trigger promises follow the technologies carrying that research method, including copies made by the tree rebuild (lib/technology-trigger-promises.lua).
+    -- A recipe merged into another after the attempt (lib/recipe-merges.lua) owes its promises through the recipe it became.
+    local merged_into = recipe_merges.into_of(data.raw)
     local function final_promised_keys(node_key, node)
+        if node.type == "recipe" and merged_into[node.name] ~= nil then
+            return { gutils.key("recipe", merged_into[node.name]) }
+        end
         if node.type ~= "technology-trigger" or UNIFIED_TRIGGER_TAKERS == nil or UNIFIED_TRIGGER_TAKERS[node.name] == nil then
             return { node_key }
         end
@@ -139,8 +145,8 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
             local node = graph.nodes[pebble.node_key]
             if node == nil then
                 local model_node = gutils.deconstruct(pebble.node_key)
-                -- Hiding the original technology removes its node from the final graph, but its copied triggers still owe the model's promises.
-                if model_node.type == "technology-trigger" then
+                -- Hiding the original technology removes its node from the final graph, but its copied triggers still owe the model's promises, as a merged recipe's kept one owes its
+                if model_node.type == "technology-trigger" or (model_node.type == "recipe" and merged_into[model_node.name] ~= nil) then
                     node = model_node
                 end
             end

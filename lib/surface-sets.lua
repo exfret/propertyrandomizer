@@ -46,6 +46,14 @@ surface_sets.POOL = {
     },
 }
 
+-- New surface properties for recipes merged after randomization (randomizations/graph/unified/recipe-merges.lua), planned apart from POOL, whose properties the planet locks plan and clear (locks.realize), so neither undoes the other's
+surface_sets.MERGE_POOL = {
+    {
+        name = "propertyrandomizer-togetherness",
+        step = 9,
+    },
+}
+
 local function sorted_keys(tbl)
     local keys = {}
     for key, _ in pairs(tbl) do

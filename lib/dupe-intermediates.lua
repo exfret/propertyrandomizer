@@ -194,6 +194,8 @@ intermediates.execute = function()
                     -- Outputs and intermediate ingredients keep their ordinary item identities.
                     -- The marker keeps the planet label when item randomization renames recipes.
                     recipe.intermediate_planet = planet_name
+                    -- A version of the original, which it can merge with once randomization is done (lib/recipe-merges.lua)
+                    recipe.version_of = original.version_of or original.name
                     recipe.localised_name = {
                         "propertyrandomizer.recipe_planet_variant",
                         locale_utils.find_localised_name(original),

@@ -50,6 +50,7 @@ With the planetary fix pass on (section 4), the stages wait until unified is loa
 1. Every recipe that was reachable stays reachable somewhere.
 2. Recipes locked to one planet by surface conditions keep every context they had there, isolatable and automatable included, as themselves or as a planet variant. Examples: its science pack, pentapod eggs, soils, the foundry. A spare version of a duplicated building is exempt (`check.spare_building_recipes`, `check.given_up`).
    - A variant's own variants count too (`check.versions`). On seed 0 with planet copies, Vulcanus's acid neutralisation was the resource swap's variant, and independent deposits made versions of that variant. Only one of those versions was local on Vulcanus, so counting one level lost the goal in most attempts (2026-10-09).
+   - So does the recipe a version was merged into after a unified attempt (section 6).
 3. Every mechanic keeps its rooms and automatability (`protection.planetary_kept_context`). Rocket building and electricity keep their isolatability too. A moved feature (like an offshore fluid) is the exception: its goals follow the feature.
 4. The starting planet's science packs keep every context they had there.
 
@@ -91,6 +92,7 @@ Promotion keeps a recipe's earliest context as well as its promised ones when th
 
 ## 6. After unified
 
+- Recipe merges (`lib/recipe-merges.lua`, user 2026-10-10) run on each unified attempt, right after independent deposits' copies are their materials again. Versions of one recipe (planet variants, lock repairs' and deposits' versions, planet copies' local intermediates; each version's `version_of` names its recipe) that came out with the same ingredients, whatever the amounts, and the same results become one recipe. It's made on all their planets (exact conditions on a property of its own, `surface_sets.MERGE_POOL`), in all their machines, unlocked by all their research. It keeps the original recipe's name and amounts when the original is one of them (else the version made in the most rooms is kept), but takes the cheapest amounts where some ingredient's amounts are 3x apart or more, which the log flags (`RECIPEMERGES flagged`). The checks count a merged version as the recipe it became (`merges.into_of`).
 - PLANETCHECK attempt runs on each unified attempt. When lost planet goals only lack a shippable item, that item gets made shippable (`transport.blockers`, `transport.apply`: lighter or slower to spoil, only where needed). Otherwise the attempt is retried, at most twice per load.
 - PLANETCHECK final warns in the panel about what the kept game lost.
 - Known gap: the tech tree rebuild runs after the attempt check. What it loses (like bacteria cultivation's isolatability on Gleba with planet copies) only reaches PLANETCHECK final, as a warning with no retry.

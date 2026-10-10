@@ -98,6 +98,18 @@ flow_cost.get_default_raw_resource_table = function()
     return raw_costs
 end
 
+-- Raw costs (like get_default_raw_resource_table's) for only the materials the game has now, by item_recipe_maps from construct_item_recipe_maps
+-- The load's raw cost table can name materials that are gone, like independent deposits' copies once they're their materials again (randomizations/graph/unified/deposit-copies.lua), and costing from one of those fails
+flow_cost.present_raw_costs = function(raw_costs, item_recipe_maps)
+    local present = {}
+    for material_id, cost in pairs(raw_costs) do
+        if item_recipe_maps.material_to_recipe[material_id] ~= nil then
+            present[material_id] = cost
+        end
+    end
+    return present
+end
+
 flow_cost.get_empty_raw_resource_table = function()
     local empty_table = flow_cost.get_default_raw_resource_table()
     for key, _ in pairs(empty_table) do

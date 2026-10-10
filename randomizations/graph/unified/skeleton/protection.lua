@@ -7,6 +7,7 @@ local constants = require("helper-tables/constants")
 local bootstrap = require("lib/logic/bootstrap")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
+local recipe_merges = require("lib/recipe-merges")
 local surface_sets = require("lib/surface-sets")
 
 local protection = {}
@@ -68,40 +69,72 @@ end
 -- The planetary stage sets these once its changes are final; the rest of randomization keeps them like planet-locked recipes' contexts
 protection.transported_recipe_contexts = {}
 
+-- A recipe's contexts other than home contexts when all of them are on one planet (a room whose prototype is a planet, so not a space platform), a planet and its copies counting as one (surface_sets.family_of), else nil
+local function one_planet_contexts(contexts)
+    local family
+    for context, _ in pairs(contexts) do
+        local context_room = top.context_room(context)
+        if gutils.deconstruct(context_room).type ~= "planet" then
+            return nil
+        end
+        local context_family = surface_sets.family_of(context_room)
+        if family ~= nil and context_family ~= family then
+            return nil
+        end
+        family = context_family
+    end
+    if family == nil then
+        return nil
+    end
+    local kept = {}
+    for context, _ in pairs(contexts) do
+        if top.context_home(context) == nil then
+            kept[context] = true
+        end
+    end
+    return kept
+end
+
 -- Recipes locked to one planet by their surface conditions keep every context they have there, isolatable and automatable included, through all randomization, planetary changes included
 -- A recipe is locked if its prototype has surface conditions and all its pebbles in the sort are on one planet (a room whose prototype is a planet, so not a space platform); a planet and its copies count as one planet (surface_sets.family_of), since no condition can tell them apart
 -- Contexts in protection.transported_recipe_contexts that the sort has are kept too
 -- So are the contexts that justify a bootstrap grant the graph keeps (bootstrap.justifications in lib/logic/bootstrap.lua, like heat keeping itself going on a planet that freezes): the logic checks those when it's built, not in the graph, so a model of the graph counts the grant as fixed while a change could make the next build drop it
+-- A recipe merged into another after an attempt (lib/recipe-merges.lua) is gone from the game, so the recipe it became keeps what the merged one would have kept: it's made wherever that one was, from the same things, unlocked by what unlocked it
 -- The graph and sort_info are a logic graph and a complex sort of it, and prototypes come from data.raw, so call this while data.raw is the game that was sorted
 -- Home contexts aren't kept for their own sake, as for planetary_kept_context below
 -- Returns node key --> context --> true
 protection.planet_locked_recipe_contexts = function(graph, sort_info)
     local locked = {}
+    local function keep(node_key, contexts)
+        locked[node_key] = locked[node_key] or {}
+        for context, _ in pairs(contexts) do
+            locked[node_key][context] = true
+        end
+    end
     for node_key, contexts in pairs(sort_info.node_to_context_inds) do
         local node = graph.nodes[node_key]
         local recipe = node ~= nil and node.type == "recipe" and data.raw.recipe[node.name] or nil
         -- A planet's version of a recipe that wasn't locked to one planet (independent deposits, randomizations/graph/unified/deposit-copies.lua) is kept like its original, not like a planet-locked recipe
         if recipe ~= nil and recipe.surface_conditions ~= nil and next(recipe.surface_conditions) ~= nil and recipe.deposit_local_unlocked ~= true then
-            local family
-            local is_one_family = true
-            for context, _ in pairs(contexts) do
-                local context_room = top.context_room(context)
-                if gutils.deconstruct(context_room).type ~= "planet" then
-                    is_one_family = false
-                else
-                    local context_family = surface_sets.family_of(context_room)
-                    if family == nil then
-                        family = context_family
-                    elseif context_family ~= family then
-                        is_one_family = false
-                    end
-                end
+            local kept = one_planet_contexts(contexts)
+            if kept ~= nil then
+                keep(node_key, kept)
             end
-            if family ~= nil and is_one_family then
-                locked[node_key] = {}
-                for context, _ in pairs(contexts) do
-                    if top.context_home(context) == nil then
-                        locked[node_key][context] = true
+        end
+    end
+    -- Recipe node key --> the node key of the recipe it was merged into, for merged recipes
+    local merged_into = {}
+    local into = recipe_merges.into_of(data.raw)
+    for recipe_name, kept_name in pairs(into) do
+        merged_into[gutils.key("recipe", recipe_name)] = gutils.key("recipe", kept_name)
+    end
+    if next(into) ~= nil then
+        for kept_name, kept in pairs(data.raw.recipe) do
+            for _, record in pairs(kept.merged_versions or {}) do
+                if record.is_planet_locked then
+                    local kept_contexts = one_planet_contexts(sort_info.node_to_context_inds[gutils.key("recipe", record.name)] or {})
+                    if kept_contexts ~= nil then
+                        keep(gutils.key("recipe", kept_name), kept_contexts)
                     end
                 end
             end
@@ -110,8 +143,9 @@ protection.planet_locked_recipe_contexts = function(graph, sort_info)
     for node_key, contexts in pairs(protection.transported_recipe_contexts) do
         for context, _ in pairs(contexts) do
             if (sort_info.node_to_context_inds[node_key] or {})[context] ~= nil then
-                locked[node_key] = locked[node_key] or {}
-                locked[node_key][context] = true
+                keep(merged_into[node_key] or node_key, {
+                    [context] = true,
+                })
             end
         end
     end

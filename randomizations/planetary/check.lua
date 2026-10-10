@@ -18,6 +18,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local recycling = require("lib/recycling")
+local recipe_merges = require("lib/recipe-merges")
 local surface_sets = require("lib/surface-sets")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
@@ -416,6 +417,7 @@ end
 
 -- The recipes that count as a recipe (variants_of: recipe name --> its variants' names): its variants, theirs, and so on, since one stage's variant can get variants of its own from a later one
 -- Like independent deposits' versions of a resource swap's planet variant, which are what the planet then makes from its own deposits (Vulcanus's acid neutralisation, seed 0 with planet copies, 2026-10-09)
+-- A recipe merged into another after a unified attempt counts as the recipe it became, which is made wherever it was (lib/recipe-merges.lua)
 -- Returns their names, sorted, without the recipe itself
 check.versions = function(variants_of, recipe_name)
     local versions = {}
@@ -425,13 +427,21 @@ check.versions = function(variants_of, recipe_name)
     local to_visit = {
         recipe_name,
     }
+    local merged_into = recipe_merges.into_of(data.raw)
     while #to_visit > 0 do
         local name = table.remove(to_visit)
+        local next_names = {}
         for _, variant_name in pairs((variants_of or {})[name] or {}) do
-            if seen[variant_name] == nil then
-                seen[variant_name] = true
-                table.insert(versions, variant_name)
-                table.insert(to_visit, variant_name)
+            table.insert(next_names, variant_name)
+        end
+        if merged_into[name] ~= nil then
+            table.insert(next_names, merged_into[name])
+        end
+        for _, next_name in pairs(next_names) do
+            if seen[next_name] == nil then
+                seen[next_name] = true
+                table.insert(versions, next_name)
+                table.insert(to_visit, next_name)
             end
         end
     end

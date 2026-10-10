@@ -158,6 +158,9 @@ config.recipe_shapes = config.dev_unified
 -- Whether each planet's deposits change independently of other planets' (randomizations/graph/unified/deposit-copies.lua): only with the unified randomizations in development, whose item randomization does the work
 -- In development, behind its own setting, off by default, since the checkout is the user's playable mod
 config.deposit_copies = config.dev_unified and settings.startup["propertyrandomizer-independent-deposits"].value
+-- Whether a recipe's per-planet versions that a unified attempt left taking and making the same things merge into one (randomizations/graph/unified/recipe-merges.lua, user 2026-10-10): with the unified randomizations in development, after each of their attempts
+-- Not in superposed mode, whose settlement can realize planet locks after an attempt, which would put a merged recipe's old lock back
+config.recipe_merges = config.dev_unified and not config.planetary_superposed
 -- Whether planets get random names mixed from the vanilla planets' names (lib/planet-names.lua): with planetary randomization, the unified randomizations in development and the duplicates all on (user, 2026-09-30)
 config.planet_names = config.dupes and config.planetary and config.dev_unified
 -- Whether every planet but the starting one gets a random tint (lib/planet-tints.lua), copies included: with the random names, so the planets are disguised together

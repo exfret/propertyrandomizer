@@ -238,6 +238,7 @@ end
 -- Independent deposits (randomizations/graph/unified/deposit-copies.lua): while unified randomization runs, each planet's deposits mine a copy of their material, and the recipes taking it there take the copy in a version of their own, so item randomization changes them planet by planet
 -- After the planetary stages, whose resource placements it splits up, and before the game the rest of randomization starts from is captured
 local deposit_copies = require("randomizations/graph/unified/deposit-copies")
+local recipe_merges = require("randomizations/graph/unified/recipe-merges")
 local function prepare_deposit_copies()
     if config.deposit_copies ~= true then
         return
@@ -344,6 +345,10 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         -- The copies go back to their materials before anything looks at the game the attempt built, so recycling and the checks see the game players get (randomizations/graph/unified/deposit-copies.lua)
         if config.deposit_copies == true then
             deposit_copies.collapse(data.raw)
+        end
+        -- A recipe's per-planet versions that came out taking and making the same things become one recipe (randomizations/graph/unified/recipe-merges.lua), before recycling follows the recipes and the checks look at the game
+        if config.recipe_merges == true then
+            recipe_merges.execute()
         end
         -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
         recycling.regenerate(old_data_raw)

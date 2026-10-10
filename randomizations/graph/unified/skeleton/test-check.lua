@@ -3,6 +3,8 @@
 config = { operation_readiness = true }
 UNIFIED_MATERIAL_RENAMES = {}
 old_data_raw = {}
+-- The game the check reads merged recipes from (lib/recipe-merges.lua)
+data = { raw = { recipe = {} } }
 local messages = {}
 function log(message)
     table.insert(messages, message)
@@ -284,6 +286,58 @@ test("an unused trigger has no final carrier to check", function()
     local verdict = check.run(graph, sorted, sorted, "UNIFIEDCHECK")
     assert(verdict.ok and verdict.missing == 0)
     UNIFIED_TRIGGER_TAKERS = nil
+    UNIFIED_PROMISED_PEBBLES = nil
+end)
+
+test("a recipe merged into another owes its promises through the recipe it became", function()
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local kept = gutils.key(gutils.add_node(graph, "recipe", "test-cable", { op = "AND" }))
+    -- A game of its own, since what was merged is read once per game (merges.into_of)
+    local game_before = data
+    data = {
+        raw = {
+            recipe = {
+                ["test-cable"] = {
+                    name = "test-cable",
+                    merged_versions = {
+                        {
+                            name = "test-cable-on-gleba",
+                            is_planet_locked = true,
+                        },
+                    },
+                },
+            },
+        },
+    }
+    UNIFIED_PROMISED_PEBBLES = {
+        {
+            node_key = gutils.key("recipe", "test-cable-on-gleba"),
+            context = C("test-room | 11"),
+            rank = 1,
+        },
+    }
+    local before = { node_to_context_inds = {} }
+    local after = { node_to_context_inds = { [kept] = { [C("test-room | 11")] = 1 } } }
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(verdict.ok and verdict.missing == 0)
+    local compared = false
+    for _, message in pairs(messages) do
+        if string.find(message, "promised pebbles compared 1;", 1, true) ~= nil then
+            compared = true
+        end
+    end
+    assert(compared)
+    -- Kept as planet-locked by protection, so the recipe it became can't lose even just isolatability there
+    locked_contexts = { [kept] = { [C("test-room | 11")] = true } }
+    after.node_to_context_inds[kept] = { [C("test-room | 01")] = 1 }
+    verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(not verdict.ok and verdict.missing == 1)
+    locked_contexts = {}
+    data = game_before
     UNIFIED_PROMISED_PEBBLES = nil
 end)
 

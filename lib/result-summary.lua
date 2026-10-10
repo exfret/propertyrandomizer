@@ -10,6 +10,7 @@ local dutils = require("lib/data-utils")
 local furnace_selection = require("lib/furnace-selection")
 local lutils = require("lib/logic/logic-utils")
 local recycling_sources = require("lib/logic/recycling-sources")
+local recipe_merges = require("lib/recipe-merges")
 
 local result_summary = {}
 
@@ -686,11 +687,14 @@ result_summary.log = function(before_raw, raw, unlisted)
             end
         end
     end
+    -- A recipe merged into another (lib/recipe-merges.lua) says which
+    local merged_into = recipe_merges.into_of(raw)
     local removed = {}
     for _, class in pairs(sorted_names(before_raw)) do
         for _, name in pairs(sorted_names(before_raw[class])) do
             if (raw[class] or {})[name] == nil then
-                table.insert(removed, class .. " " .. name)
+                local merged = class == "recipe" and merged_into[name] ~= nil and (" (merged into " .. merged_into[name] .. ")") or ""
+                table.insert(removed, class .. " " .. name .. merged)
             end
         end
     end
