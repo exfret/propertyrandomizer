@@ -1,6 +1,7 @@
 -- Names and icons for the recipes item randomization renames after their new product, in both the unified item handler (randomizations/graph/unified/handlers/item.lua) and the old item randomization (randomizations/graph/item.lua)
 -- A renamed recipe takes its new product's name and icon, since it may have had its own, and is listed with its new product (its subgroup defaults to the main product's, see RecipePrototype::main_product)
 -- When several recipes are named after the same product, the renamed ones also get a prefix and a number badge to tell them apart
+-- A planet's variant of a recipe keeps its planet in its name and its planet's badge on its icon
 
 local constants = require("helper-tables/constants")
 local dupe = require("lib/dupe")
@@ -8,6 +9,7 @@ local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
 local item_fluid = require("lib/item-fluid")
 local locale_utils = require("lib/locale")
+local looks = require("lib/looks")
 local recycling_sources = require("lib/logic/recycling-sources")
 local rng = require("lib/random/rng")
 
@@ -73,6 +75,11 @@ recipe_renames.apply = function(renamed, old_recipes, rng_key)
                 recipe.localised_name,
                 locale_utils.find_localised_name(planet),
             }
+        end
+        -- A planet variant keeps its planet's badge (scaffolds.name_variant), added after the number badge so it's drawn over it
+        local planet_badge = recipe.planet_badge ~= nil and looks.planet_badge(data.raw.planet[recipe.planet_badge]) or nil
+        if planet_badge ~= nil then
+            table.insert(recipe_icons, planet_badge)
         end
         recipe.icon = nil
         recipe.icons = recipe_icons

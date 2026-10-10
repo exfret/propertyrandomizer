@@ -84,3 +84,43 @@ game.players[1].locale = "fr"
 assert(search.value(game.players[1], key, {}, "fixture-id") == "fixture-id", "locale changes discard stale translations")
 assert(storage.explorer_translation_dirty[1])
 print("ok - LocalisedString limits, table addons, warning compatibility and per-player translated search")
+
+-- A recipe whose main product is a fluid of its own name is named after the fluid: prefixes gives every single-result recipe a main product, and Space Age's holmium solution then showed as item-name.holmium-solution
+defines = {
+    prototypes = {
+        item = {
+            item = 0,
+        },
+        fluid = {
+            fluid = 0,
+        },
+        recipe = {
+            recipe = 0,
+        },
+    },
+}
+data = {
+    raw = {
+        item = {},
+        fluid = {
+            solution = {
+                type = "fluid",
+                name = "solution",
+            },
+        },
+    },
+}
+local solution_name = locale.find_localised_name({
+    type = "recipe",
+    name = "solution",
+    main_product = "solution",
+    results = {
+        {
+            type = "fluid",
+            name = "solution",
+            amount = 100,
+        },
+    },
+})
+assert(solution_name[1] == "fluid-name.solution", "a fluid main product is named as a fluid")
+print("ok - a recipe named after the fluid it makes")

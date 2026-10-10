@@ -45,13 +45,6 @@ logic_group.build = function(graph, type_info)
 
     curr_class = "logic-groups"
 
-    local nauvis_room = key("room", key("planet", "nauvis"))
-    local space_plat_room = key("room", key("surface", "space-platform"))
-    local vulcanus_room = key("room", key("planet", "vulcanus"))
-    local fulgora_room = key("room", key("planet", "fulgora"))
-    local gleba_room = key("room", key("planet", "gleba"))
-    local aquilo_room = key("room", key("planet", "aquilo"))
-
     ----------------------------------------------------------------------
     -- Start
     ----------------------------------------------------------------------

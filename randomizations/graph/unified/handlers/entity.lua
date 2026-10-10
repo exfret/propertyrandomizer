@@ -2006,6 +2006,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             common.set_placed_entity(item, entity_prot)
             common.set_icon_layers(item, "", common.icon_layers(entity_prot, ""))
             common.set_icon_layers(item, "dark_background_", nil)
+            -- Belts show an item's pictures, and its icon when it has none (ItemPrototype::pictures), so its own pictures go
+            item.pictures = nil
             item.localised_name = {"propertyrandomizer-entity.friendly-name", locale.find_localised_name(entity_prot)}
             item.localised_description = {"propertyrandomizer-entity.friendly-places", "[entity=" .. entity_name .. "]", locale.find_localised_name(entity_prot)}
         elseif common.placed_entity_name(old_item) ~= entity_name then
@@ -2014,6 +2016,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
             for _, prefix in pairs(common.item_icon_prefixes) do
                 common.set_icon_layers(item, prefix, common.icon_layers(look, prefix))
             end
+            -- Belts show an item's pictures, and its icon when it has none (ItemPrototype::pictures), so it takes that item's pictures too; a unit's look is its icon
+            item.pictures = defines.prototypes.item[look.type] ~= nil and table.deepcopy(look.pictures) or nil
             -- Like that item, it's named after the entity unless the item has a name of its own (as seeds do)
             item.localised_name = table.deepcopy(look.localised_name) or locale.find_localised_name(entity_prot)
             -- Only the description the entity's own item had, since randomizations.fixes puts the entity's description (with any stat changes) in front of every placing item's description
@@ -2078,6 +2082,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 end
                 common.set_icon_layers(vestige, prefix, layers)
             end
+            -- With no pictures, belts show that darkened icon (ItemPrototype::pictures)
+            vestige.pictures = nil
             vestige.localised_name = {"propertyrandomizer-entity.vestige-name", table.deepcopy(look.localised_name) or last_entity_name}
             vestige.localised_description = {"propertyrandomizer-entity.vestige", "[entity=" .. last_entity.name .. "]", last_entity_name, now_from}
             vestige_was[old_item_name] = {

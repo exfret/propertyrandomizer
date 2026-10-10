@@ -427,8 +427,8 @@ local function attempt(options)
     local old_sorted_deps
     if do_first_pass then
         -- NOTE: This switch code is out of date
-        local function switch_vulcanus_nauvis(graph)
-            local nauvis_node = graph.nodes[key("room", key("planet", "nauvis"))]
+        local function switch_vulcanus_start(graph)
+            local start_node = graph.nodes[key("room", key("planet", constants.starting_planet))]
             local vulcanus_node = graph.nodes[key("room", key("planet", "vulcanus"))]
 
             -- room-launch's are intrinsic to the room
@@ -457,13 +457,13 @@ local function attempt(options)
                 return deps_tbl
             end
 
-            local nauvis_deps = gather_deps(nauvis_node)
+            local start_deps = gather_deps(start_node)
             local vulcanus_deps = gather_deps(vulcanus_node)
-            for _, edge in pairs(nauvis_deps) do
+            for _, edge in pairs(start_deps) do
                 gutils.redirect_edge_start(graph, gutils.ekey(edge), key(vulcanus_node))
             end
             for _, edge in pairs(vulcanus_deps) do
-                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(nauvis_node))
+                gutils.redirect_edge_start(graph, gutils.ekey(edge), key(start_node))
             end
         end
 
@@ -474,8 +474,8 @@ local function attempt(options)
         gutils.detach_starting_heads(subdiv_graph_to_pass)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort
-            --switch_vulcanus_nauvis(spoofed_graph_to_pass)
-            switch_vulcanus_nauvis(subdiv_graph_to_pass)
+            --switch_vulcanus_start(spoofed_graph_to_pass)
+            switch_vulcanus_start(subdiv_graph_to_pass)
         end
         -- With first pass, nothing reads these again (first pass's sort takes the pool sort's place), so they don't stay in memory through first pass and the shuffle
         spoofed_graph = nil
@@ -1179,10 +1179,11 @@ local function attempt(options)
     end
 
     if SWITCH_PLANETS then
-        local old_nauvis = table.deepcopy(data.raw.planet.nauvis)
-        data.raw.planet.nauvis = table.deepcopy(data.raw.planet.vulcanus)
-        data.raw.planet.nauvis.name = "nauvis"
-        data.raw.planet.vulcanus = old_nauvis
+        local start = constants.starting_planet
+        local old_start = table.deepcopy(data.raw.planet[start])
+        data.raw.planet[start] = table.deepcopy(data.raw.planet.vulcanus)
+        data.raw.planet[start].name = start
+        data.raw.planet.vulcanus = old_start
         data.raw.planet.vulcanus.name = "vulcanus"
     end
 

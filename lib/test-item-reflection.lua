@@ -417,4 +417,56 @@ test("local intermediate recipe names keep their planet after product renaming",
     assert(recipe.icons[1].icon == "test-shared-product.png")
 end)
 
+test("planet variants keep their planet's badge in the top right, over the number badge, after product renaming, and planet copies' own recipes get none", function()
+    data.raw.planet = {
+        ["test-badge-world"] = {
+            type = "planet",
+            name = "test-badge-world",
+            icon = "test-badge-world.png",
+        },
+    }
+    data.raw.item["test-badge-product"] = {
+        type = "item",
+        name = "test-badge-product",
+        icon = "test-badge-product.png",
+    }
+    -- A planet variant (scaffolds.name_variant) says whose badge it wears; a planet copy's own recipe (lib/dupe-intermediates.lua) is named after its planet too, but wears a copy number
+    local function made_on_world(name, planet_badge)
+        return {
+            type = "recipe",
+            name = name,
+            intermediate_planet = "test-badge-world",
+            planet_badge = planet_badge,
+            results = {
+                {
+                    type = "item",
+                    name = "test-badge-product",
+                    amount = 1,
+                },
+            },
+        }
+    end
+    data.raw.recipe = {
+        ["test-variant"] = made_on_world("test-variant", "test-badge-world"),
+        ["test-copy-local"] = made_on_world("test-copy-local", nil),
+    }
+    recipe_renames.apply({
+        ["test-variant"] = {
+            type = "item",
+            name = "test-badge-product",
+        },
+        ["test-copy-local"] = {
+            type = "item",
+            name = "test-badge-product",
+        },
+    }, {}, "key")
+    -- Both are named after the product, so both get number badges in the top right; only the variant has its planet's badge, there too and drawn over the number (a later layer is drawn on top, types/IconData.html)
+    local variant_icons = data.raw.recipe["test-variant"].icons
+    assert(#variant_icons == 3 and variant_icons[1].icon == "test-badge-product.png" and variant_icons[2].icon == dupe.recipe_number_icon(2).icon)
+    local badge = variant_icons[3]
+    assert(badge.icon == "test-badge-world.png" and badge.shift[1] == 8 and badge.shift[2] == -8 and badge.scale == 16 / 64)
+    local copy_icons = data.raw.recipe["test-copy-local"].icons
+    assert(#copy_icons == 2 and copy_icons[2].icon == dupe.recipe_number_icon(1).icon)
+end)
+
 print(num_passed .. " tests passed")

@@ -103,8 +103,8 @@ function locale_utils.find_localised_name_recipe(recipe)
         if prototype ~= nil then
             return locale_utils.find_localised_name_item(prototype)
         else
-            -- In this case it's probably a fluid
-            return locale_utils.find_localised_name_item(data.raw.fluid[recipe.main_product])
+            -- In this case it's probably a fluid, named like any prototype that isn't an item (an item's rules named holmium solution item-name.holmium-solution, once prefixes gave its recipe a main product)
+            return locale_utils.find_localised_name(data.raw.fluid[recipe.main_product])
         end
     elseif recipe.results ~= nil and #recipe.results == 1 and recipe.results[1].name == recipe.name then
         local prototype

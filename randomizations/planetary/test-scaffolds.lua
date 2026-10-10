@@ -243,6 +243,10 @@ local conversion = data.raw.recipe[copy_conversion.recipe_name]
 check(conversion.localised_name[1] == "propertyrandomizer-name.planet-variant" and conversion.localised_name[3] == "Embra", "the copy's conversion isn't named after its planet")
 check(conversion.icons ~= nil and conversion.icons[#conversion.icons].icon == "__test__/ember-2.png", "the copy's conversion doesn't have its planet's badge")
 check(conversion.icons[1].icon == "__test__/magma.png", "the conversion's icon isn't the fluid it makes")
+-- The badge is in the top right corner, and the conversion says whose badge it wears, so item randomization's renames keep it (lib/recipe-renames.lua)
+local conversion_badge = conversion.icons[#conversion.icons]
+check(conversion_badge.shift[1] > 0 and conversion_badge.shift[2] < 0, "the planet's badge isn't in the top right corner")
+check(conversion.planet_badge == "ember-exfret-2-copy", "the copy's conversion doesn't say it wears its planet's badge")
 
 -- 5. Forgetting the kept candidates forgets their locks (execute puts data.raw back, and locks.fixed would keep them otherwise)
 scaffolds.kept = {

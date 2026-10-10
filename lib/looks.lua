@@ -106,6 +106,32 @@ looks.primary_icon = function(prot)
     error("Prototype has no usable icon: " .. tostring(prot.name))
 end
 
+-- A planet's icon as a badge on a recipe made for that planet (randomizations/planetary/scaffolds.lua), or nil if there's no icon
+-- Half size, in the top right corner, where a recipe's number badge goes too (lib/dupe.lua); it's always added after any number badge, so where they meet the planet is drawn over it (user, 2026-10-10: the planet takes priority)
+looks.planet_badge = function(planet)
+    if planet == nil then
+        return nil
+    end
+    local badge
+    if planet.icons ~= nil and planet.icons[1] ~= nil then
+        badge = table.deepcopy(planet.icons[1])
+    elseif planet.icon ~= nil then
+        badge = {
+            icon = planet.icon,
+            icon_size = planet.icon_size,
+        }
+    else
+        return nil
+    end
+    -- A recipe icon is 32 units across at full size (types/IconData.html), so this is half size, centered in the top right quarter
+    badge.scale = 16 / (badge.icon_size or 64)
+    badge.shift = {
+        8,
+        -8,
+    }
+    return badge
+end
+
 -- A resource item randomization makes mine another item looks like it: its patches show a few of the item's icon (ResourceEntityPrototype::stages, one stage), and it has the item's icon (EntityPrototype::icons, what Factoriopedia and tooltips show)
 -- Both item randomizations name the resource after the item too (randomizations/graph/unified/handlers/item.lua and randomizations/graph/item.lua); the scrap mining boilers had boilers on its patches but scrap's icon (2026-10-09)
 looks.like_item = function(resource, item)

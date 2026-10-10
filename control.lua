@@ -303,8 +303,8 @@ script.on_nth_tick(10, function(event)
     for _, surface in pairs(game.surfaces) do
         -- Don't scan through all surfaces each time
         -- This is a lazy way of doing it, sure, but I don't care
-        -- Also just sidestep the issue outside of space age by always doing nauvis
-        if surface.name == "nauvis" or math.random(1, 6) == 1 then
+        -- Also just sidestep the issue outside of space age by always doing the starting planet's surface
+        if surface.name == constants.starting_planet or math.random(1, 6) == 1 then
             local prod_stats = game.forces.player.get_item_production_statistics(surface)
             for science_name, _ in pairs(storage.science_pack_name) do
                 local amount_produced = prod_stats.get_input_count(science_name)

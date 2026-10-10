@@ -1,8 +1,9 @@
 -- Regional ground appearances and decorative vegetation. Capture before gameplay randomization, then apply after it so tile mechanics stay final.
--- Original Nauvis is explicitly exempt (user, 2026-10-05); its copies may change.
+-- The starting planet (original Nauvis) is explicitly exempt (user, 2026-10-05); its copies may change.
 -- Noise/placement API: https://lua-api.factorio.com/latest/types/AutoplaceSpecification.html
 -- Only presentation fields travel. Every clone keeps its host's collision, mining, fluids, covering rules and placement expression; name-based rules follow clones.
 
+local constants = require("helper-tables/constants")
 local rng = require("lib/random/rng")
 local tile_references = require("randomizations/planetary/biome-tile-references")
 local decoratives = require("randomizations/planetary/biome-decoratives")
@@ -194,7 +195,7 @@ biomes.execute = function()
     for _, planet_name in pairs(sorted_keys(data.raw.planet)) do
         local planet = data.raw.planet[planet_name]
         local settings = tile_settings(planet)
-        if planet_name ~= "nauvis" and planet.hidden ~= true and settings ~= nil then
+        if planet_name ~= constants.starting_planet and planet.hidden ~= true and settings ~= nil then
             local key = rng.key({
                 id = "planetary-biomes",
                 prototype = planet,
@@ -308,7 +309,7 @@ biomes.execute = function()
     report.data = {
         planets = biomes.assignments,
         clone_to_slot = biomes.clone_to_slot,
-        protected_planet = "nauvis",
+        protected_planet = constants.starting_planet,
     }
     data:extend({ report })
 end

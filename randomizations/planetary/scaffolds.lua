@@ -9,6 +9,7 @@
 
 local dutils = require("lib/data-utils")
 local gutils = require("lib/graph/graph-utils")
+local looks = require("lib/looks")
 local top = require("lib/graph/context-sort")
 local planetary_check = require("randomizations/planetary/check")
 local locks = require("randomizations/planetary/locks")
@@ -92,19 +93,13 @@ local function recipe_icon_layers(recipe)
     return nil
 end
 
--- A recipe's icon layers with a planet's icon as a badge in their top right corner, for a planet variant of the recipe, or nil when either has no icon
+-- A recipe's icon layers with a planet's icon as a badge in their top right corner (looks.planet_badge), for a planet variant of the recipe, or nil when either has no icon
 scaffolds.badged_icons = function(recipe, planet_name)
     local icons = recipe_icon_layers(recipe)
-    local planet_icon = icon_layers(data.raw.planet[planet_name])
-    if icons == nil or planet_icon == nil then
+    local badge = looks.planet_badge(data.raw.planet[planet_name])
+    if icons == nil or badge == nil then
         return nil
     end
-    local badge = planet_icon[1]
-    badge.scale = 16 / badge.icon_size
-    badge.shift = {
-        8,
-        -8,
-    }
     table.insert(icons, badge)
     return icons
 end
@@ -131,10 +126,12 @@ end
 -- Names a planet variant of the recipe after the planet (scaffolds.variant_name) and puts the planet in its intermediate_planet field, as lib/dupe-intermediates.lua does for planet copies' own recipes
 -- The field keeps the planet in the name when item randomization renames the recipe (lib/recipe-renames.lua), and keeps a further variant for the same planet from naming it twice
 -- A room that isn't a planet gets no intermediate_planet, since the renames look the planet up
+-- Every variant named this way also gets its planet's icon as a badge (scaffolds.badged_icons), so its planet_badge field keeps that badge when the renames give it its new product's icon; planet copies' own recipes show a copy number instead, and get none
 -- A variant is a version of the recipe it was made from (version_of, the first recipe for a version of a version), so it can merge with the recipe's other versions once randomization is done (lib/recipe-merges.lua); a new recipe named this way (a conversion) is no one's version
 scaffolds.name_variant = function(variant, recipe, planet_name)
     variant.localised_name = scaffolds.variant_name(recipe, planet_name)
     variant.intermediate_planet = data.raw.planet[planet_name] ~= nil and planet_name or nil
+    variant.planet_badge = variant.intermediate_planet
     if variant ~= recipe then
         variant.version_of = recipe.version_of or recipe.name
     end
