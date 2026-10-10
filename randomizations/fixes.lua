@@ -22,6 +22,8 @@ local trigger_promises = require("lib/technology-trigger-promises")
 local rebuild_check = require("lib/rebuild-check")
 -- A recipe one technology unlocks has that technology as a prerequisite, without unlock nodes in between
 local unlock_contraction = require("lib/logic/unlock-contraction")
+-- What each planet needs to get going from its own resources, which its discovery brings
+local starting_recipes = require("lib/starting-recipes")
 
 randomizations.rebuild_tech_tree = function()
     -- Special py fixes
@@ -855,6 +857,308 @@ randomizations.rebuild_tech_tree = function()
     end
     log("Tech tree rebuild: " .. num_needed_added .. " prerequisites on techs the logic needs (like planet discoveries) added, " .. num_needed_left_out .. " left out because they would take away a context, " .. num_needed_cycles .. " because they would make a cycle; " .. num_passed_unneeded .. " more that witnesses passed never became candidates, as there's a way without them; " .. num_sooner_rooms .. " recipes' prerequisites come from a room reached sooner than their first pebble's, which the sort reached in the same step")
 
+    -- Each planet's starting recipes (lib/starting-recipes.lua) come with its discovery, so a player who discovers a planet can get it going from its own resources (user, 2026-10-10)
+    --   * A starting recipe's tech becomes a prerequisite of the discovery when it can be researched before it: it doesn't need the discovery, it can't take away a context of the discovery's (covers), and it makes the discovery wait for no other planet's discovery
+    --     Not when only that planet makes the recipe, which comes after the planet's discovery (see needed_tech_for)
+    --   * Otherwise a tech researched by a trigger the planet meets from its own resources stays: the player meets it there, and the route to the trigger is part of the start too
+    --   * Otherwise (science packs, or a trigger the planet can't meet itself) the discovery unlocks the recipe
+    --     Its own tech goes when it came after the discovery anyway (see can_drop below); otherwise it stays as another way to unlock the recipe
+    -- The check of the rebuilt game below still leaves out a prerequisite added here that takes a context away
+    local starting_counts = {
+        prerequisite = 0,
+        trigger = 0,
+        packaged = 0,
+        kept_too = 0,
+    }
+    local starting_lines = {}
+    -- The starting recipes' techs made prerequisites of discoveries, as { discovery, tech }, to say below how many of them the check of the rebuilt game left out
+    local starting_prerequisites = {}
+    if context_sort_info ~= nil then
+        local is_discoverer = {}
+        for _, techs in pairs(discoverers_of) do
+            for discoverer, _ in pairs(techs) do
+                is_discoverer[discoverer] = true
+            end
+        end
+        -- The discoveries tech_name needs through prerequisites, itself included
+        local function discoveries_of(tech_name)
+            local found = {}
+            local seen = {}
+            local pending = { tech_name }
+            while #pending > 0 do
+                local current = table.remove(pending)
+                if not seen[current] then
+                    seen[current] = true
+                    if is_discoverer[current] then
+                        found[current] = true
+                    end
+                    for _, prereq in pairs((data.raw.technology[current] or {}).prerequisites or {}) do
+                        table.insert(pending, prereq)
+                    end
+                end
+            end
+            return found
+        end
+        -- Whether tech lists prereq_name among its own prerequisites
+        local function has_prerequisite(tech, prereq_name)
+            for _, prereq in pairs(tech.prerequisites or {}) do
+                if prereq == prereq_name then
+                    return true
+                end
+            end
+            return false
+        end
+        -- Whether recipe_name's tech can be a prerequisite of discovery (see above), and if not why, for the log: "needs the discovery", "would take a context" or the other discovery it needs
+        local function can_precede(tech_name, recipe_name, discovery)
+            if needs(tech_name, discovery) then
+                return false, "needs the discovery"
+            end
+            if not covers(recipe_to_source_tech[recipe_name], discovery) then
+                return false, "would take a context"
+            end
+            local allowed = discoveries_of(discovery)
+            local others = {}
+            for other, _ in pairs(discoveries_of(tech_name)) do
+                if allowed[other] == nil then
+                    table.insert(others, other)
+                end
+            end
+            if #others > 0 then
+                table.sort(others)
+                return false, "needs " .. others[1]
+            end
+            return true
+        end
+        -- The rooms where a recipe can be made, as a set (the sort without tech prerequisites has simple contexts, each standing for its room)
+        local function made_in(recipe_name)
+            local rooms = {}
+            for context, _ in pairs(no_tech_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}) do
+                rooms[top.context_room(context)] = true
+            end
+            return rooms
+        end
+        -- Whether only rooms discovery discovers make the recipe
+        local function made_only_where(recipe_name, discovery)
+            local discovered = {}
+            for _, found in pairs(top.discovered_rooms({
+                type = "technology",
+                name = discovery,
+            })) do
+                discovered[found.room] = true
+            end
+            local rooms = made_in(recipe_name)
+            if next(rooms) == nil then
+                return false
+            end
+            for room, _ in pairs(rooms) do
+                if discovered[room] == nil then
+                    return false
+                end
+            end
+            return true
+        end
+        -- Has discovery unlock recipe_name, with the abilities its rebuilt tech has for it (technology_abilities above)
+        -- An unlock the discovery kept as an alternate path (retained_unlocks) is now its own, so rebuild_unlocks.split below doesn't move it to a copy
+        local function package(recipe_name, discovery)
+            if (retained_unlocks[discovery] or {})[recipe_name] ~= nil then
+                retained_unlocks[discovery][recipe_name] = nil
+            end
+            local target = data.raw.technology[discovery]
+            target.effects = target.effects or {}
+            local added = {
+                {
+                    type = "unlock-recipe",
+                    recipe = recipe_name,
+                },
+            }
+            for _, effect in pairs(recipe_abilities[recipe_name] or {}) do
+                table.insert(added, table.deepcopy(effect))
+            end
+            for _, effect in pairs(added) do
+                local present = false
+                for _, existing in pairs(target.effects) do
+                    if existing.type == effect.type and existing.recipe == effect.recipe and existing.modifier == effect.modifier and existing.quality == effect.quality then
+                        present = true
+                    end
+                end
+                if not present then
+                    table.insert(target.effects, effect)
+                end
+            end
+        end
+        -- Whether recipe_name's tech can go once discovery unlocks the recipe (see above)
+        -- That's when it comes after the discovery: it needs it, or it researches what the discovery researches (vanilla's lightning rod), or its recipe is made only where the discovery and the others of its room (all_handled: they unlock it too) discover, so nothing makes it before
+        -- Like a recipe only Vulcanus makes, whose tech's research is reached before Vulcanus's discovery, so the discovery couldn't be its prerequisite without taking away a context (covers)
+        local function can_drop(tech_name, recipe_name, discovery, all_handled)
+            if needs(tech_name, discovery) then
+                return true
+            end
+            if recipe_to_source_tech[recipe_name] ~= discovery and not (all_handled and made_only_where(recipe_name, discovery)) then
+                return false
+            end
+            -- The techs that needed it will need the discovery, which mustn't need them
+            for other_name, other in pairs(data.raw.technology) do
+                if has_prerequisite(other, tech_name) and needs(discovery, other_name) then
+                    return false
+                end
+            end
+            return true
+        end
+        -- Takes recipe_name's tech out of the tree: the techs that needed it need what it needed and discovery instead, which unlocks its recipe now
+        local function drop(tech_name, discovery)
+            local tech = data.raw.technology[tech_name]
+            local replacement = { discovery }
+            for _, prereq in pairs(tech.prerequisites or {}) do
+                table.insert(replacement, prereq)
+            end
+            for other_name, other in pairs(data.raw.technology) do
+                if has_prerequisite(other, tech_name) then
+                    local prereqs = {}
+                    for _, prereq in pairs(other.prerequisites) do
+                        if prereq ~= tech_name then
+                            table.insert(prereqs, prereq)
+                        end
+                    end
+                    other.prerequisites = prereqs
+                    for _, prereq in pairs(replacement) do
+                        if prereq ~= other_name and not has_prerequisite(other, prereq) then
+                            table.insert(other.prerequisites, prereq)
+                        end
+                    end
+                end
+            end
+            if tech.essential then
+                data.raw.technology[discovery].essential = true
+            end
+            data.raw.technology[tech_name] = nil
+            is_new_tech[tech_name] = nil
+            new_tech_sources[tech_name] = nil
+            new_tech_recipes[tech_name] = nil
+            copied_trigger_sources[tech_name] = nil
+        end
+        -- Recipe name --> the discoveries unlocking it now that its own tech is gone
+        local packaged_into = {}
+        local targets = starting_recipes.targets(graph)
+        local room_discoverers = rebuild_check.discoverers(graph)
+        for _, room in pairs(sorted_names(room_discoverers)) do
+            -- The discoveries the rebuild keeps in place (see logic_needs), which are the ones it gave prerequisites
+            local discoveries = {}
+            local all_handled = true
+            for _, discovery in pairs(sorted_names(room_discoverers[room])) do
+                if data.raw.technology[discovery] ~= nil and needed_tech_to_prev[discovery] ~= nil then
+                    table.insert(discoveries, discovery)
+                else
+                    all_handled = false
+                end
+            end
+            local found = {}
+            local room_outcomes = {}
+            local goals = {}
+            if #discoveries > 0 then
+                goals = starting_recipes.goals(graph, context_sort_info, room, targets)
+            end
+            while #goals > 0 do
+                local recipes = starting_recipes.route(graph, context_sort_info, room, goals, gets_tech)
+                goals = {}
+                for _, recipe_name in pairs(sorted_names(recipes)) do
+                    if found[recipe_name] == nil then
+                        found[recipe_name] = true
+                        local tech_name = "exfret-rebuilt-" .. recipe_name .. "-suffix"
+                        for _, discovery in pairs(discoveries) do
+                            local tech = data.raw.technology[tech_name]
+                            local outcome
+                            -- Why its tech isn't a prerequisite of the discovery, for the log of recipes that keep their own tech too
+                            local reason
+                            if tech == nil or not is_new_tech[tech_name] then
+                                -- Its tech is gone: other discoveries unlock it, and this one does too unless it needs one of them
+                                local before = false
+                                for _, other in pairs(packaged_into[recipe_name] or {}) do
+                                    if other == discovery or needs(discovery, other) then
+                                        before = true
+                                    end
+                                end
+                                if packaged_into[recipe_name] ~= nil and not before then
+                                    package(recipe_name, discovery)
+                                    table.insert(packaged_into[recipe_name], discovery)
+                                    outcome = "packaged"
+                                end
+                            else
+                                local precedes = false
+                                if made_only_where(recipe_name, discovery) then
+                                    reason = "made only there"
+                                else
+                                    precedes, reason = can_precede(tech_name, recipe_name, discovery)
+                                end
+                                local trigger_rank
+                                if not precedes and tech.research_trigger ~= nil then
+                                    trigger_rank = starting_recipes.goal(context_sort_info, starting_recipes.trigger_key(recipe_to_source_tech[recipe_name]), room)
+                                end
+                                if precedes then
+                                    local target = data.raw.technology[discovery]
+                                    target.prerequisites = target.prerequisites or {}
+                                    if not has_prerequisite(target, tech_name) then
+                                        table.insert(target.prerequisites, tech_name)
+                                    end
+                                    table.insert(starting_prerequisites, {
+                                        discovery = discovery,
+                                        tech = tech_name,
+                                    })
+                                    outcome = "prerequisite"
+                                elseif trigger_rank ~= nil then
+                                    table.insert(goals, trigger_rank)
+                                    outcome = "trigger"
+                                else
+                                    package(recipe_name, discovery)
+                                    if can_drop(tech_name, recipe_name, discovery, all_handled) then
+                                        drop(tech_name, discovery)
+                                        packaged_into[recipe_name] = { discovery }
+                                        outcome = "packaged"
+                                    else
+                                        outcome = "kept_too"
+                                    end
+                                end
+                            end
+                            if outcome ~= nil then
+                                starting_counts[outcome] = starting_counts[outcome] + 1
+                                room_outcomes[outcome] = room_outcomes[outcome] or {}
+                                if outcome == "kept_too" then
+                                    table.insert(room_outcomes[outcome], recipe_name .. " [" .. reason .. "]")
+                                else
+                                    table.insert(room_outcomes[outcome], recipe_name)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if next(room_outcomes) ~= nil then
+                local parts = {}
+                local outcomes = {
+                    "packaged",
+                    "kept_too",
+                    "trigger",
+                    "prerequisite",
+                }
+                for _, outcome in pairs(outcomes) do
+                    local names = room_outcomes[outcome]
+                    if names ~= nil then
+                        table.sort(names)
+                        local shown = {}
+                        for i = 1, math.min(#names, 12) do
+                            table.insert(shown, names[i])
+                        end
+                        table.insert(parts, outcome .. " " .. #names .. " (" .. table.concat(shown, ", ") .. (#names > #shown and ", ..." or "") .. ")")
+                    end
+                end
+                table.insert(starting_lines, "Tech tree rebuild: starting recipes of " .. room .. " (" .. table.concat(discoveries, ", ") .. "): " .. table.concat(parts, "; "))
+            end
+        end
+    end
+    log("Tech tree rebuild: planets' starting recipes: " .. starting_counts.prerequisite .. " techs made prerequisites of the discovery, " .. starting_counts.trigger .. " left as triggers the planet meets, " .. starting_counts.packaged .. " recipes unlocked by the discovery instead of a tech of their own, " .. starting_counts.kept_too .. " unlocked by the discovery and still by their own tech")
+    for _, line in pairs(starting_lines) do
+        log(line)
+    end
+
     if mods["pyalternativeenergy"] then
         -- Make pyrrhic come after each later thing with some probability
         local has_dependent = {}
@@ -955,6 +1259,25 @@ randomizations.rebuild_tech_tree = function()
             end
             log(message .. "; the rebuilt game still lost " .. #still_lost .. " contexts the game had, which leaving out prerequisites doesn't bring back (e.g. " .. table.concat(examples, "; ") .. ")")
         end
+    end
+    -- Starting recipes' techs the check left out of their discovery's prerequisites (directly and through others), which a player can then reach the planet without
+    local cut_starting = {}
+    for _, pair in pairs(starting_prerequisites) do
+        if data.raw.technology[pair.tech] ~= nil and not needs(pair.discovery, pair.tech) then
+            table.insert(cut_starting, new_tech_recipes[pair.tech] .. " for " .. pair.discovery)
+        end
+    end
+    if #starting_prerequisites > 0 then
+        local message = "Tech tree rebuild: " .. #cut_starting .. " of " .. #starting_prerequisites .. " starting recipes' techs made prerequisites of their discovery were left out by the check"
+        if #cut_starting > 0 then
+            table.sort(cut_starting)
+            local examples = {}
+            for i = 1, math.min(5, #cut_starting) do
+                table.insert(examples, cut_starting[i])
+            end
+            message = message .. " (e.g. " .. table.concat(examples, ", ") .. ")"
+        end
+        log(message)
     end
     -- The kept paths become techs of their own, so that each tech unlocks one recipe; the check above holds for them, since each has its original's research and prerequisites
     local split_copies, split_originals = rebuild_unlocks.split(data.raw.technology, retained_unlocks, recipe_unlocks_before, function(recipe_name)

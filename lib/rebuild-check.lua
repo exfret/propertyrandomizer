@@ -157,13 +157,9 @@ rebuild_check.cuts = function(lost, flat_graph, flat_sort, after_graph, after_so
     return cuts
 end
 
--- The rebuilt techs a player could research before reaching anywhere their recipe is made: the recipe is made only in rooms that need discovering, and the tech doesn't need a tech discovering any of them
--- Like a recipe made only on Vulcanus whose tech doesn't need Vulcanus's discovery
--- A room needs discovering when a tech discovers it (top.room_discoverers), unless it's the starting planet, whose room node the start reaches.
--- Arguments: technologies is data.raw.technology, tech_recipes is rebuilt tech name --> its recipe's name, and recipe_rooms(recipe_name) is the set of rooms (context keys) where the recipe can be made
--- Returns a list of { tech, recipe }, sorted by tech name
-rebuild_check.undiscovered = function(graph, technologies, tech_recipes, recipe_rooms)
-    -- Room --> set of the names of the techs discovering it, for the rooms that need discovering
+-- The rooms that need discovering, as room --> set of the names of the techs discovering it
+-- A room needs discovering when a tech discovers it (top.room_discoverers), unless it's the starting planet, whose room node the start reaches
+rebuild_check.discoverers = function(graph)
     local discoverers = {}
     for room, discoverer_keys in pairs(top.room_discoverers(graph)) do
         local from_start = false
@@ -183,6 +179,15 @@ rebuild_check.undiscovered = function(graph, technologies, tech_recipes, recipe_
             end
         end
     end
+    return discoverers
+end
+
+-- The rebuilt techs a player could research before reaching anywhere their recipe is made: the recipe is made only in rooms that need discovering (rebuild_check.discoverers), and the tech doesn't need a tech discovering any of them
+-- Like a recipe made only on Vulcanus whose tech doesn't need Vulcanus's discovery
+-- Arguments: technologies is data.raw.technology, tech_recipes is rebuilt tech name --> its recipe's name, and recipe_rooms(recipe_name) is the set of rooms (context keys) where the recipe can be made
+-- Returns a list of { tech, recipe }, sorted by tech name
+rebuild_check.undiscovered = function(graph, technologies, tech_recipes, recipe_rooms)
+    local discoverers = rebuild_check.discoverers(graph)
     -- Tech name --> set of the rooms it or a tech it needs discovers
     local discovered = {}
     local function discovered_by(tech_name)
