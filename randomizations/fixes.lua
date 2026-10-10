@@ -526,14 +526,16 @@ randomizations.rebuild_tech_tree = function()
     -- For a recipe's tech, where the witness has a choice on the recipe's planet it takes what that planet can make from its own resources, even if that comes a bit later (context_sort_info is the sort without tech prerequisites that has those contexts)
     -- Like a planet's own version of a boiler recipe over another planet's version it would have to import boilers from, so a planet's recipes come after that planet's own unlocks
     -- Techs the logic needs (logic_needs above) and research methods (witness_recipes.research below) keep the earliest witness
+    -- Every witness researches a tech or launches an item in the starting planet or a room before its own, of the rooms just as early, using the home sets of context_sort_info (see witness_recipes.of)
     local preference_stats = {}
+    local home_sets = context_sort_info ~= nil and context_sort_info.home_sets or nil
     local function prev_recipes_of(ind, prefer_local)
         local node = graph.nodes[no_tech_sort_info.pebble_keys[ind]]
         local needed_tech = needed_tech_for(node.type == "recipe" and node.name or nil)
         if prefer_local == true then
-            return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats, needed_tech)
+            return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, context_sort_info, preference_stats, needed_tech, home_sets)
         end
-        return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, nil, nil, needed_tech)
+        return witness_recipes.of(graph, no_tech_sort_info, ind, gets_tech, nil, preference_stats, needed_tech, home_sets)
     end
 
     -- When the sort without tech prerequisites first reached room (a context of it), as an index in it, or nil
@@ -571,17 +573,53 @@ randomizations.rebuild_tech_tree = function()
         return best_ind
     end
 
+    -- The techs the logic needs that each pebble of the sort without tech prerequisites can't be reached without (top.watched_needed): every way to it passes them
+    -- Of those a witness passes, only these become prerequisites below: the others it passes because of its choices between ways that are just as early, which are arbitrary
+    -- Like Fulbis's recipes in the user's 2026-10-10 game: their witnesses researched Fulbis's discovery on Vulgora, or flew in from a planet Fulbis doesn't come after, and their techs needed that planet's discovery too
+    -- Ones past a recipe with a tech, where the witness stops, still come through that tech's prerequisites
+    -- Py's sort without tech prerequisites is of another graph (see above), so py keeps every tech the witness passes
+    local needed_of
+    if context_sort_info ~= nil then
+        local watched = {}
+        for node_key, node in pairs(graph.nodes) do
+            if node.type == "technology" and data.raw.technology[node.name] ~= nil and logic_needs(node) then
+                table.insert(watched, node_key)
+            end
+        end
+        needed_of = top.watched_needed(graph, watched, no_tech_sort_info)
+    end
+    -- Of the techs a witness passed (passed, from witness_recipes), those every way there passes too (node_keys, a set from needed_of); the others are counted for the log
+    local num_passed_unneeded = 0
+    local function needed_techs(passed, node_keys)
+        local techs = {}
+        for tech_name, _ in pairs(passed or {}) do
+            if (node_keys or {})[gutils.key("technology", tech_name)] ~= nil then
+                techs[tech_name] = true
+            else
+                num_passed_unneeded = num_passed_unneeded + 1
+            end
+        end
+        return techs
+    end
+
     local recipe_to_prev = {}
     local needed_tech_to_prev = {}
-    -- The techs the logic needs that each recipe's or needed tech's witness passes (see needed_tech_for), which become prerequisites below
+    -- The techs the logic needs that each recipe's or needed tech's witness passes and it can't be had without (see needed_tech_for, needed_of), which become prerequisites below
     local recipe_to_needed = {}
     local needed_tech_to_needed = {}
     for ind, pebble_key in pairs(no_tech_sort_info.pebble_keys) do
         local node = graph.nodes[pebble_key]
         if node.type == "recipe" and recipe_to_prev[node.name] == nil then
-            recipe_to_prev[node.name], recipe_to_needed[node.name] = prev_recipes_of(witness_ind(ind), true)
+            local root = witness_ind(ind)
+            recipe_to_prev[node.name], recipe_to_needed[node.name] = prev_recipes_of(root, true)
+            if needed_of ~= nil then
+                recipe_to_needed[node.name] = needed_techs(recipe_to_needed[node.name], needed_of(pebble_key, no_tech_sort_info.pebble_contexts[root]))
+            end
         elseif node.type == "technology" and needed_tech_to_prev[node.name] == nil and data.raw.technology[node.name] ~= nil and logic_needs(node) then
             needed_tech_to_prev[node.name], needed_tech_to_needed[node.name] = prev_recipes_of(ind, false)
+            if needed_of ~= nil then
+                needed_tech_to_needed[node.name] = needed_techs(needed_tech_to_needed[node.name], needed_of(pebble_key))
+            end
         end
     end
     -- Preserve the research method actually copied, including its crafting/mining triggers.
@@ -597,7 +635,10 @@ randomizations.rebuild_tech_tree = function()
     for _, recipe_name in pairs(research_recipes) do
         local source = recipe_to_source_tech[recipe_name]
         if research_requirements[source] == nil then
-            research_requirements[source], research_needed[source] = witness_recipes.research(graph, no_tech_sort_info, source, gets_tech, needed_tech_for(nil))
+            research_requirements[source], research_needed[source] = witness_recipes.research(graph, no_tech_sort_info, source, gets_tech, needed_tech_for(nil), home_sets, preference_stats)
+            if needed_of ~= nil then
+                research_needed[source] = needed_techs(research_needed[source], needed_of(gutils.key("technology", source)))
+            end
         end
         local requirements = research_requirements[source]
         if requirements == nil or not witness_recipes.extend(recipe_to_prev, recipe_name, requirements, function(pre, target)
@@ -812,7 +853,7 @@ randomizations.rebuild_tech_tree = function()
             end
         end
     end
-    log("Tech tree rebuild: " .. num_needed_added .. " prerequisites on techs the logic needs (like planet discoveries) added, " .. num_needed_left_out .. " left out because they would take away a context, " .. num_needed_cycles .. " because they would make a cycle; " .. num_sooner_rooms .. " recipes' prerequisites come from a room reached sooner than their first pebble's, which the sort reached in the same step")
+    log("Tech tree rebuild: " .. num_needed_added .. " prerequisites on techs the logic needs (like planet discoveries) added, " .. num_needed_left_out .. " left out because they would take away a context, " .. num_needed_cycles .. " because they would make a cycle; " .. num_passed_unneeded .. " more that witnesses passed never became candidates, as there's a way without them; " .. num_sooner_rooms .. " recipes' prerequisites come from a room reached sooner than their first pebble's, which the sort reached in the same step")
 
     if mods["pyalternativeenergy"] then
         -- Make pyrrhic come after each later thing with some probability
@@ -971,6 +1012,7 @@ randomizations.rebuild_tech_tree = function()
         local message = "Tech tree rebuild: " .. (preference_stats.preferred or 0) .. " techs took a prerequisite their recipe's planet makes itself over an earlier one from elsewhere"
         message = message .. ", " .. (preference_stats.dropped or 0) .. " passed over a planet's own way that needs what it was picked for or something from elsewhere"
         message = message .. " (" .. (preference_stats.gave_up or 0) .. " gave up and took the earliest everywhere)"
+        message = message .. "; " .. (preference_stats.tied or 0) .. " witnesses researched a tech or launched an item in the starting planet or a room before their own, rather than in another room the sort listed first at the same step"
         message = message .. "; " .. num_elsewhere .. " prerequisites unlock a recipe that can't be made anywhere their tech's recipe can"
         if #examples > 0 then
             message = message .. " (e.g. " .. table.concat(examples, "; ") .. ")"

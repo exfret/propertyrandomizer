@@ -805,3 +805,92 @@ for _, message in pairs(logged) do
 end
 assert(nothing_cut, "the prerequisite filter leaves it out before the check")
 print("ok - a prerequisite without the home context the discovery rule needs is left out up front")
+
+-- A recipe made only in room B, which a ship reaches from room A or from room C once B is discovered; the way from A takes a few more steps, so the sort reaches B from C first
+-- B can be reached without C, so the recipe's tech needs B's discovery and not C's, though its witness came from C
+-- Like Fulbis's recipes in the user's 2026-10-10 game, whose witnesses researched Fulbis's discovery on Vulgora or flew in from a planet Fulbis doesn't come after, so their techs needed that planet's discovery
+-- The sort takes open nodes by key (top.choose_open), so which way comes first doesn't depend on pairs order; the recipe's research pack comes last ("zz"), after both discoveries
+local ROOM_C = "planet: test-c"
+fixture({
+    ["test-b-recipe"] = "test-zz-pack",
+}, function(node)
+    local start = node("start", "", "AND")
+    local a = node("room", ROOM_A, "OR", { start })
+    node("item", "test-pack", "OR", { a })
+    node("item", "test-zz-pack", "OR", { node("zz-step", "test-zz-pack", "OR", { a }) })
+    local discover_b = node("technology", "test-discover-b", "AND")
+    local discover_c = node("technology", "test-discover-c", "AND")
+    node("room", ROOM_C, "OR", { discover_c })
+    local late = discover_b
+    for i = 1, 3 do
+        late = node("wait", "test-late-" .. i, "OR", { late })
+    end
+    local b = node("room", ROOM_B, "OR", {
+        node("route", "from-a", "AND", { late }),
+        node("route", "from-c", "AND", {
+            discover_b,
+            discover_c,
+        }),
+    })
+    recipe_node(node, "test-b-recipe", { node("item", "test-b-input", "OR", { b }) })
+end)
+for _, room in pairs({
+    "b",
+    "c",
+}) do
+    data.raw.technology["test-discover-" .. room] = {
+        type = "technology",
+        name = "test-discover-" .. room,
+        effects = {
+            {
+                type = "unlock-space-location",
+                space_location = "test-" .. room,
+            },
+        },
+        unit = {
+            count = 1,
+            ingredients = {
+                {
+                    "test-pack",
+                    1,
+                },
+            },
+        },
+    }
+end
+logic.contexts = {
+    [ROOM_A] = true,
+    [ROOM_B] = true,
+    [ROOM_C] = true,
+}
+top.choose_open = function(open)
+    local first
+    for node_key, _ in pairs(open) do
+        if first == nil or node_key < first then
+            first = node_key
+        end
+    end
+    return first
+end
+local ok, err = pcall(function()
+    before = sort()
+    -- The fixture's earliest way to the recipe in room B comes from room C
+    local plain = top.sort(logic.graph)
+    local recipe_ind = plain.node_to_context_inds[gutils.key("recipe", "test-b-recipe")][fx.C(ROOM_B)]
+    local via_c = false
+    for ind, _ in pairs(top.path(logic.graph, { recipe_ind }, plain).in_path) do
+        if plain.pebble_keys[ind] == gutils.key("technology", "test-discover-c") then
+            via_c = true
+        end
+    end
+    assert(via_c, "the fixture's earliest way to the recipe comes from room C")
+    randomizations.rebuild_tech_tree()
+    assert(prerequisites("test-b-recipe")["test-discover-b"], "the recipe needs its room's discovery")
+    assert(not prerequisites("test-b-recipe")["test-discover-c"], "the recipe doesn't need the discovery of a room it can be reached without")
+    assert_kept(before, sort(), "route")
+end)
+top.choose_open = nil
+if ok ~= true then
+    error(err, 0)
+end
+print("ok - a recipe's tech needs the discoveries every way to it needs, not those of whichever way its witness took")

@@ -60,6 +60,7 @@ package.loaded["lib/data-utils"] = {
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local witness_recipes = require("lib/logic/witness-recipes")
+local ctx = require("lib/graph/contexts")
 -- Contexts are numbers (lib/graph/contexts.lua); fixtures write them as their names, like a room's simple context "away", and edge abilities as the logic builders used to (lib/graph/contexts-for-tests.lua)
 local fx = require("lib/graph/contexts-for-tests")
 local C = fx.C
@@ -580,6 +581,214 @@ test("without a sort with complex contexts nothing is preferred", function()
         local stats = {}
         assert(names(witness_recipes.of(graph, sort_info, first_ind("fuel"), two_room_gets_tech, nil, stats)) == "away-smelt,home-boiler")
         assert(next(stats) == nil)
+    end)
+end)
+
+-- Where a tech is researched: a widget made in the target room needs a tech researched with a pack from each of two rooms (near-a, near-b), so the packs are shipped to one lab
+-- Each room but home (the starting room) is discovered by a tech researched at home; away is one the target doesn't come after, discovered soonest
+-- The sort ships both packs to every reached room in the same step, and lists the rooms by name, so away comes first, like Vulgora for Fulbis's discovery in the user's 2026-10-10 game
+-- options.home_lab = false: home has no lab; options.near_a_makes_both: near-a makes both packs, so it can research before anything is shipped
+local RESEARCH_ROOMS = {
+    "away",
+    "home",
+    "near-a",
+    "near-b",
+    "target",
+}
+local function research_graph(options)
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local function node(node_type, name, op, pres)
+        gutils.add_node(graph, node_type, name, {
+            op = op,
+        })
+        for _, pre in pairs(pres) do
+            gutils.add_edge(graph, pre, key(node_type, name))
+        end
+    end
+    node("start", "start", "AND", {})
+    node("room", "home", "OR", { key("start", "start") })
+    node("stuff", "plate", "OR", { key("room", "home") })
+    local discovery_steps = {
+        away = 1,
+        ["near-a"] = 2,
+        ["near-b"] = 2,
+        target = 3,
+    }
+    for room, steps in pairs(discovery_steps) do
+        local last = key("stuff", "plate")
+        for i = 1, steps do
+            node("stuff", room .. "-step-" .. i, "OR", { last })
+            last = key("stuff", room .. "-step-" .. i)
+        end
+        node("technology", "discover-" .. room, "AND", { last })
+        node("room", room, "OR", { key("technology", "discover-" .. room) })
+    end
+    -- Somewhere reached, and somewhere a lab can be
+    local reached = {}
+    local lab_rooms = {}
+    for _, room in pairs(RESEARCH_ROOMS) do
+        table.insert(reached, key("room", room))
+        if room ~= "home" or options.home_lab ~= false then
+            table.insert(lab_rooms, key("room", room))
+        end
+    end
+    node("here", "here", "OR", reached)
+    node("stuff", "lab", "OR", lab_rooms)
+    for _, pack in pairs({
+        "a",
+        "b",
+    }) do
+        local makers = { key("room", "near-" .. pack) }
+        if options.near_a_makes_both == true then
+            makers = { key("room", "near-a") }
+        end
+        node("recipe", "make-pack-" .. pack, "AND", makers)
+        node("stuff", "pack-" .. pack, "OR", { key("recipe", "make-pack-" .. pack) })
+        node("launch", "pack-" .. pack, "AND", { key("stuff", "pack-" .. pack) })
+        node("deliver", "pack-" .. pack, "AND", {
+            key("launch", "pack-" .. pack),
+            key("here", "here"),
+        })
+        gutils.add_edge(graph, key("deliver", "pack-" .. pack), key("stuff", "pack-" .. pack))
+    end
+    node("research", "packs", "AND", {
+        key("stuff", "pack-a"),
+        key("stuff", "pack-b"),
+        key("stuff", "lab"),
+    })
+    node("technology", "goal", "AND", { key("research", "packs") })
+    node("stuff", "target-ore", "OR", { key("room", "target") })
+    node("recipe", "widget", "AND", {
+        key("stuff", "target-ore"),
+        key("technology", "goal"),
+    })
+    return graph
+end
+
+-- Runs fn(graph, sort_info, widget_ind) with the research graph's rooms as the logic's contexts and home as the starting room
+local function with_research_rooms(options, fn)
+    local old_contexts = logic.contexts
+    local old_type_info = logic.type_info
+    local old_start = ctx.start_room
+    logic.contexts = {}
+    for _, room in pairs(RESEARCH_ROOMS) do
+        logic.contexts[room] = true
+    end
+    logic.type_info = {
+        start = {},
+        room = { context = "room" },
+        stuff = {},
+        recipe = {},
+        here = {},
+        research = {},
+        technology = { context = true },
+        launch = { context = true },
+        deliver = {},
+    }
+    ctx.start_room = "home"
+    local ok, err = pcall(function()
+        local graph = research_graph(options)
+        local sort_info = breadth_first_sort(graph)
+        -- Paths read a sort's contexts from its context info, and one cached for another test's rooms would lack these
+        sort_info.context_info = top.sort(graph).context_info
+        fn(graph, sort_info, sort_info.node_to_context_inds[key("recipe", "widget")][C("target")])
+    end)
+    logic.contexts = old_contexts
+    logic.type_info = old_type_info
+    ctx.start_room = old_start
+    if not ok then
+        error(err, 0)
+    end
+end
+
+-- The room the path researches the goal in
+local function research_room(sort_info, path_info)
+    for ind, _ in pairs(path_info.in_path) do
+        if sort_info.pebble_keys[ind] == key("research", "packs") then
+            return top.context_room(sort_info.pebble_contexts[ind])
+        end
+    end
+end
+
+local function discovers(tech_name)
+    return string.find(tech_name, "^discover%-") ~= nil
+end
+
+-- The target's home set: the rooms it comes after
+local TARGET_HOME_SETS = {
+    ids = { 1 },
+    sets = {
+        [1] = {
+            rooms = {
+                home = true,
+                ["near-a"] = true,
+                ["near-b"] = true,
+            },
+            discovered = {
+                target = true,
+            },
+        },
+    },
+    of = {
+        target = 1,
+    },
+}
+
+test("a tech whose packs are shipped is researched in the starting room, not in whichever room the sort listed first at that step", function()
+    with_research_rooms({}, function(graph, sort_info, widget_ind)
+        -- The sort itself goes to away, which the widget doesn't need
+        local earliest = top.path(graph, { widget_ind }, sort_info)
+        assert(research_room(sort_info, earliest) == "away")
+        local stats = {}
+        local _, techs = witness_recipes.of(graph, sort_info, widget_ind, function() return false end, nil, stats, discovers, TARGET_HOME_SETS)
+        assert(names(techs) == "discover-near-a,discover-near-b,discover-target")
+        assert(stats.tied == 1)
+        -- Without home sets too
+        local _, plain_techs = witness_recipes.of(graph, sort_info, widget_ind, function() return false end, nil, nil, discovers)
+        assert(names(plain_techs) == "discover-near-a,discover-near-b,discover-target")
+    end)
+end)
+
+test("without a lab in the starting room, research goes to a room the witness's room comes after", function()
+    with_research_rooms({ home_lab = false }, function(graph, sort_info, widget_ind)
+        assert(research_room(sort_info, top.path(graph, { widget_ind }, sort_info)) == "away")
+        local _, techs = witness_recipes.of(graph, sort_info, widget_ind, function() return false end, nil, nil, discovers, TARGET_HOME_SETS)
+        assert(names(techs) == "discover-near-a,discover-near-b,discover-target")
+        -- Without home sets, the target's own room
+        local _, plain_techs = witness_recipes.of(graph, sort_info, widget_ind, function() return false end, nil, nil, discovers)
+        assert(names(plain_techs) == "discover-near-a,discover-near-b,discover-target")
+    end)
+end)
+
+test("a room that can research earlier keeps it: the rule only picks among rooms just as early", function()
+    with_research_rooms({ near_a_makes_both = true }, function(graph, sort_info, widget_ind)
+        assert(research_room(sort_info, top.path(graph, { widget_ind }, sort_info)) == "near-a")
+        local stats = {}
+        local _, techs = witness_recipes.of(graph, sort_info, widget_ind, function() return false end, nil, stats, discovers, TARGET_HOME_SETS)
+        assert(names(techs) == "discover-near-a,discover-target")
+        assert(stats.tied == nil)
+    end)
+end)
+
+test("a discovery's own witness researches it in the starting room too", function()
+    with_research_rooms({}, function(graph, sort_info)
+        -- The target's discovery needs the goal tech here, so its research is the same choice
+        gutils.add_edge(graph, key("technology", "goal"), key("technology", "discover-target"))
+        local re_sorted = breadth_first_sort(graph)
+        re_sorted.context_info = sort_info.context_info
+        local goal_ind
+        for _, ind in pairs(re_sorted.node_to_context_inds[key("technology", "goal")]) do
+            if goal_ind == nil or ind < goal_ind then
+                goal_ind = ind
+            end
+        end
+        assert(research_room(re_sorted, top.path(graph, { goal_ind }, re_sorted)) == "away")
+        local _, techs = witness_recipes.of(graph, re_sorted, goal_ind, function() return false end, nil, nil, discovers, TARGET_HOME_SETS)
+        assert(names(techs) == "discover-near-a,discover-near-b")
     end)
 end)
 

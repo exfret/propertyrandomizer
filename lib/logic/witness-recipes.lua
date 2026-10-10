@@ -5,6 +5,8 @@
 
 local top = require("lib/graph/context-sort")
 local gutils = require("lib/graph/graph-utils")
+local ctx = require("lib/graph/contexts")
+local logic = require("lib/logic/state")
 
 local witness_recipes = {}
 
@@ -113,6 +115,55 @@ local function nonlocal_choices(path_info, sort_info, room, local_sort_info)
     return found
 end
 
+-- How the witness of the pebble at ind ranks rooms the sort finished a step in at the same time (top.path's tie_rank), for where it researches a tech or launches an item: lower first
+-- The sort ships what such a step needs to every room at once and lists those rooms in whatever order it took them, so the first one listed says nothing about the game
+-- First the starting planet, then the rooms before the witness's own room on the map (its home set in home_sets, and the room itself), then the rest, each in the order the sort reached them
+-- The own room is the pebble's room, or the rooms a discovery tech discovers; a tech the sort has in every room has none
+-- Like Fulbis's discovery in the user's game (2026-10-10): researched with packs from its two neighbors, it went to a lab on Vulgora, a planet Fulbis doesn't come after, and every tech after the discovery needed Vulgora's discovery too
+local function tie_rank(graph, sort_info, ind, home_sets)
+    local preferred = {}
+    if ctx.start_room ~= nil then
+        preferred[ctx.start_room] = true
+    end
+    local root = graph.nodes[sort_info.pebble_keys[ind]]
+    local own_rooms = {}
+    if logic.type_info[root.type].context == nil then
+        table.insert(own_rooms, top.context_room(sort_info.pebble_contexts[ind]))
+    elseif top.is_discoverer(root) then
+        for _, discovered in pairs(top.discovered_rooms(root)) do
+            table.insert(own_rooms, discovered.room)
+        end
+    end
+    for _, room in pairs(own_rooms) do
+        preferred[room] = true
+        local home_id = home_sets ~= nil and home_sets.of ~= nil and home_sets.of[room] or nil
+        if home_id ~= nil then
+            for home_room, _ in pairs(home_sets.sets[home_id].rooms) do
+                preferred[home_room] = true
+            end
+        end
+    end
+    local num_pebbles = #sort_info.pebble_keys
+    -- Room --> the index of the sort's first pebble of its room node
+    local reached = {}
+    return function(context)
+        local room = top.context_room(context)
+        if reached[room] == nil then
+            local first = num_pebbles + 1
+            for _, room_ind in pairs(sort_info.node_to_context_inds[gutils.key("room", room)] or {}) do
+                if room_ind < first then
+                    first = room_ind
+                end
+            end
+            reached[room] = first
+        end
+        if preferred[room] ~= nil then
+            return reached[room]
+        end
+        return num_pebbles + 1 + reached[room]
+    end
+end
+
 -- The names of the recipes the pebble at ind in sort_info directly needs, as a set; gets_tech(recipe_name) says whether a recipe gets a tech
 -- With local_sort_info (a sort of the same graph with complex contexts), where the witness has a choice in the room of the pebble at ind, it takes what that room can make from its own resources, rather than what comes earliest
 -- Like a planet's own version of a recipe over another planet's version the planet would have to import from, so a tech for a recipe made on one planet comes after that planet's recipes
@@ -124,7 +175,8 @@ end
 -- Counts go in stats if it's given: witnesses that took a room's own option over an earlier one somewhere (stats.preferred), that dropped a choice (stats.dropped), and that still had one to drop after MAX_ROUNDS and so took the earliest options everywhere (stats.gave_up)
 -- With keeps_place(tech_name), the second result is the set of techs on the witness that keep their place in the rebuild (like a planet's discovery), which the pebble needs as themselves
 -- The witness still goes on through them, so the recipes are the same either way
-witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info, stats, keeps_place)
+-- Where rooms are just as early for researching a tech or launching an item, the witness takes the starting planet or a room before its own (see tie_rank; home_sets are a sort's home sets, or nil to rank only by when the sort reached each room), counted in stats.tied
+witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info, stats, keeps_place, home_sets)
     local function has_tech(node_key)
         local node = graph.nodes[node_key]
         return node.type == "recipe" and gets_tech(node.name)
@@ -134,6 +186,7 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
         stop_if = function(node_key)
             return has_tech(node_key)
         end,
+        tie_rank = tie_rank(graph, sort_info, ind, home_sets),
     }
     local path_info
     if local_sort_info ~= nil then
@@ -189,6 +242,9 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
     if path_info == nil then
         path_info = top.path(graph, {ind}, sort_info, params)
     end
+    if stats ~= nil and path_info.num_tie_moves > 0 then
+        stats.tied = (stats.tied or 0) + 1
+    end
     local recipes = {}
     local techs = {}
     for other_ind, _ in pairs(path_info.in_path) do
@@ -209,8 +265,8 @@ end
 -- Use the research method actually copied onto the rebuilt technology.
 -- A recipe's earliest witness can use another unlocking technology or a fixed recipe instead.
 -- Technology prerequisites have already been removed from this graph, leaving the recipes needed for the science packs or the research trigger itself.
--- With keeps_place, the techs on it that keep their place come second, as in witness_recipes.of
-witness_recipes.research = function(graph, sort_info, tech_name, gets_tech, keeps_place)
+-- With keeps_place, the techs on it that keep their place come second, as in witness_recipes.of, and home_sets and stats (only stats.tied) are as there too
+witness_recipes.research = function(graph, sort_info, tech_name, gets_tech, keeps_place, home_sets, stats)
     local first
     for _, ind in pairs(sort_info.node_to_context_inds[gutils.key("technology", tech_name)] or {}) do
         if first == nil or ind < first then
@@ -220,7 +276,7 @@ witness_recipes.research = function(graph, sort_info, tech_name, gets_tech, keep
     if first == nil then
         return nil
     end
-    return witness_recipes.of(graph, sort_info, first, gets_tech, nil, nil, keeps_place)
+    return witness_recipes.of(graph, sort_info, first, gets_tech, nil, stats, keeps_place, home_sets)
 end
 
 -- Add a research witness only if its prerequisites preserve contexts and cannot lead back to the recipe being unlocked.

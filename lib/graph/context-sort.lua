@@ -1042,8 +1042,9 @@ end
 -- (The true answer follows these rules, and by induction along a sort without the room, any answer that follows them is contained in it; so it's the largest one, which is where shrinking ends up)
 -- Sets of rooms are strings with a "0" or "1" per room, like ability strings, so that they're cheap to compare and memoize
 -- Given watched (a list of node keys), those nodes go in the sets as if they were rooms: each needs itself on top of what satisfied it, so the sets also say which of them a pebble can't be reached without
-local function compute_rooms_needed(graph, watched)
-    local sort_info = top.sort(graph)
+-- sort_info is a sort of graph without complex contexts, made here if not given
+local function compute_rooms_needed(graph, watched, sort_info)
+    sort_info = sort_info or top.sort(graph)
 
     -- Rooms in a fixed order, then the watched nodes, so that sets of them can be strings
     local rooms = {}
@@ -1051,10 +1052,10 @@ local function compute_rooms_needed(graph, watched)
         table.insert(rooms, room)
     end
     table.sort(rooms)
-    -- The contexts a pebble can have are the rooms' simple contexts
-    local contexts = {}
+    -- The contexts a pebble can have are the rooms' simple contexts, as a set
+    local context_set = {}
     for _, room in pairs(rooms) do
-        table.insert(contexts, ctx.simple(room))
+        context_set[ctx.simple(room)] = true
     end
     local watched_keys = {}
     for _, node_key in pairs(watched or {}) do
@@ -1138,6 +1139,26 @@ local function compute_rooms_needed(graph, watched)
         end
     end
 
+    -- Node key --> the sets in needed of its prerequisites the sort reached, found once rather than through the edges on every update, or false for an AND node with one it never reached (never satisfied)
+    local pre_needed_of = {}
+    local function pre_needed_tables(node_key, node)
+        local tables = pre_needed_of[node_key]
+        if tables == nil then
+            tables = {}
+            for pre, _ in pairs(node.pre) do
+                local pre_needed = needed[graph.edges[pre].start]
+                if pre_needed ~= nil then
+                    table.insert(tables, pre_needed)
+                elseif node.op == "AND" then
+                    tables = false
+                    break
+                end
+            end
+            pre_needed_of[node_key] = tables
+        end
+        return tables
+    end
+
     -- Recomputes a node's sets from its prerequisites' sets, and returns whether any shrank
     local function update(node_key)
         local node = graph.nodes[node_key]
@@ -1147,13 +1168,17 @@ local function compute_rooms_needed(graph, watched)
         end
 
         -- Rooms needed by each incoming context that satisfies the node (edges don't change simple contexts)
+        -- A node that keeps its context is satisfied in just the contexts the sort gave it, so only those are looked at; forgetters and rooms take any context in
+        local context_type = logic.type_info[node.type].context
+        local pre_tables = pre_needed_tables(node_key, node)
+        local is_or = node.op == "OR"
         local incoming = {}
-        for _, context in pairs(contexts) do
+        for context, _ in pairs(pre_tables and (context_type == nil and node_needed or context_set) or {}) do
             local set
-            local is_satisfied = node.op == "AND"
-            for pre, _ in pairs(node.pre) do
-                local pre_set = (needed[graph.edges[pre].start] or {})[context]
-                if node.op == "OR" then
+            local is_satisfied = not is_or
+            for i = 1, #pre_tables do
+                local pre_set = pre_tables[i][context]
+                if is_or then
                     if pre_set ~= nil then
                         is_satisfied = true
                         set = intersect(set, pre_set)
@@ -1171,7 +1196,6 @@ local function compute_rooms_needed(graph, watched)
         end
 
         local new_needed = {}
-        local context_type = logic.type_info[node.type].context
         if context_type == nil then
             new_needed = incoming
         else
@@ -1271,17 +1295,22 @@ top.rooms_needed = function(graph)
 end
 
 -- For every node a sort without complex contexts reaches, which of the watched nodes (a list of node keys) it can't be reached without in any context (see compute_rooms_needed)
--- Returns a function node_key --> { watched node key --> true }, which gives nil for a node that can't be reached at all
-top.watched_needed = function(graph, watched)
-    local info = compute_rooms_needed(graph, watched)
+-- Returns a function (node_key, context) --> { watched node key --> true }, which gives nil for a node that can't be reached at all; with context (a simple context), for the node's pebble in it rather than for the node in whichever context
+-- sort_info is a sort of graph without complex contexts, which saves making one
+top.watched_needed = function(graph, watched, sort_info)
+    local info = compute_rooms_needed(graph, watched, sort_info)
     local is_watched = {}
     for _, node_key in pairs(watched) do
         is_watched[node_key] = true
     end
-    return function(node_key)
+    return function(node_key, context)
         local common
-        for _, set in pairs(info.needed[node_key] or {}) do
-            common = info.intersect(common, set)
+        if context ~= nil then
+            common = (info.needed[node_key] or {})[context]
+        else
+            for _, set in pairs(info.needed[node_key] or {}) do
+                common = info.intersect(common, set)
+            end
         end
         if common == nil then
             return nil
@@ -2340,6 +2369,38 @@ local function find_discovery_preinds(sort_info, room_discoverers, tech_node, co
     return { own_ind, discoverer_ind }
 end
 
+-- Of the contexts in latest_of (context --> the index of its latest prereq) whose latest prereq the sort reached in the same step as earliest_ind, the one tie_rank ranks lowest, or chosen (earliest_ind's) if none ranks lower; the earlier one where two rank the same
+-- A step is a node's batch of pebbles, which top.sort lists next to each other in whatever order it took their contexts (see its main loop), so which of them comes first says nothing about the game
+-- A rank that a listed pebble stands for (top.implied_ability_contexts) belongs to that pebble's batch
+-- A forgetter's, a room's or a source's batch is one thing happening, the same whichever of its contexts the path goes on from, so there's nothing to choose
+local function tied_choice(graph, pebble_keys, latest_of, earliest_ind, chosen, tie_rank)
+    local first = math.ceil(earliest_ind)
+    local batch_key = pebble_keys[first]
+    local batch_node = graph.nodes[batch_key]
+    if logic.type_info[batch_node.type].context ~= nil or next(batch_node.pre) == nil then
+        return chosen
+    end
+    local last = first
+    while pebble_keys[last + 1] ~= nil and pebble_keys[last + 1] == batch_key do
+        last = last + 1
+    end
+    local best = chosen
+    local best_rank = tie_rank(chosen)
+    local best_ind = latest_of[chosen]
+    for context, latest_ind in pairs(latest_of) do
+        local listed = math.ceil(latest_ind)
+        if listed >= first and listed <= last then
+            local rank = tie_rank(context)
+            if rank < best_rank or (rank == best_rank and latest_ind < best_ind) then
+                best = context
+                best_rank = rank
+                best_ind = latest_ind
+            end
+        end
+    end
+    return best
+end
+
 -- This is taken mainly from top-sort.lua
 -- Creates a path of inds within the sort's pebble lists starting from the goal and going backwards for how to get there
 -- goal_inds is a list of inds in the pebble lists of the pebbles we are hoping to achieve
@@ -2347,6 +2408,8 @@ end
 -- The immediate option returns only the backing of the first goal, without inspecting its parents.
 -- extra_params.prefer(pre_ind, curr_ind) picks which prereq an OR node that keeps its context takes: a preferred one goes before the earliest, and may even come after the OR node's own pebble as long as it's before extra_params.prefer_before (default: the OR node's pebble)
 -- A later prereq can lead back to the OR node, so with prefer the result also has chosen (ind --> the inds it went on to), for checking that the path is still a derivation (see lib/logic/witness-recipes.lua), and preferred (OR pebble --> the preferred prereq it took over an earlier one)
+-- extra_params.tie_rank(context) ranks the contexts a forgetter or room takes in (lower first): of those the sort finished in the same step as the earliest one, it takes the lowest ranked instead of whichever the sort listed first (see tied_choice)
+-- Like where a tech is researched: the sort ships its packs to every room in the same step, so the room listed first is arbitrary; the result's num_tie_moves counts the choices the rank changed
 top.path = function(graph, goal_inds, sort_info, extra_params)
     local pebble_keys = sort_info.pebble_keys
     local pebble_contexts = sort_info.pebble_contexts
@@ -2362,6 +2425,8 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     end
     local stop_if = extra_params.stop_if or function(node_key, context) return false end
     local prefer = extra_params.prefer
+    local tie_rank = extra_params.tie_rank
+    local num_tie_moves = 0
     local chosen
     local preferred
     if prefer ~= nil then
@@ -2467,6 +2532,8 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             -- We'll choose that context and then do the rest with that
             local earliest_context_ind = curr_ind
             local outgoing_context = curr_context
+            -- With tie_rank, each possible context's latest prereq, for choosing among those as early as the earliest below
+            local latest_of
             for _, context in pairs(context_info.list) do
                 local preinds = false
                 if transmits_curr_context(context) then
@@ -2491,11 +2558,22 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
                             break
                         end
                     else
+                        if tie_rank ~= nil and latest_ind < curr_ind then
+                            latest_of = latest_of or {}
+                            latest_of[context] = latest_ind
+                        end
                         if latest_ind < earliest_context_ind then
                             earliest_context_ind = latest_ind
                             curr_context = context
                         end
                     end
+                end
+            end
+            if latest_of ~= nil and earliest_context_ind ~= 0 and earliest_context_ind < curr_ind then
+                local tied = tied_choice(graph, pebble_keys, latest_of, earliest_context_ind, curr_context, tie_rank)
+                if tied ~= curr_context then
+                    num_tie_moves = num_tie_moves + 1
+                    curr_context = tied
                 end
             end
             -- Isolatable contexts of techs can also come from discovering their space location (see discover_space_locations and discover_home_rooms in top.sort)
@@ -2546,6 +2624,7 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
         in_path = in_path,
         chosen = chosen,
         preferred = preferred,
+        num_tie_moves = num_tie_moves,
     }
 end
 
