@@ -612,11 +612,52 @@ local function implied_ind(context_info, inds, context)
     return earliest
 end
 
+-- An empty table for defaults that are only read, so a missing list doesn't make a new table each time (writing to it is an error)
+local EMPTY = setmetatable({}, {
+    __newindex = function()
+        error("EMPTY is read-only")
+    end,
+})
+
+-- The lists the transmit functions below give, kept by one sort (top.sort) so each is built once rather than at every arrival; the sort only reads them
+-- Each function keeps its own, since they give different lists for the same context
+local function new_transmit_cache()
+    return {
+        -- context --> { context }
+        just = {},
+        -- strongest_transmit: context --> what a forgetter sends, and room --> what a room sends
+        strongest_forget = {},
+        strongest_room = {},
+        -- node_transmit with complex contexts: ability mask --> what a forgetter sends, and room --> what a room sends
+        forget_mask = {},
+        room_all = {},
+        -- node_transmit with simple contexts: what a forgetter sends, and room --> what a room sends
+        simple_forget = nil,
+        simple_room = {},
+        -- home_transmit: home set id --> what a forgetter sends, and room --> home set id --> what a room sends
+        home_forget = {},
+        home_room = {},
+    }
+end
+
+-- { incoming }, kept in cache (from new_transmit_cache) when there is one
+local function just_incoming(incoming, cache)
+    if cache == nil then
+        return { incoming }
+    end
+    local list = cache.just[incoming]
+    if list == nil then
+        list = { incoming }
+        cache.just[incoming] = list
+    end
+    return list
+end
+
 -- The contexts of the smallest home sets containing home_id that a room's home contexts (room --> home set id --> context) have, for a room without home_id's, or nil for none
 -- member_room, when given, has to be in those home sets too (a room's own node only sends the home sets holding it)
 local function smallest_containing(context_info, room_homes, home_id, member_room)
     local candidates = {}
-    for _, superset_id in pairs(context_info.home_supersets[home_id] or {}) do
+    for _, superset_id in pairs(context_info.home_supersets[home_id] or EMPTY) do
         if room_homes[superset_id] ~= nil and (member_room == nil or context_info.home_rooms[superset_id][member_room] ~= nil) then
             candidates[superset_id] = true
         end
@@ -789,42 +830,68 @@ local function edge_sends(context_info, node_to_context_inds, edge, context)
     return false
 end
 
+-- The home contexts a room node sends when a home context of home_id arrives at it (see home_transmit)
+local function home_room_transmit(context_info, node, home_id)
+    -- Rooms aren't research, so they don't carry research home contexts (top.research_home_contexts)
+    if context_info.research_homes and context_info.home_full[home_id] == nil then
+        return {}
+    end
+    -- Rooms use node.name for the room (type_info names one room for every room node)
+    local room_contexts = context_info.home_of[node.name]
+    if room_contexts == nil then
+        error("Room node " .. node.name .. " is not a context")
+    end
+    if context_info.home_rooms[home_id][node.name] ~= nil then
+        return { room_contexts[home_id] }
+    end
+    -- The room can still be in home sets containing this one, which it stands for (top.implied_home_contexts)
+    return smallest_containing(context_info, room_contexts, home_id, node.name) or {}
+end
+
 -- Contexts leaving node when a home context arrives at it
 -- Home contexts go through nodes like the contexts they ride on, except that a room only sends them for the home sets containing it
 -- A pebble has a home context exactly when it can be had using only the rooms in that home set
-local function home_transmit(context_info, node, incoming, home_id)
+-- With a cache from new_transmit_cache, each list is built once for the sort asking and kept there
+local function home_transmit(context_info, node, incoming, home_id, cache)
     local context_type = logic.type_info[node.type].context
     if context_type == nil then
-        return { incoming }
+        return just_incoming(incoming, cache)
     elseif context_type == true then
+        local outgoing = cache ~= nil and cache.home_forget[home_id] or nil
+        if outgoing ~= nil then
+            return outgoing
+        end
         -- Home sets aren't tied to a room, so forgetters send them to every room that has them (like automatability)
         -- A room without them gets those of the smallest home sets containing it that it has, which this one stands for elsewhere (top.implied_home_contexts)
-        local outgoing = {}
+        outgoing = {}
         for _, room_homes in pairs(context_info.home_of) do
             if room_homes[home_id] ~= nil then
                 table.insert(outgoing, room_homes[home_id])
             else
-                for _, context in pairs(smallest_containing(context_info, room_homes, home_id) or {}) do
+                for _, context in pairs(smallest_containing(context_info, room_homes, home_id) or EMPTY) do
                     table.insert(outgoing, context)
                 end
             end
         end
+        if cache ~= nil then
+            cache.home_forget[home_id] = outgoing
+        end
         return outgoing
     elseif type(context_type) == "string" then
-        -- Rooms aren't research, so they don't carry research home contexts (top.research_home_contexts)
-        if context_info.research_homes and context_info.home_full[home_id] == nil then
-            return {}
+        if cache == nil then
+            return home_room_transmit(context_info, node, home_id)
         end
-        -- Rooms use node.name for the room (type_info names one room for every room node)
-        local room_contexts = context_info.home_of[node.name]
-        if room_contexts == nil then
-            error("Room node " .. node.name .. " is not a context")
+        local by_home = cache.home_room[node.name]
+        if by_home == nil then
+            by_home = {}
+            cache.home_room[node.name] = by_home
         end
-        if context_info.home_rooms[home_id][node.name] ~= nil then
-            return { room_contexts[home_id] }
+        local outgoing = by_home[home_id]
+        if outgoing == nil then
+            outgoing = home_room_transmit(context_info, node, home_id)
+            by_home[home_id] = outgoing
         end
-        -- The room can still be in home sets containing this one, which it stands for (top.implied_home_contexts)
-        return smallest_containing(context_info, room_contexts, home_id, node.name) or {}
+        return outgoing
     else
         -- Unhandled
         error()
@@ -834,19 +901,26 @@ end
 -- Contexts leaving node when incoming arrives at it
 -- For simple contexts, as consistent-sort.lua's contutils.transmit does with rooms: forgetters send every room's simple context, and a room sends its own
 -- For complex contexts this follows extended-sort.lua's transmit_through_node
-local function node_transmit(context_info, node, incoming)
+-- With a cache from new_transmit_cache, each list is built once for the sort asking and kept there
+local function node_transmit(context_info, node, incoming, cache)
     local home_id = context_info.home[incoming]
     if home_id ~= nil then
-        return home_transmit(context_info, node, incoming, home_id)
+        return home_transmit(context_info, node, incoming, home_id, cache)
     end
     local context_type = logic.type_info[node.type].context
     if not context_info.complex then
         if context_type == nil then
-            return { incoming }
+            return just_incoming(incoming, cache)
         elseif context_type == true then
+            if cache ~= nil and cache.simple_forget ~= nil then
+                return cache.simple_forget
+            end
             local outgoing = {}
             for _, context in pairs(context_info.simple_list) do
                 table.insert(outgoing, context)
+            end
+            if cache ~= nil then
+                cache.simple_forget = outgoing
             end
             return outgoing
         elseif type(context_type) == "string" then
@@ -855,7 +929,14 @@ local function node_transmit(context_info, node, incoming)
             if ctx.simple(node.name) == nil then
                 ctx.number_rooms({ [node.name] = true })
             end
-            return { ctx.simple(node.name) }
+            local outgoing = cache ~= nil and cache.simple_room[node.name] or nil
+            if outgoing == nil then
+                outgoing = { ctx.simple(node.name) }
+                if cache ~= nil then
+                    cache.simple_room[node.name] = outgoing
+                end
+            end
+            return outgoing
         else
             -- Unhandled
             error()
@@ -864,15 +945,21 @@ local function node_transmit(context_info, node, incoming)
 
     local mask = context_info.mask[incoming]
     if context_type == nil then
-        return { incoming }
+        return just_incoming(incoming, cache)
     elseif context_type == true then
         -- Forgetters forget the room, but isolatability is tied to the room so it isn't shared with other rooms
         if has_ability(mask, ISOLATABILITY) then
-            return { incoming }
+            return just_incoming(incoming, cache)
         end
-        local outgoing = {}
-        for _, room_contexts in pairs(context_info.of) do
-            table.insert(outgoing, room_contexts[mask + 1])
+        local outgoing = cache ~= nil and cache.forget_mask[mask] or nil
+        if outgoing == nil then
+            outgoing = {}
+            for _, room_contexts in pairs(context_info.of) do
+                table.insert(outgoing, room_contexts[mask + 1])
+            end
+            if cache ~= nil then
+                cache.forget_mask[mask] = outgoing
+            end
         end
         return outgoing
     elseif type(context_type) == "string" then
@@ -882,9 +969,15 @@ local function node_transmit(context_info, node, incoming)
         if room_contexts == nil then
             error("Room node " .. node.name .. " is not a context")
         end
-        local outgoing = {}
-        for _, room_mask in pairs(masks) do
-            table.insert(outgoing, room_contexts[room_mask + 1])
+        local outgoing = cache ~= nil and cache.room_all[node.name] or nil
+        if outgoing == nil then
+            outgoing = {}
+            for _, room_mask in pairs(masks) do
+                table.insert(outgoing, room_contexts[room_mask + 1])
+            end
+            if cache ~= nil then
+                cache.room_all[node.name] = outgoing
+            end
         end
         return outgoing
     else
@@ -896,11 +989,16 @@ end
 -- The strongest of the contexts node_transmit gives when incoming and the contexts it stands for arrive at a forgetter or a room, which stand for the rest (top.implied_ability_contexts)
 -- Only for complex contexts that aren't home contexts
 -- A forgetter keeps an isolatable context in its room and sends the mask without isolatability to the other rooms, and a room sends its strongest context
-local function strongest_transmit(context_info, node, incoming)
+-- With a cache from new_transmit_cache, each list is built once for the sort asking and kept there
+local function strongest_transmit(context_info, node, incoming, cache)
     local context_type = logic.type_info[node.type].context
     local mask = context_info.mask[incoming]
     if context_type == true then
-        local outgoing = {}
+        local outgoing = cache ~= nil and cache.strongest_forget[incoming] or nil
+        if outgoing ~= nil then
+            return outgoing
+        end
+        outgoing = {}
         if has_ability(mask, ISOLATABILITY) then
             table.insert(outgoing, incoming)
             local room = context_info.room[incoming]
@@ -915,15 +1013,25 @@ local function strongest_transmit(context_info, node, incoming)
                 table.insert(outgoing, room_contexts[mask + 1])
             end
         end
+        if cache ~= nil then
+            cache.strongest_forget[incoming] = outgoing
+        end
         return outgoing
     elseif type(context_type) == "string" then
         local room_contexts = context_info.of[node.name]
         if room_contexts == nil then
             error("Room node " .. node.name .. " is not a context")
         end
-        return { room_contexts[ALL_ABILITIES + 1] }
+        local outgoing = cache ~= nil and cache.strongest_room[node.name] or nil
+        if outgoing == nil then
+            outgoing = { room_contexts[ALL_ABILITIES + 1] }
+            if cache ~= nil then
+                cache.strongest_room[node.name] = outgoing
+            end
+        end
+        return outgoing
     end
-    return { incoming }
+    return just_incoming(incoming, cache)
 end
 
 -- Rooms (as context keys) whose space locations this tech unlocks
@@ -1708,8 +1816,17 @@ top.sort = function(graph, state, new_conn, extra)
         setmetatable(pebble_keys, PEBBLE_KEYS_META)
         setmetatable(pebble_contexts, PEBBLE_CONTEXTS_META)
     end
-    -- Table of node_key --> nil or { context --> true }
+    -- Table of node_key --> nil, or the first context the node waits with; open_sets has node_key --> { context --> true } once it waits with more
+    -- Most nodes wait with one context, so a set is only made for a second one, and filled in the order the contexts came (as when every node had a set)
     local open = state.open or {}
+    local open_sets = {}
+    -- A sort ends with open empty, but a state from before open_sets would keep sets in open; they move to open_sets, with open holding one of their contexts
+    for node_key, waiting in pairs(open) do
+        if type(waiting) == "table" then
+            open_sets[node_key] = waiting
+            open[node_key] = next(waiting)
+        end
+    end
     -- open's keys as a list, plus each key's position in that list, so random selection doesn't need to scan open
     local open_list = state.open_list or {}
     local open_pos = state.open_pos or {}
@@ -1725,6 +1842,22 @@ top.sort = function(graph, state, new_conn, extra)
     -- Whether ability contexts stand for the weaker ones of their room (top.implied_ability_contexts), and mask + 1 --> true for the masks process_depnode's check of weaker masks has found so far (emptied after each check)
     local implied_abilities = complex and top.implied_ability_contexts
     local masks_found = {}
+    -- The lists the transmit functions give, each built once in this sort (see new_transmit_cache)
+    local transmit_cache = new_transmit_cache()
+    -- A table process_depnode's AND checks reuse for the home set ids found so far, empty between checks
+    local found_scratch = {}
+    -- The one context of a node that waited in open with one, as the main loop's batch for it, emptied after its batches (see open)
+    local single_batch = {}
+    -- Discoverer key --> what top.discovered_rooms gives for it, found once per sort (it reads only data.raw and logic.contexts)
+    local discovered_rooms_memo = {}
+    local function rooms_discovered_by(node, node_key)
+        local rooms = discovered_rooms_memo[node_key]
+        if rooms == nil then
+            rooms = top.discovered_rooms(node)
+            discovered_rooms_memo[node_key] = rooms
+        end
+        return rooms
+    end
     -- With them, node key --> { context --> true } for the contexts the discovery rule put in open for a tech, which its batch records after its others (see the main loop)
     local discovery_added = {}
     -- With research home contexts (top.research_home_contexts): whether they're on, and node key --> whether it's a research input (is_research_input), filled in when first read so the main loop needs no call
@@ -1857,15 +1990,26 @@ top.sort = function(graph, state, new_conn, extra)
     -- node_key is key(node), when the caller has it
     local function add_to_open(node, context, node_key)
         node_key = node_key or key(node)
-        if open[node_key] == nil then
-            open[node_key] = {}
+        local waiting = open[node_key]
+        if waiting == nil then
+            open[node_key] = context
             table.insert(open_list, node_key)
             open_pos[node_key] = #open_list
             if use_heap then
                 heap_add(node_key)
             end
+        elseif waiting ~= context then
+            local contexts = open_sets[node_key]
+            if contexts ~= nil then
+                contexts[context] = true
+            else
+                -- A second context: the set gets both in the order they came
+                contexts = {}
+                contexts[waiting] = true
+                contexts[context] = true
+                open_sets[node_key] = contexts
+            end
         end
-        open[node_key][context] = true
     end
 
     -- Swap-remove from open_list so this is O(1)
@@ -1877,6 +2021,7 @@ top.sort = function(graph, state, new_conn, extra)
         open_list[#open_list] = nil
         open_pos[node_key] = nil
         open[node_key] = nil
+        open_sets[node_key] = nil
     end
 
     -- Whether a node has a context already or about to (in open), counting for a home context those of the home sets inside it in the same room, which stand for it (top.implied_home_contexts)
@@ -1890,10 +2035,12 @@ top.sort = function(graph, state, new_conn, extra)
             return false
         end
         local room_homes = context_info.home_of[context_info.room[context]]
+        -- What waits for the node in open: its first context, and the set of them once there are more (see open)
         local waiting = open[node_key]
+        local waiting_set = open_sets[node_key]
         for _, subset_id in pairs(subsets) do
             local subset_context = room_homes[subset_id]
-            if subset_context ~= nil and (inds[subset_context] ~= nil or (waiting ~= nil and waiting[subset_context] ~= nil)) then
+            if subset_context ~= nil and (inds[subset_context] ~= nil or waiting == subset_context or (waiting_set ~= nil and waiting_set[subset_context] ~= nil)) then
                 return true
             end
         end
@@ -1919,19 +2066,19 @@ top.sort = function(graph, state, new_conn, extra)
 
     -- Puts what the depnode sends when context arrives at it in open, skipping contexts it already has
     local function add_arrived(depnode, context, depnode_key)
-        -- Nodes that aren't rooms or forgetters send complex and home contexts on unchanged (see node_transmit), which needs no list
-        if logic.type_info[depnode.type].context == nil and (complex or context_info.home[context] ~= nil) then
+        -- Nodes that aren't rooms or forgetters send every context on unchanged (see node_transmit), which needs no list
+        if logic.type_info[depnode.type].context == nil then
             if not already_has(depnode_key, context) then
                 add_to_open(depnode, context, depnode_key)
             end
         elseif implied_abilities and context_info.home[context] == nil then
-            for _, outgoing in pairs(strongest_transmit(context_info, depnode, context)) do
+            for _, outgoing in pairs(strongest_transmit(context_info, depnode, context, transmit_cache)) do
                 if not already_has(depnode_key, outgoing) then
                     add_to_open(depnode, outgoing, depnode_key)
                 end
             end
         else
-            for _, outgoing in pairs(node_transmit(context_info, depnode, context)) do
+            for _, outgoing in pairs(node_transmit(context_info, depnode, context, transmit_cache)) do
                 if not already_has(depnode_key, outgoing) then
                     add_to_open(depnode, outgoing, depnode_key)
                 end
@@ -1983,7 +2130,8 @@ top.sort = function(graph, state, new_conn, extra)
             local home_id = context_info.home[incoming]
             if home_id ~= nil then
                 local room_homes = context_info.home_of[context_info.room[incoming]]
-                local found = {}
+                local found = found_scratch
+                local found_any = false
                 for _, superset_id in pairs(context_info.home_supersets[home_id]) do
                     local superset_context = room_homes[superset_id]
                     local covered = false
@@ -1996,11 +2144,18 @@ top.sort = function(graph, state, new_conn, extra)
                     if superset_context ~= nil and not covered then
                         if already_has(depnode_key, superset_context) then
                             found[superset_id] = true
+                            found_any = true
                         elseif all_pres_send(depnode, superset_context) then
                             found[superset_id] = true
+                            found_any = true
                             arrived = arrived or {}
                             table.insert(arrived, superset_context)
                         end
+                    end
+                end
+                if found_any then
+                    for superset_id, _ in pairs(found) do
+                        found[superset_id] = nil
                     end
                 end
             elseif implied_abilities then
@@ -2008,7 +2163,8 @@ top.sort = function(graph, state, new_conn, extra)
                 -- So they're checked here from the strongest down, each one the depnode has, is about to have or now gets standing for the ones below it
                 local inds = node_to_context_inds[depnode_key]
                 local waiting = open[depnode_key]
-                if inds[incoming] == nil and (waiting == nil or waiting[incoming] == nil) then
+                local waiting_set = open_sets[depnode_key]
+                if inds[incoming] == nil and waiting ~= incoming and (waiting_set == nil or waiting_set[incoming] == nil) then
                     local room_contexts = context_info.of[context_info.room[incoming]]
                     for _, mask in pairs(WEAKER_MASKS[context_info.mask[incoming] + 1]) do
                         local covered = false
@@ -2020,7 +2176,7 @@ top.sort = function(graph, state, new_conn, extra)
                         end
                         if not covered then
                             local weaker = room_contexts[mask + 1]
-                            if inds[weaker] ~= nil or (waiting ~= nil and waiting[weaker] ~= nil) then
+                            if inds[weaker] ~= nil or waiting == weaker or (waiting_set ~= nil and waiting_set[weaker] ~= nil) then
                                 masks_found[mask + 1] = true
                             elseif all_pres_send(depnode, weaker) then
                                 masks_found[mask + 1] = true
@@ -2043,8 +2199,8 @@ top.sort = function(graph, state, new_conn, extra)
     end
 
     -- If a node discovers a room (a tech unlocking a space location, or a spaceship for space platforms), every tech so far is considered isolatable there (ported from extended-sort.lua)
-    local function discover_space_locations(tech_node)
-        for _, discovered in pairs(top.discovered_rooms(tech_node)) do
+    local function discover_space_locations(tech_node, tech_key)
+        for _, discovered in pairs(rooms_discovered_by(tech_node, tech_key)) do
             local loc = discovered.location
             if discovered_space_locations[loc] == nil then
                 discovered_space_locations[loc] = true
@@ -2054,7 +2210,7 @@ top.sort = function(graph, state, new_conn, extra)
                         if node.type == "technology" and (next(node_to_context_inds[node_key]) ~= nil or open[node_key] ~= nil) then
                             for i, context in pairs(room_contexts) do
                                 if has_ability(i - 1, ISOLATABILITY) and (not implied_abilities or i - 1 == ALL_ABILITIES) and node_to_context_inds[node_key][context] == nil then
-                                    add_to_open(node, context)
+                                    add_to_open(node, context, node_key)
                                     if implied_abilities then
                                         discovery_added[node_key] = discovery_added[node_key] or {}
                                         discovery_added[node_key][context] = true
@@ -2071,8 +2227,8 @@ top.sort = function(graph, state, new_conn, extra)
     -- Gives a tech the isolatable contexts of a room that it doesn't have yet, each where the tech has the same context without isolatability in that room: a tech isn't isolatable where the sort doesn't have it at all yet
     -- With research home contexts, a tech can get the home context this rule asks for before its plain contexts reach it (research counts without deliveries), so the rest waits for them (pending_discovery), and the tech's batch that brings them gives it
     -- With ability contexts standing for weaker ones, the strongest of them stands for the others (top.implied_ability_contexts), which is only right because the weaker ones without isolatability came first
-    local function add_isolatable_contexts(tech_node, room)
-        local tech_key = key(tech_node)
+    local function add_isolatable_contexts(tech_node, room, tech_key)
+        tech_key = tech_key or key(tech_node)
         local inds = node_to_context_inds[tech_key]
         local room_contexts = context_info.of[room]
         local strongest
@@ -2083,7 +2239,7 @@ top.sort = function(graph, state, new_conn, extra)
                 if inds[room_contexts[without_ability(mask, ISOLATABILITY) + 1]] == nil then
                     waits = true
                 elseif not implied_abilities then
-                    add_to_open(tech_node, context)
+                    add_to_open(tech_node, context, tech_key)
                 elseif strongest == nil or ctx.mask_covers(mask, strongest) then
                     strongest = mask
                 end
@@ -2091,7 +2247,7 @@ top.sort = function(graph, state, new_conn, extra)
         end
         if strongest ~= nil then
             local context = room_contexts[strongest + 1]
-            add_to_open(tech_node, context)
+            add_to_open(tech_node, context, tech_key)
             discovery_added[tech_key] = discovery_added[tech_key] or {}
             discovery_added[tech_key][context] = true
         end
@@ -2103,27 +2259,27 @@ top.sort = function(graph, state, new_conn, extra)
 
     -- The discovery rule with home contexts, which doesn't depend on order: once a room is discovered, every tech that can be had using only its home set is isolatable there
     -- This half runs when a discoverer is reached, and add_home_tech when a tech gets a home context, so the rule applies whichever comes first
-    local function discover_home_rooms(discoverer)
-        for _, discovered in pairs(top.discovered_rooms(discoverer)) do
+    local function discover_home_rooms(discoverer, discoverer_key)
+        for _, discovered in pairs(rooms_discovered_by(discoverer, discoverer_key)) do
             local room = discovered.room
             local home_id = home_sets.of[room]
             if home_id ~= nil and home_discovered[room] == nil then
                 home_discovered[room] = true
-                for tech_key, _ in pairs(home_techs[home_id] or {}) do
-                    add_isolatable_contexts(graph.nodes[tech_key], room)
+                for tech_key, _ in pairs(home_techs[home_id] or EMPTY) do
+                    add_isolatable_contexts(graph.nodes[tech_key], room, tech_key)
                 end
             end
         end
     end
 
-    local function add_home_tech(tech_node, home_id)
-        local tech_key = key(tech_node)
+    local function add_home_tech(tech_node, home_id, tech_key)
+        tech_key = tech_key or key(tech_node)
         home_techs[home_id] = home_techs[home_id] or {}
         if home_techs[home_id][tech_key] == nil then
             home_techs[home_id][tech_key] = true
             for room, _ in pairs(home_sets.sets[home_id].discovered) do
                 if home_discovered[room] ~= nil then
-                    add_isolatable_contexts(tech_node, room)
+                    add_isolatable_contexts(tech_node, room, tech_key)
                 end
             end
         end
@@ -2145,23 +2301,25 @@ top.sort = function(graph, state, new_conn, extra)
         end
     else
         -- Otherwise, add the dependent of the new_conn to open with the prereq's contexts (sent through the edge)
+        local start_key = key(new_conn[1])
+        local stop_key = key(new_conn[2])
         local new_edge
         if complex then
             new_edge = graph.edges[gutils.ekey({
-                start = key(new_conn[1]),
-                stop = key(new_conn[2]),
+                start = start_key,
+                stop = stop_key,
             })]
         end
-        for context, _ in pairs(node_to_context_inds[key(new_conn[1])]) do
+        for context, _ in pairs(node_to_context_inds[start_key]) do
             local arriving_contexts = { context }
             if new_edge ~= nil then
                 arriving_contexts = edge_transmit(context_info, new_edge, context)
             end
             for _, arriving in pairs(arriving_contexts) do
                 if extra.do_new_edge_processing then
-                    process_depnode(new_conn[2], arriving)
-                elseif not is_research_home(context_info, arriving) or carries_home(key(new_conn[2])) then
-                    add_to_open(new_conn[2], arriving)
+                    process_depnode(new_conn[2], arriving, stop_key)
+                elseif not is_research_home(context_info, arriving) or carries_home(stop_key) then
+                    add_to_open(new_conn[2], arriving, stop_key)
                 end
             end
         end
@@ -2186,7 +2344,16 @@ top.sort = function(graph, state, new_conn, extra)
             end
         end
 
-        local contexts = open[node_key]
+        -- A node that waited with more than one context has them in open_sets; one that waited with one gets it in single_batch, emptied again after its batches (see open)
+        local contexts = open_sets[node_key]
+        local single
+        if contexts == nil then
+            single = open[node_key]
+            if single ~= nil then
+                single_batch[single] = true
+                contexts = single_batch
+            end
+        end
         remove_from_open(node_key)
         -- Transmit contexts to each dependent
         local node = graph.nodes[node_key]
@@ -2287,6 +2454,9 @@ top.sort = function(graph, state, new_conn, extra)
             batch = discovered_batch
             discovered_batch = nil
         end
+        if single ~= nil then
+            single_batch[single] = nil
+        end
 
         -- The discovery rules run after the whole batch, so a context they add isn't one this node is still processing
         if complex then
@@ -2297,18 +2467,18 @@ top.sort = function(graph, state, new_conn, extra)
                     if waiting ~= nil then
                         pending_discovery[node_key] = nil
                         for room, _ in pairs(waiting) do
-                            add_isolatable_contexts(node, room)
+                            add_isolatable_contexts(node, room, node_key)
                         end
                     end
-                    for home_id, _ in pairs(new_home_ids or {}) do
-                        add_home_tech(node, home_id)
+                    for home_id, _ in pairs(new_home_ids or EMPTY) do
+                        add_home_tech(node, home_id, node_key)
                     end
                 end
                 if top.is_discoverer(node) then
-                    discover_home_rooms(node)
+                    discover_home_rooms(node, node_key)
                 end
             elseif top.is_discoverer(node) then
-                discover_space_locations(node)
+                discover_space_locations(node, node_key)
             end
         end
     end
