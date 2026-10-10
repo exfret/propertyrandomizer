@@ -1585,27 +1585,14 @@ local function load()
     -- create-space-platform-tech-unlock
     --log("Adding: create-space-platform-tech-unlock")
     -- Are space platforms unlocked?
+    -- From the start: control.lua unlocks them in every game, and the tech tree rebuild takes the unlock off every technology (lib/technology-abilities.lua)
 
     prereqs = {}
 
-    for _, tech in pairs(get_prototypes("technology")) do
-        local unlocks_space_platforms = false
-
-        if tech.effects ~= nil then
-            for _, effect in pairs(tech.effects) do
-                if effect.type == "unlock-space-platforms" then
-                    unlocks_space_platforms = true
-                end
-            end
-        end
-
-        if unlocks_space_platforms then
-            table.insert(prereqs, {
-                type = "technology",
-                name = tech.name
-            })
-        end
-    end
+    table.insert(prereqs, {
+        type = "starting-character",
+        name = "canonical"
+    })
 
     add_to_graph("create-space-platform-tech-unlock", "canonical", prereqs)
 

@@ -25,8 +25,8 @@ abilities.bundle = function(technologies, rebuilt_recipes)
     for _, tech in pairs(technologies) do
         local kept = {}
         for _, effect in pairs(tech.effects or {}) do
-            if effect.type == "mining-with-fluid" or effect.type == "cliff-deconstruction-enabled" then
-                -- These are already granted in control.lua's on_init handler.
+            if effect.type == "mining-with-fluid" or effect.type == "cliff-deconstruction-enabled" or effect.type == "unlock-space-platforms" then
+                -- These are already granted in control.lua's on_init handler, so no tech is kept just for them (like Space Age's rocket silo tech once its recipes get techs of their own).
             elseif next(rail_recipes) ~= nil and effect.modifier == true and (effect.type == "rail-planner-allow-elevated-rails" or effect.type == "rail-support-on-deep-oil-ocean") then
                 rail_effects[effect.type] = effect
             else

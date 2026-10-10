@@ -45,6 +45,10 @@ local function fixture()
             unlock("modded-drill"),
         }),
         cliff_permission = technology({permission("cliff-deconstruction-enabled")}),
+        platforms = technology({
+            unlock("modded-silo"),
+            permission("unlock-space-platforms"),
+        }),
     }
 end
 
@@ -68,6 +72,8 @@ assert(#techs.rails.effects == 2)
 assert(#techs.foundations.effects == 0)
 assert(#techs.mining.effects == 1 and techs.mining.effects[1].recipe == "modded-drill")
 assert(#techs.cliff_permission.effects == 0)
+-- control.lua unlocks space platforms at the start, so no tech keeps that unlock
+assert(#techs.platforms.effects == 1 and techs.platforms.effects[1].recipe == "modded-silo")
 bundled["modded-support"][1].modifier = false
 assert(bundled["modded-ramp"][1].modifier == true)
 
@@ -75,6 +81,8 @@ assert(bundled["modded-ramp"][1].modifier == true)
 techs = fixture()
 assert(next(abilities.bundle(techs, {})) == nil)
 assert(#techs.rails.effects == 3 and #techs.foundations.effects == 1)
+-- The unlocks control.lua grants at the start go whether or not a rail recipe is rebuilt
+assert(#techs.platforms.effects == 1 and #techs.cliff_permission.effects == 0)
 
 -- Only attach to recipes the rebuild will actually emit.
 techs = fixture()
