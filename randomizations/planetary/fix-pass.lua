@@ -31,13 +31,8 @@ local function choose_once(params)
     log("FIXPASS: choosing prerequisites for " .. #failures .. " remaining failures")
 
     local union = superpose.union(after.graph, before.graph)
+    -- Science packs' goals in the rooms they belong to are mechanic goals (protection.planetary_kept_context)
     local goals = planetary_check.transported_goals(before)
-    for node_key, contexts in pairs(planetary_check.start_science_goals(before)) do
-        goals[node_key] = goals[node_key] or {}
-        for context, _ in pairs(contexts) do
-            goals[node_key][context] = true
-        end
-    end
     -- Existing variants already meet their original recipe's requirements.
     for recipe_name, names in pairs(variants_of) do
         local node_key = gutils.key("recipe", recipe_name)

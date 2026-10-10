@@ -10,7 +10,6 @@
 -- A craft trigger asks for about as much as the old trigger cost in raw materials (user, 2026-10-07), from the logic graph's prices of the game before randomization (graph_cost.material_costs_anywhere)
 -- A craft trigger names a position, which item randomization renames to the identity first pass put there (handlers/item.lua), since that's what the model's item-craft node is about
 
-local constants = require("helper-tables/constants")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
 local top = require("lib/graph/context-sort")
@@ -191,20 +190,11 @@ end
 
 -- Where each node is needed, in a sort of the game before randomization: the contexts it has on the witnesses (earliest-provider paths, top.path) of what the rest of randomization keeps
 -- That's every pebble promotion promises (hard mechanic pebbles, and the contexts of recipes locked to one planet with what planetary changes carried over, protection.lua), each recipe's earliest pebble asking for no abilities (every recipe stays reachable), and each node in also_reachable's (so each trigger technology stays researchable)
--- With planetary changes, also what the planetary check holds each attempt to: the isolatability of rocket building and electricity (keep_planetary_isolatability in lib/logic/abstract.lua) and the starting planet's science packs (randomizations/planetary/check.lua)
+-- With planetary changes, also what the planetary check holds each attempt to: the isolatability of rocket building and electricity (keep_planetary_isolatability in lib/logic/abstract.lua); science packs in the rooms they belong to are hard mechanic pebbles already (protection.keeps_room)
 -- So a technology is needed isolatably on a planet when something kept there rests on researching it from that planet's own resources (user, 2026-10-08: a trigger keeps its technology isolatable wherever it's needed, not wherever its old trigger was)
 -- The graph is the one sort_info sorted, planet_locked comes from protection.planet_locked_recipe_contexts, and also_reachable is node key --> true
 -- Returns node key --> context --> true
 tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_reachable)
-    local start_packs = {}
-    if config.planetary == true then
-        for _, lab in pairs(data.raw.lab or {}) do
-            for _, pack_name in pairs(lab.inputs or {}) do
-                start_packs[gutils.key("item", pack_name)] = true
-            end
-        end
-    end
-    local start_room = gutils.key("planet", constants.starting_planet)
     local pebble_keys = sort_info.pebble_keys
     local pebble_contexts = sort_info.pebble_contexts
     local goal_inds = {}
@@ -220,9 +210,6 @@ tech_triggers.needed_contexts = function(graph, sort_info, planet_locked, also_r
             end
             if config.planetary == true and top.context_home(pebble_context) == nil then
                 if node.keep_planetary_isolatability == true and protection.is_isolatable_context(pebble_context) then
-                    is_goal = true
-                end
-                if start_packs[pebble_key] ~= nil and top.context_room(pebble_context) == start_room then
                     is_goal = true
                 end
             end

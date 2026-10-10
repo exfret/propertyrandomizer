@@ -119,7 +119,7 @@ test("lib/logic declares protection on exactly the intended node types", functio
     local declared = declared_protection()
     assert(declared["group-starter-ammo"] == "true")
     assert(declared["balance-gun-turret"] == "true")
-    -- Science production and labs may depend on imports; planet-locked recipe goals are checked separately.
+    -- Science packs are kept in the rooms they belong to through science_rooms (lib/science-rooms.lua), not this flag; their sets and labs may depend on imports, and planet-locked recipe goals are checked separately.
     assert(declared["science-pack-set-science"] == nil)
     assert(declared["science-pack-set-lab"] == nil)
     assert(declared["item"] == nil)
@@ -134,11 +134,13 @@ test("lib/logic declares protection on exactly the intended node types", functio
     assert(declared["entity-rocket-silo"] == "true")
     -- Crafting categories are protected exactly when a rocket silo crafts in them
     assert(declared["recipe-category"] == "is_rocket_building or nil")
+    -- Taking down a space connection's asteroids automatically from a platform's own resources (user, 2026-10-10)
+    assert(declared["space-connection-asteroids"] == "true")
     local num_declared = 0
     for _, _ in pairs(declared) do
         num_declared = num_declared + 1
     end
-    assert(num_declared == 11, "unexpected keep_isolatability declarations")
+    assert(num_declared == 12, "unexpected keep_isolatability declarations")
 end)
 
 test("removed balance starter ammo has no protection declaration", function()
@@ -178,6 +180,54 @@ test("home contexts aren't mechanic contexts of their own, even on protected nod
         assert(not protection.is_hard_mechanic_pebble(node, C("nauvis | 00 @ home1")))
         assert(protection.kept_part(node, C("nauvis | 00 @ home1")) == protection.kept_part(node, C("nauvis | 00")))
     end
+end)
+
+test("a science pack keeps every context it has in the rooms it belongs to, isolatability included, and nothing elsewhere", function()
+    -- The node lib/logic/concrete.lua builds for utility science in vanilla: it belongs to the starting planet (lib/science-rooms.lua)
+    local pack = {
+        type = "item",
+        name = "utility-science-pack",
+        mechanic = true,
+        science_rooms = {
+            ["planet: nauvis"] = true,
+        },
+    }
+    assert(protection.protects_isolatability(pack))
+    local own_room = {
+        "planet: nauvis | 11",
+        "planet: nauvis | 10",
+        "planet: nauvis | 01",
+        "planet: nauvis | 00",
+    }
+    for _, name in pairs(own_room) do
+        assert(protection.keeps_room(pack, C(name)), name)
+        assert(protection.is_hard_mechanic_pebble(pack, C(name)), name)
+        assert(protection.kept_part(pack, C(name)) == C(name), name)
+        assert(protection.planetary_kept_context(pack, C(name), {}) == C(name), name)
+    end
+    -- Making utility science on Fulgora isn't needed, with or without imports (the user, 2026-10-10)
+    local other_room = {
+        "planet: fulgora | 11",
+        "planet: fulgora | 01",
+        "planet: fulgora | 00",
+    }
+    for _, name in pairs(other_room) do
+        assert(not protection.keeps_room(pack, C(name)), name)
+        assert(not protection.is_hard_mechanic_pebble(pack, C(name)), name)
+        assert(protection.kept_part(pack, C(name)) == nil, name)
+        assert(protection.planetary_kept_context(pack, C(name), {}) == nil, name)
+    end
+    -- Home contexts still keep only what the context they ride on keeps
+    assert(not protection.is_hard_mechanic_pebble(pack, C("planet: nauvis | 00 @ home1")))
+    assert(protection.kept_part(pack, C("planet: nauvis | 00 @ home1")) == C("planet: nauvis | 00"))
+    assert(protection.kept_part(pack, C("planet: fulgora | 00 @ home1")) == nil)
+    -- Other mechanics keep their rooms everywhere, as before
+    local launch = make_node("launch", "", true)
+    assert(protection.keeps_room(launch, C("planet: fulgora | 01")))
+    assert(protection.is_hard_mechanic_pebble(launch, C("planet: fulgora | 11")))
+    local unprotected = make_node("energy-source-electric", "", nil)
+    assert(protection.keeps_room(unprotected, C("planet: fulgora | 01")))
+    assert(protection.kept_name(protection.kept_part(unprotected, C("planet: fulgora | 11"))) == "planet: fulgora | ?1")
 end)
 
 test("a recipe locked to one planet by surface conditions keeps every context it has there, and no other recipe is locked", function()

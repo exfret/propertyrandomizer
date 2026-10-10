@@ -19,17 +19,35 @@ package.loaded["lib/item-fluid"] = {}
 local ctx = require("lib/graph/contexts")
 local C = require("lib/graph/contexts-for-tests").C
 local locked_contexts = {}
+-- A science pack keeps every context in the rooms it belongs to (node.science_rooms) and nothing elsewhere, as in protection.lua
+local function keeps_room(node, context)
+    return node.science_rooms == nil or node.science_rooms[ctx.room(context)] ~= nil
+end
+local function protects_isolatability(node)
+    return node.keep_isolatability == true or node.science_rooms ~= nil
+end
+local function is_isolatable_context(context)
+    local mask = ctx.mask(context)
+    return mask ~= nil and ctx.has_ability(mask, ctx.ISOLATABILITY)
+end
 package.loaded["randomizations/graph/unified/skeleton/protection"] = {
     planet_locked_recipe_contexts = function() return locked_contexts end,
-    protects_isolatability = function(node) return node.keep_isolatability == true end,
-    is_isolatable_context = function(context)
-        local mask = ctx.mask(context)
-        return mask ~= nil and ctx.has_ability(mask, ctx.ISOLATABILITY)
+    protects_isolatability = protects_isolatability,
+    keeps_room = keeps_room,
+    is_isolatable_context = is_isolatable_context,
+    is_hard_mechanic_pebble = function(node, context)
+        if ctx.home_of(context) ~= nil or not keeps_room(node, context) then
+            return false
+        end
+        return not is_isolatable_context(context) or protects_isolatability(node)
     end,
-    -- "room | ia" is kept as "room | ?a", which kept parts write as minus one minus "room | 0a" (see protection.kept_part)
+    -- "room | ia" is kept as "room | ?a", which kept parts write as minus one minus "room | 0a" (see protection.kept_part); nil where nothing is kept
     kept_part = function(node, context)
+        if not keeps_room(node, context) then
+            return nil
+        end
         local mask = ctx.mask(context)
-        if node.keep_isolatability == true or mask == nil then
+        if protects_isolatability(node) or mask == nil then
             return context
         end
         return -1 - ctx.with_mask(context, ctx.without_ability(mask, ctx.ISOLATABILITY))
@@ -127,7 +145,7 @@ test("an attempt audited after unlock repair fails when a readiness gap remains"
     assert(not verdict.ok and verdict.operation_failures == 1)
 end)
 
-local function isolation_fixture(kind, protected)
+local function isolation_fixture(kind, protected, science_rooms)
     local graph = {
         nodes = {},
         edges = {},
@@ -137,6 +155,7 @@ local function isolation_fixture(kind, protected)
         op = "OR",
         mechanic = kind ~= "recipe",
         keep_isolatability = protected,
+        science_rooms = science_rooms,
     })
     local node_key = gutils.key(node)
     local before = { node_to_context_inds = { [node_key] = { [C("test-room | 11")] = 1 } } }
@@ -163,6 +182,18 @@ end)
 test("science pack imports may preserve reachability without local production", function()
     local graph, before, after = isolation_fixture("item", false)
     local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(verdict.ok and verdict.lost == 0)
+end)
+
+test("a science pack losing its isolatability in the room it belongs to fails", function()
+    local graph, before, after = isolation_fixture("item", nil, { ["test-room"] = true })
+    local verdict = check.run(graph, before, after, "UNIFIEDCHECK")
+    assert(not verdict.ok and verdict.lost == 1)
+end)
+
+test("a science pack lost from a room it doesn't belong to doesn't fail", function()
+    local graph, before, _, node_key = isolation_fixture("item", nil, { ["other-room"] = true })
+    local verdict = check.run(graph, before, { node_to_context_inds = { [node_key] = {} } }, "UNIFIEDCHECK")
     assert(verdict.ok and verdict.lost == 0)
 end)
 

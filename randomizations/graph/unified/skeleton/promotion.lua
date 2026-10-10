@@ -715,7 +715,8 @@ promotion.new = function(params)
                 local node = graph.nodes[node_key]
                 if node ~= nil and node.mechanic and node.type ~= "orand" then
                     for context, _ in pairs(context_inds) do
-                        if not has_room(node_key, context) then
+                        -- Only rooms the node keeps something in (protection.keeps_room)
+                        if protection.keeps_room(node, context) and not has_room(node_key, context) then
                             num_lost = num_lost + 1
                             log("Promotion: mechanic context lost before recipe randomization: " .. node_key .. " @ " .. top.context_name(context))
                         end

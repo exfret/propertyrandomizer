@@ -847,13 +847,17 @@ first_pass.execute = function(params)
         -- Protection is declared on the original nodes (split graph travs don't carry it, and aren't mechanics)
         local node = spoofed_graph.nodes[node_key] or split_graph.nodes[node_key]
         kept_by_node[node_key] = kept_by_node[node_key] or {}
-        kept_by_node[node_key][protection.kept_part(node, ordered_sort.pebble_contexts[ind])] = true
+        local kept = protection.kept_part(node, ordered_sort.pebble_contexts[ind])
+        if kept ~= nil then
+            kept_by_node[node_key][kept] = true
+        end
     end
     for ind in top.each_rank(init_sort) do
         local node_key = init_sort.pebble_keys[ind]
         local node = spoofed_graph.nodes[node_key]
+        -- Nil where the node keeps nothing (protection.keeps_room)
         local kept = protection.kept_part(node, init_sort.pebble_contexts[ind])
-        if node.mechanic == true and node.type ~= "orand" and (kept_by_node[node_key] or {})[kept] == nil then
+        if kept ~= nil and node.mechanic == true and node.type ~= "orand" and (kept_by_node[node_key] or {})[kept] == nil then
             table.insert(lost, node_key .. " @ " .. protection.kept_name(kept))
         end
     end

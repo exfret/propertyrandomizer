@@ -51,8 +51,8 @@ With the planetary fix pass on (section 4), the stages wait until unified is loa
 2. Recipes locked to one planet by surface conditions keep every context they had there, isolatable and automatable included, as themselves or as a planet variant. Examples: its science pack, pentapod eggs, soils, the foundry. A spare version of a duplicated building is exempt (`check.spare_building_recipes`, `check.given_up`).
    - A variant's own variants count too (`check.versions`). On seed 0 with planet copies, Vulcanus's acid neutralisation was the resource swap's variant, and independent deposits made versions of that variant. Only one of those versions was local on Vulcanus, so counting one level lost the goal in most attempts (2026-10-09).
    - So does the recipe a version was merged into after a unified attempt (section 6).
-3. Every mechanic keeps its rooms and automatability (`protection.planetary_kept_context`). Rocket building and electricity keep their isolatability too. A moved feature (like an offshore fluid) is the exception: its goals follow the feature.
-4. The starting planet's science packs keep every context they had there.
+3. Every mechanic keeps its rooms and automatability (`protection.planetary_kept_context`). Rocket building, electricity and taking down asteroids from a platform keep their isolatability too. A moved feature (like an offshore fluid) is the exception: its goals follow the feature.
+   - Science packs keep every context they had in the rooms they belong to, isolatable and automatable included, and nothing elsewhere (user, 2026-10-10: red, green and blue on the starting planet, each planet's own science on its planet; making utility science on Fulgora isn't needed). `lib/science-rooms.lua` says which rooms: a pack the starting planet accepts a recipe of belongs to it alone (red, green, blue, military, production and utility in vanilla), any other pack to the rooms accepting its recipes (metallurgic to Vulcanus, space and promethium to space platforms, a planet copy's pack to its copy). This replaced the old rule 4, which kept every pack the starting planet had at all, delivered ones too.
 
 **Goal transport** (`check.transport`): the goals of something a change moved to another room follow it there. A moved lock's recipe, for example, must then be makeable on its new planet from that planet's own resources, isolatable and automatable like on its old planet (user, 2026-10-08; before, imports were allowed).
 
@@ -82,7 +82,7 @@ With the fix pass on, two rules relax. Rocket building may use machines delivere
 ## 5. What unified keeps
 
 `randomizations/graph/unified/skeleton/protection.lua` names what unified must keep. Promotion promises it, monotone matching treats it as hard, and UNIFIEDCHECK and MECHCHECK check it:
-- Mechanic contexts: rooms and automatability always, and isolatability where a node is built with `keep_isolatability`.
+- Mechanic contexts: rooms and automatability always, and isolatability where a node is built with `keep_isolatability` (rocket building, and since 2026-10-10 taking down asteroids from a platform). Science packs keep every context in the rooms they belong to and nothing elsewhere (`protection.keeps_room`).
 - Recipes locked to one planet family keep every context they have there.
 - Transported goals (`PROTECT_TRANSPORTED` in execute.lua, on since 2026-10-01): a moved lock's recipe stays makeable on its new planet. Versions the lock stage made are locked to their planet, so they're kept like any planet-locked recipe.
 - Research triggers keep each technology isolatable wherever it's needed, not wherever its old trigger was (user, 2026-10-08): where something unified keeps rests on researching it from that planet's own resources (`tech_triggers.needed_contexts`). So a moved recipe's research stays doable on its new planet.
@@ -130,5 +130,5 @@ A finite delivered start is fine when the planet can then make the thing itself 
   - Tested before the last two changes (moves put back in rounds, and the move recording): seed 1 of planet copies with freezing passed UNIFIEDCHECK, MECHCHECK and PLANETCHECK final, though all of its moves went back. On the user's seed the fix pass kept all three moves in about 5 minutes; that load then hit the test harness's 45-minute limit in unified on a busy machine. Seed 2 kept three moves in its second round. Neither change has had a load yet.
   - Moves onto Fulgora's family always go back, since heat can't be started there without power. So did a Gleba copy whose ocean became heavy oil. A failed move could try another target instead.
 - Load time on large games (two copies per planet, 17 locations): the rewards draw took about 20 minutes on the user's seed.
-- Rocket building and electricity keep their isolatability through the stages, but unified doesn't protect it.
+- Electricity keeps its isolatability through the stages, but unified doesn't protect it (rocket building it does, through `keep_isolatability` on its nodes).
 - Removing superposed mode's code: next week, after more use.

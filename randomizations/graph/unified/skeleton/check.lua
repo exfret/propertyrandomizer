@@ -61,12 +61,16 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
         if node ~= nil and node.mechanic and node.type ~= "orand" then
             local final_kept = {}
             for context, _ in pairs(final_sort_info.node_to_context_inds[final_key(node_key)] or {}) do
-                final_kept[protection.kept_part(node, context)] = true
+                local kept = protection.kept_part(node, context)
+                if kept ~= nil then
+                    final_kept[kept] = true
+                end
             end
             local is_checked = {}
             for context, _ in pairs(init_context_inds) do
+                -- Nothing is kept in a room the node needn't keep anything in, like a science pack's outside the rooms it belongs to (protection.keeps_room)
                 local kept = protection.kept_part(node, context)
-                if is_checked[kept] == nil then
+                if kept ~= nil and is_checked[kept] == nil then
                     is_checked[kept] = true
                     num_checked = num_checked + 1
                     if final_kept[kept] == nil then
@@ -189,7 +193,7 @@ check.run = function(graph, init_sort_info, final_sort_info, label, audit_operat
             if node ~= nil and node.mechanic and node.type ~= "orand" then
                 local final_context_inds = final_sort_info.node_to_context_inds[node_key] or {}
                 for context, _ in pairs(init_context_inds) do
-                    if protection.is_isolatable_context(context) and not protection.protects_isolatability(node) then
+                    if protection.is_isolatable_context(context) and not protection.is_hard_mechanic_pebble(node, context) then
                         num_isolatable = num_isolatable + 1
                         if final_context_inds[context] == nil then
                             num_isolatable_lost = num_isolatable_lost + 1

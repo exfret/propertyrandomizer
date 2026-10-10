@@ -14,6 +14,7 @@ local builder = require(lib_name .. "/logic/builder")
 local acquisition = require(lib_name .. "/logic/acquisition")
 local rail_requirements = require(lib_name .. "/logic/rail-requirements")
 local military_variants = require("lib/military-variants")
+local science_rooms = require("lib/science-rooms")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -1292,17 +1293,29 @@ function concrete.build(lu, extra_params)
     set_class("item")
 
     local lab_inputs = dutils.lab_inputs()
+    -- The rooms each science pack belongs to (lib/science-rooms.lua), by which rooms accept its recipes' surface conditions
+    local pack_rooms = science_rooms.of_packs(lab_inputs, lu.recipes, key("planet", lutils.starting_planet_name), function(recipe)
+        local rooms = {}
+        for room_key, room in pairs(lu.rooms) do
+            if room.type ~= "control" and lutils.check_surface_conditions(room, recipe.surface_conditions or {}) then
+                rooms[room_key] = true
+            end
+        end
+        return rooms
+    end)
     for _, item in pairs(lu.items) do
         set_prot(item)
 
         local is_science_pack = lab_inputs[item.name] ~= nil
-        local should_be_mechanic = is_science_pack or (lu.burnt_result_to_items[item.name] ~= nil) or (lu.rocket_results_to_items[item.name] ~= nil)
+        local is_other_mechanic = (lu.burnt_result_to_items[item.name] ~= nil) or (lu.rocket_results_to_items[item.name] ~= nil)
 
         ----------------------------------------
         add_node("item", "OR", nil, item.name, {
             item = item.name,
-            mechanic = should_be_mechanic,
-            -- Lab inputs keep reachability and automatability; their production needn't be local to every planet.
+            mechanic = is_science_pack or is_other_mechanic,
+            -- A science pack keeps every context it has in the rooms it belongs to, isolatable and automatable included, and nothing elsewhere (see randomizations/graph/unified/skeleton/protection.lua)
+            -- One that's a mechanic for another reason too (a burnt result or a rocket launch's result) is kept like any other mechanic instead
+            science_rooms = (is_science_pack and not is_other_mechanic) and pack_rooms[item.name] or nil,
             cost = constants.cost.per_item_cost,
         })
         ----------------------------------------
@@ -1800,12 +1813,18 @@ function concrete.build(lu, extra_params)
         end
 
         ----------------------------------------
-        add_node("space-connection-asteroids", "AND", nil, nil, { mechanic = true })
+        add_node("space-connection-asteroids", "AND", nil, nil, {
+            mechanic = true,
+            keep_planetary_isolatability = true,
+            keep_isolatability = true,
+        })
         ----------------------------------------
-        -- Can we destroy the asteroids on this space connection?
-        -- Requires being able to overcome each asteroid type's resistance group.
+        -- Can we destroy the asteroids on this space connection from a space surface?
+        -- Requires a space surface, where they're fought, and being able to overcome each asteroid type's resistance group there (only immunity is checked, not whether the damage is enough)
         -- Made a mechanic so that the big scary asteroids aren't switched in for the small ones
+        -- Keeps its isolatability through all randomization (keep_isolatability) and planetary changes (keep_planetary_isolatability): a platform that could take these asteroids down automatically from its own resources (like turrets fed ammo made from asteroid chunks) still can (user, 2026-10-10)
 
+        add_edge("space-surface", "")
         local asteroids = lu.connection_asteroids[conn.name]
         if asteroids ~= nil then
             for asteroid_name, _ in pairs(asteroids) do

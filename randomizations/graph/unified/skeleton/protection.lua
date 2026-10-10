@@ -1,5 +1,6 @@
 -- Which parts of mechanic contexts graph randomization must keep, and which contexts of planet-locked recipes (the one place these rules live)
 -- Rooms and automatability are always kept; isolatability is kept everywhere with constants.keep_isolatability, or else only for nodes built with keep_isolatability = true (see lib/logic)
+-- Science packs are the exception: each keeps every context it has in the rooms it belongs to (lib/science-rooms.lua, given to its node as science_rooms), isolatable and automatable included, and nothing elsewhere (protection.keeps_room)
 -- Home contexts (see context-sort.lua) aren't mechanic contexts of their own: they only matter as backings of isolatability from the discovery rule, which promotion follows, so a mechanic's home context keeps just what the context it rides on keeps
 -- Used by promotion (what it promises), monotone matching (its hard set), first pass's gate and the mechanic context check, and in its planetary form by the planetary check (randomizations/planetary/check.lua)
 
@@ -17,16 +18,21 @@ protection.is_isolatable_context = function(context)
     return mask ~= nil and top.has_ability(mask, top.ISOLATABILITY)
 end
 
--- Whether the node must keep its isolatable contexts
+-- Whether the node must keep its isolatable contexts (in the rooms it keeps anything in, see protection.keeps_room)
 protection.protects_isolatability = function(node)
-    return constants.keep_isolatability or node.keep_isolatability == true
+    return constants.keep_isolatability or node.keep_isolatability == true or node.science_rooms ~= nil
+end
+
+-- Whether the node keeps anything in the context's room: every mechanic does, except a science pack outside the rooms it belongs to (the user, 2026-10-10: making utility science on Fulgora isn't needed)
+protection.keeps_room = function(node, context)
+    return node.science_rooms == nil or node.science_rooms[top.context_room(context)] ~= nil
 end
 
 -- Whether the node's pebble in context must be kept exactly
 -- An unprotected isolatable context only needs its non-isolatable counterpart, which is its own pebble, since anything reachable isolatably is also reachable without isolatability
 -- A home context only needs the context it rides on, which is also its own pebble
 protection.is_hard_mechanic_pebble = function(node, context)
-    if top.context_home(context) ~= nil then
+    if top.context_home(context) ~= nil or not protection.keeps_room(node, context) then
         return false
     end
     return not protection.is_isolatable_context(context) or protection.protects_isolatability(node)
@@ -34,8 +40,12 @@ end
 
 -- The part of a context that must be kept for the node: "room | ia" becomes "room | ?a" when the node's isolatability isn't protected, and a home context keeps what the context it rides on keeps
 -- Kept parts are numbers: a context, or for "room | ?a" minus one minus the context with isolatability cleared, so it's never a context (protection.kept_name writes them)
+-- Nil when the node keeps nothing in the context's room (protection.keeps_room)
 protection.kept_part = function(node, context)
     context = top.context_without_home(context)
+    if not protection.keeps_room(node, context) then
+        return nil
+    end
     local mask = top.context_mask(context)
     if mask == nil or protection.protects_isolatability(node) then
         return context
@@ -176,8 +186,9 @@ end
 -- The context a planetary change (randomizations/planetary) must keep for a mechanic pebble, or nil if it needn't keep any
 -- Planetary changes run before the rest of randomization, which then keeps whatever contexts they leave, so on purpose they keep less:
 --   1. Rooms and automatability, as always.
---   2. Isolatability only for nodes built with keep_planetary_isolatability = true (a planet must still build and launch rockets and make electricity from its own resources); others keep their non-isolatable counterpart.
+--   2. Isolatability only for nodes built with keep_planetary_isolatability = true (a planet must still build and launch rockets and make electricity from its own resources, and a platform still take down asteroids from its own); others keep their non-isolatable counterpart.
 --   3. Nothing for nodes of a feature a planetary change moves (built with planetary_feature), since those follow their feature; nodes also built with feature_stays_on_start = true still keep their starting planet contexts, since the feature never leaves it.
+--   4. Science packs keep every context in the rooms they belong to, isolatability included, and nothing elsewhere, as for the rest of randomization (protection.keeps_room).
 -- moved_features is the set of planetary_feature names being moved
 -- Home contexts keep nothing of their own, as for kept_part
 protection.planetary_kept_context = function(node, context, moved_features)
@@ -186,10 +197,10 @@ protection.planetary_kept_context = function(node, context, moved_features)
             return nil
         end
     end
-    if top.context_home(context) ~= nil then
+    if top.context_home(context) ~= nil or not protection.keeps_room(node, context) then
         return nil
     end
-    if node.keep_planetary_isolatability == true or not protection.is_isolatable_context(context) then
+    if node.keep_planetary_isolatability == true or node.science_rooms ~= nil or not protection.is_isolatable_context(context) then
         return context
     end
     return protection.without_isolatability(context)

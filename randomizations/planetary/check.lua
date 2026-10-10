@@ -4,9 +4,9 @@
 --   2. Recipes locked to one planet by surface conditions (its science pack, pentapod eggs, soils, the foundry...) keep every context they had there (isolatable and automatable included), as themselves or as a variant. The rest of randomization keeps them too (protection.planet_locked_recipe_contexts).
 --      Except a spare version of a duplicated building (check.spare_building_recipes): another version of it is automatable somewhere and nothing else takes it.
 --      Goals the stages lost that way stay given up once their changes are final (check.given_up), so the checks after the rest of randomization don't count them again.
---   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building and electricity also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
---      Other isolatability (like another planet's science or steam power) may be lost; that's the gameplay change.
---   4. The starting planet's science packs (the lab inputs it could make before) keep every context they had there, isolatable and automatable included: the start makes its own science (every planet does, the user's rule), and its resources take part in the swaps.
+--   3. Every mechanic keeps what protection.planetary_kept_context says: its rooms and automatability, and for rocket building, electricity and taking down asteroids also its isolatability, except the moved features themselves (like offshore fluids), which follow their feature.
+--      Science packs keep every context they had in the rooms they belong to (lib/science-rooms.lua: the starting planet's on the starting planet, isolatable and automatable included, since every planet makes its own science, the user's rule), and nothing elsewhere: making utility science on Fulgora isn't needed (user, 2026-10-10).
+--      Other isolatability (like steam power) may be lost; that's the gameplay change.
 -- Sorts use home contexts (the order-independent discovery rule, see lib/graph/context-sort.lua), like the rest of randomization and its checks.
 -- check.tiles_unchanged makes sure tile collision (so where offshore pumps work) is exactly as before.
 -- check.run is a fuller report: which planets each science pack is isolatable on, and which mechanic contexts moved.
@@ -585,39 +585,7 @@ check.required_failures = function(before, after, variants_of)
     end
     table.sort(soft)
     check.last_soft_failures = soft
-    -- 4. The starting planet's science packs keep every context they had there
-    for node_key, contexts in pairs(check.start_science_goals(before)) do
-        for context, _ in pairs(contexts) do
-            if not top.provides_context(after_contexts[node_key] or {}, context) then
-                table.insert(failures, {
-                    text = "starting planet's science " .. node_key .. " @ " .. top.context_name(context),
-                    keys = {
-                        node_key,
-                    },
-                    context = context,
-                })
-            end
-        end
-    end
     return failures
-end
-
--- The starting planet's science packs and the contexts they had there (rule 4 of check.required): every lab input (science packs are whatever labs take) with a context in the starting planet's room, as node key --> context --> true
-check.start_science_goals = function(before)
-    local goals = {}
-    local start_room = gutils.key("planet", constants.starting_planet)
-    for _, lab in pairs(data.raw.lab or {}) do
-        for _, pack_name in pairs(lab.inputs or {}) do
-            local node_key = gutils.key("item", pack_name)
-            for context, _ in pairs(before.sort_info.node_to_context_inds[node_key] or {}) do
-                if top.context_room(context) == start_room then
-                    goals[node_key] = goals[node_key] or {}
-                    goals[node_key][context] = true
-                end
-            end
-        end
-    end
-    return goals
 end
 
 -- Everything check.required keeps in an exact context (rule 3's mechanic goals and rule 2's planet-locked recipe contexts), as node key --> context --> true
@@ -708,7 +676,7 @@ check.goal_inds = function(failures, sort)
     return inds
 end
 
--- Returns whether every science pack keeps its planets and isolatable contexts and every recipe stays reachable (stricter than check.required)
+-- Returns whether every science pack keeps its contexts in the rooms it belongs to and every recipe stays reachable
 -- With is_quiet, nothing is logged and moved mechanics aren't computed (for checking many candidate changes)
 check.run = function(before, after, is_quiet)
     local function say(message)
@@ -719,7 +687,7 @@ check.run = function(before, after, is_quiet)
     local before_contexts = before.sort_info.node_to_context_inds
     local after_contexts = after.sort_info.node_to_context_inds
 
-    -- Science packs keep their isolatable planets
+    -- Science packs keep every context they had in the rooms they belong to (lib/science-rooms.lua, as rule 3 of check.required keeps them), and nothing elsewhere
     -- Science packs are whatever labs take, since the initial reformat moves tools into data.raw.item
     local science_packs = {}
     for _, lab in pairs(data.raw.lab) do
@@ -731,23 +699,9 @@ check.run = function(before, after, is_quiet)
     local lost_science = {}
     for _, pack_name in pairs(sorted_keys(science_packs)) do
         local node_key = gutils.key("item", pack_name)
-        -- Craftable at all on each planet it was craftable on (this covers Aquilo, where nothing is isolatable even in vanilla)
-        local before_rooms = {}
-        local after_rooms = {}
+        local node = before.graph.nodes[node_key]
         for context, _ in pairs(before_contexts[node_key] or {}) do
-            before_rooms[top.context_room(context)] = true
-        end
-        for context, _ in pairs(after_contexts[node_key] or {}) do
-            after_rooms[top.context_room(context)] = true
-        end
-        for room, _ in pairs(before_rooms) do
-            num_science = num_science + 1
-            if after_rooms[room] == nil then
-                table.insert(lost_science, node_key .. " @ " .. room .. " (at all)")
-            end
-        end
-        for context, _ in pairs(before_contexts[node_key] or {}) do
-            if is_isolatable(context) then
+            if node ~= nil and protection.is_hard_mechanic_pebble(node, context) then
                 num_science = num_science + 1
                 if (after_contexts[node_key] or {})[context] == nil then
                     table.insert(lost_science, node_key .. " @ " .. top.context_name(context))
@@ -755,7 +709,7 @@ check.run = function(before, after, is_quiet)
             end
         end
     end
-    -- Which planets each pack is isolatable on, before and after, to show what the check covers
+    -- Which planets each pack is isolatable on, before and after (only the rooms it belongs to are checked)
     for _, pack_name in pairs(sorted_keys(science_packs)) do
         local node_key = gutils.key("item", pack_name)
         local function isolatable_rooms(contexts)
@@ -770,7 +724,7 @@ check.run = function(before, after, is_quiet)
         say("PLANETCHECK isolatable " .. pack_name .. ": before {" .. isolatable_rooms(before_contexts[node_key]) .. "} after {" .. isolatable_rooms(after_contexts[node_key]) .. "}")
     end
     table.sort(lost_science)
-    say("PLANETCHECK checked " .. num_science .. " science pack rooms and isolatable contexts; lost " .. #lost_science)
+    say("PLANETCHECK checked " .. num_science .. " science pack contexts in the rooms the packs belong to; lost " .. #lost_science)
     for _, str in pairs(lost_science) do
         say("PLANETCHECK lost science " .. str)
     end
