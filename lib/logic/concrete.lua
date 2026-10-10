@@ -15,6 +15,7 @@ local acquisition = require(lib_name .. "/logic/acquisition")
 local rail_requirements = require(lib_name .. "/logic/rail-requirements")
 local military_variants = require("lib/military-variants")
 local science_rooms = require("lib/science-rooms")
+local recipe_loops = require("lib/recipe-loops")
 
 local prots = dutils.prots
 local key = gutils.key
@@ -1594,6 +1595,8 @@ function concrete.build(lu, extra_params)
         end
         -- Ingredients with inds for trigger technology support
         if not ingredients_not_needed[recipe.name] then
+            -- An item the recipe makes more of than it takes (a positive loop of size one, lib/recipe-loops.lua) keeps the recipe going once started, so its edge adds automatability
+            local gained_items = recipe_loops.gained_items(recipe)
             for mat_key, inds in pairs(ingredient_map) do
                 local mat = gutils.deconstruct(mat_key)
                 local mat_type = mat.type
@@ -1605,9 +1608,12 @@ function concrete.build(lu, extra_params)
                 end
                 -- Doesn't account for if a recipe has ingredients for the same fluid with different temperature ranges
                 local ing_amount = cutils.find_amount_in_ing_or_prod(recipe.ingredients, {type = mat.type, name = fluid_name or mat.name})
+                local is_loop = mat.type == "item" and gained_items[mat.name] ~= nil
                 add_edge(mat_type, mat_name, {
                     inds = inds,
                     amount = ing_amount,
+                    abilities = is_loop and ctx.GAINS_AUTOMATABILITY or nil,
+                    self_loop = is_loop or nil,
                 })
             end
         end

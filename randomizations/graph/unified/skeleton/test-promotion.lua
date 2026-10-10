@@ -1195,4 +1195,129 @@ test("a rewire can't make a solvent promise insolvent", function()
     assert(prom.is_solvent(w, C("A")))
 end)
 
+-- A recipe looping through an item it makes more of than it takes (lib/recipe-loops.lua), like pentapod eggs: the first egg only comes by hand, as loot, and the recipe takes an egg and some nutrients and makes two eggs
+-- The egg's edge into the recipe adds automatability (lib/logic/concrete.lua), so eggs are automatable once the nutrients are; both ingredient edges are cut, as in the random graph
+local function build_loop_graph(nutrients_by_hand)
+    local graph = {
+        nodes = {},
+        edges = {},
+        sources = {},
+    }
+    local function node(node_type, name, op, extra)
+        extra = extra or {}
+        extra.op = op
+        gutils.add_node(graph, node_type, name, extra)
+        return key(node_type, name)
+    end
+    local start = node("start", "", "AND")
+    graph.sources[start] = true
+    local room_a = node("room", "A", "OR")
+    gutils.add_edge(graph, start, room_a)
+    local egg = node("item", "egg", "OR", { mechanic = true })
+    local nutrients = node("item", "nutrients", "OR")
+    local loot = node("mine", "egg", "AND")
+    gutils.add_edge(graph, room_a, loot)
+    gutils.add_edge(graph, loot, egg, {
+        abilities = ctx.LOSES_AUTOMATABILITY,
+    })
+    local farm = node("mine", "nutrients", "AND")
+    gutils.add_edge(graph, room_a, farm)
+    gutils.add_edge(graph, farm, nutrients, nutrients_by_hand and {
+        abilities = ctx.LOSES_AUTOMATABILITY,
+    } or nil)
+    local recipe = node("recipe", "egg", "AND")
+    local ingredients = {
+        egg,
+        nutrients,
+    }
+    for _, ingredient in pairs(ingredients) do
+        local name = gutils.deconstruct(ingredient).name .. "-egg"
+        local extra = {}
+        if ingredient == egg then
+            extra = {
+                abilities = ctx.GAINS_AUTOMATABILITY,
+                self_loop = true,
+            }
+        end
+        local base_extra = table.deepcopy(extra)
+        local head_extra = table.deepcopy(extra)
+        local base = node("base", name, "AND", base_extra)
+        head_extra.old_base = base
+        local head = node("head", name, "OR", head_extra)
+        graph.nodes[base].old_head = head
+        gutils.add_edge(graph, ingredient, base)
+        gutils.add_edge(graph, head, recipe)
+    end
+    gutils.add_edge(graph, recipe, egg)
+    return graph
+end
+
+local egg_recipe = key("recipe", "egg")
+local egg, nutrients = key("item", "egg"), key("item", "nutrients")
+
+test("a recipe's positive loop makes the item it gains automatable once its other ingredients are, and promotion can keep that", function()
+    local prom = promotion.new({
+        graph = build_loop_graph(false),
+        complex = true,
+    })
+    -- The egg's only automatable contexts come through the loop, and they're promised like any mechanic's
+    local failed = prom.promise_mechanics()
+    assert(#failed == 0, "an egg context the loop gives couldn't be established")
+    local contexts = prom.required_contexts(egg_recipe)
+    assert(has_automatable(contexts), "the loop recipe isn't required automatable")
+    -- Resolving the recipe with its vanilla ingredients (the loop's egg kept) checks the egg through its edge, which adds automatability
+    prom.resolve(egg_recipe, {
+        egg,
+        nutrients,
+    }, contexts)
+    assert(prom.candidate_ok(egg_recipe, nutrients, contexts))
+    assert(prom.candidate_ok(egg_recipe, egg, contexts))
+end)
+
+test("a positive loop doesn't make its item automatable while its other ingredients aren't", function()
+    local graph = build_loop_graph(true)
+    for node_key, node in pairs(graph.nodes) do
+        if node.type == "head" then
+            gutils.connect_base_head(graph, node.old_base, node_key, graph.nodes[node.old_base].abilities)
+        end
+    end
+    local sorted = top.sort(graph, nil, nil, {
+        complex_contexts = true,
+    })
+    local egg_contexts = {}
+    for context, _ in pairs(sorted.node_to_context_inds[egg]) do
+        table.insert(egg_contexts, context)
+    end
+    assert(#egg_contexts > 0)
+    assert(not has_automatable(egg_contexts), "hand-made nutrients made eggs automatable")
+end)
+
+test("a recipe's ingredient owners other than its own loop carry no abilities: a loop ingredient given to another recipe is a plain one there", function()
+    local graph = build_loop_graph(false)
+    -- Another recipe whose vanilla ingredient is the egg, through a plain cut edge
+    gutils.add_node(graph, "recipe", "other", { op = "AND" })
+    gutils.add_node(graph, "base", "egg-other", { op = "AND" })
+    gutils.add_node(graph, "head", "egg-other", {
+        op = "OR",
+        old_base = key("base", "egg-other"),
+    })
+    graph.nodes[key("base", "egg-other")].old_head = key("head", "egg-other")
+    gutils.add_edge(graph, egg, key("base", "egg-other"))
+    gutils.add_edge(graph, key("head", "egg-other"), key("recipe", "other"))
+    gutils.add_node(graph, "item", "omelette", {
+        op = "OR",
+        mechanic = true,
+    })
+    gutils.add_edge(graph, key("recipe", "other"), key("item", "omelette"))
+    local prom = promotion.new({
+        graph = graph,
+        complex = true,
+    })
+    assert(#prom.promise_mechanics() == 0)
+    -- The omelette is automatable only because eggs are (through their own loop), not by any loop of its own
+    local contexts = prom.required_contexts(key("recipe", "other"))
+    assert(has_automatable(contexts))
+    assert(prom.candidate_ok(key("recipe", "other"), egg, contexts))
+end)
+
 print(num_passed .. " tests passed")

@@ -130,7 +130,7 @@ promotion.new = function(params)
     -- Debt mode: goals (mechanic pebbles, recipes and other dependents kept in a context) promised without a solvent backing, ind --> true
     local owed = {}
 
-    -- recipe node key --> { fixed = list of non-ingredient prereqs ({ key, edge }), vanilla_owners = list of ingredient owner keys }
+    -- recipe node key --> { fixed = list of non-ingredient prereqs ({ key, edge }), vanilla_owners = list of ingredient owner keys, loop_owners = owner key --> the abilities its edge adds, for an item the recipe makes more of than it takes (lib/recipe-loops.lua) }
     -- Ingredient heads are the subdivided item/fluid --> recipe edges; they are cut in the random graph
     local recipe_info = {}
     local function get_recipe_info(recipe_key)
@@ -139,6 +139,7 @@ promotion.new = function(params)
                 fixed = {},
                 vanilla_owners = {},
                 vanilla_owner_by_material = {},
+                loop_owners = {},
             }
             for pre, _ in pairs(graph.nodes[recipe_key].pre) do
                 local prenode = gutils.prenode(graph, pre)
@@ -152,6 +153,10 @@ promotion.new = function(params)
                 end
                 if owner ~= nil then
                     table.insert(info.vanilla_owners, key(owner))
+                    -- A positive loop's edge adds automatability, which its owner carries in for the recipe (owner_pre)
+                    if prenode.self_loop ~= nil then
+                        info.loop_owners[key(owner)] = prenode.abilities
+                    end
                     local material_key
                     if owner.type == "fluid-temperature-range" then
                         material_key = key("fluid", gutils.deconstruct(owner.name).type)
@@ -278,7 +283,7 @@ promotion.new = function(params)
 
     -- Ranks of the pebbles of prereq pre that get context to its dependent, earliest first
     -- pre is { key, edge_key }; with complex contexts the edge can add or remove abilities (see top.edge_source_contexts)
-    -- Substituted prereqs have no edge_key: ingredient owners never carry abilities, and chosen bases carry their connection's as pre.abilities
+    -- Substituted prereqs have no edge_key: ingredient owners carry abilities only as their recipe's own positive loop (owner_pre), and chosen bases carry their connection's as pre.abilities
     local function pre_inds(pre, context)
         local context_inds = nci[pre.key]
         if context_inds == nil then
@@ -306,9 +311,18 @@ promotion.new = function(params)
         return pre_inds(pre, context)[1]
     end
 
-    -- Rank of a node's own pebble in context (for ingredient owners and heads, which have no edge abilities)
+    -- Rank of a node's own pebble in context (for heads, which have no edge abilities)
     local function node_ind(node_key, context)
         return pre_ind({ key = node_key }, context)
+    end
+
+    -- The prereq an ingredient owner stands for in a recipe: the owner itself, adding automatability when the recipe makes more of it than it takes (a positive loop, lib/recipe-loops.lua), since the recipe then keeps itself going once started
+    -- Owners never carry other abilities, and a recipe only loops through an ingredient it had in vanilla, since new ingredients are never its own results (handlers/recipe-ingredients.lua)
+    local function owner_pre(recipe_key, owner_key)
+        return {
+            key = owner_key,
+            abilities = get_recipe_info(recipe_key).loop_owners[owner_key],
+        }
     end
 
     -- The rank a pebble's backing must stay below: its own, except for a head's
@@ -351,7 +365,7 @@ promotion.new = function(params)
                 table.insert(pres, pre)
             end
             for _, owner_key in pairs(state.resolved[key(node)] or info.vanilla_owners) do
-                table.insert(pres, { key = owner_key })
+                table.insert(pres, owner_pre(key(node), owner_key))
             end
         elseif node.type == "head" and next(node.pre) == nil then
             if detached[key(node)] == nil then
@@ -1038,7 +1052,7 @@ promotion.new = function(params)
         for _, context in pairs(required_contexts) do
             if top.context_mask(context) ~= nil and top.context_home(context) == nil then
                 local automatable = top.automatable_counterpart(context) or context
-                local i = node_ind(owner_key, automatable)
+                local i = pre_ind(owner_pre(recipe_key, owner_key), automatable)
                 if i == nil or i >= nci[recipe_key][context] or not establish(i) then
                     return false
                 end
@@ -1053,7 +1067,7 @@ promotion.new = function(params)
         assert(#required_contexts > 0, "candidate_ok needs required contexts (from required_contexts) for " .. recipe_key)
         for _, context in pairs(required_contexts) do
             local recipe_ind = nci[recipe_key][context]
-            local i = node_ind(owner_key, context)
+            local i = pre_ind(owner_pre(recipe_key, owner_key), context)
             if i == nil or i >= recipe_ind or not establish(i) then
                 return false
             end
@@ -1095,7 +1109,7 @@ promotion.new = function(params)
     -- Whether an ingredient owner is solvent before the recipe in each of the contexts (like those from recipe_boundary_contexts)
     state.pays = function(recipe_key, owner_key, contexts)
         for _, context in pairs(contexts) do
-            local i = node_ind(owner_key, context)
+            local i = pre_ind(owner_pre(recipe_key, owner_key), context)
             if i == nil or i >= nci[recipe_key][context] or not establish_solvent(i) then
                 return false
             end
@@ -1136,7 +1150,7 @@ promotion.new = function(params)
         end
         for _, context in pairs(required_contexts) do
             for _, owner_key in pairs(owner_keys) do
-                local i = node_ind(owner_key, context)
+                local i = pre_ind(owner_pre(recipe_key, owner_key), context)
                 if i == nil or i >= nci[recipe_key][context] or not establish(i) then
                     error("Resolving recipe " .. recipe_key .. " with unestablished ingredient " .. owner_key .. " in " .. top.context_name(context))
                 end

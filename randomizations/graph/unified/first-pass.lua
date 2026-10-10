@@ -27,6 +27,7 @@ local constants = require("helper-tables/constants")
 local graph_customization = require("lib/graph-customization")
 local gutils = require("lib/graph/graph-utils")
 local dutils = require("lib/data-utils")
+local recipe_loops = require("lib/recipe-loops")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 local replacement_fuel = require("randomizations/graph/unified/skeleton/replacement-fuel")
@@ -127,12 +128,18 @@ local function cost_ok(slot, trav)
     return true
 end
 
--- Whether a trav can go in a slot: their costs fit, and coal's slot only takes travs that item reflection makes the same kind of fuel as coal (see dutils.replacement_gets_fuel)
+-- The items some visible recipe both takes and makes (recipe_loops.catalyst_items), found again at the start of each first pass
+local catalyst_items = {}
+
+-- Whether a trav can go in a slot: their costs fit, coal's slot only takes travs that item reflection makes the same kind of fuel as coal (see dutils.replacement_gets_fuel), and a catalyst's slot only takes stackable items (recipe_loops.identity_fits)
 -- Fuels with burnt results are a separate kind (see lib/lookup/2-simple/fuel.lua), and the rule doesn't remove burnt results
 -- An identity at a position of the other form keeps its form, and its amounts follow the costs across forms like any other's (see item_fluid.round_amount)
 local function pair_ok(slot, trav)
     -- A fluid identity's amounts can be fractional, so its costs needn't fit as closely (user, 2026-09-29); an item's must, since a cheap item at an expensive fluid's position would come in the hundreds
     if form_of(trav.old_slot) ~= "fluid" and not cost_ok(slot, trav) then
+        return false
+    end
+    if slot.type == "item" and form_of(trav.old_slot) == "item" and not recipe_loops.identity_fits(slot.name, dutils.get_prot("item", gutils.deconstruct(trav.old_slot).name), catalyst_items, dutils.is_stackable) then
         return false
     end
     if slot.type == "item" and dutils.replacement_gets_fuel(slot.name) then
@@ -224,6 +231,7 @@ first_pass.execute = function(params)
         entity_rules = params.entity_rules(subdiv_graph)
     end
 
+    catalyst_items = recipe_loops.catalyst_items(data.raw.recipe)
     local lab_inputs = dutils.lab_inputs()
     -- Barrels are always for their fluid (user, 2026-09-29): their positions stay put, and their recipes follow the fluid's identity (see item_fluid.move_identity_sources)
     local containers = config.item_fluids and item_fluid.fluid_containers(data.raw.recipe) or {}

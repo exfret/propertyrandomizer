@@ -239,6 +239,15 @@ recipe_ingredients.claim = function(graph, prereq, dep, edge)
     end
 end
 
+-- A recipe's own positive loop (an item it makes more of than it takes, lib/recipe-loops.lua) adds automatability through that ingredient's edge, which belongs to the recipe and the item together
+-- The loop's base given to another recipe is a plain ingredient there, so only the loop's own base and head keep the edge's abilities
+recipe_ingredients.connection_abilities = function(base, head)
+    if base.self_loop ~= nil and base.old_head ~= key(head) then
+        return nil
+    end
+    return base.abilities
+end
+
 -- Ingredients the current recipe must keep because promised recycling relies on them (see promotion.lua), as material key --> true
 local current_pins = {}
 
