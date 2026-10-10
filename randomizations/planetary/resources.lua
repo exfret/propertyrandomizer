@@ -662,7 +662,7 @@ end
 resources.variant_plan = function(recipe, planet_name, ingredients)
     local variant = table.deepcopy(recipe)
     variant.name = scaffolds.planet_variant_name(recipe.name, planet_name)
-    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    scaffolds.name_variant(variant, recipe, planet_name)
     local icons = scaffolds.badged_icons(recipe, planet_name)
     if icons ~= nil then
         variant.icons = icons

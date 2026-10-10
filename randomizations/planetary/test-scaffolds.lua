@@ -269,4 +269,29 @@ for name in string.gmatch(string.match(line, "%(at most 1%): (.*)$"), "[^, ]+") 
 end
 check(listed[copy_conversion.recipe_name] == true and listed[by_planet["lake/conversion"].recipe_name] == true and listed[ember_conversion.recipe_name] == nil, "log_conversions listed the wrong conversions: " .. line)
 
+-- 7. A variant of a recipe that's already the planet's own names the planet once (user, 2026-10-10: independent deposits' variants of Vulcanus's own tungsten carbide were "Tungsten carbide (Vulcanus) (Vulcanus)")
+-- How many times a localised string has the text in it, at any depth
+local function count_text(str, text)
+    if str == text then
+        return 1
+    end
+    local n = 0
+    if type(str) == "table" then
+        for _, part in pairs(str) do
+            n = n + count_text(part, text)
+        end
+    end
+    return n
+end
+local copy_recipe = data.raw.recipe[copy_variant.recipe_name]
+check(copy_recipe.intermediate_planet == "ember-exfret-2-copy", "the copy's variant doesn't say which planet its name has")
+local same_planet = table.deepcopy(copy_recipe)
+scaffolds.name_variant(same_planet, copy_recipe, "ember-exfret-2-copy")
+check(count_text(same_planet.localised_name, "Embra") == 1, "a variant of the copy's variant for the copy names it " .. count_text(same_planet.localised_name, "Embra") .. " times")
+check(count_text(same_planet.localised_name, "recipe-name.molten-ore") == 1 and same_planet.intermediate_planet == "ember-exfret-2-copy", "a variant of the copy's variant for the copy isn't named like it")
+-- Another planet's variant of it still names that planet
+local other_planet = table.deepcopy(copy_recipe)
+scaffolds.name_variant(other_planet, copy_recipe, "lake")
+check(count_text(other_planet.localised_name, "space-location-name.lake") == 1 and other_planet.intermediate_planet == "lake", "a variant for another planet isn't named after that planet")
+
 print("test-scaffolds: " .. num_checks .. " checks passed")

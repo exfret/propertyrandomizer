@@ -1826,7 +1826,7 @@ end
 local function variant_recipe(recipe, ingredients, target_name)
     local variant = table.deepcopy(recipe)
     variant.name = scaffolds.planet_variant_name(recipe.name, target_name)
-    variant.localised_name = scaffolds.variant_name(recipe, target_name)
+    scaffolds.name_variant(variant, recipe, target_name)
     local icons = scaffolds.badged_icons(recipe, target_name)
     if icons ~= nil then
         variant.icons = icons

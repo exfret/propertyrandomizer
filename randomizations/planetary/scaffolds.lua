@@ -110,8 +110,12 @@ scaffolds.badged_icons = function(recipe, planet_name)
 end
 
 -- A planet variant's name: the recipe's display name with the planet's, like "Concrete (Gleba)"
+-- A recipe whose name has the planet's already (its intermediate_planet, see scaffolds.name_variant) keeps its name: independent deposits' variants of Vulcanus's own tungsten carbide were "Tungsten carbide (Vulcanus) (Vulcanus)" (randomizations/graph/unified/deposit-copies.lua, user 2026-10-10)
 -- A planet with a localised name of its own (a planet copy, lib/dupe-planets.lua, which has no locale key) goes by that
 scaffolds.variant_name = function(recipe, planet_name)
+    if recipe.intermediate_planet == planet_name then
+        return table.deepcopy(recipe_display_name(recipe))
+    end
     local planet = data.raw.planet[planet_name]
     local planet_label = { "space-location-name." .. planet_name }
     if planet ~= nil and planet.localised_name ~= nil then
@@ -122,6 +126,14 @@ scaffolds.variant_name = function(recipe, planet_name)
         recipe_display_name(recipe),
         planet_label,
     }
+end
+
+-- Names a planet variant of the recipe after the planet (scaffolds.variant_name) and puts the planet in its intermediate_planet field, as lib/dupe-intermediates.lua does for planet copies' own recipes
+-- The field keeps the planet in the name when item randomization renames the recipe (lib/recipe-renames.lua), and keeps a further variant for the same planet from naming it twice
+-- A room that isn't a planet gets no intermediate_planet, since the renames look the planet up
+scaffolds.name_variant = function(variant, recipe, planet_name)
+    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    variant.intermediate_planet = data.raw.planet[planet_name] ~= nil and planet_name or nil
 end
 
 -- A planet variant's prototype name: base (like the original recipe's name) and the planet's
@@ -135,7 +147,7 @@ end
 local function variant_recipe(recipe, old_fluid, new_fluid, planet_name)
     local variant = table.deepcopy(recipe)
     variant.name = scaffolds.planet_variant_name(recipe.name .. "-with-" .. new_fluid, planet_name)
-    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    scaffolds.name_variant(variant, recipe, planet_name)
     local icons = scaffolds.badged_icons(recipe, planet_name)
     if icons ~= nil then
         variant.icons = icons
@@ -188,7 +200,7 @@ local function conversion_recipe(old_fluid, new_fluid, planet_name)
             },
         },
     }
-    conversion.localised_name = scaffolds.variant_name(conversion, planet_name)
+    scaffolds.name_variant(conversion, conversion, planet_name)
     conversion.icons = scaffolds.badged_icons(conversion, planet_name)
     return conversion
 end

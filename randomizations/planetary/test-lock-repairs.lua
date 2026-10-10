@@ -215,8 +215,8 @@ package.loaded["randomizations/planetary/scaffolds"] = {
     planet_variant_name = function(base, planet_name)
         return "propertyrandomizer-" .. base .. "-on-" .. planet_name
     end,
-    variant_name = function(recipe, planet_name)
-        return {
+    name_variant = function(variant, recipe, planet_name)
+        variant.localised_name = {
             "",
             recipe.name,
             planet_name,

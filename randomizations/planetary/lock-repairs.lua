@@ -406,7 +406,7 @@ end
 local function add_version(recipe, room_key, ingredients)
     local variant = table.deepcopy(recipe)
     variant.name = scaffolds.planet_variant_name(recipe.name, room_name(room_key))
-    variant.localised_name = scaffolds.variant_name(recipe, room_name(room_key))
+    scaffolds.name_variant(variant, recipe, room_name(room_key))
     local icons = scaffolds.badged_icons(recipe, room_name(room_key))
     if icons ~= nil then
         variant.icons = icons
@@ -645,7 +645,7 @@ lock_repairs.follow_machines = function(state)
                                 end
                                 local variant = table.deepcopy(ocean_recipe)
                                 variant.name = version_name
-                                variant.localised_name = scaffolds.variant_name(ocean_recipe, room.name)
+                                scaffolds.name_variant(variant, ocean_recipe, room.name)
                                 local icons = scaffolds.badged_icons(ocean_recipe, room.name)
                                 if icons ~= nil then
                                     variant.icons = icons

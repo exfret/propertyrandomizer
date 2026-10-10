@@ -237,7 +237,7 @@ end
 
 -- A planet's variant of a recipe, before its ingredients are localized: named after the planet with the planet's badge like planetary variants (randomizations/planetary/scaffolds.lua)
 -- It's had exactly when the recipe is (enabled from the start like it, and unlocked by every technology unlocking it): unlocked in a planet copy's own tree like a duplicate, it came later than the recipe it stands beside, which cost rocket building on planet copies its isolatability before any randomization ran (seed 1 with duplicates, 2026-10-07)
--- Its intermediate_planet field keeps the planet in its name when item randomization renames recipes (lib/recipe-renames.lua)
+-- Its intermediate_planet field (scaffolds.name_variant) keeps the planet in its name when item randomization renames recipes (lib/recipe-renames.lua), and a variant of a recipe that's already the planet's own (a planetary variant, or a planet copy's local recipe) names the planet once
 -- The optional mix numbers the variant among the recipe's on the planet, when it has several
 local function make_variant(recipe, planet_name, unlocked_by, mix)
     local variant = table.deepcopy(recipe)
@@ -246,14 +246,13 @@ local function make_variant(recipe, planet_name, unlocked_by, mix)
         base = base .. "-" .. mix
     end
     variant.name = scaffolds.planet_variant_name(base, planet_name)
-    variant.localised_name = scaffolds.variant_name(recipe, planet_name)
+    scaffolds.name_variant(variant, recipe, planet_name)
     variant.localised_description = locale_utils.find_localised_description(recipe)
     local icons = scaffolds.badged_icons(recipe, planet_name)
     if icons ~= nil then
         variant.icons = icons
         variant.icon = nil
     end
-    variant.intermediate_planet = planet_name
     data:extend({
         variant,
     })
