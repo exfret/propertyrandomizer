@@ -501,4 +501,166 @@ test("a deposit's new identity has to be new to its planet", function()
     assert(copies.is_new_for("item: " .. iron_nauvis, "item: " .. iron_copy))
 end)
 
+
+-- The words of a text, as a list
+local function words(text)
+    local list = {}
+    for word in string.gmatch(text, "%S+") do
+        table.insert(list, word)
+    end
+    return list
+end
+
+-- A made-up sort for choose_cuts and uncovered_cuts: each recipe's contexts, as the text of their names (a context is named by its ability mask, like "10": isolatable, not automatable)
+-- A recipe has a context it lists, or one without isolatability whose isolatable counterpart it lists, like top.provides_context
+local function sort_has(context_texts)
+    return function(name, context)
+        local contexts = set(words(context_texts[name] or ""))
+        if contexts[context] ~= nil then
+            return true
+        end
+        return string.sub(context, 1, 1) == "0" and contexts["1" .. string.sub(context, 2)] ~= nil
+    end
+end
+
+-- One recipe on one planet: its members in order, the kept version first, and the contexts each candidate owes, as the text of their names
+local function cut_group(members_text, owes_texts)
+    local group = {
+        members = words(members_text),
+        candidates = {},
+    }
+    for _, name in pairs(group.members) do
+        if owes_texts[name] ~= nil then
+            table.insert(group.candidates, {
+                name = name,
+                owes = words(owes_texts[name]),
+            })
+        end
+    end
+    return group
+end
+
+test("each planet keeps the version taking its own deposits, and the others go when it has everything they had", function()
+    local cut = copies.choose_cuts({
+        cut_group("all half original", {
+            half = "10 00",
+            original = "01 00",
+        }),
+    }, sort_has({
+        all = "11 10 01 00",
+        half = "10 00",
+        original = "01 00",
+    }))
+    assert(cut.half == true and cut.original == true and cut.all == nil)
+end)
+
+test("a version that gives the planet something the kept one doesn't stays", function()
+    -- The kept version can be made without imports but not automatically; the original could be automated with imports
+    local groups = {
+        cut_group("all original", {
+            original = "01 00",
+        }),
+    }
+    local cut, why = copies.choose_cuts(groups, sort_has({
+        all = "10 00",
+        original = "01 00",
+    }))
+    assert(cut.original == nil and why.original == "01")
+    -- What can be had without imports can be had with them
+    cut = copies.choose_cuts({
+        cut_group("all original", {
+            original = "00",
+        }),
+    }, sort_has({
+        all = "10",
+        original = "00",
+    }))
+    assert(cut.original == true)
+end)
+
+test("of two versions that could each cover what the kept one can't, only the first stays", function()
+    local cut = copies.choose_cuts({
+        cut_group("all first second", {
+            first = "10 01",
+            second = "10 01",
+        }),
+    }, sort_has({
+        all = "10",
+        first = "10 01",
+        second = "10 01",
+    }))
+    assert(cut.first == nil and cut.second == true)
+end)
+
+test("a version the kept one turns out to need in a sort without the cut ones is found", function()
+    -- Like the volcanic rocks' tungsten ore getting a planet's own deposits started: without the rock version, the kept one can't be had without imports
+    local groups = {
+        cut_group("all rocks other", {
+            rocks = "10",
+            other = "10",
+        }),
+    }
+    local before = sort_has({
+        all = "10",
+        rocks = "10",
+        other = "10",
+    })
+    local cut = copies.choose_cuts(groups, before)
+    assert(cut.rocks == true and cut.other == true)
+    local uncovered = copies.uncovered_cuts(groups, cut, sort_has({
+        all = "00",
+    }))
+    assert(uncovered.rocks == "10" and uncovered.other == "10")
+    -- Nothing is reported when the kept one still has everything
+    uncovered = copies.uncovered_cuts(groups, cut, before)
+    assert(next(uncovered) == nil)
+end)
+
+test("recipes dropped and put back come back with their unlocks where they were", function()
+    local raw = {
+        recipe = {
+            kept = {
+                name = "kept",
+            },
+            back = {
+                name = "back",
+            },
+            gone = {
+                name = "gone",
+            },
+        },
+        technology = {
+            tech = {
+                effects = {
+                    {
+                        type = "unlock-recipe",
+                        recipe = "back",
+                    },
+                    {
+                        type = "unlock-recipe",
+                        recipe = "kept",
+                    },
+                    {
+                        type = "unlock-recipe",
+                        recipe = "gone",
+                    },
+                },
+            },
+        },
+    }
+    local names = set({
+        "back",
+        "gone",
+    })
+    local saved = copies.save_recipes(raw, names)
+    copies.drop_recipes(raw, names)
+    assert(raw.recipe.back == nil and raw.recipe.gone == nil and #raw.technology.tech.effects == 1)
+    copies.restore_recipes(raw, saved, set({
+        "back",
+    }))
+    assert(raw.recipe.back ~= nil and raw.recipe.gone == nil)
+    local effects = raw.technology.tech.effects
+    assert(#effects == 2 and effects[1].recipe == "back" and effects[2].recipe == "kept")
+end)
+
 print(num_passed .. " tests passed")

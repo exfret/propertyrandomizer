@@ -245,6 +245,114 @@ copies.drop_recipes = function(raw, names)
     end
 end
 
+-- What drop_recipes takes out of raw for these recipes (names: recipe name --> true), for restore_recipes: the prototypes, and the technologies' unlocks of them with their places
+copies.save_recipes = function(raw, names)
+    local saved = {
+        recipes = {},
+        unlocks = {},
+    }
+    for name, _ in pairs(names) do
+        saved.recipes[name] = raw.recipe[name]
+    end
+    for technology_name, technology in pairs(raw.technology or {}) do
+        for index, effect in pairs(technology.effects or {}) do
+            if effect.type == "unlock-recipe" and names[effect.recipe] ~= nil then
+                table.insert(saved.unlocks, {
+                    technology = technology_name,
+                    index = index,
+                    effect = effect,
+                })
+            end
+        end
+    end
+    table.sort(saved.unlocks, function(a, b)
+        if a.technology ~= b.technology then
+            return a.technology < b.technology
+        end
+        return a.index < b.index
+    end)
+    return saved
+end
+
+-- Puts the recipes of names that save_recipes saved back into raw after drop_recipes took them out, with their unlocks where they were
+copies.restore_recipes = function(raw, saved, names)
+    for name, _ in pairs(names) do
+        raw.recipe[name] = saved.recipes[name]
+    end
+    for _, unlock in pairs(saved.unlocks) do
+        local technology = (raw.technology or {})[unlock.technology]
+        if names[unlock.effect.recipe] ~= nil and technology ~= nil then
+            technology.effects = technology.effects or {}
+            table.insert(technology.effects, math.min(unlock.index, #technology.effects + 1), unlock.effect)
+        end
+    end
+end
+
+-- Groups of recipes that make the same things on one planet, for choose_cuts and uncovered_cuts: a list with one group per recipe and planet, { members = names of the recipes (the original, when the planet makes it, and its versions), candidates = the members that may be cut, most worth keeping first, as { name, owes = the contexts it must leave covered } }
+-- has(name, context): whether a member has the context (top.provides_context) in the sort the function works with
+
+-- The first context a candidate owes that no member of its group outside cut has, or nil
+local function first_uncovered(group, candidate, cut, has)
+    for _, context in pairs(candidate.owes) do
+        local is_had = false
+        for _, member in pairs(group.members) do
+            if not is_had and cut[member] == nil and has(member, context) then
+                is_had = true
+            end
+        end
+        if not is_had then
+            return context
+        end
+    end
+    return nil
+end
+
+-- Which recipes to cut so that a planet keeps no more versions of a recipe than it needs (user, 2026-10-10: "The goal is to reduce recipe bloat"), in a sort of the game with all of them
+-- A candidate is cut when a member that stays has each context it owes; when some can't be, the first of them stays and the others are checked again, since it may have what they owe
+-- The sort can't tell whether a member's contexts come through a candidate cut, so uncovered_cuts checks the cut in a sort of the game without them
+-- Returns name --> true for the names cut, and name --> the first context that kept it for the candidates that stay
+copies.choose_cuts = function(groups, has)
+    local cut = {}
+    for _, group in pairs(groups) do
+        for _, candidate in pairs(group.candidates) do
+            cut[candidate.name] = true
+        end
+    end
+    local why = {}
+    while true do
+        local stuck
+        for _, group in pairs(groups) do
+            for _, candidate in pairs(group.candidates) do
+                if stuck == nil and cut[candidate.name] ~= nil then
+                    local context = first_uncovered(group, candidate, cut, has)
+                    if context ~= nil then
+                        stuck = candidate.name
+                        why[stuck] = context
+                    end
+                end
+            end
+        end
+        if stuck == nil then
+            return cut, why
+        end
+        cut[stuck] = nil
+    end
+end
+
+-- The candidates of cut that the members staying no longer cover in a sort of the game without the cut ones (has): name --> the first context it owes that none of them has
+-- Putting those back can only add to what the game has, so the rest of the cut stays covered
+copies.uncovered_cuts = function(groups, cut, has)
+    local uncovered = {}
+    for _, group in pairs(groups) do
+        for _, candidate in pairs(group.candidates) do
+            if cut[candidate.name] ~= nil then
+                uncovered[candidate.name] = first_uncovered(group, candidate, cut, has)
+            end
+        end
+    end
+    return uncovered
+end
+
 -- Whether raw (a data.raw, or a copy of one) still has any of the copies' prototypes
 copies.has_copies = function(raw, original_of)
     for _, prototypes in pairs(raw) do

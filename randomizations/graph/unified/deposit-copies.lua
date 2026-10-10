@@ -5,12 +5,13 @@
 --   * a resource placed on several planets keeps its prototype on the first (the starting planet first) and gets a clone on every other one, placed where it was there, with the same look, map settings and research triggers
 --   * every recipe a planet with a copy can craft that takes such a material gets a variant taking the planet's copy, locked to that planet ("Iron plate (Nauvis 2)", with the planet's badge, had exactly when the recipe is)
 --   * a variant stays only if its planet can make it from its own resources before any randomization (prune_variants): that's what the variants protect, and the others only crowded the game (the user asked why electrolyte had variants on 8 planets, 2026-10-07)
---   * the original recipes stay as they are, on every planet they were on, so a planet can still use the material itself from elsewhere (imported, or from rocks and corpses)
+--   * the original recipes stay as they are, on every planet they were on, so a planet can still use the material itself from elsewhere (imported, or from rocks and corpses), except an original that only one planet makes, which its version there can replace (see the last point)
 --   * a recipe taking several materials a planet mines copies of gets a variant there for each mix of copies and the materials themselves, so it can still take some from the planet's own deposits and the rest from elsewhere, as it could before: like the tungsten carbide of a Vulcanus copy taking the planet's own crude oil and the volcanic rocks' tungsten ore, without which rocket building on Vulcanus copies lost its isolatability before any randomization ran (seed 1 with duplicates, 2026-10-07)
+--   * then each planet keeps one version of a recipe, the one taking the most from its own deposits, and the others go with any original only that planet makes, unless the planet would lose something without them (cut_extra_versions, user 2026-10-10: "The goal is to reduce recipe bloat")
 -- (Tying each copy to its material in the logic instead kept the game whole too, but first pass couldn't keep what the ties made possible once identities moved, and moved nothing at all)
 -- Item randomization then sees each planet's copy as an item of its own, whose position is that planet's deposits and the variants taking it there, and moves it like any other item: a planet's deposits and those variants change together, independently of other planets
 -- The rule that keeps two useless items from trading places (item_fluid.realized_assignment) treats copies like their ores, so a deposit only changes to an item that does something on its own; first pass's newness rule for deposits also asks for something the planet didn't mine (lib/deposit-copies.lua's is_new_for)
--- After each unified attempt, collapse renames the copies back to their materials, so the game has one iron ore again, and drops the variants that came out the same as their originals or as one another (a planet whose deposits kept their material); the others stay, locked to their planets, beside the originals
+-- After each unified attempt, collapse renames the copies back to their materials, so the game has one iron ore again, and drops the variants that came out the same as their originals or as one another (a planet whose deposits kept their material); the others stay, locked to their planets, beside the originals that are left
 -- Merging the copies mostly only adds ways to get things the logic didn't count, but machines that pick their recipe by ingredient can't keep everything: the recycler has one recipe per item, so a material keeps one of the recycling recipes its copies had (lib/recycling.lua's regenerate), and two furnace recipes whose ingredients became one material collide
 -- First pass knows which recycling recipes go (recycling.lost_to_merges, the rule regenerate keeps by), so no matching relies on them and neither does the rest of randomization (2026-10-09)
 -- The attempt's checks run on the collapsed game, so an attempt whose model relied on what was lost there, like a furnace collision, is retried
@@ -279,18 +280,21 @@ local function materials_with_copies(recipe, planet_name, copy_for)
     return materials
 end
 
--- Makes a recipe a planet's version: it takes the planet's copies of the materials in mixed (material key --> true), and says so (deposit_local; deposit_local_unlocked for protection, deposit_hand_recycled for recycling, see markers)
+-- Makes a recipe a planet's version: it takes the planet's copies of the materials in mixed (material key --> true), and says so (deposit_local, with how many ingredients come from the planet's own deposits; deposit_local_unlocked for protection, deposit_hand_recycled for recycling, see markers)
 local function localize(recipe, planet_name, copy_for, markers, mixed)
+    local num_local = 0
     for _, ingredient in pairs(recipe.ingredients or {}) do
         local material_key = key(ingredient.type or "item", ingredient.name)
         local copy_name = (copy_for[material_key] or {})[planet_name]
         if copy_name ~= nil and mixed[material_key] ~= nil then
             ingredient.name = copy_name
+            num_local = num_local + 1
         end
     end
     recipe.deposit_local = {
         original = markers.original,
         planet = planet_name,
+        num_local = num_local,
     }
     if markers.unlocked == true then
         recipe.deposit_local_unlocked = true
@@ -300,19 +304,169 @@ local function localize(recipe, planet_name, copy_for, markers, mixed)
     end
 end
 
+-- Cuts each planet's versions of a recipe down to one (user, 2026-10-10: "The goal is to reduce recipe bloat"):
+--   * the version taking the most from the planet's own deposits stays
+--   * the planet's other versions go, and so does the original when that planet alone makes it (a planetary version, or a planet copy's own recipe), since the version stands in for it there
+--   * except a recipe the planet would lose something with: a context of it that no recipe staying has (copies.choose_cuts, in prune_variants' sort of the game with every variant in it), or still has once the cut ones are gone (copies.uncovered_cuts, in a sort of the game without them, since a recipe staying may have been had through one cut, like a deposit getting started with a version taking rocks' ore); those are put back
+--   * an original also owes what the variants dropped there relied on it for, since they went because it stays
+--   * hand-written recycling recipes stay, since the recycler generates no recycling for their item while they're there (is_hand_recycling)
+-- variants_of: original recipe name --> its kept variants, which loses the ones cut; dropped: recipe name --> true, which gains them; dropped_on: original recipe name --> planet name --> its variants dropped there
+-- sort_info and home_sets: the sort prune_variants made, and its home sets
+-- Leaves the dropped and cut recipes out of data.raw, and the logic built without them (prune_variants drops them again, which changes nothing)
+-- Returns how many it cut
+local function cut_extra_versions(variants_of, dropped, dropped_on, sort_info, home_sets)
+    -- The contexts of the recipes, each once, in order
+    local function owed(names)
+        local seen = {}
+        local list = {}
+        for _, name in pairs(names) do
+            for context, _ in pairs(sort_info.node_to_context_inds[key("recipe", name)] or {}) do
+                if seen[context] == nil then
+                    seen[context] = true
+                    table.insert(list, context)
+                end
+            end
+        end
+        table.sort(list)
+        return list
+    end
+    local groups = {}
+    for _, recipe_name in pairs(sorted_keys(variants_of)) do
+        local original = data.raw.recipe[recipe_name]
+        local accepted = surface_sets.accepted(original)
+        local on_planet = {}
+        for _, name in pairs(variants_of[recipe_name]) do
+            local planet_name = data.raw.recipe[name].deposit_local.planet
+            on_planet[planet_name] = on_planet[planet_name] or {}
+            table.insert(on_planet[planet_name], name)
+        end
+        for _, planet_name in pairs(sorted_keys(on_planet)) do
+            local versions = on_planet[planet_name]
+            table.sort(versions, function(a, b)
+                local num_a = data.raw.recipe[a].deposit_local.num_local
+                local num_b = data.raw.recipe[b].deposit_local.num_local
+                if num_a ~= num_b then
+                    return num_a > num_b
+                end
+                return a < b
+            end)
+            local group = {
+                planet_name = planet_name,
+                original = recipe_name,
+                members = {},
+                candidates = {},
+            }
+            for i, name in pairs(versions) do
+                table.insert(group.members, name)
+                if i > 1 then
+                    table.insert(group.candidates, {
+                        name = name,
+                        owes = owed({ name }),
+                    })
+                end
+            end
+            if accepted[key("planet", planet_name)] ~= nil then
+                table.insert(group.members, recipe_name)
+                if count(accepted) == 1 and not is_hand_recycling(original) then
+                    local names = { recipe_name }
+                    for _, name in pairs((dropped_on[recipe_name] or {})[planet_name] or {}) do
+                        table.insert(names, name)
+                    end
+                    table.insert(group.candidates, {
+                        name = recipe_name,
+                        owes = owed(names),
+                    })
+                end
+            end
+            if #group.candidates > 0 then
+                table.insert(groups, group)
+            end
+        end
+    end
+    local function has_in(contexts_of)
+        return function(name, context)
+            return top.provides_context(contexts_of[key("recipe", name)] or {}, context)
+        end
+    end
+    local cut, why = copies.choose_cuts(groups, has_in(sort_info.node_to_context_inds))
+    local num_put_back = 0
+    if next(cut) ~= nil then
+        local saved = copies.save_recipes(data.raw, cut)
+        local gone = {}
+        for name, _ in pairs(dropped) do
+            gone[name] = true
+        end
+        for name, _ in pairs(cut) do
+            gone[name] = true
+        end
+        copies.drop_recipes(data.raw, gone)
+        combat_encounters.reset()
+        logic.build()
+        local after = top.sort(logic.graph, nil, nil, {
+            complex_contexts = true,
+            home_contexts = true,
+            home_sets = home_sets,
+        })
+        local uncovered = copies.uncovered_cuts(groups, cut, has_in(after.node_to_context_inds))
+        copies.restore_recipes(data.raw, saved, uncovered)
+        for name, context in pairs(uncovered) do
+            cut[name] = nil
+            why[name] = context
+            num_put_back = num_put_back + 1
+        end
+    end
+    local num_versions = 0
+    local num_originals = 0
+    local num_stayed = 0
+    for _, group in pairs(groups) do
+        local cut_names = {}
+        local stayed_names = {}
+        for _, candidate in pairs(group.candidates) do
+            if cut[candidate.name] ~= nil then
+                table.insert(cut_names, candidate.name)
+                if candidate.name == group.original then
+                    num_originals = num_originals + 1
+                else
+                    num_versions = num_versions + 1
+                end
+            else
+                table.insert(stayed_names, candidate.name .. (why[candidate.name] ~= nil and (" (" .. top.context_name(why[candidate.name]) .. ")") or ""))
+                num_stayed = num_stayed + 1
+            end
+        end
+        log("Independent deposits: " .. group.original .. " on " .. group.planet_name .. " keeps " .. group.members[1] .. (#cut_names > 0 and ("; cut " .. table.concat(cut_names, ", ")) or "") .. (#stayed_names > 0 and ("; kept for what the planet would lose without them: " .. table.concat(stayed_names, ", ")) or ""))
+    end
+    for name, _ in pairs(cut) do
+        dropped[name] = true
+    end
+    for _, recipe_name in pairs(sorted_keys(variants_of)) do
+        local kept = {}
+        for _, name in pairs(variants_of[recipe_name]) do
+            if cut[name] == nil then
+                table.insert(kept, name)
+            end
+        end
+        variants_of[recipe_name] = kept
+    end
+    log("Independent deposits: each planet keeps one version of a recipe: " .. num_versions .. " other versions and " .. num_originals .. " originals only their planet made were cut, " .. num_stayed .. " kept for what their planet would lose without them (" .. num_put_back .. " of them put back after a sort without the cut ones)")
+    return num_versions + num_originals
+end
+
 -- Drops the variants their planet can't make from its own resources (an isolatable context in its room, top.isolatable_in), in a sort of the game with every variant in it, sorted like the game the rest of randomization starts from (data-final-fixes.lua's prepare_world)
 -- Isolatable asks that of the machines too: a delivered building only counts where the planet can then make more of it (lib/logic/bootstrap.lua), so Aquilo's oil processing variants go, its refineries coming from elsewhere
 -- Keeping a planet able to make a recipe without imports once its deposits change is what a variant does: its deposits and the variant change together
 -- A variant that needs imports anyway protects nothing, since the import could bring the material too, which the original still takes there (the resource swaps' planet variants follow the same rule, randomizations/planetary/resources.lua)
+-- Then each planet keeps one version of a recipe (cut_extra_versions), chosen in the same sort and checked in one without the recipes cut
 -- variants_of: original recipe name --> its variants' names, changed to the ones kept; home_sets: the home sets to sort with, or nil for the game's own
 -- Returns how many it dropped
 local function prune_variants(variants_of, home_sets)
     combat_encounters.reset()
     logic.build()
+    local sort_home_sets = home_sets or top.home_sets(logic.graph)
     local sort_info = top.sort(logic.graph, nil, nil, {
         complex_contexts = true,
         home_contexts = true,
-        home_sets = home_sets or top.home_sets(logic.graph),
+        home_sets = sort_home_sets,
     })
     -- Planet names in order of first appearance, with how many variants each has when that's more than one, like "vulcanus (3), gleba"
     local function planets_text(planet_names)
@@ -333,6 +487,8 @@ local function prune_variants(variants_of, home_sets)
     end
     local dropped = {}
     local num_dropped = 0
+    -- Original recipe name --> planet name --> the variants dropped there
+    local dropped_on = {}
     for _, recipe_name in pairs(sorted_keys(variants_of)) do
         local kept = {}
         local kept_planets = {}
@@ -346,6 +502,9 @@ local function prune_variants(variants_of, home_sets)
                 dropped[name] = true
                 num_dropped = num_dropped + 1
                 table.insert(dropped_planets, planet_name)
+                dropped_on[recipe_name] = dropped_on[recipe_name] or {}
+                dropped_on[recipe_name][planet_name] = dropped_on[recipe_name][planet_name] or {}
+                table.insert(dropped_on[recipe_name][planet_name], name)
             end
         end
         if #dropped_planets > 0 then
@@ -358,6 +517,7 @@ local function prune_variants(variants_of, home_sets)
             variants_of[recipe_name] = nil
         end
     end
+    num_dropped = num_dropped + cut_extra_versions(variants_of, dropped, dropped_on, sort_info, sort_home_sets)
     copies.drop_recipes(data.raw, dropped)
     local lists = option_lists()
     for name, _ in pairs(dropped) do
