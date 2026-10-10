@@ -433,7 +433,8 @@ randomizations.rebuild_tech_tree = function()
         end
         return found
     end
-    local function covers(prereq_tech_name, tech_name, recipe_name)
+    -- With counted (context --> index), only those contexts count, and a prerequisite only has to come before the index there, like the contexts a kept alternate path is kept for and when its recipes are made there (see counted_contexts below)
+    local function covers(prereq_tech_name, tech_name, recipe_name, counted)
         if context_sort_info == nil then
             return true
         end
@@ -445,14 +446,14 @@ randomizations.rebuild_tech_tree = function()
             target_recipes = nci[gutils.key("recipe", recipe_name)] or {}
         end
         for context, ind in pairs(tech_contexts) do
-            if target_recipes == nil or target_recipes[context] ~= nil then
+            if (target_recipes == nil or target_recipes[context] ~= nil) and (counted == nil or counted[context] ~= nil) then
                 if prereq_contexts[context] == nil then
                     return false
                 end
                 -- The witness may unlock this prerequisite through an alternate technology.
                 -- Substituting a later primary can create a cycle even though it has the same contexts.
                 -- A copied research method can legitimately arrive after an alternate recipe unlock.
-                local target_ind = math.max((target_recipes or {})[context] or ind, ind)
+                local target_ind = math.max((target_recipes or counted or {})[context] or ind, ind)
                 if prereq_contexts[context] >= target_ind then
                     return false
                 end
@@ -497,12 +498,8 @@ randomizations.rebuild_tech_tree = function()
         return data.raw.recipe[recipe_name].enabled == false and (recipe_to_unit[recipe_name] ~= nil or recipe_to_research_trigger[recipe_name] ~= nil)
     end
 
-    -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
-    -- A random prereq could need what the tech itself gives (like one of the discovered planet's science packs), which would make it unresearchable, and shifted worlds (randomizations/planetary) move which techs those are
-    local function logic_needs(tech_node)
-        if retained_unlocks[tech_node.name] ~= nil then
-            return true
-        end
+    -- Whether the logic needs a tech for something other than its recipe unlocks and as a prerequisite (like a planet's discovery)
+    local function needed_for_more(tech_node)
         for dep, _ in pairs(tech_node.dep) do
             local edge = graph.edges[dep]
             if graph.nodes[edge.stop].type ~= "technology" and not unlock_contraction.is_unlock_edge(graph, edge) then
@@ -510,6 +507,22 @@ randomizations.rebuild_tech_tree = function()
             end
         end
         return false
+    end
+    -- Techs the logic needs for something other than their recipe unlocks and as prerequisites (like planet discovery), which keep their place in progression instead of getting a random prereq below
+    -- A random prereq could need what the tech itself gives (like one of the discovered planet's science packs), which would make it unresearchable, and shifted worlds (randomizations/planetary) move which techs those are
+    local function logic_needs(tech_node)
+        return retained_unlocks[tech_node.name] ~= nil or needed_for_more(tech_node)
+    end
+    -- The contexts that count for the prerequisites of a tech kept only as an alternate unlock path: those it's kept for, with when its recipes are made there (rebuild_unlocks.kept_for), or nil for every context of the tech (see covers)
+    -- Elsewhere its recipe's own tech unlocks the recipe, so it can wait there, and what other techs need from it is checked in the rebuilt game (rebuild_check below), as for a rebuilt tech outside where its recipe is made
+    -- Like Coal synthesis (Unlock 2) in the user's 2026-10-10 game, researched by crafting iron ore and kept for Fulgora: cannon shells, the earliest way to craft iron ore, can be had on Fulgora from its own resources, but not on Gleba 2, where the recipe's own tech unlocks it anyway, and the tech got no prerequisite at all
+    local kept_for = rebuild_unlocks.kept_for(recipe_to_source_tech, context_sort_info, retained_unlocks)
+    local function counted_contexts(tech_name)
+        local node = graph.nodes[gutils.key("technology", tech_name)]
+        if kept_for[tech_name] == nil or node == nil or needed_for_more(node) then
+            return nil
+        end
+        return kept_for[tech_name]
     end
 
     -- Whether a tech on the witness of recipe_name (nil for a tech's witness) is needed as itself: it keeps its place (see logic_needs), so like a planet's discovery it stays in the tree, and what needs it should need it rather than only what its research needs
@@ -621,6 +634,36 @@ randomizations.rebuild_tech_tree = function()
             needed_tech_to_prev[node.name], needed_tech_to_needed[node.name] = prev_recipes_of(ind, false)
             if needed_of ~= nil then
                 needed_tech_to_needed[node.name] = needed_techs(needed_tech_to_needed[node.name], needed_of(pebble_key))
+            end
+            -- A kept alternate path also takes what its recipes need where it's kept for (see counted_contexts), as a recipe's own tech takes what the recipe needs: the recipes on the witness of each recipe's first pebble in those contexts in context_sort_info, whose context says which room and abilities, within the room (witness_recipes.in_room)
+            -- There the recipe is unlocked through a kept path, so its witness also takes what the path's research needs in that room
+            -- Like Electrolyte (Unlock 2) in the user's 2026-10-10 game, researched by crafting a crusher and kept for Vulcanus and Fulgora 2: the earliest way to craft one anywhere was Fulgora 2's own holmium plate recipe, which Vulcanus can't make, so it couldn't be a prerequisite (covers), while the plain holmium plate recipe that Vulcanus crafts crushers with can; and electrolyte's ingredients on Vulcanus come before it, as they come before Electrolyte (Unlock 1)
+            -- Not how to get to the room: that's the room's discovery and travel, which a recipe's own tech doesn't wait for either
+            local counted = counted_contexts(node.name)
+            if counted ~= nil then
+                local kept_recipes = {}
+                for recipe_name, _ in pairs(retained_unlocks[node.name]) do
+                    table.insert(kept_recipes, recipe_name)
+                end
+                table.sort(kept_recipes)
+                for _, recipe_name in pairs(kept_recipes) do
+                    local recipe_inds = context_sort_info.node_to_context_inds[gutils.key("recipe", recipe_name)] or {}
+                    local first
+                    for context, _ in pairs(counted) do
+                        if recipe_inds[context] ~= nil and (first == nil or recipe_inds[context] < first) then
+                            first = recipe_inds[context]
+                        end
+                    end
+                    if first ~= nil then
+                        -- A context a listed pebble stands for has that pebble's rank (top.implied_ability_contexts), which is where its witness starts
+                        for prev_recipe_name, _ in pairs(witness_recipes.in_room(graph, context_sort_info, math.ceil(first), gets_tech)) do
+                            -- Not the recipe's own tech, which another of its pebbles there can stand for
+                            if prev_recipe_name ~= recipe_name then
+                                needed_tech_to_prev[node.name][prev_recipe_name] = true
+                            end
+                        end
+                    end
+                end
             end
         end
     end
@@ -756,7 +799,7 @@ randomizations.rebuild_tech_tree = function()
                 for prev_recipe_name, _ in pairs(needed_tech_to_prev[tech.name]) do
                     if data.raw.technology["exfret-rebuilt-" .. prev_recipe_name .. "-suffix"] ~= nil then
                         -- Like the rebuilt techs, only if it can't take away a context (see covers)
-                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name) then
+                        if recipe_to_source_tech[prev_recipe_name] == nil or covers(recipe_to_source_tech[prev_recipe_name], tech.name, nil, counted_contexts(tech.name)) then
                             table.insert(prereqs, "exfret-rebuilt-" .. prev_recipe_name .. "-suffix")
                             num_kept = num_kept + 1
                         else
@@ -850,7 +893,7 @@ randomizations.rebuild_tech_tree = function()
         if not is_new_tech[tech_name] then
             for _, needed_name in pairs(sorted_names(needed_tech_to_needed[tech_name])) do
                 add_needed(tech_name, needed_name, function(prereq_name)
-                    return covers(prereq_name, tech_name)
+                    return covers(prereq_name, tech_name, nil, counted_contexts(tech_name))
                 end)
             end
         end
@@ -1296,6 +1339,36 @@ randomizations.rebuild_tech_tree = function()
         end
     end
     log("Tech tree rebuild: " .. num_split .. " kept alternate unlock paths got techs of their own (Unlock 2 and up), copied from " .. #split_originals .. " original techs" .. (#split_originals > 0 and (": " .. table.concat(split_originals, ", ")) or ""))
+    -- Techs a player sees at the start of the tree, with no prerequisites, though their recipe or research needs recipes other techs unlock (like crafting an item no starting recipe makes)
+    -- The recipes are from the witnesses above: a rebuilt tech's recipe and research (recipe_to_prev, research_requirements), a kept tech's own (needed_tech_to_prev), or a numbered copy's original's
+    local num_unplaced = 0
+    local unplaced_examples = {}
+    for _, tech_name in pairs(sorted_names(data.raw.technology)) do
+        local tech = data.raw.technology[tech_name]
+        if not tech.hidden and #(tech.prerequisites or {}) == 0 then
+            local requirements
+            if is_new_tech[tech_name] then
+                requirements = {}
+                for prev_recipe_name, _ in pairs(recipe_to_prev[new_tech_recipes[tech_name]] or {}) do
+                    requirements[prev_recipe_name] = true
+                end
+                for prev_recipe_name, _ in pairs(research_requirements[new_tech_sources[tech_name]] or {}) do
+                    requirements[prev_recipe_name] = true
+                end
+            elseif split_copies[tech_name] ~= nil then
+                requirements = needed_tech_to_prev[split_copies[tech_name].original]
+            else
+                requirements = needed_tech_to_prev[tech_name]
+            end
+            if next(requirements or {}) ~= nil then
+                num_unplaced = num_unplaced + 1
+                if #unplaced_examples < 5 then
+                    table.insert(unplaced_examples, tech_name .. " (needs " .. sorted_names(requirements)[1] .. ")")
+                end
+            end
+        end
+    end
+    log("Tech tree rebuild: " .. num_unplaced .. " techs have no prerequisites though their recipe or research needs recipes other techs unlock" .. (num_unplaced > 0 and (" (e.g. " .. table.concat(unplaced_examples, ", ") .. ")") or ""))
 
     -- How preferring a planet's own recipes worked out (see prev_recipes_of), and the prerequisites left that unlock a recipe for elsewhere
     if context_sort_info ~= nil then

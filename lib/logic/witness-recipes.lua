@@ -262,6 +262,28 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
     return recipes, techs
 end
 
+-- The names of the recipes that get a tech (gets_tech) the pebble at ind in sort_info directly needs within its room, as a set: the witness doesn't go past room nodes, so it says what the pebble takes where it is, not how to get there
+-- For a sort with complex contexts, where the pebble's context names its room and abilities: like crafting a crusher from Vulcanus's own resources, for a tech kept for its recipe on Vulcanus (see rebuild_unlocks.kept_for)
+witness_recipes.in_room = function(graph, sort_info, ind, gets_tech)
+    local function has_tech(node_key)
+        local node = graph.nodes[node_key]
+        return node.type == "recipe" and gets_tech(node.name)
+    end
+    local path_info = top.path(graph, {ind}, sort_info, {
+        stop_if = function(node_key)
+            return has_tech(node_key) or type(logic.type_info[graph.nodes[node_key].type].context) == "string"
+        end,
+    })
+    local recipes = {}
+    for other_ind, _ in pairs(path_info.in_path) do
+        local other_key = sort_info.pebble_keys[other_ind]
+        if other_ind < ind and has_tech(other_key) then
+            recipes[graph.nodes[other_key].name] = true
+        end
+    end
+    return recipes
+end
+
 -- Use the research method actually copied onto the rebuilt technology.
 -- A recipe's earliest witness can use another unlocking technology or a fixed recipe instead.
 -- Technology prerequisites have already been removed from this graph, leaving the recipes needed for the science packs or the research trigger itself.

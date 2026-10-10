@@ -63,6 +63,41 @@ unlocks.retained = function(technologies, sources, sort_info, graph)
     return retained
 end
 
+-- The contexts each kept path (from unlocks.retained) is kept for, as tech name --> context --> the earliest index of the recipes it's kept for there (sort_info's, the sort retained was given)
+-- Those are the contexts of a recipe it's kept for that it has and the recipe's own tech (sources) doesn't, so elsewhere the recipe's own tech unlocks the recipe
+-- A path kept because the recipe's own tech needs the recipe there (see depends_on_unlock above) is kept for every context of the recipe it has
+unlocks.kept_for = function(sources, sort_info, retained)
+    local kept_for = {}
+    if sort_info == nil then
+        return kept_for
+    end
+    local contexts = sort_info.node_to_context_inds
+    for name, recipes in pairs(retained) do
+        local alternate = contexts[gutils.key("technology", name)] or {}
+        local found = {}
+        for recipe_name, _ in pairs(recipes) do
+            local selected = contexts[gutils.key("technology", sources[recipe_name] or "")] or {}
+            local recipe_contexts = contexts[gutils.key("recipe", recipe_name)] or {}
+            local any = false
+            for context, ind in pairs(recipe_contexts) do
+                if alternate[context] ~= nil and selected[context] == nil then
+                    found[context] = math.min(found[context] or ind, ind)
+                    any = true
+                end
+            end
+            if not any then
+                for context, ind in pairs(recipe_contexts) do
+                    if alternate[context] ~= nil then
+                        found[context] = math.min(found[context] or ind, ind)
+                    end
+                end
+            end
+        end
+        kept_for[name] = found
+    end
+    return kept_for
+end
+
 -- Names of a recipe's techs: its rebuilt tech (randomizations/fixes.lua) and the numbered unlocks from unlocks.split
 unlocks.rebuilt_name = function(recipe_name)
     return "exfret-rebuilt-" .. recipe_name .. "-suffix"
