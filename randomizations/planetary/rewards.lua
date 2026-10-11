@@ -9,6 +9,7 @@ local constants = require("helper-tables/constants")
 local dutils = require("lib/data-utils")
 local fluid_ports = require("lib/fluid-ports")
 local furnace_selection = require("lib/furnace-selection")
+local item_craft = require("lib/logic/item-craft")
 local gutils = require("lib/graph/graph-utils")
 local locale_utils = require("lib/locale")
 local lutils = require("lib/logic/logic-utils")
@@ -58,7 +59,7 @@ end
 
 -- Whether a node belongs to a set of rooms in a sort, like check.node_specific_to for one planet: it's only reachable there, or every isolatable context it has is there
 local function specific_to_rooms(sort, node_key, rooms)
-    local contexts = sort.sort_info.node_to_context_inds[node_key] or {}
+    local contexts = item_craft.context_inds(sort.graph, sort.sort_info, node_key)
     if next(contexts) == nil then
         return false
     end
@@ -700,7 +701,7 @@ end
 -- The earliest rank of a node in the sort before, or nil if it's unreachable
 local function rank_of(before, node_key)
     local rank
-    for _, ind in pairs(before.sort_info.node_to_context_inds[node_key] or {}) do
+    for _, ind in pairs(item_craft.context_inds(before.graph, before.sort_info, node_key)) do
         if rank == nil or ind < rank then
             rank = ind
         end
@@ -873,7 +874,7 @@ end
 local function depth_of(before, node_key, rooms, excluded)
     -- Earliest first, so the path walk (path_avoids) stops at the first context that counts
     local contexts = {}
-    for context, ind in pairs(before.sort_info.node_to_context_inds[node_key] or {}) do
+    for context, ind in pairs(item_craft.context_inds(before.graph, before.sort_info, node_key)) do
         local room_key = top.context_room(context)
         if top.context_home(context) == nil and rooms[room_key] ~= nil then
             table.insert(contexts, {
@@ -901,17 +902,9 @@ local function met_by_own_recipe(before, candidate, rooms, excluded)
     if candidate.source_key == nil or gutils.deconstruct(candidate.source_key).type ~= "item-craft" then
         return true
     end
-    local node = before.graph.nodes[candidate.source_key]
-    if node == nil then
-        return false
-    end
     local nci = before.sort_info.node_to_context_inds
-    for pre, _ in pairs(node.pre) do
-        local prekey = before.graph.edges[pre].start
-        local prenode = before.graph.nodes[prekey]
-        if prenode ~= nil and prenode.type == "orand" and next(prenode.pre) ~= nil then
-            prekey = before.graph.edges[next(prenode.pre)].start
-        end
+    for _, source in pairs(item_craft.providers(before.graph, gutils.deconstruct(candidate.source_key).name)) do
+        local prekey = source.key
         local provider = gutils.deconstruct(prekey)
         local recipe = provider.type == "recipe" and data.raw.recipe[provider.name] or nil
         if recipe ~= nil and not recycling.looks_generated(recipe) then

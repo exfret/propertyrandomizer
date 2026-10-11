@@ -576,6 +576,10 @@ gutils.get_buddy = function(graph, conn_node)
 end
 
 gutils.get_owner = function(graph, conn_node)
+    -- A crafting option's base can replace its source OR; its descriptor keeps the original type/name for readers and reports.
+    if conn_node.source_owner ~= nil then
+        return conn_node.source_owner
+    end
     if conn_node.type == "base" then
         return gutils.unique_prenode(graph, conn_node)
     end

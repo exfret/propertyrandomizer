@@ -7,7 +7,7 @@
 local gutils = require("lib/graph/graph-utils")
 local staged = require("lib/graph/staged-sort")
 local top = require("lib/graph/context-sort")
-local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
 
 local settlement = {}
 
@@ -45,7 +45,7 @@ end
 settlement.owed_edges = function(graph, sort_extra, failures, debt)
     local game = table.deepcopy(graph)
     -- The debt has every node logic.build left out (see superpose.union), so the game needs them too for those edges to fit
-    pass_through.expand_all(game)
+    reductions.expand_all(game)
     -- The nodes the game lacks, from the superposition: the old world's own nodes, and nodes the game had when the superposition was made but lost since (see below)
     local added_nodes = {}
     local function add_node(node_key)

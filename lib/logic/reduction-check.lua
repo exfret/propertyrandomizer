@@ -1,14 +1,15 @@
 -- The both-ways check of graph reductions (lib/logic/reductions.lua), with the hidden test-reductions setting: logic.build makes every graph twice from the same data.raw, full and reduced, and this compares them
 -- A REDUCTIONCHECK line per build says ok or FAILED, which dev/run-tests.py fails a run for:
---   * The full graph, with each spoofed recipe category's node renamed to its group's (lutils.group_rcats), is the reduced graph with its pass-through nodes expanded (lib/logic/pass-through.lua): the same nodes, edges and fields
---   * Every node of the full graph gets the same contexts as the node standing for it in the reduced graph (itself, or its group's recipe-category node), in a simple sort and in one with complex and home contexts; left-out pass-through nodes have none to compare
+--   * The full graph, with each spoofed recipe category's node renamed to its group's (lutils.group_rcats), is the reduced graph with its reductions expanded: the same nodes, edges and fields.
+--   * Every surviving node and every crafting query gets the same contexts in a simple sort and in one with complex and home contexts; left-out pass-through nodes have no query to compare.
 -- Home contexts are recorded without letting a smaller set's context stand for a bigger one's (top.implied_home_contexts), since which of those gets recorded depends on the order pebbles arrive in, and the two graphs reach things in different orders
 -- (Complex contexts without home contexts aren't compared: their discovery rule depends on the order too, and no data-stage sort uses them)
 
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local lutils = require("lib/logic/logic-utils")
-local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
+local item_craft = require("lib/logic/item-craft")
 
 local reduction_check = {}
 
@@ -67,9 +68,9 @@ local function differences(a, b)
 end
 
 -- A node's contexts' names, as one string
-local function contexts_text(sort_info, node_key)
+local function contexts_text(graph, sort_info, node_key)
     local names = {}
-    for context, _ in pairs(sort_info.node_to_context_inds[node_key] or {}) do
+    for context, _ in pairs(item_craft.context_inds(graph, sort_info, node_key)) do
         table.insert(names, top.context_name(context))
     end
     table.sort(names)
@@ -83,7 +84,7 @@ reduction_check.compare = function(full, reduced, home_sets, where)
     local problems = {}
 
     local expanded = table.deepcopy(reduced)
-    local num_joined = pass_through.expand_all(expanded)
+    local num_joined = reductions.expand_all(expanded)
     local structure_differences = differences(structure(full), structure(expanded))
     if #structure_differences > 0 then
         table.insert(problems, #structure_differences .. " differences (first: " .. structure_differences[1] .. ")")
@@ -112,9 +113,9 @@ reduction_check.compare = function(full, reduced, home_sets, where)
         local differing = {}
         for node_key, _ in pairs(full.nodes) do
             local reduced_key = stand_in(node_key)
-            if reduced.nodes[reduced_key] ~= nil then
-                local full_text = contexts_text(full_sort, node_key)
-                local reduced_text = contexts_text(reduced_sort, reduced_key)
+            if reduced.nodes[reduced_key] ~= nil or (reduced.item_craft_nodes or {})[reduced_key] ~= nil then
+                local full_text = contexts_text(full, full_sort, node_key)
+                local reduced_text = contexts_text(reduced, reduced_sort, reduced_key)
                 if full_text ~= reduced_text then
                     table.insert(differing, node_key .. (reduced_key ~= node_key and (" (as " .. reduced_key .. ")") or "") .. " [" .. full_text .. "] vs [" .. reduced_text .. "]")
                 end

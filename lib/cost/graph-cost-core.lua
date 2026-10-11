@@ -471,7 +471,7 @@ graph_cost.price_without_recipes = function(graph, prices, material_key, context
         else
             for edge_key, _ in pairs(node.pre) do
                 local edge = edges[edge_key]
-                local pre_price = own_price(edge.start)
+                local pre_price = edge.item_craft ~= true and own_price(edge.start) or nil
                 if pre_price ~= nil then
                     local candidate = through_edge(nodes[edge.start], edge, pre_price, slot)
                     if result == nil or candidate < result then

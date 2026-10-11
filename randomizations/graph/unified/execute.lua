@@ -41,8 +41,9 @@ local recycling = require("lib/recycling")
 local recipe_item_amounts = require("lib/recipe-item-amounts")
 local top = require("lib/graph/context-sort")
 local superpose = require("lib/graph/superpose")
-local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
 local logic = require("lib/logic/init")
+local item_craft = require("lib/logic/item-craft")
 local first_pass = require("randomizations/graph/unified/first-pass")
 local promotion = require("randomizations/graph/unified/skeleton/promotion")
 local balance = require("randomizations/graph/unified/first-pass-balance")
@@ -243,7 +244,7 @@ local function attempt(options)
     logic.build()
     -- The debt has every node logic.build left out (see superpose.union), so this game needs them too for the debt to fit onto its graphs
     if debt ~= nil then
-        pass_through.expand_all(logic.graph)
+        reductions.expand_all(logic.graph)
     end
     test_graph_invariants.test(logic.graph)
     local init_graph = logic.graph
@@ -365,6 +366,17 @@ local function attempt(options)
             end
         end
     end
+    local num_craft_options = item_craft.fuse_options(subdiv_graph)
+    if num_craft_options > 0 then
+        local kept_deps = {}
+        for _, dep_key in pairs(sorted_deps) do
+            if subdiv_graph.nodes[dep_key] ~= nil then
+                table.insert(kept_deps, dep_key)
+            end
+        end
+        sorted_deps = kept_deps
+        log("Craft production: " .. num_craft_options .. " trigger candidates share their item's production branches")
+    end
     test_graph_invariants.test(subdiv_graph)
 
     -- TEST: Do consistent_sort tests on subdiv_graph
@@ -471,6 +483,7 @@ local function attempt(options)
         local subdiv_graph_to_pass = table.deepcopy(subdiv_graph)
         -- Heads that start detached (like friendly biters') are only there to be claimed, so first pass can't count on them, as the pool graph and promotion don't
         gutils.detach_starting_heads(spoofed_graph_to_pass)
+        item_craft.discard_options(spoofed_graph_to_pass)
         gutils.detach_starting_heads(subdiv_graph_to_pass)
         if SWITCH_PLANETS then
             -- Don't randomize the spoofed graph, since that's used for the initial vanilla sort

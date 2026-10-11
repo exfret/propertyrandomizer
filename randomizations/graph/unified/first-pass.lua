@@ -31,6 +31,7 @@ local recipe_loops = require("lib/recipe-loops")
 local top = require("lib/graph/context-sort")
 local monotone_matching = require("randomizations/graph/unified/skeleton/monotone-matching")
 local replacement_fuel = require("randomizations/graph/unified/skeleton/replacement-fuel")
+local item_craft = require("lib/logic/item-craft")
 local item_fluid = require("lib/item-fluid")
 local deposit_copies = require("lib/deposit-copies")
 local recycling = require("lib/recycling")
@@ -332,7 +333,7 @@ first_pass.execute = function(params)
             if prenode.type == "orand" then
                 prenode = gutils.unique_prenode(split_graph, prenode)
             end
-            local always_on_slot = false
+            local always_on_slot = item_craft.input_edge(split_graph, pre).item_craft == true
             if randomization_info.options.first_pass.always_slot_pre[key(prenode.type, node.type)] ~= nil then
                 always_on_slot = true
                 if (prenode.type == "tile-mine" or prenode.type == "entity-mine") and node.type == "item" then

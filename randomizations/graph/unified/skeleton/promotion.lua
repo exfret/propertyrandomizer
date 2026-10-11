@@ -21,6 +21,7 @@ local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local logic = require("lib/logic/init")
 local protection = require("randomizations/graph/unified/skeleton/protection")
+local item_craft = require("lib/logic/item-craft")
 local recycling_sources = require("lib/logic/recycling-sources")
 local superpose = require("lib/graph/superpose")
 
@@ -187,7 +188,7 @@ promotion.new = function(params)
             local parent_key = graph.orand_to_parent[node_key]
             local child = child_key ~= nil and graph.nodes[child_key] or nil
             local parent = parent_key ~= nil and graph.nodes[parent_key] or nil
-            if child ~= nil and parent ~= nil and child.type == "recipe" and parent.type == "item-craft" then
+            if child ~= nil and parent ~= nil and child.type == "recipe" and (parent.type == "item-craft" or gutils.unique_pre(graph, node).item_craft == true) then
                 local source_name = recycling_sources.get(old_data_raw)[child.name]
                 local source_key = source_name ~= nil and key("recipe", source_name) or nil
                 if source_key ~= nil and graph.nodes[source_key] ~= nil then
@@ -208,7 +209,7 @@ promotion.new = function(params)
     -- recipe key --> material key --> true: ingredients a recipe must keep because a promise relies on its recycling returning them
     local pins = {}
     local num_pins = 0
-    -- item-craft key --> list of recycling recipe keys that return it only because of a resolved recipe's new ingredients
+    -- Production aggregator key (item-craft, folded item or crafting option base) --> list of recycling recipes that return it only because of a resolved recipe's new ingredients.
     local new_providers = {}
     -- Turned off while promising mechanics that don't need derived recycling
     local allow_derived = true
@@ -249,11 +250,10 @@ promotion.new = function(params)
             for _, owner_key in pairs(owner_keys) do
                 local owner = gutils.deconstruct(owner_key)
                 if owner.type == "item" then
-                    local item_craft_key = key("item-craft", owner.name)
-                    local item_craft = graph.nodes[item_craft_key]
-                    if item_craft ~= nil then
+                    for _, item_craft_key in pairs(item_craft.targets(graph, owner.name)) do
+                        local target = graph.nodes[item_craft_key]
                         local exists = false
-                        for pre, _ in pairs(item_craft.pre) do
+                        for pre, _ in pairs(target.pre) do
                             if graph.orand_to_child[graph.edges[pre].start] == recycling_key then
                                 exists = true
                             end

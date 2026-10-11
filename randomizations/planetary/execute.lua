@@ -37,6 +37,7 @@ local top = require("lib/graph/context-sort")
 local staged = require("lib/graph/staged-sort")
 local superpose = require("lib/graph/superpose")
 local settlement = require("lib/graph/settlement")
+local item_craft = require("lib/logic/item-craft")
 local unlock_contraction = require("lib/logic/unlock-contraction")
 local planetary_check = require("randomizations/planetary/check")
 local protection = require("randomizations/graph/unified/skeleton/protection")
@@ -651,6 +652,15 @@ local function run_locks(logic, state)
                     graph = table.deepcopy(without.graph)
                 end
                 unlock_contraction.expand(graph, recipe_name)
+            end
+        end
+        for _, edge in pairs(add) do
+            local source = gutils.deconstruct(edge.start)
+            if source.type == "item-craft" and graph.nodes[edge.start] == nil then
+                if graph == without.graph then
+                    graph = table.deepcopy(without.graph)
+                end
+                item_craft.expand(graph, source.name)
             end
         end
         local sorted = staged.sort({

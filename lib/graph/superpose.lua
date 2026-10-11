@@ -6,6 +6,7 @@
 local gutils = require("lib/graph/graph-utils")
 local top = require("lib/graph/context-sort")
 local pass_through = require("lib/logic/pass-through")
+local reductions = require("lib/logic/reductions")
 
 local superpose = {}
 
@@ -35,10 +36,10 @@ superpose.union = function(new_graph, old_graph)
     local graph = table.deepcopy(new_graph)
     -- Both games have every node logic.build left out (lib/logic/pass-through.lua), so their edges line up: a recipe whose technology changed between them is unlocked by either, not only with both
     -- Graphs taking the debt need that shape too (superpose.add_debt, settlement.owed_edges)
-    pass_through.expand_all(graph)
-    if #pass_through.joined_edges(old_graph) > 0 then
+    reductions.expand_all(graph)
+    if #pass_through.joined_edges(old_graph) > 0 or next(old_graph.item_craft_nodes or {}) ~= nil then
         old_graph = table.deepcopy(old_graph)
-        pass_through.expand_all(old_graph)
+        reductions.expand_all(old_graph)
     end
     local old_nodes = {}
     for node_key, node in pairs(old_graph.nodes) do

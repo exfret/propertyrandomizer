@@ -10,6 +10,7 @@ local dutils = require("lib/data-utils")
 local fluid_ports = require("lib/fluid-ports")
 local furnace_selection = require("lib/furnace-selection")
 local lutils = require("lib/logic/logic-utils")
+local item_craft = require("lib/logic/item-craft")
 local recycling = require("lib/recycling")
 
 local item_fluid = {}
@@ -724,14 +725,9 @@ item_fluid.rewire_form_change = function(graph, slot_key, trav_key)
                 make_unreachable(graph, node_key)
             end
             if user.makes > 0 then
-                for _, prenode in pairs(real_prenodes(graph, slot)) do
-                    if prenode.type == "item-craft" then
-                        for pre, _ in pairs(table.deepcopy(prenode.pre)) do
-                            local orand = gutils.prenode(graph, pre)
-                            if orand.type == "orand" and gutils.key(real_prenode(graph, orand)) == node_key then
-                                remove_orand(graph, gutils.key(orand))
-                            end
-                        end
+                for _, provider in pairs(item_craft.providers(graph, position.name)) do
+                    if provider.key == node_key and graph.nodes[provider.branch_key].type == "orand" then
+                        remove_orand(graph, provider.branch_key)
                     end
                 end
             end

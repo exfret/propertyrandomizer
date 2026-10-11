@@ -17,6 +17,7 @@ local rng = require("lib/random/rng")
 local logic = require("lib/logic/init")
 local context_costs = require("lib/cost/context-costs")
 local research_triggers = require("lib/research-triggers")
+local item_craft = require("lib/logic/item-craft")
 local protection = require("randomizations/graph/unified/skeleton/protection")
 
 local tech_triggers = {}
@@ -116,6 +117,19 @@ tech_triggers.spoof = function(graph)
         op = "OR",
         spoof = true,
     })
+    -- Folded craft nodes are temporary production groups.
+    -- Once claimed, each is merged into its option base, sharing the item's recipe branches.
+    local craft_names = {}
+    for node_key, _ in pairs(graph.item_craft_nodes or {}) do
+        local name = gutils.deconstruct(node_key).name
+        if items[name] ~= nil and research_triggers.item_ok(items[name]) then
+            table.insert(craft_names, name)
+        end
+    end
+    table.sort(craft_names)
+    for _, name in pairs(craft_names) do
+        item_craft.add_option(graph, name)
+    end
     -- Every option gets a base, from an edge into the sink whose head starts detached; claiming only reaches the edges of what's reachable, so only that gets one
     local option_keys = {}
     local options = {}

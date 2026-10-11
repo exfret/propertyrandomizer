@@ -119,6 +119,7 @@ local pass_through = require(lib_name .. "/logic/pass-through")
 local reductions = require(lib_name .. "/logic/reductions")
 local reduction_check = require(lib_name .. "/logic/reduction-check")
 local unlock_contraction = require(lib_name .. "/logic/unlock-contraction")
+local item_craft = require(lib_name .. "/logic/item-craft")
 
 local key = gutils.key
 
@@ -262,6 +263,7 @@ local function build(extra_params)
     if reductions.enabled then
         unlock_contraction.contract(logic.graph)
         pass_through.contract(logic.graph)
+        item_craft.contract(logic.graph)
     end
 
 ----------------------------------------------------------------------------------------------------
