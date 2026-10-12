@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Test the fix pass on unpaid resource requirements in a temporary mod snapshot.
+# Stress the complete planetary resource pipeline, including specialized repairs and the fix pass.
 # Run: python3 dev/test-fix-pass.py
 # The normal run-tests launcher enforces the shared Factorio process limit.
 import importlib.util
@@ -9,47 +9,51 @@ repo = Path(__file__).resolve().parent.parent
 spec = importlib.util.spec_from_file_location('fixpass_runner', str(repo / 'dev/run-tests.py'))
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-base = Path(tempfile.mkdtemp(prefix='fixpass-chooser-', dir='/private/tmp'))
+base = Path(tempfile.mkdtemp(prefix='fixpass-pipeline-', dir='/private/tmp'))
 mod = base / 'propertyrandomizer'
 runner.snapshot(str(mod), None, False, None)
 source = mod / 'data-final-fixes.lua'
 text = source.read_text()
 fixture = '''
--- Verification fixture in the temporary snapshot only: make unpaid resource requirements.
+-- Keep the stress assignment, but let the normal planetary pipeline repair it.
 local stress_resources = require("randomizations/planetary/resources")
 local stress_check = require("randomizations/planetary/check")
-local stress_saved = table.deepcopy(data.raw)
-local stress_before = stress_check.sort(new_logic)
-stress_resources.execute("fixpass-chooser-stress")
-local stress_after = stress_check.sort(new_logic)
-local stress_lost = stress_check.required_failures(stress_before, stress_after, {})
-log("FIXPASS STRESS initial failures: " .. #stress_lost)
-assert(#stress_lost > 0, "The fixture needs unpaid prerequisites")
-local stress_remaining = fix_pass.run({
-    logic = new_logic,
-    unified = unified,
-    before = stress_before,
-    after = stress_after,
-    variants_of = {},
-})
-local stress_old_failures = {}
-for _, failure in pairs(stress_lost) do
-    stress_old_failures[failure.text] = true
+local stress_execute = stress_resources.execute
+local stress_lost
+stress_resources.execute = function()
+    local before = stress_check.sort(new_logic)
+    local slots, assignment, lost = stress_execute("fixpass-chooser-stress")
+    local after = stress_check.sort(new_logic)
+    stress_lost = stress_check.required_failures(before, after, {})
+    log("FIXPASS STRESS initial failures: " .. #stress_lost)
+    assert(#stress_lost > 0, "The fixture needs unpaid resource requirements")
+    return slots, assignment, lost
 end
+'''
+verification = '''
+-- Inspect the completed pipeline before the rest of unified randomization starts.
+assert(stress_lost ~= nil, "The stress resource stage must run")
+assert(stress_check.moved_features.resources == true and planetary.before ~= nil,
+    "The pipeline must keep the resource swap, not skip or undo it")
+local stress_after = stress_check.sort(new_logic)
+local stress_remaining = stress_check.required_failures(
+    planetary.before.sort, stress_after, planetary.before.variants_of)
 for _, failure in pairs(stress_remaining) do
     log("FIXPASS STRESS remaining: " .. failure.text)
-    assert(stress_old_failures[failure.text] ~= nil, "Chooser introduced a new failure: " .. failure.text)
 end
-assert(#stress_remaining == 0, "Chooser must restore every required goal in the fixture")
+assert(#stress_remaining == 0, "The complete planetary pipeline must restore every required goal")
 log("FIXPASS STRESS final failures: " .. #stress_remaining)
--- Restore the normal world so the runner can complete all its ordinary checks.
-data.raw = stress_saved
-prepare_world()
 '''
-text = text.replace('prepare_world()\n\n----------------------------------------------------------------------', 'prepare_world()\n'+fixture+'\n----------------------------------------------------------------------', 1)
+# Require and instrument resources before planetary.execute; verify after run_pending.
+setup_marker = 'local mining_fluids = require("lib/mining-fluids")\n'
+verify_marker = '-- Independent deposits (randomizations/graph/unified/deposit-copies.lua):'
+assert text.count(setup_marker) == 1, 'Planetary setup insertion point changed'
+assert text.count(verify_marker) == 1, 'Planetary verification insertion point changed'
+text = text.replace(setup_marker, setup_marker + fixture, 1)
+text = text.replace(verify_marker, verification + '\n' + verify_marker, 1)
 source.write_text(text)
 cfg = base / 'configs.txt'
-cfg.write_text((repo / 'tests/configs.txt').read_text().replace('wip unified\n', '') + '\nconfig fix-pass-chooser-stress unified seeds=1 dev-unified=true planetary-fix-pass=true operation-readiness=false\n')
+cfg.write_text((repo / 'tests/configs.txt').read_text().replace('wip unified\n', '') + '\nconfig fix-pass-pipeline-stress unified seeds=1 dev-unified=true planetary-fix-pass=true planetary-resources=true operation-readiness=false\n')
 runner.CONFIGS = str(cfg)
 print('Stress fixture snapshot: ' + str(mod), flush=True)
-raise SystemExit(runner.main(['unified', '--modset', 'sa', '--only', 'fix-pass-chooser-stress', '--jobs', '1', '--dir', str(mod)]))
+raise SystemExit(runner.main(['unified', '--modset', 'sa', '--only', 'fix-pass-pipeline-stress', '--jobs', '1', '--dir', str(mod)]))
