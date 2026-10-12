@@ -167,14 +167,6 @@ unified.has_handlers = #handler_ids > 0
 -- Whether research triggers are randomized (handlers/tech-triggers.lua), for data-final-fixes.lua's split of trigger technologies before the tech tree rebuild (research_triggers.split_technologies)
 unified.randomizes_triggers = handlers["tech-triggers"] ~= nil
 
--- Planetary changes in superposed mode (any planetary stage with the planetary-superposed setting) hand over the game before them as debt for first pass and promotion (see randomizations/planetary/execute.lua), or nil
-local function planetary_debt()
-    if config.planetary then
-        return planetary.superposed
-    end
-    return nil
-end
-
 -- One attempt (see unified.execute below)
 -- Repair mode uses the same prerequisite chooser before first pass, only at unpaid requirements.
 local function attempt(options)
@@ -183,7 +175,7 @@ local function attempt(options)
     local do_first_pass = DO_FIRST_PASS and not repair_only
     local handlers = handlers
     local handler_ids = handler_ids
-    local debt = options.debt or planetary_debt()
+    local debt = options.debt
     if repair_only then
         assert(USE_PROMOTION and debt ~= nil, "Prerequisite repairs need promotion and the previous game's requirements")
         handlers = {}
@@ -268,7 +260,7 @@ local function attempt(options)
 
     local sort_for_claiming = top.sort(spoofed_graph, nil, nil, { choose_randomly = true })
     log_info(2, "NUM PEBBLES: " .. tostring(#sort_for_claiming.pebble_keys))
-    -- The dependents to randomize come from a sort that includes planetary changes' debt when there is one (superposed mode): a recipe only the debt reaches (a planet's science pack once its machine moved away) has no pebble in the game's own sort, and a recipe with no pebble here was never randomized, so nothing could ever re-home it; promotion then keeps it owed and the settlement sends the machine home
+    -- Repair mode includes missing requirements in the dependents' sort, so the chooser can repair a recipe that has no context in the actual game yet.
     -- The debt edges live only in this copy: the claimed heads and bases come from subdiv_graph, the game's graph
     local sort_for_deps = sort_for_claiming
     if debt ~= nil then
@@ -499,7 +491,6 @@ local function attempt(options)
         first_pass_info = first_pass.execute({
             spoofed_graph = spoofed_graph_to_pass,
             subdiv_graph = subdiv_graph_to_pass,
-            debt = debt,
             -- With constants.entity_first_pass, entity randomization's slots are first pass positions (see first_pass_rules in handlers/entity.lua)
             entity_rules = constants.entity_first_pass and handlers["entity"] ~= nil and handlers["entity"].first_pass_rules or nil,
         })

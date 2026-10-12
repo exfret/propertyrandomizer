@@ -698,7 +698,7 @@ def check_old_logic(text):
 
 
 def check_conversions(text):
-    # Every end of planetary randomization logs its count; a load can have several (the superposed mode's attempts), and none breaks the rule
+    # Every end of planetary randomization logs its count; check each logged count
     problems = []
     for found, logged_limit, names in CONVERSIONS.findall(text):
         limit = int(logged_limit) if logged_limit != "" else MAX_CONVERSIONS

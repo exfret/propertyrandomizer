@@ -225,7 +225,7 @@ check.moved_features = {}
 -- Goal transport, for goals that follow something a planetary change moved to another room (like a recipe whose planet lock moved, see randomizations/planetary/locks.lua)
 -- node key --> { map = old room --> new room, keep_isolatability = whether the goal stays isolatable in the new room }
 -- Without keep_isolatability, a transported goal keeps its automatability but not its isolatability: it may use imports in the new room (right for a lock, whose planet's resources don't move with it)
--- Every consumer of the goals (check.required_failures, check.transported_goals for superposed mode, and so first pass and promotion) reads them through check.transported_context, so they all agree
+-- Every consumer of the goals (check.required_failures, check.transported_goals for the fix pass, and so first pass and promotion) reads them through check.transported_context, so they all agree
 check.transport = {}
 
 -- Rule 2's goals the stages lost as spare versions of duplicated buildings, as node key --> context --> true, set by check.give_up_spare once their changes are final

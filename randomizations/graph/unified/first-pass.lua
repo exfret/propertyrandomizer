@@ -151,7 +151,7 @@ local function pair_ok(slot, trav)
 end
 
 -- Returns false if first pass failed (so the attempt is retried)
--- params: spoofed_graph and subdiv_graph (unified's graphs of the game, which first pass only reads), debt (optional: planetary changes superposed, see planetary.superposed), and entity_rules (optional: entity randomization's first_pass_rules, given the subdivided graph)
+-- params: spoofed_graph and subdiv_graph (unified's graphs of the game, which first pass only reads), and entity_rules (optional: entity randomization's first_pass_rules, given the subdivided graph)
 first_pass.execute = function(params)
     ----------------------------------------------------------------------------------------------------
     -- CHOOSE SLOTS
@@ -683,7 +683,6 @@ first_pass.execute = function(params)
         end
     end
 
-    -- With planetary changes superposed, goals only their debt reaches must stay reachable with it (see monotone matching's debt goals)
     -- The trades below judge fluid deposits by the matching's own rule, with these parameters
     local matching_params
     matching_params = {
@@ -732,7 +731,6 @@ first_pass.execute = function(params)
             end
             return realized
         end,
-        debt = params.debt,
         connect_extra = connect_pair_extra,
         connect_after = connect_after,
         -- A recycling recipe the recycler generates leads nowhere once a fluid takes the position it recycles (see item_fluid.rewire_form_change), or once its item becomes one with others that keep their own (connect_after above); the game regenerates it for the item identity under the same name, which the checks see reachable, or not at all
@@ -806,7 +804,7 @@ first_pass.execute = function(params)
     if not FORM_SWAPS then
         matching_params.form_swaps = nil
     end
-    local assignment, debt_goals = monotone_matching.run(matching_params)
+    local assignment = monotone_matching.run(matching_params)
     local slot_to_trav = {}
     local trav_to_slot = {}
     for _, slot_key in pairs(slot_keys) do
@@ -876,13 +874,6 @@ first_pass.execute = function(params)
             if (ordered_sort.node_to_context_inds[node_key] or {})[context] == nil then
                 table.insert(lost, node_key .. " @ " .. top.context_name(context))
             end
-        end
-    end
-    -- Goals only the debt reaches stay reachable with it
-    if debt_goals ~= nil then
-        local _, sup_sort = monotone_matching.superposed_sort(split_graph, params.debt)
-        for _, pebble in pairs(monotone_matching.lost_debt_goals(debt_goals, sup_sort)) do
-            table.insert(lost, pebble.node_key .. " @ " .. top.context_name(pebble.context) .. " (with the debt)")
         end
     end
     if #lost > 0 then

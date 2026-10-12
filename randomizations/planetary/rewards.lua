@@ -1,7 +1,7 @@
 -- Planet rewards (setting propertyrandomizer-planetary-rewards): what a planet gives you to build elsewhere moves to another planet (see notes/old/planet-features-plan.md; the current approach is in notes/planetary-approach.md)
 -- A bundle is one technology's planet-locked recipes and buildings that belong to one planet family: their surface conditions accept that family's planets and no other planet (rooms that aren't planets, like space platforms, are fixed members of the lock)
 -- The bundle also carries the technology's own ties to the family: a research trigger only that family can meet, science packs only it makes, and prerequisites that discover it or belong to it
--- Every bundle is logged first (PLANETFEATURES lines, rewards.log), then the reward bundles move (rewards.execute): each member's lock goes to a random other planet (locks.move, so the lock stage's repairs and settlers cover them), and the technology follows: its trigger asks for something the new planet has, its research takes the new planet's science pack, and its prerequisites trade the family's discovery for the new planet's (user, 2026-09-29)
+-- Every bundle is logged first (PLANETFEATURES lines, rewards.log), then the reward bundles move (rewards.execute): each member's lock goes to a random other planet (locks.move, so the lock stage's repairs cover them), and the technology follows: its trigger asks for something the new planet has, its research takes the new planet's science pack, and its prerequisites trade the family's discovery for the new planet's (user, 2026-09-29)
 -- A reward is a member whose results place entities, or a locked building itself: not lightning attractors (the lightning stage moves them with lightning) and not a machine that only crafts the recycler's generated recipes (the recycler, which every production chain uses)
 -- A planet and its copies are one family (surface_sets.family_of): a lock accepts all of them or none, and what's specific to one is specific to the family
 
@@ -1299,7 +1299,7 @@ local function fuel_variants_for(before, bundle, target_rooms, companions, exclu
 end
 
 -- Whether a bundle may go to a planet: something discovers the planet (witness), it isn't the one planet the bundle is on already, and every member recipe can take its ingredients there or swap the ones it can't (target_ingredients)
--- A planet whose discovery needs the bundle may receive it too (user, 2026-09-30; Aquilo's discovery is researched with the three inner planets' science, technology.lua:467-510): the reward's own planet then needs it back until recipe category randomization re-homes its science pack, which the settlement and the lock stage give it (its lock accepts the old planet again and its old technology unlocks it again), so the reward is shared rather than stuck in a research cycle
+-- A planet whose discovery needs the bundle may receive it too (user, 2026-09-30; Aquilo's discovery is researched with the three inner planets' science, technology.lua:467-510): the reward's own planet then needs it back until recipe category randomization re-homes its science pack, which the lock stage gives it (its lock accepts the old planet again and its old technology unlocks it again), so the reward is shared rather than stuck in a research cycle
 local function may_go(before, bundle, room_key, witness, avoid)
     local num_planets = 0
     for _, _ in pairs(bundle.planets) do
@@ -1330,7 +1330,7 @@ end
 -- Draws a target for each bundle (user, 2026-09-30): the special machines (is_special_machine) trade places among their families, so every planet that gave one gets another; the other rewards go to random movable planets
 -- A target is a planet something discovers (discovery_witness), a copy in the bundle's own family included, but not the one planet it's on already (see may_go)
 -- Returns bundle id --> target room key (bundles with no possible target are left out)
--- The optional fits (outside superposed mode) is function(leaving bundle id, arriving bundle id or nil), saying whether the leaving special machine's planet can have its science re-homed into the arriving one's machines; the permutation must suit it everywhere, and a special machine no permutation fits stays
+-- The optional fits is function(leaving bundle id, arriving bundle id or nil), saying whether the leaving special machine's planet can have its science re-homed into the arriving one's machines; the permutation must suit it everywhere, and a special machine no permutation fits stays
 rewards.draw = function(bundles, before, id, fits)
     local key = rng.key({ id = id })
     local planets = movable_planets()
@@ -1353,9 +1353,7 @@ rewards.draw = function(bundles, before, id, fits)
     local special = {}
     for _, bundle_id in pairs(sorted_keys(bundles)) do
         local bundle = bundles[bundle_id]
-        if rewards.pinned[bundle_id] ~= nil then
-            log("Planet reward: " .. bundle.tech .. " stays, since an earlier attempt needed it home")
-        elseif special[bundle.family] == nil and is_special_machine(bundle) then
+        if special[bundle.family] == nil and is_special_machine(bundle) then
             special[bundle.family] = bundle_id
         end
     end
@@ -1410,15 +1408,15 @@ rewards.draw = function(bundles, before, id, fits)
         end
     end
 
-    -- The other rewards, and special machines left without an order (outside superposed mode only those whose planet's science needs no re-homing, since no machine arrives to take it)
+    -- The other rewards, and special machines left without an order (those whose planet's science needs no re-homing, since no machine arrives to take it)
     local is_special = {}
     for _, bundle_id in pairs(special) do
         is_special[bundle_id] = true
     end
     for _, bundle_id in pairs(sorted_keys(bundles)) do
-        if targets[bundle_id] == nil and rewards.pinned[bundle_id] == nil and is_special[bundle_id] ~= nil and fits ~= nil and not fits(bundle_id, nil) then
+        if targets[bundle_id] == nil and is_special[bundle_id] ~= nil and fits ~= nil and not fits(bundle_id, nil) then
             log("Planet reward: " .. bundles[bundle_id].tech .. " stays, since no other planet's machine arrives to take its planet's science")
-        elseif targets[bundle_id] == nil and rewards.pinned[bundle_id] == nil then
+        elseif targets[bundle_id] == nil then
             local bundle = bundles[bundle_id]
             local candidates = {}
             for _, room_key in pairs(planets) do
@@ -1752,30 +1750,6 @@ local function restore_tech(edit)
     tech.prerequisites = table.deepcopy(edit.old.prerequisites)
 end
 
--- Applies a technology edit again after restore_tech
-local function apply_tech(edit)
-    if edit.split ~= nil then
-        if data.raw.technology[edit.split.copy_name] == nil then
-            data:extend({
-                table.deepcopy(edit.copy),
-            })
-        end
-        local source = data.raw.technology[edit.split.source]
-        if source ~= nil then
-            source.effects = table.deepcopy(edit.split.other_effects)
-        end
-        return
-    end
-    local tech = data.raw.technology[edit.tech]
-    if tech == nil then
-        return
-    end
-    tech.effects = table.deepcopy(edit.new.unlock_effects)
-    tech.research_trigger = table.deepcopy(edit.new.research_trigger)
-    tech.unit = table.deepcopy(edit.new.unit)
-    tech.prerequisites = table.deepcopy(edit.new.prerequisites)
-end
-
 -- Takes a recipe out of every technology's unlocks
 local function remove_unlocks(recipe_name)
     for _, technology in pairs(data.raw.technology) do
@@ -1789,7 +1763,7 @@ local function remove_unlocks(recipe_name)
 end
 
 -- The surface conditions of a retired recipe (one that left for a variant on the new planet): a surface property of the mod's own that no surface has a value for, asked for above its default, so no surface meets them
--- The recipe stays in the game, locked to nowhere and unlocked by nothing, so a superposition holds its old planet's lock and unlock as debt edges into OR nodes, and item randomization trades its results like every other recipe's (a recipe taken out of the game left a node only the old world had, whose results didn't follow the trades)
+-- The recipe stays in the game, locked to nowhere and unlocked by nothing; item randomization trades its results like every other recipe's
 -- Not one of the lock stage's pool properties, which come and go with each plan (surface_sets.apply_properties); the prototype is a copy of any surface property, since data.raw has one by then
 local RETIRED_PROPERTY = "propertyrandomizer-retired"
 local function retired_conditions()
@@ -1830,7 +1804,7 @@ local function variant_recipe(recipe, ingredients, target_name)
     return variant
 end
 
--- Re-homing (outside superposed mode, where nothing later pays for what a machine's old planet loses): the special machines trade places (rewards.draw), so each planet's science moves into the machine that arrived there (user, 2026-09-30: machines "permuted like fluids... so that each planet still gets a special machine"; "Recipe category randomization should allow fixes for the home science thing")
+-- Re-homing: the special machines trade places (rewards.draw), so each planet's science moves into the machine that arrived there (user, 2026-09-30: machines "permuted like fluids... so that each planet still gets a special machine"; "Recipe category randomization should allow fixes for the home science thing")
 -- Only what the science needs moves, and the machine keeps its other recipes (user: "keep the machine's original recipes where possible, only fixing for things like the science recipes or things science depends on"); unified recipe-category randomization can change the new categories afterward
 -- A planet whose science doesn't fit the arriving machine keeps its own machine instead of getting copies of recipes (user: "I prefer reversion over extra copies")
 
@@ -1983,15 +1957,11 @@ end
 -- Bundle id --> moved bundle: tech (the edited technology, a copy for a split), source_tech, member_recipes (after-world names), variants (original recipe name --> { name, prototype, original, swaps }), family, planets (its old rooms), target (room key), target_rooms, lock_ids (the members' moved locks, see locks.moved), tech_edit (see edit_tech), and the repair flags tech_restored and variants_reverted
 rewards.moved = {}
 
--- Bundles (by id) an earlier attempt of the rest of randomization needed home (the settlement sent them back, see execute.lua): they stay in every later roll, since a reward can't go back after the attempt without breaking what the attempt promised on its new planet (user, 2026-09-30: a revert rather than a share)
--- Kept across planetary.reset, for the whole load
-rewards.pinned = {}
-
--- Moves the reward bundles of the game in the sort before: each member's lock through locks.move (the lock stage's repairs and settlers then cover them), and the technology through edit_tech
+-- Moves the reward bundles of the game in the sort before: each member's lock through locks.move (the lock stage's repairs then cover them), and the technology through edit_tech
 -- Returns rewards.moved
--- Moves every bundle rewards.draw gives a target: the members' locks move there (locks.move), a member recipe the target can't make as it is gets a variant there with the target's own ingredients and retires (retired_conditions; an in-place swap would take the old planet's ingredient from it too, and an ingredient edge isn't an OR node the superposition could hold as debt), and the technology follows (edit_tech)
+-- Moves every bundle rewards.draw gives a target: the members' locks move there (locks.move), a member recipe the target can't make as it is gets a variant there with the target's own ingredients and retires (retired_conditions; an in-place swap would take the old planet's ingredient from it too), and the technology follows (edit_tech)
 -- variants_of (original recipe name --> variant names, the check's, see check.required_failures) gets the variants, so the originals' goals count as met by them where they went (rewards.transport)
--- options.rehome (outside superposed mode): each special machine's planet has its science re-homed into the machine that arrives there (science_needs, rehome_plan), and the draw only permutes the machines where that fits; options.current is the game as the earlier stages left it, in which the needs are found
+-- options.rehome: each special machine's planet has its science re-homed into the machine that arrives there (science_needs, rehome_plan), and the draw only permutes the machines where that fits; options.current is the game as the earlier stages left it, in which the needs are found
 rewards.execute = function(id, before, variants_of, options)
     local bundles = rewards.reward_bundles(before)
     local rehome = options ~= nil and options.rehome == true
@@ -2278,27 +2248,6 @@ rewards.revert_variants = function(bundle_id)
     locks.realize()
 end
 
-rewards.redo_variants = function(bundle_id)
-    local bundle = rewards.moved[bundle_id]
-    if not bundle.variants_reverted then
-        return
-    end
-    for _, recipe_name in pairs(sorted_keys(bundle.variants)) do
-        local variant = bundle.variants[recipe_name]
-        set_retired(variant, true)
-        if data.raw.recipe[variant.name] == nil then
-            data:extend({
-                table.deepcopy(variant.prototype),
-            })
-        end
-        locks.fix("recipe", variant.name, bundle.target_rooms)
-    end
-    apply_tech(bundle.tech_edit)
-    bundle.tech_restored = false
-    bundle.variants_reverted = false
-    locks.realize()
-end
-
 -- The moved bundle (and its id) one of whose members' locks this is (a locks.moved target id), or nil
 rewards.bundle_of_lock = function(lock_id)
     for bundle_id, bundle in pairs(rewards.moved) do
@@ -2312,7 +2261,7 @@ rewards.bundle_of_lock = function(lock_id)
 end
 
 -- Puts a whole bundle back (user, 2026-09-30: a reward its old planet needs goes back rather than being shared with it): its members' locks, its variants (their retired originals as they were) and its technology as it was; the bundle is forgotten
--- Returns what it put back, for rewards.redo_bundle, or nil if the bundle wasn't moved
+-- Returns what it put back, or nil if the bundle wasn't moved
 rewards.revert_bundle = function(bundle_id)
     local bundle = rewards.moved[bundle_id]
     if bundle == nil then
@@ -2340,32 +2289,7 @@ rewards.revert_bundle = function(bundle_id)
     }
 end
 
--- Moves a bundle rewards.revert_bundle put back again (its undo, given what it returned)
-rewards.redo_bundle = function(bundle_id, undo)
-    local bundle = undo.bundle
-    rewards.moved[bundle_id] = bundle
-    locks.restore(undo.reverted)
-    if next(bundle.variants) ~= nil then
-        rewards.redo_variants(bundle_id)
-    else
-        apply_tech(bundle.tech_edit)
-    end
-    set_dependent_triggers(bundle.trigger_edits or {}, false)
-    set_rehomed(bundle.rehome_edits or {}, false)
-    for _, extra in pairs(bundle.extra_variants or {}) do
-        if data.raw.recipe[extra.name] == nil then
-            data:extend({
-                table.deepcopy(extra.prototype),
-            })
-        end
-        locks.fix("recipe", extra.name, bundle.target_rooms)
-    end
-    if next(bundle.extra_variants or {}) ~= nil then
-        locks.realize()
-    end
-end
-
--- A bundle any of whose locks the lock stage or settlement put back on its own goes back entirely (its other locks, its variants and its technology), since a reward is moved or not
+-- A bundle any of whose locks the lock stage put back on its own goes back entirely (its other locks, its variants and its technology), since a reward is moved or not
 -- A planet whose science moved into the machine that arrived there (re-homing) needs that machine to stay, so when it goes back, the planet's own machine comes back too, re-homing and all
 -- Returns what revert_bundle returned for each bundle it put back, so the caller can forget their goal transport
 rewards.sync = function()
@@ -2398,16 +2322,6 @@ rewards.sync = function()
     return undos
 end
 
--- The moved bundle (and its id) one of whose members this recipe is, or nil
-rewards.bundle_of_recipe = function(recipe_name)
-    for bundle_id, bundle in pairs(rewards.moved) do
-        if bundle.member_recipes[recipe_name] ~= nil then
-            return bundle, bundle_id
-        end
-    end
-    return nil
-end
-
 -- One line per moved bundle for the log, after the repairs (a bundle its old planet needed went back and is gone from here)
 rewards.log_state = function()
     for _, bundle_id in pairs(sorted_keys(rewards.moved)) do
@@ -2421,21 +2335,6 @@ rewards.bundle_of_tech = function(tech_name)
     for bundle_id, bundle in pairs(rewards.moved) do
         if bundle.tech == tech_name then
             return bundle, bundle_id
-        end
-    end
-    return nil
-end
-
--- The moved bundle (and its id) that edited this technology's research trigger, or nil: its own technology (edit_tech) or another one its move retied (retie_dependent_triggers)
-rewards.bundle_of_trigger = function(tech_name)
-    for bundle_id, bundle in pairs(rewards.moved) do
-        if bundle.tech == tech_name then
-            return bundle, bundle_id
-        end
-        for _, edit in pairs(bundle.trigger_edits or {}) do
-            if edit.tech == tech_name then
-                return bundle, bundle_id
-            end
         end
     end
     return nil

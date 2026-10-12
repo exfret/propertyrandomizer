@@ -44,7 +44,6 @@ skip planetary-locks
 skip planetary-rewards
 skip planetary-rewards-rehome
 skip planetary-rewards-only
-skip planetary-superposed
 skip planetary-fix-pass
 skip planetary-connections
 skip planetary-enemies
@@ -72,7 +71,7 @@ pin dev-unified=false smoke settings
 pin dev-unified=true unified
 # Spoiling runs only with its own setting too, which is visible and so isn't among the hidden unified-* settings unified-all turns on
 pin unified-spoiling=true unified-all
-pin dev-unified=false preview preview-with-graph preview-superposed preview-rewards preview-rewards-superposed reduction-check
+pin dev-unified=false preview preview-with-graph preview-rewards reduction-check
 
 # config NAME SUITE [seeds=A,B,...] [nocheck=CHECK,...] SETTING=VALUE...: a hand-picked config (no spaces inside a value)
 # nocheck turns off reachability, mechcheck, control or science-cost (see dev/run-tests.py)
@@ -87,19 +86,12 @@ config reduction-check unified seeds=1 unified-preview=true dev-unified=false op
 # config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap operation-readiness=false
 # Paused operation dependency prototype (2026-10-05); preserve the profile for a future explicit restart.
 # config operation-preview unified seeds=1 unified-preview=true dev-unified=false operation-readiness=true
-# The preview in superposed mode (setting planetary-superposed): the planetary changes hand their debt to unified randomization and settle what's still owed after it
-config preview-superposed unified seeds=1,2 unified-preview=true dev-unified=false planetary-superposed=true
-# Planet rewards alone with the development handlers, in superposed mode: whether unified pays what the moved machines owe (recipe categories re-homing a planet's science), without the other planetary stages in the way
-config rewards-superposed unified seeds=1 dev-unified=true planetary-rewards=true planetary-superposed=true
-# One reward alone (the foundry), the trivial case: does recipe category randomization re-home Vulcanus's metallurgic science?
-config rewards-foundry-superposed unified seeds=1 dev-unified=true planetary-rewards=true planetary-superposed=true planetary-rewards-only=foundry
-# Planet rewards alone with the development handlers, outside superposed mode: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
+# Planet rewards alone with the development handlers: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
 config rewards unified seeds=1,2,3 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true
-# The foundry alone, outside superposed mode
+# The foundry alone
 config rewards-foundry unified seeds=1 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true planetary-rewards-only=foundry
-# The preview with planet rewards on, in both modes
+# The preview with planet rewards on
 config preview-rewards unified seeds=1,2 unified-preview=true dev-unified=false planetary-rewards=true
-config preview-rewards-superposed unified seeds=1,2 unified-preview=true dev-unified=false planetary-rewards=true planetary-superposed=true
 # With old graph randomizations on too, which the preview turns off (not item: its configs are judged by the old logic's check, which then doesn't run)
 # No science cost check either: it measures old recipe randomization, which is off here
 config preview-with-graph unified nocheck=science-cost unified-preview=true dev-unified=false technology=true recipe=true recipe-science-pack=true recipe-tech-unlock=true

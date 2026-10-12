@@ -237,7 +237,7 @@ recalculate_spoofed_resource_categories()
 build_graph.recalculate_spoofed_resource_categories = recalculate_spoofed_resource_categories
 
 -- Get science pack sets
--- Recalculated by load() too, since randomization can change technologies' units between this file's first require and the graph build (planet rewards swap a science pack, and superposed planetary changes can be rolled again or undone afterwards)
+-- Recalculated by load() too, since randomization can change technologies' units between this file's first require and the graph build (planet rewards can swap a science pack)
 
 local science_pack_sets = {}
 local function recalculate_science_pack_sets()

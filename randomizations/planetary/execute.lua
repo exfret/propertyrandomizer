@@ -9,15 +9,6 @@
 -- None ever stops the game from loading: anything that goes wrong (including errors, for mod compatibility) undoes that stage instead.
 -- Ocean swaps that fail their check are first rolled again with a new assignment a few times (OCEAN_TRIES).
 
--- Superposed mode (setting propertyrandomizer-planetary-superposed, config.planetary_superposed; see notes/old/context-shift-report): the swaps come with their root repairs (scaffolds.lua's fluid replacements, and the recipe and trigger edits that follow resource swaps) but no extra patches, and the game before them goes to the rest of randomization as debt (planetary.superposed)
--- Root repairs are fine as fixes though not as random choices (like water or lava taking a lost fluid's place), and they change what unified never changes, what processes a pumped fluid or mined resource
--- Promotion then keeps the goals the swaps still break while unified's choices pay for what they can (see skeleton/promotion.lua), and what's still owed after that is settled (planetary.settle); an attempt of the rest of randomization that still owes goals is retried with the changes rolled again (planetary.reroll, see data-final-fixes.lua), and what the kept attempt still lost is warned about in the randomizer panel (planetary.check_final)
--- Works with entity randomization too: its subdivided acquisition edges leave the debt edges as they are (on seeds 1-2, promotion added and skipped the same debt edges with it on as with it off)
-
--- Experimental start swap (the Gleba start experiment, like the old SWITCH_PLANETS): the starting planet swaps prototypes with the planet named here, so the game starts on that planet's content; nil for off
--- It runs in superposed mode (turned on with it), before the planetary changes that are on, and only if some planetary setting is on at all; only tried with "gleba", where first pass and promotion are left with a whole-game debt (seed 0: about 2700 owed goals, 21 still owed after settlement)
-local SWAP_START_WITH = nil
-
 -- Whether the rest of randomization keeps the recipe goals that moved with planetary changes (protection.transported_recipe_contexts), like a moved lock's recipe staying automatable on its new planet
 -- Without it, unified changed a moved lock's recipe freely (it isn't planet-locked when its lock has two planets), so attempts kept losing those goals and were retried; putting the lock back after the attempt didn't help, since the recipe was broken on its old planet too
 -- It used to make attempts fail on a moved item's recycling recipe becoming unreachable (like electromagnetic-plant-recycling): promised only on its new planet, the recipe gave up its earliest context, so its item's early pebbles broke and the recycling recipe was left reachable nowhere at its ranks
@@ -30,13 +21,9 @@ local DISCOVERY_FOLLOWS_MAP = true
 
 local gutils = require("lib/graph/graph-utils")
 local localised_text = require("lib/localised-text")
-local rng = require("lib/random/rng")
-local dutils = require("lib/data-utils")
 local lutils = require("lib/logic/logic-utils")
 local top = require("lib/graph/context-sort")
 local staged = require("lib/graph/staged-sort")
-local superpose = require("lib/graph/superpose")
-local settlement = require("lib/graph/settlement")
 local item_craft = require("lib/logic/item-craft")
 local unlock_contraction = require("lib/logic/unlock-contraction")
 local planetary_check = require("randomizations/planetary/check")
@@ -503,33 +490,29 @@ local function planet_variants(state)
     return variants
 end
 
--- Forgets the goal transport of a bundle rewards.revert_bundle put back (its locks' recipes and its variants' originals), returning the entries for rewards.redo_bundle
+-- Forgets the goal transport of a bundle rewards.revert_bundle put back (its locks' recipes and its variants' originals), so later checks use their original goals
 local function forget_reward_transport(undo)
-    local entries = {}
     for _, lock in pairs(undo.reverted) do
         if lock.kind == "recipe" then
             local recipe_key = gutils.key("recipe", lock.name)
-            entries[recipe_key] = planetary_check.transport[recipe_key]
             planetary_check.transport[recipe_key] = nil
         end
     end
     for recipe_name, _ in pairs(undo.bundle.variants) do
         local recipe_key = gutils.key("recipe", recipe_name)
-        entries[recipe_key] = planetary_check.transport[recipe_key]
         planetary_check.transport[recipe_key] = nil
     end
-    return entries
 end
 
 -- Rewards move first (their locks then count as moved on purpose, which the random lock moves skip), then the random lock moves
--- The optional logic (outside superposed mode) sorts the game as the earlier stages left it, in which re-homing finds what each planet's science needs
+-- The optional logic sorts the game as the earlier stages left it, in which re-homing finds what each planet's science needs
 local function move_locks(state, logic)
     planetary_check.moved_features["locks"] = true
     if config.planetary_rewards then
         state.variants_of = state.variants_of or {}
-        -- Outside superposed mode nothing later pays for what a machine's old planet loses, so the move re-homes its science into the machine arriving there (see science_needs and rehome_plan in rewards.lua)
+        -- Nothing later pays for what a machine's old planet loses, so the move re-homes its science into the machine arriving there (see science_needs and rehome_plan in rewards.lua)
         -- What a planet's science needs is found in the game as the earlier stages (resource and ocean swaps) left it, since those can change how a planet makes it
-        local rehome = config.planetary_rewards_rehome and not config.planetary_superposed and logic ~= nil
+        local rehome = config.planetary_rewards_rehome and logic ~= nil
         rewards.execute("planetary-rewards", state.before, state.variants_of, {
             rehome = rehome,
             current = rehome and planetary_check.sort(logic) or nil,
@@ -539,8 +522,8 @@ local function move_locks(state, logic)
     if config.planetary_locks then
         locks.execute("planetary-locks", planet_variants(state))
     end
-    -- A moved recipe must be makeable on its new planet from that planet's own resources (user, 2026-10-08), which lock_repairs.make_local gives it where it isn't (superposed mode has no such repairs)
-    for node_key, entry in pairs(locks.transport(not config.planetary_superposed)) do
+    -- A moved recipe must be makeable on its new planet from that planet's own resources (user, 2026-10-08), which lock_repairs.make_local gives it where it isn't
+    for node_key, entry in pairs(locks.transport(true)) do
         planetary_check.transport[node_key] = entry
     end
     for node_key, entry in pairs(rewards.transport()) do
@@ -1021,7 +1004,7 @@ end
 -- Resource, lightning and freezing stages finish their specialized repairs before fix chooses prerequisites for any remaining failures.
 local function run_stages(logic, state, careful, fix)
     state.careful = careful
-    -- Outside superposed mode the map was drawn first (draw_map_first)
+    -- The map was drawn first (draw_map_first)
     if config.planetary_connections and state.map_first ~= true then
         local problem = old_graph_problem() or connections.problem()
         if connections.nothing_to_do() then
@@ -1090,7 +1073,7 @@ local function run_stages(logic, state, careful, fix)
     end
 end
 
--- Draws the star map first, outside superposed mode: the connection graph (checked like any stage, against the game before it) and, with DISCOVERY_FOLLOWS_MAP, the discovery order that follows it (run_discovery), and then the game they make is the one the other stages are checked against, sorted again with home sets of its own
+-- Draws the star map first: the connection graph (checked like any stage, against the game before it) and, with DISCOVERY_FOLLOWS_MAP, the discovery order that follows it (run_discovery), and then the game they make is the one the other stages are checked against, sorted again with home sets of its own
 -- The map can change which planets come before which (a far planet's route passes planets that need other planets' packs), which the old home sets don't know (see top.home_sets), so the other stages couldn't be checked against the old game with its home sets
 -- state.before becomes the map's game, and state.map_first keeps run_stages from drawing the graph again
 local function draw_map_first(logic, state)
@@ -1120,212 +1103,6 @@ local function draw_map_first(logic, state)
     planetary_check.home_sets = nil
     state.before = planetary_check.sort(logic)
     state.after = nil
-end
-
--- The game before planetary changes as debt for promotion (see superposed mode at the top), or nil
--- It's promotion's params.debt: { graph, debt_edges and old_nodes (from superpose.union), is_goal = whether a pebble is one of the goals the swaps carry over in an exact context (check.transported_goals), goals = those goals }
-planetary.superposed = nil
-
--- The start swap (SWAP_START_WITH): the starting planet and the other swap their prototypes, so everything local to each goes to the other and the game starts on the other's content
--- The planetary changes that are on then run on the swapped planets, and their own goal transports replace this one for their nodes
--- Goals follow their planet's content (keeping their abilities), except the starting planet's science packs (lab inputs isolatable on the start in the game before) and nodes whose names mention either planet, which stay (experimental: a name match, not a declared property)
-local function swap_start(state)
-    local start_name = lutils.starting_planet_name
-    local other_name = SWAP_START_WITH
-    local start = data.raw.planet[start_name]
-    local other = data.raw.planet[other_name]
-    if start == nil or other == nil or start_name == other_name then
-        warn("start swap", "was skipped, since there's no other planet " .. other_name .. " to swap the start with.", localised_text.get("propertyrandomizer-warning.start-swap-missing", other_name))
-        return
-    end
-    data.raw.planet[start_name] = table.deepcopy(other)
-    data.raw.planet[start_name].name = start_name
-    data.raw.planet[other_name] = table.deepcopy(start)
-    data.raw.planet[other_name].name = other_name
-    log("Planetary superposed: " .. start_name .. " and " .. other_name .. " swapped their prototypes (SWAP_START_WITH)")
-    local start_room = gutils.key("planet", start_name)
-    local other_room = gutils.key("planet", other_name)
-    local before_nci = state.before.sort_info.node_to_context_inds
-    local stays = {}
-    local starting_packs = {}
-    for pack_name, _ in pairs(dutils.lab_inputs()) do
-        local node_key = gutils.key("item", pack_name)
-        for context, _ in pairs(before_nci[node_key] or {}) do
-            if top.context_room(context) == start_room and top.context_home(context) == nil and protection.is_isolatable_context(context) and stays[node_key] == nil then
-                stays[node_key] = true
-                table.insert(starting_packs, pack_name)
-            end
-        end
-    end
-    table.sort(starting_packs)
-    log("Planetary superposed: starting science packs that stay: " .. table.concat(starting_packs, ", "))
-    local num_transported = 0
-    for node_key, node in pairs(state.before.graph.nodes) do
-        local room_bound = string.find(node.name or "", start_name, 1, true) ~= nil or string.find(node.name or "", other_name, 1, true) ~= nil
-        if not stays[node_key] and not room_bound then
-            planetary_check.transport[node_key] = {
-                map = {
-                    [start_room] = other_room,
-                    [other_room] = start_room,
-                },
-                keep_isolatability = true,
-            }
-            num_transported = num_transported + 1
-        end
-    end
-    log("Planetary superposed: " .. num_transported .. " nodes' goals follow their planet")
-end
-
--- Superposed mode: runs every swap that's on raw, then superposes the game before them on the game after
--- The connection graph for superposed mode, drawn before the reference sort: routes are a plain change with nothing to repair, and if the routes it replaces stayed in the superposition as debt, the goals only they had (like their asteroids) could never be paid, since the game no longer has those routes, so every attempt would still owe them
--- Like every stage, it never stops the game from loading: an error undoes it
-local function draw_connections_first()
-    if connections.nothing_to_do() then
-        log("Planetary connections: no space connections to draw again")
-        return
-    end
-    local problem = old_graph_problem() or connections.problem()
-    if problem ~= nil then
-        warn("connection graph", "was skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped", localised_text.message(problem)))
-        return
-    end
-    local old_raw = table.deepcopy(data.raw)
-    local is_drawn, result = pcall(connections.execute, "planetary-connections")
-    if is_drawn then
-        log("Planetary connections: " .. result)
-    else
-        data.raw = old_raw
-        warn("connection graph", "was undone, since of an error: " .. tostring(result) .. ".", localised_text.get("propertyrandomizer-warning.planetary-error", tostring(result)))
-    end
-end
-
-local function run_superposed(logic, state)
-    if SWAP_START_WITH ~= nil then
-        swap_start(state)
-    end
-    if config.planetary_oceans then
-        local problem = oceans.problem()
-        if problem ~= nil then
-            warn("ocean swaps", "were skipped, since " .. localised_text.diagnostic(problem) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-many", localised_text.message(problem)))
-        else
-            planetary_check.moved_features["oceans"] = true
-            local old_raw = table.deepcopy(data.raw)
-            local assignment, clone_to_slot = oceans.execute("random", "planetary-oceans")
-            -- Root repairs: where a goal needs it, the recipes a planet used its old fluid for take its new one (scaffolds.lua), since unified never changes what processes a pumped fluid
-            state.variants_of = scaffolds.execute(assignment, oceans, logic, state.before, false)
-            for _, problem_text in pairs(planetary_check.tiles_unchanged(old_raw, clone_to_slot)) do
-                log("Planetary superposed: " .. problem_text)
-            end
-        end
-    end
-    if config.planetary_resources then
-        local _, _, _, edits, trigger_edits, variants = swap_resources(state)
-        log_edits(edits, trigger_edits, variants)
-    end
-    if config.planetary_lightning and old_graph_problem() == nil and lightning.problem() == nil then
-        local map = lightning.execute("planetary-lightning")
-        if next(map) ~= nil then
-            planetary_check.moved_features["lightning"] = true
-            for node_key, entry in pairs(lightning.transport(state.before.graph, map)) do
-                planetary_check.transport[node_key] = entry
-            end
-            -- The attractor recipes' locks moved with lightning (locks.move), so their goals follow them to the new planet, as run_lightning does
-            for node_key, entry in pairs(locks.transport()) do
-                planetary_check.transport[node_key] = entry
-            end
-            log("Planetary lightning: " .. lightning.describe())
-        end
-    end
-    if config.planetary_freezing and old_graph_problem() == nil and freezing.problem() == nil then
-        if next(freezing.execute("planetary-freezing")) ~= nil then
-            planetary_check.moved_features["freezing"] = true
-            lutils.bootstrap_heat_rooms = freezing.new_frozen_rooms()
-            log("Planetary freezing: " .. freezing.describe())
-        end
-    end
-    if (config.planetary_locks or config.planetary_rewards) and old_graph_problem() == nil then
-        move_locks(state)
-        log_locks()
-    end
-    local after = planetary_check.sort(logic)
-    -- What the swaps still break after their root repairs, which is what promotion starts out owing
-    planetary_check.required(state.before, after, state.variants_of, false, "PLANETCHECK superposed")
-    local union = superpose.union(after.graph, state.before.graph)
-    -- A moved lock's own goals on its new planet are in neither world before the changes, so the superposition may not reach them, and then no debt edge on a witness says what's owed (it's a reference only for goals one of its worlds reaches)
-    -- A lock whose own goals the superposition can't reach keeps its old lock, and the games are sorted and superposed again
-    if next(locks.moved) ~= nil then
-        local union_sort = {
-            graph = union.graph,
-            sort_info = top.sort(union.graph, nil, nil, {
-                complex_contexts = true,
-                home_contexts = true,
-                home_sets = planetary_check.home_sets,
-            }),
-        }
-        local to_revert = {}
-        local num_explained = 0
-        for _, failure in pairs(planetary_check.required_failures(state.before, union_sort, state.variants_of)) do
-            local lock, id = locks.lock_of_recipe(failure.keys[1])
-            if lock ~= nil then
-                to_revert[id] = true
-                -- Why not, for the first few (debugging aid, the settlement's explain walk)
-                if num_explained < 6 then
-                    num_explained = num_explained + 1
-                    settlement.explain(union.graph, union_sort.sort_info, failure)
-                end
-            end
-        end
-        if next(to_revert) ~= nil then
-            local reverted = locks.revert(sorted_keys(to_revert))
-            for _, id in pairs(sorted_keys(reverted)) do
-                log("Planet locks: " .. id .. " keeps its old lock, since even the superposition doesn't reach its own goals on its new planets")
-                planetary_check.transport[gutils.key("recipe", reverted[id].name)] = nil
-            end
-            for _, undo in pairs(rewards.sync()) do
-                forget_reward_transport(undo)
-            end
-            after = planetary_check.sort(logic)
-            union = superpose.union(after.graph, state.before.graph)
-        end
-    end
-    local num_debt_edges = 0
-    for _, _ in pairs(union.debt_edges) do
-        num_debt_edges = num_debt_edges + 1
-    end
-    log("Planetary superposed: " .. num_debt_edges .. " debt edges, " .. #union.not_into_or .. " of them into nodes that aren't OR nodes")
-    for _, edge_key in pairs(union.not_into_or) do
-        log("Planetary superposed: debt edge into a node that isn't an OR node: " .. edge_key)
-    end
-    -- A planet variant (see scaffolds.lua) counts as its original, so an original's goal the game already meets through a variant isn't owed
-    local goals = planetary_check.transported_goals(state.before)
-    local nci = after.sort_info.node_to_context_inds
-    for recipe_name, variant_names in pairs(state.variants_of) do
-        local node_key = gutils.key("recipe", recipe_name)
-        for context, _ in pairs(goals[node_key] or {}) do
-            for _, variant_name in pairs(variant_names) do
-                if (nci[gutils.key("recipe", variant_name)] or {})[context] ~= nil then
-                    goals[node_key][context] = nil
-                end
-            end
-        end
-    end
-    planetary.superposed = {
-        graph = union.graph,
-        debt_edges = union.debt_edges,
-        old_nodes = union.old_nodes,
-        is_goal = function(node_key, context)
-            local node_goals = goals[node_key]
-            if node_goals == nil then
-                return false
-            end
-            if node_goals[context] ~= nil then
-                return true
-            end
-            -- An isolatable pebble stands for its goal without isolatability too (see top.provides_context)
-            return top.context_home(context) == nil and protection.is_isolatable_context(context) and node_goals[protection.without_isolatability(context)] ~= nil
-        end,
-        goals = goals,
-    }
 end
 
 -- Home sets are part of what the goals mean (see check.home_sets): a planetary change can alter which rooms a planet's discovery needs
@@ -1432,10 +1209,6 @@ planetary.execute = function(logic)
     -- With the fix pass, a planet may build rockets with machines delivered once, and recipe categories aren't goals of their own (the planetary check's rule 3)
     planetary_check.rocket_machines_importable = config.planetary_fix_pass == true
     planetary_check.skip_recipe_categories = config.planetary_fix_pass == true
-    -- In superposed mode the connection graph is drawn before the game before the changes is sorted, so it's part of that reference world (see draw_connections_first)
-    if (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
-        draw_connections_first()
-    end
     local is_ok = pcall(function()
         state.before = planetary_check.sort(logic)
     end)
@@ -1446,8 +1219,8 @@ planetary.execute = function(logic)
     -- Each planet's ocean and every recipe as they were before any stage, so a moved machine's ocean recipes can follow it (lock_repairs.follow_machines)
     state.ocean_fluids_before = lock_repairs.ocean_fluids()
     state.ingredients_before = lock_repairs.ingredients_now()
-    -- Outside superposed mode the star map comes first, and the rest is checked against the game it makes (see draw_map_first)
-    if not (config.planetary_superposed or SWAP_START_WITH ~= nil) and config.planetary_connections then
+    -- The star map comes first, and the rest is checked against the game it makes (see draw_map_first)
+    if config.planetary_connections == true then
         local is_drawn, problem = pcall(draw_map_first, logic, state)
         if not is_drawn then
             warn("changes", "were skipped, since of an error: " .. tostring(localised_text.diagnostic(problem)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-skipped-error", tostring(localised_text.message(problem))))
@@ -1462,26 +1235,8 @@ planetary.execute = function(logic)
             log("Planet rewards: the dry run stopped on an error: " .. tostring(problem))
         end
     end
-    if not (config.planetary_oceans or config.planetary_resources or config.planetary_lightning or config.planetary_freezing or config.planetary_locks or config.planetary_rewards or config.planetary_connections or config.planetary_enemies) and SWAP_START_WITH == nil then
+    if not (config.planetary_oceans == true or config.planetary_resources == true or config.planetary_lightning == true or config.planetary_freezing == true or config.planetary_locks == true or config.planetary_rewards == true or config.planetary_connections == true or config.planetary_enemies == true) then
         log("Planetary: " .. planetary_check.num_sorts .. " sorts (no stage that changes the game is on)")
-        return
-    end
-
-    if config.planetary_superposed or SWAP_START_WITH ~= nil then
-        -- An error in any stage undoes them all here too (the normal path's run_stage undoes each stage on its own), so the game still loads
-        local old_raw = table.deepcopy(data.raw)
-        local is_run, problem = pcall(run_superposed, logic, state)
-        if not is_run then
-            data.raw = old_raw
-            planetary.reset()
-            warn("changes", "were undone, since of an error: " .. tostring(localised_text.diagnostic(problem)) .. ".", localised_text.get("propertyrandomizer-warning.planetary-undone-error", tostring(localised_text.message(problem))))
-            return
-        end
-        planetary.before = {
-            sort = state.before,
-            variants_of = state.variants_of,
-        }
-        log("Planetary: " .. planetary_check.num_sorts .. " sorts")
         return
     end
 
@@ -1552,7 +1307,6 @@ end
 
 -- The home sets planetary's goals were made with (check.home_sets) while any stage's changes are in the game, for the rest of randomization's sorts, or nil
 -- They're the game's before the changes, narrowed by recheck_home_sets if the changes moved which rooms discoveries need
--- The changed game isn't asked for its own: in superposed mode it relies on its debt, and may not reach any discoverer until unified pays it (then it would have no home sets, and nothing would be isolatable by discovery)
 planetary.home_sets = function()
     if planetary.before == nil then
         return nil
@@ -1560,279 +1314,8 @@ planetary.home_sets = function()
     return planetary_check.home_sets
 end
 
--- Settlers (see lib/graph/settlement.lua): for each kind of feature a planetary change moves, the fixes for a debt edge it owns, cheapest first
--- Ocean swaps have none yet, so what they still owe is only reported
-local settlers = {
-    -- A resource a planet had (room-autoplace --> resource entity) comes back as extra patches of it (resources.repair), an addition
-    {
-        name = "resources",
-        owns = function(edge)
-            local start = gutils.deconstruct(edge.start)
-            local stop = gutils.deconstruct(edge.stop)
-            return start.type == "room-autoplace" and stop.type == "entity" and data.raw.resource[stop.name] ~= nil
-        end,
-        fixes = function(edge)
-            local room = gutils.deconstruct(gutils.deconstruct(edge.start).name)
-            local resource_name = gutils.deconstruct(edge.stop).name
-            if room.type ~= "planet" or data.raw.planet[room.name] == nil then
-                return {}
-            end
-            local repair = resources.repair(room.name, resource_name)
-            if repair == nil then
-                return {}
-            end
-            return {
-                {
-                    rung = "addition",
-                    text = "extra " .. resource_name .. " patches on " .. room.name,
-                    apply = function()
-                        resources.add_repair(repair)
-                    end,
-                    undo = function()
-                        resources.remove_repair(repair)
-                    end,
-                },
-            }
-        end,
-    },
-}
-
--- A room a moved planet lock no longer accepts (room --> the lock's surface-condition node, see locks.lua) is accepted again by widening the lock to it, an addition
--- Failing that, the lock goes back to its old set, a revert; its recipe's goals then stay where they were
-table.insert(settlers, {
-    name = "locks",
-    owns = function(edge)
-        local lock, id = locks.lock_of_node(edge.stop)
-        return gutils.deconstruct(edge.start).type == "room" and lock ~= nil and rewards.bundle_of_lock(id) == nil
-    end,
-    fixes = function(edge)
-        local lock, id = locks.lock_of_node(edge.stop)
-        local room_key = gutils.deconstruct(edge.start).name
-        local rooms_before
-        local reverted
-        local transport_before
-        return {
-            {
-                rung = "addition",
-                text = id .. " accepts " .. room_key .. " again",
-                apply = function()
-                    rooms_before = locks.moved[id].rooms
-                    locks.widen(id, {
-                        [room_key] = true,
-                    })
-                end,
-                undo = function()
-                    locks.set_rooms(id, rooms_before)
-                end,
-            },
-            {
-                rung = "revert",
-                text = id .. " keeps its old lock",
-                apply = function()
-                    reverted = locks.revert({
-                        id,
-                    })
-                    if lock.kind == "recipe" then
-                        transport_before = planetary_check.transport[gutils.key("recipe", lock.name)]
-                        planetary_check.transport[gutils.key("recipe", lock.name)] = nil
-                    end
-                end,
-                undo = function()
-                    locks.restore(reverted)
-                    if lock.kind == "recipe" then
-                        planetary_check.transport[gutils.key("recipe", lock.name)] = transport_before
-                    end
-                end,
-            },
-        }
-    end,
-})
-
--- The moved bundle (and its id) a debt edge belongs to, or nil: a member's lock its old planet accepted (room --> recipe- or entity-build-surface-condition), a retired recipe's old lock or unlock (it stayed in the game for a variant on the new planet, locked to no surface and unlocked by nothing, see rewards.execute), the old technology's unlock of a member whose unlock went to a copy (technology --> recipe-tech-unlock, see edit_tech in rewards.lua), or an old trigger source of an unsplit technology or of another technology the move retied (--> technology-trigger, see retie_dependent_triggers in rewards.lua)
--- (A machine's other recipes are only ever added on the new planet, see companions_of in rewards.lua, so nothing of theirs is owed)
-local function reward_bundle_of(edge)
-    local start = gutils.deconstruct(edge.start)
-    local stop = gutils.deconstruct(edge.stop)
-    if start.type == "room" then
-        local lock, id = locks.lock_of_node(edge.stop)
-        if lock ~= nil then
-            return rewards.bundle_of_lock(id)
-        end
-    end
-    if stop.type == "recipe-surface-condition" or stop.type == "recipe-tech-unlock" then
-        local bundle, bundle_id = rewards.bundle_of_retired(stop.name)
-        if bundle ~= nil then
-            return bundle, bundle_id
-        end
-    end
-    if stop.type == "recipe-tech-unlock" and start.type == "technology" then
-        local bundle, bundle_id = rewards.bundle_of_recipe(stop.name)
-        if bundle ~= nil and bundle.tech_edit.split ~= nil and bundle.tech_edit.split.source == start.name then
-            return bundle, bundle_id
-        end
-    end
-    if stop.type == "technology-trigger" then
-        return rewards.bundle_of_trigger(stop.name)
-    end
-    return nil
-end
-
--- Whatever a moved reward's old planet still needs of it (see reward_bundle_of) brings the whole reward back: its locks, its variants and its technology as they were, a revert (user, 2026-09-30: a reward its old planet needs goes back rather than being shared with it)
--- A reward sent home breaks what the attempt of the rest of randomization promised on its new planet (the check after the settlement would fail on those promises), so it's pinned home (rewards.pinned) and the attempt is rolled again without it (planetary.settle counts it as owed)
-local sent_home = 0
-table.insert(settlers, {
-    name = "planet rewards",
-    owns = function(edge)
-        return reward_bundle_of(edge) ~= nil
-    end,
-    fixes = function(edge)
-        local bundle, bundle_id = reward_bundle_of(edge)
-        local undo
-        local transport_before
-        local fixes = {}
-        table.insert(fixes, {
-            rung = "revert",
-            text = bundle.source_tech .. " stays",
-            apply = function()
-                undo = rewards.revert_bundle(bundle_id)
-                transport_before = undo ~= nil and forget_reward_transport(undo) or {}
-                if undo ~= nil then
-                    rewards.pinned[bundle_id] = true
-                    sent_home = sent_home + 1
-                end
-            end,
-            undo = function()
-                if undo ~= nil then
-                    rewards.redo_bundle(bundle_id, undo)
-                    for recipe_key, entry in pairs(transport_before) do
-                        planetary_check.transport[recipe_key] = entry
-                    end
-                end
-            end,
-        })
-        return fixes
-    end,
-})
-
--- Lightning a planet lost (room --> a lightning power node, see lib/logic/abstract.lua) comes back by that planet keeping its lightning as well (lightning.keep_old), an addition
--- Failing that, or for the safety from lightning the new planet lost (room --> lightning-safe), lightning goes back where it was with everything that moved with it, a revert
--- (Undoing a revert moves lightning again with a new draw, which may differ from the first one)
-table.insert(settlers, {
-    name = "lightning moves",
-    owns = function(edge)
-        if lightning.last == nil or gutils.deconstruct(edge.start).type ~= "room" then
-            return false
-        end
-        if gutils.deconstruct(edge.stop).type == "lightning-safe" then
-            return true
-        end
-        local node = planetary.superposed.graph.nodes[edge.stop]
-        return node ~= nil and node.planetary_feature == "lightning"
-    end,
-    fixes = function(edge)
-        local transport_before
-        -- Several debt edges share this fix, so only the one that made it undoes it
-        local made_it
-        return {
-            {
-                rung = "addition",
-                text = "planets that gave their lightning away keep it as well",
-                apply = function()
-                    made_it = not lightning.last.kept_old
-                    lightning.keep_old()
-                end,
-                undo = function()
-                    if made_it then
-                        lightning.give_away_again()
-                    end
-                end,
-            },
-            {
-                rung = "revert",
-                text = "lightning stays where it was",
-                apply = function()
-                    lightning.revert()
-                    transport_before = table.deepcopy(planetary_check.transport)
-                    for node_key, _ in pairs(lightning.transport(planetary.superposed.graph, lightning.last.map)) do
-                        planetary_check.transport[node_key] = nil
-                    end
-                end,
-                undo = function()
-                    planetary_check.transport = transport_before
-                    lightning.execute("planetary-lightning")
-                end,
-            },
-        }
-    end,
-})
-
--- Warmth a planet lost (room --> warmth, now that it freezes) comes back by undoing the freezing move with its heating technology edits, a revert
--- (A planet that gave its freezing away only gains warmth, so nothing it owes comes from freezing)
-table.insert(settlers, {
-    name = "freezing moves",
-    owns = function(edge)
-        return freezing.last ~= nil and gutils.deconstruct(edge.start).type == "room" and gutils.deconstruct(edge.stop).type == "warmth"
-    end,
-    fixes = function(edge)
-        return {
-            {
-                rung = "revert",
-                text = "freezing stays where it was",
-                apply = function()
-                    freezing.revert()
-                    lutils.bootstrap_heat_rooms = {}
-                end,
-                undo = function()
-                    freezing.execute("planetary-freezing")
-                    lutils.bootstrap_heat_rooms = freezing.new_frozen_rooms()
-                end,
-            },
-        }
-    end,
-})
-
--- Settles what the game an attempt of the rest of randomization built still owes from planetary changes in superposed mode, with the settlers above
--- The logic module (logic) is rebuilt from data.raw for each check
--- Returns how many goals are still owed (0 outside superposed mode)
-planetary.settle = function(logic)
-    if planetary.superposed == nil then
-        return 0
-    end
-    sent_home = 0
-    local result = settlement.settle({
-        check = function()
-            local game = planetary_check.sort(logic)
-            return {
-                failures = planetary_check.required_failures(planetary.before.sort, game, planetary.before.variants_of),
-                graph = game.graph,
-                sort_extra = {
-                    complex_contexts = true,
-                    home_contexts = true,
-                    home_sets = planetary_check.home_sets,
-                },
-            }
-        end,
-        debt = planetary.superposed,
-        settlers = settlers,
-    })
-    for _, undo in pairs(rewards.sync()) do
-        forget_reward_transport(undo)
-    end
-    log("Planetary settlement: " .. #result.applied .. " fixes, " .. #result.failures .. " goals still owed" .. (sent_home > 0 and (", " .. sent_home .. " rewards sent home (pinned for the next roll)") or ""))
-    for _, fix in pairs(result.applied) do
-        log("Planetary settlement: " .. fix.rung .. ": " .. fix.text .. (#(fix.needed_by or {}) > 0 and " (needed by " .. table.concat(fix.needed_by, "; ") .. ")" or ""))
-    end
-    for _, failure in pairs(result.failures) do
-        log("Planetary settlement: still owed " .. failure.text)
-    end
-    for _, edge_key in pairs(sorted_keys(result.unsettled)) do
-        log("Planetary settlement: no fix for debt edge " .. edge_key)
-    end
-    return #result.failures + sent_home
-end
-
 -- Checks the finished game (graph, after all randomization) against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK final)
--- Those goals are what the changes promised to keep, so whatever is still lost fails the check (returns false) and is warned about in the randomizer panel: in superposed mode after settling what the rest of randomization left, otherwise after retrying attempts that lost some (planetary.check_attempt)
+-- Those goals are what the changes promised to keep, so whatever is still lost fails the check (returns false) and is warned about in the randomizer panel after retrying attempts that lost some (planetary.check_attempt)
 -- Later randomization doesn't protect everything the stages kept (like rocket building's isolatability on a planet), and the stages after unified's attempts aren't retried, so this can fail even when every attempt passed
 planetary.check_final = function(graph)
     if planetary.before == nil then
@@ -1850,11 +1333,7 @@ planetary.check_final = function(graph)
     if passes then
         return true
     end
-    if planetary.superposed ~= nil then
-        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them, even after settling what the rest of randomization left (see PLANETCHECK final in the log).", localised_text.get("propertyrandomizer-warning.planetary-lost-after-settlement", #failures))
-    else
-        warn("changes", "couldn't keep " .. #failures .. " things planets could do before them (see PLANETCHECK final in the log).", localised_text.get("propertyrandomizer-warning.planetary-lost", #failures))
-    end
+    warn("changes", "couldn't keep " .. #failures .. " things planets could do before them (see PLANETCHECK final in the log).", localised_text.get("propertyrandomizer-warning.planetary-lost", #failures))
     return false
 end
 
@@ -1878,10 +1357,10 @@ end
 
 -- Checks the game an attempt of the rest of randomization built against the game before planetary changes, with the same rules as each stage's own check (PLANETCHECK attempt)
 -- The attempt's logic graph comes with sort_info, its sort with room/ability and home contexts, which is only redone if its home sets aren't the stages' own
--- Outside superposed mode (where planetary.settle does this) the stages repaired their changes before the rest of randomization ran, so an attempt that loses what they kept is retried like one that fails UNIFIEDCHECK (see data-final-fixes.lua)
--- Returns how many goals the attempt lost (0 in superposed mode or without planetary changes), the lost goals (see planetary_check.required_failures) and the sort they were found in
+-- The stages repaired their changes before the rest of randomization ran, so an attempt that loses what they kept is retried like one that fails UNIFIEDCHECK (see data-final-fixes.lua)
+-- Returns how many goals the attempt lost (0 without planetary changes), the lost goals (see planetary_check.required_failures) and the sort they were found in
 planetary.check_attempt = function(graph, sort_info)
-    if planetary.before == nil or planetary.superposed ~= nil then
+    if planetary.before == nil then
         return 0, {}, sort_info
     end
     if sort_info.home_sets ~= planetary_check.home_sets then
@@ -1896,38 +1375,6 @@ planetary.check_attempt = function(graph, sort_info)
         sort_info = sort_info,
     }, planetary.before.variants_of, false, "PLANETCHECK attempt")
     return #failures, failures, sort_info
-end
-
--- Undoes every stage's bookkeeping, so the changes can be rolled again on the game before them (planetary.reroll)
-planetary.reset = function()
-    planetary_check.moved_features = {}
-    planetary_check.transport = {}
-    planetary_check.given_up = {}
-    planetary_check.home_sets = nil
-    locks.moved = {}
-    rewards.moved = {}
-    lock_repairs.forget()
-    scaffolds.kept = {}
-    lightning.last = nil
-    freezing.last = nil
-    lutils.bootstrap_heat_rooms = {}
-    protection.transported_recipe_contexts = {}
-    planetary.superposed = nil
-    planetary.before = nil
-    planetary.pending = nil
-end
-
--- Rolls the changes again for another attempt of the rest of randomization in superposed mode (see data-final-fixes.lua); data.raw must be the game before any planetary change again
--- Each stage draws from its own random stream (lib/random/rng.lua), so it rolls something else than the time before
-planetary.reroll = function(logic)
-    planetary.reset()
-    planetary.execute(logic)
-end
-
--- Undoes the changes for the rest of the attempts (data.raw must be the game before any planetary change again), with a warning in the randomizer panel, after num_attempts attempts of the rest of randomization couldn't keep what they owed
-planetary.undo = function(num_attempts)
-    planetary.reset()
-    warn("changes", "were undone, since " .. num_attempts .. " attempts of the rest of randomization couldn't keep what planets could do before them.", localised_text.get("propertyrandomizer-warning.planetary-retries", num_attempts))
 end
 
 return planetary

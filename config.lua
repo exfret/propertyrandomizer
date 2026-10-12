@@ -119,7 +119,7 @@ config.planetary_freezing = settings.startup["propertyrandomizer-planetary-freez
 config.planetary_locks = config.unified_preview or settings.startup["propertyrandomizer-planetary-locks"].value
 -- Planet rewards (randomizations/planetary/rewards.lua), a work in progress (notes/wip.txt): planets' special machines and other rewards move to other planets
 config.planetary_rewards = settings.startup["propertyrandomizer-planetary-rewards"].value
--- Work in progress, off by default: outside superposed mode, each planet's science moves into the special machine that arrived there instead of the move being reverted
+-- Work in progress, off by default: each planet's science moves into the special machine that arrived there instead of the move being reverted
 config.planetary_rewards_rehome = settings.startup["propertyrandomizer-planetary-rewards-rehome"].value
 -- Only these reward bundles move (bundle ids, which are technology names, comma-separated; a development aid for testing one move at a time): empty for all
 config.planetary_rewards_only = {}
@@ -142,13 +142,10 @@ config.dev_unified = features.dev_unified
 config.damage_type_randomization = features.damage_types
 config.military_difficulty = settings.startup["propertyrandomizer-military-difficulty"].value
 config.military_time_multiplier = settings.startup["propertyrandomizer-military-clear-time"].value / 20
--- Whether the planetary stages that are on run in superposed mode (randomizations/planetary/execute.lua): the game before them stays in the logic as debt for unified randomization to pay, and what's still owed is settled after each of its attempts
--- Only with the unified randomizations in development, which are what pays and settles the debt; without them the stages repair their own changes as usual
-config.planetary_superposed = config.dev_unified and settings.startup["propertyrandomizer-planetary-superposed"].value
 -- The optional planetary fix pass uses unified's prerequisite chooser after the specialized resource, lightning and freezing repairs, only for remaining failures and before first pass (randomizations/planetary/fix-pass.lua).
 -- It also brings the planetary check's rocket rule with delivered machines and without recipe categories as goals (randomizations/planetary/check.lua)
--- Only with the unified randomizations in development, whose handlers it uses, and never with superposed mode
-config.planetary_fix_pass = config.dev_unified and not config.planetary_superposed and settings.startup["propertyrandomizer-planetary-fix-pass"].value
+-- Only with the unified randomizations in development, whose handlers it uses
+config.planetary_fix_pass = config.dev_unified and settings.startup["propertyrandomizer-planetary-fix-pass"].value
 -- Whether unified item randomization moves fluids too: items and fluids trade positions, and an identity keeps its form while the position takes it (see lib/item-fluid.lua)
 -- In development, so it's on with the other unified randomizations still in development (config.dev_unified); everything it touches behaves as before it while this is false
 config.item_fluids = config.dev_unified
@@ -159,8 +156,7 @@ config.recipe_shapes = config.dev_unified
 -- In development, behind its own setting, off by default, since the checkout is the user's playable mod
 config.deposit_copies = config.dev_unified and settings.startup["propertyrandomizer-independent-deposits"].value
 -- Whether a recipe's per-planet versions that a unified attempt left taking and making the same things merge into one (randomizations/graph/unified/recipe-merges.lua, user 2026-10-10): with the unified randomizations in development, after each of their attempts
--- Not in superposed mode, whose settlement can realize planet locks after an attempt, which would put a merged recipe's old lock back
-config.recipe_merges = config.dev_unified and not config.planetary_superposed
+config.recipe_merges = config.dev_unified
 -- Whether planets get random names mixed from the vanilla planets' names (lib/planet-names.lua): with planetary randomization, the unified randomizations in development and the duplicates all on (user, 2026-09-30)
 config.planet_names = config.dupes and config.planetary and config.dev_unified
 -- Whether every planet but the starting one gets a random tint (lib/planet-tints.lua), copies included: with the random names, so the planets are disguised together

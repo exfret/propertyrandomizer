@@ -196,7 +196,7 @@ if config.dev_unified then
     end
 end
 
--- The game before any planetary change, for rolling the changes again for another attempt of the rest of randomization (superposed mode, see the unified loop below)
+-- The game before planetary changes, for recycling regeneration and the result summary
 local pre_planetary_raw = nil
 if config.planetary then
     pre_planetary_raw = table.deepcopy(data.raw)
@@ -307,10 +307,7 @@ prepare_world()
 
 local unified_check = require("randomizations/graph/unified/skeleton/check")
 local operation_unlocks = require("lib/logic/operation-unlocks")
--- How many times planetary changes in superposed mode are rolled again for a failed attempt before they're undone instead (see below)
-local PLANETARY_REROLLS = 2
-local num_planetary_rerolls = 0
--- Outside superposed mode, how many attempts that lose only what planetary changes kept (PLANETCHECK attempt) are retried before one is kept anyway, for the final check to warn about; each retry costs a whole attempt
+-- How many attempts that lose only what planetary changes kept (PLANETCHECK attempt) are retried before one is kept anyway, for the final check to warn about; each retry costs a whole attempt
 local PLANETARY_LOSS_RETRIES = 2
 local num_planetary_loss_retries = 0
 -- How many times the planet goals an attempt lost get the items they need made shippable and are checked again (randomizations/planetary/transport.lua); each time costs a sort, where a retry costs a whole attempt
@@ -352,11 +349,6 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         end
         -- Recycling recipes follow the recipes unified randomization changed, as the recycler would have generated them (lib/recycling.lua), so the check sees the game players get
         recycling.regenerate(old_data_raw)
-        -- Planetary changes in superposed mode: the attempt settles what it still owes them (randomizations/planetary/execute.lua), and one that leaves goals owed fails like one that fails the check below
-        local num_owed = 0
-        if config.planetary then
-            num_owed = planetary.settle(new_logic)
-        end
         -- Unified randomization's model can be wrong about the game it builds, so check the game itself (logic rebuilt from it) against the original
         -- An attempt that lost something a player needs fails like any other, so it's retried or errors instead of loading as a softlock
         local operation_result
@@ -374,7 +366,7 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
             })
         end
         local verdict = unified_check.run(new_logic.graph, init_complex_sort_info, attempt_sort_info, "UNIFIEDCHECK", config.operation_readiness)
-        -- Outside superposed mode the planetary stages repaired their changes before unified randomization ran, so an attempt that loses what they kept is retried too, up to PLANETARY_LOSS_RETRIES times
+        -- The planetary stages repaired their changes before unified randomization ran, so an attempt that loses what they kept is retried too, up to PLANETARY_LOSS_RETRIES times
         local num_lost_planetary = 0
         if config.planetary then
             local lost_goals
@@ -389,8 +381,6 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         local problem = nil
         if not verdict.ok then
             problem = "loses what the original had (see the UNIFIEDCHECK lines)"
-        elseif num_owed > 0 then
-            problem = "still owes planetary changes " .. num_owed .. " goals (see the Planetary settlement lines)"
         elseif num_lost_planetary > 0 and num_planetary_loss_retries < PLANETARY_LOSS_RETRIES then
             num_planetary_loss_retries = num_planetary_loss_retries + 1
             problem = "loses " .. num_lost_planetary .. " things planets could do after planetary changes (see the PLANETCHECK attempt lines)"
@@ -410,22 +400,6 @@ for i = 1, (unified.has_handlers and config.unified_num_retries) or 0 do
         transport.applied = {}
         if i == config.unified_num_retries then
             error("Unified randomization failed. Perhaps try a new seed?")
-        end
-        -- In superposed mode the planetary changes are rolled again for the next attempt, since this roll may have no fix for what the attempt owed (what ocean swaps owe has none)
-        -- After PLANETARY_REROLLS rolls they're undone instead, with a warning in the randomizer panel, so a seed is never worse off with them than without
-        if planetary.superposed ~= nil then
-            data.raw = table.deepcopy(pre_planetary_raw)
-            if num_planetary_rerolls < PLANETARY_REROLLS then
-                num_planetary_rerolls = num_planetary_rerolls + 1
-                planetary.reroll(new_logic)
-            else
-                planetary.undo(i)
-            end
-            recycling.regenerate(pre_planetary_raw)
-            prepare_deposit_copies()
-            split_trigger_technologies()
-            old_data_raw = table.deepcopy(data.raw)
-            prepare_world()
         end
     else
         break

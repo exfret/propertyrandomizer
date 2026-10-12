@@ -2,7 +2,6 @@
 -- Each resource placement on a planet (where and how much of a resource that planet's map generates) is a slot, and resources are travelers.
 -- Resources trade slots between all the planets, the starting planet included, ores (mined as items) with ores and wells (mined as fluids) with wells, so each planet gets other resources exactly where its old ones were.
 -- The starting planet keeps what its early game and its own science need through the extra patches (a planet's repairs put a patch near where you land), so it can start with tungsten in its iron's footprint and an iron patch beside the crash site.
--- In superposed mode the starting planet stays out: without extra patches up front, a start without its ores would be a whole-game debt the rest of randomization can't pay (see the Gleba start experiment in randomizations/planetary/execute.lua).
 -- Recipes belonging to that planet follow the swap, taking what replaced a lost resource instead of it (an edit; like calcite --> the new resource's item in Vulcanus's lava recipes).
 -- A recipe other planets make too (like copper plate, or anything a planet shares with its copies, lib/dupe-planets.lua) can't follow the swap in place, so each planet that made it from its own resources and lost one of them gets a planned variant of its own instead, like "Copper plate (Nauvis 2)" taking what replaced copper ore there, locked to that planet; the original stays for the planets that kept the resource or import it.
 -- So do technologies belonging to that planet that are researched by mining a lost resource: they're researched by mining its replacement instead.
@@ -73,7 +72,7 @@ local function is_fluid_resource(resource)
     return false
 end
 
--- Every resource placement on the planets (the starting planet's too, except in superposed mode), in a fixed order
+-- Every resource placement on the planets (the starting planet's too), in a fixed order
 -- A slot's probability and richness are what that planet uses for the resource: its override if it has one, or else the resource's own autoplace
 resources.slots = function()
     local slots = {}
@@ -81,8 +80,7 @@ resources.slots = function()
         local planet = data.raw.planet[planet_name]
         local map_gen_settings = planet.map_gen_settings or {}
         local entity_settings = (map_gen_settings.autoplace_settings or {}).entity
-        local is_start_kept_out = planet_name == constants.starting_planet and config.planetary_superposed
-        if not is_start_kept_out and entity_settings ~= nil and entity_settings.settings ~= nil then
+        if entity_settings ~= nil and entity_settings.settings ~= nil then
             local overrides = map_gen_settings.property_expression_names or {}
             for _, resource_name in pairs(sorted_keys(entity_settings.settings)) do
                 local resource = data.raw.resource[resource_name]

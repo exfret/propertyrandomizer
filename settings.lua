@@ -437,7 +437,7 @@ data:extend({
         order = "f-ga[planetary-rewards]",
     },
     {
-        -- Work in progress, off by default: outside superposed mode, each planet's science moves into the special machine the permutation brought there (randomizations/planetary/rewards.lua, science_needs and rehome_plan)
+        -- Work in progress, off by default: each planet's science moves into the special machine the permutation brought there (randomizations/planetary/rewards.lua, science_needs and rehome_plan)
         setting_type = "startup",
         type = "bool-setting",
         name = "propertyrandomizer-planetary-rewards-rehome",
@@ -469,13 +469,6 @@ data:extend({
         name = "propertyrandomizer-planetary-enemies",
         default_value = false,
         order = "f-gd[planetary-enemies]",
-    },
-    {
-        setting_type = "startup",
-        type = "bool-setting",
-        name = "propertyrandomizer-planetary-superposed",
-        default_value = false,
-        order = "f-h[planetary-superposed]",
     },
     {
         -- Work in progress (randomizations/planetary/fix-pass.lua): choose prerequisites for failures left after the specialized planetary repairs.

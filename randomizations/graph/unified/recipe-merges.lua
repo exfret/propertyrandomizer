@@ -1,6 +1,6 @@
 -- Recipe merges in the game (lib/recipe-merges.lua says which recipes merge and how): after each unified attempt, once independent deposits' copies are their materials again, so recycling, the attempt's checks and the tech tree rebuild see the merged game
 -- A merged recipe made in more rooms than the recipe it keeps gets exact surface conditions for them on surface properties of its own (surface_sets.MERGE_POOL), apart from the planet locks' (randomizations/planetary/locks.lua)
--- Nothing realizes the locks again after this outside superposed mode, where merges don't run (config.recipe_merges), and a retried attempt starts from the game before it, so merges and their properties go with it
+-- Nothing realizes the locks again after this, and a retried attempt starts from the game before it, so merges and their properties go with it
 -- Logs a RECIPEMERGES line for each merge, one more for each merge whose amounts were RADICAL_RATIO or more apart (flagged), and a summary
 
 local constants = require("helper-tables/constants")

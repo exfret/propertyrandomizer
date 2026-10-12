@@ -522,7 +522,7 @@ locks.widen = function(target_id, extra_rooms)
 end
 
 -- Puts locks back as they were (target ids), and forgets they moved
--- Returns the moved locks it forgot, target id --> lock, so locks.restore can bring them back
+-- Returns the moved locks it forgot, target id --> lock
 locks.revert = function(target_ids)
     local reverted = {}
     for _, target_id in pairs(target_ids) do
@@ -536,14 +536,6 @@ locks.revert = function(target_ids)
     end
     locks.realize()
     return reverted
-end
-
--- Moves locks that locks.revert put back again
-locks.restore = function(reverted)
-    for target_id, lock in pairs(reverted) do
-        locks.moved[target_id] = lock
-    end
-    locks.realize()
 end
 
 -- Where the goals of moved locks go, as check.transport entries: node key --> { map = old room --> new room, keep_isolatability }
