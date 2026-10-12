@@ -1,0 +1,13 @@
+Things to check in game after loading a new build. Only problems that have come up in games more than once; one-time looks and risks that never happened are left out.
+
+ * Home tab of the randomizer panel: no red lines, and no orange lines other than "default seed" and "turned off Technology prereqs". Planets losing things and broken resource limits have come up in several loads.
+ * Other planets: nothing there that shouldn't be: another planet's ocean tiles, old shorelines around a swapped ocean, or a resource the planet lost. Seen with ocean tiles and shorelines (2026-10-01) and scrap under calcite on Fulgora (2026-10-08).
+ * Names and icons: no "Unknown key" text, and nothing shows another item's name, icon or look on belts. Seen with ore icons (2026-10-09), and the holmium solution name, planet icons and belt looks (2026-10-10).
+ * Tech tree: nothing at the start needs items from later techs, nothing needs another planet's discovery, nothing unlocks nothing, and trigger amounts are sensible. Seen with a trigger asking for 260,000 water (2026-10-08), and Unlock 2 techs at the start, an empty rocket silo tech and Fulbis needing Vulgora's discovery (2026-10-10).
+ * Early game: nothing needed early comes only from hand work like mining rocks or spoiling fish. Seen with stone needing sulfuric acid and spoilage only from fish (2026-10-07).
+ * Randomizations show: everything turned on visibly changed something. Wild entities (2026-10-01), ore patches (2026-10-06) and research triggers (2026-10-07) each looked unchanged at some point.
+
+Left out: things that only needed one look (Factoriopedia pages, number badges, space route names, panel scaling), things that never went wrong (moved enemies, biomes, planet sounds, the landing lightning rod), and the open Vulcanus offshore pump bug (bugs.txt 52).
+
+To visit a planet without flying there (internal names are in the log's "Planet names: X is Y" lines; copies are named like vulcanus-exfret-2-copy):
+/c local s = game.planets["NAME"].create_surface() game.player.teleport(s.find_non_colliding_position("character", {0, 0}, 0, 1), s)
