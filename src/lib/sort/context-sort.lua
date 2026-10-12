@@ -1337,28 +1337,98 @@ local function compute_rooms_needed(graph, watched, sort_info)
         return has_shrunk
     end
 
-    -- Going in sort order first means most nodes see their prerequisites' final sets on the first visit
-    local queue = {}
-    local is_queued = {}
-    local function push(node_key)
-        if is_queued[node_key] == nil then
-            is_queued[node_key] = true
-            table.insert(queue, node_key)
+    -- Sweeps in sort order: each sweep takes its nodes by their first pebble, so a node comes after the prerequisites the sort reached before it, and a node a shrink reaches further on in the order is looked at in the same sweep
+    -- A dependent at or before the node that shrank (around a cycle) waits for the next sweep, so the changes around cycles are taken together
+    -- The sets are the largest that follow the rules above whatever order the updates come in, so the order only changes how many updates it takes (a first-in first-out queue took about 15 per node in a game with planet copies)
+    -- Nodes the sort never reached have no sets to update
+    local first_ind = {}
+    local pebble_keys = sort_info.pebble_keys
+    for ind = 1, #pebble_keys do
+        local node_key = pebble_keys[ind]
+        if first_ind[node_key] == nil then
+            first_ind[node_key] = ind
         end
     end
-    for _, node_key in pairs(sort_info.pebble_keys) do
-        push(node_key)
+    local heap_inds = {}
+    local heap_keys = {}
+    local heap_size = 0
+    -- Node key --> true while it waits in the heap, or "next" while it waits for the next sweep
+    local is_queued = {}
+    local next_sweep = {}
+    local function heap_push(node_key, ind)
+        heap_size = heap_size + 1
+        local pos = heap_size
+        while pos > 1 do
+            local parent = math.floor(pos / 2)
+            if heap_inds[parent] < ind then
+                break
+            end
+            heap_inds[pos] = heap_inds[parent]
+            heap_keys[pos] = heap_keys[parent]
+            pos = parent
+        end
+        heap_inds[pos] = ind
+        heap_keys[pos] = node_key
     end
-    local queue_pos = 1
-    while queue_pos <= #queue do
-        local node_key = queue[queue_pos]
-        queue_pos = queue_pos + 1
-        is_queued[node_key] = nil
-        if update(node_key) then
-            for dep, _ in pairs(graph.nodes[node_key].dep) do
-                push(graph.edges[dep].stop)
+    local function heap_pop()
+        local earliest_key = heap_keys[1]
+        local earliest_ind = heap_inds[1]
+        local last_ind = heap_inds[heap_size]
+        local last_key = heap_keys[heap_size]
+        heap_inds[heap_size] = nil
+        heap_keys[heap_size] = nil
+        heap_size = heap_size - 1
+        if heap_size > 0 then
+            local pos = 1
+            while true do
+                local child = pos * 2
+                if child > heap_size then
+                    break
+                end
+                if child < heap_size and heap_inds[child + 1] < heap_inds[child] then
+                    child = child + 1
+                end
+                if heap_inds[child] >= last_ind then
+                    break
+                end
+                heap_inds[pos] = heap_inds[child]
+                heap_keys[pos] = heap_keys[child]
+                pos = child
+            end
+            heap_inds[pos] = last_ind
+            heap_keys[pos] = last_key
+        end
+        return earliest_key, earliest_ind
+    end
+    for node_key, ind in pairs(first_ind) do
+        is_queued[node_key] = true
+        heap_push(node_key, ind)
+    end
+    while heap_size > 0 do
+        while heap_size > 0 do
+            local node_key, ind = heap_pop()
+            is_queued[node_key] = nil
+            if update(node_key) then
+                for dep, _ in pairs(graph.nodes[node_key].dep) do
+                    local dep_key = graph.edges[dep].stop
+                    local dep_ind = first_ind[dep_key]
+                    if dep_ind ~= nil and is_queued[dep_key] == nil then
+                        if dep_ind > ind then
+                            is_queued[dep_key] = true
+                            heap_push(dep_key, dep_ind)
+                        else
+                            is_queued[dep_key] = "next"
+                            table.insert(next_sweep, dep_key)
+                        end
+                    end
+                end
             end
         end
+        for _, node_key in pairs(next_sweep) do
+            is_queued[node_key] = true
+            heap_push(node_key, first_ind[node_key])
+        end
+        next_sweep = {}
     end
 
     return {
@@ -2579,6 +2649,10 @@ end
 -- A later prereq can lead back to the OR node, so with prefer the result also has chosen (ind --> the inds it went on to), for checking that the path is still a derivation (see src/logic/builders/witness-recipes.lua), and preferred (OR pebble --> the preferred prereq it took over an earlier one)
 -- extra_params.tie_rank(context) ranks the contexts a forgetter or room takes in (lower first): of those the sort finished in the same step as the earliest one, it takes the lowest ranked instead of whichever the sort listed first (see tied_choice)
 -- Like where a tech is researched: the sort ships its packs to every room in the same step, so the room listed first is arbitrary; the result's num_tie_moves counts the choices the rank changed
+-- extra_params.expansions (a table, empty at first) keeps what the path takes from each pebble (its context and the inds it goes on to), so later paths of the same sort with the same tie_rank don't work it out again
+-- What a pebble takes doesn't depend on where the path started, except through tie_rank and prefer, so the table is only for paths that rank ties the same way, and extra_params.cacheable(curr_ind) says which pebbles prefer can't change (nil for all)
+-- The lists in the result's chosen can then be shared with expansions, so they're only read
+-- extra_params.options (a table, empty at first) keeps the inds of each OR pebble's options, for later paths of the same sort
 top.path = function(graph, goal_inds, sort_info, extra_params)
     local pebble_keys = sort_info.pebble_keys
     local pebble_contexts = sort_info.pebble_contexts
@@ -2588,6 +2662,10 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     local stop_if = extra_params.stop_if or function(node_key, context) return false end
     local prefer = extra_params.prefer
     local tie_rank = extra_params.tie_rank
+    local expansions = extra_params.expansions
+    local cacheable = extra_params.cacheable
+    -- With options (a table, empty at first, for paths of this sort): OR pebble of a node that keeps its context --> its options' inds in order, which the pebble finds once
+    local options = extra_params.options
     local num_tie_moves = 0
     local chosen
     local preferred
@@ -2605,25 +2683,50 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
         in_path[ind] = true
     end
 
-    local path_ind = 1
-    while path_ind <= #path do
-        local curr_ind = path[path_ind]
-        local curr_key = pebble_keys[curr_ind]
-        local curr_context = pebble_contexts[curr_ind]
-        local curr_node = graph.nodes[curr_key]
+    -- The inds of the pebbles the pebble at curr_ind takes when context arrives at its node, or false if it can't take any
+    local function find_preinds(curr_ind, node, context)
+        local preinds = {}
 
-        -- context is the context arriving at node
-        local function find_preinds(node, context)
-            local preinds = {}
-
-            if node.op == "OR" then
-                -- Just try earliest prereq (could be suboptimal, but this is a good heuristic)
-                -- Start at curr_ind to more easily do error checking on indeed getting an earlier pebble
-                local first_occurrence_ind = curr_ind
-                -- Only nodes that keep their context: a forgetting node's prereqs are compared across contexts below
-                local can_prefer = prefer ~= nil and logic.type_info[node.type].context == nil
-                local prefer_before = extra_params.prefer_before or curr_ind
-                local preferred_ind
+        if node.op == "OR" then
+            -- Just try earliest prereq (could be suboptimal, but this is a good heuristic)
+            -- Start at curr_ind to more easily do error checking on indeed getting an earlier pebble
+            local first_occurrence_ind = curr_ind
+            -- Only nodes that keep their context: a forgetting node's prereqs are compared across contexts below
+            local keeps_context = logic.type_info[node.type].context == nil
+            local can_prefer = prefer ~= nil and keeps_context
+            local prefer_before = extra_params.prefer_before or curr_ind
+            local preferred_ind
+            if options ~= nil and keeps_context then
+                -- A node that keeps its context takes it in only in its pebble's own context, so its options' inds are the same for every path, kept in order
+                local option_inds = options[curr_ind]
+                if option_inds == nil then
+                    option_inds = {}
+                    for pre, _ in pairs(node.pre) do
+                        local pre_ind = edge_ind(context_info, node_to_context_inds, graph.edges[pre], context)
+                        if pre_ind ~= nil then
+                            table.insert(option_inds, pre_ind)
+                        end
+                    end
+                    table.sort(option_inds)
+                    options[curr_ind] = option_inds
+                end
+                if option_inds[1] ~= nil and option_inds[1] < first_occurrence_ind then
+                    first_occurrence_ind = option_inds[1]
+                end
+                -- The earliest option prefer takes, as below
+                if can_prefer then
+                    for i = 1, #option_inds do
+                        local pre_ind = option_inds[i]
+                        if pre_ind >= prefer_before then
+                            break
+                        end
+                        if prefer(pre_ind, curr_ind) then
+                            preferred_ind = pre_ind
+                            break
+                        end
+                    end
+                end
+            else
                 for pre, _ in pairs(node.pre) do
                     -- Need to check that context is non-nil since OR nodes can depend on later things/with different contexts
                     local pre_ind = edge_ind(context_info, node_to_context_inds, graph.edges[pre], context)
@@ -2634,130 +2737,162 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
                         preferred_ind = pre_ind
                     end
                 end
-                -- Make sure we found something/didn't loop
-                if first_occurrence_ind == curr_ind then
-                    return false
-                end
-                if preferred_ind ~= nil and preferred_ind ~= first_occurrence_ind then
-                    preferred[curr_ind] = preferred_ind
-                    table.insert(preinds, preferred_ind)
-                else
-                    table.insert(preinds, first_occurrence_ind)
-                end
-            elseif node.op == "AND" then
-                -- Add all previous pebbles to the path
-                for pre, _ in pairs(node.pre) do
-                    local prev_ind = edge_ind(context_info, node_to_context_inds, graph.edges[pre], context)
-                    -- If this is nil, then not satisfiable, so abandon this context
-                    if prev_ind == nil then
-                        return false
-                    end
-                    -- prev_ind >= curr_ind can happen in a valid manner, it just means this is an invalid context
-                    table.insert(preinds, prev_ind)
-                end
             end
-
-            return preinds
-        end
-
-        -- Whether incoming arriving at curr_node would send out curr_context
-        local function transmits_curr_context(incoming)
-            if not context_info.complex then
-                return true
-            end
-            -- Test membership directly: constructing every outgoing context here repeats the room expansion for every candidate of every witness.
-            local context_type = logic.type_info[curr_node.type].context
-            local home = context_info.home[incoming]
-            if home ~= context_info.home[curr_context] then
+            -- Make sure we found something/didn't loop
+            if first_occurrence_ind == curr_ind then
                 return false
             end
-            if context_type == true then
-                if home ~= nil then
-                    return true
-                end
-                local mask = context_info.mask[incoming]
-                if has_ability(mask, ISOLATABILITY) then
-                    return incoming == curr_context
-                end
-                return mask == context_info.mask[curr_context]
-            elseif type(context_type) == "string" then
-                return context_info.room[curr_context] == curr_node.name
-                    and (home == nil or context_info.home_rooms[home][curr_node.name] ~= nil)
+            if preferred_ind ~= nil and preferred_ind ~= first_occurrence_ind then
+                preferred[curr_ind] = preferred_ind
+                table.insert(preinds, preferred_ind)
+            else
+                table.insert(preinds, first_occurrence_ind)
             end
-            return incoming == curr_context
+        elseif node.op == "AND" then
+            -- Add all previous pebbles to the path
+            for pre, _ in pairs(node.pre) do
+                local prev_ind = edge_ind(context_info, node_to_context_inds, graph.edges[pre], context)
+                -- If this is nil, then not satisfiable, so abandon this context
+                if prev_ind == nil then
+                    return false
+                end
+                -- prev_ind >= curr_ind can happen in a valid manner, it just means this is an invalid context
+                table.insert(preinds, prev_ind)
+            end
         end
 
-        local discovery_preinds
-        if logic.type_info[curr_node.type].context ~= nil then
-            -- In this case, we assume just the forgetting contexts for now (true or string type)
-            -- We then lost the context info, so we just choose the earliest context that appears earlier in the sort
-            -- We'll choose that context and then do the rest with that
-            local earliest_context_ind = curr_ind
-            local outgoing_context = curr_context
-            -- With tie_rank, each possible context's latest prereq, for choosing among those as early as the earliest below
-            local latest_of
-            for _, context in pairs(context_info.list) do
-                local preinds = false
-                if transmits_curr_context(context) then
-                    preinds = find_preinds(curr_node, context)
-                end
-                if preinds ~= false then
-                    local latest_ind
-                    for _, ind in pairs(preinds) do
-                        if latest_ind == nil or ind > latest_ind then
-                            latest_ind = ind
-                        end
+        return preinds
+    end
+
+    -- Whether incoming arriving at curr_node would send out curr_context
+    local function transmits_curr_context(curr_node, curr_context, incoming)
+        if not context_info.complex then
+            return true
+        end
+        -- Test membership directly: constructing every outgoing context here repeats the room expansion for every candidate of every witness.
+        local context_type = logic.type_info[curr_node.type].context
+        local home = context_info.home[incoming]
+        if home ~= context_info.home[curr_context] then
+            return false
+        end
+        if context_type == true then
+            if home ~= nil then
+                return true
+            end
+            local mask = context_info.mask[incoming]
+            if has_ability(mask, ISOLATABILITY) then
+                return incoming == curr_context
+            end
+            return mask == context_info.mask[curr_context]
+        elseif type(context_type) == "string" then
+            return context_info.room[curr_context] == curr_node.name
+                and (home == nil or context_info.home_rooms[home][curr_node.name] ~= nil)
+        end
+        return incoming == curr_context
+    end
+
+    local path_ind = 1
+    while path_ind <= #path do
+        local curr_ind = path[path_ind]
+        local curr_key = pebble_keys[curr_ind]
+        local curr_context = pebble_contexts[curr_ind]
+        local curr_node = graph.nodes[curr_key]
+
+        local preinds
+        local expansion
+        -- Without cacheable, a path with prefer keeps nothing, since prefer can change any pebble
+        local can_cache = expansions ~= nil and ((cacheable == nil and prefer == nil) or (cacheable ~= nil and cacheable(curr_ind)))
+        if can_cache then
+            expansion = expansions[curr_ind]
+        end
+        if expansion ~= nil then
+            preinds = expansion.preinds
+            curr_context = expansion.context
+            if expansion.tie_moved then
+                num_tie_moves = num_tie_moves + 1
+            end
+        else
+            local tie_moved = false
+            local discovery_preinds
+            if logic.type_info[curr_node.type].context ~= nil then
+                -- In this case, we assume just the forgetting contexts for now (true or string type)
+                -- We then lost the context info, so we just choose the earliest context that appears earlier in the sort
+                -- We'll choose that context and then do the rest with that
+                local earliest_context_ind = curr_ind
+                local outgoing_context = curr_context
+                -- With tie_rank, each possible context's latest prereq, for choosing among those as early as the earliest below
+                local latest_of
+                for _, context in pairs(context_info.list) do
+                    local context_preinds = false
+                    if transmits_curr_context(curr_node, curr_context, context) then
+                        context_preinds = find_preinds(curr_ind, curr_node, context)
                     end
-                    if latest_ind == nil then
-                        if curr_node.op == "OR" then
-                            -- This means no prereqs and it's an OR, so shouldn't have been found in the first place
-                            -- Oh that's fine we just ignore the context
+                    if context_preinds ~= false then
+                        local latest_ind
+                        for _, ind in pairs(context_preinds) do
+                            if latest_ind == nil or ind > latest_ind then
+                                latest_ind = ind
+                            end
+                        end
+                        if latest_ind == nil then
+                            if curr_node.op == "OR" then
+                                -- This means no prereqs and it's an OR, so shouldn't have been found in the first place
+                                -- Oh that's fine we just ignore the context
+                            else
+                                -- In this case, we're satisfiable immediately anyways due to having no prereqs, and the exact context doesn't matter
+                                -- Give earliest_context_ind a 0 so that later sanity checks don't complain
+                                earliest_context_ind = 0
+                                curr_context = context
+                                break
+                            end
                         else
-                            -- In this case, we're satisfiable immediately anyways due to having no prereqs, and the exact context doesn't matter
-                            -- Give earliest_context_ind a 0 so that later sanity checks don't complain
-                            earliest_context_ind = 0
-                            curr_context = context
-                            break
-                        end
-                    else
-                        if tie_rank ~= nil and latest_ind < curr_ind then
-                            latest_of = latest_of or {}
-                            latest_of[context] = latest_ind
-                        end
-                        if latest_ind < earliest_context_ind then
-                            earliest_context_ind = latest_ind
-                            curr_context = context
+                            if tie_rank ~= nil and latest_ind < curr_ind then
+                                latest_of = latest_of or {}
+                                latest_of[context] = latest_ind
+                            end
+                            if latest_ind < earliest_context_ind then
+                                earliest_context_ind = latest_ind
+                                curr_context = context
+                            end
                         end
                     end
                 end
-            end
-            if latest_of ~= nil and earliest_context_ind ~= 0 and earliest_context_ind < curr_ind then
-                local tied = tied_choice(graph, pebble_keys, latest_of, earliest_context_ind, curr_context, tie_rank)
-                if tied ~= curr_context then
-                    num_tie_moves = num_tie_moves + 1
-                    curr_context = tied
+                if latest_of ~= nil and earliest_context_ind ~= 0 and earliest_context_ind < curr_ind then
+                    local tied = tied_choice(graph, pebble_keys, latest_of, earliest_context_ind, curr_context, tie_rank)
+                    if tied ~= curr_context then
+                        num_tie_moves = num_tie_moves + 1
+                        tie_moved = true
+                        curr_context = tied
+                    end
+                end
+                -- Isolatable contexts of techs can also come from discovering their space location (see discover_space_locations and discover_home_rooms in top.sort)
+                -- Then the path goes through the tech itself in an earlier context (a home context of the location with home contexts) and an earlier pebble of a tech that unlocks the location
+                if earliest_context_ind == curr_ind and context_info.complex and curr_node.type == "technology" then
+                    room_discoverers = room_discoverers or top.room_discoverers(graph)
+                    discovery_preinds = find_discovery_preinds(sort_info, room_discoverers, curr_node, outgoing_context, curr_ind)
+                end
+                -- If nothing was earlier, that's a contradiction
+                if earliest_context_ind == curr_ind and discovery_preinds == nil then
+                    log(serpent.block(curr_node))
+                    log(ctx.name(outgoing_context))
+                    error("No earlier contexts possible.")
                 end
             end
-            -- Isolatable contexts of techs can also come from discovering their space location (see discover_space_locations and discover_home_rooms in top.sort)
-            -- Then the path goes through the tech itself in an earlier context (a home context of the location with home contexts) and an earlier pebble of a tech that unlocks the location
-            if earliest_context_ind == curr_ind and context_info.complex and curr_node.type == "technology" then
-                room_discoverers = room_discoverers or top.room_discoverers(graph)
-                discovery_preinds = find_discovery_preinds(sort_info, room_discoverers, curr_node, outgoing_context, curr_ind)
-            end
-            -- If nothing was earlier, that's a contradiction
-            if earliest_context_ind == curr_ind and discovery_preinds == nil then
-                log(serpent.block(curr_node))
-                log(ctx.name(outgoing_context))
-                error("No earlier contexts possible.")
-            end
-        end
 
-        -- Now, either way, we go from curr_context
-        local preinds = discovery_preinds or find_preinds(curr_node, curr_context)
-        -- preinds should always be valid by here
-        if preinds == false then
-            log(curr_key .. " @ " .. ctx.name(curr_context))
-            error()
+            -- Now, either way, we go from curr_context
+            preinds = discovery_preinds or find_preinds(curr_ind, curr_node, curr_context)
+            -- preinds should always be valid by here
+            if preinds == false then
+                log(curr_key .. " @ " .. ctx.name(curr_context))
+                error()
+            end
+            if can_cache then
+                expansions[curr_ind] = {
+                    preinds = preinds,
+                    context = curr_context,
+                    tie_moved = tie_moved,
+                }
+            end
         end
         if path_ind == 1 or not stop_if(curr_key, curr_context) then
             if chosen ~= nil then

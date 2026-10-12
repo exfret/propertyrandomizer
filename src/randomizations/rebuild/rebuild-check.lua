@@ -249,7 +249,10 @@ rebuild_check.run = function(before_sort, flat_graph, flat_sort, technologies, f
     local num_rounds = 0
     local lost
     while true do
-        logic.build()
+        -- The grants of delivered buildings the last full prune left out stay out (src/logic/builders/bootstrap.lua), which only asks more of the rebuilt game
+        logic.build({
+            bootstrap_from_last = true,
+        })
         local after_sort = top.sort(logic.graph, nil, nil, {
             complex_contexts = true,
             home_contexts = true,

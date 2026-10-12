@@ -85,11 +85,16 @@ bootstrap.justifies = function(context, room, ability_inds)
 end
 
 -- The last prune: what it started from (see bootstrap.prune), the edges it removed in order, its lines about rooms that stay cold and the buildings it counted as local, so pruning the same again (a logic build after a change the logic doesn't model) takes no sorts
+-- Only a full prune is kept here, not one that started from what the last one left out (see from_last below)
 local last_prune = nil
+-- The grants the last full prune left out, as room .. "\n" .. name --> true
+local last_dropped = nil
 
 -- Prunes logic.graph's bootstrap grants in place; home_sets are the home sets to sort with (nil for top.home_sets of the graph)
+-- With from_last, the grants the last full prune left out are left out up front, which saves the sort with every grant when nothing else drops: for the tech tree rebuild's check of the game it rebuilt, which only changed techs
+-- That can keep fewer grants than a full prune, if the change lets a room make a building it couldn't before, so it's only for a check, which then asks more of the game rather than less
 -- Returns the number of sorts it took (0 when there are no grants, or when it starts from what the last prune started from)
-bootstrap.prune = function(logic, home_sets)
+bootstrap.prune = function(logic, home_sets, from_last)
     local graph = logic.graph
     local candidates = bootstrap.justifications(graph)
     if #candidates == 0 then
@@ -106,7 +111,7 @@ bootstrap.prune = function(logic, home_sets)
         table.insert(start, candidate.edge_key .. " " .. candidate.room .. " " .. candidate.name)
     end
     start = table.concat(start, "\n")
-    if last_prune ~= nil and last_prune.start == start then
+    if last_prune ~= nil and last_prune.start == start and from_last ~= true then
         for _, edge_key in pairs(last_prune.removed) do
             gutils.remove_edge(graph, edge_key)
         end
@@ -134,6 +139,29 @@ bootstrap.prune = function(logic, home_sets)
         return false
     end
     local num_sorts = 0
+    local num_up_front = 0
+    if from_last == true and last_dropped ~= nil then
+        local kept = {}
+        for _, candidate in pairs(candidates) do
+            if last_dropped[candidate.room .. "\n" .. candidate.name] ~= nil then
+                if candidate.name == "warmth" then
+                    local line = "Bootstrap infrastructure: heat can't be started in " .. candidate.room .. " and then keep itself going, so it stays cold there"
+                    table.insert(lines, line)
+                    log(line)
+                end
+                table.insert(removed, candidate.edge_key)
+                gutils.remove_edge(graph, candidate.edge_key)
+                num_up_front = num_up_front + 1
+            else
+                table.insert(kept, candidate)
+            end
+        end
+        candidates = kept
+    end
+    local all_candidates = {}
+    for _, candidate in pairs(candidates) do
+        all_candidates[candidate.room .. "\n" .. candidate.name] = true
+    end
     while #candidates > 0 do
         num_sorts = num_sorts + 1
         local sort_info = sort()
@@ -179,13 +207,28 @@ bootstrap.prune = function(logic, home_sets)
         table.insert(parts, room .. " (" .. #names_by_room[room] .. "): " .. table.concat(names_by_room[room], ", "))
     end
     local counted = #parts > 0 and table.concat(parts, "; ") or "none"
-    log("Bootstrap infrastructure: " .. num_sorts .. " sorts; delivered buildings counted as local: " .. counted)
-    last_prune = {
-        start = start,
-        removed = removed,
-        lines = lines,
-        counted = counted,
-    }
+    log("Bootstrap infrastructure: " .. num_sorts .. " sorts" .. (num_up_front > 0 and (" after leaving out " .. num_up_front .. " grants the last full prune did") or "") .. "; delivered buildings counted as local: " .. counted)
+    if from_last ~= true or last_dropped == nil then
+        last_prune = {
+            start = start,
+            removed = removed,
+            lines = lines,
+            counted = counted,
+        }
+        last_dropped = {}
+        local final = {}
+        for _, candidate in pairs(candidates) do
+            final[candidate.room .. "\n" .. candidate.name] = true
+        end
+        for key, _ in pairs(all_candidates) do
+            if final[key] == nil then
+                last_dropped[key] = true
+            end
+        end
+    else
+        -- The graph no longer matches a full prune's
+        last_prune = nil
+    end
     return num_sorts
 end
 

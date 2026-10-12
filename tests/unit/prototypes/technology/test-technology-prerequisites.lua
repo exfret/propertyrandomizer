@@ -67,4 +67,50 @@ local cyclic = {
 prerequisites.reduce(cyclic)
 assert(#cyclic.a.prerequisites == 1)
 assert(reachable(cyclic, "a").b and reachable(cyclic, "a").c)
+
+-- Reduce searches once per tech, where reduce_each searches once per prerequisite; on random trees with repeated prerequisites and ones naming no tech, both leave the same lists in the same order
+-- With a cycle, reduce uses reduce_each, whose answer then depends on the order (both copies are built the same way, so they iterate alike)
+local function random_specs(num, with_cycles)
+    local specs = {}
+    for i = 1, num do
+        local list = {}
+        for _ = 1, math.random(0, 5) do
+            local roll = math.random()
+            if roll < 0.05 then
+                table.insert(list, "missing-" .. math.random(1, 3))
+            elseif with_cycles == true then
+                table.insert(list, "t" .. math.random(1, num))
+            elseif i > 1 then
+                table.insert(list, "t" .. math.random(1, i - 1))
+            end
+        end
+        specs[i] = list
+    end
+    return specs
+end
+local function build(specs)
+    local technologies = {}
+    for i, list in pairs(specs) do
+        local copy = {}
+        for j, prereq in pairs(list) do
+            copy[j] = prereq
+        end
+        technologies["t" .. i] = { prerequisites = copy }
+    end
+    return technologies
+end
+math.randomseed(11)
+local num_removed = 0
+for round = 1, 400 do
+    local specs = random_specs(math.random(2, 40), round % 4 == 0)
+    local fast = build(specs)
+    local each = build(specs)
+    prerequisites.reduce(fast)
+    prerequisites.reduce_each(each)
+    for name, tech in pairs(each) do
+        assert(table.concat(fast[name].prerequisites, ",") == table.concat(tech.prerequisites, ","), "reduce and reduce_each differ on " .. name)
+        num_removed = num_removed + #specs[tonumber(string.sub(name, 2))] - #tech.prerequisites
+    end
+end
+assert(num_removed > 1000, "too few prerequisites left out: " .. num_removed)
 print("Technology prerequisite reduction tests passed")

@@ -457,11 +457,6 @@ if config.graph.item == true or config.graph.recipe == true or config.graph.tech
     end
 end
 
--- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild)
-if config.tech_tree_rebuild then
-    randomizations.rebuild_tech_tree()
-end
-
 -- Old item randomization is only held to the old logic for now (the oldlogic line in tests/configs.txt), so with it on, the old logic checks the built game too (OLDLOGICCHECK below)
 -- Its science packs before graph randomization are the baseline; balance rules (build-graph-compat.lua) are soft, so they're left out of both sorts
 local top_sort = require("src/legacy/logic/top-sort")
@@ -646,8 +641,10 @@ log("Applying fixes")
 randomizations.fixes()
 do_overrides_postfixes()
 
--- Rebuild tech tree post-fixes
-if config.tech_tree_rebuild then
+-- Rebuild tech tree (setting propertyrandomizer-tech-tree-rebuild), once and only here, after number randomization and the fixes, so the tree is built from the game players get (user, 2026-10-12)
+-- A rebuild costs as much as a whole logic check, and one right after unified randomization repeated this one's work; number randomization now changes the costs of the techs being replaced, which each recipe's tech then copies (with the recipes of one tech sharing its change)
+-- What the rebuild's own check can't keep goes to the final check below, so a player is warned in the panel; unified attempts can't retry it
+if config.tech_tree_rebuild == true then
     randomizations.rebuild_tech_tree()
 end
 

@@ -272,7 +272,7 @@ local function build(extra_params)
 ----------------------------------------------------------------------------------------------------
 
     -- Delivered buildings count as local only where the room can then make them (src/logic/builders/bootstrap.lua); extra_params.home_sets are the home sets to judge that with
-    bootstrap.prune(logic, extra_params.home_sets)
+    bootstrap.prune(logic, extra_params.home_sets, extra_params.bootstrap_from_last)
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------

@@ -21,25 +21,52 @@ for _, mask in pairs(top.ability_masks) do
     end
 end
 
+-- Answers of isolatable_ind, as sort --> room --> node key --> index or false, kept while the sort is (weak keys); a finished sort doesn't change
+local isolatable_memos = setmetatable({}, { __mode = "k" })
+
 -- When node_key can first be had in room from the room's own resources in local_sort_info, a sort with complex contexts, as an index in it, or nil if never (like top.isolatable_in, for one room)
 local function isolatable_ind(local_sort_info, node_key, room)
-    local contexts = local_sort_info.node_to_context_inds[node_key]
-    if contexts == nil then
-        return nil
+    local by_room = isolatable_memos[local_sort_info]
+    if by_room == nil then
+        by_room = {}
+        isolatable_memos[local_sort_info] = by_room
     end
-    local first
-    for _, mask in pairs(isolatable_masks) do
-        local ind = contexts[top.context_key(room, mask)]
-        if ind ~= nil and (first == nil or ind < first) then
-            first = ind
+    local memo = by_room[room]
+    if memo == nil then
+        memo = {}
+        by_room[room] = memo
+    end
+    local known = memo[node_key]
+    if known == nil then
+        known = false
+        local contexts = local_sort_info.node_to_context_inds[node_key]
+        if contexts ~= nil then
+            for _, mask in pairs(isolatable_masks) do
+                local ind = contexts[top.context_key(room, mask)]
+                if ind ~= nil and (known == false or ind < known) then
+                    known = ind
+                end
+            end
         end
+        memo[node_key] = known
     end
-    return first
+    return known or nil
 end
 
 -- The choices of later pebbles on loops of a path's choices (from top.path with prefer), as OR pebble --> the pebble it chose
 -- Only a choice of a later pebble can close a loop, since every other choice goes to an earlier pebble
-local function loop_choices(chosen, root_ind)
+-- Only a preferred choice (preferred, from the same path) can go to a later pebble, so without one of those there's nothing to search
+local function loop_choices(chosen, root_ind, preferred)
+    local any_later = false
+    for chooser, choice in pairs(preferred) do
+        if choice > chooser then
+            any_later = true
+            break
+        end
+    end
+    if not any_later then
+        return {}
+    end
     local found = {}
     local on_stack = {}
     local done = {}
@@ -146,6 +173,12 @@ local function tie_rank(graph, sort_info, ind, home_sets)
     local num_pebbles = #sort_info.pebble_keys
     -- Room --> the index of the sort's first pebble of its room node
     local reached = {}
+    -- The preferred rooms say how this ranks, so witnesses with the same ones can share what their paths take from each pebble (top.path's expansions)
+    local preferred_names = {}
+    for room, _ in pairs(preferred) do
+        table.insert(preferred_names, tostring(room))
+    end
+    table.sort(preferred_names)
     return function(context)
         local room = top.context_room(context)
         if reached[room] == nil then
@@ -161,7 +194,27 @@ local function tie_rank(graph, sort_info, ind, home_sets)
             return reached[room]
         end
         return num_pebbles + 1 + reached[room]
+    end, table.concat(preferred_names, "\n")
+end
+
+-- What witness paths take from each pebble (top.path's expansions), as sort --> { graph, ranks = tie_rank's key --> expansions }
+-- Weak keys, so a sort's table goes with the sort
+local expansion_caches = setmetatable({}, { __mode = "k" })
+local function expansions_for(graph, sort_info, rank_key)
+    local cache = expansion_caches[sort_info]
+    if cache == nil or cache.graph ~= graph then
+        cache = {
+            graph = graph,
+            ranks = {},
+            -- Pebble --> its OR options' inds (top.path's options), which don't depend on the path
+            options = {},
+            -- Pebble --> its room if its node is an OR node that keeps its context, so that prefer can pick its option (see cacheable below), or false
+            or_room = {},
+        }
+        expansion_caches[sort_info] = cache
     end
+    cache.ranks[rank_key] = cache.ranks[rank_key] or {}
+    return cache.ranks[rank_key], cache
 end
 
 -- The names of the recipes the pebble at ind in sort_info directly needs, as a set; gets_tech(recipe_name) says whether a recipe gets a tech
@@ -182,17 +235,35 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
         return node.type == "recipe" and gets_tech(node.name)
     end
 
+    local rank, rank_key = tie_rank(graph, sort_info, ind, home_sets)
+    local expansions, sort_cache = expansions_for(graph, sort_info, rank_key)
     local params = {
         stop_if = function(node_key)
             return has_tech(node_key)
         end,
-        tie_rank = tie_rank(graph, sort_info, ind, home_sets),
+        tie_rank = rank,
+        expansions = expansions,
+        options = sort_cache.options,
     }
     local path_info
     if local_sort_info ~= nil then
         local pebble_keys = sort_info.pebble_keys
         local pebble_contexts = sort_info.pebble_contexts
         local room = top.context_room(pebble_contexts[ind])
+        -- Only an OR node that keeps its context, in room, can take a preferred option (see top.path and prefer below), so the paths share what they take from the other pebbles
+        local or_room = sort_cache.or_room
+        params.cacheable = function(curr_ind)
+            local node_room = or_room[curr_ind]
+            if node_room == nil then
+                local node = graph.nodes[pebble_keys[curr_ind]]
+                node_room = false
+                if node.op == "OR" and logic.type_info[node.type].context == nil then
+                    node_room = top.context_room(pebble_contexts[curr_ind])
+                end
+                or_room[curr_ind] = node_room
+            end
+            return node_room ~= room
+        end
         -- OR pebble --> its preferred choices that were dropped
         local banned = {}
         params.prefer = function(pre_ind, curr_ind)
@@ -211,7 +282,7 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
         params.prefer_before = ind
         for _ = 1, MAX_ROUNDS do
             path_info = top.path(graph, {ind}, sort_info, params)
-            local choices = loop_choices(path_info.chosen, ind)
+            local choices = loop_choices(path_info.chosen, ind, path_info.preferred)
             if next(choices) == nil then
                 choices = nonlocal_choices(path_info, sort_info, room, local_sort_info)
             end
@@ -237,6 +308,7 @@ witness_recipes.of = function(graph, sort_info, ind, gets_tech, local_sort_info,
         if path_info == nil then
             params.prefer = nil
             params.prefer_before = nil
+            params.cacheable = nil
         end
     end
     if path_info == nil then
