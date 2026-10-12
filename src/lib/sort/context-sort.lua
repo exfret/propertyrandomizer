@@ -2575,7 +2575,6 @@ end
 -- Creates a path of inds within the sort's pebble lists starting from the goal and going backwards for how to get there
 -- goal_inds is a list of inds in the pebble lists of the pebbles we are hoping to achieve
 -- extra_params.stop_if(node_key, context): when it's true for a pebble other than the first goal, the path doesn't go on past that pebble
--- The immediate option returns only the backing of the first goal, without inspecting its parents.
 -- extra_params.prefer(pre_ind, curr_ind) picks which prereq an OR node that keeps its context takes: a preferred one goes before the earliest, and may even come after the OR node's own pebble as long as it's before extra_params.prefer_before (default: the OR node's pebble)
 -- A later prereq can lead back to the OR node, so with prefer the result also has chosen (ind --> the inds it went on to), for checking that the path is still a derivation (see src/logic/builders/witness-recipes.lua), and preferred (OR pebble --> the preferred prereq it took over an earlier one)
 -- extra_params.tie_rank(context) ranks the contexts a forgetter or room takes in (lower first): of those the sort finished in the same step as the earliest one, it takes the lowest ranked instead of whichever the sort listed first (see tied_choice)
@@ -2585,14 +2584,7 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
     local pebble_contexts = sort_info.pebble_contexts
     local node_to_context_inds = sort_info.node_to_context_inds
     extra_params = extra_params or {}
-    local context_info
-    if extra_params.immediate == true then
-        -- Operation layers request many direct backings of the same immutable sort.
-        sort_info.immediate_context_info = sort_info.immediate_context_info or cached_context_info(sort_info)
-        context_info = sort_info.immediate_context_info
-    else
-        context_info = cached_context_info(sort_info)
-    end
+    local context_info = cached_context_info(sort_info)
     local stop_if = extra_params.stop_if or function(node_key, context) return false end
     local prefer = extra_params.prefer
     local tie_rank = extra_params.tie_rank
@@ -2604,7 +2596,7 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
         preferred = {}
     end
     -- Only needed for the discovery rule, so found when first used
-    local room_discoverers = extra_params.immediate == true and sort_info.immediate_room_discoverers or nil
+    local room_discoverers
 
     local path = goal_inds
     -- Whether an index is in the path yet
@@ -2750,10 +2742,6 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             -- Then the path goes through the tech itself in an earlier context (a home context of the location with home contexts) and an earlier pebble of a tech that unlocks the location
             if earliest_context_ind == curr_ind and context_info.complex and curr_node.type == "technology" then
                 room_discoverers = room_discoverers or top.room_discoverers(graph)
-                if extra_params.immediate == true then
-                    -- Direct backings share the same immutable graph, so discovery queries share its graph-wide lookup too.
-                    sort_info.immediate_room_discoverers = room_discoverers
-                end
                 discovery_preinds = find_discovery_preinds(sort_info, room_discoverers, curr_node, outgoing_context, curr_ind)
             end
             -- If nothing was earlier, that's a contradiction
@@ -2783,9 +2771,6 @@ top.path = function(graph, goal_inds, sort_info, extra_params)
             end
         end
 
-        if extra_params.immediate == true then
-            break
-        end
         path_ind = path_ind + 1
     end
 

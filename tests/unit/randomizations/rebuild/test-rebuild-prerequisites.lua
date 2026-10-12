@@ -16,7 +16,7 @@ function log(message)
 end
 serpent = { block = tostring }
 mods = {}
-config = { operation_readiness = false }
+config = {}
 randomizations = {}
 
 local ROOM_A = "planet: test-a"

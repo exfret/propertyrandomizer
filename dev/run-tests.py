@@ -8,8 +8,7 @@
 #   - the MECHCHECK verdict (src/randomizations/unified/skeleton/check.lua) is ok: no recipe became unreachable and no mechanic context was lost beyond isolatability
 #   - ocean swaps left at most one conversion recipe in the game (PLANETCHECK conversions, src/randomizations/planetary/scaffolds.lua)
 #   - resource swaps left extra patches for at most a third of all the resource patches they work on (PLANETCHECK extra patches, src/randomizations/planetary/resources.lua)
-#   - when operation readiness is audited, no building arrives before its operation inputs
-# Resource-patch limit and operation-readiness violations fail even work-in-progress suites.
+# Resource-patch limit violations fail even work-in-progress suites.
 #   - the new map runs some ticks without errors (the control stage)
 # Configs matching an oldlogic line in tests/configs.txt (for now, old item randomization) are judged by the old logic's check of the built game (OLDLOGICCHECK) instead of the two reachability checks
 # Both reachability checks compare against the game after planetary randomization, whose own changes are checked by PLANETCHECK (src/randomizations/planetary/check.lua)
@@ -98,7 +97,7 @@ PAIRWISE_CANDIDATES = 30
 FAILURE_GUIDANCE = (
     "Some failing seeds and configs are expected while the randomizer is in development; up to 30-50% of seeds failing is acceptable."
     " But a seed whose MECHCHECK verdict FAILED (an unreachable recipe, or a mechanic context lost beyond isolatability) is a softlock, which is never acceptable on any seed: fix the model that allowed it."
-    " Resource-patch limits and operation-readiness gaps are hard failures, including in work-in-progress suites."
+    " Resource-patch limits are hard failures, including in work-in-progress suites."
     " Don't overfit on making every run pass. Look into a failure when your change could have caused it (compare with --ref HEAD if unsure), and fix it only at its root cause."
     " Don't add hotfixes or special cases to get a run through: a patch that quietly breaks something else is worse than a failing run."
 )
@@ -115,7 +114,6 @@ MAX_CONVERSIONS = 1
 EXTRA_PATCHES = re.compile(r"PLANETCHECK extra patches: (\d+) on (\d+) planets(?: \(at most (\d+)\))?:? ?([^\r\n]*)")
 # The user's limit from 2026-10-01 to 2026-10-09: half an extra patch per planet, so 7 for the 15 planets of two copies each; only for logs from before the mod logged its limit (like --ref of an older version), which also held that limit
 MAX_EXTRA_PATCHES_PER_PLANET = 0.5
-OPERATION_CHECK = re.compile(r"OPERATIONCHECK checked (\d+) building items; (\d+) precede operation readiness")
 SETTING_LINE = re.compile(r"PRTEST setting (\S+) = (.*)$", re.MULTILINE)
 REACHABILITY = re.compile(r"PRTEST reachability (\d+) of (\d+)")
 OLD_LOGIC_CHECK = re.compile(r"OLDLOGICCHECK science packs reachable (\d+) of (\d+)(?:; lost (.*))?")
@@ -725,15 +723,8 @@ def check_extra_patches(text):
     return problems
 
 
-def check_operation_readiness(text):
-    checks = OPERATION_CHECK.findall(text)
-    if checks and int(checks[-1][1]) > 0:
-        return ["operation readiness: " + checks[-1][1] + " of " + checks[-1][0] + " building items precede their operation inputs"]
-    return []
-
-
 def check_hard_limits(text):
-    return check_extra_patches(text) + check_operation_readiness(text)
+    return check_extra_patches(text)
 
 
 def counted_failure(result, test_file):

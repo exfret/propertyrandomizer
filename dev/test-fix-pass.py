@@ -53,7 +53,7 @@ text = text.replace(setup_marker, setup_marker + fixture, 1)
 text = text.replace(verify_marker, verification + '\n' + verify_marker, 1)
 source.write_text(text)
 cfg = base / 'configs.txt'
-cfg.write_text((repo / 'tests/configs.txt').read_text().replace('wip unified\n', '') + '\nconfig fix-pass-pipeline-stress unified seeds=1 dev-unified=true planetary-fix-pass=true planetary-resources=true operation-readiness=false\n')
+cfg.write_text((repo / 'tests/configs.txt').read_text().replace('wip unified\n', '') + '\nconfig fix-pass-pipeline-stress unified seeds=1 dev-unified=true planetary-fix-pass=true planetary-resources=true\n')
 runner.CONFIGS = str(cfg)
 print('Stress fixture snapshot: ' + str(mod), flush=True)
 raise SystemExit(runner.main(['unified', '--modset', 'sa', '--only', 'fix-pass-pipeline-stress', '--jobs', '1', '--dir', str(mod)]))

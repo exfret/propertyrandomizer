@@ -32,8 +32,6 @@ skip dump-data-raw          # writes all of data.raw to the log
 skip tech-tree-rebuild      # unfinished: nothing reads it yet
 # The unified preview turns off the old graph randomizations, which generated configs like max are there to test, so it gets its own configs below
 skip unified-preview
-# Operation readiness is paused; its experimental profiles below are retained as comments.
-skip operation-readiness
 # Being worked on (visible for now only for that)
 skip planetary-oceans
 skip planetary-biomes
@@ -78,14 +76,12 @@ pin dev-unified=false preview preview-with-graph preview-rewards reduction-check
 # In-game unit tests (tests/execute.lua); they stop before randomization, so there's no reachability data or MECHCHECK verdict
 config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 # The unified preview as releases have it (dev-unified off), so the preview alone has to turn on the unified randomizations still in development
-config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false operation-readiness=false
+config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false
 # The preview with every logic build made twice, full and reduced (src/logic/analysis/reductions.lua), compared each time (hidden setting test-reductions, src/logic/analysis/reduction-check.lua); a run fails on any build where they disagree
-config reduction-check unified seeds=1 unified-preview=true dev-unified=false operation-readiness=false test-reductions=true
+config reduction-check unified seeds=1 unified-preview=true dev-unified=false test-reductions=true
 # Parked combat experiment: enable military_resistances in source before restoring these profiles.
-# config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more operation-readiness=false
-# config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap operation-readiness=false
-# Paused operation dependency prototype (2026-10-05); preserve the profile for a future explicit restart.
-# config operation-preview unified seeds=1 unified-preview=true dev-unified=false operation-readiness=true
+# config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more
+# config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap
 # Planet rewards alone with the development handlers: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in src/randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
 config rewards unified seeds=1,2,3 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true
 # The foundry alone
@@ -116,8 +112,7 @@ config dupes-oceans-biomes settings seeds=1 logistic=none production=none milita
 config planetary-connections settings planetary-connections=true
 config dupes-connections settings dupes=true planetary-connections=true
 # Duplicates with the unified preview, planetary changes included (planet copies are made for them); the unified suite is wip
-config dupes-preview unified seeds=1,2 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=false
-# config operation-dupes-preview unified seeds=0 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=true
+config dupes-preview unified seeds=1,2 unified-preview=true dev-unified=false dupes=true dupe-count=2
 # Global science cost ceilings, before/after recipes: each pack <=4x, arithmetic mean of ratios <2x.
 # Run: python3 dev/run-tests.py settings --modset base --modset sa --only science-cost
 # Missing baseline or final prices fail: every science pack must be covered.
@@ -161,4 +156,4 @@ config exclusions-legacy settings seeds=1 dupes=false recipe=true recipe-tech-un
 config exclusions-legacy-item settings seeds=1 dupes=false item=true logistic=none production=none military=none misc=none overrides=EXCLUDE:graph/all:group/logistics;EXCLUDE:randomization/items:prototype/item/iron-plate
 # Independent deposits (src/randomizations/unified/deposit-copies.lua): without planet copies (coal, stone and crude oil are mined on two planets each), and on the user's usual settings (11-22 minutes and 12-15 GB of memory per game when run alone, 2026-10-07, so give it the machine: --jobs 1)
 config deposits unified seeds=1,2 dev-unified=true independent-deposits=true
-config dupes-preview-deposits unified seeds=1 unified-preview=true dev-unified=false dupes=true dupe-count=2 operation-readiness=false independent-deposits=true
+config dupes-preview-deposits unified seeds=1 unified-preview=true dev-unified=false dupes=true dupe-count=2 independent-deposits=true

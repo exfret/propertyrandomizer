@@ -129,7 +129,8 @@
     - Smoke test (copy, sa dupes + enemies seed 1): 3 territories and both copies' biter sliders moved (to Fulgora 2 and Aquilo 3, with pollution), all checks ok
     - Untested in game: whether demolisher territories (demolisher_territory_expression, written for Vulcanus) and the enemy autoplace make sensible maps on other planets
 
- * FAILED EXPERIMENT, DISABLED (2026-10-05, user decision): operation readiness
+ * REMOVED (2026-10-12, user decision: to be rethought): operation readiness, a failed experiment disabled since 2026-10-05
+    - Code removed 2026-10-12 at the user's request: the setting propertyrandomizer-operation-readiness, operation-bundles/requirements/sources/unlocks.lua with their tests, the OPERATIONCHECK audit in the unified check and dev/run-tests.py, and context-sort's top.path immediate option. The last commit with it is cbaf22f (under lib/logic/operation-*.lua; added in c2839a6 and d23118c). The notes below are history for the rethink; what they say to preserve no longer applies. The logs under benchmark-logs/ are kept.
     - PAUSED by the user after the contraction experiment: steam turbines and heat exchangers were central targets for this method. Restricting readiness to crafting/mining/research entities would exclude the intended cases, so do not pursue that subset or resume this approach without a new request. Preserve the prototype and evidence, keep readiness off, and leave its experimental profiles out of routine test runs.
     - Reverted the numeric proof evaluator, lazy acquisition levels, compiled prerequisite cache, first-acquisition cache, and stop-at-first-operation-failure changes. They did not demonstrate an end-to-end improvement (last two-duplicate SA test: 29m29s versus the earlier roughly 25-minute load).
     - Startup default and normal preview test profiles disable operation readiness. The local mod-settings.dat had no saved override. The replacement experiment below remains behind the flag.
