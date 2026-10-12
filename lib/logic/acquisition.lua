@@ -154,7 +154,8 @@ end
 
 -- Which kinds of slots can supply an entity of each demand tier
 -- Items and biters, spawned or hatched from eggs (renewable), can supply anything, since the balance layer keeps some member of every bulk class suppliable automatically (group-supply)
--- What's found in the wild is finite, and capsules, ammo and dying enemies make one entity each, so they're only for entities needed in tens or fewer
+-- What's found in the wild and what dying enemies leave are only for entities needed in tens or fewer
+-- Buildings never move to capsule or ammo slots: obtaining a placement item must not require throwing or firing it, then mining the building
 -- Each capture uses up a spawner, so capturing is only for entities needed a few at a time
 local supplies = {
     bulk = {
@@ -167,8 +168,6 @@ local supplies = {
         spawn = true,
         spoil = true,
         autoplace = true,
-        capsule = true,
-        ammo = true,
         dying = true,
     },
     few = {
@@ -176,8 +175,6 @@ local supplies = {
         spawn = true,
         spoil = true,
         autoplace = true,
-        capsule = true,
-        ammo = true,
         dying = true,
         capture = true,
     },
@@ -243,6 +240,9 @@ acquisition.carrier_kinds = {
 acquisition.pairing = function(base, head)
     local base_gives_item = acquisition.gives_item(base.acq_kind)
     local head_is_built = acquisition.gives_item(head.acq_kind)
+    if head_is_built == true and (base.acq_kind == "capsule" or base.acq_kind == "ammo") then
+        return nil
+    end
     if base_gives_item and not head_is_built then
         return nil
     end

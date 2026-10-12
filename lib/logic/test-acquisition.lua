@@ -257,7 +257,7 @@ test("a built entity in a spawn or spoil slot is carried by the unit, so getting
     assert(acquisition.pairing(slot_node("autoplace", fx.edge({
         [1] = true,
     })), slot_node("build")).needs_kill == nil)
-    assert(acquisition.pairing(ours_node("capsule"), slot_node("build")).needs_kill == nil)
+    assert(acquisition.pairing(ours_node("capsule"), slot_node("build")) == nil)
     assert(acquisition.pairing(slot_node("build"), slot_node("build")).needs_kill == nil)
 end)
 
@@ -266,9 +266,21 @@ test("eggs hatch carriers of anything like spawners do, and dying enemies leave 
     assert(acquisition.can_supply("some", "dying") and not acquisition.can_supply("bulk", "dying"))
 end)
 
-test("capsules and ammo supply entities needed in tens or fewer, and capturing only a few", function()
-    assert(acquisition.can_supply("some", "capsule") and acquisition.can_supply("few", "ammo"))
-    assert(not acquisition.can_supply("bulk", "capsule") and not acquisition.can_supply("bulk", "ammo"))
+test("capsules and ammo cannot replace building placement at any demand tier", function()
+    for _, kind in pairs({
+        "capsule",
+        "ammo",
+    }) do
+        for _, tier in pairs({
+            "bulk",
+            "some",
+            "few",
+        }) do
+            assert(not acquisition.can_supply(tier, kind))
+        end
+        assert(acquisition.pairing(ours_node(kind), slot_node("build")) == nil)
+        assert(acquisition.pairing(ours_node(kind), ours_node("capsule")) ~= nil)
+    end
     assert(acquisition.can_supply("few", "capture") and not acquisition.can_supply("some", "capture"))
 end)
 

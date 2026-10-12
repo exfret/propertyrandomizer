@@ -4,7 +4,7 @@
 -- Autoplaced entities can trade autoplace slots or stop being autoplaced, and built entities can be found in the wild instead and salvaged (mined for an item that places them)
 -- Entities made by trigger slots (like combat robots, the capture robot and the captive spawner) trade those slots or stop being made, and built entities can be made by one instead and then mined for an item that places them
 -- Spoil slots (what eggs hatch into) and dying slots (what an enemy leaves behind when killed) trade among their own kind, and built entities can take one as a carrier hatching from the egg, or as a wreck left behind, mined for an item that places it
--- Capsules thrown for an effect (like grenades) can make an entity instead, and their effects move: to the item at the start of the chain that ends there (a Vestige, which sets the effect off where it's placed, or a capsule), and among each other
+-- Capsules thrown for an effect can make non-building entities instead; displaced impact actions can occupy compatible unused placement slots, independently of whether the item was a Vestige
 -- Each item places only one entity (planting counts, see common.set_placed_entity), so bases are matched to heads one to one, with promotion keeping mechanic contexts and recipe reachability
 -- With constants.entity_first_pass on, first pass does the matching instead: every claimed acquisition edge is a first pass position like an item's (see first_pass_rules), and this handler only reflects the result
 -- With first pass (and item randomization), a build base belongs to the item's identity, so an item keeps placing its (new) entity wherever item randomization moves it
@@ -61,7 +61,7 @@ local SPOOF_CARRIER_NAME = "propertyrandomizer-spoof-carrier"
 local FRIENDLY_CHANCE = 0.25
 -- A unit in a spawn slot whose unit stopped spawning at some evolution (transient, see acquisition.spawn_class) spawns at least this share of its highest weight at every evolution, since logic counts on it
 local TRANSIENT_WEIGHT_FLOOR = 0.1
--- Chance that an entity built from an item may instead be made by a trigger slot (using a capsule, firing ammo or capturing a spawner), then mined for an item that places it
+-- Chance that an entity built from an item may instead be made by capturing a spawner, then mined for an item that places it
 local TRIGGER_CHANCE = 0.25
 -- A building a captured spawner turns into is at most this many times the spawner's size, since it takes the spawner's place (see common.fits_autoplace_of)
 local CAPTURE_AREA_TOLERANCE = 1
@@ -578,6 +578,15 @@ entity.validate = function(graph, base, head, extra)
     local pairing = acquisition.pairing(base, head)
     if base.friendly ~= nil or pairing == nil then
         return false
+    end
+    -- An entity with an ordinary placer can also have a capture/trigger head.
+    -- Keep those heads from bypassing the no-thrown-buildings rule.
+    -- Existing capsule/ammo acquisitions can stay, but no new one may take a building.
+    if (base.acq_kind == "capsule" or base.acq_kind == "ammo") and key(base) ~= head.old_base then
+        local prototype = dutils.get_prot("entity", head_entity_name(graph, head))
+        if prototype ~= nil and lookups.buildables[key(prototype)] ~= nil then
+            return false
+        end
     end
     -- A pairing that takes killing a carrier (a built entity carried by a slot's unit) needs a base that includes the kill, the slot's carrier base (see spoof), and only such pairings take a carrier base
     if (pairing.needs_kill ~= nil) ~= (base.carrier_spoof ~= nil) then
@@ -2455,9 +2464,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         log("Entity randomization: using " .. capsule_name .. " makes " .. maker.occupant .. " in place of its effect")
     end
 
-    -- Where each displaced effect goes: the start of the chain of slots ending at its capsule, the base nobody took
-    -- A chain of build slots starts at a Vestige, which sets the effect off where it's placed; a chain of trigger slots can start at a capsule, which throws the effect instead of what it made
-    -- Anything else (like a spawner capture) can't hold an effect, so a Vestige that got none takes it, and without one it's lost
+    -- Displaced effects take compatible unused placement slots, or the unused capsule at the start of their acquisition chain.
+    -- A Vestige is neither required nor enough: placing must be available, selected and affordable, and the impact action must be extractable.
     local effect_rng_key = rng.key({id = "unified-entity-effects"})
     local head_of_base = {}
     local num_entity_heads = 0
@@ -2478,34 +2486,60 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         end
         return base_key
     end
-    -- Capsule --> the capsule whose (vanilla) effect it has now, and Vestige --> the capsule whose effect it sets off
+    -- Capsule/item --> the capsule supplying its effect. Placement consumes the impact action, not the launch action.
     local capsule_effect = {}
-    local vestige_effect = {}
-    local displaced = {}
+    local placed_effect = {}
+    local impact_actions = {}
+    local placement_names = {}
+    for item_name, item in pairs(dutils.get_all_prots("item")) do
+        local unused = item_to_entity[item_name] == nil and (vestige_place_changes[item_name] ~= nil or not common.places_something(item))
+        if unused and claimable_item(item) and not deposit_copies.is_copy(item) and graph.nodes[key("item", item_name)] ~= nil and graph_customization.selected("entity", {
+            type = "item",
+            name = item_name,
+        }) then
+            table.insert(placement_names, item_name)
+        end
+    end
+    table.sort(placement_names)
+    rng.shuffle(effect_rng_key, placement_names)
+    local function place_effect(item_name, capsule_name)
+        if placed_effect[item_name] ~= nil or impact_actions[capsule_name] == nil then
+            return false
+        end
+        local cost = item_cost(item_name)
+        local effect_cost = item_cost(capsule_name)
+        if cost == nil or effect_cost == nil or not costs_within(cost, effect_cost) then
+            return false
+        end
+        placed_effect[item_name] = capsule_name
+        return true
+    end
     for _, capsule_name in pairs(maker_names) do
+        impact_actions[capsule_name] = common.capsule_impact_action(starting_item(capsule_name), starting_entity)
         local start = graph.nodes[chain_start(maker_occupants[capsule_name].base_key)]
         local start_name = gutils.get_owner(graph, start).name
-        if start.acq_kind == "build" and vestige_place_changes[start_name] ~= nil and vestige_effect[start_name] == nil then
-            vestige_effect[start_name] = capsule_name
-        elseif start.acq_kind == "capsule" and effect_capsule(dutils.get_prot("item", start_name)) == false and holder_retargets["capsule:" .. start_name] == nil and maker_occupants[start_name] == nil and capsule_effect[start_name] == nil then
-            capsule_effect[start_name] = capsule_name
-        else
-            table.insert(displaced, capsule_name)
+        local placed = false
+        -- Prefer the chain's own placement slot, provided it passes the same eligibility checks as every other item.
+        for _, item_name in pairs(placement_names) do
+            if item_name == start_name and place_effect(item_name, capsule_name) then
+                placed = true
+                break
+            end
         end
-    end
-    local plain_vestiges = {}
-    for vestige_name, _ in pairs(vestige_place_changes) do
-        if vestige_effect[vestige_name] == nil then
-            table.insert(plain_vestiges, vestige_name)
+        if not placed then
+            for _, item_name in pairs(placement_names) do
+                if place_effect(item_name, capsule_name) then
+                    placed = true
+                    break
+                end
+            end
         end
-    end
-    table.sort(plain_vestiges)
-    rng.shuffle(effect_rng_key, plain_vestiges)
-    for _, capsule_name in pairs(displaced) do
-        if #plain_vestiges > 0 then
-            vestige_effect[table.remove(plain_vestiges)] = capsule_name
-        else
-            log("Entity randomization: the effect of " .. capsule_name .. " is lost, since no Vestige or capsule is left to take it")
+        if not placed then
+            if start.acq_kind == "capsule" and effect_capsule(dutils.get_prot("item", start_name)) == false and holder_retargets["capsule:" .. start_name] == nil and maker_occupants[start_name] == nil and capsule_effect[start_name] == nil then
+                capsule_effect[start_name] = capsule_name
+            else
+                log("Entity randomization: the effect of " .. capsule_name .. " has no compatible placement or capsule destination")
+            end
         end
     end
 
@@ -2547,9 +2581,8 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
         end
     end
 
-    -- A Vestige with a capsule's effect places an invisible explosion that sets the effect off where it's placed, then goes away by itself
-    -- It can't be a ghost (so no blueprints or robots), which is fine for an item that places nothing lasting
-    for vestige_name, from_name in pairs(vestige_effect) do
+    -- Place the impact itself. Unlike throwing, this never launches the capsule's outer projectile.
+    for item_name, from_name in pairs(placed_effect) do
         local from = starting_item(from_name)
         local effect_name = "propertyrandomizer-effect-" .. from_name
         if dutils.get_prot("entity", effect_name) == nil then
@@ -2557,7 +2590,6 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 type = "explosion",
                 name = effect_name,
                 localised_name = {"propertyrandomizer-entity.set-off-name", locale.find_localised_name(from)},
-                -- Nothing to look up, like the game's own explosions, which are all hidden
                 hidden_in_factoriopedia = true,
                 flags = {
                     "placeable-player",
@@ -2566,17 +2598,48 @@ entity.reflect = function(graph, head_to_base, head_to_handler)
                 animations = util.empty_animation(1),
                 collision_box = {{-0.4, -0.4}, {0.4, 0.4}},
                 selection_box = {{-0.5, -0.5}, {0.5, 0.5}},
-                created_effect = table.deepcopy(from.capsule_action.attack_parameters.ammo_type.action),
+                created_effect = impact_actions[from_name],
             }
             common.set_icon_layers(set_off, "", common.icon_layers(from, ""))
-            data:extend({
-                set_off,
+            data:extend({set_off})
+        end
+        local item = dutils.get_prot("item", item_name)
+        local place_change = vestige_place_changes[item_name]
+        if place_change ~= nil then
+            place_change.new_val = effect_name
+            -- Receiving an effect is a different outcome from becoming a Vestige.
+            item.localised_name = {
+                "propertyrandomizer-entity.placed-effect-name",
+                locale.find_localised_name(from),
+            }
+            for _, prefix in pairs(common.item_icon_prefixes) do
+                common.set_icon_layers(item, prefix, common.icon_layers(from, prefix))
+            end
+            item.pictures = nil
+            local was = vestige_was[item_name]
+            item.localised_description = {
+                "propertyrandomizer-entity.vestige-effect",
+                "[entity=" .. was.entity .. "]",
+                was.entity_name,
+                was.now_from,
+                "[item=" .. from_name .. "]",
+                locale.find_localised_name(from),
+            }
+        else
+            -- Keep the item's existing uses, name and appearance, with a badge for its new placement effect.
+            item.localised_name = table.deepcopy(locale.find_localised_name(starting_item(item_name)))
+            mark_item(item, {
+                "propertyrandomizer-entity.placed-effect",
+                "[item=" .. from_name .. "]",
+                locale.find_localised_name(from),
+            }, from)
+            table.insert(changes, {
+                tbl = item,
+                prop = "place_result",
+                new_val = effect_name,
             })
         end
-        vestige_place_changes[vestige_name].new_val = effect_name
-        local was = vestige_was[vestige_name]
-        dutils.get_prot("item", vestige_name).localised_description = {"propertyrandomizer-entity.vestige-effect", "[entity=" .. was.entity .. "]", was.entity_name, was.now_from, "[item=" .. from_name .. "]", locale.find_localised_name(from)}
-        log("Entity randomization: placing " .. vestige_name .. " does what " .. from_name .. " did")
+        log("Entity randomization: placing " .. item_name .. " directly runs the impact of " .. from_name)
     end
 
     -- Spawners spawn whatever took their spawn slots, at those slots' spawn points

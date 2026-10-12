@@ -152,6 +152,43 @@ common.retarget_created_entities = function(trigger, retargets, copy_name)
     return num_rewritten, copies
 end
 
+-- The impact action for direct placement, without the outer throw or its launch sound.
+-- Only unambiguous single-projectile throws are unpacked.
+-- Conditional final_action, repeated/area launches and other delivery kinds keep their original capsule behavior.
+-- Secondary projectiles in the impact action stay: they are part of the payload.
+-- get_projectile reads the starting prototypes, before other slots rewrite them.
+common.capsule_impact_action = function(capsule, get_projectile)
+    local use = capsule.capsule_action
+    if use == nil or use.type ~= "throw" or use.attack_parameters == nil then
+        return nil
+    end
+    local ammo = use.attack_parameters.ammo_type
+    local action = ammo and ammo.action
+    if action == nil then
+        return nil
+    end
+    local actions = action.type ~= nil and {action} or action
+    local projectile
+    for _, entry in pairs(actions) do
+        local delivery = entry.action_delivery
+        local deliveries = delivery and (delivery.type ~= nil and {delivery} or delivery) or {}
+        for _, sent in pairs(deliveries) do
+            if sent.type == "projectile" then
+                if projectile ~= nil or entry.type ~= "direct" or (entry.repeat_count or 1) ~= 1 or (entry.probability or 1) ~= 1 then
+                    return nil
+                end
+                projectile = get_projectile(sent.projectile)
+                if projectile == nil or projectile.action == nil or projectile.final_action ~= nil then
+                    return nil
+                end
+            elseif sent.type ~= "instant" then
+                return nil
+            end
+        end
+    end
+    return table.deepcopy(projectile and projectile.action or action)
+end
+
 -- Replaces a thrown capsule's effect on copies of the projectiles it sends, keeping the throw's deliveries and immediate effects (such as its sound)
 -- ProjectilePrototype::action runs on impact, and final_action is a separate impact trigger (2.1 prototype docs); both old impact effects are displaced
 -- Pass a copy of the ammo action; returns its replacement and the projectile copies for data:extend, or an instant replacement if it sends no projectile

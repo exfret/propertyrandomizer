@@ -627,6 +627,82 @@ local function retarget_to(entity_name)
     end
 end
 
+test("direct placement unwraps the impact and keeps secondary projectiles, without the launch sound", function()
+    local capsule = {capsule_action = throw_action("test-outer")}
+    local action = capsule.capsule_action.attack_parameters.ammo_type.action
+    capsule.capsule_action.attack_parameters.ammo_type.action = {
+        action,
+        {
+            type = "direct",
+            action_delivery = {
+                type = "instant",
+                target_effects = {type = "play-sound"},
+            },
+        },
+    }
+    local outer = creating_projectile("test-outer", "test-explosion")
+    local impact = outer.action
+    impact.action_delivery.target_effects[2] = {
+        type = "damage",
+        damage = {
+            amount = 35,
+            type = "explosion",
+        },
+    }
+    outer.action = {
+        impact,
+        throw_action("test-secondary").attack_parameters.ammo_type.action,
+    }
+    local result = common.capsule_impact_action(capsule, function(name)
+        assert(name == outer.name, "secondary projectiles must remain part of the impact")
+        return outer
+    end)
+    assert(#result == 2)
+    assert(result[1].action_delivery.target_effects[2].damage.amount == 35)
+    assert(result[2].action_delivery.projectile == "test-secondary")
+    result[1].action_delivery.target_effects[2].damage.amount = 99
+    assert(impact.action_delivery.target_effects[2].damage.amount == 35, "placement must not mutate the donor")
+    assert(action.action_delivery.projectile == "test-outer")
+end)
+
+test("ambiguous or conditional impacts cannot become placement effects", function()
+    local capsule = {capsule_action = throw_action("test-outer")}
+    local outer = creating_projectile("test-outer", "test-explosion")
+    local function lookup() return outer end
+    outer.final_action = outer.action
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+    outer.final_action = nil
+    local action = capsule.capsule_action.attack_parameters.ammo_type.action
+    action.repeat_count = 2
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+    action.repeat_count = nil
+    action.probability = 0.5
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+    action.probability = nil
+    action.type = "area"
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+    action.type = "direct"
+    capsule.capsule_action.attack_parameters.ammo_type.action = {
+        action,
+        action,
+    }
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+    capsule.capsule_action.attack_parameters.ammo_type.action = action
+    assert(common.capsule_impact_action(capsule, function() return nil end) == nil)
+    action.action_delivery.type = "stream"
+    assert(common.capsule_impact_action(capsule, lookup) == nil)
+end)
+
+test("an already instant throw can be placed, but a targeted special capsule cannot", function()
+    local capsule = {capsule_action = throw_action("test-outer")}
+    local impact = creating_projectile("test-outer", "test-explosion").action
+    capsule.capsule_action.attack_parameters.ammo_type.action = impact
+    local result = common.capsule_impact_action(capsule, function() error("no projectile") end)
+    assert(result ~= impact and result.action_delivery.type == "instant")
+    capsule.capsule_action.type = "destroy-cliffs"
+    assert(common.capsule_impact_action(capsule, function() error("no projectile") end) == nil)
+end)
+
 test("a thrown replacement creates its entity on a private projectile's impact", function()
     reset_data()
     local original = creating_projectile("test-thrown-effect", "test-explosion")
