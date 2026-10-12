@@ -79,9 +79,6 @@ config unit-tests smoke nocheck=reachability,mechcheck test-unit=true
 config preview unified seeds=1,2,3,4 unified-preview=true dev-unified=false
 # The preview with every logic build made twice, full and reduced (src/logic/analysis/reductions.lua), compared each time (hidden setting test-reductions, src/logic/analysis/reduction-check.lua); a run fails on any build where they disagree
 config reduction-check unified seeds=1 unified-preview=true dev-unified=false test-reductions=true
-# Parked combat experiment: enable military_resistances in source before restoring these profiles.
-# config combat-preview unified seeds=1 dev-unified=true unified-damage-types=true military=more
-# config combat-no-cap unified seeds=1 dev-unified=true unified-damage-types=true military=more military-difficulty=no-cap
 # Planet rewards alone with the development handlers: the special machines trade places, each planet's science moves into the machine that arrived there (science_needs and rehome_plan in src/randomizations/planetary/rewards.lua), and the lock stage's own check keeps or reverts the moves
 config rewards unified seeds=1,2,3 dev-unified=true planetary-rewards=true planetary-rewards-rehome=true
 # The foundry alone

@@ -26,15 +26,6 @@ local function profile(amount)
     }
 end
 
-local function roster(name, amount)
-    return {
-        {
-            entity = name,
-            amount = amount or 1,
-        },
-    }
-end
-
 local function spawn(name, extra)
     local result = {
         type = "create-entity",
@@ -42,14 +33,6 @@ local function spawn(name, extra)
     }
     for key, value in pairs(extra or {}) do
         result[key] = value
-    end
-    return result
-end
-
-local function indexed(workload)
-    local result = {}
-    for _, target in pairs(workload) do
-        result[target.entity] = target.amount
     end
     return result
 end
@@ -69,24 +52,35 @@ local function options(entities)
     }
 end
 
-test("ordinary targets retain whole volleys and deployment limits", function()
+-- Seconds for a team of identical weapons to kill the named target on its own
+local function seconds(attack, entities, name, team, extra)
+    local subject, reason = targets.new(entities, extra).target(name)
+    if subject == nil then
+        return nil, reason
+    end
+    local evaluator
+    evaluator, reason = targets.prepare(attack, { subject }, extra)
+    if evaluator == nil then
+        return nil, reason
+    end
+    return evaluator.seconds(name, team or 1)
+end
+
+local function names(set)
+    local result = {}
+    for name, _ in pairs(set) do
+        table.insert(result, name)
+    end
+    table.sort(result)
+    return table.concat(result, ",")
+end
+
+test("volleys stay whole and a team's add up on one target", function()
     local entities = { ["test-unit"] = { max_health = 11 } }
-    close(targets.clear_seconds(profile(10), roster("test-unit", 3), entities, 1), 6)
-    close(targets.clear_seconds(profile(10), roster("test-unit", 3), entities, 10), 1)
-end)
-
-test("ten independent shooters clear tiny targets in parallel", function()
-    local entities = { ["test-fragment"] = { max_health = 1 } }
-    close(targets.clear_seconds(profile(10), roster("test-fragment", 27), entities, 10), 3)
-    close(targets.clear_seconds(profile(10), roster("test-fragment", 27), entities, 1), 27)
-end)
-
-test("a firing team can focus multiple shooters without sharing overkill", function()
-    local entities = { ["test-target"] = { max_health = 11 } }
-    local seconds, reason, _, schedule = targets.clear_seconds(profile(10), roster("test-target", 3), entities, 10)
-    assert(seconds, reason)
-    close(seconds, 1)
-    assert(schedule.team_size == 2 and schedule.teams == 5)
+    close(seconds(profile(10), entities, "test-unit"), 2)
+    close(seconds(profile(10), entities, "test-unit", 10), 1)
+    local result, reason = seconds(profile(10), entities, "test-unit", 0)
+    assert(result == nil and reason == "invalid-deployment-count")
 end)
 
 test("regeneration can require the full team", function()
@@ -96,94 +90,9 @@ test("regeneration can require the full team", function()
             healing_per_tick = 1.5,
         },
     }
-    local seconds, reason, _, schedule = targets.clear_seconds(profile(10), roster("test-target"), entities, 10)
-    assert(seconds, reason)
-    close(seconds, 7)
-    assert(schedule.team_size == 10 and schedule.teams == 1)
-end)
-
-test("fragments wait for their parents even when other shooters are idle", function()
-    local entities = {
-        ["test-parent"] = {
-            max_health = 10,
-            dying_trigger_effect = spawn("test-child"),
-        },
-        ["test-child"] = {
-            max_health = 10,
-            dying_trigger_effect = spawn("test-grandchild"),
-        },
-        ["test-grandchild"] = { max_health = 10 },
-    }
-    local seconds, reason, workload, schedule = targets.clear_seconds(profile(10), roster("test-parent"), entities, 10)
-    assert(seconds, reason)
-    close(seconds, 3)
-    assert(schedule.phase_times[0] == 1 and schedule.phase_times[1] == 1 and schedule.phase_times[2] == 1)
-    assert(#workload == 3)
-end)
-
-test("repeated jobs balance occupied teams without expanding target instances", function()
-    local entities = {
-        ["test-heavy"] = { max_health = 600 },
-        ["test-light"] = { max_health = 100 },
-    }
-    local group = {
-        {
-            entity = "test-heavy",
-            amount = 1,
-        },
-        {
-            entity = "test-light",
-            amount = 100,
-        },
-    }
-    close(targets.clear_seconds(profile(100), group, entities, 3), 36)
-    close(targets.clear_seconds(profile(100), roster("test-light", 100000000), entities, 10), 10000000)
-end)
-
-test("prepared phase evaluation does not spawn descendants a second time", function()
-    local entities = {
-        ["test-parent"] = {
-            max_health = 10,
-            dying_trigger_effect = spawn("test-child", { repeat_count = 3 }),
-        },
-        ["test-child"] = { max_health = 10 },
-    }
-    local resolver = targets.new(entities)
-    local workload = resolver.workload(roster("test-parent"))
-    local evaluator = targets.prepare(profile(10), workload)
-    close(evaluator.seconds("test-parent", 1), 1)
-    close(evaluator.schedule({ ["test-parent"] = 1 }, 10), 1)
-    close(evaluator.schedule({ ["test-child"] = 3 }, 10), 1)
-    close(evaluator.schedule({}, 10), 0)
-    close(evaluator.schedule({ ["test-child"] = 0 }, 10), 0)
-end)
-
-test("an entity present initially and spawned later keeps separate generations", function()
-    local entities = {
-        ["test-parent"] = {
-            max_health = 10,
-            dying_trigger_effect = spawn("test-child"),
-        },
-        ["test-child"] = { max_health = 10 },
-    }
-    local group = {
-        {
-            entity = "test-parent",
-            amount = 1,
-        },
-        {
-            entity = "test-child",
-            amount = 1,
-        },
-    }
-    local seconds, reason, workload = targets.clear_seconds(profile(10), group, entities, 10)
-    assert(seconds, reason)
-    close(seconds, 2)
-    for _, target in pairs(workload) do
-        if target.entity == "test-child" then
-            assert(target.amount == 2 and target.phases[0] == 1 and target.phases[1] == 1)
-        end
-    end
+    close(seconds(profile(10), entities, "test-target", 10), 7)
+    local result, reason = seconds(profile(10), entities, "test-target", 9)
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 test("segment count does not multiply the shared health pool", function()
@@ -199,7 +108,7 @@ test("segment count does not multiply the shared health pool", function()
         },
         ["test-body"] = { max_health = 900 },
     }
-    close(targets.clear_seconds(profile(100), roster("test-head"), entities, 1), 1)
+    close(seconds(profile(100), entities, "test-head"), 1)
 end)
 
 test("segment resistance uses the least damaging complete hit", function()
@@ -224,11 +133,11 @@ test("segment resistance uses the least damaging complete hit", function()
             },
         },
     }
-    close(targets.clear_seconds(profile(100), roster("test-head"), entities, 1), 3)
-    close(targets.clear_seconds(profile(100), roster("test-head"), entities, 1, { segment_aim = "head" }), 2)
+    close(seconds(profile(100), entities, "test-head"), 3)
+    close(seconds(profile(100), entities, "test-head", 1, { segment_aim = "head" }), 2)
     entities["test-body"].resistances[1].percent = 100
-    local seconds, reason = targets.clear_seconds(profile(100), roster("test-head"), entities, 1)
-    assert(seconds == nil and reason == "insufficient-damage")
+    local result, reason = seconds(profile(100), entities, "test-head")
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 test("head regeneration is charged once and can defeat a counter", function()
@@ -240,10 +149,10 @@ test("head regeneration is charged once and can defeat a counter", function()
         },
         ["test-body"] = { max_health = 100 },
     }
-    close(targets.clear_seconds(profile(100), roster("test-head"), entities, 1), 1)
-    close(targets.clear_seconds(profile(99), roster("test-head"), entities, 1), 2)
-    local seconds, reason = targets.clear_seconds(profile(60), roster("test-head"), entities, 1)
-    assert(seconds == nil and reason == "insufficient-damage")
+    close(seconds(profile(100), entities, "test-head"), 1)
+    close(seconds(profile(99), entities, "test-head"), 2)
+    local result, reason = seconds(profile(60), entities, "test-head")
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 test("a lethal volley does not assume separated packets beat regeneration", function()
@@ -253,29 +162,28 @@ test("a lethal volley does not assume separated packets beat regeneration", func
             healing_per_tick = 2,
         },
     }
-    close(targets.clear_seconds(profile(100), roster("test-unit"), entities, 1), 1)
+    close(seconds(profile(100), entities, "test-unit"), 1)
     local delayed = profile(100)
     delayed.delay_seconds = 1
-    close(targets.clear_seconds(delayed, roster("test-unit"), entities, 1), 2)
+    close(seconds(delayed, entities, "test-unit"), 2)
     delayed.packets[1].amount = 50
     table.insert(delayed.packets, {
         type = "test-damage",
         amount = 50,
         count = 1,
     })
-    local seconds, reason = targets.clear_seconds(delayed, roster("test-unit"), entities, 1)
-    assert(seconds == nil and reason == "insufficient-damage")
+    local result, reason = seconds(delayed, entities, "test-unit")
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 test("successive projectile volleys share the initial flight delay", function()
     local entities = { ["test-unit"] = { max_health = 100 } }
     local attack = profile(10)
     attack.delay_seconds = 3
-    close(targets.clear_seconds(attack, roster("test-unit"), entities, 1), 13)
-    close(targets.clear_seconds(attack, roster("test-unit", 2), entities, 1), 26)
+    close(seconds(attack, entities, "test-unit"), 13)
     entities["test-unit"].healing_per_tick = 0.1
     -- Ten damage per second exceeds six healing per second despite the three-second flight.
-    close(targets.clear_seconds(attack, roster("test-unit"), entities, 1), 27)
+    close(seconds(attack, entities, "test-unit"), 27)
 end)
 
 test("warmup and fixed flight do not heal an undamaged full-health target", function()
@@ -286,10 +194,10 @@ test("warmup and fixed flight do not heal an undamaged full-health target", func
         },
     }
     local attack = profile(99)
-    close(targets.clear_seconds(attack, roster("test-target"), entities, 1), 2)
+    close(seconds(attack, entities, "test-target"), 2)
     attack.warmup_seconds = 30
     attack.delay_seconds = 10
-    close(targets.clear_seconds(attack, roster("test-target"), entities, 1), 42)
+    close(seconds(attack, entities, "test-target"), 42)
 end)
 
 test("fast regeneration uses tick cadence and a three-volley shared-health benchmark", function()
@@ -319,12 +227,12 @@ test("fast regeneration uses tick cadence and a three-volley shared-health bench
     }
     local attack = profile(10000)
     attack.interval_seconds = 170 / 60
-    close(targets.clear_seconds(attack, roster("test-head"), entities, 10), 8.5)
+    close(seconds(attack, entities, "test-head", 10), 8.5)
     -- More health/regeneration can remain impossible under the single-primary-hit benchmark.
     entities["test-head"].max_health = 300000
     entities["test-head"].healing_per_tick = 400
-    local seconds, reason = targets.clear_seconds(attack, roster("test-head"), entities, 10)
-    assert(seconds == nil and reason == "insufficient-damage")
+    local result, reason = seconds(attack, entities, "test-head", 10)
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 local function straight_body(scale)
@@ -379,28 +287,28 @@ local function line_profile(amount, distance, range)
 end
 
 local function prepared_line(attack, entities)
-    local workload = assert(targets.new(entities).workload(roster("test-head")))
-    return targets.prepare(attack, workload, {segment_line_geometry = "head-on"})
+    local subject = assert(targets.new(entities).target("test-head"))
+    return assert(targets.prepare(attack, { subject }, {segment_line_geometry = "head-on"}))
 end
 
 test("line intersections use independently measured asymmetric-box spacing and scale", function()
     -- SEGMENTPROBE on Factorio 2.1.20 observed centers 0, 6.5, 13 and 0, 13, 26.
     local entities = straight_body(1)
-    local prepared = assert(prepared_line(line_profile(10, 40, 50), entities))
+    local prepared = prepared_line(line_profile(10, 40, 50), entities)
     local amount, hits = prepared.shot_damage("test-head")
     close(amount, 20)
     assert(hits[1] == 2)
-    prepared = assert(prepared_line(line_profile(10, 40, 54), entities))
+    prepared = prepared_line(line_profile(10, 40, 54), entities)
     close(prepared.shot_damage("test-head"), 30)
-    prepared = assert(prepared_line(line_profile(10, 40, 50), straight_body(2)))
+    prepared = prepared_line(line_profile(10, 40, 50), straight_body(2))
     close(prepared.shot_damage("test-head"), 10)
 end)
 
 test("line endpoint margins do not credit an uncertain body boundary", function()
     local entities = straight_body(1)
-    local prepared = assert(prepared_line(line_profile(10, 40, 46.5), entities))
+    local prepared = prepared_line(line_profile(10, 40, 46.5), entities)
     close(prepared.shot_damage("test-head"), 10)
-    prepared = assert(prepared_line(line_profile(10, 40, 46.6), entities))
+    prepared = prepared_line(line_profile(10, 40, 46.6), entities)
     close(prepared.shot_damage("test-head"), 20)
 end)
 
@@ -421,11 +329,11 @@ test("line damage applies each part's resistance before shared health and regene
     entities["test-head"].max_health = 9
     entities["test-head"].healing_per_tick = 1
     local attack = line_profile(10, 40, 54)
-    local prepared = assert(prepared_line(attack, entities))
+    local prepared = prepared_line(attack, entities)
     close(prepared.shot_damage("test-head"), 9)
     close(prepared.seconds("test-head", 1), 1)
     entities["test-head"].max_health = 10
-    prepared = assert(prepared_line(attack, entities))
+    prepared = prepared_line(attack, entities)
     assert(prepared.seconds("test-head", 1) == nil)
 end)
 
@@ -437,23 +345,22 @@ test("ordinary packets do not inherit a neighboring line's body hits", function(
         amount = 5,
         count = 1,
     })
-    local prepared = assert(prepared_line(attack, entities))
+    local prepared = prepared_line(attack, entities)
     close(prepared.shot_damage("test-head"), 35)
-    local workload = assert(targets.new(entities).workload(roster("test-head")))
-    prepared = assert(targets.prepare(attack, workload))
+    prepared = assert(targets.prepare(attack, { assert(targets.new(entities).target("test-head")) }))
     close(prepared.shot_damage("test-head"), 15)
 end)
 
-test("invalid or rotated geometry fails closed only when line body hits are requested", function()
+test("invalid or rotated geometry fails that target only when line body hits are requested", function()
     local entities = straight_body(1)
     entities["test-body"].collision_box[3] = 0.25
-    local prepared, reason = prepared_line(line_profile(10, 40, 54), entities)
-    assert(prepared == nil and reason == "unsupported-segment-geometry")
-    assert(prepared_line(profile(10), entities))
+    local amount, reason = prepared_line(line_profile(10, 40, 54), entities).shot_damage("test-head")
+    assert(amount == nil and reason == "unsupported-segment-geometry")
+    assert(prepared_line(profile(10), entities).shot_damage("test-head"))
     local attack = line_profile(10, 40, 54)
     attack.packets[1].line.width = 0
-    prepared, reason = prepared_line(attack, entities)
-    assert(prepared == nil and reason == "invalid-line-geometry")
+    amount, reason = prepared_line(attack, entities).shot_damage("test-head")
+    assert(amount == nil and reason == "invalid-line-geometry")
 end)
 
 test("installed-data-shaped line benchmark clears the large shared-health target", function()
@@ -513,7 +420,7 @@ test("installed-data-shaped line benchmark clears the large shared-health target
     end
     local attack = line_profile(10000, 40, 50)
     attack.interval_seconds = 170 / 60
-    local prepared = assert(prepared_line(attack, entities))
+    local prepared = prepared_line(attack, entities)
     local amount, hits = prepared.shot_damage("test-head")
     close(amount, 19992.5)
     assert(hits[1] == 4)
@@ -530,7 +437,7 @@ test("slow regeneration retains its once-per-second phase margin between hits", 
     local attack = profile(5.6)
     attack.interval_seconds = 0.5
     -- A slow-heal batch may occur between the two volleys, so 11.2 damage is insufficient.
-    close(targets.clear_seconds(attack, roster("test-target"), entities, 1), 1.5)
+    close(seconds(attack, entities, "test-target"), 1.5)
 end)
 
 test("variable delivery delays cannot combine shooters into an atomic lethal volley", function()
@@ -542,10 +449,10 @@ test("variable delivery delays cannot combine shooters into an atomic lethal vol
     }
     local attack = profile(10)
     attack.delay_seconds = 1
-    close(targets.clear_seconds(attack, roster("test-target"), entities, 10), 2)
+    close(seconds(attack, entities, "test-target", 10), 2)
     attack.unsynchronized_hits = true
-    local seconds, reason = targets.clear_seconds(attack, roster("test-target"), entities, 10)
-    assert(seconds == nil and reason == "insufficient-damage")
+    local result, reason = seconds(attack, entities, "test-target", 10)
+    assert(result == nil and reason == "insufficient-damage")
 end)
 
 test("missing segments fail instead of silently using head stats", function()
@@ -555,11 +462,89 @@ test("missing segments fail instead of silently using head stats", function()
             segment_engine = { segments = { { segment = "test-missing" } } },
         },
     }
-    local seconds, reason = targets.clear_seconds(profile(100), roster("test-head"), entities, 1)
-    assert(seconds == nil and reason == "missing-segment")
+    local result, reason = seconds(profile(100), entities, "test-head")
+    assert(result == nil and reason == "missing-segment")
 end)
 
-test("asteroid fragments recurse with offset multiplicity and terminal chunks", function()
+test("a target that reacts to damage, or whose hits aren't visual, can't be scored", function()
+    local entities = {
+        ["test-unit"] = {
+            max_health = 10,
+            attack_reaction = { { range = 1 } },
+        },
+    }
+    local result, reason = seconds(profile(10), entities, "test-unit", 1, options(entities))
+    assert(result == nil and reason == "unsupported-target-reaction")
+    entities["test-unit"].attack_reaction = nil
+    entities["test-unit"].damaged_trigger_effect = { type = "unknown-damage" }
+    result, reason = seconds(profile(10), entities, "test-unit", 1, options(entities))
+    assert(result == nil and reason == "test-nonvisual-effect")
+end)
+
+test("one target that can't be scored doesn't keep the others from it", function()
+    local entities = {
+        ["test-good"] = { max_health = 10 },
+        ["test-bad"] = {
+            max_health = 10,
+            resistances = {
+                { type = "test-damage" },
+                { type = "test-damage" },
+            },
+        },
+    }
+    local resolver = targets.new(entities)
+    local evaluator = assert(targets.prepare(profile(10), {
+        assert(resolver.target("test-good")),
+        assert(resolver.target("test-bad")),
+    }))
+    close(evaluator.seconds("test-good", 1), 1)
+    local result, reason = evaluator.seconds("test-bad", 1)
+    assert(result == nil and reason == "duplicate-resistance")
+end)
+
+test("stickers add damage over time to targets they stick to, once for the team", function()
+    local attack = profile(10)
+    attack.dots = {
+        {
+            name = "test-sticker",
+            type = "test-fire",
+            amount = 5,
+            interval_ticks = 30,
+            duration_ticks = 600,
+        },
+    }
+    local entities = { ["test-unit"] = { max_health = 100 } }
+    -- Not a type a sticker sticks to: the direct hits alone
+    close(seconds(attack, entities, "test-unit"), 10)
+    entities["test-unit"].type = "unit"
+    -- 10 a second from the sticker, one application held back
+    close(seconds(attack, entities, "test-unit"), 1 + math.ceil((100 - 10 + 5) / 20))
+    -- Ten weapons' first volley is lethal on its own
+    close(seconds(attack, entities, "test-unit", 10), 1)
+    close(seconds(attack, entities, "test-unit", 5), 1 + math.ceil((100 - 50 + 5) / 60))
+    -- A sticker gone before the next hit only damages for its duration
+    attack.dots[1].duration_ticks = 45
+    close(seconds(attack, entities, "test-unit"), 1 + math.ceil((100 - 10 + 5) / 15))
+    entities["test-unit"].resistances = {
+        {
+            type = "test-fire",
+            decrease = 5,
+        },
+    }
+    close(seconds(attack, entities, "test-unit"), 10)
+end)
+
+test("negative regeneration is not credited as extra weapon damage", function()
+    local entities = {
+        ["test-unit"] = {
+            max_health = 100,
+            healing_per_tick = -100,
+        },
+    }
+    close(seconds(profile(10), entities, "test-unit"), 10)
+end)
+
+test("what a target leaves behind recurses through fragments, without terminal chunks", function()
     local entities = {
         ["test-large"] = {
             max_health = 100,
@@ -571,10 +556,6 @@ test("asteroid fragments recurse with offset multiplicity and terminal chunks", 
                     },
                     {
                         1,
-                        0,
-                    },
-                    {
-                        2,
                         0,
                     },
                 },
@@ -592,15 +573,12 @@ test("asteroid fragments recurse with offset multiplicity and terminal chunks", 
             },
         },
     }
-    local seconds, reason, workload = targets.clear_seconds(profile(100), roster("test-large", 2), entities, 1)
-    assert(seconds, reason)
-    close(seconds, 26)
-    local counts = indexed(workload)
-    assert(counts["test-large"] == 2 and counts["test-medium"] == 6 and counts["test-small"] == 18)
-    assert(counts["test-chunk"] == nil)
+    local resolver = targets.new(entities)
+    assert(names(resolver.spawned("test-large")) == "test-medium,test-small")
+    assert(names(resolver.spawned("test-small")) == "")
 end)
 
-test("rare death spawns use maximum counts instead of expected counts", function()
+test("rare and segment death spawns count, and a spawn that can't happen doesn't", function()
     local entities = {
         ["test-parent"] = {
             max_health = 10,
@@ -610,26 +588,21 @@ test("rare death spawns use maximum counts instead of expected counts", function
                 probability = 0.01,
             }),
         },
-        ["test-child"] = { max_health = 10 },
-    }
-    close(targets.clear_seconds(profile(10), roster("test-parent"), entities, 1), 6)
-end)
-
-test("body death effects contribute once per physical segment", function()
-    local entities = {
         ["test-head"] = {
             max_health = 10,
-            segment_engine = {
-                segments = {
-                    { segment = "test-body" },
-                    { segment = "test-body" },
-                },
-            },
+            segment_engine = { segments = { { segment = "test-body" } } },
         },
-        ["test-body"] = { dying_trigger_effect = spawn("test-child", { repeat_count = 2 }) },
+        ["test-body"] = { dying_trigger_effect = spawn("test-child") },
+        ["test-never"] = {
+            max_health = 10,
+            dying_trigger_effect = spawn("test-child", { probability = 0 }),
+        },
         ["test-child"] = { max_health = 10 },
     }
-    close(targets.clear_seconds(profile(10), roster("test-head"), entities, 1), 5)
+    local resolver = targets.new(entities)
+    assert(names(resolver.spawned("test-parent")) == "test-child")
+    assert(names(resolver.spawned("test-head")) == "test-child")
+    assert(names(resolver.spawned("test-never")) == "")
 end)
 
 test("passive remains are omitted but their created children are retained", function()
@@ -644,7 +617,7 @@ test("passive remains are omitted but their created children are retained", func
         },
         ["test-child"] = { max_health = 10 },
     }
-    close(targets.clear_seconds(profile(10), roster("test-head"), entities, 1), 1)
+    assert(names(targets.new(entities).spawned("test-head")) == "")
     entities["test-remains"].created_effect = {
         type = "direct",
         action_delivery = {
@@ -652,7 +625,7 @@ test("passive remains are omitted but their created children are retained", func
             target_effects = spawn("test-child"),
         },
     }
-    close(targets.clear_seconds(profile(10), roster("test-head"), entities, 1), 2)
+    assert(names(targets.new(entities).spawned("test-head")) == "test-child")
 end)
 
 test("visual fragments need visual validation and cannot hide damaging effects", function()
@@ -663,13 +636,13 @@ test("visual fragments need visual validation and cannot hide damaging effects",
         },
         ["test-explosion"] = { type = "explosion" },
     }
-    close(targets.clear_seconds(profile(10), roster("test-parent"), entities, 1, options(entities)), 1)
+    assert(names(targets.new(entities, options(entities)).spawned("test-parent")) == "")
     entities["test-explosion"].created_effect = { type = "unknown-damage" }
-    local seconds, reason = targets.clear_seconds(profile(10), roster("test-parent"), entities, 1, options(entities))
-    assert(seconds == nil and reason == "unsupported-created-target")
+    local result, reason = targets.new(entities, options(entities)).spawned("test-parent")
+    assert(result == nil and reason == "unsupported-created-target")
 end)
 
-test("spawn cycles and effect cycles fail closed", function()
+test("spawn cycles, effect cycles and deep trees fail closed", function()
     local entities = {
         ["test-first"] = {
             max_health = 10,
@@ -680,17 +653,14 @@ test("spawn cycles and effect cycles fail closed", function()
             dying_trigger_effect = spawn("test-first"),
         },
     }
-    local seconds, reason = targets.clear_seconds(profile(10), roster("test-first"), entities, 1)
-    assert(seconds == nil and reason == "target-spawn-cycle")
+    local result, reason = targets.new(entities).spawned("test-first")
+    assert(result == nil and reason == "target-spawn-cycle")
     local cycle = {}
     cycle[1] = cycle
     entities["test-first"].dying_trigger_effect = cycle
-    seconds, reason = targets.clear_seconds(profile(10), roster("test-first"), entities, 1)
-    assert(seconds == nil and reason == "target-effect-cycle")
-end)
-
-test("large repeated trees remain compact and bounded", function()
-    local entities = { ["test-leaf"] = { max_health = 10 } }
+    result, reason = targets.new(entities).spawned("test-first")
+    assert(result == nil and reason == "target-effect-cycle")
+    entities = { ["test-leaf"] = { max_health = 10 } }
     local previous = "test-leaf"
     for i = 1, 12 do
         local name = "test-level-" .. i
@@ -700,78 +670,23 @@ test("large repeated trees remain compact and bounded", function()
         }
         previous = name
     end
-    local resolver = targets.new(entities)
-    local workload, reason = resolver.workload(roster(previous))
-    assert(workload, reason)
-    assert(#workload == 13 and indexed(workload)["test-leaf"] == 4096)
-    resolver = targets.new(entities, { max_count = 1000 })
-    workload, reason = resolver.workload(roster(previous))
-    assert(workload == nil and reason == "target-count-budget")
-    resolver = targets.new(entities, { max_depth = 3 })
-    workload, reason = resolver.workload(roster(previous))
-    assert(workload == nil and reason == "target-depth-budget")
+    local spawned = assert(targets.new(entities).spawned(previous))
+    assert(spawned["test-leaf"] == true and spawned[previous] == nil)
+    result, reason = targets.new(entities, { max_depth = 3 }).spawned(previous)
+    assert(result == nil and reason == "target-depth-budget")
 end)
 
-test("fresh candidates use changed fragment health and resistance", function()
-    local entities = {
-        ["test-parent"] = {
-            max_health = 10,
-            dying_trigger_effect = spawn("test-child"),
-        },
-        ["test-child"] = { max_health = 10 },
-    }
-    close(targets.clear_seconds(profile(10), roster("test-parent"), entities, 1), 2)
-    entities["test-child"].max_health = 30
-    entities["test-child"].resistances = {
+test("a fresh resolver reads changed health and resistances", function()
+    local entities = { ["test-unit"] = { max_health = 10 } }
+    close(seconds(profile(10), entities, "test-unit"), 1)
+    entities["test-unit"].max_health = 30
+    entities["test-unit"].resistances = {
         {
             type = "test-damage",
             percent = 50,
         },
     }
-    close(targets.clear_seconds(profile(10), roster("test-parent"), entities, 1), 7)
-end)
-
-test("shared death effects do not accumulate another target's creation effects", function()
-    local death = spawn("test-child")
-    local entities = {
-        ["test-first"] = {
-            max_health = 10,
-            dying_trigger_effect = death,
-            created_effect = {
-                type = "direct",
-                action_delivery = {
-                    type = "instant",
-                    target_effects = spawn("test-child"),
-                },
-            },
-        },
-        ["test-second"] = {
-            max_health = 10,
-            dying_trigger_effect = death,
-        },
-        ["test-child"] = { max_health = 10 },
-    }
-    local workload = {
-        {
-            entity = "test-first",
-            amount = 1,
-        },
-        {
-            entity = "test-second",
-            amount = 1,
-        },
-    }
-    close(targets.clear_seconds(profile(10), workload, entities, 1), 5)
-end)
-
-test("negative regeneration is not credited as extra weapon damage", function()
-    local entities = {
-        ["test-unit"] = {
-            max_health = 100,
-            healing_per_tick = -100,
-        },
-    }
-    close(targets.clear_seconds(profile(10), roster("test-unit"), entities, 1), 10)
+    close(seconds(profile(10), entities, "test-unit"), 6)
 end)
 
 print("combat targets: " .. count .. " tests passed")

@@ -149,27 +149,7 @@ function abstract.build(lu, extra_params)
 
     set_prot(nil)
 
-    ----------------------------------------------------------------------
-    -- Combat
-    ----------------------------------------------------------------------
-
-    -- Nodes for use in evaluating combat abilities, like overcoming resistances
-    -- These are virtual, meaning that they don't correspond to real prototypes; for some of the physical combat nodes, see things like item-ammo and damage-type
-
-    set_class("combat")
-
-    for group_key, is_immune in pairs(lu.entity_resistance_groups.groups) do
-        ----------------------------------------
-        add_node("resistance-group", "OR", nil, group_key)
-        ----------------------------------------
-        -- Can we deal damage that bypasses this immunity group?
-
-        for _, damage_type in pairs(prots("damage-type")) do
-            if not is_immune[damage_type.name] then
-                add_edge("damage-type", damage_type.name)
-            end
-        end
-    end
+    -- Combat abilities (what kills what) are the combat check's nodes, made after these (src/logic/builders/combat-encounters.lua)
 
     ----------------------------------------------------------------------
     -- Energy Sources

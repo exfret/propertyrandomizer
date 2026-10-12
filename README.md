@@ -79,7 +79,6 @@ root
 |  |  |- numerical ................ Numerical randomizations
 |  |  |- misc ..................... Other prototype randomizations
 |  |  |- rebuild .................. Rebuild checks and repair helpers
-|  |  |- experimental ............. Active experiments
 |  |- runtime ..................... Panel, explorer, customizer, event helpers
 |  |- localisation ................ Shared text and prototype naming
 |  |- compat ...................... General compatibility patches

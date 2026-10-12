@@ -674,12 +674,8 @@ function concrete.build(lu, extra_params)
             ----------------------------------------
             -- Can we kill this entity?
             -- Only created for things that could have health.
-
-            -- We just check for immunities here, i.e.- 100% or more resistance
-            -- Later, in logic-balancing.lua we can worry about "virtually immune" entities/health amounts etc.
-            -- We also might want edges to damage types for representing resistances to randomize later, but when I do that I can decide what specific entities to touch
-            -- Building every entity-damage type combination seems like a lot to me now, which is why I'm doing it this way
-            add_edge("resistance-group", lu.entity_resistance_groups.to_resistance[entity.name])
+            -- Some weapon has to kill it on its own in time (combat-target, src/logic/builders/combat-encounters.lua, which makes it after this)
+            add_edge("combat-target", entity.name)
             add_edge("entity", nil, { amount = 1 })
         end
 
@@ -1825,20 +1821,11 @@ function concrete.build(lu, extra_params)
         })
         ----------------------------------------
         -- Can we destroy the asteroids on this space connection from a space surface?
-        -- Requires a space surface, where they're fought, and being able to overcome each asteroid type's resistance group there (only immunity is checked, not whether the damage is enough)
+        -- Requires a space surface, where they're fought, and some weapon killing each asteroid there on its own in time: the combat check adds an edge from the combat-target of every asteroid on the route and what it splits into (src/logic/builders/combat-encounters.lua)
         -- Made a mechanic so that the big scary asteroids aren't switched in for the small ones
         -- Keeps its isolatability through all randomization (keep_isolatability) and planetary changes (keep_planetary_isolatability): a platform that could take these asteroids down automatically from its own resources (like turrets fed ammo made from asteroid chunks) still can (user, 2026-10-10)
 
         add_edge("space-surface", "")
-        local asteroids = lu.connection_asteroids[conn.name]
-        if asteroids ~= nil then
-            for asteroid_name, _ in pairs(asteroids) do
-                local group_key = lu.asteroid_resistance_groups[asteroid_name]
-                if group_key ~= nil then
-                    add_edge("resistance-group", group_key)
-                end
-            end
-        end
     end
 
     ----------------------------------------------------------------------

@@ -1,5 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
-local military_experiment = require("src/randomizations/experimental/helper/trigger")
 local randnum = require("src/lib/random/randnum")
 
 local randomize = randnum.rand
@@ -122,10 +120,4 @@ randomizations.trigger = function(params, tbl, target)
     end
 
     return targets
-end
-
-if experimental_flags.military_resistances == true then
-    for name, randomize in pairs(military_experiment) do
-        randomizations[name] = randomize
-    end
 end

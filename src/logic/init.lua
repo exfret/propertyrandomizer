@@ -206,10 +206,9 @@ local function build(extra_params)
 
     -- Standalone balance goals protect practical capabilities without adding prerequisites to technologies or recipes.
     balance_mechanics.build(lu)
-    -- Important encounter goals use the usual first-pass protection. The damage-type handler enables scoring and numerical preservation.
-    -- Extra parameters can also enable scoring for diagnostics; unsupported workloads remain explicitly unscored.
-    -- Difficulty "no-cap" omits enemy benchmarks while retaining asteroid checks.
-    logic.combat_encounters, logic.combat_counters = combat_encounters.build(logic.graph, lu, extra_params.combat_encounters)
+    -- The combat check (src/logic/builders/combat-encounters.lua): what kills each target on its own, which kills, asteroid routes and attack groups need
+    -- extra_params.combat_check: time_limit = false for the final check; difficulty and time_multiplier override the settings
+    logic.combat_encounters, logic.combat_diagnostics = combat_encounters.build(logic.graph, lu, extra_params.combat_check)
     -- Entity randomization needs some member of each bulk entity class to stay suppliable automatically
     if config.entity_randomization then
         entity_supply.build(lu)

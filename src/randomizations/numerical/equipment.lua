@@ -1,5 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
-local military_experiment = require("src/randomizations/experimental/numerical/equipment")
 local categories = require("src/prototypes/categories")
 local randnum = require("src/lib/random/randnum")
 local rng = require("src/lib/random/rng")
@@ -461,11 +459,5 @@ randomizations.equipment_solar_panel_production = function(id)
 
             locale_utils.create_localised_description(equipment, util.parse_energy(equipment.power) / old_power, id, { variance = "big" })
         end
-    end
-end
-
-if experimental_flags.military_resistances == true then
-    for name, randomize in pairs(military_experiment) do
-        randomizations[name] = randomize
     end
 end

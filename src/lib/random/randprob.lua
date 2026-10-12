@@ -1,5 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
-local military_experiment = require("src/lib/random/experimental/randprob")
 local randnum = require("src/lib/random/randnum")
 
 local randprob = {}
@@ -80,10 +78,6 @@ randprob.rand = function(params)
 
     tbl[property] = new_p
     return new_p
-end
-
-if experimental_flags.military_resistances == true then
-    return military_experiment
 end
 
 return randprob

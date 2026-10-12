@@ -1,10 +1,10 @@
--- Compile each ammo effect once, then reuse it for a bounded set of compatible sources.
--- A counter always keeps the particular source and ammo as separate graph prerequisites.
--- This is an initial conservative scorer, not a simulation of positioning or ammunition throughput.
+-- Weapons and kill times for the combat check (src/logic/builders/combat-encounters.lua).
+-- A weapon is a gun, turret or vehicle gun with one ammo it fires (one fluid for a fluid turret), compiled once per logic build.
+-- A kill time is how long ten turrets of one weapon, or one weapon in hand, take to kill one target on its own.
+-- This is a conservative scorer, not a simulation of positioning or ammunition throughput.
 
 local damage = require("src/prototypes/combat/combat-damage")
-local batteries = require("src/prototypes/combat/combat-batteries")
-local asteroid_batteries = require("src/prototypes/combat/combat-asteroid-batteries")
+local targets = require("src/prototypes/combat/combat-targets")
 local categories = require("src/prototypes/categories")
 local gutils = require("src/lib/graph/graph-utils")
 
@@ -17,25 +17,6 @@ local function sorted_keys(values)
     end
     table.sort(keys)
     return keys
-end
-
-local function mixed_name(left, right)
-    return gutils.concat({
-        "mixed-battery",
-        left.name,
-        right.name,
-    })
-end
-
-local function asteroid_mixed_name(left, middle, right)
-    local names = {
-        left.name,
-        middle.name,
-        right.name,
-    }
-    table.sort(names)
-    table.insert(names, 1, "asteroid-battery")
-    return gutils.concat(names)
 end
 
 -- Array variants select by source_type, falling back to the first entry.
@@ -112,17 +93,15 @@ local function shot_energy(profile, source, ammo, parse_energy)
     return true
 end
 
--- Returns a whole-group provider and diagnostics. No gun/ammo/effect-path products are expanded.
--- The cap bounds compatible source/ammo profiles; omitted or unsupported profiles cannot prove an encounter.
--- counter_names, when supplied, is an encounter-name map of allowed counter-name sets; absent entries score nothing.
-counters.prepare = function(lu, options)
+-- Every weapon the data has, as {name, mode ("turret" or "manual"), prerequisites (node keys), profile, target_options}, and diagnostics of the ones left out
+-- A turret needs its entity-operate and its ammo item (or the fluid it fires); a gun in hand its item-gun; a vehicle's gun the vehicle's entity-operate on a planet
+counters.weapons = function(lu, options)
     options = options or {}
-    local limit = options.max_profiles or 4096
-    assert(type(limit) == "number" and limit >= 1 and limit < math.huge and limit % 1 == 0, "Invalid combat profile limit")
     local entities = lu.entities or {}
     local items = lu.items or {}
     local resolver = damage.new({
         entity_of = options.entity_of or function(name) return entities[name] end,
+        chain_of = options.chain_of,
         impact_effects = options.impact_effects,
         tile_effects = options.tile_effects,
         decorative_effects = options.decorative_effects,
@@ -132,15 +111,10 @@ counters.prepare = function(lu, options)
         max_depth = options.max_depth,
         max_packets = options.max_packets,
     })
-    local profiles = {}
+    local weapons = {}
     local diagnostics = {
-        attempted = 0,
         compiled = 0,
-        truncated = false,
         rejected = {},
-        evaluation_rejected = {},
-        mixed = {},
-        asteroid_mixed = {},
     }
     local ammunition = {}
     for _, name in pairs(sorted_keys(items)) do
@@ -151,20 +125,15 @@ counters.prepare = function(lu, options)
         end
     end
 
-    local function compile(source, attack, ammo, ammo_item)
-        if diagnostics.attempted >= limit then
-            diagnostics.truncated = true
-            return
-        end
-        diagnostics.attempted = diagnostics.attempted + 1
+    local function compile(source, attack, ammo, ammo_item, fluid)
         local name = gutils.concat({
             source.name,
-            ammo_item and ammo_item.name or "builtin",
+            ammo_item and ammo_item.name or fluid and fluid.type or "builtin",
         })
         local summary, reason = resolver.ammo(ammo)
         local profile
         if summary ~= nil then
-            profile, reason = damage.attack(summary, attack, ammo)
+            profile, reason = damage.attack(summary, attack, ammo, fluid and fluid.damage_modifier)
         end
         if profile == nil then
             diagnostics.rejected[name] = reason or "unsupported-attack"
@@ -181,12 +150,7 @@ counters.prepare = function(lu, options)
         for option, value in pairs(profile.target_options or {}) do
             target_options[option] = value
         end
-        if source.mode == "manual" then
-            target_options.segment_aim = options.manual_segment_aim or "worst-segment"
-        else
-            target_options.segment_aim = options.turret_segment_aim or "worst-segment"
-        end
-        profile.target_options = target_options
+        target_options.segment_aim = source.mode == "manual" and (options.manual_segment_aim or "worst-segment") or (options.turret_segment_aim or "worst-segment")
         target_options.segment_line_geometry = options.segment_line_geometry
         local prerequisites = {}
         for _, prerequisite in pairs(source.prerequisites) do
@@ -194,24 +158,36 @@ counters.prepare = function(lu, options)
         end
         if ammo_item ~= nil then
             table.insert(prerequisites, gutils.key("item", ammo_item.name))
+        elseif fluid ~= nil then
+            table.insert(prerequisites, gutils.key("fluid", fluid.type))
         end
-        table.insert(profiles, {
+        table.insert(weapons, {
             name = name,
-            source_key = source.name,
             mode = source.mode,
             prerequisites = prerequisites,
             profile = profile,
+            target_options = target_options,
         })
         diagnostics.compiled = diagnostics.compiled + 1
     end
 
     local function add_source(source, attack, needs_ammo)
-        if attack == nil or diagnostics.truncated then
+        if attack == nil then
             return
         end
-        -- Filtered targets and fluid-specific modifiers need their own evaluator.
-        if source.target_mask ~= nil or attack.fluids ~= nil then
+        -- Filtered targets need their own evaluator.
+        if source.target_mask ~= nil then
             diagnostics.rejected[source.name] = "unsupported-source-filter"
+            return
+        end
+        -- A fluid turret fires its own stream with each fluid it takes, which scales the damage by the fluid's damage_modifier
+        -- https://lua-api.factorio.com/latest/types/StreamAttackParameters.html#fluids
+        if attack.fluids ~= nil then
+            if attack.ammo_type ~= nil then
+                for _, fluid in pairs(attack.fluids) do
+                    compile(source, attack, attack.ammo_type, nil, fluid)
+                end
+            end
             return
         end
         if not needs_ammo then
@@ -228,9 +204,6 @@ counters.prepare = function(lu, options)
                     local ammo = ammo_for(item, source.source_type)
                     if ammo ~= nil then
                         compile(source, attack, ammo, item)
-                    end
-                    if diagnostics.truncated then
-                        return
                     end
                 end
             end
@@ -288,158 +261,53 @@ counters.prepare = function(lu, options)
             end
         end
     end
+    return weapons, diagnostics, resolver.target_options
+end
 
-    local function provide(definition)
-        local result = {}
-        local single_times = {}
-        local allowed_names = options.counter_names and options.counter_names[definition.name] or {}
-        local function allowed(name)
-            return options.counter_names == nil or allowed_names[name] == true
+-- For each target name, what kills it on its own: a list of {weapon (index into weapons), seconds} for the weapons that kill it at all
+-- Turrets deploy turret_count of one weapon, a weapon in hand is one; reasons says why a target couldn't be scored at all
+-- With options.outnumber, a turret weapon that does damage per hit but can't outpace regeneration at turret_count is listed too, with seconds = math.huge, outnumbered = true and its damage per shot, since more turrets of it would win (the final check, user 2026-10-12)
+counters.kill_times = function(weapons, names, entities, options)
+    options = options or {}
+    local resolver = targets.new(entities, options.target_options)
+    local list, reasons = {}, {}
+    for _, name in pairs(names) do
+        local target, reason = resolver.target(name)
+        if target ~= nil then
+            table.insert(list, target)
+        else
+            reasons[name] = reason
         end
-        local pair_allowed
-        if options.counter_names ~= nil then
-            pair_allowed = function(left, right) return allowed(mixed_name(left, right)) end
-        end
-        for index, source in pairs(profiles) do
-            if allowed(source.name) then
-                local count = source.mode == "turret" and definition.policy.turret_count or definition.policy.manual_count
-                local seconds, reason = damage.clear_seconds(source.profile, definition.targets, entities, count)
-                if seconds ~= nil then
-                    single_times[index] = seconds
-                    table.insert(result, {
-                        name = source.name,
-                        mode = source.mode,
-                        count = count,
-                        prerequisites = source.prerequisites,
-                        clear_seconds = seconds,
-                    })
-                else
-                    reason = reason or "unsupported-workload"
-                    diagnostics.evaluation_rejected[reason] = (diagnostics.evaluation_rejected[reason] or 0) + 1
-                end
-            end
-        end
-        local mixtures, mixed_diagnostics = batteries.evaluate(profiles, definition.targets, entities, {
-            deployment_count = definition.policy.turret_count,
-            max_pairs = options.max_mixed_pairs,
-            max_work = options.max_mixed_work,
-            max_seconds = definition.policy.clear_seconds,
-            feasibility_only = options.feasibility_only,
-            pair_allowed = pair_allowed,
-        })
-        diagnostics.mixed[definition.name or "workload"] = mixed_diagnostics
-        local pair_times = {}
-        for _, mixture in pairs(mixtures) do
-            pair_times[mixture.left] = pair_times[mixture.left] or {}
-            pair_times[mixture.left][mixture.right] = mixture.clear_seconds
-            -- A faster homogeneous battery needs a subset of this pair's prerequisites.
-            local dominated = (single_times[mixture.left] ~= nil and single_times[mixture.left] <= mixture.clear_seconds)
-                or (single_times[mixture.right] ~= nil and single_times[mixture.right] <= mixture.clear_seconds)
-            if not dominated or options.retain_dominated == true then
-                local left, right = profiles[mixture.left], profiles[mixture.right]
-                local prerequisites, seen = {}, {}
-                for _, source in pairs({
-                    left,
-                    right,
-                }) do
-                    for _, prerequisite in pairs(source.prerequisites) do
-                        if seen[prerequisite] == nil then
-                            table.insert(prerequisites, prerequisite)
-                            seen[prerequisite] = true
-                        end
-                    end
-                end
-                table.sort(prerequisites)
-                table.insert(result, {
-                    name = mixed_name(left, right),
-                    mode = left.mode,
-                    count = mixture.left_count + mixture.right_count,
-                    prerequisites = prerequisites,
-                    clear_seconds = mixture.clear_seconds,
-                    sources = {
-                        {
-                            name = left.name,
-                            count = mixture.left_count,
-                        },
-                        {
-                            name = right.name,
-                            count = mixture.right_count,
-                        },
-                    },
-                })
-            end
-        end
-        -- Asteroid defense can dedicate different weapons to successive size classes.
-        -- This bounded three-profile search is reserved for those encounters.
-        if definition.kind == "asteroid-route" then
-            local triple_allowed
-            if options.counter_names ~= nil then
-                triple_allowed = function(left, middle, right) return allowed(asteroid_mixed_name(left, middle, right)) end
-            end
-            local triples, triple_diagnostics = asteroid_batteries.evaluate(profiles, definition.targets, entities, {
-                deployment_count = definition.policy.turret_count,
-                max_triples = options.max_asteroid_triples,
-                max_scanned_triples = options.max_asteroid_scanned_triples,
-                max_work = options.max_asteroid_work,
-                max_seconds = definition.policy.clear_seconds,
-                feasibility_only = options.feasibility_only,
-                triple_allowed = triple_allowed,
-            })
-            diagnostics.asteroid_mixed[definition.name or "workload"] = triple_diagnostics
-            for _, mixture in pairs(triples) do
-                local function faster_pair(left, right)
-                    local seconds = pair_times[left] and pair_times[left][right]
-                    return seconds ~= nil and seconds <= mixture.clear_seconds
-                end
-                local dominated = (single_times[mixture.left] ~= nil and single_times[mixture.left] <= mixture.clear_seconds)
-                    or (single_times[mixture.middle] ~= nil and single_times[mixture.middle] <= mixture.clear_seconds)
-                    or (single_times[mixture.right] ~= nil and single_times[mixture.right] <= mixture.clear_seconds)
-                    or faster_pair(mixture.left, mixture.middle)
-                    or faster_pair(mixture.left, mixture.right)
-                    or faster_pair(mixture.middle, mixture.right)
-                if not dominated or options.retain_dominated == true then
-                    local left, middle, right = profiles[mixture.left], profiles[mixture.middle], profiles[mixture.right]
-                    local prerequisites, seen = {}, {}
-                    for _, source in pairs({
-                        left,
-                        middle,
-                        right,
-                    }) do
-                        for _, prerequisite in pairs(source.prerequisites) do
-                            if seen[prerequisite] == nil then
-                                table.insert(prerequisites, prerequisite)
-                                seen[prerequisite] = true
-                            end
-                        end
-                    end
-                    table.sort(prerequisites)
-                    table.insert(result, {
-                        name = asteroid_mixed_name(left, middle, right),
-                        mode = left.mode,
-                        count = mixture.left_count + mixture.middle_count + mixture.right_count,
-                        prerequisites = prerequisites,
-                        clear_seconds = mixture.clear_seconds,
-                        sources = {
-                            {
-                                name = left.name,
-                                count = mixture.left_count,
-                            },
-                            {
-                                name = middle.name,
-                                count = mixture.middle_count,
-                            },
-                            {
-                                name = right.name,
-                                count = mixture.right_count,
-                            },
-                        },
-                    })
-                end
-            end
-        end
-        return result
     end
-    return provide, diagnostics
+    local times = {}
+    for index, weapon in pairs(weapons) do
+        local evaluator = targets.prepare(weapon.profile, list, weapon.target_options)
+        if evaluator ~= nil then
+            local team = weapon.mode == "turret" and (options.turret_count or 10) or (options.manual_count or 1)
+            for _, target in pairs(list) do
+                local seconds, reason = evaluator.seconds(target.entity, team)
+                local entry
+                if seconds ~= nil then
+                    entry = {
+                        weapon = index,
+                        seconds = seconds,
+                    }
+                elseif options.outnumber == true and weapon.mode == "turret" and reason == "insufficient-damage" and (evaluator.shot_damage(target.entity) or 0) > 0 then
+                    entry = {
+                        weapon = index,
+                        seconds = math.huge,
+                        outnumbered = true,
+                        shot_damage = evaluator.shot_damage(target.entity),
+                    }
+                end
+                if entry ~= nil then
+                    times[target.entity] = times[target.entity] or {}
+                    table.insert(times[target.entity], entry)
+                end
+            end
+        end
+    end
+    return times, reasons, resolver
 end
 
 return counters

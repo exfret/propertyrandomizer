@@ -1,5 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
-local military_experiment = require("src/randomizations/experimental/numerical/item")
 local categories = require("src/prototypes/categories")
 local dutils = require("src/prototypes/data-utils")
 local randnum = require("src/lib/random/randnum")
@@ -1039,11 +1037,5 @@ randomizations.tool_durability = function(id)
                 locale_utils.create_localised_description(tool, factor, id)
             end
         end
-    end
-end
-
-if experimental_flags.military_resistances == true then
-    for name, randomize in pairs(military_experiment) do
-        randomizations[name] = randomize
     end
 end

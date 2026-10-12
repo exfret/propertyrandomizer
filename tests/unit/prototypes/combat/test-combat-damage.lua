@@ -1,5 +1,6 @@
 -- Run from the mod root: lua tests/unit/prototypes/combat/test-combat-damage.lua
 local damage = require("src/prototypes/combat/combat-damage")
+local targets = require("src/prototypes/combat/combat-targets")
 
 local count = 0
 
@@ -57,13 +58,19 @@ local function target(health)
     return { max_health = health }
 end
 
-local function clear(attack, entity, amount, deployment)
-    return damage.clear_seconds(attack, {
-        {
-            entity = "test-target",
-            amount = amount or 1,
-        },
-    }, { ["test-target"] = entity }, deployment or 1)
+-- Seconds for a team of deployment weapons (one by default) to kill the entity on its own
+local function clear(attack, entity, deployment)
+    local resolver = targets.new({ ["test-target"] = entity }, attack.target_options)
+    local subject, reason = resolver.target("test-target")
+    if subject == nil then
+        return nil, reason
+    end
+    local evaluator
+    evaluator, reason = targets.prepare(attack, { subject }, attack.target_options)
+    if evaluator == nil then
+        return nil, reason
+    end
+    return evaluator.seconds("test-target", deployment or 1)
 end
 
 test("gun bonus and ammo cooldown apply before resistance", function()
@@ -117,11 +124,11 @@ test("immunity cannot certify a clear", function()
     assert(clear(profile(ammo(hit(100))), entity) == nil)
 end)
 
-test("parallel firing teams keep whole shots and do not share overkill", function()
+test("a team's volley adds up on one target", function()
     local attack = profile(ammo(hit(10)))
-    close(clear(attack, target(1), 20, 10), 0.2)
-    close(clear(attack, target(1), 11, 10), 0.2)
-    close(clear(attack, target(100), 1, 10), 0.1)
+    close(clear(attack, target(100), 10), 0.1)
+    close(clear(attack, target(100), 5), 0.2)
+    close(clear(attack, target(100)), 1)
 end)
 
 test("healing and slow-heal batching increase clear time", function()
@@ -133,10 +140,10 @@ test("healing and slow-heal batching increase clear time", function()
     assert(clear(attack, entity) == nil)
 end)
 
-test("warmup is charged for each target", function()
+test("warmup is charged before the first volley", function()
     local gun = weapon()
     gun.warmup = 60
-    close(clear(profile(ammo(hit(10)), nil, gun), target(1), 2), 2.2)
+    close(clear(profile(ammo(hit(10)), nil, gun), target(1)), 1.1)
 end)
 
 test("deterministic repeated nested effects preserve per-hit counts", function()
@@ -181,13 +188,11 @@ test("distance-dependent damage fails closed", function()
     assert(damage.new().ammo(ammo(effect)) == nil)
 end)
 
-test("damage excluding trees requires target-specific filtering", function()
+test("damage sparing trees still counts, since trees are never combat targets", function()
     local effect = hit(100)
     effect.apply_damage_to_trees = false
-    local result, reason = damage.new().ammo(ammo(effect))
-    assert(result == nil and reason == "conditional-damage-target")
-    effect.apply_damage_to_trees = true
-    assert(damage.new().ammo(ammo(effect)) ~= nil)
+    local result = damage.new().ammo(ammo(effect))
+    assert(result ~= nil and result.packets[1].amount == 100)
 end)
 
 test("ammo-modified maximum range must exceed the unmodified minimum", function()
@@ -371,7 +376,6 @@ test("rocket impact and centered blast retain separate damage packets and gun bo
     close(attack.packets[1].amount + attack.packets[2].amount, 300)
     close(attack.delay_seconds, 55 / 60)
     close(clear(attack, target(300)), 0.1 + 55 / 60)
-    close(clear(attack, target(300), 2), 2 * (0.1 + 55 / 60))
 end)
 
 -- Cannon ammo uses position targeting in base/prototypes/item.lua.
@@ -419,7 +423,7 @@ test("aimed line damage credits one primary target and honors line range", funct
     close(attack.benchmark_range, 15)
     close(attack.packets[1].line.range, 15)
     close(attack.packets[1].line.width, 1)
-    close(clear(attack, target(1), 10), 1)
+    close(clear(attack, target(1)), 0.1)
     local gun = weapon()
     gun.min_range = 15
     assert(damage.attack(damage.new().ammo(ammunition), gun, ammunition) == nil)
@@ -629,7 +633,7 @@ test("visual target hit/death particles are checked recursively", function()
     assert(clear(profile(ammo(hit(10)), options), entity) == nil)
 end)
 
-test("death-spawned targets join the workload and invalid bodies fail closed", function()
+test("death spawns are targets of their own, and invalid bodies fail closed", function()
     local entity = target(10)
     entity.dying_trigger_effect = {
         type = "create-entity",
@@ -640,10 +644,14 @@ test("death-spawned targets join the workload and invalid bodies fail closed", f
             return { type = "unit" }
         end,
     })
-    close(clear(attack, entity), 0.2)
+    close(clear(attack, entity), 0.1)
+    local spawned = targets.new({ ["test-target"] = entity }, attack.target_options).spawned("test-target")
+    assert(spawned["test-child"] == true)
     entity.dying_trigger_effect = nil
     entity.corpse = "test-corpse"
-    close(clear(attack, entity), 0.2)
+    close(clear(attack, entity), 0.1)
+    spawned = targets.new({ ["test-target"] = entity }, attack.target_options).spawned("test-target")
+    assert(spawned["test-corpse"] == true and spawned["test-child"] == nil)
     entity.corpse = nil
     entity.segment_engine = {}
     assert(clear(attack, entity) == nil)
@@ -690,12 +698,291 @@ end)
 
 test("invalid numeric inputs cannot produce a successful score", function()
     local attack = profile(ammo(hit(10)))
-    assert(clear(attack, target(10), 1, 0) == nil)
+    assert(clear(attack, target(10), 0) == nil)
     assert(clear(attack, target(math.huge)) == nil)
     assert(clear(attack, target(10), 0.5) == nil)
     local entity = target(10)
     entity.healing_per_tick = 0 / 0
     assert(clear(attack, entity) == nil)
+end)
+
+-- The beam fixtures follow the laser turret (base/prototypes/entity/turrets.lua, base/prototypes/entity/beams.lua) and the tesla turret (space-age/prototypes/entity/turrets.lua)
+local function beam_ammo(duration)
+    return {
+        action = {
+            type = "direct",
+            action_delivery = {
+                type = "beam",
+                beam = "test-beam",
+                duration = duration,
+                max_length = 24,
+            },
+        },
+    }
+end
+
+local function beam_options(beam, extra)
+    local prototypes = {
+        ["test-beam"] = beam,
+    }
+    for name, prototype in pairs(extra or {}) do
+        prototypes[name] = prototype
+    end
+    return {
+        entity_of = function(name)
+            return prototypes[name]
+        end,
+    }
+end
+
+test("a beam waiting for its shooter hits once per shot, one triggering by itself every whole damage interval", function()
+    local beam = {
+        type = "beam",
+        damage_interval = 20,
+        action = ammo(hit(10)).action,
+    }
+    local laser = {
+        type = "beam",
+        cooldown = 40,
+        range = 30,
+        damage_modifier = 2,
+    }
+    local attack = profile(beam_ammo(40), beam_options(beam), laser)
+    assert(#attack.packets == 1 and attack.packets[1].count == 1)
+    close(attack.packets[1].amount, 20)
+    close(attack.interval_seconds, 40 / 60)
+    close(attack.benchmark_range, 24)
+    close(clear(attack, target(100), 5), 40 / 60)
+    beam.action_triggered_automatically = true
+    attack = profile(beam_ammo(40), beam_options(beam), laser)
+    assert(attack.packets[1].count == 2)
+    attack = profile(beam_ammo(30), beam_options(beam), laser)
+    assert(attack.packets[1].count == 1)
+    assert(damage.new(beam_options(beam)).ammo(beam_ammo(10)) == nil)
+end)
+
+test("a chain adds nothing to the aimed target and only has to be harmless", function()
+    local bounce = {
+        type = "beam",
+        damage_interval = 20,
+        action = ammo({
+            hit(120),
+            {
+                type = "push-back",
+                distance = 0.25,
+            },
+            {
+                type = "create-sticker",
+                sticker = "test-stun",
+            },
+        }).action,
+    }
+    local start = {
+        type = "beam",
+        damage_interval = 20,
+        action = bounce.action,
+    }
+    local chain = {
+        type = "chain-active-trigger",
+        action = {
+            type = "direct",
+            action_delivery = {
+                type = "beam",
+                beam = "test-bounce",
+                duration = 30,
+            },
+        },
+    }
+    local tesla = ammo({
+        {
+            type = "nested-result",
+            action = {
+                type = "direct",
+                action_delivery = {
+                    type = "chain",
+                    chain = "test-chain",
+                },
+            },
+        },
+        {
+            type = "nested-result",
+            action = {
+                type = "direct",
+                action_delivery = {
+                    type = "beam",
+                    beam = "test-beam",
+                    duration = 30,
+                    max_length = 40,
+                },
+            },
+        },
+    })
+    local options = beam_options(start, {
+        ["test-bounce"] = bounce,
+        ["test-stun"] = {
+            type = "sticker",
+            name = "test-stun",
+            duration_in_ticks = 30,
+        },
+    })
+    options.chain_of = function(name)
+        return name == "test-chain" and chain or nil
+    end
+    local attack = profile(tesla, options, {
+        type = "beam",
+        cooldown = 120,
+        range = 30,
+    })
+    assert(#attack.packets == 1 and #attack.dots == 0)
+    close(attack.packets[1].amount, 120)
+    bounce.action = ammo(hit(-5)).action
+    assert(damage.new(options).ammo(tesla) == nil)
+end)
+
+-- The stream fixtures follow the flamethrower turret (base/prototypes/entity/turrets.lua) and its fire stream and sticker (base/prototypes/entity/fire.lua)
+local function stream_setup()
+    local sticker = {
+        type = "sticker",
+        name = "test-fire",
+        damage_per_tick = {
+            type = "fire",
+            amount = 10,
+        },
+        damage_interval = 10,
+        duration_in_ticks = 1800,
+    }
+    local stream = {
+        type = "stream",
+        particle_spawn_interval = 2,
+        particle_spawn_timeout = 8,
+        particle_horizontal_speed = 0.25,
+        particle_horizontal_speed_deviation = 0.025,
+        action = {
+            {
+                type = "area",
+                radius = 2.5,
+                action_delivery = {
+                    type = "instant",
+                    target_effects = {
+                        {
+                            type = "create-sticker",
+                            sticker = "test-fire",
+                        },
+                        {
+                            type = "damage",
+                            apply_damage_to_trees = false,
+                            damage = {
+                                type = "fire",
+                                amount = 3,
+                            },
+                        },
+                    },
+                },
+            },
+            {
+                type = "direct",
+                action_delivery = {
+                    type = "instant",
+                    target_effects = {
+                        type = "create-fire",
+                        entity_name = "test-flame",
+                    },
+                },
+            },
+        },
+    }
+    local ammo_type = {
+        action = {
+            type = "direct",
+            action_delivery = {
+                type = "stream",
+                stream = "test-stream",
+            },
+        },
+    }
+    local turret = {
+        type = "stream",
+        cooldown = 4,
+        range = 30,
+        min_range = 6,
+    }
+    local options = {
+        entity_of = function(name)
+            return ({
+                ["test-stream"] = stream,
+                ["test-fire"] = sticker,
+            })[name]
+        end,
+    }
+    return ammo_type, turret, options, stream, sticker
+end
+
+test("stream particles land on the aimed target: their area damage counts, the ground fire doesn't", function()
+    local ammo_type, turret, options = stream_setup()
+    local summary = assert(damage.new(options).ammo(ammo_type))
+    local attack = assert(damage.attack(summary, turret, ammo_type, 1.1))
+    assert(#attack.packets == 1 and #attack.dots == 1)
+    close(attack.packets[1].amount, 3.3)
+    -- One particle per shot or per spawn interval, whichever is longer
+    close(attack.interval_seconds, 4 / 60)
+    -- 30 tiles at the slowest horizontal speed, 0.225 tiles a tick
+    close(attack.delay_seconds, math.ceil(30 / 0.225) / 60)
+    -- A target without stickers takes only the direct hits: 3.3 a volley
+    close(clear(attack, target(100)), attack.delay_seconds + (1 + math.ceil(96.7 / 3.3)) * 4 / 60)
+end)
+
+test("a sticker damages over time only targets it can stick to, and only once however often it's applied", function()
+    local ammo_type, turret, options = stream_setup()
+    local attack = assert(damage.attack(assert(damage.new(options).ammo(ammo_type)), turret, ammo_type))
+    local unit = target(100)
+    unit.type = "unit"
+    -- 60 a second from the sticker, one application held back as lag
+    local net = 3 + 60 * 4 / 60
+    close(clear(attack, unit), attack.delay_seconds + (1 + math.ceil((100 - 3 + 10) / net)) * 4 / 60)
+    close(clear(attack, unit, 10), attack.delay_seconds + (1 + math.ceil((100 - 30 + 10) / (30 + 4))) * 4 / 60)
+    unit.resistances = {
+        {
+            type = "fire",
+            percent = 100,
+        },
+    }
+    assert(clear(attack, unit) == nil)
+end)
+
+test("streams that can't be modeled leave the ammo unscored", function()
+    local ammo_type, turret, options, stream, sticker = stream_setup()
+    local summary = assert(damage.new(options).ammo(ammo_type))
+    local reason
+    summary, reason = damage.attack(summary, weapon(), ammo_type)
+    assert(summary == nil and reason == "unsupported-attack-delivery")
+    stream.initial_action = stream.action
+    summary, reason = damage.new(options).ammo(ammo_type)
+    assert(summary == nil and reason == "unsupported-initial-stream-action")
+    stream.initial_action = nil
+    stream.target_position_deviation = 1
+    summary, reason = damage.new(options).ammo(ammo_type)
+    assert(summary == nil and reason == "variable-stream-landing")
+    stream.target_position_deviation = nil
+    sticker.damage_per_tick.amount = -1
+    assert(damage.new(options).ammo(ammo_type) == nil)
+    sticker.damage_per_tick.amount = 10
+    stream.action[1].action_delivery.target_effects[1].probability = 0.5
+    assert(damage.new(options).ammo(ammo_type) == nil)
+    -- A fluid's damage modifier has to be positive
+    local fresh_ammo, fresh_turret, fresh_options = stream_setup()
+    local fresh = assert(damage.new(fresh_options).ammo(fresh_ammo))
+    assert(damage.attack(fresh, fresh_turret, fresh_ammo, 0) == nil)
+end)
+
+test("push-back is harmless", function()
+    local result = damage.new().ammo(ammo({
+        hit(10),
+        {
+            type = "push-back",
+            distance = 0.5,
+        },
+    }))
+    assert(result ~= nil and #result.packets == 1)
 end)
 
 print("combat-damage: " .. count .. " tests passed")

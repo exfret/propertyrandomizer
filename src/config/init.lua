@@ -137,7 +137,6 @@ config.item_percent_randomized = settings.startup["propertyrandomizer-item-perce
 config.unified_num_retries = settings.startup["propertyrandomizer-unified-retries"].value
 -- Whether the unified randomizations still in development run (see settings.lua): in the unified preview, or when the test helper explicitly enables the dev setting
 config.dev_unified = features.dev_unified
-config.damage_type_randomization = features.damage_types
 config.military_difficulty = settings.startup["propertyrandomizer-military-difficulty"].value
 config.military_time_multiplier = settings.startup["propertyrandomizer-military-clear-time"].value / 20
 -- The optional planetary fix pass uses unified's prerequisite chooser after the specialized resource, lightning and freezing repairs, only for remaining failures and before first pass (src/randomizations/planetary/fix-pass.lua).

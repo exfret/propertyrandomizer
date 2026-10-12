@@ -92,7 +92,6 @@ if config.planetary_biomes == true then
 end
 
 local new_logic = require("src/logic/init")
-local combat_encounters = require("src/logic/builders/combat-encounters")
 
 local graph_customization = require("src/config/graph-customization")
 local prototype_exclusions = require("src/config/prototype-exclusions")
@@ -283,7 +282,6 @@ local init_sort_info
 local init_complex_sort_info
 -- Sorts the world the rest of randomization starts from (the game after planetary changes, which is data.raw now) and derives what depends on it
 local function prepare_world()
-    combat_encounters.reset()
     new_logic.build()
     -- Home sets come from the game before randomization and stay fixed, so every later sort with home contexts (the discovery rule in promotion, first pass and the checks) uses these
     -- With planetary changes in the game, they're the ones planetary's goals were made with
@@ -650,7 +648,12 @@ end
 
 -- Final check for completability
 
-new_logic.build()
+-- Number randomization ran after unified's check and can slow kills down, so the combat check only counts a kill lost when it became impossible here, and logs the ones over the time limit (src/logic/builders/combat-encounters.lua, user 2026-10-12)
+new_logic.build({
+    combat_check = {
+        time_limit = false,
+    },
+})
 local final_sort_info = top.sort(new_logic.graph)
 -- Mechanic context check (src/randomizations/unified/skeleton/check.lua), over room/ability contexts
 local final_complex_sort_info = top.sort(new_logic.graph, nil, nil, {

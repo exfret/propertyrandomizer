@@ -1,5 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
-local military_experiment = require("src/lib/random/experimental/randnum")
 local constants = require("src/config/constants")
 local rng = require("src/lib/random/rng")
 local fleish = require("src/lib/random/fleishman")
@@ -416,10 +414,6 @@ randnum.rand = function(params, skip_tuning)
     -- Update with randomized value, and return this value
     tbl[property] = val
     return tbl[property]
-end
-
-if experimental_flags.military_resistances == true then
-    return military_experiment
 end
 
 return randnum

@@ -14,9 +14,6 @@ local add_damage_type_description = function (prototype, new_val)
 end
 
 local damage_type_randomization = function (prototype, parents, structs, id)
-    if config.damage_type_randomization == true then
-        return
-    end
     local changed = false
     local new_val
     local rng_key = rng.key({ id = id, prototype = prototype })

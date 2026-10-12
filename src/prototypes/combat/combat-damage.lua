@@ -3,7 +3,6 @@
 -- Create a fresh resolver for each candidate prototype set; its memoized results belong to that set.
 
 local projectiles = require("src/prototypes/combat/combat-projectiles")
-local targets = require("src/prototypes/combat/combat-targets")
 
 local damage = {}
 
@@ -15,9 +14,12 @@ local function positive(value)
     return finite(value) and value > 0
 end
 
+-- dots: damage over time from stickers on the aimed target, one per sticker prototype (a sticker hit again isn't counted twice)
+-- stream: set when hits come from the landing particles of a fluid stream (see delivery)
 local function summary()
     return {
         packets = {},
+        dots = {},
         delay_seconds = 0,
         delay_per_tile = 0,
     }
@@ -48,6 +50,22 @@ damage.new = function(options)
             result.max_range = math.min(result.max_range or child.max_range, child.max_range)
         end
         result.min_range = math.max(result.min_range or 0, child.min_range or 0)
+        if child.stream ~= nil then
+            if result.stream ~= nil and result.stream ~= child.stream then
+                return nil, "mixed-stream-delivery"
+            end
+            result.stream = child.stream
+        end
+        -- Repeating a sticker refreshes it rather than adding another, so dots ignore the multiplier
+        for _, dot in pairs(child.dots or {}) do
+            local present = false
+            for _, other in pairs(result.dots) do
+                present = present or other.name == dot.name
+            end
+            if not present then
+                table.insert(result.dots, dot)
+            end
+        end
         for _, packet in pairs(child.packets) do
             if #result.packets >= max_packets then
                 return nil, "packet-budget"
@@ -173,7 +191,66 @@ damage.new = function(options)
             end
             return walk(projectile, entity_kind, depth + 1)
         end
-        if value.type == "play-sound" or value.type == "create-trivial-smoke" or value.type == "camera-effect" or value.type == "set-tile" then
+        -- Beams, chains and streams that don't reach the aimed target only need to be harmless
+        if incidental and (value.type == "beam" or value.type == "chain" or value.type == "stream") then
+            local actions = {}
+            if value.type == "beam" then
+                local beam = options.entity_of and options.entity_of(value.beam)
+                if beam == nil or beam.type ~= "beam" then
+                    return nil, "missing-beam"
+                end
+                actions = { beam.action }
+            elseif value.type == "chain" then
+                local chain = options.chain_of and options.chain_of(value.chain)
+                if chain == nil then
+                    return nil, "missing-chain"
+                end
+                actions = { chain.action }
+            else
+                local stream = options.entity_of and options.entity_of(value.stream)
+                if stream == nil or stream.type ~= "stream" then
+                    return nil, "missing-stream"
+                end
+                actions = {
+                    stream.action,
+                    stream.initial_action,
+                }
+            end
+            table.insert(actions, value.source_effects)
+            table.insert(actions, value.target_effects)
+            for _, action in pairs(actions) do
+                local result, reason = walk(action, effect_kind, depth + 1)
+                if result == nil then
+                    return nil, reason
+                end
+            end
+            return summary()
+        end
+        -- A sticker on something other than the aimed target only needs to be unable to heal; its updates must be harmless too
+        -- https://lua-api.factorio.com/latest/prototypes/StickerPrototype.html
+        if incidental and value.type == "create-sticker" then
+            local sticker = options.entity_of and options.entity_of(value.sticker)
+            if sticker == nil or sticker.type ~= "sticker" then
+                return nil, "missing-sticker"
+            end
+            local packet = sticker.damage_per_tick
+            if packet ~= nil and (type(packet) ~= "table" or not finite(packet.amount) or packet.amount < 0) then
+                return nil, "incidental-healing"
+            end
+            for _, update in pairs(sticker.update_effects or {}) do
+                local result, reason = walk(update.effect, effect_kind, depth + 1)
+                if result == nil then
+                    return nil, reason
+                end
+            end
+            return summary()
+        end
+        -- Fire left on the ground damages what stands in it, which isn't credited
+        -- https://lua-api.factorio.com/latest/types/CreateFireTriggerEffectItem.html
+        if incidental and value.type == "create-fire" then
+            return summary()
+        end
+        if value.type == "play-sound" or value.type == "create-trivial-smoke" or value.type == "camera-effect" or value.type == "set-tile" or value.type == "push-back" then
             return summary()
         end
         if value.type == "invoke-tile-trigger" or value.type == "destroy-decoratives" then
@@ -280,9 +357,8 @@ damage.new = function(options)
             if binding == "created" or binding == "position" then
                 return nil, "missing-target-binding"
             end
-            if value.apply_damage_to_trees == false then
-                return nil, "conditional-damage-target"
-            end
+            -- apply_damage_to_trees = false only spares trees, which are never combat targets
+            -- https://lua-api.factorio.com/latest/types/DamageEntityTriggerEffectItem.html#apply_damage_to_trees
             -- Distance falloff needs a geometry model; do not count its maximum as guaranteed damage.
             -- https://lua-api.factorio.com/latest/types/DamageEntityTriggerEffectItem.html
             if (value.lower_damage_modifier or 1) ~= 1 or (value.upper_damage_modifier or 1) ~= 1 then
@@ -305,6 +381,36 @@ damage.new = function(options)
         end
         if value.type == "nested-result" then
             return walk(value.action, "trigger", depth + 1, binding)
+        end
+        -- A sticker on the aimed target damages it every damage_interval ticks for duration_in_ticks, counted once however often it's applied
+        -- Whether the target can carry it is up to the target (see combat-targets.lua)
+        -- https://lua-api.factorio.com/latest/prototypes/StickerPrototype.html
+        if value.type == "create-sticker" then
+            local checked, reason = walk(value, "incidental", depth + 1)
+            if checked == nil or binding == "created" or binding == "position" then
+                return checked, reason
+            end
+            -- A fresh table, since walk memoizes the checked one
+            local result = summary()
+            local sticker = options.entity_of(value.sticker)
+            local packet = sticker.damage_per_tick
+            local interval, duration = sticker.damage_interval or 1, sticker.duration_in_ticks
+            if packet ~= nil and type(packet.type) == "string" and positive(packet.amount) then
+                if not positive(interval) or interval % 1 ~= 0 or not positive(duration) then
+                    return nil, "invalid-sticker-timing"
+                end
+                table.insert(result.dots, {
+                    name = sticker.name,
+                    type = packet.type,
+                    amount = packet.amount,
+                    interval_ticks = interval,
+                    duration_ticks = duration,
+                })
+            end
+            return result
+        end
+        if value.type == "create-fire" then
+            return walk(value, "incidental", depth + 1)
         end
         if value.type == "create-entity" or value.type == "create-explosion" then
             local harmless_result = walk(value, "visual", depth + 1)
@@ -363,6 +469,122 @@ damage.new = function(options)
         if value.type == "instant" then
             local target_binding = (binding == "created" or binding == "position") and binding or "target"
             return walk(value.target_effects, "effect", depth + 1, target_binding)
+        end
+        -- A beam from the shooter to the aimed target, applying its action once per shot unless it triggers by itself every damage_interval
+        -- Only whole intervals inside its duration count for one that triggers by itself
+        -- https://lua-api.factorio.com/latest/types/BeamTriggerDelivery.html
+        -- https://lua-api.factorio.com/latest/prototypes/BeamPrototype.html#action_triggered_automatically
+        if value.type == "beam" then
+            if binding ~= "source" and binding ~= "target" then
+                return nil, "missing-target-binding"
+            end
+            local beam = options.entity_of and options.entity_of(value.beam)
+            if beam == nil or beam.type ~= "beam" then
+                return nil, "missing-beam"
+            end
+            local hits = 1
+            if beam.action_triggered_automatically == true then
+                local interval, duration = beam.damage_interval, value.duration or 0
+                if not positive(interval) or not finite(duration) or duration < 0 then
+                    return nil, "invalid-beam-timing"
+                end
+                hits = math.floor(duration / interval)
+            end
+            local result = summary()
+            for _, action in pairs({
+                {
+                    value = beam.action,
+                    kind = "trigger",
+                },
+                {
+                    value = value.target_effects,
+                    kind = "effect",
+                },
+            }) do
+                local child, reason = walk(action.value, action.kind, depth + 1, "target")
+                if child == nil then
+                    return nil, reason
+                end
+                if hits > 0 then
+                    result, reason = merge(result, child, hits)
+                    if result == nil then
+                        return nil, reason
+                    end
+                end
+            end
+            if positive(value.max_length) then
+                result.max_range = value.max_length
+            end
+            return result
+        end
+        -- A chain jumps from the target to other targets, so it adds nothing to the aimed target and only has to be harmless
+        -- https://lua-api.factorio.com/latest/prototypes/ChainActiveTriggerPrototype.html#action
+        if value.type == "chain" then
+            local chained, reason = walk(value, "incidental", depth + 1)
+            if chained == nil then
+                return nil, reason
+            end
+            return walk(value.target_effects, "effect", depth + 1, "target")
+        end
+        -- A fluid stream lands at the aimed target's position, every particle running action there (the first runs initial_action instead when there is one)
+        -- Hits are per landing particle; attack() spaces them by the shooter's cooldown or the stream's spawn interval, whichever is longer
+        -- https://lua-api.factorio.com/latest/types/StreamTriggerDelivery.html
+        -- https://lua-api.factorio.com/latest/prototypes/FluidStreamPrototype.html
+        if value.type == "stream" then
+            local stream = options.entity_of and options.entity_of(value.stream)
+            if stream == nil or stream.type ~= "stream" then
+                return nil, "missing-stream"
+            end
+            local interval = stream.particle_spawn_interval
+            local speed = (stream.particle_horizontal_speed or 0) - (stream.particle_horizontal_speed_deviation or 0)
+            if not positive(interval) or interval % 1 ~= 0 then
+                return nil, "invalid-stream-timing"
+            end
+            if not positive(speed) then
+                return nil, "invalid-stream-speed"
+            end
+            -- A landing spread around the aimed point needs a geometry model
+            if (stream.target_position_deviation or 0) ~= 0 then
+                return nil, "variable-stream-landing"
+            end
+            local result, reason = walk(stream.action, "trigger", depth + 1, "landing")
+            if result == nil then
+                return nil, reason
+            end
+            local first_harmless = false
+            if stream.initial_action ~= nil then
+                local first
+                first, reason = walk(stream.initial_action, "trigger", depth + 1, "landing")
+                if first == nil then
+                    return nil, reason
+                end
+                -- Crediting only later particles is safe when the first one does no less; otherwise leave it unscored
+                if #first.packets > 0 or #first.dots > 0 then
+                    return nil, "unsupported-initial-stream-action"
+                end
+                first_harmless = true
+            end
+            local landed = summary()
+            landed, reason = merge(landed, result, 1)
+            if landed == nil then
+                return nil, reason
+            end
+            local child
+            child, reason = walk(value.target_effects, "effect", depth + 1, "target")
+            if child == nil then
+                return nil, reason
+            end
+            landed, reason = merge(landed, child, 1)
+            if landed == nil then
+                return nil, reason
+            end
+            landed.stream = {
+                interval_ticks = interval,
+                first_harmless = first_harmless,
+            }
+            -- Particles fly at their horizontal speed, the slowest the deviation allows
+            landed.delay_per_tile = math.max(landed.delay_per_tile or 0, 1 / (speed * 60))
+            return landed
         end
         if value.type ~= "projectile" then
             return nil, "unsupported-delivery"
@@ -434,7 +656,8 @@ damage.new = function(options)
             if binding == "direction" then
                 return nil, "missing-target-binding"
             end
-            return walk(value.action_delivery, "delivery", depth + 1, binding)
+            -- A landed stream particle has a position, not an entity, to act on directly
+            return walk(value.action_delivery, "delivery", depth + 1, binding == "landing" and "position" or binding)
         end
         if value.type == "area" then
             if not positive(value.radius) then
@@ -444,6 +667,7 @@ damage.new = function(options)
                 -- Uncalibrated scatter gets no damage credit; confirm its uncounted branches cannot heal or add enemies.
                 return walk(value, "incidental", depth + 1)
             end
+            -- An area around a stream's landing point, which is the aimed target's position, covers the aimed target
             if binding == "source" or binding == "direction" or binding == "position" then
                 if value.trigger_from_target ~= true then
                     return nil, "area-away-from-target"
@@ -528,7 +752,7 @@ damage.new = function(options)
             end
         elseif kind == "visual" or kind == "visual-entity" or kind == "visual-particle" or kind == "incidental" or kind == "incidental-entity" or kind == "incidental-particle" then
             result, reason = visual(value, kind, depth)
-        elseif kind == "effect" and value.type ~= "damage" and value.type ~= "nested-result" and value.type ~= "create-entity" and value.type ~= "create-explosion" then
+        elseif kind == "effect" and value.type ~= "damage" and value.type ~= "nested-result" and value.type ~= "create-entity" and value.type ~= "create-explosion" and value.type ~= "create-sticker" and value.type ~= "create-fire" then
             if value.type == "invoke-tile-trigger" or value.type == "destroy-decoratives" then
                 result, reason = walk(value, "incidental", depth + 1)
             else
@@ -661,14 +885,26 @@ end
 
 -- Parameters/defaults verified in BaseAttackParameters and AmmoType (Factorio 2.1).
 -- No research bonuses are assumed. A supplied weapon's modifier applies before resistance.
-damage.attack = function(effect_summary, attack_parameters, ammo_type)
+-- fluid_modifier is the damage_modifier of the fluid a stream attack fires (StreamFluidProperties), 1 otherwise
+-- Modifiers only scale direct hits: whether they scale a sticker's damage isn't documented, so stickers keep their own
+-- https://lua-api.factorio.com/latest/types/StreamAttackParameters.html#fluids
+damage.attack = function(effect_summary, attack_parameters, ammo_type, fluid_modifier)
     if type(effect_summary) ~= "table" or type(attack_parameters) ~= "table" or type(ammo_type) ~= "table" then
         return nil, "missing-attack-input"
     end
-    if attack_parameters.type ~= "projectile" or (attack_parameters.cooldown_deviation or 0) ~= 0 then
+    local attack_type = attack_parameters.type
+    if (attack_type ~= "projectile" and attack_type ~= "beam" and attack_type ~= "stream") or (attack_parameters.cooldown_deviation or 0) ~= 0 then
         return nil, "unsupported-attack-timing"
     end
-    local modifier = attack_parameters.damage_modifier or 1
+    -- Stream hits come from the particles of a stream delivery, and only stream attacks fire those
+    if (attack_type == "stream") ~= (effect_summary.stream ~= nil) then
+        return nil, "unsupported-attack-delivery"
+    end
+    fluid_modifier = fluid_modifier or 1
+    if not positive(fluid_modifier) then
+        return nil, "invalid-attack-parameters"
+    end
+    local modifier = (attack_parameters.damage_modifier or 1) * fluid_modifier
     local cooldown = attack_parameters.cooldown
     local ammo_cooldown = ammo_type.cooldown_modifier or 1
     local warmup = attack_parameters.warmup or 0
@@ -692,9 +928,18 @@ damage.attack = function(effect_summary, attack_parameters, ammo_type)
     if delay == nil then
         return nil, benchmark_range
     end
+    local interval_ticks = math.max(1, math.ceil(cooldown * ammo_cooldown))
+    if effect_summary.stream ~= nil then
+        -- A stream spawns a particle every particle_spawn_interval ticks while it's fired; counting one particle per shot or per spawn interval, whichever is longer, never counts more than either reading of a shot gives
+        interval_ticks = math.max(interval_ticks, effect_summary.stream.interval_ticks)
+        if effect_summary.stream.first_harmless then
+            delay = delay + interval_ticks / 60
+        end
+    end
     local profile = {
         packets = {},
-        interval_seconds = math.max(1, math.ceil(cooldown * ammo_cooldown)) / 60,
+        dots = effect_summary.dots or {},
+        interval_seconds = interval_ticks / 60,
         warmup_seconds = warmup / 60,
         delay_seconds = delay,
         unsynchronized_hits = effect_summary.unsynchronized_hits,
@@ -730,12 +975,6 @@ damage.packet_damage = function(amount, resistance)
         return nil, "unsupported-resistance"
     end
     return math.max(0, amount - decrease) * (1 - percent / 100)
-end
-
--- Target lifecycles and shared segmented health are evaluated separately from attack effects.
-damage.clear_seconds = function(profile, roster, entities, deployment_count)
-    local options = type(profile) == "table" and profile.target_options or nil
-    return targets.clear_seconds(profile, roster, entities, deployment_count, options)
 end
 
 return damage

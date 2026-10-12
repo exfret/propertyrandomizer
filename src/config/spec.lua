@@ -1,4 +1,3 @@
-local experimental_flags = require("src/config/experimental-flags")
 -- Randomizations not in the spec:
 --  * Technology randomization
 --  * Recipe randomization
@@ -1784,15 +1783,5 @@ local spec = {
         category = "misc",
     },
 }
-
-if experimental_flags.military_resistances == true then
-    spec.resistances = {
-        category = "numerical",
-        setting = {
-            name = "propertyrandomizer-military",
-            val = "more",
-        },
-    }
-end
 
 return spec

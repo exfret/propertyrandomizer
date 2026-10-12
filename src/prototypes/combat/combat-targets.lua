@@ -1,5 +1,7 @@
--- Fixed target workloads, including shared-health bodies and threats spawned on death.
--- Recreate the resolver after prototype changes; memoized counts belong to one candidate.
+-- One target at a time: how long a team of identical weapons takes to kill it, and what it leaves behind that might need killing too.
+-- Recreate the resolver after prototype changes; memoized results belong to one candidate.
+
+local categories = require("src/prototypes/categories")
 
 local targets = {}
 
@@ -9,15 +11,6 @@ end
 
 local function positive(value)
     return finite(value) and value > 0
-end
-
-local function sorted_keys(values)
-    local names = {}
-    for name, _ in pairs(values) do
-        table.insert(names, name)
-    end
-    table.sort(names)
-    return names
 end
 
 -- A conservative lower bound on damage; never credit fractional resistance packets together.
@@ -35,13 +28,10 @@ targets.new = function(entities, options)
     entities = entities or {}
     local max_nodes = options.max_nodes or 4096
     local max_depth = options.max_depth or 64
-    local max_count = options.max_count or 1000000000
     local visited = 0
-    local cache, active, variants = {}, {}, {}
+    local spawn_cache, spawn_active, part_cache = {}, {}, {}
     local effects_cache, effects_active = {}, {}
-    -- Metadata stays separate from entity-name keys, which mods may freely choose.
-    local phases_of = {}
-    local resolve, effects, created
+    local effects, created, spawned
     local resolver = {}
 
     local function entity_of(name)
@@ -59,25 +49,9 @@ targets.new = function(entities, options)
         return true
     end
 
-    local function merge(result, child, multiplier, phase_shift)
-        for name, amount in pairs(child) do
-            local count = (result[name] or 0) + amount * multiplier
-            if not positive(count) or count % 1 ~= 0 or count > max_count then
-                return nil, "target-count-budget"
-            end
-            result[name] = count
-        end
-        phases_of[result] = phases_of[result] or {}
-        for phase, counts in pairs(phases_of[child] or {}) do
-            local destination = phase + (phase_shift or 0)
-            if destination > max_depth then
-                return nil, "target-depth-budget"
-            end
-            local phase_counts = phases_of[result][destination] or {}
-            phases_of[result][destination] = phase_counts
-            for name, amount in pairs(counts) do
-                phase_counts[name] = (phase_counts[name] or 0) + amount * multiplier
-            end
+    local function union(result, child)
+        for name, _ in pairs(child) do
+            result[name] = true
         end
         return result
     end
@@ -92,6 +66,7 @@ targets.new = function(entities, options)
         return nil, "unsupported-target-effects"
     end
 
+    -- What putting an entity in the world adds that might need killing: the entity itself if it has health, and what it spawns
     created = function(name, depth)
         local entity = entity_of(name)
         if entity == nil then
@@ -109,9 +84,13 @@ targets.new = function(entities, options)
             end
         end
         -- These inherit health; default max_health is 10 even when the field is absent.
-        -- Asteroids need no attack_parameters to remain part of the clearing workload.
+        -- Asteroids need no attack_parameters to remain targets.
         if entity.max_health ~= nil or entity.type == "asteroid" or entity.type == "unit" or entity.type == "spider-unit" or entity.segment_engine ~= nil then
-            return resolve(name, depth + 1)
+            local children, reason = spawned(name, depth + 1)
+            if children == nil then
+                return nil, reason
+            end
+            return union({ [name] = true }, children)
         end
         return nil, "unsupported-created-target"
     end
@@ -144,23 +123,17 @@ targets.new = function(entities, options)
                     result = nil
                     break
                 end
-                result, reason = merge(result, child, 1)
-                if result == nil then
-                    break
-                end
+                union(result, child)
             end
         elseif value.type == "create-entity" or value.type == "create-explosion" then
             result, reason = created(value.entity_name, depth + 1)
             if result ~= nil and value.non_colliding_fail_result ~= nil then
-                -- Count both possible branches; this cannot understate the spawn workload.
+                -- Count both possible branches.
                 child, reason = effects(value.non_colliding_fail_result, depth + 1)
                 if child == nil then
                     result = nil
                 else
-                    result, reason = merge({}, result, 1)
-                    if result ~= nil then
-                        result, reason = merge(result, child, 1)
-                    end
+                    result = union(union({}, result), child)
                 end
             end
         elseif value.type == "create-asteroid-chunk" then
@@ -177,10 +150,7 @@ targets.new = function(entities, options)
                 if child == nil then
                     result = nil
                 else
-                    result, reason = merge({}, result, 1)
-                    if result ~= nil then
-                        result, reason = merge(result, child, 1)
-                    end
+                    result = union(union({}, result), child)
                 end
             end
         else
@@ -189,19 +159,13 @@ targets.new = function(entities, options)
                 result = nil
             end
         end
-        if result ~= nil and next(result) ~= nil and value.type ~= nil then
-            -- Upper bound: every nonzero-probability spawn occurs at its maximum repeat count.
-            -- TriggerEffectItem + CreateEntityTriggerEffectItem::offsets (Factorio 2.1).
+        if result ~= nil and value.type ~= nil then
+            -- Any nonzero-probability spawn can happen.
             local probability = value.probability or 1
-            local repeats = value.repeat_count or 1
-            local deviation = value.repeat_count_deviation or 0
-            local offsets = value.offsets ~= nil and #value.offsets or 1
-            if not finite(probability) or probability < 0 or probability > 1 or not finite(repeats) or repeats < 0 or not finite(deviation) or deviation < 0 then
+            if not finite(probability) or probability < 0 or probability > 1 then
                 result, reason = nil, "invalid-target-repeat"
-            elseif probability == 0 or repeats + deviation == 0 or offsets == 0 then
+            elseif probability == 0 or (value.repeat_count or 1) + (value.repeat_count_deviation or 0) == 0 or (value.offsets ~= nil and #value.offsets == 0) then
                 result = {}
-            else
-                result, reason = merge({}, result, math.ceil(repeats + deviation) * offsets)
             end
         end
         effects_active[value] = nil
@@ -212,223 +176,148 @@ targets.new = function(entities, options)
         return result, reason
     end
 
-    local function lifecycle(entity, depth)
-        if entity.attack_reaction ~= nil and next(entity.attack_reaction) ~= nil then
-            return nil, "unsupported-target-reaction"
-        end
-        local safe, reason = visual(entity.damaged_trigger_effect)
-        if safe ~= true then
-            return nil, reason
-        end
-        local result
-        result, reason = effects(entity.dying_trigger_effect, depth + 1)
-        if result == nil then
-            return nil, reason
-        end
-        result, reason = merge({}, result, 1)
-        if result == nil then
-            return nil, reason
-        end
-        local created_counts
-        created_counts, reason = effects(entity.created_effect, depth + 1)
-        if created_counts == nil then
-            return nil, reason
-        end
-        result, reason = merge(result, created_counts, 1)
-        if result == nil then
-            return nil, reason
-        end
-        local explosions = entity.dying_explosion
-        if type(explosions) == "string" or (type(explosions) == "table" and explosions.name ~= nil) then
-            explosions = { explosions }
-        end
-        local names = {}
-        for _, explosion in pairs(explosions or {}) do
-            table.insert(names, type(explosion) == "string" and explosion or explosion.name)
-        end
-        local corpses = entity.corpse
-        if type(corpses) == "string" then
-            corpses = { corpses }
-        end
-        for _, name in pairs(corpses or {}) do
-            table.insert(names, name)
-        end
-        for _, name in pairs(names) do
-            local child
-            child, reason = created(name, depth + 1)
-            if child == nil then
-                return nil, reason
-            end
-            result, reason = merge(result, child, 1)
-            if result == nil then
-                return nil, reason
-            end
-        end
-        return result
-    end
-
-    resolve = function(name, depth)
-        local memo = cache[name]
+    -- An entity and its segments, after checking that their reactions to damage are harmless
+    local function parts_of(name)
+        local memo = part_cache[name]
         if memo ~= nil then
             return memo.result, memo.reason
         end
-        if active[name] == true then
+        local entity = entity_of(name)
+        local parts, reason
+        if entity == nil then
+            reason = "missing-target"
+        else
+            parts = { entity }
+            if entity.segment_engine ~= nil then
+                -- One head health/regen pool; damage on individual parts reaches that shared pool.
+                -- https://www.factorio.com/blog/post/fff-429 (Combat Clarity Improvements)
+                -- https://lua-api.factorio.com/latest/classes/LuaSegmentedUnit.html
+                local segments = entity.segment_engine.segments
+                if type(segments) ~= "table" or #segments > 63 then
+                    parts, reason = nil, "invalid-segment-engine"
+                else
+                    for _, specification in pairs(segments) do
+                        local part = entity_of(specification.segment)
+                        if part == nil then
+                            parts, reason = nil, "missing-segment"
+                            break
+                        end
+                        if part.segment_engine ~= nil then
+                            parts, reason = nil, "nested-segment-engine"
+                            break
+                        end
+                        table.insert(parts, part)
+                    end
+                end
+            end
+            for _, part in pairs(parts or {}) do
+                if part.attack_reaction ~= nil and next(part.attack_reaction) ~= nil then
+                    parts, reason = nil, "unsupported-target-reaction"
+                    break
+                end
+                local safe
+                safe, reason = visual(part.damaged_trigger_effect)
+                if safe ~= true then
+                    parts = nil
+                    break
+                end
+            end
+        end
+        part_cache[name] = {
+            result = parts,
+            reason = reason,
+        }
+        return parts, reason
+    end
+
+    -- What an entity's creation and death (its segments' too) spawn that might need killing, all the way down
+    spawned = function(name, depth)
+        local memo = spawn_cache[name]
+        if memo ~= nil then
+            return memo.result, memo.reason
+        end
+        if spawn_active[name] == true then
             return nil, "target-spawn-cycle"
         end
         local okay, reason = budget(depth)
         if okay ~= true then
             return nil, reason
         end
-        local entity = entity_of(name)
-        if entity == nil then
-            return nil, "missing-target"
+        local parts
+        parts, reason = parts_of(name)
+        if parts == nil then
+            return nil, reason
         end
-        active[name] = true
-        local parts = { entity }
-        local result = { [name] = 1 }
-        phases_of[result] = { [0] = { [name] = 1 } }
-        if entity.segment_engine ~= nil then
-            -- One head health/regen pool; damage on individual parts reaches that shared pool.
-            -- https://www.factorio.com/blog/post/fff-429 (Combat Clarity Improvements)
-            -- https://lua-api.factorio.com/latest/classes/LuaSegmentedUnit.html
-            local segments = entity.segment_engine.segments
-            if type(segments) ~= "table" or #segments > 63 then
-                result, reason = nil, "invalid-segment-engine"
-            else
-                for _, specification in pairs(segments) do
-                    local part = entity_of(specification.segment)
-                    if part == nil then
-                        result, reason = nil, "missing-segment"
-                        break
-                    end
-                    if part.segment_engine ~= nil then
-                        result, reason = nil, "nested-segment-engine"
-                        break
-                    end
-                    table.insert(parts, part)
-                end
+        spawn_active[name] = true
+        local result = {}
+        for _, part in pairs(parts) do
+            local names = {}
+            local explosions = part.dying_explosion
+            if type(explosions) == "string" or (type(explosions) == "table" and explosions.name ~= nil) then
+                explosions = { explosions }
             end
-        end
-        if result ~= nil then
-            for _, part in pairs(parts) do
-                local child
-                child, reason = lifecycle(part, depth + 1)
+            for _, explosion in pairs(explosions or {}) do
+                table.insert(names, type(explosion) == "string" and explosion or explosion.name)
+            end
+            -- Corpses are entities too, and their inherited created_effect can run on death.
+            -- https://lua-api.factorio.com/latest/prototypes/EntityWithHealthPrototype.html#corpse
+            local corpses = part.corpse
+            if type(corpses) == "string" then
+                corpses = { corpses }
+            end
+            for _, corpse in pairs(corpses or {}) do
+                table.insert(names, corpse)
+            end
+            local child
+            for _, value in pairs({
+                part.dying_trigger_effect,
+                part.created_effect,
+            }) do
+                child, reason = effects(value, depth + 1)
                 if child == nil then
                     result = nil
                     break
                 end
-                -- Waiting for every parent in a generation to die is a valid conservative schedule.
-                result, reason = merge(result, child, 1, 1)
-                if result == nil then
+                union(result, child)
+            end
+            for _, child_name in pairs(result ~= nil and names or {}) do
+                child, reason = created(child_name, depth + 1)
+                if child == nil then
+                    result = nil
                     break
                 end
+                union(result, child)
+            end
+            if result == nil then
+                break
             end
         end
-        active[name] = nil
-        cache[name] = {
+        spawn_active[name] = nil
+        spawn_cache[name] = {
             result = result,
             reason = reason,
         }
-        variants[name] = parts
         return result, reason
     end
 
-    resolver.workload = function(roster)
-        if type(roster) ~= "table" or #roster == 0 then
-            return nil, "missing-workload"
+    -- The target an evaluator scores: its prototype and parts (a segmented unit's head first)
+    resolver.target = function(name)
+        local parts, reason = parts_of(name)
+        if parts == nil then
+            return nil, reason
         end
-        local counts = {}
-        for _, target in pairs(roster) do
-            if type(target.entity) ~= "string" or not positive(target.amount) or target.amount % 1 ~= 0 then
-                return nil, "invalid-target"
-            end
-            local expanded, reason = resolve(target.entity, 1)
-            if expanded == nil then
-                return nil, reason
-            end
-            counts, reason = merge(counts, expanded, target.amount)
-            if counts == nil then
-                return nil, reason
-            end
-        end
-        local result = {}
-        for _, name in pairs(sorted_keys(counts)) do
-            local phases = {}
-            for phase, phase_counts in pairs(phases_of[counts] or {}) do
-                if phase_counts[name] ~= nil then
-                    phases[phase] = phase_counts[name]
-                end
-            end
-            table.insert(result, {
-                entity = name,
-                amount = counts[name],
-                prototype = entity_of(name),
-                parts = variants[name],
-                phases = phases,
-            })
-        end
-        return result
+        return {
+            entity = name,
+            prototype = parts[1],
+            parts = parts,
+        }
+    end
+
+    -- Names of everything the entity's creation and death can spawn that might need killing, closed over what those spawn
+    resolver.spawned = function(name)
+        return spawned(name, 1)
     end
     return resolver
-end
-
--- Assign a repeated job to fixed teams without allocating one object per target.
--- The completion-time threshold gives an integer assignment for the whole batch.
-local function schedule_batch(loads, seconds, amount)
-    local function earliest()
-        local best = 1
-        for index = 2, #loads do
-            if loads[index] < loads[best] then
-                best = index
-            end
-        end
-        return best
-    end
-    if #loads == 1 then
-        loads[1] = loads[1] + seconds * amount
-        return
-    end
-    if amount <= #loads * 4 then
-        for _ = 1, amount do
-            local index = earliest()
-            loads[index] = loads[index] + seconds
-        end
-        return
-    end
-    local first = loads[earliest()]
-    local low, high = first, first + seconds * amount
-    local function capacity(finish)
-        local total = 0
-        for _, load in pairs(loads) do
-            total = total + math.min(amount, math.max(0, math.floor((finish - load) / seconds)))
-            if total >= amount then
-                return total
-            end
-        end
-        return total
-    end
-    for _ = 1, 52 do
-        local middle = low + (high - low) / 2
-        if middle == low or middle == high then
-            break
-        end
-        if capacity(middle) >= amount then
-            high = middle
-        else
-            low = middle
-        end
-    end
-    local remaining = amount
-    for index, load in pairs(loads) do
-        local assigned = math.min(remaining, math.max(0, math.floor((high - load) / seconds)))
-        loads[index] = load + assigned * seconds
-        remaining = remaining - assigned
-    end
-    if remaining > 0 then
-        -- Floating-point boundary cases still produce a complete, valid assignment.
-        local index = earliest()
-        loads[index] = loads[index] + remaining * seconds
-    end
 end
 
 local function segment_shape(part)
@@ -493,12 +382,49 @@ end
 
 local function line_intersects(segment, head_distance, line)
     -- Center inclusion guarantees an intersection; edge-only hits near the endpoint receive no credit.
-    -- Every counted box also overlaps the line's width, without borrowing hits from other roster entities.
+    -- Every counted box also overlaps the line's width.
     return head_distance + segment.center <= line.range and segment.shape.left < line.width / 2 and segment.shape.right > -line.width / 2
 end
 
--- Prepare costs for an already expanded workload, so mixed batteries can reuse one dependency graph.
-targets.prepare = function(profile, workload, options)
+local function resistance_map(part)
+    local map = {}
+    for _, resistance in pairs(part.resistances or {}) do
+        if map[resistance.type] ~= nil then
+            return nil, "duplicate-resistance"
+        end
+        map[resistance.type] = resistance
+    end
+    return map
+end
+
+-- Each part's resistances by damage type, worked out once per target table and kept on it, since every weapon reads them
+local function resistance_maps_of(target)
+    if target.resistance_maps == nil and target.resistance_reason == nil then
+        local maps = {}
+        for _, part in pairs(target.parts) do
+            local map, reason = resistance_map(part)
+            if map == nil then
+                target.resistance_reason = reason
+                return nil, reason
+            end
+            maps[part] = map
+        end
+        target.resistance_maps = maps
+    end
+    return target.resistance_maps, target.resistance_reason
+end
+
+-- The head-on body layout, also kept on the target table
+local function layout_of(target)
+    if target.layout == nil and target.layout_reason == nil then
+        target.layout, target.layout_reason = segment_layout(target.parts)
+    end
+    return target.layout, target.layout_reason
+end
+
+-- What one weapon of the profile does to each target (resolver.target results), for evaluator.seconds to turn into kill times
+-- A target that can't be scored keeps its reason, without failing the others
+targets.prepare = function(profile, target_list, options)
     options = options or {}
     local segment_aim = options.segment_aim or "worst-segment"
     if segment_aim ~= "head" and segment_aim ~= "worst-segment" then
@@ -514,11 +440,14 @@ targets.prepare = function(profile, workload, options)
     if not positive(interval) or not finite(delay) or delay < 0 or not finite(warmup) or warmup < 0 then
         return nil, "invalid-attack-timing"
     end
-    if type(workload) ~= "table" or #workload == 0 then
-        return nil, "missing-workload"
+    for _, packet in pairs(profile.packets) do
+        if not positive(packet.count) or packet.count % 1 ~= 0 then
+            return nil, "invalid-packet-count"
+        end
     end
-    local stats = {}
-    for _, target in pairs(workload) do
+    local interval_ticks = math.floor(interval * 60 + 0.5)
+
+    local function stat_of(target)
         local health = target.prototype.max_health or 10
         local healing = target.prototype.healing_per_tick or 0
         if not positive(health) or not finite(healing) then
@@ -539,9 +468,7 @@ targets.prepare = function(profile, workload, options)
                         return nil, "invalid-line-geometry"
                     end
                     local reason
-                    if layout == nil then
-                        layout, reason = segment_layout(target.parts)
-                    end
+                    layout, reason = layout_of(target)
                     if layout == nil then
                         return nil, reason
                     end
@@ -549,16 +476,9 @@ targets.prepare = function(profile, workload, options)
                 end
             end
         end
-        local resistance_maps = {}
-        for _, part in pairs(target.parts) do
-            local map = {}
-            for _, resistance in pairs(part.resistances or {}) do
-                if map[resistance.type] ~= nil then
-                    return nil, "duplicate-resistance"
-                end
-                map[resistance.type] = resistance
-            end
-            resistance_maps[part] = map
+        local resistance_maps, reason = resistance_maps_of(target)
+        if resistance_maps == nil then
+            return nil, reason
         end
         local per_shot = math.huge
         local hit_parts = segment_aim == "head" and { target.prototype } or target.parts
@@ -566,19 +486,12 @@ targets.prepare = function(profile, workload, options)
             local resistances = resistance_maps[part]
             local damage = 0
             for index, packet in pairs(profile.packets) do
-                if not positive(packet.count) or packet.count % 1 ~= 0 then
-                    return nil, "invalid-packet-count"
-                end
-                local amount, reason
-                amount, reason = packet_damage(packet.amount, resistances[packet.type])
+                local amount, reason = packet_damage(packet.amount, resistances[packet.type])
                 if amount == nil then
                     return nil, reason
                 end
                 if line_packets[index] ~= true then
                     damage = damage + amount * packet.count
-                end
-                if not finite(damage) then
-                    return nil, "invalid-packet-damage"
                 end
             end
             per_shot = math.min(per_shot, damage)
@@ -602,13 +515,42 @@ targets.prepare = function(profile, workload, options)
         if not finite(per_shot) then
             return nil, "invalid-packet-damage"
         end
-        stats[target.entity] = {
-            target = target,
+        -- Stickers only stick to some prototype types, and then to the entity itself
+        -- One that lasts until the next hit keeps damaging between hits; a shorter one only for its duration
+        -- Each application comes damage_interval ticks after the last, so one application is held back as lag
+        local dot_rate, dot_lag = 0, 0
+        if categories.sticker_targets[target.prototype.type] == true then
+            for _, dot in pairs(profile.dots or {}) do
+                local amount, reason = packet_damage(dot.amount, resistance_maps[target.prototype][dot.type])
+                if amount == nil then
+                    return nil, reason
+                end
+                if amount > 0 then
+                    if dot.duration_ticks >= interval_ticks then
+                        dot_rate = dot_rate + amount * 60 / dot.interval_ticks
+                    else
+                        dot_rate = dot_rate + amount * math.floor(dot.duration_ticks / dot.interval_ticks) / interval
+                    end
+                    dot_lag = dot_lag + amount
+                end
+            end
+        end
+        return {
             health = health,
             healing = healing,
             healing_margin = healing_margin,
             per_shot = per_shot,
             line_hits = line_hits,
+            dot_rate = dot_rate,
+            dot_lag = dot_lag,
+        }
+    end
+
+    local stats = {}
+    for _, target in pairs(target_list) do
+        local stat, reason = stat_of(target)
+        stats[target.entity] = stat or {
+            reason = reason,
         }
     end
 
@@ -626,13 +568,14 @@ targets.prepare = function(profile, workload, options)
         local first_health = health + (separated_packets and arrival_healing + stat.healing_margin or 0)
         local volleys = 1
         if volley_damage < first_health then
-            local net = volley_damage - healing * interval
+            -- Stickers don't stack across the team, so their damage isn't multiplied by it
+            local net = volley_damage + (stat.dot_rate - healing) * interval
             if not positive(net) then
                 return nil, "insufficient-damage"
             end
             -- The first volley removes damage from full health; prior warmup/flight cannot add health.
             -- Each additional volley pays one firing interval of healing, with one cadence margin over the whole span.
-            local remaining = health - volley_damage + arrival_healing + stat.healing_margin
+            local remaining = health - volley_damage + arrival_healing + stat.healing_margin + stat.dot_lag
             volleys = 1 + math.ceil(remaining / net)
         end
         local seconds = warmup + delay + volleys * interval
@@ -643,160 +586,32 @@ targets.prepare = function(profile, workload, options)
     end
 
     local evaluator = {}
+    -- One weapon's damage per shot to the target, and how many parts each line packet hits
     evaluator.shot_damage = function(name)
         local stat = stats[name]
         if stat == nil then
             return nil, "unknown-prepared-target"
         end
+        if stat.per_shot == nil then
+            return nil, stat.reason
+        end
         return stat.per_shot, stat.line_hits
     end
-    local costs = {}
+    -- Seconds for team_size of these weapons to kill the target alone, or nil and why they can't
     evaluator.seconds = function(name, team_size)
-        if stats[name] == nil then
+        local stat = stats[name]
+        if stat == nil then
             return nil, "unknown-prepared-target"
         end
-        if not positive(team_size) or team_size % 1 ~= 0 or team_size > (options.max_team_sizes or 64) then
+        if stat.per_shot == nil then
+            return nil, stat.reason
+        end
+        if not positive(team_size) or team_size % 1 ~= 0 or team_size > (options.max_team_size or 64) then
             return nil, "invalid-deployment-count"
         end
-        costs[name] = costs[name] or {}
-        local memo = costs[name][team_size]
-        if memo == nil then
-            local seconds, reason = target_seconds(stats[name], team_size)
-            memo = {
-                seconds = seconds,
-                reason = reason,
-            }
-            costs[name][team_size] = memo
-        end
-        return memo.seconds, memo.reason
-    end
-
-    -- Independent jobs only; callers must serialize dependency phases before using this API.
-    evaluator.schedule = function(counts, deployment_count, fixed_team_size)
-        if not positive(deployment_count) or deployment_count % 1 ~= 0 then
-            return nil, "invalid-deployment-count"
-        end
-        if deployment_count > (options.max_team_sizes or 64) then
-            return nil, "deployment-budget"
-        end
-        if next(counts) == nil then
-            return 0
-        end
-        if fixed_team_size ~= nil and (not positive(fixed_team_size) or fixed_team_size % 1 ~= 0 or fixed_team_size > deployment_count) then
-            return nil, "invalid-team-size"
-        end
-        local best, best_schedule
-        local failure = "insufficient-damage"
-        for team_size = fixed_team_size or 1, fixed_team_size or deployment_count do
-            local teams = math.floor(deployment_count / team_size)
-            local jobs = {}
-            local feasible = true
-            for _, name in pairs(sorted_keys(counts)) do
-                local amount = counts[name]
-                if not finite(amount) or amount < 0 or amount % 1 ~= 0 or amount > (options.max_count or 1000000000) then
-                    return nil, "invalid-target-count"
-                end
-                if amount > 0 then
-                    local seconds, reason = evaluator.seconds(name, team_size)
-                    if seconds == nil then
-                        feasible = false
-                        failure = reason
-                        break
-                    end
-                    table.insert(jobs, {
-                        entity = name,
-                        amount = amount,
-                        seconds = seconds,
-                    })
-                end
-            end
-            if feasible then
-                table.sort(jobs, function(a, b)
-                    if a.seconds ~= b.seconds then
-                        return a.seconds > b.seconds
-                    end
-                    return a.entity < b.entity
-                end)
-                local loads = {}
-                for index = 1, teams do
-                    loads[index] = 0
-                end
-                for _, job in pairs(jobs) do
-                    schedule_batch(loads, job.seconds, job.amount)
-                end
-                local duration = 0
-                for _, load in pairs(loads) do
-                    duration = math.max(duration, load)
-                end
-                if finite(duration) and (best == nil or duration < best) then
-                    best = duration
-                    best_schedule = {
-                        team_size = team_size,
-                        teams = teams,
-                    }
-                end
-            end
-        end
-        if best == nil then
-            return nil, failure
-        end
-        return best, nil, best_schedule
+        return target_seconds(stat, team_size)
     end
     return evaluator
-end
-
-targets.clear_seconds = function(profile, roster, entities, deployment_count, options)
-    options = options or {}
-    if not positive(deployment_count) or deployment_count % 1 ~= 0 then
-        return nil, "invalid-deployment-count"
-    end
-    if deployment_count > (options.max_team_sizes or 64) then
-        return nil, "deployment-budget"
-    end
-    local resolver = targets.new(entities, options)
-    local workload, reason = resolver.workload(roster)
-    if workload == nil then
-        return nil, reason
-    end
-    local evaluator
-    evaluator, reason = targets.prepare(profile, workload, options)
-    if evaluator == nil then
-        return nil, reason
-    end
-    local phases = {}
-    for _, target in pairs(workload) do
-        for phase, amount in pairs(target.phases) do
-            phases[phase] = phases[phase] or {}
-            phases[phase][target.entity] = amount
-        end
-    end
-    local best, best_schedule
-    for team_size = 1, deployment_count do
-        local total = 0
-        local phase_times = {}
-        for _, phase in pairs(sorted_keys(phases)) do
-            local seconds
-            seconds, reason = evaluator.schedule(phases[phase], deployment_count, team_size)
-            if seconds == nil then
-                total = nil
-                break
-            end
-            phase_times[phase] = seconds
-            total = total + seconds
-        end
-        if positive(total) and (best == nil or total < best) then
-            best = total
-            best_schedule = {
-                team_size = team_size,
-                teams = math.floor(deployment_count / team_size),
-                phase_times = phase_times,
-            }
-        end
-    end
-    if best == nil then
-        return nil, reason or "invalid-clear-time"
-    end
-    return best, nil, workload, best_schedule
 end
 
 return targets

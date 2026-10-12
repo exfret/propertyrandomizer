@@ -20,32 +20,6 @@ end
 
 -- END repeated header
 
--- Maps space connections to asteroid entities that spawn on them
--- connection_name -> { asteroid_name -> true }
-stage.connection_asteroids = function()
-    local connection_asteroids = {}
-
-    for _, conn in pairs(prots("space-connection")) do
-        connection_asteroids[conn.name] = {}
-
-        if conn.asteroid_spawn_definitions ~= nil then
-            for _, spawn in pairs(conn.asteroid_spawn_definitions) do
-                local asteroid_name
-                if spawn.asteroid ~= nil then
-                    asteroid_name = spawn.asteroid
-                elseif spawn[1] ~= nil then
-                    asteroid_name = spawn[1]
-                end
-                if asteroid_name ~= nil and lu.entities[asteroid_name] ~= nil then
-                    connection_asteroids[conn.name][asteroid_name] = true
-                end
-            end
-        end
-    end
-
-    lu.connection_asteroids = connection_asteroids
-end
-
 -- Where asteroids/asteroid chunks spawn
 stage.asteroid_to_place = function()
     local asteroid_to_place = {}

@@ -425,8 +425,8 @@ entity.spoof = function(graph)
             end
         end
 
-        -- A built entity carried by biters (a carrier, see reflect) is gotten by killing a unit from its slot, which takes damage the unit's resistances let through (the carrier keeps them)
-        -- So each spawn and spoil slot also gets a carrier base: a spoofed edge from an AND of the slot's source and the unit's resistance group, which a build head takes in place of the slot's own base (see custom_prereq_search)
+        -- A built entity carried by biters (a carrier, see reflect) is gotten by killing a unit from its slot, which takes a weapon that kills the unit (the carrier keeps its resistances)
+        -- So each spawn and spoil slot also gets a carrier base: a spoofed edge from an AND of the slot's source and the unit's combat-target (src/logic/builders/combat-encounters.lua), which a build head takes in place of the slot's own base (see custom_prereq_search)
         -- The sink is a spoof and its heads start detached, so nothing is carried in vanilla
         local carrier_sink = gutils.add_node(graph, "entity-own", SPOOF_CARRIER_NAME, {
             op = "OR",
@@ -437,8 +437,7 @@ entity.spoof = function(graph)
             local start = graph.nodes[edge.start]
             local stop = graph.nodes[edge.stop]
             local is_slot = (edge.acq_kind == "spawn" and start.type == "entity-spawn" and stop.type == "entity") or (edge.acq_kind == "spoil" and claimable_made_edge(start, stop, edge))
-            local group = lookups.entity_resistance_groups.to_resistance[stop.name]
-            if is_slot and group ~= nil and graph.nodes[key("resistance-group", group)] ~= nil then
+            if is_slot and graph.nodes[key("combat-target", stop.name)] ~= nil then
                 table.insert(slot_edge_keys, edge_key)
             end
         end
@@ -457,7 +456,7 @@ entity.spoof = function(graph)
             gutils.add_edge(graph, edge.start, key(kill_node), {
                 amount = edge.amount,
             })
-            gutils.add_edge(graph, key("resistance-group", lookups.entity_resistance_groups.to_resistance[unit_name]), key(kill_node))
+            gutils.add_edge(graph, key("combat-target", unit_name), key(kill_node))
             -- The carrier base keeps the slot's own abilities and says which slot it's for (carrier_source and carrier_unit, see carrier_bases), and a spawn slot's spawner and unit like the slot's base
             local carrier_edge = gutils.add_edge(graph, key(kill_node), key(carrier_sink), acquisition.tag(edge.acq_kind, {
                 carrier_spoof = true,

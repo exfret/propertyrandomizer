@@ -25,7 +25,6 @@ local item_fluid = require("src/randomizations/unified/item-fluid")
 local locale_utils = require("src/localisation/locale")
 local looks = require("src/prototypes/looks")
 local lutils = require("src/logic/logic-utils")
-local combat_encounters = require("src/logic/builders/combat-encounters")
 local logic = require("src/logic/init")
 local lu = require("src/prototypes/lookup/init")
 local surface_sets = require("src/prototypes/surfaces/surface-sets")
@@ -400,7 +399,6 @@ local function cut_extra_versions(variants_of, dropped, dropped_on, sort_info, h
             gone[name] = true
         end
         copies.drop_recipes(data.raw, gone)
-        combat_encounters.reset()
         logic.build()
         local after = top.sort(logic.graph, nil, nil, {
             complex_contexts = true,
@@ -460,7 +458,6 @@ end
 -- variants_of: original recipe name --> its variants' names, changed to the ones kept; home_sets: the home sets to sort with, or nil for the game's own
 -- Returns how many it dropped
 local function prune_variants(variants_of, home_sets)
-    combat_encounters.reset()
     logic.build()
     local sort_home_sets = home_sets or top.home_sets(logic.graph)
     local sort_info = top.sort(logic.graph, nil, nil, {

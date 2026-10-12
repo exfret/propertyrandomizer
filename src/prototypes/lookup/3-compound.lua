@@ -12,23 +12,6 @@ stage.link = function(lu_to_link)
     lu = lu_to_link
 end
 
--- Maps asteroid entity names to their resistance group key
-stage.asteroid_resistance_groups = function()
-    local asteroid_resistance_groups = {}
-
-    for _, asteroid in pairs(prots("asteroid")) do
-        -- Only include if asteroid is in lu.entities
-        if lu.entities[asteroid.name] ~= nil then
-            local group_key = lu.entity_resistance_groups.to_resistance[asteroid.name]
-            if group_key ~= nil then
-                asteroid_resistance_groups[asteroid.name] = group_key
-            end
-        end
-    end
-
-    lu.asteroid_resistance_groups = asteroid_resistance_groups
-end
-
 -- Maps spoofed recipe categories (rcat names) to entities that can craft them
 stage.rcat_to_crafters = function()
     local rcat_to_crafters = {}

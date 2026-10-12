@@ -214,13 +214,6 @@ data:extend({
     },
     {
         setting_type = "startup",
-        type = "bool-setting",
-        name = "propertyrandomizer-unified-damage-types",
-        default_value = false,
-        order = "e-aa[damage-types]",
-    },
-    {
-        setting_type = "startup",
         type = "string-setting",
         name = "propertyrandomizer-military-difficulty",
         allowed_values = {

@@ -512,9 +512,9 @@ get_node_type_caption = function(node)
 end
 
 local dont_print_name_types = {
+    ["combat-weapon"] = true,
     ["energy-source-burner"] = true,
     ["entity-collision-group"] = true,
-    ["resistance-group"] = true,
     ["science-pack-set-lab"] = true,
     ["science-pack-set-science"] = true,
     ["space-connection-enter"] = true,
@@ -1014,7 +1014,6 @@ local function expand_node_dropdown(event, node)
         local is_confusing_node_type = {
             ["entity-collision-group"] = true,
             ["item-deliver"] = true,
-            ["resistance-group"] = true,
             ["warmth"] = true,
             ["false"] = true,
             ["fluid-hold"] = true,

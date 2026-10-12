@@ -230,6 +230,15 @@ categories.special_item_subgroups = {
     ["spawnables"] = true,
 }
 
+-- The prototype types a sticker can attach to, an engine rule data.raw doesn't show
+-- https://lua-api.factorio.com/latest/prototypes/StickerPrototype.html
+categories.sticker_targets = {
+    ["unit"] = true,
+    ["character"] = true,
+    ["car"] = true,
+    ["spider-vehicle"] = true,
+}
+
 -- Note: Artillery turrets not included
 -- Also note that normal turrets aren't included since they correspond to worms
 categories.turrets = {
